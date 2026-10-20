@@ -1,0 +1,7 @@
+{% extends "base.html" %}{% block content %}
+<main class="library"><h1>Історії починаються тут.</h1><p class="muted">Від авторського плану до оповідання — сцена за сценою.</p>
+<form id="new-story" class="new-story"><label>Назва нового твору<input name="title" required placeholder="Наприклад, Двері, що відчиняються не в той бік"></label><label>Орієнтир, слів<input name="target_words" type="number" min="5000" max="15000" value="7000"></label><button>Створити твір</button></form>
+<section class="cards">{% for story in stories %}<article class="card"><a href="/stories/{{story.id}}"><h2>{{story.title}}</h2><p>{{story.target_words}} слів · відкрити майстерню →</p></a><button type="button" class="secondary" data-trash-story="{{story.id}}" data-revision="{{story.revision}}">У кошик</button></article>{% else %}<div class="empty"><h2>Місце для першої історії</h2><p>Створіть твір і додайте план та описи персонажів у TXT або Markdown.</p></div>{% endfor %}</section><details><summary>Кошик творів</summary><div id="story-trash-list"></div></details></main>
+{% endblock %}
+
+{% block scripts %}<script type="module">import {installLibraryTrash} from "/static/trash.js";installLibraryTrash();</script>{% endblock %}

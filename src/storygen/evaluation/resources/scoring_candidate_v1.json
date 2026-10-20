@@ -1,0 +1,9 @@
+{
+  "version": "candidate-v1",
+  "calibrated": false,
+  "minimum_scores": {"ukrainian":3,"style":3,"voice":3,"plan_fidelity":3,"continuity":3,"editorial_preservation":3},
+  "blocking_severities": ["major","critical"],
+  "min_quote_chars": 12,
+  "evaluator_fingerprint": null,
+  "calibration_fingerprint": null
+}

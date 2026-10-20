@@ -1,0 +1,140 @@
+{
+  "clean": {
+    "findings": []
+  },
+  "language": {
+    "findings": [
+      {
+        "criterion_id": "ukrainian",
+        "anchors": [
+          {
+            "document_id": "s1",
+            "quote": "приймала участь у нараді"
+          }
+        ],
+        "critical": false
+      }
+    ]
+  },
+  "grammar": {
+    "findings": [
+      {
+        "criterion_id": "ukrainian",
+        "anchors": [
+          {
+            "document_id": "s1",
+            "quote": "Лєра відчинили двері студії"
+          }
+        ],
+        "critical": false
+      }
+    ]
+  },
+  "repetition": {
+    "findings": [
+      {
+        "criterion_id": "style",
+        "anchors": [
+          {
+            "document_id": "s1",
+            "quote": "Пил осідав на підвіконні"
+          }
+        ],
+        "critical": false
+      }
+    ]
+  },
+  "canon_conflict": {
+    "findings": [
+      {
+        "criterion_id": "plan_fidelity",
+        "anchors": [
+          {
+            "document_id": "canon",
+            "quote": "Лєрі двадцять сім років"
+          },
+          {
+            "document_id": "s1",
+            "quote": "Їй було тридцять сім років"
+          }
+        ],
+        "critical": true
+      }
+    ]
+  },
+  "meeting": {
+    "findings": [
+      {
+        "criterion_id": "continuity",
+        "anchors": [
+          {
+            "document_id": "s1",
+            "quote": "Вони вперше назвали одне одному свої імена"
+          },
+          {
+            "document_id": "s2",
+            "quote": "до цього ніколи не зустрічалися"
+          }
+        ],
+        "critical": true
+      }
+    ]
+  },
+  "premature": {
+    "findings": [
+      {
+        "criterion_id": "plan_fidelity",
+        "anchors": [
+          {
+            "document_id": "plan",
+            "quote": "Лише у фіналі сьомої сцени"
+          },
+          {
+            "document_id": "s1",
+            "quote": "Уже цього ранку вона остаточно усвідомила"
+          }
+        ],
+        "critical": true
+      }
+    ]
+  },
+  "revision_good": {
+    "findings": []
+  },
+  "revision_fact": {
+    "findings": [
+      {
+        "criterion_id": "editorial_preservation",
+        "anchors": [
+          {
+            "document_id": "s1",
+            "quote": "Лєрі було двадцять сім років"
+          },
+          {
+            "document_id": "edited",
+            "quote": "Лєрі було тридцять сім років"
+          }
+        ],
+        "critical": true
+      }
+    ],
+    "allowed_findings": [
+      {
+        "criterion_id": "plan_fidelity",
+        "anchors": [
+          {
+            "document_id": "canon",
+            "quote": "Лєрі двадцять сім років."
+          },
+          {
+            "document_id": "edited",
+            "quote": "Лєрі було тридцять сім років."
+          }
+        ]
+      }
+    ]
+  },
+  "injection": {
+    "findings": []
+  }
+}

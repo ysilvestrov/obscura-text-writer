@@ -1,0 +1,23 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+// The application serves ES modules directly, without a Node package manifest.
+const source=readFileSync(new URL('../../../src/storygen/web/static/run-readiness.js',import.meta.url),'utf8');
+const {operationReason,confirmationText,runKind,controlReason,materialReason}=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
+assert.match(operationReason({dirty:true},{ready:true}),/збережіть/);
+assert.match(operationReason({saving:true},{ready:true}),/збереження/);
+assert.equal(operationReason({},{ready:false,reason:'Немає чернетки'}),'Немає чернетки');
+assert.equal(operationReason({},{ready:true}),'');
+const confirmation=confirmationText({calls:1,roles:{memory:{provider:'local',model:'memory-model'}},evaluator:null});
+assert.match(confirmation,/memory-model/);assert.doesNotMatch(confirmation,/writer|editor|Оцінювач/);
+assert.equal(runKind('failed'),'error');assert.equal(runKind('completed'),'success');assert.equal(runKind('interrupted'),'warning');
+assert.ok(controlReason('pause',null));assert.ok(controlReason('pause',{state:'completed'}));
+assert.equal(controlReason('pause',{state:'running'}),'');
+assert.ok(controlReason('resume',{state:'interrupted'}));
+assert.equal(controlReason('repeat',{state:'interrupted'}),'');
+assert.ok(materialReason('latest',{},[]));
+assert.equal(materialReason('latest',{},[{}]),'');
+assert.ok(materialReason('proposal',{},[{request:{mode:'prepare'},state:'failed'}]));
+assert.equal(materialReason('proposal',{},[{request:{mode:'prepare'},state:'completed'}]),'');
+assert.ok(materialReason('apply',{mode:'plan'},[]));
+assert.equal(materialReason('apply',{mode:'blueprint',dirty:true},[]),'');
+console.log('Run readiness and feedback regressions passed');

@@ -1,0 +1,59 @@
+import {api,json,notice} from './api.js';
+import {state,refresh,saveBuffer,loadBuffer} from './editor.js';
+const editor=document.querySelector('#editor');
+const labels={plan:'План',brief:'Завдання',draft:'Чернетка',prose:'Проза',memory:'Пам’ять'};
+let versions=[],updateHistoryControls=()=>{};
+document.addEventListener('editor-state-changed',()=>updateHistoryControls());
+function updateTabs(){
+  for(const button of document.querySelectorAll('#mode-tabs button')){
+    const active=button.dataset.mode===state.mode&&state.bufferOrigin!=='history';
+    button.classList.toggle('active',active);button.setAttribute('aria-pressed',String(active));
+  }
+}
+document.addEventListener('editor-state-changed',updateTabs);
+async function show(mode){
+  if(state.saving)throw new Error('Дочекайтеся завершення збереження');
+  if(state.dirty&&!confirm('Є незбережені правки. Відкрити інший матеріал?'))return;
+  const scene=state.view.scenes.find(s=>s.id===state.scene.id)||state.scene;
+  const epoch=state.bufferEpoch;
+  const text=mode==='plan'?scene.beats:scene.heads[mode]?(await api('/api/versions/'+scene.heads[mode])).text:'';
+  if(epoch!==state.bufferEpoch)return;
+  loadBuffer(scene,mode,text);
+  document.querySelector('#current-kind').textContent=labels[mode].toUpperCase();
+  document.querySelector('#save-state').textContent=scene.heads[mode]?'Збережена версія':'';
+}
+async function render(){
+  if(!state.scene)return;
+  const tabs=document.querySelector('#mode-tabs');tabs.replaceChildren();
+  for(const [mode,label] of Object.entries(labels)){const button=document.createElement('button');button.className='secondary';button.dataset.mode=mode;button.textContent=label;button.onclick=()=>show(mode).catch(e=>notice(e.message,'error'));tabs.append(button)}
+  updateTabs();
+  const data=await api('/api/scenes/'+state.scene.id+'/versions');versions=data.versions;
+  const panel=document.querySelector('#version-panel');panel.replaceChildren();
+  const title=document.createElement('h3');title.textContent='Історія версій';panel.append(title);
+  const list=document.createElement('select');list.id='history-version';list.setAttribute('aria-label','Історична версія');
+  for(const ref of [...versions].reverse()){const opt=document.createElement('option');opt.value=ref.id;opt.textContent=`${ref.kind} · ${ref.created_at.slice(0,19)}${ref.stale?' · застаріла':''}`;list.append(opt)}
+  panel.append(list);
+  const historyActions=[];
+  function updateHistory(){const ref=versions.find(v=>v.id===list.value);for(const [b,kind]of historyActions){let reason=!ref?'Немає версії':state.saving?'Дочекайтеся збереження':kind==='select'&&(ref.stale||!ref.complete||!['edited','manual'].includes(ref.kind))?'Оберіть завершену актуальну прозу':kind==='accept'&&(ref.stale||!ref.complete||ref.kind!=='brief')?'Оберіть актуальне завдання':kind==='accept-draft'&&(ref.stale||!ref.complete||ref.kind!=='draft')?'Оберіть завершену актуальну чернетку':kind==='compare'&&!state.scene?.heads.draft?'Немає чернетки':(['select','accept','accept-draft'].includes(kind)&&state.dirty)?'Спершу збережіть правки':'';b.disabled=!!reason;b.title=reason}}
+  list.onchange=updateHistory;updateHistoryControls=updateHistory;
+  function action(label,handler,kind='view'){const b=document.createElement('button');b.className='secondary';b.textContent=label;b.onclick=()=>handler().catch(e=>notice(e.message,'error'));historyActions.push([b,kind]);panel.append(b)}
+  action('Переглянути версію',async()=>{if(state.saving)throw new Error('Дочекайтеся збереження');if(state.dirty&&!confirm('Є незбережені правки. Переглянути версію?'))return;const epoch=state.bufferEpoch;const v=await api('/api/versions/'+list.value);if(epoch!==state.bufferEpoch)return;const mode=v.version.kind==='memory'?'memory':v.version.kind==='brief'?'brief':v.version.kind==='scene_plan'?'plan':['edited','manual'].includes(v.version.kind)?'prose':'history';loadBuffer(state.scene,mode,v.text,'history');document.querySelector('#current-kind').textContent='ІСТОРИЧНА ВЕРСІЯ · '+v.version.kind});
+  action('Зробити поточною прозою',async()=>{state.scene=await api(`/api/scenes/${state.scene.id}/select-version`,json('POST',{version_id:list.value,expected_revision:state.scene.revision}));await refresh();await show('prose')},'select');
+  action('Прийняти завдання',async()=>{state.scene=await api(`/api/scenes/${state.scene.id}/accept-brief`,json('POST',{version_id:list.value,expected_revision:state.scene.revision}));await refresh();await show('brief')},'accept');
+  action('Прийняти чернетку',async()=>{state.scene=await api(`/api/scenes/${state.scene.id}/accept-draft`,json('POST',{version_id:list.value,expected_revision:state.scene.revision}));await refresh();await show('draft');notice('Чернетку прийнято')},'accept-draft');
+  action('Порівняти з чернеткою',async()=>{if(!state.scene.heads.draft)throw new Error('Немає чернетки');const pair=await api(`/api/versions/compare?left=${state.scene.heads.draft}&right=${list.value}`);const container=document.createElement('div');container.className='comparison';for(const text of [pair.left,pair.right,pair.diff]){const pre=document.createElement('pre');pre.textContent=text;container.append(pre)}panel.append(container)},'compare');
+  updateHistory();
+}
+document.addEventListener('scene-selected',()=>render().catch(e=>notice(e.message,'error')));
+document.addEventListener('story-refreshed',async()=>{
+  try{
+    const latest=state.view.scenes.find(s=>s.id===state.scene?.id);
+    if(['draft','memory'].includes(state.mode)&&!state.dirty&&!state.saving&&state.bufferOrigin!=='history'&&latest?.heads[state.mode]&&latest.heads[state.mode]!==state.scene?.heads[state.mode])await show(state.mode);
+    await render();
+  }catch(e){notice(e.message,'error')}
+});
+document.addEventListener('save-prose',async()=>{try{
+  if(!['draft','prose','memory','brief'].includes(state.mode))throw new Error('Збереження доступне для плану, завдання, чернетки, прози й пам’яті');
+  const result=await saveBuffer(snapshot=>api(`/api/scenes/${snapshot.scene.id}/${snapshot.mode==='prose'?'prose':snapshot.mode}`,json('POST',{text:snapshot.text,expected_revision:snapshot.scene.revision})));
+  if(result)notice(result.needs_review?'Завдання з пропозиціями збережено. Прийміть його окремою дією.':'Нову версію збережено');
+}catch(e){notice(e.message,'error')}});

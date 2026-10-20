@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Налаштування — {{story.title}} — Obscura{% endblock %}
+{% block content %}
+<main class="settings-page" data-story-id="{{ story.id }}">
+<a href="/stories/{{ story.id }}">← До твору</a><h1>Моделі та голос оповідання</h1>
+<p>Кожна роль має власну модель. Ключі OpenRouter і Venice читаються лише із серверного середовища.</p>
+<form id="profile-form" class="panel"><h2>Профіль письма</h2>
+<label>Жанр<input name="genre"></label><label>Тональність<input name="tone"></label>
+<label>Точка зору<input name="point_of_view"></label><label>Час<input name="tense"></label>
+<label>Правила стилю<textarea name="rules" rows="3"></textarea></label>
+<label>Завершення попередньої сцени, символів<input type="number" name="previous_tail_chars" min="0" max="12000"></label>
+<button>Зберегти профіль</button></form>
+<div id="role-settings"></div>
+</main><script type="module" src="/static/settings.js"></script><script type="module" src="/static/evaluation.js"></script>
+{% endblock %}

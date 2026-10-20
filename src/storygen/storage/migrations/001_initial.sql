@@ -1,0 +1,11 @@
+CREATE TABLE stories(id TEXT PRIMARY KEY, payload TEXT NOT NULL);
+CREATE TABLE scenes(id TEXT PRIMARY KEY, story_id TEXT NOT NULL REFERENCES stories(id), position INTEGER NOT NULL, payload TEXT NOT NULL, UNIQUE(story_id,position));
+CREATE TABLE versions(id TEXT PRIMARY KEY, story_id TEXT NOT NULL REFERENCES stories(id), scene_id TEXT REFERENCES scenes(id), kind TEXT NOT NULL, payload TEXT NOT NULL);
+CREATE TABLE dependency_edges(source_id TEXT NOT NULL REFERENCES versions(id), target_id TEXT NOT NULL REFERENCES versions(id), PRIMARY KEY(source_id,target_id));
+CREATE TABLE role_settings(story_id TEXT NOT NULL REFERENCES stories(id), role TEXT NOT NULL, payload TEXT NOT NULL, PRIMARY KEY(story_id,role));
+CREATE TABLE runs(id TEXT PRIMARY KEY, story_id TEXT NOT NULL REFERENCES stories(id), request_id TEXT UNIQUE NOT NULL, state TEXT NOT NULL, payload TEXT NOT NULL);
+CREATE TABLE stage_attempts(id TEXT PRIMARY KEY, run_id TEXT REFERENCES runs(id), story_id TEXT NOT NULL REFERENCES stories(id), scene_id TEXT REFERENCES scenes(id), state TEXT NOT NULL, payload TEXT NOT NULL);
+CREATE TABLE run_events(run_id TEXT NOT NULL REFERENCES runs(id), seq INTEGER NOT NULL, type TEXT NOT NULL, payload TEXT NOT NULL, PRIMARY KEY(run_id,seq));
+CREATE TABLE source_files(id TEXT PRIMARY KEY, story_id TEXT NOT NULL REFERENCES stories(id), payload TEXT NOT NULL);
+CREATE TABLE app_settings(key TEXT PRIMARY KEY, payload TEXT NOT NULL);
+CREATE INDEX version_scene ON versions(scene_id,kind);

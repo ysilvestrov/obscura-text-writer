@@ -1,0 +1,14 @@
+{
+  "cases": [
+    "clean/case.json",
+    "language/case.json",
+    "grammar/case.json",
+    "repetition/case.json",
+    "canon_conflict/case.json",
+    "meeting/case.json",
+    "premature/case.json",
+    "revision_good/case.json",
+    "revision_fact/case.json",
+    "injection/case.json"
+  ]
+}

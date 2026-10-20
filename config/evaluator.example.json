@@ -1,0 +1,7 @@
+{
+  "provider": "local",
+  "base_url": "http://localhost:1235/v1",
+  "model": "REPLACE_WITH_ACTUAL_API_MODEL_ID",
+  "max_input_chars": 60000,
+  "response_mode": "prompt_json"
+}
