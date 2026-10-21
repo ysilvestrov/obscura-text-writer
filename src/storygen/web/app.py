@@ -73,6 +73,8 @@ def create_app(settings: AppSettings, *, gateway_factory=None,evaluator_factory=
     app.include_router(router)
     from .routes_settings import router as settings_router
     app.include_router(settings_router)
+    from .routes_characters import router as characters_router
+    app.include_router(characters_router)
     from .routes_runs import router as runs_router
     from .routes_versions import router as versions_router
     app.include_router(runs_router)

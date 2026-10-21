@@ -22,10 +22,10 @@ def test_deltas_and_terminal_are_preserved():
     calls=[]
     def handler(request):
         calls.append(request)
-        return stream_response([chunk({'content':'Лєра '}),chunk({'content':'увійшла.'}),chunk(finish='stop'),{'id':'r','object':'chat.completion.chunk','created':0,'model':'test','choices':[],'usage':{'prompt_tokens':5,'completion_tokens':3,'total_tokens':8}}])
+        return stream_response([chunk({'content':'Олена '}),chunk({'content':'увійшла.'}),chunk(finish='stop'),{'id':'r','object':'chat.completion.chunk','created':0,'model':'test','choices':[],'usage':{'prompt_tokens':5,'completion_tokens':3,'total_tokens':8}}])
     with httpx.Client(transport=httpx.MockTransport(handler)) as http:
         events=list(build_generation_gateway(context().settings.provider,http_client=http).stream(context(),threading.Event()))
-    assert ''.join(e.text for e in events if e.type=='delta')=='Лєра увійшла.'
+    assert ''.join(e.text for e in events if e.type=='delta')=='Олена увійшла.'
     assert events[-1].type=='terminal' and events[-1].finish_reason=='stop'
     assert events[-1].usage['total_tokens']==8 and len(calls)==1
 
@@ -85,8 +85,9 @@ def test_explicit_protocol_stop_is_sent_without_changing_prompts():
 
 
 def test_evidence_delta_and_copyedits_use_their_own_structured_schemas():
-    for stage,mode,expected in [('memory',{'memory_mode':'evidence_delta'},'facts'),('edit',{'edit_mode':'patches'},'edits')]:
+    for stage,mode,expected in [('memory',{'memory_mode':'evidence_delta'},'operations'),('edit',{'edit_mode':'patches'},'edits')]:
         ctx=context();ctx.stage=stage
+        if stage=='memory':ctx.fragments={'expected_source_prose_ids':json.dumps(['prose1']),'previous_memory':'{}'}
         ctx.settings=RoleSettings(provider=ProviderSettings(model='test',response_mode='json_schema'),**mode)
         requests=[]
         def handler(request):

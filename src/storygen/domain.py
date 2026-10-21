@@ -3,6 +3,7 @@ from typing import Literal
 from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
+from .dependency_models import DependencySnapshot
 
 
 def new_id() -> str:
@@ -34,6 +35,7 @@ class Story(StoryCreate):
     trashed_at: str | None = None
     id: str
     revision: int = 0
+    config_revision: int = 0
     style_version_id: str | None = None
     canon_version_id: str | None = None
     characters_version_id: str | None = None
@@ -56,6 +58,7 @@ class Scene(SceneCreate):
     position: int
     revision: int = 0
     heads: dict[str,str] = Field(default_factory=dict)
+    head_revisions: dict[str,int] = Field(default_factory=dict)
     needs_review: bool = False
 
 
@@ -73,6 +76,7 @@ class VersionRef(DomainModel):
     source_run_id: str | None = None
     complete: bool = True
     stale: bool = False
+    dependency_snapshot: DependencySnapshot | None = None
     input_refs: list[str] = Field(default_factory=list)
     created_at: str = Field(default_factory=now)
 

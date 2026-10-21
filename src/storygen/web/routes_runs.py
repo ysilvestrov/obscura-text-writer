@@ -50,7 +50,7 @@ def get_run(id: str,request: Request):
     attempts=worker.repo.list_attempts(run.story_id,run.id)
     # Exact manifests are server-side; only public metadata and output appear in the UI.
     public=[a.model_dump(exclude={'context'}) for a in attempts]
-    partial=worker.repo.files.resolve(attempts[-1].partial_path).read_text(encoding='utf-8') if attempts and worker.repo.files.resolve(attempts[-1].partial_path).exists() else ''
+    partial=worker.repo.files.read_partial(attempts[-1].partial_path) if attempts else ''
     return {'run':run,'attempts':public,'partial':partial}
 
 
@@ -94,3 +94,15 @@ async def events(id: str,request: Request,after: int = 0,once: bool = False):
             yield ': keepalive\n\n'
             await asyncio.sleep(.3)
     return StreamingResponse(stream(),media_type='text/event-stream',headers={'Cache-Control':'no-cache','X-Accel-Buffering':'no'})
+
+
+class ContinueAccepted(DomainModel):
+    version_id: str
+    expected_cursor: int
+    expected_scene_revision: int
+    acceptance_id: str | None = None
+
+
+@router.post('/api/runs/{id}/continue-after-acceptance')
+def continue_after_acceptance(id: str,body: ContinueAccepted,request: Request):
+    return request.app.state.coordinator.continue_after_acceptance(id,body.version_id,body.expected_cursor,body.expected_scene_revision,body.acceptance_id)

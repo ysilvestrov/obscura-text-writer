@@ -6,14 +6,14 @@ from storygen.evaluation.scoring import score_report
 from storygen.evaluation.prompting import load_rubric
 
 
-def finding(quote="Лєра відчинила двері студії.", version="1", criterion="ukrainian", extra=None):
+def finding(quote="Олена відчинила двері бібліотеки.", version="1", criterion="ukrainian", extra=None):
     citations = [dict(document_id="s1", document_version=version, quote=quote)]
     if extra:
         citations.append(extra)
     return Finding(criterion_id=criterion, severity="critical", explanation="Проблема", suggestion="Перевірити", citations=citations)
 
 
-@pytest.mark.parametrize("quote,version", [("Вигадана фраза, якої тут немає.", "1"), ("Лєра", "1"), ("Лєра відчинила двері студії.", "0")])
+@pytest.mark.parametrize("quote,version", [("Вигадана фраза, якої тут немає.", "1"), ("Олена", "1"), ("Олена відчинила двері бібліотеки.", "0")])
 def test_fabricated_wrong_version_and_short_quote_rejected(sample_case, good_report, quote, version):
     good_report.findings = [finding(quote, version)]
     result = check_evidence(sample_case, good_report)
@@ -30,7 +30,7 @@ def test_contradiction_requires_two_sources(sample_case, good_report):
 
 def dict_to_citation():
     from storygen.evaluation.models import Citation
-    return Citation(document_id="canon", document_version="1", quote="Лєра має двадцять сім років.")
+    return Citation(document_id="canon", document_version="1", quote="Олена має сорок років.")
 
 
 def test_critical_finding_blocks_despite_high_language_scores(sample_case, good_report, calibrated_profile):
@@ -74,10 +74,10 @@ def test_scope_note_does_not_invalidate_checked_scene(sample_case, good_report, 
 
 
 def test_overlapping_quotes_do_not_count_as_two_anchors(sample_case, good_report):
-    good_report.findings = [finding(criterion="continuity", extra=dict(document_id="s1",document_version="1",quote="Лєра відчинила двері студії"))]
+    good_report.findings = [finding(criterion="continuity", extra=dict(document_id="s1",document_version="1",quote="Олена відчинила двері бібліотеки"))]
     assert not check_evidence(sample_case, good_report).confirmed
 
 
 def test_separate_passages_in_same_document_are_two_anchors(sample_case, good_report):
-    good_report.findings = [finding(criterion="continuity",extra=dict(document_id="s1",document_version="1",quote="Їй було двадцять сім років."))]
+    good_report.findings = [finding(criterion="continuity",extra=dict(document_id="s1",document_version="1",quote="Їй було сорок років."))]
     assert len(check_evidence(sample_case, good_report).confirmed) == 1

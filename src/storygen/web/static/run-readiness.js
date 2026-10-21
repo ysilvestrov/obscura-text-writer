@@ -1,13 +1,15 @@
 export function operationReason(state,operation){
   if(state.saving)return 'Дочекайтеся завершення збереження';
   if(state.dirty)return 'Спершу збережіть ручні правки';
+  if(state.characterDirty)return 'Спершу збережіть або скиньте зміни відомостей персонажів';
   if(!operation)return 'Перевіряємо передумови…';
   return operation.ready?'':operation.reason||'Немає потрібних матеріалів';
 }
 export function confirmationText(operation){
   const roles=Object.entries(operation.roles).map(([role,c])=>`${role}: ${c.provider} / ${c.model}`);
   if(operation.evaluator)roles.push(`Оцінювач після сцени: ${operation.evaluator.provider} / ${operation.evaluator.model||'типова модель CLI'}`);
-  return `Заплановано до ${operation.calls} модельних викликів.\n${roles.join('\n')}\nВартість визначається провайдером; оцінки ціни немає. Запустити?`;
+  const warnings=[...new Set([...(operation.warnings||[]),operation.warning].filter(Boolean))];
+  return `Заплановано до ${operation.calls} модельних викликів.\n${roles.join('\n')}\n${warnings.length?'Попередження:\n'+warnings.join('\n')+'\n':''}Вартість визначається провайдером; оцінки ціни немає. Запустити?`;
 }
 export function runKind(state){return state==='completed'?'success':state==='failed'?'error':['interrupted','needs_review','alternative','cancelled','paused'].includes(state)?'warning':'info'}
 export function controlReason(action,run){

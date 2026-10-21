@@ -78,13 +78,21 @@ def main(argv: list[str] | None = None) -> int:
                     for index in range(args.repeats):
                         print(f"Оцінювання {case.id}: {index + 1}/{args.repeats}", flush=True)
                         outcomes.append(evaluate(case, rubric, profile, config, gateway, args.output / "runs", reverse_pair=bool(index % 2)))
+                        if outcomes[-1].status == 'refused':
+                            break
+                    if outcomes[-1].status == 'refused':
+                        break
             finally:
                 close = getattr(gateway,"close",None)
                 if close:
                     close()
-            expectations = read_json(args.suite.parent / "expectations.json")
+            suite_data = read_json(args.suite)
+            expectations = suite_data.get('expectations') or read_json(args.suite.parent / "expectations.json")
             metrics = calibrate(cases, expectations, outcomes, required_repeats=args.repeats)
             metrics["evaluator_fingerprint"] = evaluator_fingerprint(config, rubric)
+            metrics['suite_version'] = suite_data.get('version')
+            metrics['suite_hash'] = digest(suite_data)
+            metrics['categories'] = suite_data.get('categories', {})
             metrics["run_ids"] = [o.metadata["run_id"] for o in outcomes]
             metrics["calibration_fingerprint"] = digest({"expectations":expectations,"outcomes":[o.model_dump() for o in outcomes]})
             if config.model is None:
@@ -111,7 +119,7 @@ def main(argv: list[str] | None = None) -> int:
             if close:
                 close()
         print(f"Оцінювання: {result.status}. Звіт: {result.metadata['report_path']}")
-        return {"passed":0, "failed":1, "incomplete":2, "error":3}[result.status]
+        return {"passed":0, "failed":1, "incomplete":2, "error":3, 'refused':4}[result.status]
     except (ValueError, OSError, ValidationError, GatewayFailure) as exc:
         message = str(exc) if isinstance(exc, GatewayFailure) else "Некоректні аргументи, конфігурація або файли"
         print(f"Помилка: {message}")

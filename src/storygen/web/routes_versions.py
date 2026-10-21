@@ -7,6 +7,7 @@ from ..generation.dependencies import save_manual_draft, save_manual_prose, sele
 from ..generation.worker import RunRequest
 from ..memory.models import MemorySnapshot
 from ..memory.service import memory_before, validate_memory
+from ..memory.service import save_scene_memory
 from ..generation.models import WritersBrief
 from ..domain import RevisionConflict
 
@@ -31,7 +32,7 @@ class Rebuild(DomainModel):
 def versions(scene_id: str,request: Request):
     repo=request.app.state.repo
     scene=repo.get_scene(scene_id)
-    return {'scene':scene,'versions':repo.list_versions(scene.story_id,scene_id)}
+    return {'scene':scene,'versions':repo.list_versions(scene.story_id,scene_id),'acceptances':repo.list_acceptances(scene.story_id)}
 
 
 @router.get('/api/versions/compare')
@@ -106,23 +107,27 @@ def accept_draft(scene_id: str,body: Selection,request: Request):
 @router.post('/api/scenes/{scene_id}/memory')
 def manual_memory(scene_id: str,body: ProseChange,request: Request):
     repo=request.app.state.repo
-    scene=repo.get_scene(scene_id)
-    if scene.revision!=body.expected_revision:
-        raise RevisionConflict('Пам’ять або прозу сцени вже оновлено. Відкрийте вкладку «Пам’ять» заново; незбережені правки спершу скопіюйте окремо.')
-    previous=memory_before(repo,scene_id)
-    sources={id:repo.read_text(id) for id in previous.source_prose_ids}
-    if 'prose' not in scene.heads:
-        raise ValueError('Спершу виберіть прозу')
-    sources[scene.heads['prose']]=repo.read_text(scene.heads['prose'])
-    snapshot=MemorySnapshot.model_validate_json(body.text)
-    if snapshot.source_prose_ids!=list(sources):
-        raise ValueError('Ця пам’ять посилається на іншу версію прози. Відкрийте актуальну вкладку «Пам’ять» або згенеруйте її кнопкою «Оновити пам’ять». Ваші правки в редакторі не змінено.')
-    validate_memory(snapshot,sources)
-    ref=repo.save_version(scene.story_id,scene_id,'memory',snapshot.model_dump_json(),list(sources))
-    return repo.set_head(scene_id,'memory',ref.id,body.expected_revision)
+    save_scene_memory(repo,scene_id,body.text,body.expected_revision)
+    return repo.get_scene(scene_id)
 
 
 @router.post('/api/scenes/{scene_id}/rebuild-memory')
 def rebuild(scene_id: str,body: Rebuild,request: Request):
     scene=request.app.state.repo.get_scene(scene_id)
     return request.app.state.coordinator.enqueue(RunRequest(story_id=scene.story_id,scene_id=scene.id,mode='rebuild_memory'),body.request_id)
+
+
+class AcceptanceSelection(Selection):
+    preview_fingerprint: str
+    note: str | None = None
+
+
+@router.get('/api/scenes/{scene_id}/acceptance-preview')
+def acceptance_preview(scene_id: str,version_id: str,request: Request):
+    return request.app.state.repo.preview_acceptance(scene_id,version_id)
+
+
+@router.post('/api/scenes/{scene_id}/accept-version')
+def accept_version(scene_id: str,body: AcceptanceSelection,request: Request):
+    result=request.app.state.repo.accept_version(scene_id,body.version_id,body.expected_revision,body.preview_fingerprint,body.note)
+    return {'scene':result.scene,'version':result.version,'acceptance':result.acceptance}

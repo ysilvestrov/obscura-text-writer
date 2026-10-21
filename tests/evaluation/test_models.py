@@ -20,7 +20,7 @@ def test_status_score_consistency(status, score):
 
 
 def test_duplicate_ids_rejected():
-    doc = dict(id="s1", version="1", kind="scene", text="Лєра відчинила двері студії.")
+    doc = dict(id="s1", version="1", kind="scene", text="Олена відчинила двері бібліотеки.")
     with pytest.raises(ValidationError):
         EvaluationCase(id="sample", mode="scene", documents=[doc, doc], target_ids=["s1"])
 
@@ -31,10 +31,10 @@ def test_unknown_target_rejected():
 
 
 def test_utf8_bom_and_relative_paths(tmp_path):
-    (tmp_path / "сцена.txt").write_text("Лєра відчинила двері студії.", encoding="utf-8-sig")
+    (tmp_path / "сцена.txt").write_text("Олена відчинила двері бібліотеки.", encoding="utf-8-sig")
     manifest = dict(id="sample", mode="scene", documents=[dict(id="s1", version="1", kind="scene", path="сцена.txt")], target_ids=["s1"])
     (tmp_path / "case.json").write_text(json.dumps(manifest), encoding="utf-8-sig")
-    assert load_case(tmp_path / "case.json").documents[0].text == "Лєра відчинила двері студії."
+    assert load_case(tmp_path / "case.json").documents[0].text == "Олена відчинила двері бібліотеки."
 
 
 @pytest.mark.parametrize("path", ["../outside.txt", "C:/outside.txt", "missing.txt"])

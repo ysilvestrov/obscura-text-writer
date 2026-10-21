@@ -1,0 +1,33 @@
+import assert from 'node:assert/strict';
+import {pathToFileURL} from 'node:url';
+const root=process.argv[2];
+const module=await import(pathToFileURL(root+'/src/storygen/web/static/acceptance.js'));
+const handlers=new Set();
+class Element {children=[];disabled=false;textContent='';append(...items){this.children.push(...items)}replaceChildren(...items){this.children=items}setAttribute(){}focus(){}}
+globalThis.document={createElement:()=>new Element(),addEventListener:(_n,fn)=>handlers.add(fn),removeEventListener:(_n,fn)=>handlers.delete(fn)};
+const state={scene:{id:'s',revision:3},dirty:false,saving:false,bufferEpoch:1};
+const draft={id:'v',kind:'draft',complete:true,stale:true};
+for(const kind of ['memory','evaluation','brief'])assert.ok(module.acceptanceReason(state,{...draft,kind}));
+for(const kind of ['draft','manual','edited'])assert.equal(module.acceptanceReason(state,{...draft,kind}),'');
+let posted,accepted=0,fail=false;const notices=[];
+const preview={version_id:'v',expected_revision:3,preview_fingerprint:'shown-state',text:'Збережений текст',changes:[{reason:'selector_changed',expected:'A',current:'B'}]};
+const api=async(url,options)=>{if(!options)return preview;posted=JSON.parse(options.body);if(fail)throw new Error('409: джерела змінено');return {scene:{id:'s',revision:4}}};
+const panel=new Element();
+const options={state,ref:draft,api,json:(method,body)=>({method,body:JSON.stringify(body)}),panel,notice:(...args)=>notices.push(args),onAccepted:async()=>{accepted++}};
+let view=await module.openAcceptance(options);
+assert.equal(view.text.textContent,preview.text);
+state.dirty=true;for(const fn of handlers)fn();assert.equal(view.commit.disabled,true);
+await view.commit.onclick();assert.equal(posted,undefined);assert.equal(accepted,0);
+state.dirty=false;for(const fn of handlers)fn();
+fail=true;await view.commit.onclick();assert.equal(accepted,0);assert.equal(state.scene.revision,3);assert.ok(notices.at(-1)[0].includes('409'));
+view=await module.openAcceptance(options);fail=false;await view.commit.onclick();
+assert.equal(posted.preview_fingerprint,'shown-state');assert.equal(posted.expected_revision,3);assert.equal(accepted,1);
+console.log('acceptance UI regressions passed');
+
+const run={state:'alternative',cursor:0,tasks:[{stage:'draft',scene_id:'s'}]};
+const attempt={stage:'draft',scene_id:'s',result_version_id:'v'};
+const scene={id:'s',revision:4,heads:{draft:'v'}};
+const candidate=module.acceptedContinuation(run,[attempt],scene,[{...draft,stale:false}],[{id:'decision',version_id:'v'}]);
+assert.deepEqual(candidate,{version_id:'v',expected_cursor:0,expected_scene_revision:4,acceptance_id:'decision'});
+assert.equal(module.acceptedContinuation({...run,state:'cancelled'},[attempt],scene,[draft],[]),null);
+assert.equal(module.acceptedContinuation(run,[attempt],scene,[draft],[]),null);

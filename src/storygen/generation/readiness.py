@@ -12,7 +12,7 @@ def preview(repo, request):
     stages=[request.stage] if request.mode=='stage' else ['prepare'] if request.mode=='prepare' else ['memory'] if request.mode=='rebuild_memory' else list(STAGES)
     settings=get_role_settings(repo,story.id)
     roles={name:settings[name].provider.model_dump(include={'provider','model'}) for stage in stages if (name:=STAGE_ROLES[stage]) in settings}
-    result={'ready':False,'reason':None,'roles':roles,'calls':len(stages),'evaluator':None}
+    result={'ready':False,'reason':None,'roles':roles,'calls':len(stages),'evaluator':None,'warnings':[]}
     try:
         if request.mode!='prepare' and scene is None:
             raise ValueError('Оберіть сцену')
@@ -35,15 +35,24 @@ def preview(repo, request):
             except ValueError:
                 evaluation=None
             if evaluation and evaluation.policy!='off':
-                result['evaluator']=evaluation.config.model_dump(include={'provider','model'})
-                result['calls']+=len(targets)
+                from ..evaluation.blocks import get_block, blocked_message
+                block = get_block(repo, story.id, evaluation.config)
+                if block and evaluation.policy == 'pause_on_failure':
+                    raise ValueError(blocked_message(block))
+                if block:
+                    result['warning'] = blocked_message(block)
+                else:
+                    result['evaluator']=evaluation.config.model_dump(include={'provider','model'})
+                    result['calls']+=len(targets)
         if request.mode=='prepare':
-            sources=[s for s in [repo.active_source(story.id,'source_plan'),repo.active_source(story.id,'source_characters')] if s]
+            view=repo.context_view(story.id)
+            story=view.get_story(story.id)
+            sources=[s for s in [view.active_source(story.id,'source_plan'),view.active_source(story.id,'source_characters')] if s]
             if not sources or not any(repo.read_text(s.id).strip() for s in sources):
                 raise ValueError('Спершу імпортуйте авторський план або описи персонажів')
             if any(s.stale or not s.complete for s in sources):
                 raise ValueError('Авторські джерела потребують оновлення')
-            make_context(repo,story,None,'prepare',settings['planner'],[repo.read_text(s.id) for s in sources],[s.id for s in sources])
+            make_context(view,story,None,'prepare',settings['planner'],[view.read_text(s.id) for s in sources],[s.id for s in sources])
         else:
             if stages[0]=='brief':
                 for target in targets:
@@ -57,7 +66,16 @@ def preview(repo, request):
                     if not prose or not prose.complete or prose.kind not in {'edited','manual'}:
                         raise ValueError(f'Спершу виберіть завершену прозу сцени {target.position+1}')
             # Later tasks may consume outputs that this run has not generated yet.
-            build_context(repo,scene.id,stages[0],settings[STAGE_ROLES[stages[0]]])
+            context=build_context(repo,scene.id,stages[0],settings[STAGE_ROLES[stages[0]]])
+            result['warnings']=context.context_warnings.copy()
+            literary=any(stage in {'brief','draft'} or stage=='edit' and settings['editor'].edit_mode=='prose' for stage in stages)
+            if literary:
+                from ..characters.context import character_material
+                view=repo.context_view(story.id)
+                for target in targets:
+                    _,warnings,_=character_material(view,view.get_story(story.id),view.get_scene(target.id))
+                    result['warnings'].extend(warnings)
+                result['warnings']=list(dict.fromkeys(result['warnings']))
         result['ready']=True
     except (ValueError,KeyError) as exc:
         result['reason']=str(exc) if isinstance(exc,ValueError) else 'Матеріал не знайдено; оновіть сторінку'
@@ -81,6 +99,13 @@ def pending_preview(repo,run):
                 from ..evaluation.story_adapter import get_evaluation_settings, build_evaluation_case
                 evaluation=get_evaluation_settings(repo,run.story_id)
                 if evaluation.policy=='off':continue
+                from ..evaluation.blocks import get_block, blocked_message
+                block = get_block(repo, run.story_id, evaluation.config)
+                if block:
+                    if evaluation.policy == 'pause_on_failure' or run.request.mode == 'evaluate':
+                        raise ValueError(blocked_message(block))
+                    result['warning'] = blocked_message(block)
+                    continue
                 if task is first:build_evaluation_case(repo,run.story_id,task.get('scene_id'),task.get('evaluation_mode',run.request.evaluation_mode))
                 result['evaluator']=evaluation.config.model_dump(include={'provider','model'})
             else:

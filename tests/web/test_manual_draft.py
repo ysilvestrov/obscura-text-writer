@@ -18,7 +18,7 @@ def workspace(tmp_path):
 
 def test_manual_draft_is_versioned_and_available_to_editor(tmp_path):
     app, repo, story, scene = workspace(tmp_path)
-    text = 'Лєра відчинила двері.\n\n— Добрий день, — сказала вона.'
+    text = 'Олена відчинила двері.\n\n— Добрий день, — сказала вона.'
     with TestClient(app, base_url='http://127.0.0.1:8765') as client:
         result = client.post(f'/api/scenes/{scene.id}/draft', json={
             'text': text, 'expected_revision': scene.revision,
@@ -35,7 +35,7 @@ def test_manual_draft_is_versioned_and_available_to_editor(tmp_path):
             provider=ProviderSettings(model='test'), edit_mode='patches',
         ))
         assert saved['version']['id'] in context.input_refs
-        assert 'Лєра відчинила двері.' in context.user_text
+        assert 'Олена відчинила двері.' in context.user_text
         assert repo.get_story(story.id).revision > story.revision
 
 

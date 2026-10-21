@@ -9,6 +9,7 @@ from ..domain import DomainModel
 from ..generation.context import ContextBundle
 from ..generation.models import StoryBlueprint, WritersBrief
 from ..memory.models import MemorySnapshot, MemoryDelta
+from ..memory.journal import MemoryOperations
 from ..generation.copyediting import CopyEdits
 from .client import build_openai_client
 from .models import ProviderSettings
@@ -74,9 +75,9 @@ class OpenAIGenerationGateway:
                         'enable_x_search':False,
                     }}
                 if self.settings.response_mode=='json_schema' and structured:
-                    model=CopyEdits if context.stage=='edit' else MemoryDelta if context.stage=='memory' and context.settings.memory_mode=='evidence_delta' else {'prepare':StoryBlueprint,'brief':WritersBrief,'memory':MemorySnapshot}[context.stage]
+                    model=CopyEdits if context.stage=='edit' else MemoryOperations if context.stage=='memory' and context.settings.memory_mode=='evidence_delta' else {'prepare':StoryBlueprint,'brief':WritersBrief,'memory':MemorySnapshot}[context.stage]
                     schema=strict_schema(model)
-                    if context.stage=='memory' and context.fragments.get('expected_source_prose_ids'):
+                    if context.stage=='memory' and context.settings.memory_mode=='snapshot' and context.fragments.get('expected_source_prose_ids'):
                         allowed=json.loads(context.fragments['expected_source_prose_ids'])
                         sources=schema['properties']['source_prose_ids']
                         sources.update({'minItems':len(allowed),'maxItems':len(allowed),'items':{'type':'string','enum':allowed}})

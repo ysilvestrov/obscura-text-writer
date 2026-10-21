@@ -30,8 +30,8 @@ def no_network(monkeypatch):
 @pytest.fixture
 def sample_case():
     return EvaluationCase(id="sample", mode="scene", documents=[
-        dict(id="canon", version="1", kind="canon", text="Лєра має двадцять сім років. Вона фотографка."),
-        dict(id="s1", version="1", kind="scene", text="Лєра відчинила двері студії. Їй було двадцять сім років."),
+        dict(id="canon", version="1", kind="canon", text="Олена має сорок років. Вона бібліотекарка."),
+        dict(id="s1", version="1", kind="scene", text="Олена відчинила двері бібліотеки. Їй було сорок років."),
     ], target_ids=["s1"])
 
 

@@ -3,9 +3,11 @@ import subprocess
 import tempfile
 import time
 from pathlib import Path
+from types import SimpleNamespace
 
 from .gateway import GatewayFailure
-from .models import EvaluationRequest, EvaluatorConfig, GatewayResult
+from .models import EvaluationRequest, EvaluatorConfig, GatewayResult, FailureDetail
+from .failures import api_failure, is_text_refusal, refusal_detail
 
 
 class CodexGateway:
@@ -37,11 +39,27 @@ class CodexGateway:
                 process = self.run(args, input=prompt, text=True, encoding="utf-8", errors="replace",
                     capture_output=True, shell=False, timeout=self.config.timeout_seconds or 300, cwd=root)
             except subprocess.TimeoutExpired:
-                raise GatewayFailure("codex_timeout: Час очікування Codex CLI вичерпано") from None
-            except OSError:
-                raise GatewayFailure("codex_unavailable: Не вдалося запустити Codex CLI") from None
+                raise GatewayFailure("codex_timeout: Час очікування Codex CLI вичерпано",
+                    detail=FailureDetail(category='timeout', message='Час очікування Codex CLI вичерпано.')) from None
+            except OSError as exc:
+                raise GatewayFailure("codex_unavailable: Не вдалося запустити Codex CLI",
+                    detail=FailureDetail(category='connection', message='Не вдалося запустити Codex CLI; errno=' + str(exc.errno))) from None
             if process.returncode != 0 or not answer.is_file():
-                raise GatewayFailure("codex_failed: Codex CLI не повернув завершений звіт")
+                detail = FailureDetail(category='provider_error', message=f'Codex CLI не повернув завершений звіт; exit code={process.returncode}.')
+                for line in process.stdout.splitlines():
+                    try:
+                        event = json.loads(line)
+                    except ValueError:
+                        continue
+                    if not isinstance(event, dict) or event.get('type') not in {'error', 'turn.failed'}:
+                        continue
+                    error = event.get('error', event)
+                    if not isinstance(error, dict):
+                        continue
+                    detail = api_failure(SimpleNamespace(body=error), documents=[m['content'] for m in request.messages])
+                    if is_text_refusal(error.get('message', '')):
+                        detail = refusal_detail(error['message'])
+                raise GatewayFailure('codex_failed: ' + detail.message, detail=detail)
             usage = {}
             for line in process.stdout.splitlines():
                 try:

@@ -35,6 +35,24 @@ def test_exit_codes_and_invalid_invocation(tmp_path, sample_case, monkeypatch, g
     assert cli.main(["evaluate"]) == 3
 
 
+def test_refusal_exit_code_is_distinct_and_calibration_stops(tmp_path, sample_case, monkeypatch):
+    from storygen.evaluation.models import GatewayResult
+    calls = []
+    class Gateway:
+        def complete(self, request):
+            calls.append(request)
+            return GatewayResult(text='', finish_reason='stop', refusal='Не можу оцінити.')
+    monkeypatch.setattr(cli, 'build_gateway', lambda config: Gateway())
+    case, cfg = paths(tmp_path, sample_case)
+    assert cli.main(['evaluate', '--case', str(case), '--config', str(cfg), '--output', str(tmp_path / 'run')]) == 4
+    calls.clear()
+    assert cli.main(['calibrate', '--suite', 'src/storygen/evaluation/resources/calibration_suite_v2.json',
+                     '--config', str(cfg), '--output', str(tmp_path / 'calibration')]) == 1
+    assert len(calls) == 1
+    metrics = json.loads((tmp_path / 'calibration' / 'calibration.json').read_text(encoding='utf-8'))
+    assert metrics['refusal_count'] == 1 and metrics['eligible'] is False
+
+
 def test_changed_canon_is_not_comparable(sample_case, good_report, calibrated_profile):
     from storygen.evaluation.models import EvaluationOutcome
     def outcome(canon):

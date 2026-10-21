@@ -1,4 +1,5 @@
 import hashlib
+import codecs
 import os
 from pathlib import Path
 
@@ -33,3 +34,17 @@ class FileStore:
         if hashlib.sha256(data).hexdigest() != sha256:
             raise StorageCorruption("Вміст версії не відповідає збереженому hash")
         return data
+
+    def open_partial(self, relative: str):
+        """Create a new mutable partial; immutable versions still use write()."""
+        path = self.resolve(relative)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        return path.open('xb')
+
+    def read_partial(self, relative: str) -> str:
+        path = self.resolve(relative)
+        if not path.exists():
+            return ''
+        # Concurrent append (or a crash) may leave only the first bytes of the
+        # last character. Ignore that incomplete tail, not invalid inner bytes.
+        return codecs.getincrementaldecoder('utf-8')().decode(path.read_bytes(), final=False)

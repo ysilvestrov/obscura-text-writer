@@ -25,6 +25,11 @@ class EvaluationPolicy(DomainModel):
     policy: Literal['off','report','pause_on_failure']
 
 
+class EvaluationSettingsUpdate(EvaluationSettings):
+    # Read-only metadata is accepted for GET→PUT compatibility but never trusted.
+    block: dict | None = None
+
+
 @router.put('/api/stories/{id}/evaluator/policy')
 def policy(id: str,body: EvaluationPolicy,request: Request):
     repo=request.app.state.repo
@@ -34,7 +39,8 @@ def policy(id: str,body: EvaluationPolicy,request: Request):
         settings=EvaluationSettings(config=EvaluatorConfig(provider='codex_cli',max_input_chars=100000),context_tokens=128000,policy='off')
     settings.policy=body.policy
     save_evaluation_settings(repo,id,settings)
-    return settings
+    from ..evaluation.blocks import get_block
+    return {**settings.model_dump(), 'block': get_block(repo, id, settings.config)}
 
 
 @router.post('/api/stories/{id}/evaluator/calibration')
@@ -48,13 +54,17 @@ def calibration(id: str,body: CalibrationImport,request: Request):
 
 @router.get('/api/stories/{id}/evaluator')
 def config(id: str,request: Request):
-    return get_evaluation_settings(request.app.state.repo,id)
+    from ..evaluation.blocks import get_block
+    repo = request.app.state.repo
+    settings = get_evaluation_settings(repo, id)
+    return {**settings.model_dump(), 'block': get_block(repo, id, settings.config)}
 
 
 @router.put('/api/stories/{id}/evaluator')
-def configure(id: str,body: EvaluationSettings,request: Request):
-    save_evaluation_settings(request.app.state.repo,id,body)
-    return body
+def configure(id: str,body: EvaluationSettingsUpdate,request: Request):
+    settings = EvaluationSettings.model_validate(body.model_dump(exclude={'block'}))
+    save_evaluation_settings(request.app.state.repo,id,settings)
+    return settings
 
 
 @router.post('/api/stories/{id}/evaluate')
