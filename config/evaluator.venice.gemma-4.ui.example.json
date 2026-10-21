@@ -1,0 +1,16 @@
+{
+  "config": {
+    "provider": "venice",
+    "model": "gemma-4-uncensored",
+    "api_key_env": "VENICE_API_KEY",
+    "max_input_chars": 100000,
+    "max_output_tokens": 6000,
+    "response_mode": "json_schema",
+    "temperature": 0.1,
+    "timeout_seconds": 180,
+    "venice_include_system_prompt": false,
+    "venice_disable_thinking": false
+  },
+  "context_tokens": 256000,
+  "policy": "report"
+}

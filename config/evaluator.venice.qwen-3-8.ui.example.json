@@ -1,0 +1,16 @@
+{
+  "config": {
+    "provider": "venice",
+    "model": "qwen-3-8-27b",
+    "api_key_env": "VENICE_API_KEY",
+    "max_input_chars": 100000,
+    "max_output_tokens": 3000,
+    "response_mode": "prompt_json",
+    "temperature": 0.1,
+    "timeout_seconds": 180,
+    "venice_include_system_prompt": false,
+    "venice_disable_thinking": true
+  },
+  "context_tokens": 262144,
+  "policy": "report"
+}
