@@ -7,7 +7,7 @@ from storygen.storage.repository import Repository
 def setup_story(tmp_path):
     repo = Repository(tmp_path)
     story = repo.create_story(StoryCreate(title="Двері"))
-    scene = repo.create_scene(story.id, SceneCreate(title="Ранок", beats="Огляд студії"))
+    scene = repo.create_scene(story.id, SceneCreate(title="Ранок", beats="Огляд бібліотеки"))
     return repo, story, scene
 
 

@@ -44,7 +44,7 @@ class RoleSettings(DomainModel):
     temperature: float | int = Field(default=0.7,ge=0,le=2)
     prompt_version_id: str | None = None
     prepare_prompt_version_id: str | None = None
-    memory_mode: Literal['snapshot', 'evidence_delta'] = 'snapshot'
+    memory_mode: Literal['snapshot', 'evidence_delta'] = 'evidence_delta'
     edit_mode: Literal['prose', 'patches'] = 'prose'
     stop_sequences: list[Annotated[str,Field(min_length=1,max_length=200)]] = Field(default_factory=list,max_length=4)
 

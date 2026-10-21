@@ -1,4 +1,5 @@
 import argparse
+import sys
 import threading
 import time
 import webbrowser
@@ -8,6 +9,10 @@ from .application.settings import AppSettings
 
 
 def main(argv: list[str] | None = None) -> int:
+    argv = list(sys.argv[1:] if argv is None else argv)
+    if argv and argv[0] in {'fsck', 'backup', 'restore'}:
+        from .maintenance import main as maintenance_main
+        return maintenance_main(argv)
     parser=argparse.ArgumentParser(description='Локальна майстерня оповідань українською')
     parser.add_argument('--data-dir',type=Path,default=Path.cwd()/'data')
     parser.add_argument('--env-file',type=Path,default=Path.cwd()/'.env')

@@ -189,3 +189,20 @@ pre { white-space: pre-wrap; overflow-wrap: anywhere; font: 14px/1.7 var(--font-
   .settings-page { padding: 0 18px; }
   .panel { padding: 20px; }
 }
+
+.publication-panel { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border-color); }
+#publication-links > div { display: grid; gap: 8px; margin-top: 12px; overflow-wrap: anywhere; }
+
+
+.acceptance-preview { margin-top: 24px; overflow-wrap: anywhere; }
+.acceptance-preview pre { max-height: 30rem; overflow: auto; padding: 16px; background: var(--bg-app, var(--paper)); font-family: var(--font-writing, Georgia, 'Times New Roman', serif); }
+
+.character-editor { margin-block: 24px; overflow-wrap: anywhere; }
+.character-editor summary { cursor: pointer; font-weight: 600; }
+.character-editor fieldset { min-width: 0; margin: 24px 0; padding: 0; border: 0; }
+.character-editor legend { font-weight: 600; padding: 0; }
+.character-entry { margin-block: 16px; padding-block: 16px; border-top: 1px solid var(--border-color, var(--line)); }
+.character-editor textarea { width: 100%; min-height: 7rem; }
+.character-editor .actions { flex-wrap: wrap; margin-block: 12px; }
+.character-editor button { white-space: normal; }
+.character-preview { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 24rem; overflow: auto; font-family: var(--font-writing, Georgia, 'Times New Roman', serif); }

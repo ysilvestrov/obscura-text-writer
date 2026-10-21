@@ -31,11 +31,11 @@ def setup(tmp_path):
 
 def test_reimport_characters_invalidates_existing_and_inflight_context(tmp_path):
     repo,story,scene=setup(tmp_path)
-    imported=import_sources(repo,story.id,[SourceFile(name='characters.txt',raw='Лєрі 27 років.'.encode(),kind='source_characters')])
+    imported=import_sources(repo,story.id,[SourceFile(name='characters.txt',raw='Олені 27 років.'.encode(),kind='source_characters')])
     old=imported.version_ids[0]
-    prose=repo.save_version(story.id,scene.id,'edited','Лєрі 27 років.',[old]);repo.set_head(scene.id,'prose',prose.id,0)
+    prose=repo.save_version(story.id,scene.id,'edited','Олені 27 років.',[old]);repo.set_head(scene.id,'prose',prose.id,0)
     context=build_context(repo,scene.id,'brief',RoleSettings(provider=ProviderSettings(model='fake')))
-    import_sources(repo,story.id,[SourceFile(name='characters.txt',raw='Лєрі 28 років.'.encode(),kind='source_characters')])
+    import_sources(repo,story.id,[SourceFile(name='characters.txt',raw='Олені 28 років.'.encode(),kind='source_characters')])
     assert repo.get_story(story.id).revision>context.story_revision
     assert repo.get_version(prose.id).stale
     class Gateway:
@@ -55,7 +55,7 @@ def test_memory_rebuild_does_not_accept_unreviewed_prose(tmp_path):
             snapshot.source_prose_ids.append(repo.get_scene(context.scene_id).heads['prose'])
             yield GenerationEvent(type='delta',text=snapshot.model_dump_json())
             yield GenerationEvent(type='terminal',finish_reason='stop')
-    settings=RoleSettings(provider=ProviderSettings(model='fake'))
+    settings=RoleSettings(provider=ProviderSettings(model='fake'),memory_mode='snapshot')
     rebuild_memory(repo,first.id,lambda _:Gateway(),threading.Event(),lambda *_:None,settings=settings)
     save_manual_prose(repo,first.id,'Змінений ранок',repo.get_scene(first.id).revision)
     assert repo.get_scene(second.id).needs_review
@@ -65,7 +65,7 @@ def test_memory_rebuild_does_not_accept_unreviewed_prose(tmp_path):
 
 
 def test_uncertain_evaluator_requires_explicit_repeat(tmp_path):
-    repo,story,scene=setup(tmp_path);save_manual_prose(repo,scene.id,'Лєра увійшла.',0)
+    repo,story,scene=setup(tmp_path);save_manual_prose(repo,scene.id,'Олена увійшла.',0)
     settings=EvaluationSettings(config=EvaluatorConfig(provider='codex_cli',model='fake',max_input_chars=100000),context_tokens=128000)
     save_evaluation_settings(repo,story.id,settings)
     class CrashGateway:
@@ -179,8 +179,8 @@ def test_evaluation_resume_reuses_completed_windows(tmp_path,monkeypatch):
 def test_story_evaluation_includes_author_characters_and_exposes_missing_plan(tmp_path):
     from storygen.evaluation.story_adapter import build_evaluation_case
     repo,story,scene=setup(tmp_path)
-    raw=import_sources(repo,story.id,[SourceFile(name='characters.txt',raw='Лєрі двадцять сім років.'.encode(),kind='source_characters')])
-    save_manual_prose(repo,scene.id,'Лєра увійшла.',0)
+    raw=import_sources(repo,story.id,[SourceFile(name='characters.txt',raw='Олені сорок років.'.encode(),kind='source_characters')])
+    save_manual_prose(repo,scene.id,'Олена увійшла.',0)
     case=build_evaluation_case(repo,story.id,scene.id,'scene')
     assert any(d.version==raw.version_ids[0] and d.kind=='canon' for d in case.documents)
     assert case.coverage.unchecked_links
@@ -188,9 +188,9 @@ def test_story_evaluation_includes_author_characters_and_exposes_missing_plan(tm
 
 def test_memory_context_contains_only_prose_and_past_snapshot(tmp_path):
     repo,story,scene=setup(tmp_path)
-    source=import_sources(repo,story.id,[SourceFile(name='characters.txt',raw='ЗОВНІШНІЙ КАНОН: Лєрі 27 років.'.encode(),kind='source_characters')]).version_ids[0]
-    repo.create_scene(story.id,SceneCreate(title='Майбутній фінал',beats='МАЙБУТНЯ ПОДІЯ: відкрити студію'))
-    prose=save_manual_prose(repo,scene.id,'Лєра відчинила двері.',0)
+    source=import_sources(repo,story.id,[SourceFile(name='characters.txt',raw='ЗОВНІШНІЙ КАНОН: Олені 27 років.'.encode(),kind='source_characters')]).version_ids[0]
+    repo.create_scene(story.id,SceneCreate(title='Майбутній фінал',beats='МАЙБУТНЯ ПОДІЯ: відкрити бібліотеку'))
+    prose=save_manual_prose(repo,scene.id,'Олена відчинила двері.',0)
     context=build_context(repo,scene.id,'memory',RoleSettings(provider=ProviderSettings(model='fake')))
     assert 'ЗОВНІШНІЙ КАНОН' not in context.user_text
     assert 'МАЙБУТНЯ ПОДІЯ' not in context.user_text

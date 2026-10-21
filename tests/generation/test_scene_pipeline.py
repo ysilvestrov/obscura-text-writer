@@ -12,10 +12,10 @@ class FakeGateway:
     def __init__(self,repo=None,scene_id=None): self.contexts=[];self.repo=repo;self.scene_id=scene_id;self.invalid=None
     def stream(self,context,cancel):
         self.contexts.append(context)
-        texts={'brief':json.dumps({'objective':'Ранок','beats':['Студія'],'constraints':[],'proposed_changes':[]},ensure_ascii=False),'draft':'Лєра прийшла у нову студію.','edit':'Лєра увійшла до нової студії.'}
+        texts={'brief':json.dumps({'objective':'Ранок','beats':['Студія'],'constraints':[],'proposed_changes':[]},ensure_ascii=False),'draft':'Олена прийшла у нову бібліотеку.','edit':'Олена увійшла до нової бібліотеки.'}
         if context.stage=='memory':
             scene=self.repo.get_scene(context.scene_id)
-            texts['memory']=json.dumps({'facts':[{'text':'Лєра у студії','source_version_id':scene.heads['prose'],'quote':'Лєра увійшла'}],'source_prose_ids':[scene.heads['prose']]},ensure_ascii=False)
+            texts['memory']=json.dumps({'facts':[{'text':'Олена у бібліотеки','source_version_id':scene.heads['prose'],'quote':'Олена увійшла'}],'source_prose_ids':[scene.heads['prose']]},ensure_ascii=False)
         if context.stage==self.invalid: text='not JSON'
         else: text=texts[context.stage]
         yield GenerationEvent(type='delta',text=text)
@@ -26,7 +26,7 @@ def prepare(tmp_path):
     repo=Repository(tmp_path);story=repo.create_story(StoryCreate(title='Твір'))
     scene=repo.create_scene(story.id,SceneCreate(title='Ранок',beats='Студія'))
     gateway=FakeGateway(repo,scene.id)
-    roles={role:RoleSettings(provider=ProviderSettings(model=role)) for role in ['planner','writer','editor','memory']}
+    roles={role:RoleSettings(provider=ProviderSettings(model=role),memory_mode='snapshot') for role in ['planner','writer','editor','memory']}
     return repo,scene,gateway,roles
 
 
@@ -35,8 +35,8 @@ def test_scene_pipeline_uses_edited_text_for_memory(tmp_path):
     attempts=generate_scene(repo,scene.id,roles,lambda _:gateway,threading.Event(),lambda *_:None)
     assert [c.stage for c in gateway.contexts]==['brief','draft','edit','memory']
     assert all(a.state=='completed' for a in attempts)
-    assert 'Лєра увійшла' in gateway.contexts[-1].user_text
-    assert 'Лєра прийшла' not in gateway.contexts[-1].user_text
+    assert 'Олена увійшла' in gateway.contexts[-1].user_text
+    assert 'Олена прийшла' not in gateway.contexts[-1].user_text
     current=repo.get_scene(scene.id)
     assert repo.get_version(current.heads['memory']).input_refs
 
@@ -63,7 +63,7 @@ def test_manual_edit_during_generation_keeps_alternative_result(tmp_path):
     attempts=generate_scene(repo,scene.id,roles,lambda _:gateway,threading.Event(),lambda *_:None)
     assert attempts[-1].state=='alternative'
     assert repo.read_text(repo.get_scene(scene.id).heads['prose'])=='Авторська правка'
-    assert repo.read_text(attempts[-1].result_version_id)=='Лєра увійшла до нової студії.'
+    assert repo.read_text(attempts[-1].result_version_id)=='Олена увійшла до нової бібліотеки.'
 
 
 

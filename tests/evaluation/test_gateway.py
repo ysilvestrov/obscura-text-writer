@@ -10,7 +10,7 @@ from storygen.evaluation.codex_gateway import CodexGateway
 
 
 def request(mode="json_schema"):
-    return EvaluationRequest(messages=[{"role":"system","content":"Оціни текст"},{"role":"user","content":"Лєра відчинила двері."}],
+    return EvaluationRequest(messages=[{"role":"system","content":"Оціни текст"},{"role":"user","content":"Олена відчинила двері."}],
         response_schema={"type":"object","properties":{},"additionalProperties":False}, response_mode=mode, max_output_tokens=100, temperature=None)
 
 
@@ -72,7 +72,7 @@ def test_codex_cli_uses_stdin_schema_readonly_and_no_shell(tmp_path):
     def run(args, **kwargs):
         seen.append((args, kwargs))
         assert kwargs["shell"] is False
-        assert "Лєра" in kwargs["input"]
+        assert "Олена" in kwargs["input"]
         assert args[args.index("--sandbox") + 1] == "read-only"
         from pathlib import Path
         Path(args[args.index("--output-last-message") + 1]).write_text("{}", encoding="utf-8")
@@ -91,3 +91,19 @@ def test_codex_failure_is_sanitized_and_not_retried(tmp_path):
     with pytest.raises(GatewayFailure, match="codex_failed") as caught:
         gateway.complete(request())
     assert "secret hidden" not in str(caught.value)
+
+
+def test_codex_timeout_and_structured_error_keep_cause(tmp_path):
+    def timeout(*args, **kwargs):
+        raise subprocess.TimeoutExpired('codex', 1)
+    config = EvaluatorConfig(provider='codex_cli', model='judge', max_input_chars=30000)
+    with pytest.raises(GatewayFailure) as caught:
+        CodexGateway(config, run=timeout, temp_root=tmp_path).complete(request())
+    assert caught.value.detail.category == 'timeout'
+    def denied(*args, **kwargs):
+        return subprocess.CompletedProcess(args, 1, stdout=json.dumps({'type': 'turn.failed', 'error': {'code': 'insufficient_quota', 'message': 'Quota exceeded'}}), stderr='private stderr')
+    with pytest.raises(GatewayFailure) as caught:
+        CodexGateway(config, run=denied, temp_root=tmp_path).complete(request())
+    assert caught.value.detail.category == 'quota'
+    assert caught.value.detail.provider_code == 'insufficient_quota'
+    assert 'private stderr' not in caught.value.detail.model_dump_json()

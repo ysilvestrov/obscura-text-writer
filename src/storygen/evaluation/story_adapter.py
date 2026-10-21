@@ -5,10 +5,11 @@ from pydantic import Field
 
 from ..domain import DomainModel, StageAttempt, new_id
 from ..generation.worker import RunRequest
-from .gateway import GatewayFailure
 from .models import Coverage, Document, EvaluationCase, EvaluationOutcome, EvaluatorConfig, ScoringProfile
 from .prompting import build_request, load_rubric
 from .runner import evaluate, evaluator_fingerprint, fingerprint_inputs, digest
+from .blocks import get_block, block_evaluator, blocked_message, require_available
+from ..run_models import merge_warnings
 
 
 class EvaluationSettings(DomainModel):
@@ -22,25 +23,24 @@ def save_evaluation_settings(repo,story_id,settings):
     repo.get_story(story_id)
     if settings.profile.calibrated:
         # Calibration is installed by the server only after independently checking full reports.
-        with repo.db.connection() as db:
-            row=db.execute('SELECT payload FROM app_settings WHERE key=?',('calibration:'+settings.profile.calibration_fingerprint,)).fetchone()
-        import json
-        if not row or json.loads(row[0]).get('profile')!=settings.profile.model_dump() or settings.profile.evaluator_fingerprint!=evaluator_fingerprint(settings.config,load_rubric()):
+        registration=repo.read_calibration(settings.profile.calibration_fingerprint)
+        if not registration or registration.get('profile')!=settings.profile.model_dump():
             raise ValueError('Немає перевіреного повного калібрування для цього оцінювача')
+        if settings.profile.evaluator_fingerprint!=evaluator_fingerprint(settings.config,load_rubric()):
+            settings.profile = settings.profile.model_copy(update={'calibrated': False})
     if settings.policy=='pause_on_failure' and not settings.profile.calibrated:
         raise ValueError('Потрібен профіль успішного калібрування')
-    with repo.db.connection() as db:
-        db.execute('BEGIN IMMEDIATE')
-        repo._active_story(db,story_id)
-        db.execute('INSERT OR REPLACE INTO app_settings VALUES(?,?)',('evaluation:'+story_id,settings.model_dump_json()))
+    repo.write_evaluator_settings(story_id,settings.model_dump())
 
 
 def get_evaluation_settings(repo,story_id):
-    with repo.db.connection() as db:
-        row=db.execute('SELECT payload FROM app_settings WHERE key=?',('evaluation:'+story_id,)).fetchone()
-    if not row:
+    payload=repo.read_evaluator_settings(story_id)
+    if payload is None:
         raise ValueError('Оцінювач не налаштовано')
-    return EvaluationSettings.model_validate_json(row[0])
+    settings = EvaluationSettings.model_validate(payload)
+    if settings.profile.calibrated and settings.profile.evaluator_fingerprint != evaluator_fingerprint(settings.config, load_rubric()):
+        settings.profile = settings.profile.model_copy(update={'calibrated': False})
+    return settings
 
 
 def install_calibration(repo,config: EvaluatorConfig,outcomes: list) -> ScoringProfile:
@@ -49,7 +49,8 @@ def install_calibration(repo,config: EvaluatorConfig,outcomes: list) -> ScoringP
     from .inputs import parse_json
     from .prompting import resource_text
     from .runner import digest
-    suite=parse_json(resource_text('calibration_suite_v1.json'))
+    from .suites import canonical_suite, canonical_suite_hash
+    suite=canonical_suite()
     cases=[EvaluationCase.model_validate(c) for c in suite['cases']]
     metrics=calibrate(cases,suite['expectations'],outcomes,required_repeats=3)
     fingerprint=evaluator_fingerprint(config,load_rubric())
@@ -59,15 +60,17 @@ def install_calibration(repo,config: EvaluatorConfig,outcomes: list) -> ScoringP
     if candidate.calibrated:raise ValueError('Контрольний набір має оцінювати початковий candidate-профіль')
     calibration_id=digest({'expectations':suite['expectations'],'outcomes':[o.model_dump() for o in outcomes]})
     profile=candidate.model_copy(update={'calibrated':True,'evaluator_fingerprint':fingerprint,'calibration_fingerprint':calibration_id})
-    payload={'profile':profile.model_dump(),'metrics':metrics,'run_ids':[o.metadata['run_id'] for o in outcomes]}
+    payload={'profile':profile.model_dump(),'metrics':metrics,'run_ids':[o.metadata['run_id'] for o in outcomes],
+        'suite_version': suite['version'], 'suite_hash': canonical_suite_hash(), 'categories': suite['categories'],
+        'evaluator_fingerprint': fingerprint, 'required_repeats': 3}
     repo.files.write('calibrations/'+calibration_id+'.json',json.dumps({'registration':payload,'outcomes':[o.model_dump() for o in outcomes]},ensure_ascii=False).encode())
-    with repo.db.connection() as db:
-        db.execute('BEGIN IMMEDIATE')
-        db.execute('INSERT OR REPLACE INTO app_settings VALUES(?,?)',('calibration:'+calibration_id,json.dumps(payload,ensure_ascii=False)))
+    repo.register_calibration(calibration_id,payload)
     return profile
 
 
 def build_evaluation_case(repo,story_id: str,scene_id: str | None,mode: str) -> EvaluationCase:
+    if hasattr(repo,'context_view'):
+        repo=repo.context_view(story_id)
     story=repo.get_story(story_id)
     scenes=repo.list_scenes(story_id)
     docs=[];targets=[];unchecked=[]
@@ -112,6 +115,8 @@ def build_evaluation_case(repo,story_id: str,scene_id: str | None,mode: str) -> 
 
 
 def plan_evaluation_windows(repo,story_id: str,config: EvaluatorConfig):
+    if hasattr(repo,'context_view'):
+        repo=repo.context_view(story_id)
     whole=build_evaluation_case(repo,story_id,None,'story')
     if sum(len(m['content']) for m in build_request(whole,load_rubric(),config).messages)<=config.max_input_chars:
         return [whole]
@@ -132,16 +137,38 @@ def execute_evaluation(coordinator,run):
     repo=coordinator.repo
     settings=get_evaluation_settings(repo,run.story_id)
     if settings.policy=='off':raise ValueError('Оцінювання вимкнено')
+    existing_block = get_block(repo, run.story_id, settings.config)
+    if existing_block:
+        with coordinator.condition:
+            current = coordinator.get_run(run.id)
+            current.error = blocked_message(existing_block)
+            current.warning = merge_warnings(current.warning,[current.error])
+            if settings.policy == 'report':
+                current.cursor += 1
+                current.state = 'running'
+            else:
+                current.state = 'paused'
+            coordinator._save(current)
+            coordinator.event(run.id, 'evaluation_skipped', {'reason': current.error, 'block': existing_block})
+            coordinator.event(run.id, 'state', {'state': current.state, 'warning': current.error})
+        return
     task=run.tasks[run.cursor]
     scene_id=task.get('scene_id')
     mode=task.get('evaluation_mode',run.request.evaluation_mode)
-    cases=plan_evaluation_windows(repo,run.story_id,settings.config) if mode=='story' else [build_evaluation_case(repo,run.story_id,scene_id,mode)]
+    view=repo.context_view(run.story_id)
+    cases=plan_evaluation_windows(view,run.story_id,settings.config) if mode=='story' else [build_evaluation_case(view,run.story_id,scene_id,mode)]
     refs=[];outcomes=[]
     disabled=False
+    blocked=False
     gateway=None
     try:
         for index,case in enumerate(cases):
             if coordinator.cancel_event.is_set():break
+            current_block = get_block(repo, run.story_id, settings.config)
+            if current_block:
+                blocked = True
+                coordinator.event(run.id, 'evaluation_skipped', {'reason': blocked_message(current_block), 'unchecked_windows': len(cases)-index})
+                break
             if get_evaluation_settings(repo,run.story_id).policy=='off':
                 disabled=True
                 coordinator.event(run.id,'evaluation_skipped',{'reason':'Оцінювач вимкнено; наступні вікна не надсилаються','completed_windows':len(outcomes)})
@@ -150,7 +177,11 @@ def execute_evaluation(coordinator,run):
             estimate=math.ceil(sum(len(m['content'].encode('utf-8')) for m in request.messages)/2)+64
             if estimate+settings.config.max_output_tokens>settings.context_tokens:
                 raise ValueError('Оцінювачеві бракує контексту; змініть модель або явний бюджет')
-            revision=repo.get_story(run.story_id).revision
+            from ..storage.snapshots import build_evaluation_snapshot
+            windowed=mode=='story' and case.mode!='story'
+            target_scene=next((view.get_version(id).scene_id for id in case.target_ids if view.get_version(id).scene_id),None) if windowed else scene_id
+            snapshot=build_evaluation_snapshot(view,target_scene,case,'scene' if windowed else mode)
+            revision=view.get_story(run.story_id).revision
             fingerprint=fingerprint_inputs(case,load_rubric(),settings.profile,settings.config)
             checkpoint=digest({'cursor':run.cursor,'window':index,'fingerprint':fingerprint})
             prior=next((a for a in reversed(repo.list_attempts(run.story_id,run.id)) if a.stage=='evaluate' and a.context.get('checkpoint_key')==checkpoint and a.state=='completed' and a.result_version_id and not repo.get_version(a.result_version_id).stale),None)
@@ -160,45 +191,51 @@ def execute_evaluation(coordinator,run):
                 coordinator.event(run.id,'reused',{'attempt_id':prior.id,'stage':'evaluate','window':index})
                 continue
             id=new_id()
-            attempt=StageAttempt(id=id,run_id=run.id,story_id=run.story_id,scene_id=scene_id,stage='evaluate',partial_path=f'stories/{run.story_id}/runs/{id}/partial.txt',context={'story_revision':revision,'run_cursor':run.cursor,'checkpoint_key':checkpoint,'fingerprint':fingerprint,'window_index':index,'case':case.model_dump(),'config':settings.config.model_dump(),'profile':settings.profile.model_dump(),'request':request.model_dump()})
+            attempt=StageAttempt(id=id,run_id=run.id,story_id=run.story_id,scene_id=scene_id,stage='evaluate',partial_path=f'stories/{run.story_id}/runs/{id}/partial.txt',context={'story_revision':revision,'dependency_snapshot':snapshot.model_dump(),'run_cursor':run.cursor,'checkpoint_key':checkpoint,'fingerprint':fingerprint,'window_index':index,'case':case.model_dump(),'config':settings.config.model_dump(),'profile':settings.profile.model_dump(),'request':request.model_dump()})
             repo.save_attempt(attempt)
             repo.files.write(attempt.partial_path,b'')
-            coordinator.event(run.id,'stage_started',{'stage':'evaluate','model':settings.config.model,'provider':settings.config.provider,'estimated_tokens':estimate})
-            if gateway is None:gateway=coordinator.evaluator_factory(settings.config)
-            class RecordingGateway:
+            coordinator.event(run.id,'stage_started',{'stage':'evaluate','scene_id':scene_id,'run_cursor':run.cursor,'model':settings.config.model,'provider':settings.config.provider,'estimated_tokens':estimate})
+            class LazyGateway:
                 def complete(self,request):
-                    try:
-                        result=gateway.complete(request)
-                    except GatewayFailure as exc:
-                        if exc.result is not None:repo.files.write(attempt.partial_path,(exc.result.text or exc.result.refusal or '').encode())
-                        raise
-                    repo.files.write(attempt.partial_path,(result.text or result.refusal or '').encode())
-                    return result
-            outcome=evaluate(case,load_rubric(),settings.profile,settings.config,RecordingGateway(),repo.root/'stories'/run.story_id/'runs'/run.id/'evaluations')
+                    nonlocal gateway
+                    require_available(repo, run.story_id, settings.config)
+                    if gateway is None:gateway=coordinator.evaluator_factory(settings.config)
+                    return gateway.complete(request)
+            outcome=evaluate(case,load_rubric(),settings.profile,settings.config,LazyGateway(),repo.root/'stories'/run.story_id/'runs'/run.id/'evaluations',
+                on_refusal=lambda failure: block_evaluator(repo, run.story_id, settings.config, failure, run.id, attempt.id),
+                on_raw=lambda raw: repo.files.write(attempt.partial_path, raw.encode('utf-8')))
+            if outcome.status == 'refused':
+                blocked = True
             inputs=[d.version for d in case.documents]
             ref=repo.save_version(run.story_id,scene_id,'evaluation',outcome.model_dump_json(),inputs,run.id)
-            # Changes during the model call must stale this report even if invalidation happened before its insert.
-            if any(repo.get_version(id).stale for id in inputs) or repo.get_story(run.story_id).revision!=revision:
-                ref.stale=True
-                with repo.db.connection() as db:db.execute('UPDATE versions SET payload=? WHERE id=?',(ref.model_dump_json(),ref.id))
+            ref=repo.publish_evaluation(ref.id,revision,inputs,snapshot=snapshot)
             refs.append(ref.id);outcomes.append(outcome)
-            repo.files.write(attempt.partial_path,outcome.metadata['raw_response'].encode())
             attempt.result_version_id=ref.id
             attempt.usage=outcome.metadata.get('usage',{})
-            attempt.state='alternative' if ref.stale else 'failed' if outcome.status=='error' else 'completed'
-            attempt.error='Оцінка неповна через помилку провайдера' if attempt.state=='failed' else None
+            attempt.state='alternative' if ref.stale else 'completed'
+            attempt.error=outcome.failure.message if outcome.failure else None
             repo.save_attempt(attempt)
             coordinator.event(run.id,'evaluation_finished',{'version_id':ref.id,'status':outcome.status,'stale':ref.stale,'coverage':case.coverage.model_dump()})
-            if attempt.state in {'failed','alternative'}:break
+            if outcome.status in {'refused', 'error', 'incomplete'}:
+                coordinator.event(run.id, 'evaluation_warning', {'status': outcome.status, 'failure': outcome.failure.model_dump() if outcome.failure else None, 'reasons': outcome.reasons})
+            if attempt.state=='alternative' or blocked:break
     finally:
         if gateway and hasattr(gateway,'close'):gateway.close()
     with coordinator.condition:
         current=coordinator.get_run(run.id)
+        warnings = [o.failure.message if o.failure else '; '.join(o.reasons) for o in outcomes if o.status in {'error', 'refused', 'incomplete'}]
+        if warnings:
+            current.warning = merge_warnings(current.warning,['Оцінювання не підтверджене: ' + '; '.join(dict.fromkeys(warnings))])
         if coordinator.cancel_event.is_set():current.state='cancelled'
         elif disabled:current.state='running';current.cursor+=1
-        elif len(outcomes)!=len(cases) or any(o.status=='error' for o in outcomes):current.state='failed'
         elif any(repo.get_version(id).stale for id in refs):current.state='alternative'
+        elif blocked:
+            current.error=blocked_message(get_block(repo, run.story_id, settings.config))
+            current.state='paused' if settings.policy=='pause_on_failure' else 'running'
+            if current.state=='running':current.cursor+=1
+            coordinator.event(run.id, 'evaluation_skipped', {'reason': current.error, 'unchecked_windows': len(cases)-len(outcomes)})
+        elif len(outcomes)!=len(cases):current.state='failed'
         elif settings.policy=='pause_on_failure' and any(o.status!='passed' for o in outcomes):current.state='paused';current.cursor+=1
         elif current.state=='pause_requested':current.state='paused';current.cursor+=1
         else:current.state='running';current.cursor+=1
-        coordinator._save(current);coordinator.event(run.id,'state',{'state':current.state})
+        coordinator._save(current);coordinator.event(run.id,'state',{'state':current.state, 'warning': current.warning})

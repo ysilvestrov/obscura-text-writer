@@ -1,86 +1,26 @@
-import json
-import os
 import threading
-from pathlib import Path
-from typing import Literal
 
-from pydantic import Field, model_validator
 
 from ..authoring.blueprints import get_role_settings
-from ..domain import DomainModel, RevisionConflict, StageAttempt, new_id, now
+from ..domain import RevisionConflict, new_id
+from ..storage.locking import AppInstanceLock
 from ..providers.streaming import build_generation_gateway
 from .context import build_context, make_context, ContextOverflow
-from .events import RunEvent
+from ..run_models import Run, RunRequest, RunEvent, merge_warnings
 from .pipeline import STAGES, STAGE_ROLES
 from .stages import execute_stage
 
 
-class RunRequest(DomainModel):
-    story_id: str
-    scene_id: str | None = None
-    mode: Literal['stage','scene','remaining','prepare','rebuild_memory','evaluate'] = 'scene'
-    stage: Literal['brief','draft','edit','memory'] | None = None
-    pause_after: list[Literal['brief','draft','edit','memory']] = Field(default_factory=list)
-    evaluation_mode: Literal['scene','edit_pair','story'] = 'scene'
-
-    @model_validator(mode='after')
-    def valid(self):
-        if self.mode in {'stage','scene','remaining','rebuild_memory'} and not self.scene_id:
-            raise ValueError('Оберіть початкову сцену')
-        if self.mode=='stage' and not self.stage:
-            raise ValueError('Оберіть етап')
-        return self
-
-
-class Run(DomainModel):
-    id: str
-    story_id: str
-    request_id: str
-    request: RunRequest
-    state: str = 'queued'
-    tasks: list[dict]
-    cursor: int = 0
-    error: str | None = None
-    created_at: str = Field(default_factory=now)
-
-
-class AppInstanceLock:
-    def __init__(self,root: Path):
-        self.path=root/'worker.lock'
-        self.handle=None
-
-    def __enter__(self):
-        self.path.parent.mkdir(parents=True,exist_ok=True)
-        self.handle=self.path.open('a+b')
-        try:
-            self.handle.seek(0)
-            if not self.handle.read(1):
-                self.handle.write(b'0');self.handle.flush()
-            self.handle.seek(0)
-            if os.name=='nt':
-                import msvcrt
-                msvcrt.locking(self.handle.fileno(),msvcrt.LK_NBLCK,1)
-            else:
-                import fcntl
-                fcntl.flock(self.handle,fcntl.LOCK_EX|fcntl.LOCK_NB)
-        except OSError:
-            self.handle.close();self.handle=None
-            raise RuntimeError('Цей каталог даних уже відкрито іншим виконавцем') from None
-        return self
-
-    def __exit__(self,*args):
-        if self.handle:
-            self.handle.seek(0)
-            if os.name=='nt':
-                import msvcrt
-                msvcrt.locking(self.handle.fileno(),msvcrt.LK_UNLCK,1)
-            else:
-                import fcntl
-                fcntl.flock(self.handle,fcntl.LOCK_UN)
-            self.handle.close();self.handle=None
-
-
 TERMINAL={'completed','failed','cancelled','interrupted','needs_review','alternative','paused'}
+CANCEL_TRANSITIONS = {
+    'queued': 'cancelled',
+    'running': 'cancellation_requested',
+    'pause_requested': 'cancellation_requested',
+    'paused': 'cancelled',
+    'interrupted': 'cancelled',
+    'needs_review': 'cancelled',
+    'alternative': 'cancelled',
+}
 
 
 class RunCoordinator:
@@ -97,35 +37,28 @@ class RunCoordinator:
         self.lock=AppInstanceLock(repo.root)
 
     def get_run(self,id: str) -> Run:
-        with self.repo.db.connection() as db:
-            return self.repo._get(db,'runs',id,Run)
+        return self.repo.get_run(id)
 
     def list_runs(self,story_id=None):
-        with self.repo.db.connection() as db:
-            runs=[Run.model_validate_json(row[0]) for row in db.execute('SELECT payload FROM runs ORDER BY rowid')]
-        return [r for r in runs if story_id is None or r.story_id==story_id]
+        return self.repo.list_runs(story_id)
 
     def _save(self,run):
-        with self.repo.db.connection() as db:
-            db.execute('UPDATE runs SET state=?,payload=? WHERE id=?',(run.state,run.model_dump_json(),run.id))
-        return run
+        return self.repo.save_run(run)
 
     def event(self,id,type,data):
-        with self.repo.db.connection() as db:
-            db.execute('BEGIN IMMEDIATE')
-            seq=db.execute('SELECT COALESCE(MAX(seq),0)+1 FROM run_events WHERE run_id=?',(id,)).fetchone()[0]
-            event=RunEvent(run_id=id,seq=seq,type=type,data=data)
-            db.execute('INSERT INTO run_events VALUES(?,?,?,?)',(id,seq,type,event.model_dump_json()))
-        return event
+        return self.repo.append_run_event(id,type,data)
 
     def list_events(self,id,after_seq=0):
-        self.get_run(id)
-        with self.repo.db.connection() as db:
-            return [RunEvent.model_validate_json(row[0]) for row in db.execute('SELECT payload FROM run_events WHERE run_id=? AND seq>? ORDER BY seq',(id,after_seq))]
+        return self.repo.list_run_events(id,after_seq)
 
     def enqueue(self,request: RunRequest,request_id: str) -> Run:
         if not request_id or len(request_id)>200:
             raise ValueError('Потрібен request_id до 200 символів')
+        existing=self.repo.find_run_by_request_id(request_id)
+        if existing:
+            if existing.request!=request:
+                raise RevisionConflict('request_id уже використано для іншого запиту')
+            return existing
         self.repo.get_story(request.story_id)
         scenes=self.repo.list_scenes(request.story_id)
         if request.scene_id and request.scene_id not in {s.id for s in scenes}:
@@ -152,24 +85,26 @@ class RunCoordinator:
                         if task['stage']=='memory':expanded.append({'scene_id':task['scene_id'],'stage':'evaluate','evaluation_mode':'edit_pair'})
                     tasks=expanded
         with self.condition:
-            with self.repo.db.connection() as db:
-                db.execute('BEGIN IMMEDIATE')
-                existing=db.execute('SELECT payload FROM runs WHERE request_id=?',(request_id,)).fetchone()
-                if existing:
-                    run=Run.model_validate_json(existing[0])
-                    if run.request!=request:
-                        raise RevisionConflict('request_id уже використано для іншого запиту')
-                    return run
-                if request.mode!='evaluate':
-                    from .readiness import preview
-                    readiness=preview(self.repo,request)
-                    if not readiness['ready']:
-                        raise ValueError(readiness['reason'])
-                self.repo._active_story(db,request.story_id)
-                if request.scene_id:self.repo._active_scene(db,request.scene_id)
-                run=Run(id=new_id(),story_id=request.story_id,request_id=request_id,request=request,tasks=tasks)
-                db.execute('INSERT INTO runs VALUES(?,?,?,?,?)',(run.id,run.story_id,request_id,run.state,run.model_dump_json()))
-            self.event(run.id,'state',{'state':'queued'})
+            existing=self.repo.find_run_by_request_id(request_id)
+            if existing:
+                if existing.request!=request:
+                    raise RevisionConflict('request_id уже використано для іншого запиту')
+                return existing
+            if request.mode == 'evaluate':
+                from ..evaluation.story_adapter import get_evaluation_settings
+                from ..evaluation.blocks import require_available
+                evaluation = get_evaluation_settings(self.repo, request.story_id)
+                if evaluation.policy == 'off':
+                    raise ValueError('Оцінювання вимкнено')
+                require_available(self.repo, request.story_id, evaluation.config)
+            else:
+                from .readiness import preview
+                readiness=preview(self.repo,request)
+                if not readiness['ready']:
+                    raise ValueError(readiness['reason'])
+            candidate=Run(id=new_id(),story_id=request.story_id,request_id=request_id,request=request,tasks=tasks)
+            run,created=self.repo.enqueue_run(candidate)
+            if created:self.event(run.id,'state',{'state':'queued'})
             self.condition.notify_all()
         return run
 
@@ -190,7 +125,7 @@ class RunCoordinator:
     def pause(self,id):
         with self.condition:
             run=self.get_run(id)
-            if run.state not in {'queued','running','pause_requested'}:
+            if run.state not in {'queued','running'}:
                 return run
             run.state='pause_requested' if id==self.active_id else 'paused'
             self._save(run);self.event(id,'state',{'state':run.state})
@@ -199,12 +134,12 @@ class RunCoordinator:
     def cancel(self,id):
         with self.condition:
             run=self.get_run(id)
-            if run.state=='completed':
+            target = CANCEL_TRANSITIONS.get(run.state)
+            if target is None:
                 return run
-            if id==self.active_id:
-                run.state='cancellation_requested';self.cancel_event.set()
-            else:
-                run.state='cancelled'
+            run.state = target
+            if target == 'cancellation_requested':
+                self.cancel_event.set()
             self._save(run);self.event(id,'state',{'state':run.state})
             return run
 
@@ -220,20 +155,31 @@ class RunCoordinator:
                 if task and attempt.stage==task['stage'] and attempt.scene_id==task.get('scene_id') and attempt.context.get('run_cursor',run.cursor)==run.cursor:
                     latest[attempt.context.get('checkpoint_key','stage')]=attempt
             uncertain=[a for a in latest.values() if a.state in {'running','interrupted','failed','cancelled'}]
-            if task and task['stage']=='evaluate' and not latest and any(e.type=='stage_started' and e.data.get('stage')=='evaluate' for e in self.list_events(id)):
+            if task and task['stage']=='evaluate' and not latest and any(e.type=='stage_started' and e.data.get('stage')=='evaluate' and e.data.get('run_cursor',run.cursor)==run.cursor and e.data.get('scene_id',task.get('scene_id'))==task.get('scene_id') for e in self.list_events(id)):
                 uncertain.append(True)  # Legacy evaluator runs before persisted attempts also need explicit repeat.
             if uncertain and not repeat_interrupted:
                 raise ValueError('Потрібне явне рішення повторити перерваний або невдалий етап')
             result=self.run_readiness(id)
             if not result['ready']:raise ValueError(result['reason'])
             run.state='queued';run.error=None
-            with self.repo.db.connection() as db:
-                db.execute('BEGIN IMMEDIATE')
-                self.repo._active_story(db,run.story_id)
-                if run.request.scene_id:self.repo._active_scene(db,run.request.scene_id)
-                db.execute('UPDATE runs SET state=?,payload=? WHERE id=?',(run.state,run.model_dump_json(),run.id))
+            self.repo.requeue_run(run)
             self.event(id,'state',{'state':run.state});self.condition.notify_all()
             return run
+
+    def continue_after_acceptance(self,id,version_id,expected_cursor,expected_scene_revision,acceptance_id=None):
+        from .readiness import pending_preview
+        with self.condition:
+            run=self.get_run(id)
+            if run.state not in {'alternative','needs_review'} or run.cursor!=expected_cursor:
+                raise RevisionConflict('Стан або етап запуску змінено')
+            next_run=run.model_copy(deep=True)
+            next_run.cursor+=1
+            if next_run.cursor<len(next_run.tasks):
+                result=pending_preview(self.repo,next_run)
+                if not result['ready']:raise ValueError(result['reason'])
+            current=self.repo.continue_after_acceptance(id,version_id,expected_cursor,expected_scene_revision,acceptance_id)
+            self.condition.notify_all()
+            return current
 
     def recover_interrupted(self):
         recovered=[]
@@ -242,10 +188,7 @@ class RunCoordinator:
                 if run.state in {'running','cancellation_requested','pause_requested','queued'}:
                     run.state='interrupted';run.error='Попередню сесію перервано. Автоматичного повтору запитів немає.'
                     self._save(run);self.event(run.id,'state',{'state':run.state});recovered.append(run)
-            with self.repo.db.connection() as db:
-                rows=db.execute("SELECT payload FROM stage_attempts WHERE state='running'").fetchall()
-            for row in rows:
-                attempt=StageAttempt.model_validate_json(row[0]);attempt.state='interrupted';self.repo.save_attempt(attempt)
+            self.repo.recover_running_attempts()
         return recovered
 
     def start(self):
@@ -279,12 +222,63 @@ class RunCoordinator:
                     with self.condition:
                         run=self.get_run(queued.id)
                         run.state='cancelled' if self.cancel_event.is_set() else 'failed'
-                        run.error=str(exc) if isinstance(exc,ContextOverflow) else 'Етап зупинено. Перевірте контекст, конфігурацію й збережені спроби; автоматичного повтору немає.'
+                        run.error=self._failure_message(run,exc)
                         self._save(run);self.event(run.id,'state',{'state':run.state,'error':run.error})
                 finally:
                     with self.condition:self.active_id=None
         finally:
             self.lock.__exit__()
+
+    def _failure_message(self,run,exc):
+        if isinstance(exc,ContextOverflow):
+            return str(exc)
+        task=run.tasks[run.cursor] if run.cursor<len(run.tasks) else None
+        if not task or task.get('stage')!='evaluate':
+            return 'Етап зупинено. Перевірте контекст, конфігурацію й збережені спроби; автоматичного повтору немає.'
+
+        # The evaluator normally converts provider failures into a structured outcome.
+        # This path is for unexpected exceptions that escaped that boundary.
+        from ..evaluation.failures import safe_message
+        import os
+
+        attempt=None
+        try:
+            attempts=self.repo.list_attempts(run.story_id,run.id)
+            matching=[a for a in attempts if a.stage=='evaluate'
+                and a.scene_id==task.get('scene_id')
+                and a.context.get('run_cursor',run.cursor)==run.cursor]
+            attempt=matching[-1] if matching else None
+        except Exception:
+            pass
+        secret=None
+        documents=[]
+        try:
+            from ..evaluation.story_adapter import get_evaluation_settings
+            config=get_evaluation_settings(self.repo,run.story_id).config
+            if config.provider in {'openrouter','venice'}:
+                secret=os.environ.get(config.api_key_env)
+        except Exception:
+            pass
+        if attempt:
+            documents=[d['text'] for d in attempt.context.get('case',{}).get('documents',[])
+                if isinstance(d,dict) and isinstance(d.get('text'),str)]
+        frozen_secret=None
+        if attempt:
+            frozen_config=attempt.context.get('config',{})
+            key_env=frozen_config.get('api_key_env') if isinstance(frozen_config,dict) else None
+            if isinstance(key_env,str):
+                frozen_secret=os.environ.get(key_env)
+        diagnostic=safe_message(str(exc),secret,documents,secrets=(frozen_secret,))
+        detail=f'{type(exc).__name__}: {diagnostic}' if diagnostic else type(exc).__name__
+        message=f'Помилка оцінювача — {detail}. Автоматичного повтору немає.'
+        if attempt and attempt.state=='running':
+            attempt.state='failed'
+            attempt.error=message
+            try:
+                self.repo.save_attempt(attempt)
+            except Exception:
+                pass
+        return message
 
     def _execute(self,id):
         while True:
@@ -307,9 +301,10 @@ class RunCoordinator:
                 raise ValueError('Роль не налаштовано')
             role=roles[STAGE_ROLES[stage]]
             if stage=='prepare':
-                story=self.repo.get_story(run.story_id)
-                sources=[s for s in [self.repo.active_source(story.id,'source_plan'),self.repo.active_source(story.id,'source_characters')] if s]
-                context=make_context(self.repo,story,None,stage,role,[f'ДЖЕРЕЛО [version_id={v.id}]\n'+self.repo.read_text(v.id) for v in sources],[v.id for v in sources])
+                view=self.repo.context_view(run.story_id)
+                story=view.get_story(run.story_id)
+                sources=[s for s in [view.active_source(story.id,'source_plan'),view.active_source(story.id,'source_characters')] if s]
+                context=make_context(view,story,None,stage,role,[f'ДЖЕРЕЛО [version_id={v.id}]\n'+view.read_text(v.id) for v in sources],[v.id for v in sources])
             else:
                 context=build_context(self.repo,scene_id,stage,role)
                 # Reuse only the selected completed stage with exactly matching source/config input.
@@ -330,6 +325,12 @@ class RunCoordinator:
                         current=self.get_run(id);current.cursor+=1;self._save(current)
                         self.event(id,'reused',{'attempt_id':reuse.id,'stage':stage,'scene_id':scene_id})
                     continue
+            if context.context_warnings:
+                with self.condition:
+                    current=self.get_run(id)
+                    current.warning=merge_warnings(current.warning,context.context_warnings)
+                    self._save(current)
+                    self.event(id,'context_warning',{'warnings':context.context_warnings,'stage':stage,'scene_id':scene_id})
             self.event(id,'stage_started',{'stage':stage,'scene_id':scene_id,'model':role.provider.model,'provider':role.provider.provider,'estimated_tokens':context.estimated_tokens})
             attempt=execute_stage(self.repo,scene_id,stage,context,self.gateway_factory(role.provider),self.cancel_event,lambda text:self.event(id,'delta',{'text':text,'stage':stage,'scene_id':scene_id}),id,task_cursor=run.cursor)
             with self.condition:

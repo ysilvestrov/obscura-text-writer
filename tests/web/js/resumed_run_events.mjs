@@ -18,7 +18,7 @@ const originalTimeout=globalThis.setTimeout;globalThis.setTimeout=(...args)=>{co
 const scene={id:'c',story_id:'s',position:0,revision:0,title:'Сцена',beats:'План',target_words:400,heads:{},character_ids:[]};
 let serverState=mode==='terminal'?'failed':'running',timer;const sources=[];
 const interval=globalThis.setInterval;globalThis.setInterval=handler=>{timer=handler;return {unref(){}}};
-const run=()=>({id:'r',state:serverState,created_at:new Date(Date.now()-140000).toISOString(),request:{mode:'stage',stage:'memory'}});
+const run=()=>({id:'r',state:serverState,error:mode==='terminal'?'Технічна причина':null,warning:mode==='terminal'?'Попередження контексту':null,created_at:new Date(Date.now()-140000).toISOString(),request:{mode:'stage',stage:'memory'}});
 const response=data=>({ok:true,json:async()=>structuredClone(data)});
 globalThis.fetch=async url=>{
  if(url==='/api/runs/r')return response({run:run(),attempts:[],partial:'Часткова пам’ять'});
@@ -29,7 +29,7 @@ globalThis.fetch=async url=>{
 globalThis.EventSource=class{constructor(){sources.push(this);this.closed=false}close(){this.closed=true}};
 await import(pathToFileURL(root+'/src/storygen/web/static/runs.js'));
 for(let i=0;i<5;i++)await new Promise(setImmediate);
-if(mode==='terminal'){assert.equal(sources.length,0);assert.equal(element('#live-text').textContent,'Часткова пам’ять');assert.equal(element('#run-status').dataset.kind,'error');process.exit(0)}
+if(mode==='terminal'){assert.equal(sources.length,0);assert.equal(element('#live-text').textContent,'Часткова пам’ять');assert.equal(element('#run-status').dataset.kind,'error');assert.ok(element('#run-status').children.some(e=>e.textContent==='Попередження контексту'));assert.ok(element('#run-status').children.some(e=>e.textContent==='Технічна причина'));process.exit(0)}
 const source=sources.at(-1);assert.ok(source);
 await source.onmessage({data:JSON.stringify({seq:1,type:'state',data:{state:'failed'}})});
 assert.equal(source.closed,false,'Historical failure must not close a currently running stream');

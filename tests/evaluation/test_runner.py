@@ -63,7 +63,7 @@ def test_refusal_is_not_story_failure(sample_case, tmp_path):
         def complete(self, request):
             return GatewayResult(text="", finish_reason="stop", refusal="Ні")
     result = evaluate(sample_case, load_rubric(), ScoringProfile(version="v"), config(), Refusing(), tmp_path)
-    assert result.status == "error"
+    assert result.status == "refused"
 
 
 def test_failed_write_never_marks_complete(sample_case, good_report, tmp_path, monkeypatch):

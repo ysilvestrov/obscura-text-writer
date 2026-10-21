@@ -7,6 +7,7 @@ from storygen.providers.models import RoleSettings, ProviderSettings
 from storygen.providers.streaming import GenerationEvent
 from storygen.memory.models import MemorySnapshot, MemoryEntry
 from storygen.memory.service import rebuild_memory
+from storygen.memory.journal import load_memory
 
 
 def test_rebuild_memory_uses_current_texts_in_order(tmp_path):
@@ -25,7 +26,7 @@ def test_rebuild_memory_uses_current_texts_in_order(tmp_path):
             snapshot=MemorySnapshot(facts=first.facts,source_prose_ids=sources[:current.position+1])
             yield GenerationEvent(type='delta',text=snapshot.model_dump_json())
             yield GenerationEvent(type='terminal',finish_reason='stop')
-    attempts=rebuild_memory(repo,scenes[1].id,lambda _:Gateway(),threading.Event(),lambda *_:None,settings=RoleSettings(provider=ProviderSettings(model='test')))
+    attempts=rebuild_memory(repo,scenes[1].id,lambda _:Gateway(),threading.Event(),lambda *_:None,settings=RoleSettings(provider=ProviderSettings(model='test'),memory_mode='snapshot'))
     assert calls==[s.id for s in scenes[1:]] and all(a.state=='completed' for a in attempts)
-    snapshot=MemorySnapshot.model_validate_json(repo.read_text(repo.get_scene(scenes[-1].id).heads['memory']))
+    snapshot=load_memory(repo.read_text(repo.get_scene(scenes[-1].id).heads['memory']))
     assert snapshot.source_prose_ids==sources

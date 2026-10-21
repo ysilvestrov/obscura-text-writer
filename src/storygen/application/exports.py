@@ -3,33 +3,28 @@ import re
 from pathlib import Path
 from typing import Literal
 
-from ..domain import Scene, Story, VersionRef, new_id, now
+from ..domain import new_id, now
 
 
 def export_story(repo,story_id: str,format: Literal['md','txt'],allow_incomplete: bool = False) -> Path:
     if format not in {'md','txt'}:raise ValueError('Доступні MD і TXT')
     entries=[];warnings=[];parts=[]
-    with repo.db.connection() as db:
-        db.execute('BEGIN')
-        story=repo._get(db,'stories',story_id,Story)
-        scenes=[Scene.model_validate_json(row[0]) for row in db.execute('SELECT payload FROM scenes WHERE story_id=? ORDER BY position',(story_id,))]
-        if not scenes:warnings.append('Немає сцен')
-        for scene in scenes:
-            id=scene.heads.get('prose')
-            entry={'scene_id':scene.id,'title':scene.title,'position':scene.position,'version_id':id,'warnings':[]}
-            text=''
-            if id:
-                ref=repo._get(db,'versions',id,VersionRef)
-                if ref.stale or not ref.complete or scene.needs_review:entry['warnings'].append('Сцена застаріла або потребує перегляду')
-                text=repo.files.read(ref.relative_path,ref.sha256).decode('utf-8')
-                entry['sha256']=ref.sha256
-            else:entry['warnings'].append('Немає завершеної вибраної прози')
-            warnings.extend(entry['warnings'])
-            entry['word_count']=len(re.findall(r"\b[\w’'-]+\b",text))
-            entries.append(entry)
-            heading=('## ' if format=='md' else '')+scene.title
-            marker='\n[НЕЗАВЕРШЕНО: '+ '; '.join(entry['warnings'])+']\n' if entry['warnings'] else ''
-            parts.append(heading+'\n'+marker+'\n'+text)
+    story, snapshot = repo.export_snapshot(story_id)
+    if not snapshot:warnings.append('Немає сцен')
+    for scene, ref in snapshot:
+        entry={'scene_id':scene.id,'title':scene.title,'position':scene.position,'version_id':ref.id if ref else None,'warnings':[]}
+        text=''
+        if ref:
+            if ref.stale or not ref.complete or scene.needs_review:entry['warnings'].append('Сцена застаріла або потребує перегляду')
+            text=repo.files.read(ref.relative_path,ref.sha256).decode('utf-8')
+            entry['sha256']=ref.sha256
+        else:entry['warnings'].append('Немає завершеної вибраної прози')
+        warnings.extend(entry['warnings'])
+        entry['word_count']=len(re.findall(r"\b[\w’'-]+\b",text))
+        entries.append(entry)
+        heading=('## ' if format=='md' else '')+scene.title
+        marker='\n[НЕЗАВЕРШЕНО: '+ '; '.join(entry['warnings'])+']\n' if entry['warnings'] else ''
+        parts.append(heading+'\n'+marker+'\n'+text)
     if warnings and not allow_incomplete:
         raise ValueError('Експорт зупинено: є відсутні або застарілі сцени. Явно дозвольте неповний експорт.')
     id=new_id()

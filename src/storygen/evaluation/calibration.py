@@ -7,14 +7,14 @@ from .models import EvaluationCase, EvaluationOutcome, EvaluatorConfig, Rubric, 
 
 def load_suite(path: Path) -> list[EvaluationCase]:
     data = read_json(path)
-    cases = [load_case(contained_file(path.parent, name)) for name in data["cases"]]
+    cases = [EvaluationCase.model_validate(name) if isinstance(name, dict) else load_case(contained_file(path.parent, name)) for name in data["cases"]]
     if len({case.id for case in cases}) != len(cases):
         raise ValueError("Повтор ідентифікатора прикладу")
     return cases
 
 
 def available(outcome: EvaluationOutcome) -> bool:
-    return outcome.report is not None and outcome.status != "error" and all(
+    return outcome.report is not None and outcome.status not in {"error", 'refused'} and all(
         reason == "profile_uncalibrated" or reason.startswith(("blocking_finding:", "below_threshold:"))
         for reason in outcome.reasons)
 
@@ -122,12 +122,14 @@ def calibrate(cases: list[EvaluationCase], expectations: dict, outcomes: list[Ev
     availability = ratio(available_runs, available_runs + unavailable_runs)
     fpr = ratio(clean_false_positive_runs, clean_runs)
     suite_complete = set(case_map) == set(expectations)
-    eligible = (suite_complete and required_repeats >= 3 and recall is not None and recall >= 0.8 and fpr is not None and fpr <= 0.2
+    refusal_count = sum(o.status == 'refused' for o in outcomes)
+    error_count = sum(o.status == 'error' for o in outcomes)
+    eligible = (suite_complete and refusal_count == 0 and required_repeats >= 3 and recall is not None and recall >= 0.8 and fpr is not None and fpr <= 0.2
         and availability is not None and availability >= 0.9 and critical_misses == 0 and critical_unknown == 0
         and all(row["repeats_complete"] and row["verdict_changed"] is not True for row in stability.values()))
     return {"true_positives":tp,"false_positives":fp,"allowed_additional_findings":allowed_count,"misses":misses,"critical_misses":critical_misses,
         "critical_unchecked":critical_unknown,"available_runs":available_runs,"unavailable_runs":unavailable_runs,
         "recall":recall,"precision":precision,"false_positive_rate":fpr,"availability":availability,
-        "stability":stability,"eligible":eligible,"suite_complete":suite_complete,
+        "stability":stability,"eligible":eligible,"suite_complete":suite_complete, 'refusal_count': refusal_count, 'error_count': error_count,
         "missing_case_ids":sorted(set(expectations) - set(case_map)),
         "metric_note":"null означає відсутній знаменник; мала вибірка не доводить загальної якості"}

@@ -8,8 +8,157 @@ from .files import FileStore
 
 
 class Repository:
+    def update_scene_plan(self, scene_id, text, expected_revision):
+        from .authoring import update_scene_plan
+        return update_scene_plan(self, scene_id, text, expected_revision)
+
+    def update_scene_metadata(self, scene_id, changes, expected_revision):
+        from .authoring import update_scene_metadata
+        return update_scene_metadata(self, scene_id, changes, expected_revision)
+
+    def reorder_scenes(self, story_id, scene_ids, expected_revision):
+        from .authoring import reorder_scenes
+        return reorder_scenes(self, story_id, scene_ids, expected_revision)
+
+    def set_story_trashed(self, story_id, expected_revision, restore):
+        from .authoring import set_story_trashed
+        return set_story_trashed(self, story_id, expected_revision, restore)
+
+    def set_scene_trashed(self, story_id, scene_id, expected_revision, restore):
+        from .authoring import set_scene_trashed
+        return set_scene_trashed(self, story_id, scene_id, expected_revision, restore)
+
+    def publish_story_material(self, story_id, field, version_id, expected_revision):
+        from .authoring import publish_story_material
+        return publish_story_material(self, story_id, field, version_id, expected_revision)
+
+    def publish_blueprint(self, story_id, canon_id, character_cards_id, scenes, expected_revision):
+        from .authoring import publish_blueprint
+        return publish_blueprint(self, story_id, canon_id, character_cards_id, scenes, expected_revision)
+
+    def register_source(self, story_id, metadata):
+        from .authoring import register_source
+        return register_source(self, story_id, metadata)
+
+    def read_role_settings(self, story_id):
+        from .settings_store import read_role_settings
+        return read_role_settings(self, story_id)
+
+    def write_role_settings(self, story_id, updates, expected_revision):
+        from .settings_store import write_role_settings
+        return write_role_settings(self, story_id, updates, expected_revision)
+
+    def get_run(self, id):
+        from .run_store import get_run
+        return get_run(self, id)
+
+    def list_runs(self, story_id=None):
+        from .run_store import list_runs
+        return list_runs(self, story_id)
+
+    def save_run(self, run):
+        from .run_store import save_run
+        return save_run(self, run)
+
+    def requeue_run(self, run):
+        from .run_store import requeue_run
+        return requeue_run(self, run)
+
+    def find_run_by_request_id(self, request_id):
+        from .run_store import find_run_by_request_id
+        return find_run_by_request_id(self, request_id)
+
+    def enqueue_run(self, candidate):
+        from .run_store import enqueue_run
+        return enqueue_run(self, candidate)
+
+    def append_run_event(self, run_id, type, data):
+        from .run_store import append_run_event
+        return append_run_event(self, run_id, type, data)
+
+    def list_run_events(self, run_id, after_seq=0):
+        from .run_store import list_run_events
+        return list_run_events(self, run_id, after_seq)
+
+    def recover_running_attempts(self):
+        from .run_store import recover_running_attempts
+        return recover_running_attempts(self)
+
+    def read_evaluator_settings(self, story_id):
+        from .settings_store import read_evaluator_settings
+        return read_evaluator_settings(self, story_id)
+
+    def write_evaluator_settings(self, story_id, payload):
+        from .settings_store import write_evaluator_settings
+        return write_evaluator_settings(self, story_id, payload)
+
+    def read_calibration(self, id):
+        from .settings_store import read_calibration
+        return read_calibration(self, id)
+
+    def register_calibration(self, id, payload):
+        from .settings_store import register_calibration
+        return register_calibration(self, id, payload)
+
+    def read_refusal_block(self, story_id, identity_hash):
+        from .settings_store import read_refusal_block
+        return read_refusal_block(self, story_id, identity_hash)
+
+    def record_refusal_block(self, story_id, identity_hash, payload):
+        from .settings_store import record_refusal_block
+        return record_refusal_block(self, story_id, identity_hash, payload)
+
+    def publish_evaluation(self, ref_id, expected_story_revision, input_refs, snapshot=None):
+        from .context_view import ContextView
+        from .snapshots import compare_snapshot
+        with self.db.connection() as db:
+            db.execute('BEGIN IMMEDIATE')
+            ref = self._get(db, 'versions', ref_id, VersionRef)
+            story = self._active_story(db, ref.story_id)
+            if ref.kind != 'evaluation' or ref.input_refs != input_refs:
+                raise ValueError('Невідповідні джерела звіту')
+            view = ContextView(self, db, story.id)
+            if snapshot is not None:
+                from ..dependency_models import DependencySnapshot
+                snapshot = DependencySnapshot.model_validate(snapshot)
+                if snapshot.scope != 'evaluation' or set(snapshot.refs) != set(input_refs):
+                    raise ValueError('Невідповідний знімок оцінювання')
+                ref.dependency_snapshot = snapshot
+                ref.stale = bool(compare_snapshot(view, snapshot))
+            else:
+                inputs = [view.get_version(id) for id in input_refs]
+                if any(v.story_id != story.id for v in inputs):
+                    raise ValueError('Джерело іншого твору')
+                ref.stale = ref.stale or any(v.stale for v in inputs) or story.revision != expected_story_revision
+            db.execute('UPDATE versions SET payload=? WHERE id=?', (ref.model_dump_json(), ref.id))
+            return ref
+
+    def context_view(self, story_id):
+        from .context_view import ContextView
+        with self.db.connection() as db:
+            db.execute('BEGIN')
+            return ContextView(self, db, story_id)
+
+    def preview_acceptance(self, scene_id, version_id):
+        from .acceptance import preview_acceptance
+        return preview_acceptance(self, scene_id, version_id)
+
+    def accept_version(self, scene_id, version_id, expected_revision, preview_fingerprint, note=None):
+        from .acceptance import accept_version
+        return accept_version(self, scene_id, version_id, expected_revision, preview_fingerprint, note)
+
+    def list_acceptances(self, story_id, version_id=None):
+        from .acceptance import list_acceptances
+        return list_acceptances(self, story_id, version_id)
+
+    def continue_after_acceptance(self, id, version_id, expected_cursor, expected_scene_revision, acceptance_id=None):
+        from .run_store import continue_after_acceptance
+        return continue_after_acceptance(self,id,version_id,expected_cursor,expected_scene_revision,acceptance_id)
+
     def __init__(self,data_dir: Path):
         self.root=data_dir.resolve()
+        if (self.root / '.restore-incomplete.json').exists():
+            raise ValueError('Каталог містить незавершене відновлення. Відновіть резерв у новий каталог.')
         self.db=Database(self.root/"storygen.sqlite3")
         self.files=FileStore(self.root)
 
@@ -38,14 +187,23 @@ class Repository:
 
     def get_scene(self,id: str,include_trashed: bool=False) -> Scene:
         with self.db.connection() as db:
-            return self._get(db,"scenes",id,Scene) if include_trashed else self._active_scene(db,id)
+            db.execute('BEGIN')
+            if include_trashed:
+                return self._get(db,'scenes',id,Scene)
+            scene=self._active_scene(db,id)
+            from .context_view import ContextView
+            return ContextView(self,db,scene.story_id).effective_scene(id)
 
     def get_version(self,id: str) -> VersionRef:
         with self.db.connection() as db:
-            ref=self._get(db,"versions",id,VersionRef)
+            db.execute('BEGIN')
+            ref=self._get(db,'versions',id,VersionRef)
             self._active_story(db,ref.story_id)
             if ref.scene_id:self._active_scene(db,ref.scene_id)
-            return ref
+            if ref.dependency_snapshot is None and not any(json.loads(r[0]).get('version_id')==ref.id for r in db.execute('SELECT payload FROM app_settings WHERE key LIKE ?',('acceptance:'+ref.story_id+':%',))):
+                return ref
+            from .context_view import ContextView
+            return ContextView(self,db,ref.story_id).get_version(id)
 
     def list_stories(self,include_trashed: bool=False) -> list[Story]:
         with self.db.connection() as db:
@@ -65,19 +223,18 @@ class Repository:
             return self._active_source(db,story_id,kind)
 
     def list_scenes(self,story_id: str,include_trashed: bool=False) -> list[Scene]:
-        with self.db.connection() as db:
-            self._active_story(db,story_id)
-            scenes=[Scene.model_validate_json(r[0]) for r in db.execute("SELECT payload FROM scenes WHERE story_id=? ORDER BY position,id",(story_id,))]
-            return scenes if include_trashed else [s for s in scenes if not s.trashed_at]
+        view=self.context_view(story_id)
+        return [s.model_copy(deep=True) if s.trashed_at else view.effective_scene(s.id) for s in view.scenes.values() if include_trashed or not s.trashed_at]
+
+    def export_snapshot(self, story_id: str) -> tuple[Story, list[tuple[Scene, VersionRef | None]]]:
+        view=self.context_view(story_id)
+        return view.get_story(story_id), [(view.effective_scene(s.id),view.get_version(s.heads['prose']) if s.heads.get('prose') else None) for s in view.list_scenes(story_id)]
 
     def list_versions(self,story_id: str,scene_id: str | None = None,kind: str | None = None) -> list[VersionRef]:
-        with self.db.connection() as db:
-            self._active_story(db,story_id)
-            if scene_id:self._active_scene(db,scene_id)
-            rows=db.execute("SELECT payload FROM versions WHERE story_id=? ORDER BY rowid",(story_id,))
-            versions=[VersionRef.model_validate_json(r[0]) for r in rows]
-        active_ids={s.id for s in self.list_scenes(story_id)}
-        return [v for v in versions if (v.scene_id is None or v.scene_id in active_ids) and (scene_id is None or v.scene_id==scene_id) and (kind is None or v.kind==kind)]
+        view=self.context_view(story_id)
+        if scene_id:view.get_scene(scene_id)
+        active_ids={s.id for s in view.list_scenes(story_id)}
+        return [view.get_version(v.id) for v in view.versions.values() if (v.scene_id is None or v.scene_id in active_ids) and (scene_id is None or v.scene_id==scene_id) and (kind is None or v.kind==kind)]
 
     def _save_story(self,db,story):
         db.execute("UPDATE stories SET payload=? WHERE id=?",(story.model_dump_json(),story.id))
@@ -121,17 +278,18 @@ class Repository:
             self._touch_story(db,story_id)
         return scene
 
-    def save_version(self,story_id: str,scene_id: str | None,kind: str,text: str,input_refs: list[str],source_run_id: str | None = None) -> VersionRef:
+    def save_version(self,story_id: str,scene_id: str | None,kind: str,text: str,input_refs: list[str],source_run_id: str | None = None,dependency_snapshot=None) -> VersionRef:
         self.get_story(story_id)
         if scene_id and self.get_scene(scene_id).story_id != story_id:
             raise ValueError("Сцена належить іншому твору")
-        if any(self.get_version(id).story_id != story_id for id in input_refs):
+        source_view=self.context_view(story_id) if input_refs else None
+        if any(source_view.get_version(id).story_id != story_id for id in input_refs):
             raise ValueError("Джерела належать іншому твору")
         format="json" if kind in {"character_cards","style","memory","evaluation","brief"} else "text"
         id=new_id()
         data=text.encode("utf-8")
         version=VersionRef(id=id,story_id=story_id,scene_id=scene_id,kind=kind,format=format,sha256=hashlib.sha256(data).hexdigest(),
-            relative_path=f"stories/{story_id}/versions/{id}.{'json' if format=='json' else 'txt'}",input_refs=input_refs,source_run_id=source_run_id)
+            relative_path=f"stories/{story_id}/versions/{id}.{'json' if format=='json' else 'txt'}",input_refs=input_refs,source_run_id=source_run_id,dependency_snapshot=dependency_snapshot)
         self.files.write(version.relative_path,data)
         with self.db.connection() as db:
             db.execute("BEGIN IMMEDIATE")
@@ -154,17 +312,20 @@ class Repository:
         with self.db.connection() as db:
             db.execute("BEGIN IMMEDIATE")
             version=self._get(db,'versions',version_id,VersionRef)
-            if version.stale or not version.complete:
+            from .context_view import ContextView
+            view=ContextView(self,db,version.story_id)
+            if view.get_version(version_id).stale or not version.complete:
                 raise ValueError('Версія застаріла або незавершена')
             scene=self._active_scene(db,scene_id)
             if scene.revision != expected_revision:
                 raise RevisionConflict("Сцену вже змінено. Ваш текст збережіть окремою версією.")
             previous=scene.heads.get(head)
             scene.heads[head]=version_id
+            scene.head_revisions[head]=scene.head_revisions.get(head,0)+1
             scene.revision+=1
             self._save_scene(db,scene)
             if previous and previous!=version_id:
-                from ..generation.dependencies import invalidate_in_transaction
+                from .invalidation import invalidate_in_transaction
                 invalidate_in_transaction(self,db,[previous],exclude=[version_id])
             if head=='prose':
                 scene.needs_review=False
@@ -195,23 +356,44 @@ class Repository:
             if attempt.state!='running' or result_ref.story_id!=attempt.story_id or result_ref.scene_id!=attempt.scene_id:
                 raise ValueError('Спроба або результат не відповідають етапу')
             story=self._active_story(db,attempt.story_id)
-            changed=story.revision!=attempt.context['story_revision']
-            for source_id in result_ref.input_refs:
-                source=self._get(db,'versions',source_id,VersionRef)
-                accepted_stale=source_id in attempt.context.get('accepted_stale_prose_ids',[]) and source.kind in {'edited','manual'}
-                changed=changed or (source.stale and not accepted_stale)
+            from .context_view import ContextView
+            from .snapshots import compare_snapshot
+            from ..dependency_models import DependencySnapshot, TargetCAS
+            snapshot_raw=attempt.context.get('dependency_snapshot')
+            snapshot=DependencySnapshot.model_validate(snapshot_raw) if snapshot_raw is not None else None
+            view=ContextView(self,db,story.id)
+            if snapshot is not None:
+                if set(snapshot.refs)!=set(result_ref.input_refs):
+                    raise ValueError('Знімок не відповідає входам результату')
+                result_ref.dependency_snapshot=snapshot
+                changed=bool(compare_snapshot(view,snapshot))
+                db.execute('UPDATE versions SET payload=? WHERE id=?',(result_ref.model_dump_json(),result_ref.id))
+            else:
+                changed=story.revision!=attempt.context['story_revision']
+                for source_id in result_ref.input_refs:
+                    source=self._get(db,'versions',source_id,VersionRef)
+                    accepted_stale=source_id in attempt.context.get('accepted_stale_prose_ids',[]) and source.kind in {'edited','manual'}
+                    changed=changed or (source.stale and not accepted_stale)
             attempt.result_version_id=result_ref.id
             if attempt.scene_id:
                 scene=self._active_scene(db,attempt.scene_id)
-                changed=changed or scene.revision!=expected_revision
+                if snapshot is not None:
+                    target=TargetCAS.model_validate(attempt.context.get('target_cas'))
+                    head={'brief':'brief','draft':'draft','edit':'prose','memory':'memory'}[attempt.stage]
+                    if target.scene_id!=scene.id or target.head!=head:
+                        raise ValueError('Невідповідна ціль публікації')
+                    changed=changed or scene.heads.get(head)!=target.version_id or scene.head_revisions.get(head,0)!=target.head_revision
+                else:
+                    changed=changed or scene.revision!=expected_revision
                 if not changed:
                     head={'brief':'brief','draft':'draft','edit':'prose','memory':'memory'}[attempt.stage]
                     previous=scene.heads.get(head)
                     scene.heads[head]=result_ref.id
+                    scene.head_revisions[head]=scene.head_revisions.get(head,0)+1
                     scene.revision+=1
                     self._save_scene(db,scene)
                     if previous and previous!=result_ref.id:
-                        from ..generation.dependencies import invalidate_in_transaction
+                        from .invalidation import invalidate_in_transaction
                         invalidate_in_transaction(self,db,[previous],exclude=[result_ref.id])
                     if attempt.stage=='edit':
                         scene.needs_review=False
@@ -220,3 +402,9 @@ class Repository:
             attempt.state='alternative' if changed else 'completed'
             db.execute('UPDATE stage_attempts SET state=?,payload=? WHERE id=?',(attempt.state,attempt.model_dump_json(),attempt.id))
         return attempt
+
+    def invalidate_dependents(self, changed_version_ids: list[str]) -> list[str]:
+        from .invalidation import invalidate_in_transaction
+        with self.db.connection() as db:
+            db.execute('BEGIN IMMEDIATE')
+            return invalidate_in_transaction(self, db, changed_version_ids)

@@ -1,10 +1,4 @@
-from ..domain import DomainModel, now
-from pydantic import Field
+"""Compatibility import for persisted run events."""
+from ..run_models import RunEvent
 
-
-class RunEvent(DomainModel):
-    run_id: str
-    seq: int
-    type: str
-    data: dict
-    created_at: str = Field(default_factory=now)
+__all__ = ["RunEvent"]

@@ -1,5 +1,4 @@
 import hashlib
-import json
 import re
 from pathlib import Path
 from typing import Literal
@@ -48,17 +47,7 @@ def import_sources(repo: Repository,story_id: str,files: list[SourceFile]) -> Im
         repo.files.write(relative,file.raw)
         version=repo.save_version(story_id,None,file.kind,text,[])
         metadata={"id":id,"name":file.name,"relative_path":relative,"sha256":hashlib.sha256(file.raw).hexdigest(),"version_id":version.id,"kind":file.kind}
-        with repo.db.connection() as db:
-            db.execute('BEGIN IMMEDIATE')
-            repo._active_story(db,story_id)
-            previous=repo._active_source(db,story_id,file.kind)
-            db.execute("INSERT INTO source_files VALUES(?,?,?)",(id,story_id,json.dumps(metadata,ensure_ascii=False)))
-            repo._touch_story(db,story_id)
-            from ..generation.dependencies import invalidate_in_transaction, invalidate_story_materials
-            if previous:
-                invalidate_in_transaction(repo,db,[previous.id])
-            elif file.kind=='source_characters':
-                invalidate_story_materials(repo,db,story_id)
+        repo.register_source(story_id,metadata)
         result.sources.append(metadata)
         result.version_ids.append(version.id)
         if file.kind=="source_plan":

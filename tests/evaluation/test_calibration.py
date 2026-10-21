@@ -21,10 +21,10 @@ def report(case, good_report, finding=None, error=False, reverse=False):
 
 def test_calibration_counts_misses_false_positives_and_unavailable(sample_case, good_report):
     finding = Finding(criterion_id="ukrainian", severity="major", explanation="Помилка", suggestion="Виправити",
-        citations=[dict(document_id="s1", document_version="1", quote="Лєра відчинила двері студії.")])
+        citations=[dict(document_id="s1", document_version="1", quote="Олена відчинила двері бібліотеки.")])
     clean = sample_case.model_copy(update={"id":"clean"})
     unavailable = sample_case.model_copy(update={"id":"unavailable"})
-    expected = {sample_case.id:{"findings":[{"criterion_id":"ukrainian","anchors":[{"document_id":"s1","quote":"Лєра відчинила двері студії."}],"critical":True}]}, "clean":{"findings":[]},"unavailable":{"findings":[]}}
+    expected = {sample_case.id:{"findings":[{"criterion_id":"ukrainian","anchors":[{"document_id":"s1","quote":"Олена відчинила двері бібліотеки."}],"critical":True}]}, "clean":{"findings":[]},"unavailable":{"findings":[]}}
     result = calibrate([sample_case,clean,unavailable], expected, [report(sample_case,good_report,finding),report(clean,good_report,finding),report(unavailable,good_report,error=True)])
     assert result["true_positives"] == 1
     assert result["false_positives"] == 1
@@ -99,7 +99,7 @@ def test_selected_subset_cannot_qualify_as_full_calibration(tmp_path, monkeypatc
             data = json.loads(request.messages[1]["content"])
             findings = []
             if data["id"] == "grammar":
-                findings = [dict(criterion_id="ukrainian",severity="minor",explanation="Узгодження",suggestion="Виправити",citations=[dict(document_id="s1",document_version="1",quote="Лєра відчинили двері студії.")])]
+                findings = [dict(criterion_id="ukrainian",severity="minor",explanation="Узгодження",suggestion="Виправити",citations=[dict(document_id="s1",document_version="1",quote="Олена відчинили двері бібліотеки.")])]
             report = JudgeReport(assessments=[dict(criterion_id=key,status="assessed",score=4,explanation="Контроль") for key in data["required_criteria"]],findings=findings,
                 checked_document_ids=[d["id"] for d in data["documents"]],limitations=[])
             return GatewayResult(text=report.model_dump_json(),finish_reason="stop")
@@ -117,9 +117,9 @@ def test_preservation_and_canon_findings_are_both_valid(good_report):
     from storygen.evaluation.inputs import load_case, read_json
     case = load_case(Path("tests/fixtures/evaluation/revision_fact/case.json"))
     preservation = Finding(criterion_id="editorial_preservation",severity="major",explanation="Змінено вік",suggestion="Відновити",
-        citations=[dict(document_id="s1",document_version="1",quote="Лєрі було двадцять сім років."),dict(document_id="edited",document_version="1",quote="Лєрі було тридцять сім років.")])
+        citations=[dict(document_id="s1",document_version="1",quote="Олені було сорок років."),dict(document_id="edited",document_version="1",quote="Олені було п’ятдесят років.")])
     fidelity = Finding(criterion_id="plan_fidelity",severity="major",explanation="Суперечність канону",suggestion="Відновити",
-        citations=[dict(document_id="canon",document_version="1",quote="Лєрі двадцять сім років."),dict(document_id="edited",document_version="1",quote="Лєрі було тридцять сім років.")])
+        citations=[dict(document_id="canon",document_version="1",quote="Олені сорок років."),dict(document_id="edited",document_version="1",quote="Олені було п’ятдесят років.")])
     outcome = report(case,good_report,preservation)
     outcome.evidence.confirmed.append(fidelity)
     outcome.report.findings.append(fidelity)

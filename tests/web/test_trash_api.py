@@ -1,6 +1,18 @@
 from fastapi.testclient import TestClient
 from storygen.application.settings import AppSettings
 from storygen.web.app import create_app
+import pytest
+
+
+@pytest.mark.parametrize('allow_incomplete', [False, True])
+def test_export_api_rejects_trashed_story(tmp_path, allow_incomplete):
+    app = create_app(AppSettings(data_dir=tmp_path))
+    with TestClient(app, base_url='http://127.0.0.1:8765') as client:
+        story = client.post('/api/stories', json={'title': 'Книга'}).json()
+        removed = client.post(f'/api/stories/{story["id"]}/trash', json={'expected_revision': story['revision']})
+        assert removed.status_code == 200
+        response = client.post(f'/api/stories/{story["id"]}/export', json={'format': 'md', 'allow_incomplete': allow_incomplete})
+        assert response.status_code == 404
 
 
 def test_trash_restore_api_and_revision_guards(tmp_path):

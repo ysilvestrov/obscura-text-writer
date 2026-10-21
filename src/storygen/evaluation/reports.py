@@ -11,10 +11,12 @@ def write_reports(outcome: EvaluationOutcome, output_dir: Path) -> Path:
     (folder / "inputs.json").write_text(json.dumps(snapshots, ensure_ascii=False, indent=2), encoding="utf-8")
     (folder / "raw_response.txt").write_text(outcome.metadata.get("raw_response", ""), encoding="utf-8")
     (folder / "request.json").write_text(json.dumps(outcome.metadata["request"], ensure_ascii=False, indent=2), encoding="utf-8")
-    labels = {"passed":"Пройдено", "failed":"Не пройдено", "incomplete":"Оцінювання неповне", "error":"Помилка оцінювання"}
+    labels = {"passed":"Пройдено", "failed":"Не пройдено", "incomplete":"Оцінювання неповне", "error":"Помилка оцінювання", 'refused': 'Відмова оцінювача'}
     lines = ["# Звіт оцінювання", "", f"Статус: {labels[outcome.status]}", "", f"Fingerprint: `{outcome.fingerprint}`", ""]
     if outcome.reasons:
         lines += ["Причини:", ""] + [f"- {reason}" for reason in outcome.reasons] + [""]
+    if outcome.failure:
+        lines += ['Діагностика:', '', outcome.failure.model_dump_json(indent=2), '']
     if outcome.report:
         lines += ["| Критерій | Бал | Статус |", "|---|---:|---|"]
         lines += [f"| {a.criterion_id} | {a.score if a.score is not None else '—'} | {a.status} |" for a in outcome.report.assessments]

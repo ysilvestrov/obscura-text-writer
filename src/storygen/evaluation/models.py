@@ -102,9 +102,13 @@ class JudgeReport(StrictModel):
     findings: list[Finding]
     checked_document_ids: list[str]
     limitations: list[str]
+    refusal: str | None = None
 
     @model_validator(mode="after")
     def unique_criteria(self):
+        if self.refusal is not None:
+            if not self.refusal.strip() or self.assessments or self.findings or self.checked_document_ids:
+                raise ValueError('Відмова не може містити оцінки або підтверджене покриття')
         ids = [a.criterion_id for a in self.assessments]
         if len(ids) != len(set(ids)):
             raise ValueError("Повтор оцінки критерію")
@@ -134,19 +138,24 @@ class ScoringProfile(StrictModel):
 
 
 class EvaluatorConfig(StrictModel):
-    provider: Literal["local", "openrouter", "codex_cli"]
-    base_url: str = "http://localhost:1235/v1"
+    provider: Literal["local", "openrouter", "codex_cli", "venice"]
+    base_url: str | None = None
     model: str | None = None
-    api_key_env: str = "OPENROUTER_API_KEY"
+    api_key_env: str | None = None
     timeout_seconds: float | int | None = Field(default=None, gt=0)
     max_output_tokens: int = Field(default=6000, ge=1)
     temperature: float | int | None = Field(default=None, ge=0, le=2)
     response_mode: Literal["json_schema", "prompt_json"] = "json_schema"
     max_input_chars: int = Field(gt=0)
     codex_command: str = "codex"
+    venice_include_system_prompt: bool = False
+    venice_disable_thinking: bool = False
 
     @model_validator(mode="after")
     def check_provider(self):
+        endpoints = {'local': 'http://localhost:1235/v1', 'openrouter': 'https://openrouter.ai/api/v1', 'venice': 'https://api.venice.ai/api/v1', 'codex_cli': 'http://localhost:1235/v1'}
+        self.base_url = self.base_url or endpoints[self.provider]
+        self.api_key_env = self.api_key_env or ('VENICE_API_KEY' if self.provider == 'venice' else 'OPENROUTER_API_KEY')
         if self.provider != "codex_cli" and (self.model is None or not self.model.strip()):
             raise ValueError("Потрібен точний ідентифікатор моделі")
         if self.model is not None and not self.model.strip():
@@ -156,6 +165,8 @@ class EvaluatorConfig(StrictModel):
             raise ValueError("Адреса не повинна містити ключів або облікових даних")
         if self.provider == "openrouter" and self.base_url.rstrip("/") != "https://openrouter.ai/api/v1":
             raise ValueError("Для OpenRouter потрібна офіційна адреса API")
+        if self.provider == 'venice' and self.base_url.rstrip('/') != endpoints['venice']:
+            raise ValueError('Для Venice потрібна офіційна адреса API')
         if self.provider == "local" and (url.hostname not in {"localhost", "127.0.0.1", "::1"} or url.scheme not in {"http", "https"}):
             raise ValueError("Локальний API має використовувати loopback-адресу")
         return self
@@ -177,8 +188,20 @@ class GatewayResult(StrictModel):
     duration_seconds: float = 0.0
 
 
+class FailureDetail(StrictModel):
+    category: Literal['refusal_content', 'refusal_unknown', 'missing_key', 'authentication', 'permission',
+        'quota', 'rate_limit', 'timeout', 'connection', 'capability', 'invalid_response', 'provider_error', 'blocked']
+    message: str
+    http_status: int | None = None
+    provider_code: str | None = None
+    provider_type: str | None = None
+    provider_message: str | None = None
+    request_id: str | None = None
+
+
 class EvaluationOutcome(StrictModel):
-    status: Literal["passed", "failed", "incomplete", "error"]
+    status: Literal["passed", "failed", "incomplete", "error", "refused"]
+    failure: FailureDetail | None = None
     reasons: list[str] = Field(default_factory=list)
     report: JudgeReport | None = None
     evidence: EvidenceCheck = Field(default_factory=EvidenceCheck)

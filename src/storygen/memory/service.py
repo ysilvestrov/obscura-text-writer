@@ -1,4 +1,5 @@
 from .models import MemorySnapshot
+from .journal import MemoryJournal, load_memory, legacy_view, validate_memory_journal, normalize_manual_memory
 
 
 def merge_memory_delta(previous, delta, prose_id: str, prose: str) -> MemorySnapshot:
@@ -21,6 +22,8 @@ def merge_memory_delta(previous, delta, prose_id: str, prose: str) -> MemorySnap
 
 
 def validate_memory(snapshot: MemorySnapshot,source_versions: dict[str,str]) -> MemorySnapshot:
+    if isinstance(snapshot,MemoryJournal):
+        return validate_memory_journal(snapshot,source_versions)
     if len(set(snapshot.source_prose_ids))!=len(snapshot.source_prose_ids) or snapshot.source_prose_ids!=list(source_versions):
         raise ValueError('Пам’ять повинна посилатися на всі поточні джерела прози')
     for field in ('facts','character_states','open_threads','timeline'):
@@ -31,11 +34,11 @@ def validate_memory(snapshot: MemorySnapshot,source_versions: dict[str,str]) -> 
     return snapshot
 
 
-def memory_before(repo,scene_id: str) -> MemorySnapshot:
+def journal_before(repo,scene_id: str) -> MemoryJournal:
     scene=repo.get_scene(scene_id)
     previous=[s for s in repo.list_scenes(scene.story_id) if s.position<scene.position]
     if not previous:
-        return MemorySnapshot()
+        return MemoryJournal()
     selected={}
     for item in previous:
         prose_id=item.heads.get('prose')
@@ -45,11 +48,43 @@ def memory_before(repo,scene_id: str) -> MemorySnapshot:
     memory_id=previous[-1].heads.get('memory')
     if not memory_id or repo.get_version(memory_id).stale:
         raise ValueError('Спершу оновіть пам’ять попередньої сцени')
-    snapshot=MemorySnapshot.model_validate_json(repo.read_text(memory_id))
     try:
-        return validate_memory(snapshot,selected)
+        snapshot=load_memory(repo.read_text(memory_id))
+        return validate_memory_journal(snapshot,selected)
     except ValueError:
         raise ValueError('Попередня пам’ять не відповідає вибраній прозі; оновіть пам’ять') from None
+
+
+def memory_before(repo,scene_id: str) -> MemorySnapshot:
+    """Legacy wire view; callers must not persist this in place of the journal."""
+    return legacy_view(journal_before(repo,scene_id))
+
+
+def save_scene_memory(repo,scene_id,text,expected_revision):
+    from ..domain import RevisionConflict
+    from ..providers.models import RoleSettings, ProviderSettings
+    from ..storage.snapshots import build_dependency_snapshot
+    scene=repo.get_scene(scene_id)
+    view=repo.context_view(scene.story_id)
+    scene=view.get_scene(scene_id)
+    if scene.revision!=expected_revision:
+        raise RevisionConflict('Пам’ять або прозу сцени вже оновлено. Відкрийте вкладку «Пам’ять» заново; незбережені правки спершу скопіюйте окремо.')
+    previous=journal_before(view,scene_id)
+    prose_id=scene.heads.get('prose')
+    if not prose_id:raise ValueError('Спершу виберіть прозу')
+    ref=view.get_version(prose_id)
+    if ref.kind not in {'manual','edited'} or not ref.complete:
+        raise ValueError('Потрібна завершена вибрана проза')
+    sources={id:view.read_text(id) for id in previous.source_prose_ids+[prose_id]}
+    journal=normalize_manual_memory(text,previous,prose_id,sources[prose_id],scene.character_ids)
+    validate_memory_journal(journal,sources,previous)
+    refs=list(sources)
+    earlier=[s for s in view.list_scenes(scene.story_id) if s.position<scene.position]
+    if earlier:refs.append(earlier[-1].heads['memory'])
+    snapshot=build_dependency_snapshot(view,scene_id,'memory',RoleSettings(provider=ProviderSettings(model='manual-memory')),refs)
+    version=repo.save_version(scene.story_id,scene_id,'memory',journal.model_dump_json(),refs,dependency_snapshot=snapshot)
+    repo.set_head(scene_id,'memory',version.id,expected_revision)
+    return version
 
 
 def rebuild_memory(repo,from_scene_id: str,gateway_factory,cancel,on_event,settings=None,run_id=None):

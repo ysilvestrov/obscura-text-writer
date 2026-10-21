@@ -1,0 +1,25 @@
+import assert from 'node:assert/strict';
+import {pathToFileURL} from 'node:url';
+const {CharacterBuffer}=await import(pathToFileURL(process.argv[2]+'/src/storygen/web/static/characters-state.js'));
+const buffer=new CharacterBuffer();
+const old=buffer.beginLoad(),latest=buffer.beginLoad();
+assert.equal(buffer.loaded({cards:[],revision:1},old),false);
+assert.equal(buffer.loaded({cards:[{name:'Анна',entries:[]}],revision:2},latest),true);
+buffer.changed();const snapshot=buffer.beginSave();
+buffer.cards[0].name='Нове ім’я';buffer.changed();
+assert.equal(buffer.saved({cards:[{name:'Стара відповідь'}],revision:3},snapshot),false);
+assert.equal(buffer.cards[0].name,'Нове ім’я');assert.equal(buffer.dirty,true);
+const request=buffer.previewRequest('scene1');buffer.changed();
+assert.equal(buffer.previewCurrent(request,'scene1'),false);
+const current=buffer.previewRequest('scene1');
+assert.equal(buffer.previewCurrent(current,'scene2'),false);
+assert.equal(buffer.previewCurrent(current,'scene1'),true);
+// A GET started before editing must never replace a successfully saved revision.
+const delayed=new CharacterBuffer();
+delayed.loaded({cards:[],revision:1},delayed.beginLoad());
+const oldLoad=delayed.beginLoad();
+delayed.cards=[{id:'A',name:'New',entries:[]}];delayed.changed();
+const save=delayed.beginSave();
+delayed.saved({cards:delayed.cards,revision:2},save);
+assert.equal(delayed.loaded({cards:[],revision:1},oldLoad),false);
+assert.equal(delayed.revision,2);
