@@ -14,17 +14,20 @@ def refusal_detail(text: str, *, content_filter: bool = False) -> FailureDetail:
         provider_message=safe_message(text))
 
 
-def safe_message(value, secret=None, documents=()):
+def safe_message(value, secret=None, documents=(), *, secrets=()):
     if not isinstance(value, str) or not value.strip():
         return None
-    text = value[:2000]
-    if secret:
-        text = text.replace(secret, '[ключ приховано]')
+    text = value
+    # Redact whole credentials before either length limit can split them.
+    for credential in (secret,*secrets):
+        if isinstance(credential,str) and credential:
+            text = text.replace(credential, '[ключ приховано]')
     text = re.sub(r'(?i)\bBearer\s+[^\s,;]+', 'Bearer [приховано]', text)
     text = re.sub(r'\bsk-[A-Za-z0-9_-]+', '[ключ приховано]', text)
+    text = text[:2000]
     # Error bodies sometimes echo input. Do not expose them as diagnostics.
     for document in documents:
-        if any(text[i:i+24] in document for i in range(max(0, len(text)-23))):
+        if (document.strip() and document in text) or any(text[i:i+24] in document for i in range(max(0, len(text)-23))):
             return 'Пояснення провайдера містить відлуння запиту; текст приховано.'
     return ' '.join(text.split())[:500]
 

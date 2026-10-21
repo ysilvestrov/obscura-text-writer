@@ -222,12 +222,63 @@ class RunCoordinator:
                     with self.condition:
                         run=self.get_run(queued.id)
                         run.state='cancelled' if self.cancel_event.is_set() else 'failed'
-                        run.error=str(exc) if isinstance(exc,ContextOverflow) else 'Етап зупинено. Перевірте контекст, конфігурацію й збережені спроби; автоматичного повтору немає.'
+                        run.error=self._failure_message(run,exc)
                         self._save(run);self.event(run.id,'state',{'state':run.state,'error':run.error})
                 finally:
                     with self.condition:self.active_id=None
         finally:
             self.lock.__exit__()
+
+    def _failure_message(self,run,exc):
+        if isinstance(exc,ContextOverflow):
+            return str(exc)
+        task=run.tasks[run.cursor] if run.cursor<len(run.tasks) else None
+        if not task or task.get('stage')!='evaluate':
+            return 'Етап зупинено. Перевірте контекст, конфігурацію й збережені спроби; автоматичного повтору немає.'
+
+        # The evaluator normally converts provider failures into a structured outcome.
+        # This path is for unexpected exceptions that escaped that boundary.
+        from ..evaluation.failures import safe_message
+        import os
+
+        attempt=None
+        try:
+            attempts=self.repo.list_attempts(run.story_id,run.id)
+            matching=[a for a in attempts if a.stage=='evaluate'
+                and a.scene_id==task.get('scene_id')
+                and a.context.get('run_cursor',run.cursor)==run.cursor]
+            attempt=matching[-1] if matching else None
+        except Exception:
+            pass
+        secret=None
+        documents=[]
+        try:
+            from ..evaluation.story_adapter import get_evaluation_settings
+            config=get_evaluation_settings(self.repo,run.story_id).config
+            if config.provider in {'openrouter','venice'}:
+                secret=os.environ.get(config.api_key_env)
+        except Exception:
+            pass
+        if attempt:
+            documents=[d['text'] for d in attempt.context.get('case',{}).get('documents',[])
+                if isinstance(d,dict) and isinstance(d.get('text'),str)]
+        frozen_secret=None
+        if attempt:
+            frozen_config=attempt.context.get('config',{})
+            key_env=frozen_config.get('api_key_env') if isinstance(frozen_config,dict) else None
+            if isinstance(key_env,str):
+                frozen_secret=os.environ.get(key_env)
+        diagnostic=safe_message(str(exc),secret,documents,secrets=(frozen_secret,))
+        detail=f'{type(exc).__name__}: {diagnostic}' if diagnostic else type(exc).__name__
+        message=f'Помилка оцінювача — {detail}. Автоматичного повтору немає.'
+        if attempt and attempt.state=='running':
+            attempt.state='failed'
+            attempt.error=message
+            try:
+                self.repo.save_attempt(attempt)
+            except Exception:
+                pass
+        return message
 
     def _execute(self,id):
         while True:
