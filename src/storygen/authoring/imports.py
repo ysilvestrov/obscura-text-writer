@@ -1,11 +1,11 @@
 import hashlib
-import re
 from pathlib import Path
 from typing import Literal
 
 from pydantic import Field
 
 from ..domain import DomainModel, SceneCreate, new_id
+from ..scene_description import SCENE_HEADING,clean_title
 from ..storage.repository import Repository
 
 
@@ -19,14 +19,15 @@ class ImportResult(DomainModel):
     sources: list[dict]=Field(default_factory=list)
     version_ids: list[str]=Field(default_factory=list)
     proposed_scenes: list[SceneCreate]=Field(default_factory=list)
+    created_character_cards: int=0
     warnings: list[str]=Field(default_factory=list)
 
 
 def suggest_scene_sections(plan: str) -> list[SceneCreate]:
-    headings=list(re.finditer(r"(?m)^\s*(?:#{1,6}\s*)?Сцена\s+\d+[.:]\s*([^\n]+)",plan,re.IGNORECASE))
+    headings=list(SCENE_HEADING.finditer(plan))
     if not headings:
         return [SceneCreate(title="Сцена 1",beats=plan)]
-    return [SceneCreate(title=m.group(1).strip()[:300] or f"Сцена {index+1}",
+    return [SceneCreate(title=clean_title(m.group(1)) or f"Сцена {index+1}",
         beats=plan[m.start():headings[index+1].start() if index+1<len(headings) else len(plan)].strip()) for index,m in enumerate(headings)]
 
 
@@ -50,6 +51,22 @@ def import_sources(repo: Repository,story_id: str,files: list[SourceFile]) -> Im
         repo.register_source(story_id,metadata)
         result.sources.append(metadata)
         result.version_ids.append(version.id)
+        if file.kind=='source_characters':
+            from ..characters.importing import cards_from_markdown
+            from ..characters.service import save_character_material
+            current=repo.get_story(story_id)
+            if current.characters_version_id is not None:
+                result.warnings.append('Наявні картки персонажів не перезаписано; новий файл збережено для звірки. За потреби оновіть картки вручну.')
+            else:
+                cards,warnings=cards_from_markdown(text,version.id)
+                result.warnings.extend(warnings)
+                if cards:
+                    save_character_material(repo,story_id,cards,current.revision)
+                    result.created_character_cards+=len(cards)
+                    result.warnings.append(f'Створено початкових карток персонажів: {len(cards)}. Часову доступність описів не перевірено; перегляньте картки.')
+                else:
+                    result.warnings.append('Картки не створено: потрібні заголовки імен, наприклад «## Олена», з описом нижче. Файл збережено; можна додати картки вручну або підготувати структуру.')
+
         if file.kind=="source_plan":
             proposed=suggest_scene_sections(text)
             result.proposed_scenes.extend(proposed)

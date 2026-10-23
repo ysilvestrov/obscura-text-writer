@@ -16,9 +16,12 @@ class ProviderSettings(DomainModel):
     response_mode: Literal['prompt_json','json_schema'] = 'prompt_json'
     venice_include_system_prompt: bool = False
     venice_disable_thinking: bool = False
+    venice_reasoning_effort: Literal['none','low','medium','high','xhigh','max'] | None = None
 
     @model_validator(mode='after')
     def endpoint(self):
+        if self.venice_disable_thinking and self.venice_reasoning_effort is not None:
+            raise ValueError('Оберіть або вимкнення thinking, або reasoning effort')
         endpoints={'local':'http://localhost:1235/v1','openrouter':'https://openrouter.ai/api/v1','venice':'https://api.venice.ai/api/v1'}
         self.base_url=self.base_url or endpoints[self.provider]
         self.key_env=self.key_env or ('VENICE_API_KEY' if self.provider=='venice' else 'OPENROUTER_API_KEY')
@@ -36,8 +39,24 @@ class ProviderSettings(DomainModel):
         return self
 
 
+class ClassificationSettings(DomainModel):
+    provider: ProviderSettings
+    context_tokens: int = Field(default=32768,ge=512)
+    max_output_tokens: int = Field(default=4096,ge=1)
+    max_input_chars: int = Field(default=80000,ge=1)
+    temperature: float = Field(default=0.2,ge=0,le=2)
+
+    @model_validator(mode='after')
+    def reserve(self):
+        if self.max_output_tokens>=self.context_tokens:
+            raise ValueError('Резерв класифікатора має лишати місце для входу')
+        return self
+
+
 class RoleSettings(DomainModel):
     provider: ProviderSettings
+    future_plan_mode: Literal['all','next_n','current'] = 'all'
+    future_plan_count: int = Field(default=2,ge=0,le=1000)
     context_tokens: int = Field(default=8192,ge=512)
     max_output_tokens: int = Field(default=2048,ge=1)
     max_input_chars: int = Field(default=80000,ge=1)
@@ -45,7 +64,9 @@ class RoleSettings(DomainModel):
     prompt_version_id: str | None = None
     prepare_prompt_version_id: str | None = None
     memory_mode: Literal['snapshot', 'evidence_delta'] = 'evidence_delta'
-    edit_mode: Literal['prose', 'patches'] = 'prose'
+    edit_mode: Literal['prose', 'patches', 'diff'] = 'prose'
+    edit_review: Literal['auto', 'review'] = 'auto'
+    classification: ClassificationSettings | None = None
     stop_sequences: list[Annotated[str,Field(min_length=1,max_length=200)]] = Field(default_factory=list,max_length=4)
 
     @model_validator(mode='after')

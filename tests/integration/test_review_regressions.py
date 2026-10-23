@@ -176,13 +176,14 @@ def test_evaluation_resume_reuses_completed_windows(tmp_path,monkeypatch):
     assert any(e.type=='reused' and e.data['stage']=='evaluate' for e in restarted.list_events(run.id))
 
 
-def test_story_evaluation_includes_author_characters_and_exposes_missing_plan(tmp_path):
+def test_story_evaluation_omits_unstructured_characters_and_exposes_missing_plan(tmp_path):
     from storygen.evaluation.story_adapter import build_evaluation_case
     repo,story,scene=setup(tmp_path)
     raw=import_sources(repo,story.id,[SourceFile(name='characters.txt',raw='Олені сорок років.'.encode(),kind='source_characters')])
     save_manual_prose(repo,scene.id,'Олена увійшла.',0)
     case=build_evaluation_case(repo,story.id,scene.id,'scene')
-    assert any(d.version==raw.version_ids[0] and d.kind=='canon' for d in case.documents)
+    assert not any(d.version==raw.version_ids[0] for d in case.documents)
+    assert any('не поділено на картки' in warning for warning in case.coverage.unchecked_links)
     assert case.coverage.unchecked_links
 
 

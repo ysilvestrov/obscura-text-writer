@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import {pathToFileURL} from 'node:url';
+const {lastCallText}=await import(pathToFileURL(process.argv[2]+'/src/storygen/web/static/budget-format.js'));
+const call={provider:'venice',model:'test-model',state:'settled',counted_nanos:1234000};
+assert.match(lastCallText(null),/відправлених викликів ще немає/);
+assert.match(lastCallText({...call,cost_source:'provider'}),/\$0,001234 · підтверджено · venice · test-model/);
+assert.match(lastCallText({...call,cost_source:'priced_usage_estimate'}),/розраховано за токенами/);
+assert.match(lastCallText({...call,cost_source:'provider',counted_nanos:0}),/\$0 · підтверджено/);
+assert.match(lastCallText({...call,state:'unresolved'}),/вартість ще не підтверджена; резерв \$0,001234 · потребує звірки/);
+assert.match(lastCallText({...call,state:'sent'}),/виконується/);
+const local=lastCallText({...call,provider:'local',cost_source:'unpriced',counted_nanos:0});
+assert.match(local,/без токенної USD-ціни/);assert.ok(!local.includes('$0'));

@@ -1,7 +1,29 @@
 from ..domain import RevisionConflict, Scene, Story
 
 
+def unchanged_scene_text(repo,scene_id,head,text,expected_revision):
+    """Reuse only the selected identical material; never rebase or accept it."""
+    with repo.db.connection() as db:
+        db.execute('BEGIN IMMEDIATE')
+        scene=repo._active_scene(db,scene_id)
+        repo._active_story(db,scene.story_id)
+        id=scene.heads.get(head)
+        if not id:return None
+        from ..domain import VersionRef
+        ref=repo._get(db,'versions',id,VersionRef)
+        if ref.scene_id!=scene.id or ref.story_id!=scene.story_id or not ref.complete:
+            return None
+        if repo.files.read(ref.relative_path,ref.sha256)!=text.encode('utf-8'):
+            return None
+        if scene.revision!=expected_revision:
+            raise RevisionConflict('Сцену вже змінено. Оновіть матеріал перед збереженням.')
+        from .context_view import ContextView
+        return scene,ContextView(repo,db,scene.story_id).get_version(id)
+
+
 def update_scene_plan(repo,scene_id: str,text: str,expected_revision: int) -> Scene:
+    unchanged=unchanged_scene_text(repo,scene_id,'plan',text,expected_revision)
+    if unchanged:return unchanged[0]
     scene=repo.get_scene(scene_id)
     version=repo.save_version(scene.story_id,scene.id,"scene_plan",text,[])
     with repo.db.connection() as db:
@@ -10,6 +32,8 @@ def update_scene_plan(repo,scene_id: str,text: str,expected_revision: int) -> Sc
         if current.revision!=expected_revision:
             raise RevisionConflict("Сцену змінено в іншій вкладці")
         previous=current.heads.get('plan')
+        from .scene_metadata import apply_description
+        apply_description(repo,db,current,text)
         current.beats=text
         current.heads["plan"]=version.id
         current.head_revisions["plan"]=current.head_revisions.get("plan",0)+1
@@ -31,7 +55,9 @@ def update_scene_metadata(repo,scene_id: str,changes: dict,expected_revision: in
         scene=repo._active_scene(db,scene_id)
         if scene.revision!=expected_revision:
             raise RevisionConflict("Сцену вже змінено")
-        scene=Scene.model_validate({**scene.model_dump(),**changes,"revision":scene.revision+1})
+        candidate=Scene.model_validate({**scene.model_dump(),**changes})
+        if candidate==scene:return scene
+        scene=candidate.model_copy(update={'revision':scene.revision+1})
         repo._save_scene(db,scene)
         from .invalidation import invalidate_in_transaction
         invalidate_in_transaction(repo,db,list(scene.heads.values()))
@@ -161,6 +187,9 @@ def publish_story_material(repo, story_id, field, version_id, expected_revision)
             invalidate_in_transaction(repo, db, [previous])
         else:
             invalidate_story_materials(repo, db, story_id)
+        if field=='characters_version_id':
+            from .scene_metadata import sync_story_cast
+            sync_story_cast(repo,db,story_id)
         return story
 
 
@@ -187,11 +216,15 @@ def publish_blueprint(repo, story_id, canon_id, character_cards_id, scenes, expe
         invalidate_story_materials(repo, db, story_id)
         for position, (data, plan) in enumerate(planned):
             scene = Scene(id=new_id(), story_id=story_id, **{**data.model_dump(), 'position': position})
+            from .scene_metadata import apply_description
+            apply_description(repo,db,scene,scene.beats)
             scene.heads['plan'] = plan.id
             scene.head_revisions['plan'] = 1
             db.execute('INSERT INTO scenes VALUES(?,?,?,?)', (scene.id, story_id, position, scene.model_dump_json()))
             plan.scene_id = scene.id
             db.execute('UPDATE versions SET scene_id=?,payload=? WHERE id=?', (scene.id, plan.model_dump_json(), plan.id))
+        from .scene_metadata import sync_story_cast
+        sync_story_cast(repo,db,story_id)
         return story
 
 

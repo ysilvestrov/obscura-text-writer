@@ -63,7 +63,7 @@ def test_explicit_structured_refusal_discards_contradictory_scores(sample_case, 
 
 
 @pytest.mark.parametrize('eligible,schema', [(False, True), (True, False), (True, True)])
-def test_venice_checks_catalog_before_sending_documents(monkeypatch, eligible, schema):
+def test_venice_checks_catalog_before_sending_documents(monkeypatch, eligible, schema, accounted_call):
     monkeypatch.setenv('VENICE_API_KEY', 'r04-test-key')
     seen = []
     def handle(req):
@@ -78,6 +78,7 @@ def test_venice_checks_catalog_before_sending_documents(monkeypatch, eligible, s
         response_schema={'type': 'object'}, response_mode='json_schema', max_output_tokens=100, temperature=None)
     config = EvaluatorConfig(provider='venice', model='judge', max_input_chars=30000)
     gateway = build_gateway(config, http_client=httpx.Client(transport=httpx.MockTransport(handle)))
+    gateway.bind_accounting(accounted_call('venice',config.model))
     try:
         if eligible and schema:
             gateway.complete(request)
@@ -96,7 +97,7 @@ def test_venice_checks_catalog_before_sending_documents(monkeypatch, eligible, s
 
 @pytest.mark.parametrize('status,code,category', [(401, 'invalid_api_key', 'authentication'),
     (429, 'insufficient_quota', 'quota'), (429, 'rate_limit_exceeded', 'rate_limit'), (400, 'content_filter', 'refusal_content')])
-def test_provider_failure_keeps_real_cause_without_secrets(monkeypatch, status, code, category):
+def test_provider_failure_keeps_real_cause_without_secrets(monkeypatch, status, code, category, accounted_call):
     monkeypatch.setenv('OPENROUTER_API_KEY', 'r04-private-key')
     calls = []
     def handle(req):
@@ -106,6 +107,7 @@ def test_provider_failure_keeps_real_cause_without_secrets(monkeypatch, status, 
     from storygen.evaluation.models import EvaluationRequest
     gateway = build_gateway(EvaluatorConfig(provider='openrouter', base_url='https://openrouter.ai/api/v1', model='judge', max_input_chars=30000),
                             http_client=httpx.Client(transport=httpx.MockTransport(handle)))
+    gateway.bind_accounting(accounted_call('openrouter','judge'))
     try:
         with pytest.raises(GatewayFailure) as caught:
             gateway.complete(EvaluationRequest(messages=[{'role': 'user', 'content': 'Текст'}], response_schema={}, response_mode='prompt_json', max_output_tokens=50, temperature=None))

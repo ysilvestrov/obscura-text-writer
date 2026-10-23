@@ -67,12 +67,23 @@ def create_app(settings: AppSettings, *, gateway_factory=None,evaluator_factory=
 
     @app.exception_handler(RequestValidationError)
     async def invalid_request(request,exc):
+        fields=[]
+        allowed={'provider','model','base_url','timeout','key_env','include_usage','response_mode','venice_include_system_prompt','venice_disable_thinking','venice_reasoning_effort','context_tokens','max_output_tokens','max_input_chars','temperature'}
+        for error in exc.errors():
+            loc=error.get('loc',())
+            if len(loc)>=3 and tuple(loc[:3])==('body','settings','classification'):
+                path='.'.join(part for part in loc[3:] if isinstance(part,str) and part in allowed)
+                fields.append(path or 'профіль')
+        if fields:
+            return JSONResponse({'detail':'Профіль класифікатора: перевірте поля '+', '.join(dict.fromkeys(fields))},status_code=422)
         return JSONResponse({'detail':'Перевірте формат і допустимі значення полів'},status_code=422)
 
     from .routes_stories import router
     app.include_router(router)
     from .routes_settings import router as settings_router
     app.include_router(settings_router)
+    from .routes_role_profiles import router as role_profiles_router
+    app.include_router(role_profiles_router)
     from .routes_characters import router as characters_router
     app.include_router(characters_router)
     from .routes_runs import router as runs_router
@@ -83,4 +94,10 @@ def create_app(settings: AppSettings, *, gateway_factory=None,evaluator_factory=
     app.include_router(evaluation_router)
     from .routes_exports import router as exports_router
     app.include_router(exports_router)
+    from .routes_publication import router as publication_router
+    app.include_router(publication_router)
+    from .routes_budget import router as budget_router
+    app.include_router(budget_router)
+    from .routes_statistics import router as statistics_router
+    app.include_router(statistics_router)
     return app

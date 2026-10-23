@@ -16,7 +16,10 @@ class Database:
             if db.execute("PRAGMA user_version").fetchone()[0] == 1:
                 sql=files("storygen.storage").joinpath("migrations/002_trash.sql").read_text(encoding="utf-8")
                 db.executescript("BEGIN IMMEDIATE;\n"+sql+"\nPRAGMA user_version=2;\nCOMMIT;")
-            if db.execute("PRAGMA user_version").fetchone()[0] != 2:
+            if db.execute("PRAGMA user_version").fetchone()[0] == 2:
+                sql=files("storygen.storage").joinpath("migrations/003_publication.sql").read_text(encoding="utf-8")
+                db.executescript("BEGIN IMMEDIATE;\n"+sql+"\nPRAGMA user_version=3;\nCOMMIT;")
+            if db.execute("PRAGMA user_version").fetchone()[0] != 3:
                 raise ValueError("Непідтримувана версія бази даних")
 
     @contextmanager

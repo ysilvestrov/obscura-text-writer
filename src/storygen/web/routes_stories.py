@@ -33,8 +33,11 @@ def create_story(data: StoryCreate,request: Request):
 
 @router.get("/api/stories/{id}")
 def story_view(id: str,request: Request):
-    repo=request.app.state.repo
-    return {"story":repo.get_story(id),"scenes":repo.list_scenes(id),"sources":[v for v in repo.list_versions(id) if v.kind in {"source_plan","source_characters"}]}
+    view=request.app.state.repo.context_view(id)
+    story=view.get_story(id)
+    from ..characters.models import load_characters
+    names={card.id:card.name for card in load_characters(view.read_text(story.characters_version_id))} if story.characters_version_id else {}
+    return {"story":story,"scenes":[view.effective_scene(scene.id) for scene in view.list_scenes(id)],"sources":[view.get_version(v.id) for v in view.versions.values() if v.kind in {"source_plan","source_characters"}],"character_names":names}
 
 
 @router.post("/api/stories/{id}/sources")

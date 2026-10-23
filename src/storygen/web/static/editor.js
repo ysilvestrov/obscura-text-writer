@@ -3,6 +3,13 @@ import {installSceneTrash} from './trash.js';
 
 export const state={storyId:document.querySelector('#workspace')?.dataset.storyId,scene:null,view:null,mode:'plan',dirty:false,saving:false,bufferEpoch:0};
 const editor=document.querySelector('#editor');
+const placeholders={
+  plan:'Імпортуйте план або створіть сцену вручну.',
+  brief:'Створіть завдання за планом сцени або вставте його у форматі JSON.',
+  draft:'Напишіть чернетку вручну або натисніть «Написати».',
+  prose:'Тут буде проза після прийняття редактури. Також можна вставити текст вручну.',
+  memory:'Натисніть «Оновити пам’ять» після створення прози. Розширене редагування — у форматі JSON.'
+};
 const saveButton=document.querySelector('#save-text');
 const changed=()=>document.dispatchEvent(new CustomEvent('editor-state-changed'));
 
@@ -15,6 +22,7 @@ export function loadBuffer(scene,mode,text,origin='current'){
   state.scene=scene;state.mode=mode;state.dirty=false;state.bufferEpoch++;
     state.bufferOrigin=origin;
   editor.value=text;
+  editor.placeholder=placeholders[mode]||'';
   document.querySelector('#save-state').textContent='Збережена версія';
   saveButton.disabled=['history','blueprint'].includes(mode);changed();
 }
@@ -42,13 +50,14 @@ export async function refresh(){
   state.view=await api('/api/stories/'+state.storyId);
   // The loaded buffer keeps its own revision until text and revision are explicitly reloaded together.
   const latest=state.view.scenes.find(s=>s.id===state.scene?.id);
+  if(state.scene)document.querySelector('#scene-title').textContent=displaySceneTitle(state.scene.title);
   if(latest&&latest.revision!==state.scene.revision&&!state.dirty)document.querySelector('#save-state').textContent='Є новіша версія на сервері. Відкрийте її перед збереженням.';
   const list=document.querySelector('#scene-list');list.replaceChildren();
   document.querySelector('#scene-count').textContent=state.view.scenes.length;
   for(const scene of state.view.scenes){
     const button=document.createElement('button');button.className='scene-item'+(state.scene?.id===scene.id?' active':'');button.textContent=(scene.position+1)+'. '+displaySceneTitle(scene.title);
     button.setAttribute('aria-current',state.scene?.id===scene.id?'true':'false');
-    const small=document.createElement('small');small.textContent=scene.needs_review?'Потребує перегляду':scene.heads.prose?'Текст створено':scene.target_words+' слів';button.append(small);button.onclick=()=>selectScene(scene);list.append(button);
+    const small=document.createElement('small');small.textContent=!scene.heads.prose&&!scene.heads.draft?(scene.heads.brief?'Немає тексту':'Не почато'):scene.needs_review?'Потребує перегляду':scene.heads.prose?'Текст створено':'Є чернетка';button.append(small);button.onclick=()=>selectScene(scene);list.append(button);
   }
   if(!state.scene&&state.view.scenes.length)await selectScene(state.view.scenes[0]);
   const context=document.querySelector('#context-content');context.replaceChildren();
@@ -88,7 +97,7 @@ document.querySelector('#import-sources').onsubmit=async event=>{
   }catch(error){notice(error.message,'error')}
 };
 document.querySelector('#add-scene').onclick=async()=>{const title=prompt('Назва нової сцени');if(!title)return;try{await api('/api/stories/'+state.storyId+'/scenes',json('POST',{title}));await refresh()}catch(error){notice(error.message,'error')}};
-installSceneTrash(state,refresh,()=>{state.scene=null;state.dirty=false;state.bufferEpoch++;editor.value='';document.querySelector('#mode-tabs').replaceChildren();document.querySelector('#version-panel').replaceChildren();document.querySelector('#scene-settings')?.remove?.();document.querySelector('#scene-title').textContent='Оберіть сцену';document.querySelector('#save-state').textContent='';saveButton.disabled=true;document.dispatchEvent(new CustomEvent('scene-selected'));changed()});
+installSceneTrash(state,refresh,()=>{state.scene=null;state.dirty=false;state.bufferEpoch++;editor.value='';editor.placeholder=placeholders.plan;document.querySelector('#mode-tabs').replaceChildren();document.querySelector('#version-panel').replaceChildren();document.querySelector('#scene-settings')?.remove?.();document.querySelector('#scene-title').textContent='Оберіть сцену';document.querySelector('#save-state').textContent='';saveButton.disabled=true;document.dispatchEvent(new CustomEvent('scene-selected'));changed()});
 refresh().catch(error=>notice(error.message,'error'));
 
 const importForm=document.querySelector('#import-sources'),importButton=importForm.querySelector?.('button');

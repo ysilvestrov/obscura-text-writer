@@ -181,6 +181,8 @@ class EvaluationRequest(StrictModel):
 
 
 class GatewayResult(StrictModel):
+    accounting: dict = Field(default_factory=dict)
+    response_id: str | None = None
     text: str
     finish_reason: str | None
     refusal: str | None = None
@@ -190,7 +192,7 @@ class GatewayResult(StrictModel):
 
 class FailureDetail(StrictModel):
     category: Literal['refusal_content', 'refusal_unknown', 'missing_key', 'authentication', 'permission',
-        'quota', 'rate_limit', 'timeout', 'connection', 'capability', 'invalid_response', 'provider_error', 'blocked']
+        'quota', 'rate_limit', 'timeout', 'connection', 'capability', 'invalid_response', 'provider_error', 'blocked', 'budget']
     message: str
     http_status: int | None = None
     provider_code: str | None = None

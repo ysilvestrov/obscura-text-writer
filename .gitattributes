@@ -5,4 +5,6 @@
 *.toml text eol=lf
 *.txt text eol=lf
 *.png binary
+*.ttf binary
+src/storygen/publication/resources/fonts/OFL.txt -text
 tests/fixtures/prototype/*.md -whitespace

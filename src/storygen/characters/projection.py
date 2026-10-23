@@ -2,6 +2,7 @@
 from dataclasses import dataclass
 
 TEMPORAL_WARNING='Часову доступність опису не перевірено; він може містити відомості з майбутніх сцен.'
+EMPTY_CAST_WARNING='Склад сцени порожній; описи персонажів не передаються. Додайте учасників у план або параметри сцени.'
 OTHER_MATERIAL_WARNING='Часові мітки перевіряють лише відомості персонажів. Канон, авторські промпти й інші нерозмічені вказівки можуть містити майбутні відомості.'
 
 
@@ -17,11 +18,11 @@ def project_characters(cards,scenes,scene_id):
     active={scene.id:scene for scene in scenes if not scene.trashed_at}
     scene=active.get(scene_id)
     if scene is None:raise ValueError('Сцена проєкції недоступна')
-    warnings=[];included=[];excluded=0;sections=[]
+    warnings=[EMPTY_CAST_WARNING] if cards and not scene.character_ids else [];included=[];excluded=0;sections=[]
     labels={'timeless':'ПОЗАЧАСОВІ ВІДОМОСТІ','from_scene':'ДОСТУПНІ АВТОРСЬКІ ВКАЗІВКИ — НЕ ДОКАЗ МИНУЛИХ ПОДІЙ',
         'unclassified':'НЕПЕРЕВІРЕНІ ЗА ЧАСОМ АВТОРСЬКІ ВІДОМОСТІ'}
     for card in cards:
-        if scene.character_ids and card.id not in scene.character_ids:continue
+        if card.id not in scene.character_ids:continue
         groups={key:[] for key in labels}
         for entry in card.entries:
             if entry.availability=='from_scene':

@@ -1,5 +1,4 @@
 import threading
-import json
 from typing import Iterator, Literal, Protocol
 
 import httpx
@@ -7,13 +6,12 @@ from pydantic import Field
 
 from ..domain import DomainModel
 from ..generation.context import ContextBundle
-from ..generation.models import StoryBlueprint, WritersBrief
-from ..memory.models import MemorySnapshot, MemoryDelta
-from ..memory.journal import MemoryOperations
-from ..generation.copyediting import CopyEdits
 from .client import build_openai_client
 from .models import ProviderSettings
 from .venice import validate_model, VeniceModelUnavailable
+from .requests import generation_request, sdk_arguments, strict_schema
+from .accounting import require_accounting, normalize_usage
+from ..billing.models import BudgetError
 
 
 class GenerationEvent(DomainModel):
@@ -23,31 +21,44 @@ class GenerationEvent(DomainModel):
     usage: dict = Field(default_factory=dict)
     message: str = ''
     refusal: bool = False
+    failure: dict = Field(default_factory=dict)
 
 
 class GenerationGateway(Protocol):
     def stream(self,context: ContextBundle,cancel: threading.Event) -> Iterator[GenerationEvent]: ...
 
 
-def strict_schema(model):
-    schema=model.model_json_schema()
-    def normalize(node):
-        if isinstance(node,dict):
-            node.pop('default',None)
-            if 'properties' in node:
-                node['required']=list(node['properties'])
-                node['additionalProperties']=False
-            for value in node.values():normalize(value)
-        elif isinstance(node,list):
-            for value in node:normalize(value)
-    normalize(schema)
-    return schema
+def output_limit_message(context,usage,has_text):
+    details=usage.get('completion_tokens_details',{})
+    reasoning=details.get('reasoning_tokens') if isinstance(details,dict) else None
+    completion=usage.get('completion_tokens')
+    if not has_text and type(reasoning) is int and type(completion) is int and completion>0 and reasoning>=completion:
+        return (f'Вичерпано вихідний ліміт ({context.settings.max_output_tokens} токенів): провайдер витратив {reasoning} токенів на reasoning і не повернув тексту. '
+                'Це не переповнення вхідного контексту. Для сумісної моделі вимкніть або зменште reasoning у налаштуваннях; автоматичного повтору немає.')
+    return (f'Модель вичерпала ліміт відповіді ({context.settings.max_output_tokens} токенів). Частковий текст збережено. '
+            'Перевірте резерв відповіді та витрати reasoning; збільшення вхідного контексту не збільшує вихідний ліміт. Автоматичного повтору немає.')
+
+
+def empty_output_message(context,usage):
+    subject='Редактор повернув' if context.stage=='edit' else 'Модель повернула'
+    message=f'{subject} порожню відповідь із finish_reason=stop: фінального тексту немає. '
+    details=usage.get('completion_tokens_details',{})
+    reasoning=details.get('reasoning_tokens') if isinstance(details,dict) else None
+    completion=usage.get('completion_tokens')
+    if type(reasoning) is int and reasoning>0:
+        amount=f'{reasoning} із {completion}' if type(completion) is int and completion>=reasoning else str(reasoning)
+        message+=f'На reasoning витрачено {amount} вихідних токенів. Для сумісної моделі вимкніть або зменште reasoning. '
+    return message+'Автоматичного повтору немає.'
 
 
 class OpenAIGenerationGateway:
-    def __init__(self,settings: ProviderSettings,http_client=None):
+    def __init__(self,settings: ProviderSettings,http_client=None,accounting=None):
         self.settings=settings
         self.http_client=http_client
+        self.accounting=accounting
+
+    def bind_accounting(self,accounting):
+        self.accounting=accounting
 
     def stream(self,context: ContextBundle,cancel: threading.Event) -> Iterator[GenerationEvent]:
         if cancel.is_set():
@@ -57,44 +68,32 @@ class OpenAIGenerationGateway:
         usage={}
         has_text=False
         refusal=False
+        complete=False
+        cost=None
+        response_id=None
         try:
+            require_accounting(self.settings,self.accounting)
             with build_openai_client(self.settings,self.http_client) as client:
-                options={}
-                if context.settings.stop_sequences:
-                    options['stop']=context.settings.stop_sequences
-                if self.settings.include_usage:
-                    options['stream_options']={'include_usage':True}
-                structured=context.stage in {'prepare','brief','memory'} or (context.stage=='edit' and context.settings.edit_mode=='patches')
+                body=context.api_request or generation_request(context.stage,context.settings,context.system_text,context.user_text,context.fragments)
                 if self.settings.provider=='venice':
-                    validate_model(client,self.settings.model,structured and self.settings.response_mode=='json_schema')
-                    options['extra_body']={'venice_parameters':{
-                        'include_venice_system_prompt':self.settings.venice_include_system_prompt,
-                        'disable_thinking':self.settings.venice_disable_thinking,
-                        'enable_web_search':'off',
-                        'enable_web_scraping':False,
-                        'enable_x_search':False,
-                    }}
-                if self.settings.response_mode=='json_schema' and structured:
-                    model=CopyEdits if context.stage=='edit' else MemoryOperations if context.stage=='memory' and context.settings.memory_mode=='evidence_delta' else {'prepare':StoryBlueprint,'brief':WritersBrief,'memory':MemorySnapshot}[context.stage]
-                    schema=strict_schema(model)
-                    if context.stage=='memory' and context.settings.memory_mode=='snapshot' and context.fragments.get('expected_source_prose_ids'):
-                        allowed=json.loads(context.fragments['expected_source_prose_ids'])
-                        sources=schema['properties']['source_prose_ids']
-                        sources.update({'minItems':len(allowed),'maxItems':len(allowed),'items':{'type':'string','enum':allowed}})
-                        schema['$defs']['MemoryEntry']['properties']['source_version_id']['enum']=allowed
-                    options['response_format']={'type':'json_schema','json_schema':{'name':context.stage,'strict':True,'schema':schema}}
+                    validate_model(client,self.settings.model,'response_format' in body)
                 if cancel.is_set():
                     yield GenerationEvent(type='cancelled',usage=usage)
                     return
-                with client.chat.completions.create(model=self.settings.model,messages=[{'role':'system','content':context.system_text},{'role':'user','content':context.user_text}],max_tokens=context.settings.max_output_tokens,temperature=context.settings.temperature,stream=True,**options) as stream:
+                if self.accounting and not self.accounting.before(self.settings,body,client,cancelled=cancel.is_set):
+                    yield GenerationEvent(type='cancelled',usage=usage)
+                    return
+                with client.chat.completions.create(**sdk_arguments(body)) as stream:
                     for chunk in stream:
+                        response_id=getattr(chunk,'id',response_id)
                         if cancel.is_set():
                             yield GenerationEvent(type='cancelled',usage=usage)
                             return
-                        if chunk.usage:
-                            usage.update(chunk.usage.model_dump(exclude_none=True))
-                        cost=getattr(chunk,'cost',None)
-                        if cost is not None:
+                        if chunk.usage is not None:
+                            usage=normalize_usage(chunk.usage)
+                        chunk_cost=getattr(chunk,'cost',None)
+                        if chunk_cost is not None:
+                            cost=chunk_cost
                             usage['cost']=cost
                         if getattr(chunk,'error',None):
                             raise RuntimeError('Provider stream error')
@@ -111,20 +110,36 @@ class OpenAIGenerationGateway:
                                 yield GenerationEvent(type='delta',text=delta.content)
                             if choice.finish_reason:
                                 finish=choice.finish_reason
+                complete=finish is not None
                 if cancel.is_set():
                     yield GenerationEvent(type='cancelled',usage=usage)
                 elif finish=='stop' and has_text and not refusal:
                     yield GenerationEvent(type='terminal',finish_reason=finish,usage=usage)
                 elif finish=='length' and not refusal:
-                    yield GenerationEvent(type='error',finish_reason=finish,usage=usage,message=f'Модель вичерпала ліміт відповіді ({context.settings.max_output_tokens} токенів). Частковий текст збережено. Збільште резерв відповіді; для пам’яті можна вибрати режим нових фактів за фрагментами. Автоматичного повтору немає.')
+                    yield GenerationEvent(type='error',finish_reason=finish,usage=usage,message=output_limit_message(context,usage,has_text))
+                elif finish=='stop' and not has_text and not refusal:
+                    yield GenerationEvent(type='error',finish_reason=finish,usage=usage,message=empty_output_message(context,usage),failure={'category':'empty_output'})
                 else:
                     yield GenerationEvent(type='error',finish_reason=finish,usage=usage,refusal=refusal,message='Відповідь відхилено моделлю' if refusal else 'Немає повної відповіді з finish_reason=stop')
+        except BudgetError as exc:
+            yield GenerationEvent(type='error',usage=usage,message=str(exc),failure={'category':'budget','message':str(exc)} if context.stage in {'classify','publication_suggest'} else {})
         except VeniceModelUnavailable as exc:
-            yield GenerationEvent(type='error',usage=usage,message=str(exc))
-        except Exception:
+            yield GenerationEvent(type='error',usage=usage,message=str(exc),failure={'category':'configuration','message':str(exc)} if context.stage in {'classify','publication_suggest'} else {})
+        except Exception as exc:
             # SDK errors may contain request bodies, headers or server echoes. Never serialize them.
-            yield GenerationEvent(type='cancelled' if cancel.is_set() else 'error',finish_reason=finish,usage=usage,message='Запит перервано або провайдер недоступний. Автоматичного повтору немає.')
+            if context.stage in {'classify','publication_suggest'} and not cancel.is_set():
+                import os
+                from ..evaluation.failures import api_failure
+                detail=api_failure(exc,secret=os.environ.get(self.settings.key_env or ''),documents=(context.system_text,context.user_text)).model_dump(mode='json')
+                role='класифікатора' if context.stage=='classify' else 'планувальника'
+                detail['message']=detail['message'].replace('оцінювача',role).replace('оцінювачем',role).replace('Оцінювач','Планувальник' if context.stage=='publication_suggest' else 'Класифікатор')
+                yield GenerationEvent(type='error',finish_reason=finish,usage=usage,message=detail['message'],failure=detail,refusal=detail['category'].startswith('refusal_'))
+            else:
+                yield GenerationEvent(type='cancelled' if cancel.is_set() else 'error',finish_reason=finish,usage=usage,message='Запит перервано або провайдер недоступний. Автоматичного повтору немає.')
+        finally:
+            if self.accounting:
+                self.accounting.finish(self.settings,usage,complete=complete,cost=cost,response_id=response_id)
 
 
-def build_generation_gateway(settings: ProviderSettings,http_client: httpx.Client | None = None) -> GenerationGateway:
-    return OpenAIGenerationGateway(settings,http_client)
+def build_generation_gateway(settings: ProviderSettings,http_client: httpx.Client | None = None,accounting=None) -> GenerationGateway:
+    return OpenAIGenerationGateway(settings,http_client,accounting)

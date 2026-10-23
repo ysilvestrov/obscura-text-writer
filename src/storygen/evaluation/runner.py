@@ -25,8 +25,13 @@ def digest(value) -> str:
 def evaluator_fingerprint(config: EvaluatorConfig, rubric: Rubric) -> str:
     from .prompting import resource_text
     from .suites import canonical_suite_hash
-    return digest({"config": config.model_dump(), "rubric": rubric.model_dump(), "prompt": resource_text("evaluator_uk_v1.txt"),
-        'protocol_version': 2, 'suite_hash': canonical_suite_hash()})
+    from ..generation.language import language_suite_hash
+    identity={"config": config.model_dump(), "rubric": rubric.model_dump(), "prompt": resource_text("evaluator_uk_v1.txt"),
+        'protocol_version': 2, 'suite_hash': canonical_suite_hash(), 'language_suite_hash': language_suite_hash()}
+    if config.provider=='venice' and config.venice_disable_thinking:
+        from ..providers.requests import venice_reasoning
+        identity['reasoning_wire_contract']=venice_reasoning(config)
+    return digest(identity)
 
 
 def fingerprint_inputs(case: EvaluationCase, rubric: Rubric, profile: ScoringProfile, config: EvaluatorConfig, reverse_pair: bool = False) -> str:
@@ -43,12 +48,18 @@ def current_commit() -> str | None:
 
 
 def evaluate(case: EvaluationCase, rubric: Rubric, profile: ScoringProfile, config: EvaluatorConfig,
-        gateway: CompletionGateway, output_dir: Path, reverse_pair: bool = False, *, on_refusal=None, on_raw=None) -> EvaluationOutcome:
+        gateway: CompletionGateway, output_dir: Path, reverse_pair: bool = False, *, on_refusal=None, on_raw=None, token_prediction=None) -> EvaluationOutcome:
     request = build_request(case, rubric, config, reverse_pair)
+    from ..providers.requests import evaluation_request
+    from ..token_budget.service import token_estimate
+    api_request = evaluation_request(config,request)
+    prediction = token_prediction or token_estimate(None,config.provider,config.base_url,api_request)
     raw = ""
     usage = {}
     duration = 0.0
     finish_reason = None
+    accounting = {}
+    response_id = None
     if sum(len(m["content"]) for m in request.messages) > config.max_input_chars:
         outcome = EvaluationOutcome(status="incomplete", reasons=["input_limit_exceeded"])
     else:
@@ -56,6 +67,7 @@ def evaluate(case: EvaluationCase, rubric: Rubric, profile: ScoringProfile, conf
             response = gateway.complete(request)
             raw, usage, duration = response.text, response.usage, response.duration_seconds
             finish_reason = response.finish_reason
+            accounting,response_id=response.accounting,response.response_id
             if response.refusal or response.finish_reason == 'content_filter':
                 detail = refusal_detail(response.refusal or '', content_filter=response.finish_reason == 'content_filter')
                 raise GatewayFailure(detail.message, result=response, detail=detail)
@@ -80,6 +92,7 @@ def evaluate(case: EvaluationCase, rubric: Rubric, profile: ScoringProfile, conf
                 raw = exc.result.text or exc.result.refusal or ""
                 usage, duration = exc.result.usage, exc.result.duration_seconds
                 finish_reason = exc.result.finish_reason
+                accounting,response_id=exc.result.accounting,exc.result.response_id
             outcome = EvaluationOutcome(status='refused' if exc.detail.category.startswith('refusal_') else 'error',
                 reasons=[exc.detail.message], failure=exc.detail)
         except (ValidationError, ValueError, TypeError):
@@ -98,9 +111,10 @@ def evaluate(case: EvaluationCase, rubric: Rubric, profile: ScoringProfile, conf
         "created_at": datetime.now(timezone.utc).isoformat(), "commit": current_commit(), "finish_reason": finish_reason,
         "evaluator_fingerprint": evaluator_fingerprint(config, rubric), "reverse_pair": reverse_pair,
         "snapshots": {"case": case.model_dump(), "rubric": rubric.model_dump(), "profile": profile.model_dump(), "config": config.model_dump()},
-        "request": request.model_dump(), "raw_response": raw, "usage": usage,
+        "request": request.model_dump(), "api_request": api_request, "token_estimate": prediction, "raw_response": raw, "usage": usage,
         "duration_seconds": duration, "reported_cost": str(usage["cost"]) if usage.get("cost") is not None else None,
-        "cost_source": config.provider if usage.get("cost") is not None else None})
+        "cost_source": config.provider if usage.get("cost") is not None else None,
+        "accounting":accounting,"response_id":response_id})
     folder = write_reports(outcome, output_dir)
     outcome.metadata["report_path"] = str(folder / "report.md")
     return outcome

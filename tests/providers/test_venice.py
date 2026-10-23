@@ -47,7 +47,7 @@ def test_venice_discovery_requires_true_boolean_not_name_or_description(monkeypa
     assert requests[0].url.params['type'] == 'text'
 
 
-def test_cancel_during_venice_catalog_does_not_start_paid_generation(monkeypatch):
+def test_cancel_during_venice_catalog_does_not_start_paid_generation(monkeypatch, accounted_call):
     monkeypatch.setenv('VENICE_API_KEY', 'test')
     cancel = threading.Event()
     requests = []
@@ -57,7 +57,7 @@ def test_cancel_during_venice_catalog_does_not_start_paid_generation(monkeypatch
         return httpx.Response(200, json={'data': [model()]})
     ctx = context()
     with httpx.Client(transport=httpx.MockTransport(handler)) as client:
-        events = list(build_generation_gateway(ctx.settings.provider, client).stream(ctx, cancel))
+        events = list(build_generation_gateway(ctx.settings.provider, client, accounted_call('venice','qwen-test')).stream(ctx, cancel))
     assert [r.method for r in requests] == ['GET']
     assert events[-1].type == 'cancelled'
 
@@ -68,7 +68,7 @@ def context(schema=False):
 
 
 @pytest.mark.parametrize('available,schema', [(model(uncensored=False), False), (model(schema=False), True)])
-def test_venice_generation_cannot_bypass_catalog_filter_or_schema_support(monkeypatch, available, schema):
+def test_venice_generation_cannot_bypass_catalog_filter_or_schema_support(monkeypatch, available, schema, accounted_call):
     monkeypatch.setenv('VENICE_API_KEY', 'test')
     requests = []
     def handler(request):
@@ -76,12 +76,12 @@ def test_venice_generation_cannot_bypass_catalog_filter_or_schema_support(monkey
         return httpx.Response(200, json={'data': [available]})
     ctx = context(schema)
     with httpx.Client(transport=httpx.MockTransport(handler)) as client:
-        events = list(build_generation_gateway(ctx.settings.provider, client).stream(ctx, threading.Event()))
+        events = list(build_generation_gateway(ctx.settings.provider, client, accounted_call('venice','qwen-test')).stream(ctx, threading.Event()))
     assert events[-1].type == 'error'
     assert all(r.method == 'GET' for r in requests) and len(requests) == 1
 
 
-def test_venice_stream_preserves_cost_and_explicit_vendor_options(monkeypatch):
+def test_venice_stream_preserves_cost_and_explicit_vendor_options(monkeypatch, accounted_call):
     monkeypatch.setenv('VENICE_API_KEY', 'test')
     requests = []
     def handler(request):
@@ -96,7 +96,7 @@ def test_venice_stream_preserves_cost_and_explicit_vendor_options(monkeypatch):
         return httpx.Response(200, headers={'content-type': 'text/event-stream'}, content=''.join('data: '+json.dumps(c)+'\n\n' for c in chunks)+'data: [DONE]\n\n')
     ctx = context()
     with httpx.Client(transport=httpx.MockTransport(handler)) as client:
-        events = list(build_generation_gateway(ctx.settings.provider, client).stream(ctx, threading.Event()))
+        events = list(build_generation_gateway(ctx.settings.provider, client, accounted_call('venice','qwen-test')).stream(ctx, threading.Event()))
     assert events[-1].type == 'terminal' and events[-1].usage['cost'] == {'usd': .001, 'diem': 0}
     actual = json.loads(requests[-1].content)
     assert actual['venice_parameters']['include_venice_system_prompt'] is False

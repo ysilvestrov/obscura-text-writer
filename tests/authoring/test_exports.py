@@ -26,6 +26,7 @@ def test_export_blocks_partial_stale_or_missing_scene_by_default(tmp_path):
 
 @pytest.mark.parametrize('format', ['md', 'txt'])
 @pytest.mark.parametrize('allow_incomplete', [False, True])
+@pytest.mark.req('EXPORT-001')
 def test_export_excludes_trashed_scene_from_text_and_manifest(tmp_path, format, allow_incomplete):
     from storygen.authoring.trash import trash_scene
 

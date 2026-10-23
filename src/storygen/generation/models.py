@@ -4,6 +4,7 @@ from ..domain import DomainModel, SceneCreate
 
 
 class StyleProfile(DomainModel):
+    ending_goal: str = Field(default='',max_length=12000)
     genre: str = ''
     tone: str = ''
     point_of_view: str = 'третя особа'

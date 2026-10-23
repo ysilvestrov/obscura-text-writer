@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 // The application serves ES modules directly, without a Node package manifest.
 const source=readFileSync(new URL('../../../src/storygen/web/static/run-readiness.js',import.meta.url),'utf8');
-const {operationReason,confirmationText,runKind,controlReason,materialReason}=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
+const {operationReason,confirmationText,runKind,controlReason,materialReason,editorLoopOperation}=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
 assert.match(operationReason({dirty:true},{ready:true}),/збережіть/);
 assert.match(operationReason({saving:true},{ready:true}),/збереження/);
 assert.equal(operationReason({},{ready:false,reason:'Немає чернетки'}),'Немає чернетки');
@@ -21,3 +21,11 @@ assert.equal(materialReason('proposal',{},[{request:{mode:'prepare'},state:'comp
 assert.ok(materialReason('apply',{mode:'plan'},[]));
 assert.equal(materialReason('apply',{mode:'blueprint',dirty:true},[]),'');
 console.log('Run readiness and feedback regressions passed');
+const loop=editorLoopOperation({ready:true,calls:5,roles:{editor:{provider:'local',model:'editor-model'}},warnings:[]},3);
+assert.equal(loop.calls,3);assert.match(confirmationText(loop),/до 3 модельних/);
+assert.match(confirmationText(loop),/один підсумковий перегляд/);
+assert.doesNotMatch(confirmationText(loop),/writer|memory/);
+for(const limit of [0,11,2.5,NaN])assert.throws(()=>editorLoopOperation(loop,limit),/1 до 10/);
+const remaining=editorLoopOperation({ready:true,calls:16,edit_loop_scenes:2,edit_pass_limit:5,roles:{editor:{provider:'local',model:'editor'}}},1);
+assert.equal(remaining.calls,8);
+assert.match(confirmationText(remaining),/для кожної сцени/);

@@ -217,12 +217,21 @@ def merge_legacy_snapshot(previous,snapshot,prose_id,prose):
     return _extend(previous,prose_id,events)
 
 
-def parse_memory_result(raw,previous,prose_id,prose,mode,allowed_character_ids):
+def parse_memory_result(raw,previous,prose_id,prose,mode,allowed_character_ids,*,warnings=None):
     from .models import MemoryDelta
     data=decode_memory(raw)
     if mode=='snapshot':
         return merge_legacy_snapshot(previous,MemorySnapshot.model_validate(data),prose_id,prose)
     if isinstance(data,dict) and 'schema_version' in data:
+        # Model-only wire normalization; manual journals and domain validators stay strict.
+        if isinstance(data.get('operations'),list):
+            for index,op in enumerate(data['operations']):
+                if (isinstance(op,dict) and isinstance(op.get('category'),str) and op['category'] in {'facts','timeline','open_threads'}
+                    and isinstance(op.get('character_ids'),list) and op['character_ids']
+                    and all(isinstance(value,str) for value in op['character_ids'])):
+                    op['character_ids']=[]
+                    if warnings is not None:
+                        warnings.append(f'Пам’ять: операція {index+1} ({op["category"]}) — прибрано зайві character_ids; текст і докази не змінено.')
         return apply_operations(previous,MemoryOperations.model_validate(data),prose_id,prose,allowed_character_ids)
     return merge_legacy_delta(previous,MemoryDelta.model_validate(data),prose_id,prose)
 

@@ -8,6 +8,26 @@ from .files import FileStore
 
 
 class Repository:
+    def unchanged_scene_text(self,scene_id,head,text,expected_revision):
+        from .authoring import unchanged_scene_text
+        return unchanged_scene_text(self,scene_id,head,text,expected_revision)
+
+    def publication(self, action, **data):
+        from .publication_store import operation
+        return operation(self, action, **data)
+
+    def publication_snapshot(self, story_id):
+        from .publication_store import publication_snapshot
+        return publication_snapshot(self, story_id)
+
+    def role_profiles(self,action,**data):
+        from .role_profile_store import operation
+        return operation(self,action,**data)
+
+    def commit_copyedit_selection(self,attempt_id,result_ref,indices,expected_revision,fingerprint,warnings):
+        from .copyedit_store import commit_copyedit_selection
+        return commit_copyedit_selection(self,attempt_id,result_ref,indices,expected_revision,fingerprint,warnings)
+
     def update_scene_plan(self, scene_id, text, expected_revision):
         from .authoring import update_scene_plan
         return update_scene_plan(self, scene_id, text, expected_revision)
@@ -47,6 +67,22 @@ class Repository:
     def write_role_settings(self, story_id, updates, expected_revision):
         from .settings_store import write_role_settings
         return write_role_settings(self, story_id, updates, expected_revision)
+
+    def token_records(self, kind):
+        from .token_store import records
+        return records(self, kind)
+
+    def billing(self, action, **data):
+        from .billing_store import operation
+        return operation(self, action, **data)
+
+    def record_token_observation(self, item):
+        from .token_store import record
+        return record(self, item)
+
+    def token_profile_action(self, identity, action):
+        from .token_store import profile_action
+        return profile_action(self, identity, action)
 
     def get_run(self, id):
         from .run_store import get_run
@@ -200,7 +236,7 @@ class Repository:
             ref=self._get(db,'versions',id,VersionRef)
             self._active_story(db,ref.story_id)
             if ref.scene_id:self._active_scene(db,ref.scene_id)
-            if ref.dependency_snapshot is None and not any(json.loads(r[0]).get('version_id')==ref.id for r in db.execute('SELECT payload FROM app_settings WHERE key LIKE ?',('acceptance:'+ref.story_id+':%',))):
+            if ref.dependency_snapshot is None and ref.manual_projection_policy is None and not any(json.loads(r[0]).get('version_id')==ref.id for r in db.execute('SELECT payload FROM app_settings WHERE key LIKE ?',('acceptance:'+ref.story_id+':%',))):
                 return ref
             from .context_view import ContextView
             return ContextView(self,db,ref.story_id).get_version(id)
@@ -272,13 +308,17 @@ class Repository:
             archived=[s for s in scenes if s.trashed_at]
             position=len(active) if data.position is None else min(data.position,len(active))
             scene=Scene(id=new_id(),story_id=story_id,**{**data.model_dump(),"position":len(scenes)})
+            from .scene_metadata import apply_description
+            apply_description(self,db,scene,data.beats)
             db.execute("INSERT INTO scenes VALUES(?,?,?,?)",(scene.id,story_id,scene.position,scene.model_dump_json()))
             active.insert(position,scene)
             self._save_scene_order(db,active+archived)
             self._touch_story(db,story_id)
         return scene
 
-    def save_version(self,story_id: str,scene_id: str | None,kind: str,text: str,input_refs: list[str],source_run_id: str | None = None,dependency_snapshot=None) -> VersionRef:
+    def save_version(self,story_id: str,scene_id: str | None,kind: str,text: str,input_refs: list[str],source_run_id: str | None = None,dependency_snapshot=None,prompt_contract=None,manual_projection_policy=None) -> VersionRef:
+        if prompt_contract is not None and kind!='prompt':
+            raise ValueError('Контракт дозволено лише для промпту')
         self.get_story(story_id)
         if scene_id and self.get_scene(scene_id).story_id != story_id:
             raise ValueError("Сцена належить іншому твору")
@@ -289,7 +329,7 @@ class Repository:
         id=new_id()
         data=text.encode("utf-8")
         version=VersionRef(id=id,story_id=story_id,scene_id=scene_id,kind=kind,format=format,sha256=hashlib.sha256(data).hexdigest(),
-            relative_path=f"stories/{story_id}/versions/{id}.{'json' if format=='json' else 'txt'}",input_refs=input_refs,source_run_id=source_run_id,dependency_snapshot=dependency_snapshot)
+            relative_path=f"stories/{story_id}/versions/{id}.{'json' if format=='json' else 'txt'}",input_refs=input_refs,source_run_id=source_run_id,dependency_snapshot=dependency_snapshot,prompt_contract=prompt_contract,manual_projection_policy=manual_projection_policy)
         self.files.write(version.relative_path,data)
         with self.db.connection() as db:
             db.execute("BEGIN IMMEDIATE")
@@ -320,6 +360,7 @@ class Repository:
             if scene.revision != expected_revision:
                 raise RevisionConflict("Сцену вже змінено. Ваш текст збережіть окремою версією.")
             previous=scene.heads.get(head)
+            if previous==version_id:return scene
             scene.heads[head]=version_id
             scene.head_revisions[head]=scene.head_revisions.get(head,0)+1
             scene.revision+=1
@@ -398,6 +439,9 @@ class Repository:
                     if attempt.stage=='edit':
                         scene.needs_review=False
                         self._save_scene(db,scene)
+                        if attempt.context.get('copyedit_proposal'):
+                            from ..copyediting import record_decision
+                            record_decision(attempt,scene,list(range(len(attempt.context['copyedit_proposal']['proposal']['edits']))),result_ref.id,'auto',attempt.context.get('language_warnings',[]))
                     self._touch_story(db,scene.story_id)
             attempt.state='alternative' if changed else 'completed'
             db.execute('UPDATE stage_attempts SET state=?,payload=? WHERE id=?',(attempt.state,attempt.model_dump_json(),attempt.id))
