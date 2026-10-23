@@ -108,8 +108,9 @@ def check_integrity(root: Path) -> IntegrityReport:
         try:
             db.execute('PRAGMA query_only=ON')
             db.execute('BEGIN')
-            if db.execute('PRAGMA user_version').fetchone()[0] != 2:
-                report.add('unsupported_schema', 'storygen.sqlite3', 'Підтримується лише схема 2; міграції не виконуються')
+            schema=db.execute('PRAGMA user_version').fetchone()[0]
+            if schema not in {2,3}:
+                report.add('unsupported_schema', 'storygen.sqlite3', 'Підтримуються схеми 2 та 3; міграції не виконуються')
                 return report
             if db.execute('PRAGMA integrity_check').fetchall() != [('ok',)]:
                 report.add('sqlite_integrity', 'storygen.sqlite3', 'SQLite integrity_check виявив помилки')
@@ -130,6 +131,8 @@ def check_integrity(root: Path) -> IntegrityReport:
                     except ValueError:
                         report.add('invalid_payload', row[0], 'Некоректний доменний payload')
             from .memory_checks import check_memory_versions
+            from .billing_checks import check_billing
+            check_billing(report,db,stories)
             check_memory_versions(report,root,versions)
             from .character_checks import check_character_versions
             check_character_versions(report,root,versions,scenes,stories)
@@ -147,7 +150,7 @@ def check_integrity(root: Path) -> IntegrityReport:
                     invalid=invalid or len(snapshot.scene_order)!=len(set(snapshot.scene_order)) or any(id not in scenes or scenes[id].story_id!=ref.story_id for id in snapshot.scene_order)
                     invalid=invalid or not set(snapshot.ref_baselines)<=set(snapshot.refs)
                     for selector in snapshot.selectors:
-                        if selector.kind in {'scene','head'} or selector.kind=='order' and selector.field=='prefix':
+                        if selector.kind in {'scene','head'} or selector.kind=='order' and selector.field in {'prefix','narrative_window'}:
                             invalid=invalid or selector.owner_id not in scenes or scenes[selector.owner_id].story_id!=ref.story_id
                         else:
                             invalid=invalid or selector.owner_id!=ref.story_id
@@ -170,7 +173,7 @@ def check_integrity(root: Path) -> IntegrityReport:
                     for id,sha in record.baseline.refs.items():
                         invalid=invalid or id not in versions or versions[id].story_id!=record.story_id or versions[id].sha256!=sha
                     for selector in record.baseline.selectors:
-                        if selector.kind in {'scene','head'} or selector.kind=='order' and selector.field=='prefix':
+                        if selector.kind in {'scene','head'} or selector.kind=='order' and selector.field in {'prefix','narrative_window'}:
                             invalid=invalid or selector.owner_id not in scenes or scenes[selector.owner_id].story_id!=record.story_id
                         else:invalid=invalid or selector.owner_id!=record.story_id
                     invalid=invalid or any(id not in scenes or scenes[id].story_id!=record.story_id for id in record.baseline.scene_order)
@@ -210,6 +213,9 @@ def check_integrity(root: Path) -> IntegrityReport:
                         report.add('invalid_source', source.get('id', story_id), 'Невірний імпортований матеріал')
                 except (ValueError, KeyError, TypeError):
                     report.add('invalid_payload', story_id, 'Некоректні метадані джерела')
+            if schema==3:
+                from .publication_checks import check_publications
+                check_publications(db,report,stories,verify_file,root)
         finally:
             db.close()
     except sqlite3.Error:
@@ -219,7 +225,7 @@ def check_integrity(root: Path) -> IntegrityReport:
         relative = path.relative_to(root)
         if path in tracked or relative.as_posix() in {'storygen.sqlite3', 'storygen.sqlite3-wal', 'storygen.sqlite3-shm', 'storygen.sqlite3-journal', 'worker.lock'}:
             continue
-        if len(relative.parts) >= 4 and relative.parts[0] == 'stories' and relative.parts[2] in {'versions', 'sources'}:
+        if len(relative.parts) >= 4 and relative.parts[0] == 'stories' and (relative.parts[2] in {'versions', 'sources'} or relative.parts[2:4]==('publication','covers')):
             report.add('orphan_blob', relative, 'Immutable файл не зареєстрований у каталозі')
         else:
             report.auxiliary_files += 1

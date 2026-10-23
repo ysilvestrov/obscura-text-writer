@@ -61,6 +61,8 @@ def memory_before(repo,scene_id: str) -> MemorySnapshot:
 
 
 def save_scene_memory(repo,scene_id,text,expected_revision):
+    unchanged=repo.unchanged_scene_text(scene_id,'memory',text,expected_revision)
+    if unchanged:return unchanged[1]
     from ..domain import RevisionConflict
     from ..providers.models import RoleSettings, ProviderSettings
     from ..storage.snapshots import build_dependency_snapshot

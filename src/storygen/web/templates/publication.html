@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Картка публікації — {{story.title}} — Obscura{% endblock %}
+{% block content %}
+<main class="settings-page" id="publication-page" data-story-id="{{story.id}}">
+<a href="/stories/{{story.id}}">← До твору</a>
+<h1>Картка публікації</h1>
+<p class="muted">Відомості для читача. Порожні необов’язкові поля можна заповнити пізніше.</p>
+<p id="publication-status" role="status">Завантаження…</p>
+<div class="actions"><button id="publication-save" type="submit" form="publication-form" disabled>Зберегти картку</button><button id="publication-reload" class="secondary" type="button">Оновити дані</button></div>
+<section class="panel" aria-labelledby="publication-suggestion-title">
+<h2 id="publication-suggestion-title">Пропозиція за готовим текстом</h2>
+<p class="muted">Планувальник прочитає прозу всіх сцен і запропонує порожні поля: анотацію, жанри й ключові слова. Назва твору вже використовується. Спочатку перегляньте результат, потім заповніть форму та збережіть картку.</p>
+<div class="actions"><button id="publication-suggest" type="button" disabled>Запропонувати</button><button id="publication-suggest-cancel" class="secondary" type="button" hidden>Скасувати</button></div>
+<p id="publication-suggest-status" role="status">Перевіряємо готовність…</p>
+<div id="publication-suggestions"></div>
+<details><summary>Історія пропозицій</summary><div id="publication-suggestion-history"></div></details>
+</section>
+<form id="publication-form">
+<section class="panel" aria-labelledby="publication-main-title">
+<h2 id="publication-main-title">Відомості про твір</h2>
+<label>Назва для публікації<input name="title" maxlength="300" placeholder="{{story.title}}"><small>Порожнє поле використовує поточну назву твору.</small></label>
+<div class="role-grid"><label>Мова<input name="language" value="uk" maxlength="63" required><small>Мовний тег, наприклад uk або en.</small></label></div>
+<label>Анотація<textarea name="annotation" rows="5" maxlength="12000"></textarea></label>
+<label>Жанри<select name="genres" multiple size="7">{% for code,label in genres %}<option value="{{code}}">{{label}}</option>{% endfor %}</select><small>До 10 жанрів. Для кількох значень утримуйте Ctrl або Command.</small></label>
+<label>Ключові слова<textarea name="keywords" rows="2" placeholder="Кожне слово або фраза — з нового рядка"></textarea><small>До 30 тегів, до 100 символів кожен.</small></label>
+<h3>Автори</h3><p class="muted">Порядок у списку буде використано у виданні.</p>
+<ol id="publication-authors"></ol>
+<div class="actions"><label>Публічний підпис<select id="publication-author-choice" aria-label="Обрати автора"></select></label><button type="button" id="publication-author-add" class="secondary">Додати автора</button></div>
+</section>
+<details class="panel"><summary>Додаткові відомості</summary>
+<div class="role-grid"><label>Назва циклу<input name="cycle_title" maxlength="300"></label><label>Номер у циклі<input name="cycle_number" type="number" min="1" max="1000000" step="1"></label><label>Дата публікації<input name="publication_date" type="date"></label></div>
+<div class="role-grid"><label>Видавець<input name="publisher" maxlength="300"></label><label>ISBN<input name="isbn" maxlength="40"></label><label>Мова оригіналу<input name="source_language" maxlength="63" placeholder="Наприклад en"></label></div>
+<label>Текст прав або ліцензії<textarea name="rights" rows="3" maxlength="4000"></textarea></label>
+<h3>Перекладачі</h3><ol id="publication-translators"></ol>
+<div class="actions"><label>Публічний підпис<select id="publication-translator-choice" aria-label="Обрати перекладача"></select></label><button type="button" id="publication-translator-add" class="secondary">Додати перекладача</button></div>
+</details>
+</form>
+<section class="panel" aria-labelledby="publication-cover-title"><h2 id="publication-cover-title">Обкладинка</h2>
+<p class="muted">Необов’язкове PNG або JPEG до 10 MiB та 20 мільйонів пікселів. Завантаження не зберігає картку автоматично.</p>
+<img id="publication-cover" class="publication-cover" alt="Обкладинка видання" hidden>
+<p id="publication-cover-empty" class="muted">Обкладинку не обрано.</p>
+<form id="publication-cover-form"><label>Файл обкладинки<input name="file" type="file" accept="image/png,image/jpeg" required></label>
+<div class="actions"><button id="publication-cover-upload" class="secondary">Завантажити обкладинку</button><button type="button" id="publication-cover-remove" class="secondary" disabled>Прибрати з картки</button></div></form>
+</section>
+<details class="panel"><summary>Спільний довідник авторів і псевдонімів</summary>
+<p class="muted">Кожен запис — окремий публічний підпис, доступний для всіх творів. Архівні підписи залишаються у творах, де їх уже обрано.</p>
+<form id="publication-signature-create"><label>Новий публічний підпис<input name="display_name" maxlength="300" required placeholder="Ім’я або псевдонім"></label><button class="secondary">Додати до довідника</button></form>
+<div id="publication-signatures"></div></details>
+</main>
+{% endblock %}
+{% block scripts %}<script type="module" src="/static/publication.js"></script>{% endblock %}

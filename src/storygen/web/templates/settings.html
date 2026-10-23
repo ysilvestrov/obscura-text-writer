@@ -4,12 +4,29 @@
 <main class="settings-page" data-story-id="{{ story.id }}">
 <a href="/stories/{{ story.id }}">← До твору</a><h1>Моделі та голос оповідання</h1>
 <p>Кожна роль має власну модель. Ключі OpenRouter і Venice читаються лише із серверного середовища.</p>
+<section id="role-profiles" class="panel" aria-labelledby="role-profiles-title">
+<h2 id="role-profiles-title">Збережені комплекти моделей</h2>
+<p>Перенесіть чотири ролі та їхні промпти між оповіданнями. Зміна комплекту не оновлює твори автоматично.</p>
+<label>Комплект і версія<select id="role-profile-select"><option value="">Завантаження…</option></select></label>
+<div class="actions"><button type="button" id="role-profile-preview" class="secondary" disabled>Переглянути комплект</button><button type="button" id="role-profile-apply" disabled>Застосувати до твору</button><button type="button" id="role-profile-export" class="secondary" disabled>Експортувати JSON</button></div>
+<div id="role-profile-summary" aria-live="polite"></div>
+<details><summary>Зберегти поточні налаштування або імпортувати комплект</summary>
+<p>Зберігаються лише вже збережені налаштування ролей. Спочатку збережіть зміни у формах нижче.</p>
+<form id="role-profile-capture"><label>Назва комплекту<input name="name" maxlength="100" required></label>
+<label><input type="checkbox" name="include_evaluator"> Додати Evaluator без допуску калібрування</label>
+<label><input type="checkbox" name="new_version"> Зберегти нову версію вибраного комплекту</label>
+<button>Зберегти комплект</button></form>
+<label>Імпортувати комплект із JSON<input id="role-profile-import" type="file" accept=".json,application/json"></label>
+</details>
+</section>
 <form id="profile-form" class="panel"><h2>Профіль письма</h2>
 <label>Жанр<input name="genre"></label><label>Тональність<input name="tone"></label>
 <label>Точка зору<input name="point_of_view"></label><label>Час<input name="tense"></label>
 <label>Правила стилю<textarea name="rules" rows="3"></textarea></label>
+<label>Авторський орієнтир фіналу (необов’язково)<textarea name="ending_goal" rows="3" maxlength="12000"></textarea></label>
+<p>Спільний задум розв’язки. Це не команда завершити поточну сцену; пам’ять і мовна редактура його не отримують. Без орієнтира режим лише поточної сцени дає попередження.</p>
 <label>Завершення попередньої сцени, символів<input type="number" name="previous_tail_chars" min="0" max="12000"></label>
 <button>Зберегти профіль</button></form>
 <div id="role-settings"></div>
-</main><script type="module" src="/static/settings.js"></script><script type="module" src="/static/evaluation.js"></script>
+</main><script type="module" src="/static/settings.js"></script><script type="module" src="/static/role-profiles.js"></script><script type="module" src="/static/evaluation.js"></script><script type="module" src="/static/budget.js"></script>
 {% endblock %}

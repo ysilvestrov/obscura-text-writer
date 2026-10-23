@@ -5,6 +5,11 @@ export function operationReason(state,operation){
   if(!operation)return 'Перевіряємо передумови…';
   return operation.ready?'':operation.reason||'Немає потрібних матеріалів';
 }
+export function editorLoopOperation(operation,limit){
+  if(!Number.isInteger(limit)||limit<1||limit>10)throw new Error('Вкажіть ціле число проходів від 1 до 10');
+  const calls=operation?.edit_loop_scenes?operation.calls+(limit-operation.edit_pass_limit)*operation.edit_loop_scenes:limit;
+  return {...operation,calls,warnings:[...(operation?.warnings||[]),'Окрема робоча копія; один підсумковий перегляд для кожної сцени. Поточні тексти не зміняться до прийняття.']};
+}
 export function confirmationText(operation){
   const roles=Object.entries(operation.roles).map(([role,c])=>`${role}: ${c.provider} / ${c.model}`);
   if(operation.evaluator)roles.push(`Оцінювач після сцени: ${operation.evaluator.provider} / ${operation.evaluator.model||'типова модель CLI'}`);

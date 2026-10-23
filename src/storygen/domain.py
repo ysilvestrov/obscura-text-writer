@@ -51,6 +51,7 @@ class SceneCreate(DomainModel):
 
 
 class Scene(SceneCreate):
+    memory_forwarding: dict[str,bool] = Field(default_factory=dict,max_length=10000)
     trashed_at: str | None = None
     trashed_position: int | None = None
     id: str
@@ -65,6 +66,12 @@ class Scene(SceneCreate):
 VersionKind = Literal["source_plan","source_characters","character_cards","scene_plan","canon","style","prompt","brief","draft","edited","manual","memory","evaluation"]
 
 
+class PromptContract(DomainModel):
+    stage: Literal['prepare', 'brief', 'draft', 'edit', 'memory']
+    mode: Literal['blueprint', 'brief', 'prose', 'patches', 'diff', 'snapshot', 'evidence_delta']
+    schema_version: Literal[1, 2]
+
+
 class VersionRef(DomainModel):
     id: str
     story_id: str
@@ -76,7 +83,9 @@ class VersionRef(DomainModel):
     source_run_id: str | None = None
     complete: bool = True
     stale: bool = False
+    manual_projection_policy: list[str] | None = Field(default=None,max_length=10000)
     dependency_snapshot: DependencySnapshot | None = None
+    prompt_contract: PromptContract | None = None
     input_refs: list[str] = Field(default_factory=list)
     created_at: str = Field(default_factory=now)
 

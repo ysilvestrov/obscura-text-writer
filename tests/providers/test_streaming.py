@@ -1,6 +1,7 @@
 import json
 import threading
 import httpx
+import pytest
 from storygen.providers.models import ProviderSettings, RoleSettings
 from storygen.providers.streaming import build_generation_gateway
 from storygen.generation.context import ContextBundle
@@ -30,6 +31,40 @@ def test_deltas_and_terminal_are_preserved():
     assert events[-1].usage['total_tokens']==8 and len(calls)==1
 
 
+def test_reasoning_only_output_exhaustion_is_not_reported_as_input_overflow():
+    usage={'prompt_tokens':2705,'completion_tokens':2048,'total_tokens':4753,'completion_tokens_details':{'reasoning_tokens':2048}}
+    response=[chunk(finish='length'),{'id':'r','object':'chat.completion.chunk','created':0,'model':'test','choices':[],'usage':usage}]
+    with httpx.Client(transport=httpx.MockTransport(lambda r:stream_response(response))) as http:
+        events=list(build_generation_gateway(context().settings.provider,http_client=http).stream(context(),threading.Event()))
+    assert events[-1].type=='error'
+    assert 'reasoning' in events[-1].message and '2048' in events[-1].message
+    assert 'Збільште резерв відповіді' not in events[-1].message
+
+
+@pytest.mark.parametrize('stage',['draft','brief','memory','edit','classify'])
+@pytest.mark.parametrize('reasoning',[8876,None])
+def test_empty_stop_reports_missing_text_and_available_reasoning(stage,reasoning):
+    usage={'completion_tokens':8879,'completion_tokens_details':{'reasoning_tokens':reasoning}} if reasoning is not None else {}
+    responses=[chunk(finish='stop'),{'id':'r','object':'chat.completion.chunk','created':0,'model':'test','choices':[],'usage':usage}]
+    calls=[]
+    def handler(request):
+        calls.append(request)
+        return stream_response(responses)
+    ctx=context();ctx.stage=stage
+    with httpx.Client(transport=httpx.MockTransport(handler)) as http:
+        events=list(build_generation_gateway(ctx.settings.provider,http_client=http).stream(ctx,threading.Event()))
+    result=events[-1]
+    assert result.type=='error' and result.finish_reason=='stop'
+    assert 'порожню відповідь' in result.message and 'finish_reason=stop' in result.message
+    assert 'Немає повної відповіді' not in result.message
+    assert result.failure['category']=='empty_output' and not result.refusal
+    assert 'Автоматичного повтору немає' in result.message and len(calls)==1
+    if reasoning is not None:
+        assert '8876' in result.message and '8879' in result.message and 'reasoning' in result.message
+    else:
+        assert 'reasoning' not in result.message
+
+
 def test_length_refusal_and_disconnect_keep_partial():
     for finish,delta in [('length',{'content':'Частина'}),('stop',{'refusal':'Не можу'})]:
         with httpx.Client(transport=httpx.MockTransport(lambda r:stream_response([chunk(delta),chunk(finish=finish)]))) as http:
@@ -46,6 +81,20 @@ def test_timeout_has_one_attempt():
         events=list(build_generation_gateway(context().settings.provider,http_client=http).stream(context(),threading.Event()))
     assert len(calls)==1 and events[-1].type=='error'
     assert 'private' not in events[-1].message
+
+
+@pytest.mark.parametrize('kind',['timeout','refusal_content'])
+def test_publication_real_sdk_failure_category(kind):
+    calls=[]
+    def handler(request):
+        calls.append(request)
+        if kind=='timeout':raise httpx.ReadTimeout('private sk-secret')
+        return httpx.Response(400,json={'error':{'code':'content_policy_violation','message':'Content blocked'}})
+    ctx=context();ctx.stage='publication_suggest'
+    with httpx.Client(transport=httpx.MockTransport(handler)) as http:
+        result=list(build_generation_gateway(ctx.settings.provider,http_client=http).stream(ctx,threading.Event()))[-1]
+    assert len(calls)==1 and result.failure['category']==kind
+    assert result.refusal==(kind=='refusal_content') and 'private' not in result.message
 
 
 def test_cancel_during_stream_closes_reader():

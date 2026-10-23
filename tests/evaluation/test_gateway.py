@@ -19,7 +19,7 @@ def completion(content="{}", reason="stop", refusal=None):
 
 
 @pytest.mark.parametrize("provider,base", [("local","http://localhost:1235/v1"),("openrouter","https://openrouter.ai/api/v1")])
-def test_request_url_model_schema_and_optional_usage(provider, base, monkeypatch):
+def test_request_url_model_schema_and_optional_usage(provider, base, monkeypatch, accounted_call):
     monkeypatch.setenv("OPENROUTER_API_KEY", "test-secret-not-output")
     seen = []
     def handle(req):
@@ -27,6 +27,7 @@ def test_request_url_model_schema_and_optional_usage(provider, base, monkeypatch
         return httpx.Response(200, json=completion())
     config = EvaluatorConfig(provider=provider, base_url=base, model="exact/model", max_input_chars=30000)
     gateway = build_gateway(config, http_client=httpx.Client(transport=httpx.MockTransport(handle)))
+    if provider=='openrouter':gateway.bind_accounting(accounted_call(provider,config.model))
     result = gateway.complete(request())
     assert len(seen) == 1
     assert str(seen[0].url) == base + "/chat/completions"

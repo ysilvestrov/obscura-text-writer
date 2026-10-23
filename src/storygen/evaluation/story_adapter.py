@@ -1,4 +1,3 @@
-import math
 from typing import Literal
 
 from pydantic import Field
@@ -21,6 +20,11 @@ class EvaluationSettings(DomainModel):
 
 def save_evaluation_settings(repo,story_id,settings):
     repo.get_story(story_id)
+    validate_evaluation_settings(repo,settings)
+    repo.write_evaluator_settings(story_id,settings.model_dump())
+
+
+def validate_evaluation_settings(repo,settings):
     if settings.profile.calibrated:
         # Calibration is installed by the server only after independently checking full reports.
         registration=repo.read_calibration(settings.profile.calibration_fingerprint)
@@ -30,7 +34,7 @@ def save_evaluation_settings(repo,story_id,settings):
             settings.profile = settings.profile.model_copy(update={'calibrated': False})
     if settings.policy=='pause_on_failure' and not settings.profile.calibrated:
         raise ValueError('Потрібен профіль успішного калібрування')
-    repo.write_evaluator_settings(story_id,settings.model_dump())
+    return settings
 
 
 def get_evaluation_settings(repo,story_id):
@@ -81,11 +85,16 @@ def build_evaluation_case(repo,story_id: str,scene_id: str | None,mode: str) -> 
             docs.append(Document(id=id,version=id,kind=kind,text=repo.read_text(id)))
     if story.canon_version_id:add(story.canon_version_id,'canon')
     if story.style_version_id:add(story.style_version_id,'canon')
-    if story.characters_version_id:
-        add(story.characters_version_id,'canon')
-    else:
-        source=repo.active_source(story.id,'source_characters')
-        if source:add(source.id,'canon')
+    from ..characters.context import character_material
+    cast_scenes=scenes if mode=='story' else [s for s in scenes if s.id==scene_id]
+    cast_text=[]
+    for cast_scene in cast_scenes:
+        text,warnings,_=character_material(repo,story,cast_scene)
+        unchecked.extend(w for w in warnings if w not in unchecked)
+        if text and text not in cast_text:cast_text.append(text)
+    if cast_text:
+        docs.append(Document(id=story.characters_version_id,version=story.characters_version_id,
+            kind='canon',text='\n\n'.join(cast_text)))
     if mode=='story':
         expected=[]
         for scene in scenes:
@@ -174,7 +183,12 @@ def execute_evaluation(coordinator,run):
                 coordinator.event(run.id,'evaluation_skipped',{'reason':'Оцінювач вимкнено; наступні вікна не надсилаються','completed_windows':len(outcomes)})
                 break
             request=build_request(case,load_rubric(),settings.config)
-            estimate=math.ceil(sum(len(m['content'].encode('utf-8')) for m in request.messages)/2)+64
+            from ..providers.requests import evaluation_request
+            from ..token_budget.service import token_estimate,record_usage
+            api_request=evaluation_request(settings.config,request)
+            # Source texts stay frozen, but each next window sees drift/activation updates.
+            prediction=token_estimate(repo,settings.config.provider,settings.config.base_url,api_request)
+            estimate=prediction['input_tokens']
             if estimate+settings.config.max_output_tokens>settings.context_tokens:
                 raise ValueError('Оцінювачеві бракує контексту; змініть модель або явний бюджет')
             from ..storage.snapshots import build_evaluation_snapshot
@@ -192,6 +206,7 @@ def execute_evaluation(coordinator,run):
                 continue
             id=new_id()
             attempt=StageAttempt(id=id,run_id=run.id,story_id=run.story_id,scene_id=scene_id,stage='evaluate',partial_path=f'stories/{run.story_id}/runs/{id}/partial.txt',context={'story_revision':revision,'dependency_snapshot':snapshot.model_dump(),'run_cursor':run.cursor,'checkpoint_key':checkpoint,'fingerprint':fingerprint,'window_index':index,'case':case.model_dump(),'config':settings.config.model_dump(),'profile':settings.profile.model_dump(),'request':request.model_dump()})
+            attempt.context.update(api_request=api_request,token_estimate=prediction)
             repo.save_attempt(attempt)
             repo.files.write(attempt.partial_path,b'')
             coordinator.event(run.id,'stage_started',{'stage':'evaluate','scene_id':scene_id,'run_cursor':run.cursor,'model':settings.config.model,'provider':settings.config.provider,'estimated_tokens':estimate})
@@ -200,10 +215,13 @@ def execute_evaluation(coordinator,run):
                     nonlocal gateway
                     require_available(repo, run.story_id, settings.config)
                     if gateway is None:gateway=coordinator.evaluator_factory(settings.config)
+                    if hasattr(gateway,'bind_accounting'):
+                        from ..providers.accounting import CallAccounting
+                        gateway.bind_accounting(CallAccounting(repo,'story:'+run.story_id,run.id,attempt.id,attempt.id,run.request.budget_limit_usd))
                     return gateway.complete(request)
             outcome=evaluate(case,load_rubric(),settings.profile,settings.config,LazyGateway(),repo.root/'stories'/run.story_id/'runs'/run.id/'evaluations',
                 on_refusal=lambda failure: block_evaluator(repo, run.story_id, settings.config, failure, run.id, attempt.id),
-                on_raw=lambda raw: repo.files.write(attempt.partial_path, raw.encode('utf-8')))
+                on_raw=lambda raw: repo.files.write(attempt.partial_path, raw.encode('utf-8')),token_prediction=prediction)
             if outcome.status == 'refused':
                 blocked = True
             inputs=[d.version for d in case.documents]
@@ -212,6 +230,11 @@ def execute_evaluation(coordinator,run):
             refs.append(ref.id);outcomes.append(outcome)
             attempt.result_version_id=ref.id
             attempt.usage=outcome.metadata.get('usage',{})
+            if settings.config.provider!='codex_cli':
+                try:
+                    record_usage(repo,settings.config.provider,settings.config.base_url,api_request,attempt.usage,attempt.id)
+                except Exception:
+                    attempt.context['token_observation_warning']='Не вдалося зберегти token usage; первинні дані лишилися у спробі.'
             attempt.state='alternative' if ref.stale else 'completed'
             attempt.error=outcome.failure.message if outcome.failure else None
             repo.save_attempt(attempt)

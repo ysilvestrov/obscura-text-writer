@@ -12,20 +12,23 @@ class DependencySelector(DependencyModel):
     owner_id: str
     field: str
     expected: str | int | bool | list[str] | None
+    future_count: int | None = Field(default=None,ge=0,le=1000)
 
     @model_validator(mode='after')
     def finite_selector(self):
         allowed={
-            'story': {'style_version_id','canon_version_id','characters_version_id'},
-            'scene': {'title','target_words','character_ids','beats'},
+            'story': {'style_version_id','canon_version_id','characters_version_id','scene_count'},
+            'scene': {'title','target_words','character_ids','beats','memory_projection_policy'},
             'head': {'plan','brief','draft','prose','memory'},
             'source': {'source_plan','source_characters','source_preamble'},
-            'order': {'all','prefix'},
+            'order': {'all','prefix','narrative_window'},
         }
         if self.field not in allowed[self.kind] or not self.owner_id:
             raise ValueError('Невідомий селектор залежностей')
         if self.kind=='order' and not isinstance(self.expected,list):
             raise ValueError('Порядок повинен бути списком сцен')
+        if (self.kind=='order' and self.field=='narrative_window') != (self.future_count is not None):
+            raise ValueError('Ліміт майбутніх сцен дозволений і потрібний лише для narrative_window')
         return self
 
 

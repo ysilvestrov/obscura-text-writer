@@ -4,7 +4,10 @@ from pathlib import Path
 import pytest
 
 
-@pytest.mark.parametrize('scenario',['titles','refresh','plan','prose','draft','draft-clean','draft-dirty','draft-history','memory-clean','memory-dirty','memory-history'])
+@pytest.mark.parametrize('scenario',['status','titles','refresh','plan','prose','draft','draft-clean','draft-dirty','draft-history','memory-clean','memory-dirty','memory-history']+[
+    f'auto-{kind}-{condition}' for kind in ['brief','draft','prose','memory']
+    for condition in ['empty','clean','dirty','history','saving','typing']
+])
 def test_editor_buffers_keep_revision_and_typing_during_save(scenario):
     node=shutil.which('node')
     if node is None:pytest.skip('Node is required only for browser-module unit tests')

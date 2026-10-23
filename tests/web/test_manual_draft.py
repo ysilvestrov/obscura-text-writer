@@ -79,3 +79,36 @@ def test_blank_manual_draft_is_rejected_without_version(tmp_path, text):
         assert result.status_code == 400
         assert repo.get_scene(scene.id).heads == {}
         assert repo.list_versions(story.id, scene.id) == []
+
+@pytest.mark.parametrize('mode',['draft','prose'])
+def test_manual_text_after_hidden_memory_is_fresh_without_revalidating_old_versions(tmp_path,mode):
+    from tests.memory.test_forwarding import seeded,apply
+    from storygen.memory.forwarding import memory_view
+    repo,story,scenes=seeded(tmp_path)
+    claim=memory_view(repo,scenes[1].id)['rows'][0]['claim_id']
+    apply(repo,scenes[1],{claim:False})
+    target=repo.get_scene(scenes[2].id);old=target.heads['prose']
+    assert repo.context_view(story.id).get_version(old).stale
+    app=create_app(AppSettings(data_dir=tmp_path))
+    with TestClient(app,base_url='http://127.0.0.1:8765') as client:
+        response=client.post(f'/api/scenes/{target.id}/{mode}',json={'text':'Нова ручна версія.','expected_revision':target.revision})
+        assert response.status_code==200,response.text
+        ref=repo.get_version(response.json()['version']['id'])
+        assert not ref.stale and ref.manual_projection_policy==[claim]
+        assert repo.context_view(story.id).get_version(old).stale
+        apply(repo,repo.get_scene(scenes[1].id),{claim:True})
+        assert repo.get_version(ref.id).stale
+        if mode=='prose':assert repo.get_scene(target.id).needs_review
+        apply(repo,repo.get_scene(scenes[1].id),{claim:False})
+        assert not repo.get_version(ref.id).stale
+        conflict=client.post(f'/api/scenes/{target.id}/{mode}',json={'text':'Конфліктна правка.','expected_revision':target.revision})
+        assert conflict.status_code==409
+
+
+def test_manual_prose_policy_does_not_hide_review_after_story_style_changes(tmp_path):
+    from storygen.generation.dependencies import save_manual_prose
+    app,repo,story,scene=workspace(tmp_path)
+    save_manual_prose(repo,scene.id,'Ручний текст.',scene.revision)
+    ref=repo.save_version(story.id,None,'style','Стиль',[])
+    repo.publish_story_material(story.id,'style_version_id',ref.id,repo.get_story(story.id).revision)
+    assert repo.get_scene(scene.id).needs_review

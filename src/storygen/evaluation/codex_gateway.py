@@ -17,11 +17,27 @@ class CodexGateway:
         self.config = config
         self.run = run or subprocess.run
         self.temp_root = temp_root or Path("artifacts/tmp").resolve()
+        self.accounting = None
+
+    def bind_accounting(self, accounting):
+        self.accounting = accounting
 
     def close(self):
         pass
 
     def complete(self, request: EvaluationRequest) -> GatewayResult:
+        from ..providers.requests import evaluation_request
+        result = None
+        if self.accounting:self.accounting.before(self.config,evaluation_request(self.config,request))
+        try:
+            result = self._complete(request)
+            return result
+        finally:
+            if self.accounting:
+                self.accounting.finish(self.config,result.usage if result else {},complete=result is not None)
+                if result:result.accounting=self.accounting.result or {'warning':self.accounting.warning}
+
+    def _complete(self, request: EvaluationRequest) -> GatewayResult:
         self.temp_root.mkdir(parents=True, exist_ok=True)
         started = time.monotonic()
         with tempfile.TemporaryDirectory(prefix="judge-", dir=self.temp_root) as folder:

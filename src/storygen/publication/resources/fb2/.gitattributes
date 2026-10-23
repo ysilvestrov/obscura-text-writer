@@ -1,0 +1,2 @@
+# Preserve upstream bytes for the pinned resource SHA-256 manifest on Windows.
+*.xsd -text

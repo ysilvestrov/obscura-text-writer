@@ -3,9 +3,19 @@
 from ..authoring.blueprints import get_role_settings
 from .context import build_context, make_context
 from .pipeline import STAGES, STAGE_ROLES
+from .prompts import validate_role_prompt
 
 
 def preview(repo, request):
+    if request.mode=='publication_suggest':
+        from .publication_metadata import readiness
+        return readiness(repo,request)
+    if request.mode=='edit_loop':
+        from .editor_loop import readiness
+        return readiness(repo,request)
+    if request.mode=='classify':
+        from .edit_classification import readiness
+        return readiness(repo,request)
     story=repo.get_story(request.story_id)
     scenes=repo.list_scenes(story.id)
     scene=next((s for s in scenes if s.id==request.scene_id),None)
@@ -18,11 +28,15 @@ def preview(repo, request):
             raise ValueError('Оберіть сцену')
         targets=[s for s in scenes if s.position>=scene.position] if request.mode in {'remaining','rebuild_memory'} else [scene]
         result['calls']=len(stages)*len(targets)
+        if request.mode in {'scene','remaining'} and request.edit_workflow=='loop':
+            result.update(edit_loop_scenes=len(targets),edit_pass_limit=request.edit_pass_limit)
+            result['calls']+=(request.edit_pass_limit-1)*len(targets)
         for stage in stages:
             name=STAGE_ROLES[stage]
             if name not in settings or not settings[name].provider.model.strip():
                 raise ValueError('Роль не налаштовано: '+name)
             role=settings[name]
+            validate_role_prompt(repo,story.id,stage,role)
             prompt_id=role.prepare_prompt_version_id if stage=='prepare' else role.prompt_version_id
             if prompt_id:
                 prompt=repo.get_version(prompt_id)
@@ -76,6 +90,11 @@ def preview(repo, request):
                     _,warnings,_=character_material(view,view.get_story(story.id),view.get_scene(target.id))
                     result['warnings'].extend(warnings)
                 result['warnings']=list(dict.fromkeys(result['warnings']))
+        providers=[item.get('provider') for item in result.get('roles',{}).values()]
+        if result.get('evaluator'):providers.append(result['evaluator'].get('provider'))
+        if any(provider in {'venice','openrouter'} for provider in providers):
+            if repo.billing('summary',scope='story:'+story.id)['limit_nanos'] is None:
+                raise ValueError('Спершу задайте явний ліміт бюджету в налаштуваннях')
         result['ready']=True
     except (ValueError,KeyError) as exc:
         result['reason']=str(exc) if isinstance(exc,ValueError) else 'Матеріал не знайдено; оновіть сторінку'
@@ -83,12 +102,29 @@ def preview(repo, request):
 
 
 def pending_preview(repo,run):
+    if run.request.mode=='publication_suggest':
+        from .publication_metadata import readiness
+        return readiness(repo,run.request)
+    if run.request.mode=='edit_loop':
+        from .editor_loop import readiness
+        return readiness(repo,run.request,run)
+    if run.request.mode=='classify':
+        from .edit_classification import readiness
+        return readiness(repo,run.request)
     tasks=run.tasks[run.cursor:]
     result={'ready':False,'reason':None,'roles':{},'calls':0,'evaluator':None}
     try:
         if not tasks:raise ValueError('Усі етапи запуску завершено')
         first=tasks[0]
-        if first['stage']!='evaluate':
+        if run.state=='needs_review' and first['stage']=='edit' and any(
+                a.stage=='edit' and a.scene_id==first.get('scene_id') and a.context.get('run_cursor')==run.cursor and a.context.get('copyedit_proposal')
+                for a in repo.list_attempts(run.story_id,run.id)):
+            raise ValueError('Спершу прийміть вибрані правки; далі використайте «Продовжити після прийнятого етапу», без повтору редактора')
+        if first.get('editor_loop'):
+            from .editor_loop import readiness
+            result=readiness(repo,run.request,run)
+            if not result['ready']:return result
+        elif first['stage']!='evaluate':
             request=run.request.model_copy(update={'mode':'prepare' if first['stage']=='prepare' else 'stage','stage':None if first['stage']=='prepare' else first['stage'],'scene_id':first.get('scene_id')})
             result=preview(repo,request)
             if not result['ready']:return result
@@ -112,12 +148,20 @@ def pending_preview(repo,run):
                 name=STAGE_ROLES[task['stage']]
                 if name not in settings or not settings[name].provider.model.strip():raise ValueError('Роль не налаштовано: '+name)
                 role=settings[name]
+                validate_role_prompt(repo,run.story_id,task['stage'],role)
                 prompt_id=role.prepare_prompt_version_id if task['stage']=='prepare' else role.prompt_version_id
                 if prompt_id:
                     prompt=repo.get_version(prompt_id)
                     if prompt.story_id!=run.story_id or prompt.kind!='prompt' or prompt.stale or not prompt.complete:raise ValueError('Промпт ролі потребує оновлення: '+name)
                 result['roles'][name]=role.provider.model_dump(include={'provider','model'})
-            result['calls']+=1
+            if task.get('editor_loop'):
+                from .editor_loop import model_attempts
+                result['calls']+=max(0,run.request.edit_pass_limit-len(model_attempts(repo,run))) if task is first else run.request.edit_pass_limit
+            else:result['calls']+=1
+        providers=[role.get('provider') for role in result['roles'].values()]
+        if result.get('evaluator'):providers.append(result['evaluator'].get('provider'))
+        if any(p in {'venice','openrouter'} for p in providers) and repo.billing('summary',scope='story:'+run.story_id)['limit_nanos'] is None:
+            raise ValueError('Спершу задайте явний ліміт бюджету в налаштуваннях')
         result['ready']=True
     except (ValueError,KeyError) as exc:
         result.update(ready=False,reason=str(exc) if isinstance(exc,ValueError) else 'Матеріал не знайдено; оновіть сторінку')

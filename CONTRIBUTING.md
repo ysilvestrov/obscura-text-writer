@@ -9,6 +9,7 @@ python -m venv .venv
 ./.venv/Scripts/python.exe -m pip install -r requirements-lock.txt
 ./.venv/Scripts/python.exe -m pip install --no-deps -e ".[web,dev]"
 ./.venv/Scripts/python.exe -m pytest -q
+./.venv/Scripts/python.exe scripts/check_docs.py
 ```
 
 Для JavaScript-перевірок потрібен Node.js у PATH. Їх запускають pytest-обгортки
@@ -19,6 +20,14 @@ python -m venv .venv
 Реальні API-виклики й платні модельні прогони не є частиною звичайної перевірки.
 Для відтворення дефектів додавайте лише короткі вигадані приклади.
 Авторські плани, чернетки, бази, логи та скріншоти особистих творів не комітьте.
+
+Для нового Scenario додайте сталий ID та конкретний тест або явну ручну
+процедуру в [матрицю перевірок](docs/verification/README.md). Пропуск є
+помилкою `check_docs.py`, а не забороною запускати застосунок.
+`@pytest.mark.req("ID")` допускається на конкретній test-функції та має
+відповідати матриці; загальний module marker не доводить всю вимогу.
+Підсумок фактичного запуску створює `python scripts/verify.py` у
+[STATUS](docs/STATUS.md). `--collect-only` не є результатом виконання.
 
 Перед комітом перегляньте `git diff --cached`, включно з новими файлами.
 Під час роботи AI-інструментів окремо перевіряйте вкладення й доступний контекст:

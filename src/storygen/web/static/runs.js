@@ -1,7 +1,7 @@
 import {acceptedContinuation} from './acceptance.js';
 import {api,json,notice} from './api.js';
 import {state,refresh} from './editor.js';
-import {operationReason,confirmationText,runKind,controlReason,materialReason} from './run-readiness.js';
+import {operationReason,confirmationText,runKind,controlReason,materialReason,editorLoopOperation} from './run-readiness.js';
 const controls=document.querySelector('#generation-controls'),status=document.querySelector('#run-status'),live=document.querySelector('#live-text');
 const terminal=new Set(['completed','failed','cancelled','interrupted','needs_review','alternative','paused']);
 const names={queued:'У черзі',running:'Генерація',pause_requested:'Пауза після етапу',paused:'На паузі',cancellation_requested:'Скасування запитано; очікуємо виходу клієнта',cancelled:'Клієнт завершив скасування',completed:'Завершено',failed:'Помилка',interrupted:'Перервано попередню сесію',needs_review:'Потрібне рішення автора',alternative:'Збережено альтернативу після конфлікту'};
@@ -24,7 +24,7 @@ async function loadPending(){
     if(epoch===pendingEpoch){pendingReadiness=result;continuation=candidate;updateControls()}
   }catch(error){if(epoch===pendingEpoch){pendingReadiness={ready:false,reason:error.message};updateControls()}}
 }
-async function loadReadiness(){const epoch=++readinessEpoch;readiness=null;updateControls();try{const [result,runs]=await Promise.all([api(`/api/stories/${state.storyId}/readiness${state.scene?'?scene_id='+encodeURIComponent(state.scene.id):''}`),api(`/api/stories/${state.storyId}/runs`)]);if(epoch===readinessEpoch){readiness=result;historyRuns=runs.runs;updateControls()}}catch(error){if(epoch===readinessEpoch){readiness={operations:Object.fromEntries(['prepare','brief','draft','edit','memory','scene','remaining','rebuild_memory'].map(key=>[key,{ready:false,reason:error.message}]))};updateControls();notice(error.message,'error')}}}
+async function loadReadiness(){const epoch=++readinessEpoch;readiness=null;updateControls();try{const [result,runs]=await Promise.all([api(`/api/stories/${state.storyId}/readiness${state.scene?'?scene_id='+encodeURIComponent(state.scene.id):''}`),api(`/api/stories/${state.storyId}/runs`)]);if(epoch===readinessEpoch){readiness=result;historyRuns=runs.runs;updateControls()}}catch(error){if(epoch===readinessEpoch){readiness={operations:Object.fromEntries(['prepare','brief','draft','edit','memory','scene','remaining','rebuild_memory','edit_loop'].map(key=>[key,{ready:false,reason:error.message}]))};updateControls();notice(error.message,'error')}}}
 for(const event of ['story-refreshed','scene-selected','evaluation-policy-changed'])document.addEventListener(event,()=>{loadReadiness();if(active&&terminal.has(active.state))loadPending()});
 document.addEventListener('editor-state-changed',updateControls);
 document.querySelector('#editor').addEventListener('input',updateControls);
@@ -42,7 +42,7 @@ async function follow(run){
   source=new EventSource(`/api/runs/${run.id}/events`);
   const reader=source;
   source.onmessage=async message=>{try{if(epoch!==followEpoch)return;const event=JSON.parse(message.data);last=event.seq;
-    if(event.type==='stage_started'){if(event.created_at)started=Date.parse(event.created_at);live.textContent='';const p=document.createElement('p');p.textContent=`${event.data.stage} · ${event.data.model} · ${event.data.provider}`;status.append(p)}
+    if(event.type==='stage_started'){if(event.created_at)started=Date.parse(event.created_at);live.textContent='';const p=document.createElement('p');p.textContent=(event.data.edit_loop_pass?`Прохід ${event.data.edit_loop_pass} із ${event.data.edit_loop_limit} · `:'')+`${event.data.stage} · ${event.data.model} · ${event.data.provider}`;status.append(p)}
     if(event.type==='delta')live.textContent+=event.data.text;
     if(event.type==='stage_finished'){const p=document.createElement('p');p.textContent=Object.keys(event.data.usage||{}).length?'Usage провайдера: '+JSON.stringify(event.data.usage):'Usage і вартість: невідомі';status.append(p);await refresh()}
     if(event.type==='evaluation_warning'||event.type==='evaluation_skipped'){notice(event.data.failure?.message||event.data.reason||event.data.reasons?.join('; ')||'Оцінювання не виконане','warning');document.dispatchEvent(new CustomEvent('evaluation-policy-changed'))}
@@ -51,21 +51,34 @@ async function follow(run){
   };
   source.onerror=()=>{if(epoch===followEpoch&&active&&!terminal.has(active.state))notice('Зв’язок із подіями перервано; браузер перепідключиться. Стан запуску уточнюється на сервері.','warning')};
 }
+document.addEventListener('run-enqueued',event=>follow(event.detail).catch(error=>notice(error.message,'error')));
 async function start(mode,stage){
   if(!state.scene&&mode!=='prepare')throw new Error('Оберіть сцену');
   if(state.dirty)throw new Error('Спершу збережіть ручні правки');
   await loadReadiness();
-  const operation=readiness?.operations[stage||mode],reason=operationReason(state,operation);
+  let operation=readiness?.operations[stage||mode];
+  const passLimit=Number(document.querySelector('#edit-pass-limit')?.value||5);
+  const usesEditorLoop=['edit_loop','scene','remaining'].includes(mode);
+  if(usesEditorLoop)operation=editorLoopOperation(operation,passLimit);
+  const reason=operationReason(state,operation);
   if(reason)throw new Error(reason);
   if(!confirm(confirmationText(operation)))return;
   const request={story_id:state.storyId,scene_id:mode==='prepare'?null:state.scene.id,mode,stage:stage||null,pause_after:document.querySelector('#pause-each').checked?['brief','draft','edit','memory']:[]};
+  if(usesEditorLoop){request.edit_pass_limit=passLimit;request.edit_workflow='loop'}
+  request.budget_limit_usd=document.querySelector('#run-budget')?.value||null;
   const key='storygen.pending.'+JSON.stringify(request);let requestId=localStorage.getItem(key)||crypto.randomUUID();localStorage.setItem(key,requestId);
   const run=await api('/api/runs',json('POST',{request_id:requestId,request}));localStorage.removeItem(key);await follow(run);
 }
 controls.hidden=false;
-function button(label,fn,operation=null,action=null){const wrapper=document.createElement('span');wrapper.className='run-action';const b=document.createElement('button'),hint=document.createElement('small');hint.id='run-reason-'+actions.length;b.className='secondary';b.textContent=label;const item={button:b,hint,operation,action,busy:false};actions.push(item);b.onclick=async()=>{item.busy=true;updateControls();try{await fn()}catch(e){notice(e.message,'error')}finally{item.busy=false;updateControls()}};wrapper.append(b,hint);controls.append(wrapper);updateControls()}
+function button(label,fn,operation=null,action=null){const wrapper=document.createElement('span');wrapper.className='run-action';const b=document.createElement('button'),hint=document.createElement('small');hint.id='run-reason-'+actions.length;b.className='secondary';b.textContent=label;const item={button:b,hint,operation,action,busy:false};actions.push(item);b.onclick=async()=>{item.busy=true;updateControls();try{await fn()}catch(e){notice(e.message,'error')}finally{item.busy=false;updateControls()}};wrapper.append(b,hint);controls.append(wrapper);updateControls();return wrapper}
 button('Підготувати структуру',()=>start('prepare'),'prepare');
-for(const [stage,label] of Object.entries({brief:'Створити завдання',draft:'Написати',edit:'Редагувати',memory:'Оновити пам’ять'}))button(label,()=>start('stage',stage),stage);
+for(const [stage,label] of Object.entries({brief:'Створити завдання',draft:'Написати',edit:'Редагувати',memory:'Оновити пам’ять'})){
+  if(stage==='edit'){
+    const editorAction=button(label,()=>start('edit_loop'),'edit_loop');
+    const passLabel=document.createElement('label');passLabel.innerHTML='Максимум проходів редактури<input id="edit-pass-limit" type="number" min="1" max="10" step="1" value="5">';editorAction.append(passLabel);
+  }
+  else button(label,()=>start('stage',stage),stage);
+}
 button('Уся сцена',()=>start('scene'),'scene');button('Пройти решту',()=>start('remaining'),'remaining');
 const pauseLabel=document.createElement('label');pauseLabel.innerHTML='<input id="pause-each" type="checkbox"> Пауза після кожного етапу';controls.append(pauseLabel);
 button('Пауза',async()=>{if(active)draw(await api(`/api/runs/${active.id}/pause`,json('POST',{})))},null,'pause');

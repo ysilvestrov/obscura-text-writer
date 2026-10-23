@@ -40,6 +40,7 @@ def test_failed_file_write_never_creates_current(tmp_path,monkeypatch):
     assert not repo.get_scene(scene.id).heads
 
 
+@pytest.mark.req('DATA-003')
 def test_missing_or_modified_blob_reports_corruption(tmp_path):
     repo, story, scene = setup_story(tmp_path)
     version=repo.save_version(story.id,scene.id,"manual","Оригінал",[])

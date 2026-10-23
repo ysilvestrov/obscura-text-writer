@@ -11,7 +11,7 @@
 - Послідовна генерація, потокова відповідь, пауза, скасування й відновлення.
 - Локальний OpenAI-сумісний API, OpenRouter та Venice з перевіркою `uncensored=true`.
 - Пам’ять з перевіркою джерел, точкова редактура, автоматичне оцінювання.
-- Експорт Markdown/TXT, кошик творів і сцен.
+- Експорт Markdown/TXT/FB2/EPUB/PDF із карткою публікації та обкладинкою; кошик творів і сцен.
 
 Це прототип. Успішний модельний виклик або автоматична оцінка не гарантує
 літературної якості; остаточний текст перевіряє автор. Відомі технічні
@@ -24,7 +24,7 @@
 ```powershell
 python -m venv .venv
 ./.venv/Scripts/python.exe -m pip install -r requirements-lock.txt
-./.venv/Scripts/python.exe -m pip install --no-deps -e ".[web]"
+./.venv/Scripts/python.exe -m pip install --no-deps -e ".[web,publication]"
 Copy-Item .env.example .env
 ./scripts/start.ps1
 ```
@@ -41,7 +41,7 @@ Copy-Item .env.example .env
 ./scripts/start.ps1 -DataDir "$env:LOCALAPPDATA/ObscuraTextWriter/data"
 ```
 
-Докладніше: [запуск і резервне копіювання](docs/prototype-runbook.md).
+Докладніше: [запуск і резервне копіювання](docs/prototype-runbook.md), [експорт FB2/EPUB](docs/verification/manual.md#ebook-formats) та [PDF A5](docs/verification/manual.md#pdf-publication).
 Для першої проби можна імпортувати нейтральні [план](tests/fixtures/prototype/plan.md)
 та [персонажів](tests/fixtures/prototype/characters.md) тестової історії про бібліотеку.
 
@@ -57,9 +57,20 @@ Copy-Item .env.example .env
 
 - [Архітектура й відомі обмеження](SPEC.MD).
 - [Правила внесення змін і перевірки](CONTRIBUTING.md).
+- [Стан фактичної перевірки](docs/STATUS.md) та [зв’язки сценаріїв із тестами](docs/verification/README.md).
 - [Інструкція публікації](docs/github-publication.md).
 
 ## Ліцензія
 
 Код розповсюджується за [MIT License](LICENSE). Приватні твори та дані користувачів
 не входять до репозиторію.
+
+
+Платні виклики потребують явного ліміту оповідання/CLI та чинного тарифу.
+Налаштування й пояснення сум: [бюджет модельних викликів](docs/provider-budget.md).
+
+Повторне використання моделей і промптів між творами: [комплекти ролей](docs/role-profiles.md).
+
+Обмеження майбутніх планів у контексті ролі: [горизонт сюжету](docs/story-horizon.md).
+
+Табличний перегляд і відбір пам’яті: [прапорці «Передавати далі»](docs/memory-view.md).

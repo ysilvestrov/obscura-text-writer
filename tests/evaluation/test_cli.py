@@ -85,3 +85,19 @@ def test_cli_ukrainian_help_under_windows_legacy_encoding(tmp_path):
     result = subprocess.run([sys.executable,"-m","storygen.evaluation.cli","--help"],cwd=tmp_path,env=env,capture_output=True)
     assert result.returncode == 0
     assert "української" in result.stdout.decode("utf-8")
+
+
+def test_accounted_cli_respects_root_lock_and_dry_run(tmp_path,sample_case,monkeypatch):
+    from storygen.storage.locking import AppInstanceLock
+    case,cfg=paths(tmp_path,sample_case)
+    class Gateway:
+        def bind_accounting(self,value):raise AssertionError('locked before binding')
+        def complete(self,request):raise AssertionError('no provider call')
+    monkeypatch.setattr(cli,'build_gateway',lambda config:Gateway())
+    data=tmp_path/'budget'
+    args=['evaluate','--case',str(case),'--config',str(cfg),'--budget-data-dir',str(data)]
+    assert cli.main(args+['--dry-run'])==0
+    assert not data.exists()
+    with AppInstanceLock(data):assert cli.main(args)==3
+    assert not (data/'storygen.sqlite3').exists()
+    with AppInstanceLock(data):pass

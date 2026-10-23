@@ -14,6 +14,7 @@ class ContextView:
             'SELECT payload FROM scenes WHERE story_id=? ORDER BY position,id', (story_id,))]}
         self.versions = {v.id: v for v in [VersionRef.model_validate_json(r[0]) for r in db.execute(
             'SELECT payload FROM versions WHERE story_id=? ORDER BY rowid', (story_id,))]}
+        self.token_profiles = [json.loads(r[0]) for r in db.execute("SELECT payload FROM app_settings WHERE key LIKE 'token_profile:%' ORDER BY key")]
         self.sources = {}
         for row in db.execute('SELECT payload FROM source_files WHERE story_id=? ORDER BY rowid', (story_id,)):
             source = json.loads(row[0])
@@ -29,6 +30,11 @@ class ContextView:
             if not ref or ref.scene_id!=record.scene_id or ref.kind not in {'draft','edited','manual'} or record.baseline.scope!='author_text':
                 raise ValueError('Невідповідна версія журналу прийняття')
             self.acceptances[record.version_id]=record
+
+    def token_records(self, kind):
+        if kind != 'profile': raise ValueError('Спостереження недоступні в context view')
+        import copy
+        return copy.deepcopy(self.token_profiles)
 
     def get_story(self, id):
         if id != self.story.id or self.story.trashed_at:
@@ -59,6 +65,8 @@ class ContextView:
         prose=self.versions.get(scene.heads.get('prose'))
         if prose and (prose.dependency_snapshot is not None or prose.id in self.acceptances):
             scene.needs_review=self.get_version(prose.id).stale
+        elif prose and prose.manual_projection_policy is not None:
+            scene.needs_review=scene.needs_review or self.get_version(prose.id).stale
         return scene
 
     def active_source(self, story_id, kind):

@@ -12,6 +12,8 @@ from .prompting import build_request, load_rubric, resource_text
 from .reports import compare_reports
 from .runner import evaluate
 from .scoring import load_profile
+from ..billing.models import BudgetError
+from ..storage.locking import AppInstanceLock
 
 
 class Parser(argparse.ArgumentParser):
@@ -29,6 +31,9 @@ def parser() -> argparse.ArgumentParser:
     run.add_argument("--output", type=Path, default=Path("artifacts/evaluation"))
     run.add_argument("--dry-run", action="store_true")
     run.add_argument("--reverse-pair", action="store_true")
+    run.add_argument('--budget-data-dir',type=Path,default=Path('data'))
+    run.add_argument('--budget-scope')
+    run.add_argument('--run-limit-usd')
     compare = commands.add_parser("compare", help="Порівняти два звіти")
     compare.add_argument("--baseline", type=Path, required=True)
     compare.add_argument("--candidate", type=Path, required=True)
@@ -40,6 +45,9 @@ def parser() -> argparse.ArgumentParser:
     calibration.add_argument("--repeats", type=int, default=3)
     calibration.add_argument("--dry-run", action="store_true")
     calibration.add_argument("--case-id", action="append")
+    calibration.add_argument('--budget-data-dir',type=Path,default=Path('data'))
+    calibration.add_argument('--budget-scope')
+    calibration.add_argument('--run-limit-usd')
     return root
 
 
@@ -47,6 +55,7 @@ def main(argv: list[str] | None = None) -> int:
     for stream in (sys.stdout, sys.stderr):
         if hasattr(stream, "reconfigure"):
             stream.reconfigure(encoding="utf-8")
+    budget_lock = None
     try:
         args = parser().parse_args(argv)
         if args.command == "compare":
@@ -56,6 +65,24 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps(result, ensure_ascii=False, indent=2))
             return 2 if result["status"] == "non_comparable" else int(result["regression"])
         config = load_config(args.config)
+        import uuid
+        budget_run_id=uuid.uuid4().hex
+        def bind_budget(gateway):
+            nonlocal budget_lock
+            if args.dry_run or not hasattr(gateway,'bind_accounting'):return
+            if config.provider in {'venice','openrouter'} and not args.budget_scope:
+                raise BudgetError('Для cloud CLI потрібен --budget-scope')
+            if not args.budget_scope: args.budget_scope = 'cli:evaluator'
+            if budget_lock is None:
+                budget_lock = AppInstanceLock(args.budget_data_dir)
+                try: budget_lock.__enter__()
+                except RuntimeError:
+                    raise BudgetError('Каталог бюджету відкрито застосунком або іншим CLI; зупиніть його чи виберіть інший каталог') from None
+            if args.budget_scope:
+                from ..storage.repository import Repository
+                from ..providers.accounting import CallAccounting
+                gateway.bind_accounting(CallAccounting(Repository(args.budget_data_dir),args.budget_scope,budget_run_id,
+                    uuid.uuid4().hex,run_limit_usd=args.run_limit_usd))
         rubric = load_rubric()
         profile = load_profile(args.profile) if args.profile else ScoringProfile.model_validate(parse_json(resource_text("scoring_candidate_v1.json")))
         if args.command == "calibrate":
@@ -77,6 +104,7 @@ def main(argv: list[str] | None = None) -> int:
                 for case in cases:
                     for index in range(args.repeats):
                         print(f"Оцінювання {case.id}: {index + 1}/{args.repeats}", flush=True)
+                        bind_budget(gateway)
                         outcomes.append(evaluate(case, rubric, profile, config, gateway, args.output / "runs", reverse_pair=bool(index % 2)))
                         if outcomes[-1].status == 'refused':
                             break
@@ -113,6 +141,7 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         gateway = build_gateway(config)
         try:
+            bind_budget(gateway)
             result = evaluate(case, rubric, profile, config, gateway, args.output, args.reverse_pair)
         finally:
             close = getattr(gateway, "close", None)
@@ -121,9 +150,11 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Оцінювання: {result.status}. Звіт: {result.metadata['report_path']}")
         return {"passed":0, "failed":1, "incomplete":2, "error":3, 'refused':4}[result.status]
     except (ValueError, OSError, ValidationError, GatewayFailure) as exc:
-        message = str(exc) if isinstance(exc, GatewayFailure) else "Некоректні аргументи, конфігурація або файли"
+        message = str(exc) if isinstance(exc, (GatewayFailure, BudgetError)) else "Некоректні аргументи, конфігурація або файли"
         print(f"Помилка: {message}")
         return 3
+    finally:
+        if budget_lock is not None: budget_lock.__exit__(None, None, None)
 
 
 if __name__ == "__main__":

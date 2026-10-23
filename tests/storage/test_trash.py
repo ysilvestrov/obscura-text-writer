@@ -78,4 +78,4 @@ def test_existing_database_migrates_without_changing_content(tmp_path):
     repo=Repository(tmp_path)
     assert repo.get_story('old').revision==7
     assert repo.get_story('old').trashed_at is None
-    with repo.db.connection() as db:assert db.execute('PRAGMA user_version').fetchone()[0]==2
+    with repo.db.connection() as db:assert db.execute('PRAGMA user_version').fetchone()[0]==3

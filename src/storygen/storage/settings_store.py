@@ -20,16 +20,25 @@ def write_role_settings(repo, story_id, updates, expected_revision):
         story = repo._active_story(db, story_id)
         if story.revision != expected_revision:
             raise RevisionConflict('Налаштування вже змінено')
-        for role, item in settings.items():
-            for id in [item.prompt_version_id, item.prepare_prompt_version_id]:
-                if id:
-                    ref = repo._get(db, 'versions', id, VersionRef)
-                    if ref.story_id != story_id or ref.kind != 'prompt':
-                        raise ValueError('Промпт належить іншому твору або має інший тип')
-            db.execute('INSERT OR REPLACE INTO role_settings VALUES(?,?,?)', (story_id, role, item.model_dump_json()))
+        write_roles_in_transaction(repo,db,story_id,settings)
         story.config_revision += 1
         repo._save_story(db, story)
         return repo._touch_story(db, story_id)
+
+
+def write_roles_in_transaction(repo,db,story_id,settings):
+    for role, item in settings.items():
+        for id in [item.prompt_version_id, item.prepare_prompt_version_id]:
+            if id:
+                ref = repo._get(db, 'versions', id, VersionRef)
+                if ref.story_id != story_id or ref.kind != 'prompt':
+                    raise ValueError('Промпт належить іншому твору або має інший тип')
+        from ..prompt_contracts import validate_role_prompt
+        from .context_view import ContextView
+        view=ContextView(repo,db,story_id)
+        validate_role_prompt(view,story_id,{'planner':'brief','writer':'draft','editor':'edit','memory':'memory'}[role],item)
+        if role=='planner':validate_role_prompt(view,story_id,'prepare',item)
+        db.execute('INSERT OR REPLACE INTO role_settings VALUES(?,?,?)', (story_id, role, item.model_dump_json()))
 
 
 import json

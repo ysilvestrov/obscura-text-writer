@@ -16,22 +16,48 @@ globalThis.CustomEvent=class {constructor(type){this.type=type}};
 globalThis.confirm=()=>true;
 const originalTimeout=globalThis.setTimeout;globalThis.setTimeout=(...args)=>{const timer=originalTimeout(...args);timer.unref();return timer};
 const initial={id:'c',story_id:'s',position:0,revision:0,title:'Сцена',beats:'План A',target_words:400,character_ids:[],heads:{prose:'a'},needs_review:false};
-let server=structuredClone(initial),release,calls=0,lastRequest;
+let server=structuredClone(initial),release,calls=0,lastRequest,releaseRead;
 const response=data=>({ok:true,json:async()=>structuredClone(data)});
 globalThis.fetch=async(url,options={})=>{
   if(options.method==='PATCH'||options.method==='POST'){
     calls++;const body=JSON.parse(options.body);lastRequest={url,body};return new Promise(resolve=>{release=()=>{server={...server,revision:1,beats:body.beats??server.beats,heads:{prose:'b',...(url.endsWith('/draft')?{draft:'d'}:{})}};resolve(response(url.endsWith('/prose')||url.endsWith('/draft')?{scene:server,version:{id:'b'}}:server))}});
   }
-  if(url.startsWith('/api/versions/'))return response({text:mode.startsWith('draft-')?'Нова чернетка':'Нова пам’ять',version:{id:'m-new',kind:'memory'}});
+  if(url.startsWith('/api/versions/')){
+    const data={text:mode.startsWith('auto-')?'Новий матеріал':mode.startsWith('draft-')?'Нова чернетка':'Нова пам’ять',version:{id:'m-new',kind:'memory'}};
+    if(mode.endsWith('-typing'))return new Promise(resolve=>{releaseRead=()=>resolve(response(data))});
+    return response(data);
+  }
   if(url.includes('/versions'))return response({scene:server,versions:[]});
   return response({story:{id:'s',revision:1},scenes:[server],sources:[]});
 };
 const module=await import(pathToFileURL(root+'/src/storygen/web/static/editor.js'));
 await new Promise(setImmediate);
-if(mode==='prose'||mode.startsWith('draft')||mode.startsWith('memory'))await import(pathToFileURL(root+'/src/storygen/web/static/versions.js'));
+if(mode==='prose'||mode.startsWith('draft')||mode.startsWith('memory')||mode.startsWith('auto-'))await import(pathToFileURL(root+'/src/storygen/web/static/versions.js'));
 const {state,refresh}=module,editor=element('#editor'),save=element('#save-text');
 state.scene=structuredClone(initial);state.mode=mode==='refresh'?'prose':mode;state.dirty=false;editor.value='Текст A';
-if(mode==='titles'){
+if(mode.startsWith('auto-')){
+  const [,kind,condition]=mode.split('-');
+  state.mode=kind;state.bufferOrigin=condition==='history'?'history':'current';
+  state.scene.heads=condition==='empty'?{}:{[kind]:'old'};
+  editor.value=condition==='empty'?'':'Попередній текст';
+  state.dirty=condition==='dirty';state.saving=condition==='saving';
+  server={...server,revision:1,heads:{[kind]:'m-new'}};
+  await refresh();
+  if(condition==='typing'){
+    assert.ok(releaseRead,'current material must be fetched');
+    editor.value='Правка під час завантаження';editor.trigger('input');releaseRead();
+  }
+  await Promise.all(pendingEvents);
+  const replace=['empty','clean'].includes(condition);
+  assert.equal(editor.value,replace?'Новий матеріал':condition==='typing'?'Правка під час завантаження':'Попередній текст');
+  assert.equal(state.scene.revision,replace?1:0,'text and CAS revision must move together');
+  if(replace)assert.equal(state.scene.heads[kind],'m-new');
+}else if(mode==='status'){
+  for(const [heads,needs_review,label] of [[{plan:'p'},true,'Не почато'],[{plan:'p',brief:'b'},true,'Немає тексту'],[{draft:'d'},false,'Є чернетка'],[{draft:'d'},true,'Потребує перегляду'],[{prose:'p'},true,'Потребує перегляду'],[{prose:'p'},false,'Текст створено']]){
+    server={...server,heads,needs_review};await refresh();
+    assert.equal(element('#scene-list').children[0].children[0].textContent,label);
+  }
+}else if(mode==='titles'){
   const title='### **Локація**: __Фотостудія__';
   server={...server,title,beats:'### **Авторський текст**: __без змін__'};
   await module.selectScene(server);
@@ -42,6 +68,12 @@ if(mode==='titles'){
   assert.equal(server.title,title,'stored title must remain verbatim');
   assert.equal(module.displaySceneTitle('C# та snake_case, _текст_'),'C# та snake_case, _текст_');
   assert.equal(module.displaySceneTitle('Звичайна назва'),'Звичайна назва');
+  const before=editor.value;
+  await module.saveBuffer(async()=>{
+    server={...server,title:'Розпізнана назва',character_ids:['A','B'],revision:server.revision+1};return server;
+  });
+  assert.equal(element('#scene-title').textContent,'Розпізнана назва','saved metadata must update the heading');
+  assert.equal(editor.value,before,'metadata refresh must preserve the buffer');
 }else if(mode.startsWith('memory')||mode.startsWith('draft-')){
   const kind=mode.startsWith('memory')?'memory':'draft',before=kind==='memory'?'Стара пам’ять':'Стара чернетка',after=kind==='memory'?'Нова пам’ять':'Нова чернетка';
   state.mode=kind;state.scene.heads[kind]='m-old';state.bufferOrigin=mode.endsWith('-history')?'history':'current';editor.value=before;state.dirty=mode.endsWith('-dirty');server={...server,revision:1,heads:{prose:'a',[kind]:'m-new'}};

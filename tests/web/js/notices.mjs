@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import {pathToFileURL} from 'node:url';
+const listeners={},handlers={};let cleared=[];
+const message={textContent:''},close={addEventListener:(k,f)=>handlers[k]=f};
+const box={hidden:true,dataset:{},textContent:'',setAttribute(k,v){this[k]=v},querySelector:()=>message};
+globalThis.document={querySelector:s=>s==='#notice'?box:s==='#notice-close'?close:null,addEventListener:(k,f)=>listeners[k]=f};
+globalThis.setTimeout=()=>42;globalThis.clearTimeout=id=>cleared.push(id);
+const api=await import(pathToFileURL(process.argv[2]+'/src/storygen/web/static/api.js'));
+api.notice('Помилка збереження','error');
+assert.equal(box.hidden,false);assert.equal(message.textContent,'Помилка збереження');assert.equal(box.role,'alert');
+assert.equal(typeof handlers.click,'function');handlers.click();assert.equal(box.hidden,true);assert(cleared.includes(42));
+api.notice('Інша помилка','error');listeners['scene-selected']();assert.equal(box.hidden,true);
+api.notice('Готово');assert.equal(box.hidden,false);assert.equal(box.role,'status');assert.equal(message.textContent,'Готово');
+console.log('notice dismiss and scene lifecycle passed');

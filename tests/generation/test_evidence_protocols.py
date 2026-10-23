@@ -147,8 +147,8 @@ def test_three_scenes_accumulate_evidence_deltas_without_echoing_old_facts(tmp_p
             position = repo.get_scene(context.scene_id).position
             raw = {
                 'brief': json.dumps({'objective': 'Сцена', 'beats': ['Подія']}),
-                'draft': f'Олена відчинила двері номер {position}.',
-                'edit': '{"edits":[]}',
+                'draft': f'Олена відчинив двері номер {position}.',
+                'edit': json.dumps({'edits':[dict(fragment_id='f000001',original='відчинив',replacement='відчинила',category='grammar')]}),
                 'memory': json.dumps({'facts': [{'text': f'Подія {position}.', 'evidence_id': 'f000001'}]}),
             }[context.stage]
             yield GenerationEvent(type='delta', text=raw)

@@ -1,0 +1,1378 @@
+{
+  "version": 1,
+  "scenarios": [
+    {
+      "id": "PIPE-006-S02",
+      "requirement": "PIPE-006",
+      "scope": "Порожній stop із reasoning usage або без нього; конкретне пояснення та збереження помилки редактора.",
+      "tests": [
+        "tests/providers/test_streaming.py::test_empty_stop_reports_missing_text_and_available_reasoning",
+        "tests/generation/test_editor_output.py::test_empty_real_api_stream_is_diagnosed_without_publishing"
+      ]
+    },
+    {
+      "id": "ARCH-001-S01",
+      "requirement": "ARCH-001",
+      "scope": "Зміна контракту збереження. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [],
+      "manual": {
+        "procedure": "docs/verification/manual.md#architecture-review",
+        "reason": "Правило стосується набору змін і людського рев’ю, а не одного runtime-тесту."
+      }
+    },
+    {
+      "id": "RUNTIME-001-S01",
+      "requirement": "RUNTIME-001",
+      "scope": "Перезапуск вебсервера. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/storage/test_repository.py::test_versions_survive_reopen"
+      ]
+    },
+    {
+      "id": "DATA-001-S01",
+      "requirement": "DATA-001",
+      "scope": "Некоректний файл у наборі. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [],
+      "manual": {
+        "procedure": "docs/verification/manual.md#batch-import",
+        "reason": "Немає окремого автоматичного тесту всього batch preflight; перевірка має бути виконана окремо."
+      }
+    },
+    {
+      "id": "DATA-002-S01",
+      "requirement": "DATA-002",
+      "scope": "Підготовка структури. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/authoring/test_blueprints.py::test_blueprint_is_proposal_until_apply"
+      ]
+    },
+    {
+      "id": "DATA-003-S01",
+      "requirement": "DATA-003",
+      "scope": "Пошкодження файла. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/storage/test_repository.py::test_missing_or_modified_blob_reports_corruption"
+      ]
+    },
+    {
+      "id": "DATA-004-S01",
+      "requirement": "DATA-004",
+      "scope": "Автор редагує сцену під час генерації. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/generation/test_publication_snapshot.py::test_target_head_aba_still_conflicts"
+      ]
+    },
+    {
+      "id": "DATA-005-S01",
+      "requirement": "DATA-005",
+      "scope": "Заміна прози. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/generation/test_dependencies.py::test_edit_scene_two_invalidates_downstream_not_other_story"
+      ]
+    },
+    {
+      "id": "DATA-010-S01",
+      "requirement": "DATA-010",
+      "scope": "Прийняття й гонка після preview. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/storage/test_acceptance.py::test_preview_race_rolls_back_head_and_ledger"
+      ]
+    },
+    {
+      "id": "RUN-ACCEPTED-S01",
+      "requirement": "RUN-ACCEPTED",
+      "scope": "Без повтору й підміни історії. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/generation/test_accepted_resume.py::test_remaining_continues_after_accepted_result_without_inference_repeat"
+      ]
+    },
+    {
+      "id": "DATA-009-S01",
+      "requirement": "DATA-009",
+      "scope": "Повернення залежностей A→B→A. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/storage/test_freshness.py::test_new_version_recovers_after_dependency_a_b_a"
+      ]
+    },
+    {
+      "id": "DATA-006-S01",
+      "requirement": "DATA-006",
+      "scope": "Експорт архівного твору. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/authoring/test_exports.py::test_export_rejects_trashed_story_without_writing_files"
+      ]
+    },
+    {
+      "id": "DATA-006-S02",
+      "requirement": "DATA-006",
+      "scope": "Відновлення сцени. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/storage/test_trash.py::test_scene_trash_restore_preserves_text_and_invalidates_later"
+      ]
+    },
+    {
+      "id": "DATA-007-S01",
+      "requirement": "DATA-007",
+      "scope": "Вставлення зовнішнього тексту. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/web/test_manual_draft.py::test_manual_draft_is_versioned_and_available_to_editor"
+      ]
+    },
+    {
+      "id": "DATA-007-S02",
+      "requirement": "DATA-007",
+      "scope": "Конфлікт ручної чернетки. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/web/test_manual_draft.py::test_manual_draft_conflict_preserves_head_and_history_and_invalidates_dependents"
+      ]
+    },
+    {
+      "id": "DATA-008-S01",
+      "requirement": "DATA-008",
+      "scope": "Прийняття альтернативи. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/web/test_accept_draft.py::test_accept_completed_draft_preserves_exact_version_and_cas"
+      ]
+    },
+    {
+      "id": "MODEL-001-S01",
+      "requirement": "MODEL-001",
+      "scope": "Одна модель для всіх ролей. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/web/test_bulk_and_toggle.py::test_shared_provider_is_atomic_preserves_role_prompts_and_modes"
+      ]
+    },
+    {
+      "id": "MODEL-002-S01",
+      "requirement": "MODEL-002",
+      "scope": "Відмова провайдера. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/integration/test_prototype_flow.py::test_model_refusal_does_not_trigger_provider_fallback"
+      ]
+    },
+    {
+      "id": "MODEL-003-S01",
+      "requirement": "MODEL-003",
+      "scope": "Невідповідна модель Venice. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/providers/test_venice.py::test_venice_generation_cannot_bypass_catalog_filter_or_schema_support"
+      ]
+    },
+    {
+      "id": "BUDGET-001-S01",
+      "requirement": "BUDGET-001",
+      "scope": "Конкурентні резерви. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/billing/test_ledger.py::test_atomic_reservation_and_run_cap"
+      ]
+    },
+    {
+      "id": "BUDGET-001-S02",
+      "requirement": "BUDGET-001",
+      "scope": "Відсутній або прострочений тариф. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/billing/test_ledger.py::test_expired_tariff_and_manual_source_required"
+      ]
+    },
+    {
+      "id": "BUDGET-002-S01",
+      "requirement": "BUDGET-002",
+      "scope": "Usage без підтвердженої вартості. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/billing/test_ledger.py::test_reserve_settle_and_unknown_are_not_free"
+      ]
+    },
+    {
+      "id": "BUDGET-002-S02",
+      "requirement": "BUDGET-002",
+      "scope": "Збій після POST. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/billing/test_ledger.py::test_unknown_reserve_and_cost_snapshot_survive_backup"
+      ]
+    },
+    {
+      "id": "BUDGET-002-S03",
+      "requirement": "BUDGET-002",
+      "scope": "Ручна звірка під час активного standalone виклику. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/billing/test_billing_edge_cases.py::test_live_cli_cannot_be_manually_settled"
+      ]
+    },
+    {
+      "id": "BUDGET-002-S04",
+      "requirement": "BUDGET-002",
+      "scope": "Неповний останній usage. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/billing/test_billing_edge_cases.py::test_stream_final_usage_is_one_snapshot"
+      ]
+    },
+    {
+      "id": "PIPE-001-S01",
+      "requirement": "PIPE-001",
+      "scope": "Повна сцена. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/generation/test_editor_workflow.py::test_two_scenes_wait_for_one_review_each_then_continue_memory"
+      ]
+    },
+    {
+      "id": "PIPE-002-S01",
+      "requirement": "PIPE-002",
+      "scope": "Два вебсервери. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/generation/test_worker.py::test_second_server_cannot_recover_first_servers_live_run"
+      ]
+    },
+    {
+      "id": "PIPE-003-S01",
+      "requirement": "PIPE-003",
+      "scope": "Відповідь на створення запуску втрачена. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/generation/test_worker.py::test_repeated_request_id_returns_same_run"
+      ]
+    },
+    {
+      "id": "PIPE-004-S01",
+      "requirement": "PIPE-004",
+      "scope": "Збій під час платного запиту. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/generation/test_worker.py::test_reopen_marks_running_interrupted_without_retry"
+      ]
+    },
+    {
+      "id": "PIPE-005-S01",
+      "requirement": "PIPE-005",
+      "scope": "Скасування потокової генерації. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/providers/test_streaming.py::test_cancel_during_stream_closes_reader"
+      ]
+    },
+    {
+      "id": "PIPE-005-CANCEL-FINISHED",
+      "requirement": "PIPE-005",
+      "scope": "Повторне скасування. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/generation/test_worker.py::test_cancel_preserves_finished_or_already_requested_run"
+      ]
+    },
+    {
+      "id": "PIPE-005-CANCEL-STOPPED",
+      "requirement": "PIPE-005",
+      "scope": "Скасування зупиненого запуску. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/generation/test_worker.py::test_cancel_stopped_run_keeps_material_and_diagnostics"
+      ]
+    },
+    {
+      "id": "PIPE-006-S01",
+      "requirement": "PIPE-006",
+      "scope": "Вичерпано вихідні токени. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/providers/test_streaming.py::test_length_refusal_and_disconnect_keep_partial"
+      ]
+    },
+    {
+      "id": "PIPE-007-S01",
+      "requirement": "PIPE-007",
+      "scope": "Невалідний JSON. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/generation/test_scene_pipeline.py::test_invalid_brief_or_memory_stops_pipeline"
+      ]
+    },
+    {
+      "id": "PIPE-007-BATCH",
+      "requirement": "PIPE-007",
+      "scope": "Дрібні фрагменти. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/generation/test_stream_buffer.py::test_many_small_deltas_use_one_durable_batch"
+      ]
+    },
+    {
+      "id": "PIPE-007-CRASH",
+      "requirement": "PIPE-007",
+      "scope": "Незбережений хвіст. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/generation/test_stage_checkpoints.py::test_abrupt_process_exit_keeps_only_prior_checkpoint"
+      ]
+    },
+    {
+      "id": "PIPE-007-REPLAY",
+      "requirement": "PIPE-007",
+      "scope": "Повторне підключення. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/web/test_runs.py::test_batched_sse_replay_respects_both_cursors"
+      ]
+    },
+    {
+      "id": "PIPE-007-UTF8",
+      "requirement": "PIPE-007",
+      "scope": "Читання під час дозапису. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/web/test_runs.py::test_partial_reload_tolerates_incomplete_utf8_tail_during_append"
+      ]
+    },
+    {
+      "id": "CONTEXT-001-S01",
+      "requirement": "CONTEXT-001",
+      "scope": "Контекст завеликий. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/generation/test_context.py::test_budget_overflow_is_explicit"
+      ]
+    },
+    {
+      "id": "CONTEXT-004-S01",
+      "requirement": "CONTEXT-004",
+      "scope": "Недостатні або повторні спостереження. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/token_budget/test_profiles.py::test_profile_requires_distinct_samples_and_never_auto_activates"
+      ]
+    },
+    {
+      "id": "CONTEXT-004-S02",
+      "requirement": "CONTEXT-004",
+      "scope": "Зміна моделі, діапазону або фактична недооцінка. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/token_budget/test_service.py::test_manual_activation_reopen_and_drift"
+      ]
+    },
+    {
+      "id": "CONTEXT-002-S01",
+      "requirement": "CONTEXT-002",
+      "scope": "Написання другої сцени. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/generation/test_context.py::test_scene_two_sees_only_committed_past"
+      ]
+    },
+    {
+      "id": "CONTEXT-002-S02",
+      "requirement": "CONTEXT-002",
+      "scope": "Повтор ранньої сцени після завершення твору. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/memory/test_prefix.py::test_earlier_scene_uses_only_previous_prefix_after_whole_story_completed"
+      ]
+    },
+    {
+      "id": "CONTEXT-003-S01",
+      "requirement": "CONTEXT-003",
+      "scope": "Застарілість перед початком. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/generation/test_stale_memory_provenance.py::test_existing_stale_prose_with_current_verified_memory_does_not_cause_false_conflict"
+      ]
+    },
+    {
+      "id": "CONTEXT-003-S02",
+      "requirement": "CONTEXT-003",
+      "scope": "Нове застарівання під час виклику. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/generation/test_stale_memory_provenance.py::test_source_becoming_stale_during_generation_still_causes_conflict"
+      ]
+    },
+    {
+      "id": "MEMORY-001-S01",
+      "requirement": "MEMORY-001",
+      "scope": "Ручне збереження зі старими джерелами. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/memory/test_manual_journal.py::test_revision_checked_before_normalization_and_future_source_rejected"
+      ]
+    },
+    {
+      "id": "MEMORY-002-S01",
+      "requirement": "MEMORY-002",
+      "scope": "Невідомий фрагмент. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/generation/test_evidence_protocols.py::test_memory_delta_resolves_quotes_and_retains_previous_without_model_copy"
+      ]
+    },
+    {
+      "id": "MEMORY-003-S01",
+      "requirement": "MEMORY-003",
+      "scope": "Змінений стан і закрита лінія. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/memory/test_operations.py::test_state_updates_and_retires_keep_proof_history"
+      ]
+    },
+    {
+      "id": "MEMORY-003-S02",
+      "requirement": "MEMORY-003",
+      "scope": "Legacy-протокол після v2. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/memory/test_operations.py::test_invalid_v2_never_falls_back_to_legacy_delta"
+      ]
+    },
+    {
+      "id": "MEMORY-004-S01",
+      "requirement": "MEMORY-004",
+      "scope": "Зайвий scope відкритої лінії. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/memory/test_diagnostics.py::test_only_redundant_nonstate_scope_is_normalized"
+      ]
+    },
+    {
+      "id": "MEMORY-004-S02",
+      "requirement": "MEMORY-004",
+      "scope": "Невідомий доказ після нормалізації. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/memory/test_diagnostics.py::test_scope_normalization_never_bypasses_evidence_or_character_validation"
+      ]
+    },
+    {
+      "id": "PROMPT-CONTRACT-S01",
+      "requirement": "PROMPT-CONTRACT",
+      "scope": "Несумісний або legacy-промпт. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/generation/test_prompt_contracts.py::test_legacy_prompt_blocks_context_before_request"
+      ]
+    },
+    {
+      "id": "EDIT-001-S01",
+      "requirement": "EDIT-001",
+      "scope": "Неоднозначний якір. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/generation/test_evidence_protocols.py::test_copyedit_patches_are_anchored_nonoverlapping_and_preserve_numbers"
+      ]
+    },
+    {
+      "id": "REWRITE-DIFF-S01",
+      "requirement": "REWRITE-DIFF",
+      "scope": "Повторювані цитати та вставка. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/generation/test_rewrite_diff.py::test_diff_round_trip_and_empty_selection"
+      ]
+    },
+    {
+      "id": "REWRITE-DIFF-S02",
+      "requirement": "REWRITE-DIFF",
+      "scope": "Обов’язковий перегляд. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/generation/test_rewrite_diff.py::test_new_mode_never_auto_publishes_and_selection_is_cas"
+      ]
+    },
+    {
+      "id": "EDIT-CLASSIFICATION-S01",
+      "requirement": "EDIT-CLASSIFICATION",
+      "scope": "Помилка чи відмова класифікатора. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/generation/test_edit_classification.py::test_refusal_blocks_same_classifier_for_story_but_not_selection"
+      ]
+    },
+    {
+      "id": "EDIT-DIAGNOSTICS-S01",
+      "requirement": "EDIT-DIAGNOSTICS",
+      "scope": "Reasoning вичерпав вихідну відповідь. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/providers/test_streaming.py::test_reasoning_only_output_exhaustion_is_not_reported_as_input_overflow"
+      ]
+    },
+    {
+      "id": "EDIT-REVIEW-S01",
+      "requirement": "EDIT-REVIEW",
+      "scope": "Вибір підмножини. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/generation/test_copyedit_review.py::test_review_pauses_without_publish_and_subset_preserves_original"
+      ]
+    },
+    {
+      "id": "EDIT-REVIEW-S02",
+      "requirement": "EDIT-REVIEW",
+      "scope": "Зміна тексту під час перегляду. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/generation/test_copyedit_review.py::test_changed_inputs_or_targets_cannot_publish"
+      ]
+    },
+    {
+      "id": "EDIT-REVIEW-S03",
+      "requirement": "EDIT-REVIEW",
+      "scope": "Скасування очікування перегляду. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/generation/test_copyedit_review.py::test_cancelled_review_requires_explicit_repeat_authorization"
+      ]
+    },
+    {
+      "id": "LANGUAGE-WARNINGS-S01",
+      "requirement": "LANGUAGE-WARNINGS",
+      "scope": "Контекстний дефект і чистий приклад. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/generation/test_language_warnings.py::test_confirmed_fixture_examples_and_clean_controls"
+      ]
+    },
+    {
+      "id": "UI-001-S01",
+      "requirement": "UI-001",
+      "scope": "Незбережені ручні зміни. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/web/test_copyedit_review_ui.py::test_copyedit_panel_selection_and_dirty_guards"
+      ]
+    },
+    {
+      "id": "UI-002-S01",
+      "requirement": "UI-002",
+      "scope": "Введення під час збереження. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/web/test_editor_buffers.py::test_editor_buffers_keep_revision_and_typing_during_save"
+      ]
+    },
+    {
+      "id": "UI-003-S01",
+      "requirement": "UI-003",
+      "scope": "Відкриття завершеного запуску. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/web/test_resumed_events.py::test_old_failure_event_cannot_disconnect_resumed_run"
+      ]
+    },
+    {
+      "id": "UI-004-S01",
+      "requirement": "UI-004",
+      "scope": "Оновлення пам’яті. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/web/test_memory_save_regression.py::test_stale_memory_buffer_reports_revision_conflict_before_source_validation"
+      ]
+    },
+    {
+      "id": "UI-005-S01",
+      "requirement": "UI-005",
+      "scope": "Оновлення JavaScript. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/web/test_startup.py::test_browser_documents_and_imported_modules_are_not_cached"
+      ]
+    },
+    {
+      "id": "UI-006-S01",
+      "requirement": "UI-006",
+      "scope": "Заголовок вкладки браузера. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/web/test_branding.py::test_brand_metadata_and_icon_are_served_for_every_surface"
+      ]
+    },
+    {
+      "id": "UI-006-S02",
+      "requirement": "UI-006",
+      "scope": "Markdown у назві сцени. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/authoring/test_scene_description.py::test_import_title_without_markup"
+      ]
+    },
+    {
+      "id": "EVAL-001-S01",
+      "requirement": "EVAL-001",
+      "scope": "Непідтверджена цитата. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/evaluation/test_scoring.py::test_fabricated_wrong_version_and_short_quote_rejected"
+      ]
+    },
+    {
+      "id": "EVAL-002-S01",
+      "requirement": "EVAL-002",
+      "scope": "Змінений промпт оцінювача. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/evaluation/test_runner.py::test_fingerprint_changes_with_context_prompt_config_and_order"
+      ]
+    },
+    {
+      "id": "EVAL-003-S01",
+      "requirement": "EVAL-003",
+      "scope": "Ручне тестування без оцінки. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/web/test_bulk_and_toggle.py::test_evaluator_switch_off_preserves_config_and_prevents_manual_queue"
+      ]
+    },
+    {
+      "id": "EVAL-004-S01",
+      "requirement": "EVAL-004",
+      "scope": "Твір не вміщується в символьний бюджет. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/integration/test_story_evaluation.py::test_partial_story_coverage_never_looks_like_full_pass"
+      ]
+    },
+    {
+      "id": "EVAL-005-CAUSE",
+      "requirement": "EVAL-005",
+      "scope": "Помилка квоти. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/evaluation/test_adult_evaluator.py::test_provider_failure_keeps_real_cause_without_secrets"
+      ]
+    },
+    {
+      "id": "EVAL-005-REFUSAL",
+      "requirement": "EVAL-005",
+      "scope": "Явна відмова. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/evaluation/test_adult_evaluator.py::test_explicit_refusal_has_no_literary_score"
+      ]
+    },
+    {
+      "id": "EVAL-006-RESTART",
+      "requirement": "EVAL-006",
+      "scope": "Повтор після відмови. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/evaluation/test_evaluator_blocks.py::test_refusal_blocks_later_windows_queued_runs_and_restart"
+      ]
+    },
+    {
+      "id": "EVAL-006-IO",
+      "requirement": "EVAL-006",
+      "scope": "Недоступний partial після відповіді. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/evaluation/test_evaluator_blocks.py::test_refusal_is_blocked_before_partial_write"
+      ]
+    },
+    {
+      "id": "EVAL-007-REPORT",
+      "requirement": "EVAL-007",
+      "scope": "Текст не оцінено. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/evaluation/test_evaluator_blocks.py::test_technical_error_does_not_block_and_report_checks_next_window"
+      ]
+    },
+    {
+      "id": "EVAL-007-CALIBRATION",
+      "requirement": "EVAL-007",
+      "scope": "Один refused у контрольному наборі. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/evaluation/test_adult_calibration.py::test_refusals_are_reported_and_never_eligible"
+      ]
+    },
+    {
+      "id": "EXPORT-001-S01",
+      "requirement": "EXPORT-001",
+      "scope": "Посилання після публікації. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/authoring/test_exports.py::test_export_contains_selected_versions_in_scene_order"
+      ]
+    },
+    {
+      "id": "EXPORT-001-S02",
+      "requirement": "EXPORT-001",
+      "scope": "Сцена в кошику. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/authoring/test_exports.py::test_export_excludes_trashed_scene_from_text_and_manifest"
+      ]
+    },
+    {
+      "id": "EXPORT-001-S03",
+      "requirement": "EXPORT-001",
+      "scope": "Конкурентна зміна після початку знімка. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/authoring/test_exports.py::test_export_uses_captured_head_when_prose_changes_after_snapshot"
+      ]
+    },
+    {
+      "id": "EXPORT-001-S04",
+      "requirement": "EXPORT-001",
+      "scope": "Відсутня проза сцени. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/authoring/test_exports.py::test_export_blocks_partial_stale_or_missing_scene_by_default"
+      ]
+    },
+    {
+      "id": "SECURITY-001-S01",
+      "requirement": "SECURITY-001",
+      "scope": "Чужий сайт змінює локальні дані. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [],
+      "manual": {
+        "procedure": "docs/verification/manual.md#local-origin",
+        "reason": "Немає окремого автоматичного тесту Origin middleware; потрібна локальна HTTP-перевірка."
+      }
+    },
+    {
+      "id": "SECURITY-002-S01",
+      "requirement": "SECURITY-002",
+      "scope": "Перегляд налаштувань. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/providers/test_settings.py::test_env_key_never_serialized"
+      ]
+    },
+    {
+      "id": "CONTENT-001-S01",
+      "requirement": "CONTENT-001",
+      "scope": "Провайдер змінює поведінку. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [],
+      "manual": {
+        "procedure": "docs/verification/manual.md#provider-behavior",
+        "reason": "Поведінка реального зовнішнього провайдера не доводиться fake gateway; потрібен окремий дозволений прогін."
+      }
+    },
+    {
+      "id": "STORAGE-ROLLBACK",
+      "requirement": "STORAGE-BOUNDARY",
+      "scope": "STORAGE-ROLLBACK. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/storage/test_authoring_transactions.py::test_blueprint_conflict_keeps_heads_and_scene_order"
+      ]
+    },
+    {
+      "id": "STORAGE-EVENT-SEQUENCE",
+      "requirement": "STORAGE-BOUNDARY",
+      "scope": "STORAGE-EVENT-SEQUENCE. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/storage/test_run_store.py::test_event_sequences_are_unique_under_two_writers"
+      ]
+    },
+    {
+      "id": "SCENE-DESCRIPTION-S01",
+      "requirement": "SCENE-DESCRIPTION",
+      "scope": "План збережено раніше за картки. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/authoring/test_scene_description.py::test_cast_resolved_when_cards_created_after_import"
+      ]
+    },
+    {
+      "id": "SCENE-DESCRIPTION-S02",
+      "requirement": "SCENE-DESCRIPTION",
+      "scope": "Сцена з двома учасниками. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/generation/test_scene_cast_filter.py::test_only_participant_description_and_empty_never_means_all"
+      ]
+    },
+    {
+      "id": "SCENE-CAST-DISPLAY-S01",
+      "requirement": "SCENE-CAST-DISPLAY",
+      "scope": "Імена після збереження плану. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/web/test_scene_cast_names.py::test_story_view_returns_name_registry_without_character_descriptions"
+      ]
+    },
+    {
+      "id": "CHARACTER-IMPORT-S01",
+      "requirement": "CHARACTER-IMPORT",
+      "scope": "Новий твір із планом і описами. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/authoring/test_character_import.py::test_character_import_creates_proven_cards_and_fills_scene_cast"
+      ]
+    },
+    {
+      "id": "CHARACTER-TIME-S01",
+      "requirement": "CHARACTER-TIME",
+      "scope": "Ранні сцени та непозначені описи. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/characters/test_character_projection.py::test_future_fact_excluded_until_its_stable_scene_and_unknown_warns"
+      ]
+    },
+    {
+      "id": "CHARACTER-TIME-S02",
+      "requirement": "CHARACTER-TIME",
+      "scope": "Незалежне збереження та перегляд. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/web/test_character_availability.py::test_character_buffer_preserves_new_edits_and_rejects_stale_preview"
+      ]
+    },
+    {
+      "id": "MAINT-001-S01",
+      "requirement": "MAINT-001",
+      "scope": "Некоректна або стара база. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/storage/test_integrity.py::test_fsck_does_not_migrate_old_database"
+      ]
+    },
+    {
+      "id": "MAINT-002-S01",
+      "requirement": "MAINT-002",
+      "scope": "Зайнятий каталог. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/storage/test_backup.py::test_backup_refuses_busy_source_without_destination"
+      ]
+    },
+    {
+      "id": "MAINT-003-S01",
+      "requirement": "MAINT-003",
+      "scope": "Збій копіювання. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/storage/test_backup.py::test_failed_restore_keeps_incomplete_marker"
+      ]
+    },
+    {
+      "id": "PUB-001-S01",
+      "requirement": "PUB-001",
+      "scope": "Перша публікація після приватної розробки. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [],
+      "manual": {
+        "procedure": "docs/verification/manual.md#publication",
+        "reason": "Приватність історії та чисте встановлення потребують перевірки окремого пакета, а не поточного checkout."
+      }
+    },
+    {
+      "id": "PUB-001-S02",
+      "requirement": "PUB-001",
+      "scope": "Перевірки у свіжій копії. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [],
+      "manual": {
+        "procedure": "docs/verification/manual.md#publication",
+        "reason": "Приватність історії та чисте встановлення потребують перевірки окремого пакета, а не поточного checkout."
+      }
+    },
+    {
+      "id": "EDIT-SENTENCE-CONTEXT-S01",
+      "requirement": "EDIT-SENTENCE-CONTEXT",
+      "scope": "Правка в середині речення. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/generation/test_copyedit_sentence_context.py::test_legacy_preview_includes_sentence_around_each_exact_anchor"
+      ]
+    },
+    {
+      "id": "BUDGET-LAST-CALL-S01",
+      "requirement": "BUDGET-LAST-CALL",
+      "scope": "Пізня звірка старого виклику. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/billing/test_ledger.py::test_summary_last_call_tracks_send_order_not_later_settlement"
+      ]
+    },
+    {
+      "id": "EDIT-NO-CHANGES-S01",
+      "requirement": "EDIT-NO-CHANGES",
+      "scope": "Порожня відповідь редактора правок. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/generation/test_copyedit_review.py::test_no_changes_cannot_be_accepted_or_auto_published"
+      ]
+    },
+    {
+      "id": "EDIT-NO-CHANGES-S02",
+      "requirement": "EDIT-NO-CHANGES",
+      "scope": "Автор відхиляє запропоновані зміни. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/generation/test_copyedit_review.py::test_auto_records_all_and_author_can_revise_to_empty_selection"
+      ]
+    },
+    {
+      "id": "EDIT-LOOP-S01",
+      "requirement": "EDIT-LOOP",
+      "scope": "Послідовне виправлення. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/generation/test_editor_loop.py::test_chain_and_one_final_subset_review"
+      ]
+    },
+    {
+      "id": "EDIT-LOOP-REVIEW-S01",
+      "requirement": "EDIT-LOOP-REVIEW",
+      "scope": "Єдиний окремий запуск редактора. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/web/test_editor_loop_ui.py::test_loop_limit_and_confirmation_only_name_editor"
+      ]
+    },
+    {
+      "id": "EDIT-WORKFLOW-S01",
+      "requirement": "EDIT-WORKFLOW",
+      "scope": "Спільний diff кожної сцени і явне продовження. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/generation/test_editor_workflow.py::test_two_scenes_wait_for_one_review_each_then_continue_memory"
+      ]
+    },
+    {
+      "id": "DOCS-TRACE-S01",
+      "requirement": "DOCS-TRACE",
+      "scope": "Видалений тест або новий сценарій. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/test_spec_traceability.py::test_invalid_mapping_is_error"
+      ]
+    },
+    {
+      "id": "DOCS-TRACE-S02",
+      "requirement": "DOCS-TRACE",
+      "scope": "Ручна перевірка без удаваного допуску. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/test_spec_traceability.py::test_manual_mapping_requires_procedure_and_reason"
+      ]
+    },
+    {
+      "id": "DOCS-STATUS-S01",
+      "requirement": "DOCS-STATUS",
+      "scope": "Collection замість виконання. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/test_verification_report.py::test_collection_is_rejected"
+      ]
+    },
+    {
+      "id": "DOCS-STATUS-S02",
+      "requirement": "DOCS-STATUS",
+      "scope": "Помилка або відсутній XML. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/test_verification_report.py::test_failure_cannot_be_reported_as_passed"
+      ]
+    },
+    {
+      "id": "EDIT-LOOP-STOP-S01",
+      "requirement": "EDIT-LOOP-STOP",
+      "scope": "Ліміт/цикл і відсутність зайвого виклику.",
+      "tests": [
+        "tests/generation/test_editor_loop.py::test_limit_and_candidate_cycle_stop_without_extra_call"
+      ]
+    },
+    {
+      "id": "EDIT-LOOP-STOP-S02",
+      "requirement": "EDIT-LOOP-STOP",
+      "scope": "Збережений результат не викликається повторно.",
+      "tests": [
+        "tests/generation/test_editor_loop.py::test_pause_resume_and_completed_checkpoint_do_not_repeat_model"
+      ]
+    },
+    {
+      "id": "EDIT-001-LIMITS",
+      "requirement": "EDIT-001",
+      "scope": "Граничні розміри схеми, окремо від літературних guards.",
+      "tests": [
+        "tests/test_spec_traceability.py::test_copyedit_numeric_boundaries"
+      ]
+    },
+    {
+      "id": "REWRITE-DIFF-LIMITS",
+      "requirement": "REWRITE-DIFF",
+      "scope": "Операційні межі тексту, одиниць diff і числа змін.",
+      "tests": [
+        "tests/generation/test_rewrite_diff.py::test_token_operational_limit_rejects_before_expensive_comparison",
+        "tests/generation/test_rewrite_diff.py::test_edit_count_boundary",
+        "tests/generation/test_rewrite_diff.py::test_unusable_candidate_rejected"
+      ]
+    },
+    {
+      "id": "EDIT-SENTENCE-GROUPS-S01",
+      "requirement": "EDIT-SENTENCE-GROUPS",
+      "scope": "Одна група з окремим виділенням змінених/незмінних місць; patches/diff та UI.",
+      "tests": [
+        "tests/generation/test_sentence_groups.py::test_distant_changes_in_sentence_are_one_atomic_group",
+        "tests/generation/test_sentence_groups.py::test_legacy_patches_are_grouped_without_rewriting_proposal",
+        "tests/web/test_copyedit_review_ui.py::test_copyedit_panel_selection_and_dirty_guards"
+      ]
+    },
+    {
+      "id": "EDIT-SENTENCE-GROUPS-S02",
+      "requirement": "EDIT-SENTENCE-GROUPS",
+      "scope": "Частковий вибір відхилено сервісом, preview та всередині storage transaction.",
+      "tests": [
+        "tests/generation/test_sentence_groups.py::test_partial_group_is_rejected_by_preview_service_and_storage"
+      ]
+    },
+    {
+      "id": "EDIT-SENTENCE-GROUPS-S03",
+      "requirement": "EDIT-SENTENCE-GROUPS",
+      "scope": "Історичний partial decision не переписується й не приймається UI мовчки.",
+      "tests": [
+        "tests/generation/test_sentence_groups.py::test_historical_partial_decision_is_read_without_rewriting",
+        "tests/web/test_copyedit_review_ui.py::test_copyedit_panel_selection_and_dirty_guards"
+      ]
+    },
+    {
+      "id": "ROLE-PROFILES-S01",
+      "requirement": "ROLE-PROFILES",
+      "scope": "Контракт R-11: профілі, копіювання та перевірка застосування.",
+      "tests": [
+        "tests/authoring/test_role_profiles.py::test_capture_apply_copies_prompts_and_versions_do_not_update_stories"
+      ]
+    },
+    {
+      "id": "ROLE-PROFILES-S02",
+      "requirement": "ROLE-PROFILES",
+      "scope": "Контракт R-11: профілі, копіювання та перевірка застосування.",
+      "tests": [
+        "tests/authoring/test_role_profiles.py::test_profile_and_story_cas_prevent_partial_apply",
+        "tests/authoring/test_role_profiles.py::test_profile_capture_checks_source_revision_again_before_save",
+        "tests/authoring/test_role_profiles.py::test_transaction_rolls_back_roles_when_evaluator_write_fails"
+      ]
+    },
+    {
+      "id": "ROLE-PROFILES-S03",
+      "requirement": "ROLE-PROFILES",
+      "scope": "Контракт R-11: профілі, копіювання та перевірка застосування.",
+      "tests": [
+        "tests/authoring/test_role_profiles.py::test_import_rejects_unsafe_or_incompatible_document",
+        "tests/web/test_role_profiles_api.py::test_profile_http_roundtrip_and_conflict",
+        "tests/web/test_role_profiles_api.py::test_import_rejects_secret_without_echo_and_has_size_limit"
+      ]
+    },
+    {
+      "id": "ROLE-PROFILES-S04",
+      "requirement": "ROLE-PROFILES",
+      "scope": "Контракт R-11: профілі, копіювання та перевірка застосування.",
+      "tests": [
+        "tests/authoring/test_role_profiles.py::test_applying_profile_preserves_existing_refusal_block",
+        "tests/authoring/test_role_profiles.py::test_evaluator_is_optional_and_import_does_not_transfer_calibration",
+        "tests/authoring/test_role_profiles.py::test_imported_pause_without_calibration_cannot_partially_apply"
+      ]
+    },
+    {
+      "id": "ROLE-PROFILES-S05",
+      "requirement": "ROLE-PROFILES",
+      "scope": "UI preview, dirty/reset, явне застосування та reload.",
+      "tests": [
+        "tests/web/test_role_profile_ui.py::test_role_profiles_preview_dirty_conflict_and_apply"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#role-profiles-ui",
+        "reason": "Браузерна візуальна/клавіатурна та responsive перевірка доповнює автоматичну перевірку поведінки ES module."
+      }
+    },
+    {
+      "id": "CONTEXT-005-S01",
+      "requirement": "CONTEXT-005",
+      "scope": "R-12: горизонт планів, орієнтир та реальні залежності.",
+      "tests": [
+        "tests/generation/test_story_horizon.py::test_projection_includes_current_and_exact_future_count",
+        "tests/generation/test_story_horizon.py::test_third_scene_window_uses_only_prefix_memory_and_three_plans",
+        "tests/generation/test_story_horizon.py::test_trash_is_not_counted_as_a_future_scene"
+      ]
+    },
+    {
+      "id": "CONTEXT-005-S02",
+      "requirement": "CONTEXT-005",
+      "scope": "R-12: горизонт планів, орієнтир та реальні залежності.",
+      "tests": [
+        "tests/generation/test_story_horizon.py::test_excluded_plan_is_absent_from_text_refs_and_snapshot",
+        "tests/generation/test_story_horizon.py::test_order_window_ignores_hidden_swap_but_tracks_visible_swap_and_total",
+        "tests/generation/test_story_horizon.py::test_integrity_accepts_persisted_window_and_rejects_foreign_owner"
+      ]
+    },
+    {
+      "id": "CONTEXT-005-S03",
+      "requirement": "CONTEXT-005",
+      "scope": "R-12: горизонт планів, орієнтир та реальні залежності.",
+      "tests": [
+        "tests/generation/test_story_horizon.py::test_current_warns_without_goal_and_goal_is_rendered_once_as_intention",
+        "tests/generation/test_story_horizon.py::test_memory_and_diff_do_not_receive_goal_or_future_plans"
+      ]
+    },
+    {
+      "id": "CONTEXT-005-S04",
+      "requirement": "CONTEXT-005",
+      "scope": "R-12: горизонт планів, орієнтир та реальні залежності.",
+      "tests": [
+        "tests/generation/test_story_horizon.py::test_transitive_wide_brief_dependency_is_not_hidden_by_writer_horizon"
+      ]
+    },
+    {
+      "id": "CONTEXT-005-S05",
+      "requirement": "CONTEXT-005",
+      "scope": "R-12: горизонт планів, орієнтир та реальні залежності.",
+      "tests": [
+        "tests/web/test_story_horizon_api.py::test_role_horizons_and_shared_ending_roundtrip_without_leaking_into_bundle",
+        "tests/web/test_story_horizon_api.py::test_oversize_ending_and_invalid_horizon_are_rejected",
+        "tests/web/test_horizon_controls.py::test_horizon_controls_count_and_editor_mode",
+        "tests/generation/test_story_horizon.py::test_config_change_does_not_rewrite_frozen_context_or_legacy_snapshot",
+        "tests/generation/test_story_horizon.py::test_legacy_pending_editor_proposal_can_be_accepted_without_new_selector_field"
+      ]
+    },
+    {
+      "id": "R16-META-S01",
+      "requirement": "R16-META",
+      "scope": "R-16a: картка, CAS, UI й cover integrity; не підтверджує ще не реалізовані формати.",
+      "tests": [
+        "tests/storage/test_publication.py::test_schema2_migration_defaults_and_old_export"
+      ]
+    },
+    {
+      "id": "R16-META-S02",
+      "requirement": "R16-META",
+      "scope": "R-16a: картка, CAS, UI й cover integrity; не підтверджує ще не реалізовані формати.",
+      "tests": [
+        "tests/storage/test_publication.py::test_card_signature_cas_archive_snapshot_and_no_prose_invalidation",
+        "tests/web/test_publication_api.py::test_publication_page_fields_signature_crud_and_cas"
+      ]
+    },
+    {
+      "id": "R16-META-S03",
+      "requirement": "R16-META",
+      "scope": "R-16a: картка, CAS, UI й cover integrity; не підтверджує ще не реалізовані формати.",
+      "tests": [
+        "tests/web/test_publication_ui.py::test_publication_dirty_async_save_conflict_and_upload"
+      ]
+    },
+    {
+      "id": "R16-COVER-S01",
+      "requirement": "R16-COVER",
+      "scope": "R-16a: картка, CAS, UI й cover integrity; не підтверджує ще не реалізовані формати.",
+      "tests": [
+        "tests/web/test_publication_api.py::test_cover_http_bounds_owner_and_save",
+        "tests/storage/test_publication.py::test_exif_orientation_removed_and_large_or_animated_rejected",
+        "tests/storage/test_publication.py::test_without_pillow_metadata_still_works"
+      ]
+    },
+    {
+      "id": "R16-COVER-S02",
+      "requirement": "R16-COVER",
+      "scope": "R-16a: картка, CAS, UI й cover integrity; не підтверджує ще не реалізовані формати.",
+      "tests": [
+        "tests/storage/test_publication_backup.py::test_publication_cold_backup_restore_schema2_and_3",
+        "tests/storage/test_publication.py::test_fsck_detects_publication_payload_and_foreign_asset",
+        "tests/storage/test_publication.py::test_cover_owner_hash_normalization_and_removal"
+      ]
+    },
+    {
+      "id": "R16-SUGGEST-S01",
+      "requirement": "R16-SUGGEST",
+      "scope": "R-16b: протокол, повний контекст, явне прийняття; якість анотації не підтверджується.",
+      "tests": [
+        "tests/generation/test_publication_metadata.py::test_full_text_seven_scenes_dedicated_prompt_and_schema",
+        "tests/web/test_publication_ui.py::test_publication_dirty_async_save_conflict_and_upload"
+      ]
+    },
+    {
+      "id": "R16-SUGGEST-S02",
+      "requirement": "R16-SUGGEST",
+      "scope": "R-16b: протокол, повний контекст, явне прийняття; якість анотації не підтверджується.",
+      "tests": [
+        "tests/generation/test_publication_metadata.py::test_no_dispatch_or_run_on_context_overflow_or_full_card",
+        "tests/generation/test_publication_metadata.py::test_paid_preflight_requires_explicit_story_limit"
+      ]
+    },
+    {
+      "id": "R16-SUGGEST-S03",
+      "requirement": "R16-SUGGEST",
+      "scope": "R-16b: протокол, повний контекст, явне прийняття; якість анотації не підтверджується.",
+      "tests": [
+        "tests/generation/test_publication_metadata.py::test_failed_attempt_preserves_real_cause_without_card_write",
+        "tests/generation/test_publication_metadata.py::test_text_refusal_cannot_be_accepted",
+        "tests/generation/test_publication_metadata.py::test_duplicate_active_and_cancel_recovery_no_automatic_retry",
+        "tests/storage/test_publication_suggestions.py::test_stale_or_forged_proposal_cannot_be_saved",
+        "tests/web/test_publication_api.py::test_suggestion_http_readiness_history_and_atomic_save",
+        "tests/providers/test_streaming.py::test_publication_real_sdk_failure_category"
+      ]
+    },
+    {
+      "id": "EDIT-DIAGNOSTICS-S02",
+      "requirement": "EDIT-DIAGNOSTICS",
+      "scope": "Безпечна діагностика якоря; строгі guards незмінні, не підтверджує причину модельного збою.",
+      "tests": [
+        "tests/generation/test_editor_output.py::test_anchor_diagnostics_identify_patch_without_echoing_prose",
+        "tests/generation/test_editor_output.py::test_ambiguous_anchor_and_untrusted_fragment_id_diagnostics"
+      ]
+    },
+    {
+      "id": "EDIT-LOOP-STOP-S03",
+      "requirement": "EDIT-LOOP-STOP",
+      "scope": "Попередні валідні зміни доступні після failed спроби; немає autoaccept/retry, cancellation/source guards чинні.",
+      "tests": [
+        "tests/generation/test_editor_loop.py::test_four_successful_diff_passes_survive_reasoning_only_fifth",
+        "tests/generation/test_editor_loop.py::test_error_keeps_working_candidate_without_publishing_or_retry",
+        "tests/generation/test_editor_loop.py::test_partial_failure_checkpoint_recovers_without_another_call",
+        "tests/generation/test_editor_loop.py::test_bad_anchor_after_success_uses_last_valid_candidate",
+        "tests/generation/test_editor_loop.py::test_cancel_after_success_does_not_create_summary",
+        "tests/generation/test_editor_loop.py::test_failed_pass_with_changed_source_does_not_offer_partial_acceptance",
+        "tests/generation/test_editor_loop.py::test_guards_stop_without_advancing",
+        "tests/generation/test_editor_workflow.py::test_workflow_failed_second_pass_offers_first_and_waits_for_acceptance",
+        "tests/generation/test_editor_loop.py::test_storage_or_stream_exception_is_not_reclassified_on_resume",
+        "tests/generation/test_editor_loop.py::test_failure_saved_before_stop_checkpoint_recovers_locally",
+        "tests/generation/test_editor_loop.py::test_checkpoint_write_failure_requires_explicit_retry_not_partial_success"
+      ]
+    },
+    {
+      "id": "MEMORY-FORWARD-S01",
+      "requirement": "MEMORY-FORWARD",
+      "scope": "Відбір літературної проєкції, журнал збережено; не глобальне вилучення фактів з авторських джерел.",
+      "tests": [
+        "tests/memory/test_forwarding.py::test_boundary_inherited_fact_hide_enable_and_journal_unchanged",
+        "tests/memory/test_forwarding.py::test_updated_state_and_retired_thread_remain_hidden_without_erasing_events",
+        "tests/memory/test_forwarding.py::test_projection_hides_all_events_of_claim_but_catalog_keeps_it"
+      ]
+    },
+    {
+      "id": "MEMORY-FORWARD-S02",
+      "requirement": "MEMORY-FORWARD",
+      "scope": "Відбір літературної проєкції, журнал збережено; не глобальне вилучення фактів з авторських джерел.",
+      "tests": [
+        "tests/memory/test_forwarding.py::test_context_policy_freshness_and_return_to_exact_selection",
+        "tests/memory/test_forwarding.py::test_forwarding_cas_unknown_and_earlier_change_conflicts",
+        "tests/web/test_memory_forwarding_api.py::test_memory_table_http_choices_cas_and_unknown_scope"
+      ]
+    },
+    {
+      "id": "MEMORY-FORWARD-S03",
+      "requirement": "MEMORY-FORWARD",
+      "scope": "Відбір літературної проєкції, журнал збережено; не глобальне вилучення фактів з авторських джерел.",
+      "tests": [
+        "tests/web/test_memory_table_ui.py::test_memory_table_selection_conflict_and_async_save"
+      ]
+    },
+    {
+      "id": "R16-EBOOK-S01",
+      "requirement": "R16-EBOOK",
+      "scope": "Контракт FB2/EPUB R-16c; без висновку про літературну якість.",
+      "tests": [
+        "tests/authoring/test_ebook_exports.py::test_seven_scene_ebooks_metadata_plaintext_and_manifest",
+        "tests/web/test_ebook_api.py::test_ebook_api_download_headers_integrity_and_ownership"
+      ]
+    },
+    {
+      "id": "R16-EBOOK-S02",
+      "requirement": "R16-EBOOK",
+      "scope": "Контракт FB2/EPUB R-16c; без висновку про літературну якість.",
+      "tests": [
+        "tests/authoring/test_ebook_exports.py::test_incomplete_ebooks_are_explicit_and_bad_controls_rejected",
+        "tests/authoring/test_ebook_exports.py::test_fb2_missing_author_or_genre_is_not_fixed_by_allow_incomplete",
+        "tests/authoring/test_ebook_exports.py::test_fb2_requires_genre_and_rejects_dtd_or_invalid_schema"
+      ]
+    },
+    {
+      "id": "R16-EBOOK-S03",
+      "requirement": "R16-EBOOK",
+      "scope": "Контракт FB2/EPUB R-16c; без висновку про літературну якість.",
+      "tests": [
+        "tests/authoring/test_ebook_exports.py::test_snapshot_survives_changes_to_card_and_prose_during_blob_read",
+        "tests/authoring/test_ebook_exports.py::test_manifest_failure_leaves_prior_download_valid_but_orphan_inaccessible",
+        "tests/authoring/test_ebook_exports.py::test_fifteen_thousand_words_and_tampered_download"
+      ]
+    },
+    {
+      "id": "R16-EBOOK-S04",
+      "requirement": "R16-EBOOK",
+      "scope": "Контракт FB2/EPUB R-16c; без висновку про літературну якість.",
+      "tests": [
+        "tests/web/test_exports_ui.py::test_export_form_explicit_options_dirty_and_failure"
+      ]
+    },
+    {
+      "id": "R16-EBOOK-S05",
+      "requirement": "R16-EBOOK",
+      "scope": "Контракт FB2/EPUB R-16c; без висновку про літературну якість.",
+      "tests": [
+        "tests/authoring/test_ebook_exports.py::test_fifteen_thousand_words_and_tampered_download"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#ebook-formats",
+        "reason": "Офіційний EPUBCheck і вигляд у читачі потребують окремих dev tools; не runtime pytest залежності."
+      }
+    },
+    {
+      "id": "R16-PDF-S01",
+      "requirement": "R16-PDF",
+      "scope": "PDF A5 контракт, не літературна оцінка.",
+      "tests": [
+        "tests/authoring/test_pdf_exports.py::test_pdf_a5_cover_title_contents_unicode_fonts_and_download",
+        "tests/authoring/test_pdf_exports.py::test_pdf_contents_never_interprets_author_markup",
+        "tests/web/test_ebook_api.py::test_ebook_api_download_headers_integrity_and_ownership"
+      ]
+    },
+    {
+      "id": "R16-PDF-S02",
+      "requirement": "R16-PDF",
+      "scope": "PDF A5 контракт, не літературна оцінка.",
+      "tests": [
+        "tests/authoring/test_pdf_exports.py::test_pdf_optional_dependency_failure_does_not_break_md",
+        "tests/authoring/test_pdf_exports.py::test_pdf_bad_font_hash_fails_before_publication",
+        "tests/authoring/test_pdf_exports.py::test_pdf_unsupported_glyph_and_incomplete_guard"
+      ]
+    },
+    {
+      "id": "R16-PDF-S03",
+      "requirement": "R16-PDF",
+      "scope": "PDF A5 контракт, не літературна оцінка.",
+      "tests": [
+        "tests/authoring/test_pdf_exports.py::test_pdf_large_book_no_blank_pages_and_contents_page_numbers",
+        "tests/authoring/test_pdf_exports.py::test_pdf_long_unbroken_words_titles_and_plaintext_markup",
+        "tests/authoring/test_pdf_exports.py::test_pdf_empty_incomplete_book_has_no_toc_placeholder"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#pdf-publication",
+        "reason": "Рендер/візуальний огляд усіх сторінок потребує локального dev renderer та окремого acceptance."
+      }
+    },
+    {
+      "id": "UI-FEEDBACK-S01",
+      "requirement": "UI-FEEDBACK",
+      "scope": "Регресія ручного save та UI feedback, без модельних викликів.",
+      "tests": [
+        "tests/web/test_editor_buffers.py::test_editor_buffers_keep_revision_and_typing_during_save"
+      ]
+    },
+    {
+      "id": "UI-FEEDBACK-S02",
+      "requirement": "UI-FEEDBACK",
+      "scope": "Регресія ручного save та UI feedback, без модельних викликів.",
+      "tests": [
+        "tests/web/test_notices.py::test_notices_close_and_scene_selection"
+      ]
+    },
+    {
+      "id": "MANUAL-POLICY-S01",
+      "requirement": "MANUAL-POLICY",
+      "scope": "Регресія ручного save та UI feedback, без модельних викликів.",
+      "tests": [
+        "tests/web/test_manual_draft.py::test_manual_text_after_hidden_memory_is_fresh_without_revalidating_old_versions",
+        "tests/web/test_manual_draft.py::test_manual_draft_conflict_preserves_head_and_history_and_invalidates_dependents",
+        "tests/web/test_manual_draft.py::test_manual_prose_policy_does_not_hide_review_after_story_style_changes"
+      ]
+    },
+    {
+      "id": "PLANNER-JSON-S01",
+      "requirement": "PLANNER-JSON",
+      "scope": "Планувальник: JSON wrapper/schema/publication, без реальних модельних викликів.",
+      "tests": [
+        "tests/generation/test_planner_output.py::test_planner_accepts_one_outer_json_fence_and_keeps_raw",
+        "tests/generation/test_planner_output.py::test_wrapped_planner_proposals_still_require_review",
+        "tests/generation/test_planner_output.py::test_prepare_uses_same_envelope_with_its_own_schema",
+        "tests/generation/test_planner_output.py::test_worker_reports_envelope_warning_without_another_call"
+      ]
+    },
+    {
+      "id": "PLANNER-JSON-S02",
+      "requirement": "PLANNER-JSON",
+      "scope": "Планувальник: JSON wrapper/schema/publication, без реальних модельних викликів.",
+      "tests": [
+        "tests/generation/test_planner_output.py::test_planner_failures_are_concrete_and_do_not_echo_values"
+      ]
+    },
+    {
+      "id": "MANUAL-POLICY-S02",
+      "requirement": "MANUAL-POLICY",
+      "scope": "Ручна правка generated brief з forwarding: publication/review/CAS, без моделей.",
+      "tests": [
+        "tests/web/test_manual_brief.py::test_edit_generated_brief_after_forwarding_can_save_with_cas_and_review"
+      ]
+    },
+    {
+      "id": "UI-002-S02",
+      "requirement": "UI-002",
+      "scope": "Автооновлення активної поточної вкладки brief/draft/prose/memory: перша/повторна генерація, dirty/history/saving і введення під час GET.",
+      "tests": [
+        "tests/web/test_editor_buffers.py::test_editor_buffers_keep_revision_and_typing_during_save"
+      ]
+    },
+    {
+      "id": "R16-SUGGEST-S04",
+      "requirement": "R16-SUGGEST",
+      "scope": "Часткові непорожні метадані з warning, явне Save; порожній весь результат і недопустимі значення відхилено; UI textContent.",
+      "tests": [
+        "tests/generation/test_publication_metadata.py::test_partial_suggestions_skip_only_empty_fields",
+        "tests/generation/test_publication_metadata.py::test_partial_suggestions_preserve_review_and_warning_without_card_write",
+        "tests/generation/test_publication_metadata.py::test_no_nonempty_suggestion_has_specific_error",
+        "tests/generation/test_publication_metadata.py::test_invalid_suggestions_are_rejected",
+        "tests/web/test_publication_ui.py::test_publication_dirty_async_save_conflict_and_upload",
+        "tests/generation/test_publication_metadata.py::test_empty_unrequested_known_field_is_ignored_with_warning"
+      ]
+    },
+    {
+      "id": "SAVE-UNCHANGED-S01",
+      "requirement": "SAVE-UNCHANGED",
+      "scope": "Exact bytes reuse з CAS для всіх матеріалів, незмінні metadata/head, stale збережено, зміни інвалідують.",
+      "tests": [
+        "tests/web/test_unchanged_save.py::test_unchanged_scene_save_preserves_versions_revisions_and_dependents",
+        "tests/web/test_unchanged_save.py::test_same_head_and_metadata_are_noops_with_cas",
+        "tests/web/test_unchanged_save.py::test_unchanged_stale_draft_is_not_rebased_or_accepted",
+        "tests/web/test_unchanged_save.py::test_changed_text_still_invalidates_dependents"
+      ]
+    },
+    {
+      "id": "R18-STATS-S01",
+      "requirement": "R18-STATS",
+      "scope": "Локальні counts, chronology, exact request metadata та read-only UI/API; не літературний допуск.",
+      "tests": [
+        "tests/generation/test_scene_statistics.py::test_unicode_word_counts",
+        "tests/generation/test_scene_statistics.py::test_selected_only_and_memory_prefix",
+        "tests/web/test_scene_statistics_ui.py::test_statistics_buffer_and_async_guards"
+      ]
+    },
+    {
+      "id": "R18-STATS-S02",
+      "requirement": "R18-STATS",
+      "scope": "Локальні counts, chronology, exact request metadata та read-only UI/API; не літературний допуск.",
+      "tests": [
+        "tests/generation/test_scene_statistics.py::test_selected_only_and_memory_prefix",
+        "tests/generation/test_scene_statistics.py::test_future_memory_is_unavailable_not_counted"
+      ]
+    },
+    {
+      "id": "R18-STATS-S03",
+      "requirement": "R18-STATS",
+      "scope": "Локальні counts, chronology, exact request metadata та read-only UI/API; не літературний допуск.",
+      "tests": [
+        "tests/generation/test_scene_statistics.py::test_context_breakdown_exact_body_and_overflow",
+        "tests/generation/test_scene_statistics.py::test_editor_preview_uses_actual_working_source_and_schema",
+        "tests/web/test_scene_statistics_api.py::test_statistics_get_has_no_writes_or_dispatch"
+      ]
+    }
+  ]
+}
