@@ -1,0 +1,32 @@
+import assert from 'node:assert/strict';
+const events=[];
+globalThis.document={querySelector:()=>null,dispatchEvent:e=>events.push(e.type)};
+globalThis.CustomEvent=class extends Event{constructor(type,options){super(type);this.detail=options?.detail}};
+globalThis.confirm=()=>false;
+const {registerSettingsForm,settingsChanged,withSettingsSave,settingsSaved,settingsDrafts,confirmSettingsReplacement,settingsRebaseFields,resetSettingsForm}=await import('../../../src/storygen/web/static/settings-workspace.js');
+function form(values){return {dataset:{},elements:Object.entries(values).map(([name,value])=>({name,value,type:'text',disabled:false,dataset:{},isConnected:true})),addEventListener(){},dispatchEvent(){}}}
+const writer=form({model:'old',prompt:'saved'}),editor=form({model:'old',prompt:'editor'});
+registerSettingsForm('writer',{form:writer,label:'Письменник',section:'models'});registerSettingsForm('editor',{form:editor,label:'Редактор',section:'models'});
+writer.elements[1].value='pending';settingsChanged('writer');assert.equal(settingsDrafts.dirty('writer'),true);
+let release;const gate=new Promise(resolve=>release=resolve);
+const save=withSettingsSave('editor',async()=>{await gate;settingsSaved('editor')});
+assert.ok([...writer.elements,...editor.elements].every(e=>e.disabled));
+await assert.rejects(()=>withSettingsSave('writer',async()=>{}),/Дочекайтеся/);release();await save;
+assert.ok([...writer.elements,...editor.elements].every(e=>!e.disabled));assert.equal(writer.elements[1].value,'pending');assert.equal(settingsDrafts.dirty('writer'),true);
+assert.equal(confirmSettingsReplacement(['writer'],['model']),true,'unrelated dirty prompt does not block shared provider');
+writer.elements[0].value='pending-model';settingsChanged('writer');assert.equal(confirmSettingsReplacement(['writer'],['model']),false);
+writer.elements[0].value='shared';settingsRebaseFields('writer',['model']);assert.equal(writer.elements[1].value,'pending');assert.equal(settingsDrafts.dirty('writer'),true);
+await assert.rejects(()=>withSettingsSave('writer',async()=>{throw Error('network')}));assert.equal(settingsDrafts.get('writer').error,'network');assert.equal(settingsDrafts.anyBusy(),false);assert.ok(writer.elements.every(e=>!e.disabled));
+const evaluator=form({enabled:'',evaluator_json:'{}'});evaluator.elements[0].type='checkbox';evaluator.elements[0].checked=true;evaluator.elements[1].dataset.derived='true';
+registerSettingsForm('evaluator',{form:evaluator,label:'Оцінювач',section:'evaluator'});
+evaluator.elements[1].value='derived-preview';settingsChanged('evaluator');assert.equal(settingsDrafts.dirty('evaluator'),false);
+evaluator.dataset.rawPending='true';evaluator.elements[1].value='{';settingsChanged('evaluator');evaluator.elements[0].checked=false;settingsRebaseFields('evaluator',['enabled']);assert.equal(settingsDrafts.dirty('evaluator'),true);assert.equal(evaluator.elements[1].value,'{');
+assert.ok(events.includes('settings-save-state'));console.log('Settings save locking, neighbors and raw dirty regressions passed');
+
+let resetRelease;const resetGate=new Promise(resolve=>resetRelease=resolve);
+registerSettingsForm('writer',{form:writer,label:'Writer',section:'models',reset:async()=>{await resetGate;writer.elements[1].value='server';settingsSaved('writer')}});
+const resetting=resetSettingsForm('writer');
+assert.ok([...writer.elements,...editor.elements].every(e=>e.disabled),'reset must lock all forms while fetching');
+await assert.rejects(()=>withSettingsSave('editor',async()=>{}));
+resetRelease();await resetting;assert.equal(writer.elements[1].value,'server');assert.equal(settingsDrafts.anyBusy(),false);
+assert.ok(writer.elements.every(e=>!e.disabled));

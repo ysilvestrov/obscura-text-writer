@@ -3,36 +3,57 @@ import {api,json,notice} from './api.js';
 import {state,refresh,saveBuffer,loadBuffer} from './editor.js';
 import {renderLanguageWarnings} from './copyedits.js';
 import {installMemoryTable} from './memory-table.js';
+import {registerWorkspaceCommand} from './workspace-commands.js';
+import {activateStageTab,revealStageTab,setStageTabStops} from './workspace-tabs.js';
 const memoryTable=installMemoryTable({state,api,json,notice,refresh,loadBuffer});
 const editor=document.querySelector('#editor');
-const labels={plan:'План',brief:'Завдання',draft:'Чернетка',prose:'Проза',memory:'Пам’ять'};
+const labels={plan:'План',brief:'Завдання',draft:'Чернетка',review:'Редактура',prose:'Проза',memory:'Пам’ять'};
 let versions=[],updateHistoryControls=()=>{};
 document.addEventListener('editor-state-changed',()=>updateHistoryControls());
 function updateTabs(){
-  for(const button of document.querySelectorAll('#mode-tabs button')){
+  const buttons=[...document.querySelectorAll('#mode-tabs button')];
+  for(const button of buttons){
     const active=button.dataset.mode===state.mode&&state.bufferOrigin!=='history';
-    button.classList.toggle('active',active);button.setAttribute('aria-pressed',String(active));
+    button.classList.toggle('active',active);button.setAttribute('aria-pressed',String(active));activateStageTab(button,active);
   }
+  setStageTabStops(buttons,state.mode);
 }
 document.addEventListener('editor-state-changed',updateTabs);
+globalThis.addEventListener?.('resize',()=>{const active=document.querySelector('#mode-tabs [aria-selected="true"]');if(active)revealStageTab(active)});
 async function show(mode){
   if(state.saving)throw new Error('Дочекайтеся завершення збереження');
   if(state.dirty&&!confirm('Є незбережені правки. Відкрити інший матеріал?'))return;
   const scene=state.view.scenes.find(s=>s.id===state.scene.id)||state.scene;
   const epoch=state.bufferEpoch;
-  const text=mode==='plan'?scene.beats:scene.heads[mode]?(await api('/api/versions/'+scene.heads[mode])).text:'';
+  const text=mode==='review'?'':mode==='plan'?scene.beats:scene.heads[mode]?(await api('/api/versions/'+scene.heads[mode])).text:'';
   if(epoch!==state.bufferEpoch)return;
   loadBuffer(scene,mode,text);
   document.querySelector('#current-kind').textContent=labels[mode].toUpperCase();
   document.querySelector('#save-state').textContent=scene.heads[mode]?'Збережена версія':'';
 }
+registerWorkspaceCommand('show',show);
+document.querySelector('#mode-tabs').addEventListener('keydown',async event=>{
+  if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;
+  const buttons=[...document.querySelectorAll('#mode-tabs button')],index=buttons.indexOf(event.target);
+  if(index<0)return;event.preventDefault();
+  const next=event.key==='Home'?0:event.key==='End'?buttons.length-1:(index+(event.key==='ArrowRight'?1:-1)+buttons.length)%buttons.length;
+  try{await show(buttons[next].dataset.mode);if(state.mode===buttons[next].dataset.mode)document.querySelector(`#mode-tabs [data-mode="${state.mode}"]`)?.focus?.()}
+  catch(error){notice(error.message,'error')}
+});
+registerWorkspaceCommand('save-material',async()=>{
+  if(memoryTable.active()){await memoryTable.save();if(state.dirty)throw new Error('Не вдалося зберегти вибір пам’яті');return;}
+  if(!['draft','prose','memory','brief'].includes(state.mode))throw new Error('Цей матеріал недоступний для збереження');
+  return saveBuffer(snapshot=>api(`/api/scenes/${snapshot.scene.id}/${snapshot.mode}`,json('POST',{text:snapshot.text,expected_revision:snapshot.scene.revision})));
+});
 async function render(){
   if(!state.scene)return;
   closeAcceptancePreview();
   const tabs=document.querySelector('#mode-tabs');tabs.replaceChildren();
-  for(const [mode,label] of Object.entries(labels)){const button=document.createElement('button');button.className='secondary';button.dataset.mode=mode;button.textContent=label;button.onclick=()=>show(mode).catch(e=>notice(e.message,'error'));tabs.append(button)}
+  for(const [mode,label] of Object.entries(labels)){const button=document.createElement('button');button.className='secondary';button.dataset.mode=mode;button.dataset.label=label;button.textContent=label;button.setAttribute('role','tab');button.onclick=()=>show(mode).catch(e=>notice(e.message,'error'));tabs.append(button)}
   updateTabs();
   const data=await api('/api/scenes/'+state.scene.id+'/versions');versions=data.versions;
+  state.workspaceMaterials=Object.fromEntries(['plan','brief','draft','prose','memory'].map(kind=>[kind,versions.find(v=>v.id===state.scene.heads[kind])]));
+  document.dispatchEvent(new CustomEvent('workspace-statistics'));
   const panel=document.querySelector('#version-panel');panel.replaceChildren();
   const title=document.createElement('h3');title.textContent='Історія версій';panel.append(title);
   const list=document.createElement('select');list.id='history-version';list.setAttribute('aria-label','Історична версія');

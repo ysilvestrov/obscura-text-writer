@@ -1,10 +1,15 @@
 from fastapi import APIRouter, Request
 
 from ..authoring.imports import SourceFile, import_sources
-from ..authoring.service import reorder_scenes, update_scene, update_scene_plan
+from ..authoring.service import reorder_scenes, update_scene, update_scene_plan, rename_story
 from ..domain import DomainModel, SceneCreate, StoryCreate
 
 router=APIRouter()
+
+
+class StoryTitlePatch(DomainModel):
+    title: str
+    expected_revision: int
 
 
 class ScenePatch(DomainModel):
@@ -38,6 +43,11 @@ def story_view(id: str,request: Request):
     from ..characters.models import load_characters
     names={card.id:card.name for card in load_characters(view.read_text(story.characters_version_id))} if story.characters_version_id else {}
     return {"story":story,"scenes":[view.effective_scene(scene.id) for scene in view.list_scenes(id)],"sources":[view.get_version(v.id) for v in view.versions.values() if v.kind in {"source_plan","source_characters"}],"character_names":names}
+
+
+@router.patch('/api/stories/{id}')
+def story_title(id: str,body: StoryTitlePatch,request: Request):
+    return rename_story(request.app.state.repo,id,body.title,body.expected_revision)
 
 
 @router.post("/api/stories/{id}/sources")

@@ -1,0 +1,25 @@
+import assert from 'node:assert/strict';
+import {stages, primaryAction, performPrimary,assertReadyDispatch} from '../../../src/storygen/web/static/workspace-state.js';
+import {createTextEditor} from '../../../src/storygen/web/static/text-editor.js';
+
+assert.deepEqual(stages.map(s=>s.mode),['plan','brief','draft','review','prose','memory']);
+const state={scene:{id:'c',heads:{}},mode:'draft',dirty:true,saving:false,bufferEpoch:1};
+const calls=[];
+const deps={state,save:async()=>{calls.push('save');state.dirty=false;state.scene.heads.draft='d'},run:async spec=>calls.push(spec),show:async mode=>calls.push(mode),accept:async()=>{},next:async()=>calls.push('next')};
+await performPrimary(deps);
+assert.equal(calls[0],'save');assert.equal(calls[1].editor_source_head,'draft');assert.equal(calls[1].editor_source_version_id,'d');
+state.mode='prose';state.scene.heads.memory='m';
+assert.match(primaryAction(state).label,/новий варіант пам/);
+state.mode='draft';state.dirty=true;calls.length=0;
+await assert.rejects(performPrimary({...deps,save:async()=>{throw Error('CAS')}}),/CAS/);assert.deepEqual(calls,[]);
+await assert.rejects(performPrimary({...deps,save:async()=>{state.bufferEpoch++;state.dirty=false}}),/зміни/);assert.deepEqual(calls,[]);
+state.dirty=false;state.mode='review';state.bufferOrigin='history';
+await assert.rejects(performPrimary(deps),/історич/);
+state.bufferOrigin='current';state.mode='memory';await performPrimary(deps);assert.equal(calls.at(-1),'next');
+const field={value:'',readOnly:false,hidden:false,addEventListener(){},focus(){}};
+const editor=createTextEditor(field);const markdown='**Жирний** і *курсив*\r\n\r\nОлена — 👩🏽‍💻';editor.write(markdown);assert.equal(editor.read(),markdown);
+editor.readOnly(true);assert.equal(field.readOnly,true);
+state.mode='draft';state.bufferOrigin='current';state.workspaceRuns=[{state:'queued'}];
+assert.throws(()=>assertReadyDispatch(state,{sceneId:'c',epoch:state.bufferEpoch,mode:'draft'}),/запуск/);
+state.workspaceRuns=[];assert.doesNotThrow(()=>assertReadyDispatch(state,{sceneId:'c',epoch:state.bufferEpoch,mode:'draft'}));
+console.log('Workspace route and Markdown boundary regressions passed');

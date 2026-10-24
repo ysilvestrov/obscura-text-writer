@@ -65,3 +65,25 @@ def test_trash_ui_preserves_unsaved_buffers():
     root=Path(__file__).resolve().parents[2]
     result=subprocess.run([node,str(root/'tests/web/js/trash_regressions.mjs'),str(root)],capture_output=True,encoding='utf-8',errors='replace',timeout=15)
     assert result.returncode==0,result.stderr
+
+
+@pytest.mark.parametrize('state',['paused','interrupted','needs_review','alternative'])
+def test_cancel_stopped_run_then_trash_preserves_materials(tmp_path,state):
+    from storygen.run_models import Run,RunRequest
+    app=create_app(AppSettings(data_dir=tmp_path))
+    with TestClient(app,base_url='http://127.0.0.1:8765') as client:
+        story=client.post('/api/stories',json={'title':'Книга'}).json()
+        scene=client.post(f'/api/stories/{story["id"]}/scenes',json={'title':'Сцена'}).json()
+        repo=app.state.repo
+        ref=repo.save_version(story['id'],scene['id'],'draft','Незмінний текст',[])
+        run=Run(id='stopped',story_id=story['id'],request_id='stopped',request=RunRequest(story_id=story['id'],scene_id=scene['id'],mode='stage',stage='draft'),state=state,tasks=[])
+        repo.enqueue_run(run)
+        revision=repo.get_story(story['id']).revision
+        assert client.post(f'/api/stories/{story["id"]}/trash',json={'expected_revision':revision}).status_code==400
+        assert client.post('/api/runs/stopped/cancel').json()['state']=='cancelled'
+        removed=client.post(f'/api/stories/{story["id"]}/trash',json={'expected_revision':revision})
+        assert removed.status_code==200
+        assert repo.get_run(run.id).state=='cancelled'
+        assert client.post(f'/api/stories/{story["id"]}/restore',json={'expected_revision':removed.json()['revision']}).status_code==200
+        assert repo.read_text(ref.id)=='Незмінний текст'
+        assert repo.list_run_events(run.id)[-1].data['state']=='cancelled'

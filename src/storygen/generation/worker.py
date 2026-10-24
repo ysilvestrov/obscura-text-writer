@@ -139,7 +139,7 @@ class RunCoordinator:
             self.condition.notify_all()
         return run
 
-    def readiness(self,story_id,scene_id=None):
+    def readiness(self,story_id,scene_id=None,editor_source_head=None,editor_source_version_id=None):
         from .readiness import preview
         self.repo.get_story(story_id)
         operations={}
@@ -150,7 +150,9 @@ class RunCoordinator:
                 scene_id=scene_id,
                 mode='stage' if name in STAGES else name,
                 stage=name if name in STAGES else None,
-                edit_workflow='loop' if name in {'scene','remaining'} else 'single'
+                edit_workflow='loop' if name in {'scene','remaining'} else 'single',
+                editor_source_head=editor_source_head if name=='edit_loop' else None,
+                editor_source_version_id=editor_source_version_id if name=='edit_loop' else None
             )
             operations[name]=preview(self.repo,request)
         return {'operations':operations}

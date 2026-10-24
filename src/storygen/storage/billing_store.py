@@ -36,8 +36,11 @@ def last_sent_call(rows):
     if not sent:
         return None
     at, _, item = max(sent, key=lambda entry: (entry[0], entry[1]))
+    raw=item.get('usage')
+    usage={key:raw[key] for key in ('prompt_tokens','completion_tokens','total_tokens','input_tokens','output_tokens')
+           if isinstance(raw,dict) and type(raw.get(key)) is int and raw[key]>=0}
     return {**{key: item.get(key) for key in ('call_id', 'provider', 'model', 'state',
-            'cost_source', 'counted_nanos', 'actual_nanos', 'estimated_nanos', 'reserved_nanos')}, 'sent_at': at}
+            'cost_source', 'counted_nanos', 'actual_nanos', 'estimated_nanos', 'reserved_nanos')}, 'sent_at': at,'usage':usage or None}
 
 
 def report(db, scope):

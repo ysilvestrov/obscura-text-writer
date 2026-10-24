@@ -1,5 +1,5 @@
 // A reusable panel. Content is always text; publication is performed by the API.
-export function mountCopyeditReview({host,state,api,json,notice,onApplied,onQueued=()=>{}}){
+export function mountCopyeditReview({host,state,api,json,notice,onApplied,onQueued=()=>{},onAvailability=()=>{}}){
   const panel=document.createElement('details'),summary=document.createElement('summary');
   panel.className='copyedit-review';summary.textContent='Правки редактора';panel.append(summary);host.append(panel);
   const help=document.createElement('p');help.textContent='Зміни одного речення приймаються разом одним прапорцем. Порожній вибір збереже прозу без цих правок. Попередні версії залишаться в історії.';
@@ -8,6 +8,7 @@ export function mountCopyeditReview({host,state,api,json,notice,onApplied,onQueu
   const info=document.createElement('p');info.setAttribute('role','status');
   const edits=document.createElement('div');edits.className='copyedit-items';
   const apply=document.createElement('button');apply.type='button';apply.textContent='Застосувати вибрані правки';
+  apply.setAttribute('data-review-accept','');
   const showSelection=document.createElement('button');showSelection.type='button';showSelection.className='secondary';showSelection.textContent='Переглянути вибраний текст';
   const selectedText=document.createElement('pre');selectedText.className='copyedit-selected-text';selectedText.setAttribute('aria-label','Текст із вибраними правками');
   const warnings=document.createElement('p');warnings.className='muted';
@@ -23,7 +24,7 @@ export function mountCopyeditReview({host,state,api,json,notice,onApplied,onQueu
   const selectionReady=()=>!unresolved()&&(current?.protocol_version!==2||(assembled?.fingerprint===current.proposal_fingerprint&&assembled?.key===selectionKey()));
   const hasChanges=()=>!!current&&(current.has_changes??current.edits.some(e=>e.original!==e.replacement));
   function reason(){return busy?'Виконуємо запит…':previewLoading?'Завантажуємо вибрану пропозицію…':!state.scene?'Оберіть сцену':state.saving?'Дочекайтеся збереження':state.dirty?'Спершу збережіть ручні правки':state.characterDirty?'Спершу збережіть відомості персонажів':!current?'Немає пропозиції для перегляду':!hasChanges()?'Редактор не запропонував змін':!current.can_apply?(current.reason||'Пропозицію не можна застосувати'):''}
-  function updateAvailability(){help.hidden=!!current&&!hasChanges();classificationInfo.hidden=!hasChanges();apply.hidden=!!current&&!hasChanges();showSelection.hidden=!!current&&!hasChanges();selectedText.hidden=!hasChanges();const message=reason().trim();apply.disabled=!!message||!selectionReady();apply.title=message||(unresolved()?'Оберіть або відхиліть речення цілком':!selectionReady()?'Спершу перегляньте текст із вибраними змінами':'');for(const input of choices)input.disabled=!!message;open.disabled=busy||!state.scene;select.disabled=busy||!state.scene;showSelection.disabled=!!message||selectionLoading||unresolved();classify.hidden=current?.protocol_version!==2||!hasChanges();classify.disabled=!!message||!current?.can_classify;classify.title=current?.classification_reason||message;info.textContent=message||`Вибрано ${choices.filter(c=>c.checked).length} із ${choices.length}. Рішень в історії: ${current.decisions.length}.`+(unresolved()?' Історичний вибір містить частину речення; оберіть або відхиліть його цілком.':!selectionReady()?' Перегляньте зібраний текст перед прийняттям.':'')}
+  function updateAvailability(){onAvailability({ready:!reason().trim()&&selectionReady(),reason:reason().trim()||(!selectionReady()?'Перегляньте зібраний текст перед прийняттям':''),hasChanges:hasChanges(),pending:hasChanges()&&!current?.decisions?.length&&!!current?.can_apply});help.hidden=!!current&&!hasChanges();classificationInfo.hidden=!hasChanges();apply.hidden=!!current&&!hasChanges();showSelection.hidden=!!current&&!hasChanges();selectedText.hidden=!hasChanges();const message=reason().trim();apply.disabled=!!message||!selectionReady();apply.title=message||(unresolved()?'Оберіть або відхиліть речення цілком':!selectionReady()?'Спершу перегляньте текст із вибраними змінами':'');for(const input of choices)input.disabled=!!message;open.disabled=busy||!state.scene;select.disabled=busy||!state.scene;showSelection.disabled=!!message||selectionLoading||unresolved();classify.hidden=current?.protocol_version!==2||!hasChanges();classify.disabled=!!message||!current?.can_classify;classify.title=current?.classification_reason||message;info.textContent=message||`Вибрано ${choices.filter(c=>c.checked).length} із ${choices.length}. Рішень в історії: ${current.decisions.length}.`+(unresolved()?' Історичний вибір містить частину речення; оберіть або відхиліть його цілком.':!selectionReady()?' Перегляньте зібраний текст перед прийняттям.':'')}
   function render(data,preserved=null){
     if(!preserved)clearSelection();
     current=data;choices=[];edits.replaceChildren();
@@ -123,7 +124,10 @@ export function mountCopyeditReview({host,state,api,json,notice,onApplied,onQueu
     finally{busy=false;updateAvailability()}
   };
   updateAvailability();
-  return {reload,updateAvailability};
+  return {reload,updateAvailability,accept:async()=>{
+    if(apply.hidden||apply.disabled)throw new Error(apply.title||reason()||'Спершу перегляньте текст із вибраними змінами');
+    return apply.onclick();
+  }};
 }
 
 export function renderLanguageWarnings(host,result){

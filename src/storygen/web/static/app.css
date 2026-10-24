@@ -275,3 +275,104 @@ pre { white-space: pre-wrap; overflow-wrap: anywhere; font: 14px/1.7 var(--font-
 .scene-statistics th, .scene-statistics td { padding: 0.5rem 0.25rem; text-align: start; vertical-align: top; border-bottom: 1px solid var(--border-color); overflow-wrap: anywhere; }
 .scene-statistics p { overflow-wrap: anywhere; }
 .scene-statistics .actions { margin-block: 0.75rem; flex-wrap: wrap; }
+
+/* R-20: the route remains visible; the source editor is a replaceable boundary. */
+.settings-page { max-width: 1280px; }
+.settings-layout { display: grid; grid-template-columns: 205px minmax(0,1fr); gap: 2rem; align-items: start; margin-top: 2rem; }
+.settings-nav { position: sticky; top: 1.5rem; }
+.settings-nav button { display: block; width: 100%; text-align: start; border: 0; background: transparent; color: var(--text-primary); margin-bottom: 0.375rem; }
+.settings-nav button.active { background: var(--accent-soft); color: var(--accent-text); font-weight: 600; }
+.settings-nav p { padding: 0.75rem; font-size: 0.8125rem; }
+.settings-content { min-width: 0; background: var(--bg-surface); padding: 0 1.5rem 1.5rem; border-radius: var(--radius-panel); }
+.settings-toolbar { position: sticky; top: 0; z-index: 12; background: var(--bg-surface); padding-block: 1.25rem; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1.5rem; }
+.settings-toolbar h2 { margin: 0; font-size: 1.375rem; }
+.settings-toolbar .actions { flex-wrap: wrap; justify-content: flex-end; }
+#settings-save-status { font-size: 0.8125rem; color: var(--text-secondary); overflow-wrap: anywhere; }
+.settings-roles { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.5rem; }
+.settings-roles button { flex: 1; font-size: 0.875rem; }
+.settings-roles button.active { background: var(--accent-soft); border-color: var(--accent-primary); color: var(--accent-text); }
+.settings-mobile-nav { display: none; }
+.settings-content .panel { padding: 0; border: 0; margin: 0; background: transparent; }
+.settings-content form > button[type=submit],.settings-content .scope-submit { display: none; }
+.settings-fields { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 0.75rem 1.5rem; align-items: start; }
+.settings-fields > label { min-width: 0; }
+.settings-content input,.settings-content textarea,.settings-content select { min-width: 0; max-width: 100%; }
+.settings-content details { padding-block: 1rem; border-top: 1px solid var(--border-color); margin-top: 1rem; }
+.settings-content details > summary { cursor: pointer; font-weight: 600; color: var(--text-secondary); }
+.settings-content details[open] > summary { margin-bottom: 1rem; }
+.settings-content fieldset { min-width: 0; }
+.settings-content .form-error { color: var(--error); white-space: pre-wrap; overflow-wrap: anywhere; }
+.settings-content .form-error:empty { display: none; }
+.settings-content small,.settings-content .settings-hint { display: block; font-size: 0.8125rem; color: var(--text-secondary); font-weight: 400; }
+.settings-content .settings-notice { padding: 1rem; background: var(--bg-app); margin-block: 1rem; overflow-wrap: anywhere; }
+.settings-content .settings-status { margin-bottom: 1rem; color: var(--text-secondary); }
+.settings-content .evaluator-thresholds { width: 100%; border-collapse: collapse; }
+.evaluator-thresholds td,.evaluator-thresholds th { padding: 0.5rem; border-bottom: 1px solid var(--border-color); text-align: start; }
+.evaluator-thresholds input { max-width: 6rem; }
+.settings-content [data-settings-section] { min-width: 0; }
+.settings-content [data-settings-section=profiles] form button,.settings-content [data-settings-section=budget] form button { display: inline-flex; }
+@media(max-width:760px) {
+  .settings-layout { display: block; margin-top: 1rem; }
+  .settings-nav { display: none; }
+  .settings-mobile-nav { display: block; margin-block: 1.5rem; }
+  .settings-content { padding-inline: 1rem; }
+  .settings-toolbar { flex-wrap: wrap; }
+  .settings-toolbar .actions { width: 100%; justify-content: flex-start; }
+  .settings-fields { grid-template-columns: 1fr; }
+  .settings-roles { display: grid; grid-template-columns: 1fr 1fr; }
+  .settings-roles button { overflow-wrap: anywhere; }
+}
+.import-template-links { display: grid; gap: 0.5rem; margin-block: 1rem; font-size: 0.875rem; }
+.import-template-links a { color: var(--accent-text); text-decoration: underline; text-underline-offset: 0.2em; overflow-wrap: anywhere; }
+.story-title-row { display: flex; align-items: center; gap: 0.5rem; min-width: 0; }
+.storybar > div:first-child { min-width: 0; flex: 1; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+.story-title-row h1 { overflow-wrap: anywhere; min-width: 0; }
+.story-title-edit { flex: none; padding: 0.5rem; min-width: 2.75rem; }
+#story-title-form { display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem; margin-block: 1rem; min-width: 0; }
+#story-title-form input { flex: 1 1 12rem; width: 100%; min-width: 0; font-family: var(--font-writing); }
+#story-title-form small { flex-basis: 100%; }
+#story-title-error { color: var(--error); overflow-wrap: anywhere; }
+#story-title-error:empty { display: none; }
+.scene-heading { margin-bottom: 1.25rem; }
+.scene-heading h2 { margin: 0; font-family: var(--font-writing); font-size: 1.75rem; }
+.scene-heading p { margin: 0.5rem 0 0; color: var(--text-secondary); font-size: 0.875rem; }
+.workspace-sticky { position: sticky; top: 0; z-index: 10; padding-block: 0.5rem; background: var(--bg-surface); border-bottom: 1px solid var(--border-color); margin-bottom: 1rem; }
+.workspace-sticky .tabs { flex-wrap: nowrap; overflow-x: auto; gap: 0; margin-bottom: 0.75rem; scrollbar-color: var(--border-color) var(--bg-surface); }
+.workspace-sticky .tabs button { flex: 1 0 auto; min-height: 3.5rem; border: 0; border-radius: 0; padding: 0.5rem 0.75rem; background: transparent; border-bottom: 2px solid transparent; font-size: 0.875rem; }
+.workspace-sticky .tabs button { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; }
+#scene-select-mobile { display: none; }
+.workspace-compact-status { display: none; }
+.workspace-context, .workspace-output { margin-block: 1rem; }
+.workspace-context > summary, .workspace-output > summary { cursor: pointer; color: var(--text-secondary); }
+.workspace-sticky .tabs button.active { background: var(--accent-soft); border-bottom-color: var(--accent-primary); }
+.workspace-sticky .tabs small { display: block; font-size: 0.75rem; color: var(--text-secondary); font-weight: 400; margin-top: 0.25rem; }
+.workspace-sticky .editor-toolbar { gap: 0.75rem; margin-bottom: 0; }
+.workspace-sticky .material-label { flex: 1 1 8rem; }
+.workspace-sticky #save-state { font-size: 0.75rem; }
+#workspace-hint { margin: 0.5rem 0 0; color: var(--text-secondary); font-size: 0.8125rem; }
+#workspace-primary { max-width: 100%; overflow-wrap: anywhere; }
+#workspace-history, .workspace-extra { border-top: 1px solid var(--border-color); margin-top: 1.5rem; padding-top: 1rem; }
+#workspace-history > summary, .workspace-extra > summary { cursor: pointer; font-weight: 600; color: var(--text-secondary); }
+.workspace-extra > button { margin: 0.75rem 0.5rem 0.5rem 0; }
+#copyedit-panel [data-review-accept] { display: none; }
+.workspace-status { margin-block: 1.5rem; }
+.workspace-status h3 { font-size: 1rem; margin-bottom: 0.5rem; }
+#run-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-block: 0.75rem; }
+#run-actions .run-action { flex: 1 1 8rem; }
+.context-panel .budget-panel { border-top: 1px solid var(--border-color); padding-top: 1rem; }
+.budget-last-call, .budget-usage { font-variant-numeric: tabular-nums; }
+.publication-panel > p > .button { display: inline-block; }
+.settings-page > a:first-child { margin-bottom: 1rem; }
+[data-role][id^="role-"] { scroll-margin-top: 1rem; }
+@media(max-width: 720px) {
+  .workspace-compact-status { display: block; color: var(--text-secondary); font-size: 0.75rem; margin: 0.5rem 0 0; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+  #scene-select-mobile { display: block; width: 100%; margin-block: 0.75rem; }
+  #scene-list { display: none; }
+  .scene-panel { padding-block: 1rem; }
+  .workspace-sticky .editor-toolbar { gap: 0.5rem; }
+  .workspace-sticky #save-state { flex: 1 1 8rem; }
+  #workspace-primary { flex: 1 1 100%; }
+  .workspace-sticky .tabs button { flex: 0 0 auto; min-width: 6.5rem; }
+  .workspace-sticky { padding-top: 0.25rem; }
+}

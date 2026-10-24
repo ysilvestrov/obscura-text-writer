@@ -1,6 +1,22 @@
 from ..domain import RevisionConflict, Scene, Story
 
 
+def rename_story(repo,story_id,title,expected_revision):
+    title=title.strip()
+    if not 1<=len(title)<=300:
+        raise ValueError('Назва повинна містити від 1 до 300 символів')
+    with repo.db.connection() as db:
+        db.execute('BEGIN IMMEDIATE')
+        story=repo._active_story(db,story_id)
+        if story.revision!=expected_revision:
+            raise RevisionConflict('Твір уже змінено. Скасуйте перейменування й відкрийте його знову.')
+        if story.title!=title:
+            story.title=title
+            story.revision+=1
+            repo._save_story(db,story)
+    return story
+
+
 def unchanged_scene_text(repo,scene_id,head,text,expected_revision):
     """Reuse only the selected identical material; never rebase or accept it."""
     with repo.db.connection() as db:

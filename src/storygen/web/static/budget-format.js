@@ -1,4 +1,4 @@
-export const usd=n=>n===null?'не задано':'$'+(n/1e9).toLocaleString('uk-UA',{maximumFractionDigits:6});
+export const usd=n=>n==null?'не задано':'$'+(n/1e9).toLocaleString('uk-UA',{maximumFractionDigits:6});
 
 export function lastCallText(call){
   if(!call)return 'Останній виклик: відправлених викликів ще немає.';

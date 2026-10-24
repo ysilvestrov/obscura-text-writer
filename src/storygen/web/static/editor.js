@@ -1,8 +1,11 @@
 import {api,json,notice} from './api.js';
 import {installSceneTrash} from './trash.js';
+import {createTextEditor} from './text-editor.js';
+import {registerWorkspaceCommand,invokeWorkspaceCommand} from './workspace-commands.js';
 
 export const state={storyId:document.querySelector('#workspace')?.dataset.storyId,scene:null,view:null,mode:'plan',dirty:false,saving:false,bufferEpoch:0};
 const editor=document.querySelector('#editor');
+export const textEditor=createTextEditor(editor);
 const placeholders={
   plan:'Імпортуйте план або створіть сцену вручну.',
   brief:'Створіть завдання за планом сцени або вставте його у форматі JSON.',
@@ -21,28 +24,29 @@ export function displaySceneTitle(title){
 export function loadBuffer(scene,mode,text,origin='current'){
   state.scene=scene;state.mode=mode;state.dirty=false;state.bufferEpoch++;
     state.bufferOrigin=origin;
-  editor.value=text;
-  editor.placeholder=placeholders[mode]||'';
+  textEditor.write(text);
+  textEditor.placeholder(placeholders[mode]||'');
+  textEditor.readOnly(mode==='review');
   document.querySelector('#save-state').textContent='Збережена версія';
-  saveButton.disabled=['history','blueprint'].includes(mode);changed();
+  saveButton.disabled=['history','blueprint','review'].includes(mode);changed();
 }
 
 export async function saveBuffer(send){
   if(state.saving)return null;
   if(!state.scene)throw new Error('Оберіть сцену');
-  const snapshot={scene:state.scene,mode:state.mode,text:editor.value};
+  const snapshot={scene:state.scene,mode:state.mode,text:textEditor.read()};
   state.saving=true;saveButton.disabled=true;changed();
   try{
     const result=await send(snapshot);
     if(state.scene?.id===snapshot.scene.id&&state.mode===snapshot.mode){
       state.scene=result.scene||result;
-      state.dirty=editor.value!==snapshot.text;
+      state.dirty=textEditor.read()!==snapshot.text;
       document.querySelector('#save-state').textContent=state.dirty?'Попередню правку збережено; є нові незбережені зміни':'Збережено';
     }
     await refresh();
     return result;
   }finally{
-    state.saving=false;saveButton.disabled=['history','blueprint'].includes(state.mode);changed();
+    state.saving=false;saveButton.disabled=['history','blueprint','review'].includes(state.mode);changed();
   }
 }
 
@@ -54,6 +58,8 @@ export async function refresh(){
   if(latest&&latest.revision!==state.scene.revision&&!state.dirty)document.querySelector('#save-state').textContent='Є новіша версія на сервері. Відкрийте її перед збереженням.';
   const list=document.querySelector('#scene-list');list.replaceChildren();
   document.querySelector('#scene-count').textContent=state.view.scenes.length;
+  const picker=document.querySelector('#scene-select-mobile');
+  if(picker){picker.replaceChildren();for(const scene of state.view.scenes){const option=document.createElement('option');option.value=scene.id;option.textContent=(scene.position+1)+'. '+displaySceneTitle(scene.title);picker.append(option)}picker.value=state.scene?.id||'';picker.onchange=()=>{const scene=state.view.scenes.find(s=>s.id===picker.value);if(scene)void selectScene(scene)}}
   for(const scene of state.view.scenes){
     const button=document.createElement('button');button.className='scene-item'+(state.scene?.id===scene.id?' active':'');button.textContent=(scene.position+1)+'. '+displaySceneTitle(scene.title);
     button.setAttribute('aria-current',state.scene?.id===scene.id?'true':'false');
@@ -62,6 +68,7 @@ export async function refresh(){
   if(!state.scene&&state.view.scenes.length)await selectScene(state.view.scenes[0]);
   const context=document.querySelector('#context-content');context.replaceChildren();
   for(const source of state.view.sources){const p=document.createElement('p');p.textContent=source.kind==='source_plan'?'✓ Авторський план':'✓ Описи персонажів';context.append(p)}
+  const importer=document.querySelector('.importer');if(importer&&!importer.dataset.userOpened)importer.open=state.view.sources.length===0&&state.view.scenes.length===0;
   document.dispatchEvent(new CustomEvent('story-refreshed'));
 }
 
@@ -71,6 +78,7 @@ export async function selectScene(scene){
   loadBuffer(scene,'plan',scene.beats);
   document.querySelector('#current-kind').textContent='ПЛАН СЦЕНИ';
   document.querySelector('#scene-title').textContent=displaySceneTitle(scene.title);
+  const picker=document.querySelector('#scene-select-mobile');if(picker)picker.value=scene.id;
   document.dispatchEvent(new CustomEvent('scene-selected'));
   for(const button of document.querySelectorAll('.scene-item')){const active=button.textContent.startsWith((scene.position+1)+'.');button.classList.toggle('active',active);button.setAttribute('aria-current',active?'true':'false')}
 }
@@ -78,6 +86,12 @@ export async function selectScene(scene){
 editor.addEventListener('input',()=>{state.dirty=true;state.bufferEpoch++;document.querySelector('#save-state').textContent='Незбережені зміни';changed()});
 globalThis.addEventListener?.('beforeunload',event=>{if(state.dirty||state.saving){event.preventDefault();event.returnValue=''}});
 
+export async function saveCurrentMaterial(){
+  if(state.bufferOrigin==='history'||['history','blueprint','review'].includes(state.mode))throw new Error('Історію або перегляд редактури не можна зберегти як матеріал');
+  if(state.mode!=='plan')return invokeWorkspaceCommand('save-material');
+  return saveBuffer(snapshot=>api('/api/scenes/'+snapshot.scene.id,json('PATCH',{story_id:state.storyId,expected_revision:snapshot.scene.revision,beats:snapshot.text})));
+}
+registerWorkspaceCommand('save',saveCurrentMaterial);
 saveButton.onclick=async()=>{
   if(state.saving)return;
   try{

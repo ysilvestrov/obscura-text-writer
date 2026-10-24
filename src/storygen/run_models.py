@@ -17,6 +17,8 @@ class RunRequest(DomainModel):
     mode: Literal['stage','scene','remaining','prepare','rebuild_memory','evaluate','classify','edit_loop','publication_suggest'] = 'scene'
     edit_pass_limit: int = Field(default=5,ge=1,le=10,strict=True)
     edit_workflow: Literal['single','loop'] = 'single'
+    editor_source_head: Literal['draft','prose'] | None = None
+    editor_source_version_id: str | None = Field(default=None,min_length=1)
     proposal_attempt_id: str | None = None
     proposal_fingerprint: str | None = None
     stage: Literal['brief','draft','edit','memory'] | None = None
@@ -26,6 +28,10 @@ class RunRequest(DomainModel):
 
     @model_validator(mode='after')
     def valid(self):
+        if bool(self.editor_source_head) != bool(self.editor_source_version_id):
+            raise ValueError('Вкажіть вид і конкретну версію джерела редактури разом')
+        if self.editor_source_head and self.mode != 'edit_loop':
+            raise ValueError('Явне джерело дозволено лише для окремої редактури')
         if self.mode=='publication_suggest' and self.scene_id is not None:
             raise ValueError('Пропозиція публікації належить усьому твору, не окремій сцені')
         if self.budget_limit_usd is not None:
