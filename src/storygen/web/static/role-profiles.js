@@ -1,3 +1,4 @@
+import {hasUnsavedSettings,allowSettingsNavigation,registerSettingsForm,settingsSaved,withSettingsSave,settingsBusy} from './settings-workspace.js';
 import {api,json,notice} from './api.js';
 
 const panel=document.querySelector('#role-profiles');
@@ -13,7 +14,7 @@ const labels={planner:'Планувальник',writer:'Письменник',e
 let items=[],preview=null,busy=false,dirty=false,selectionEpoch=0;
 
 function selected(){return items.find(item=>`${item.id}:${item.version}`===select.value)}
-function controls(){const item=selected();previewButton.disabled=busy||!item;exportButton.disabled=busy||!item;applyButton.disabled=busy||!preview;form.querySelector('button').disabled=busy;file.disabled=busy;select.disabled=busy;form.elements.new_version.disabled=busy||!item}
+function controls(){const item=selected();if(settingsBusy()){for(const el of [previewButton,applyButton,exportButton,file,select,form.querySelector('button')])el.disabled=true;return}previewButton.disabled=busy||!item;exportButton.disabled=busy||!item;applyButton.disabled=busy||!preview;form.querySelector('button').disabled=busy;file.disabled=busy;select.disabled=busy;form.elements.new_version.disabled=busy||!item}
 function reset(){selectionEpoch++;preview=null;summary.replaceChildren();controls()}
 select.onchange=()=>{reset();const item=selected();if(item)form.elements.name.value=item.name};
 document.addEventListener('input',event=>{if(event.target.closest('form')&&!panel.contains(event.target)){dirty=true;reset()}});
@@ -26,7 +27,7 @@ async function load(preferred=null){
   reset();
 }
 
-async function action(work){busy=true;controls();try{await work()}catch(error){notice(error.message,'error')}finally{busy=false;controls()}}
+async function action(work){if(busy||settingsBusy())return;busy=true;controls();try{await work()}catch(error){notice(error.message,'error')}finally{busy=false;controls()}}
 async function revision(){return (await api(`/api/stories/${storyId}/settings`)).story.revision}
 
 previewButton.onclick=()=>action(async()=>{
@@ -48,21 +49,21 @@ previewButton.onclick=()=>action(async()=>{
   const details=document.createElement('details'),caption=document.createElement('summary'),raw=document.createElement('pre');caption.textContent='Усі параметри та промпти';raw.textContent=JSON.stringify(data,null,2);details.append(caption,raw);summary.append(details);
 });
 
-applyButton.onclick=()=>action(async()=>{
+applyButton.onclick=()=>action(()=>withSettingsSave('profiles',async()=>{
   if(!preview)return;
-  const warning=dirty?'Є незбережені зміни форм. Вони будуть втрачені після застосування. ':'Сторінка перезавантажиться; незбережені зміни форм будуть втрачені. ';
+  const warning=hasUnsavedSettings()?'Є незбережені зміни форм. Вони будуть втрачені після застосування. ':'Сторінка перезавантажиться; незбережені зміни форм будуть втрачені. ';
   if(!confirm(warning+`Застосувати «${preview.name}», версію ${preview.version}, до цього твору?`))return;
   await api(`/api/stories/${storyId}/role-profiles/apply`,json('POST',{profile_id:preview.id,version:preview.version,expected_revision:preview.expected_revision}));
-  location.reload();
-});
+  allowSettingsNavigation();location.reload();
+}));
 
 exportButton.onclick=()=>{const item=selected();if(item)location.href=`/api/role-profiles/${encodeURIComponent(item.id)}/versions/${item.version}/export`};
-form.onsubmit=event=>{event.preventDefault();action(async()=>{
-  if(dirty&&!confirm('Зберегти комплект із уже збережених налаштувань? Незбережені правки форм до нього не потраплять.'))return;
+form.onsubmit=event=>{event.preventDefault();action(()=>withSettingsSave('profiles',async()=>{
+  if(hasUnsavedSettings(['profiles'])&&!confirm('Зберегти комплект із уже збережених налаштувань? Незбережені правки форм до нього не потраплять.'))return;
   const body={name:form.elements.name.value,include_evaluator:form.elements.include_evaluator.checked,expected_revision:await revision()};
   if(form.elements.new_version.checked){const item=selected();if(!item)throw new Error('Оберіть комплект для нової версії');body.profile_id=item.id;body.expected_version=item.version}
-  const saved=await api(`/api/stories/${storyId}/role-profiles/capture`,json('POST',body));await load(saved);notice('Комплект збережено; налаштування твору не змінено');
-})};
+  const saved=await api(`/api/stories/${storyId}/role-profiles/capture`,json('POST',body));await load(saved);settingsSaved('profiles');notice('Комплект збережено; налаштування твору не змінено');
+}))};
 file.onchange=()=>action(async()=>{
   const source=file.files[0];if(!source)return;
   try{
@@ -71,4 +72,8 @@ file.onchange=()=>action(async()=>{
     await load(saved);notice('Комплект імпортовано. Перегляньте його перед застосуванням');
   }finally{file.value=''}
 });
+registerSettingsForm('profiles',{form,label:'Комплект',section:'profiles'});
+document.addEventListener('settings-save-state',controls);
+document.addEventListener('settings-saved',reset);
+document.addEventListener('settings-draft-changed',reset);
 load().catch(error=>notice(error.message,'error'));

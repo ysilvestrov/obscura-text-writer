@@ -1,10 +1,24 @@
 {% extends "base.html" %}
 {% block title %}Налаштування — {{story.title}} — Obscura{% endblock %}
 {% block content %}
-<main class="settings-page" data-story-id="{{ story.id }}">
-<a href="/stories/{{ story.id }}">← До твору</a><h1>Моделі та голос оповідання</h1>
-<p>Кожна роль має власну модель. Ключі OpenRouter і Venice читаються лише із серверного середовища.</p>
-<section id="role-profiles" class="panel" aria-labelledby="role-profiles-title">
+<main class="settings-page" data-story-id="{{story.id}}">
+<a id="settings-return" class="muted" href="/stories/{{story.id}}">← Повернутися до сцени</a><h1>Налаштування</h1><p class="muted">{{story.title}} · налаштування цього оповідання</p>
+<label class="settings-mobile-nav" for="settings-section-mobile">Розділ<select id="settings-section-mobile"><option value="writing">Письмо</option><option value="models">Моделі</option><option value="evaluator">Оцінювач</option><option value="budget">Бюджет</option><option value="profiles">Комплекти</option></select></label>
+<div class="settings-layout"><nav class="settings-nav" aria-label="Розділи налаштувань"><button type="button" data-settings-nav="writing">Письмо</button><button type="button" data-settings-nav="models">Моделі</button><button type="button" data-settings-nav="evaluator">Оцінювач</button><button type="button" data-settings-nav="budget">Бюджет</button><button type="button" data-settings-nav="profiles">Комплекти</button><p class="muted">Правки залишаються при перемиканні розділів і ролей.</p></nav>
+<div class="settings-content"><header class="settings-toolbar"><h2 id="settings-section-title">Моделі</h2><div class="actions"><span id="settings-save-status" role="status">Завантажуємо…</span><button id="settings-reset" type="button" class="secondary" hidden>Відкинути правки</button><button id="settings-save" type="button" disabled>Зберегти</button></div></header>
+<section data-settings-section="writing" hidden><form id="profile-form" class="panel"><h2>Профіль письма</h2>
+<label>Жанр<input name="genre"></label><label>Тональність<input name="tone"></label>
+<label>Точка зору<input name="point_of_view"></label><label>Час<input name="tense"></label>
+<label>Правила стилю<textarea name="rules" rows="3"></textarea></label>
+<label>Авторський орієнтир фіналу (необов’язково)<textarea name="ending_goal" rows="3" maxlength="12000"></textarea></label>
+<p>Спільний задум розв’язки. Це не команда завершити поточну сцену; пам’ять і мовна редактура його не отримують. Без орієнтира режим лише поточної сцени дає попередження.</p>
+<label>Завершення попередньої сцени, символів<input type="number" name="previous_tail_chars" min="0" max="12000"></label>
+<button>Зберегти профіль</button></form>
+</section>
+<section data-settings-section="models"><div class="settings-roles" aria-label="Ролі моделей"><button type="button" class="secondary" data-settings-role="planner">Планувальник</button><button type="button" class="secondary" data-settings-role="writer">Письменник</button><button type="button" class="secondary" data-settings-role="editor">Редактор</button><button type="button" class="secondary" data-settings-role="memory">Пам’ять</button></div><p id="settings-loading" role="status">Завантажуємо налаштування ролей…</p><div id="role-settings"></div></section>
+<section data-settings-section="evaluator" hidden><div id="evaluator-settings"></div></section>
+<section data-settings-section="budget" hidden><div id="settings-budget-content"></div></section>
+<section data-settings-section="profiles" hidden><section id="role-profiles" class="panel" aria-labelledby="role-profiles-title">
 <h2 id="role-profiles-title">Збережені комплекти моделей</h2>
 <p>Перенесіть чотири ролі та їхні промпти між оповіданнями. Зміна комплекту не оновлює твори автоматично.</p>
 <label>Комплект і версія<select id="role-profile-select"><option value="">Завантаження…</option></select></label>
@@ -18,15 +32,6 @@
 <button>Зберегти комплект</button></form>
 <label>Імпортувати комплект із JSON<input id="role-profile-import" type="file" accept=".json,application/json"></label>
 </details>
-</section>
-<form id="profile-form" class="panel"><h2>Профіль письма</h2>
-<label>Жанр<input name="genre"></label><label>Тональність<input name="tone"></label>
-<label>Точка зору<input name="point_of_view"></label><label>Час<input name="tense"></label>
-<label>Правила стилю<textarea name="rules" rows="3"></textarea></label>
-<label>Авторський орієнтир фіналу (необов’язково)<textarea name="ending_goal" rows="3" maxlength="12000"></textarea></label>
-<p>Спільний задум розв’язки. Це не команда завершити поточну сцену; пам’ять і мовна редактура його не отримують. Без орієнтира режим лише поточної сцени дає попередження.</p>
-<label>Завершення попередньої сцени, символів<input type="number" name="previous_tail_chars" min="0" max="12000"></label>
-<button>Зберегти профіль</button></form>
-<div id="role-settings"></div>
-</main><script type="module" src="/static/settings.js"></script><script type="module" src="/static/role-profiles.js"></script><script type="module" src="/static/evaluation.js"></script><script type="module" src="/static/budget.js"></script>
+</section></section>
+</div></div></main><script type="module" src="/static/settings.js"></script><script type="module" src="/static/workspace-navigation.js"></script><script type="module" src="/static/role-profiles.js"></script><script type="module" src="/static/evaluation.js"></script><script type="module" src="/static/budget.js"></script>
 {% endblock %}

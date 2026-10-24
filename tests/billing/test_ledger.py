@@ -47,6 +47,8 @@ def test_summary_last_call_tracks_send_order_not_later_settlement(tmp_path):
     assert last['cost_source']=='priced_usage_estimate'
     assert last['counted_nanos']==money('0.0003')
     assert last['provider']=='venice' and last['model']=='m'
+    assert last['usage']=={'prompt_tokens':100,'completion_tokens':100}
+    assert pending['usage'] is None
     assert 'tariff' not in last and 'request_hash' not in last
     repo.billing('unpriced',scope='cli:other',call_id='other',run_id='other',provider='local',model='other')
     mark_sent(repo,'other')

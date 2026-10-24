@@ -1,10 +1,12 @@
 import {textStatistics} from './text-statistics.js';
+import {createTextEditor} from './text-editor.js';
 const labels={plan:'План',brief:'Завдання',draft:'Чернетка',prose:'Проза',memory:'Пам’ять'};
 const groups={system:'Системний промпт',plans:'Плани',characters:'Персонажі',memory:'Пам’ять',previous_tail:'Хвіст попередньої прози',brief:'Завдання',draft:'Чернетка / робоча копія',prose:'Проза',other:'Інші вказівки й метадані',response_schema:'Схема відповіді',protocol:'Протокол і резерв оцінки'};
 const categories={facts:'Факти',character_states:'Стани персонажів',open_threads:'Сюжетні лінії',timeline:'Хронологія'};
 
 export function installSceneStatistics({state,api,document}){
   const host=document.querySelector('#scene-statistics');if(!host)return;
+  const textEditor=createTextEditor(document.querySelector('#editor'));
   const node=(tag,text)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=String(text);return n;};
   const compact=node('p'),details=node('details'),summary=node('summary','Статистика сцени й контексту');
   const stage=node('select');stage.setAttribute('aria-label','Етап для оцінки контексту');
@@ -17,8 +19,9 @@ export function installSceneStatistics({state,api,document}){
   let epoch=0;
   function buffer(){
     if(!state.scene){compact.textContent='Оберіть сцену для статистики.';return;}
+    if(state.mode==='review'){compact.textContent='Перегляд редакторських змін. Обсяг збережених текстів — у деталях.';return;}
     if(state.memoryTableActive){compact.textContent='Пам’ять показано таблицею. Кількість записів — у деталях статистики.';return;}
-    const counts=textStatistics(document.querySelector('#editor').value);
+    const counts=textStatistics(textEditor.read());
     const origin=state.saving?'Буфер під час збереження':state.bufferOrigin==='history'?'Історична версія':state.dirty?'Незбережений буфер':'Відкритий буфер';
     compact.textContent=`${origin} · ${labels[state.mode]||'матеріал'} · ${counts.words} слів · ${counts.characters} символів із пробілами${['brief','memory','blueprint'].includes(state.mode)?' · JSON':''}`;
   }
@@ -52,7 +55,11 @@ export function installSceneStatistics({state,api,document}){
     const stamp=++epoch,id=state.scene?.id;if(!id||!details.open){body.replaceChildren();return;}
     status.textContent='Завантажуємо збережений стан…';body.replaceChildren();
     try{
-      const result=await api(`/api/scenes/${id}/statistics?stage=${stage.value}`);
+      const sourceHead=stage.value==='edit'&&['draft','prose'].includes(state.mode)?state.mode:null;
+      const query=new URLSearchParams({stage:stage.value});
+      if(sourceHead&&state.scene.heads?.[sourceHead]){query.set('editor_source_head',sourceHead);query.set('editor_source_version_id',state.scene.heads[sourceHead]);}
+      const result=await api(`/api/scenes/${id}/statistics?${query}`);
+      state.workspaceMaterials=result.materials;if(document.dispatchEvent)document.dispatchEvent(new CustomEvent('workspace-statistics'));
       if(stamp!==epoch||state.scene?.id!==id)return;
       render(result);status.textContent=`Збережений стан сцени · ревізія ${result.scene_revision}. Ручний буфер у ці розрахунки не входить.`;
     }catch(error){if(stamp===epoch&&state.scene?.id===id)status.textContent=error.message;}

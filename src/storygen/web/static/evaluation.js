@@ -1,14 +1,8 @@
 import {api,json,notice} from './api.js';
 const root=document.querySelector('[data-story-id]'),storyId=root?.dataset.storyId;
-if(root&&document.querySelector('#role-settings')){
-  const form=document.createElement('form');form.className='panel';
-  form.innerHTML='<h2>Допоміжний оцінювач</h2><label><input type="checkbox" name="enabled"> Увімкнути оцінювач</label><p class="evaluation-state"></p><p>Codex CLI — засіб розробки. Candidate-профіль дає попередній звіт і не засвідчує проходження якості. Ключі в JSON не вводьте.</p><label>Конфігурація оцінювача (JSON)<textarea name="config" rows="15"></textarea></label><button>Зберегти оцінювача</button>';
-  const fallback={config:{provider:'codex_cli',model:null,max_input_chars:100000,max_output_tokens:6000,response_mode:'json_schema'},context_tokens:128000,policy:'off'};
-  const show=data=>{const {block,...settings}=data;form.elements.config.value=JSON.stringify(settings,null,2);form.elements.enabled.checked=data.policy!=='off';form.querySelector('.evaluation-state').textContent=block?'Оцінювач заблоковано для цього оповідання. '+block.failure.message:data.policy==='off'?'Вимкнено: автоматичні та ручні запити оцінювачу не надсилаються.':'Увімкнено'};
-  api(`/api/stories/${storyId}/evaluator`).then(show).catch(()=>show(fallback));
-  form.elements.enabled.onchange=async()=>{form.elements.enabled.disabled=true;try{const result=await api(`/api/stories/${storyId}/evaluator/policy`,json('PUT',{policy:form.elements.enabled.checked?'report':'off'}));try{const pending=JSON.parse(form.elements.config.value);pending.policy=result.policy;form.elements.config.value=JSON.stringify(pending,null,2)}catch{};form.elements.enabled.checked=result.policy!=='off';form.querySelector('.evaluation-state').textContent=result.block?'Оцінювач заблоковано для цього оповідання. '+result.block.failure.message:result.policy==='off'?'Вимкнено: автоматичні та ручні запити оцінювачу не надсилаються.':'Увімкнено';document.dispatchEvent(new CustomEvent('evaluation-policy-changed'));notice(result.policy==='off'?'Оцінювач вимкнено':'Оцінювач увімкнено')}catch(e){form.elements.enabled.checked=!form.elements.enabled.checked;notice(e.message,'error')}finally{form.elements.enabled.disabled=false}};
-  form.onsubmit=async event=>{event.preventDefault();try{await api(`/api/stories/${storyId}/evaluator`,json('PUT',{...JSON.parse(form.elements.config.value),policy:form.elements.enabled.checked?(JSON.parse(form.elements.config.value).policy==='pause_on_failure'?'pause_on_failure':'report'):'off'}));show(await api(`/api/stories/${storyId}/evaluator`));document.dispatchEvent(new CustomEvent('evaluation-policy-changed'));notice('Оцінювача збережено')}catch(e){notice(e.message,'error')}};
-  document.querySelector('#role-settings').after(form);
+if(root&&document.querySelector('#evaluator-settings')){
+  const {installEvaluatorSettings}=await import('./evaluator-settings.js');
+  await installEvaluatorSettings(document.querySelector('#evaluator-settings'),storyId);
 }
 if(document.querySelector('#evaluation-panel')){
   const {state}=await import('./editor.js');

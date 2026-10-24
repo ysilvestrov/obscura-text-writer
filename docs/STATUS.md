@@ -2,20 +2,20 @@
 
 **ПЕРЕВІРКА ПРОЙШЛА** — свідчення конкретного запуску, не поточного довільного стану.
 
-- Початок (UTC): 2026-10-23T07:44:27.492445+00:00
-- Завершення (UTC): 2026-10-23T07:46:42.811985+00:00
-- Базовий commit: `b8daefa159c7c2d9e1deaa5e6ece8c772d7ff850`
+- Початок (UTC): 2026-10-24T09:49:58.824390+00:00
+- Завершення (UTC): 2026-10-24T09:52:19.286518+00:00
+- Базовий commit: `59835cd2df53b10e162fea638435a91d5d77639c`
 - Незакомічені зміни під час перевірки: `true`
-- SHA-256 вихідного знімка: `ff14e6560cd79f12dce6d04010bc4c91545b4cd46be7ddbc638ca2c17a976f9d`
+- SHA-256 вихідного знімка: `d4392c60d3b8d65a631f15a00c8af536d82fbc45826535fe7bcc4510ec74f0b4`
 - Зміна знімка під час прогону: `false`
 - Exit code: `0`
-- Фактичні testcase результати JUnit: passed: 973 · failed: 0 · errors: 0 · skipped: 1
-- Тривалість: 135.33 с
+- Фактичні testcase результати JUnit: passed: 998 · failed: 0 · errors: 0 · skipped: 1
+- Тривалість: 140.47 с
 
-Переносимий argv (JSON; точний локальний argv збережений у result.json):
+Точний argv (JSON, не shell-команда):
 
 ```json
-["python", "-m", "pytest", "-q", "--junitxml=artifacts/verification-fkvhvys_/junit.xml", "--basetemp=artifacts/verification-fkvhvys_/test-tmp"]
+["C:\\Projects\\text-generator\\.venv\\Scripts\\python.exe", "-m", "pytest", "-q", "--junitxml=C:\\Projects\\text-generator\\artifacts\\pr24\\artifacts\\verification-09iaejei\\junit.xml", "--basetemp=C:\\Projects\\text-generator\\artifacts\\pr24\\artifacts\\verification-09iaejei\\test-tmp"]
 ```
 
 Результат стосується лише наведеної команди й вихідного знімка. Якщо в argv зазначено окремі файли або фільтри, це часткова перевірка. Збір (collection) не є виконанням; skipped не зараховано до passed. Відсутній або непридатний XML позначається непідтвердженим. Після зміни вихідних файлів звіт історичний. Власний STATUS і artifacts виключено зі знімка; початкова ревізія може мати dirty=true, оскільки звіт створюється до коміту.
@@ -23,5 +23,3 @@
 Цей прогін не є доказом літературної якості, реальної поведінки моделей або виконання ручних процедур. Коди виходу та лічильники не замінюють аналізу тестів.
 
 Архітектура: [SPEC.MD](../SPEC.MD). Способи перевірки: [інструкція та матриця](verification/README.md). Мотиви рішень: [ADR](adr/README.md).
-
-Після повного прогону прибрано лише зайвий порожній рядок наприкінці tests/generation/test_editor_workflow.py, який виявив staged diff --check. AST до й після тотожні; виконуваний код не змінювався. Публічний звіт має переносимий argv; точний локальний звіт збережений поза Git.

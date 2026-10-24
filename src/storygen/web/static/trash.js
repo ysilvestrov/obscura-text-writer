@@ -15,7 +15,7 @@ export function installSceneTrash(state,refresh,clear){
       clear();state.saving=false;await refresh();notice('Сцену переміщено в кошик');
     }catch(error){notice(error.message,'error')}finally{trash.disabled=false;state.saving=false;editor.readOnly=readOnly;document.dispatchEvent(new CustomEvent('editor-state-changed'))}
   });
-  document.querySelector('.editor-toolbar').append(trash);
+  (document.querySelector('#workspace-scene-actions')||document.querySelector('.editor-toolbar')).append(trash);
   function availability(){const reason=!state.scene?'Оберіть сцену':state.saving?'Дочекайтеся завершення операції':state.dirty?'Спершу збережіть ручні правки':'';trash.disabled=!!reason;trash.title=reason}
   for(const event of ['scene-selected','story-refreshed','editor-state-changed'])document.addEventListener(event,availability);availability();
   const details=document.createElement('details'),summary=document.createElement('summary'),list=document.createElement('div');
@@ -43,10 +43,22 @@ export function installSceneTrash(state,refresh,clear){
 
 export function installLibraryTrash(){
   for(const button of document.querySelectorAll('[data-trash-story]'))button.onclick=async()=>{
-    if(!confirm('Перемістити твір у кошик? Усі версії залишаться доступними після відновлення.'))return;
+    if(button.disabled)return;
     button.disabled=true;
-    try{await api('/api/stories/'+button.dataset.trashStory+'/trash',json('POST',{expected_revision:Number(button.dataset.revision)}));location.reload()}
-    catch(error){notice(error.message,'error');button.disabled=false}
+    try{
+      const {runs}=await api('/api/stories/'+button.dataset.trashStory+'/runs');
+      const closed=new Set(['completed','failed','cancelled']),stopped=new Set(['paused','interrupted','needs_review','alternative']);
+      const pending=runs.filter(run=>!closed.has(run.state));
+      if(pending.some(run=>!stopped.has(run.state)))throw new Error('Твір має активний запуск. Відкрийте твір і дочекайтеся завершення або скасуйте його перед переміщенням у кошик.');
+      const message=pending.length?`Є зупинені запуски: ${pending.length}. Скасувати їх і перемістити твір у кошик? Тексти, версії та історія збережуться; генерація не запускатиметься.`:'Перемістити твір у кошик? Усі версії залишаться доступними після відновлення.';
+      if(!confirm(message))return;
+      for(const run of pending){
+        const result=await api('/api/runs/'+run.id+'/cancel',json('POST',{}));
+        if(!closed.has(result.state))throw new Error('Скасування запуску ще не завершено. Твір не переміщено в кошик; дочекайтеся завершення скасування.');
+      }
+      await api('/api/stories/'+button.dataset.trashStory+'/trash',json('POST',{expected_revision:Number(button.dataset.revision)}));location.reload();
+    }catch(error){notice(error.message,'error')}
+    finally{button.disabled=false}
   };
   const list=document.querySelector('#story-trash-list');
   async function load(){

@@ -3,10 +3,12 @@ import {pathToFileURL} from 'node:url';
 import {setImmediate as tick} from 'node:timers/promises';
 const root=process.argv[2];
 class Element {
-  constructor(){this.children=[];this.value='';this.checked=false;this.disabled=false;this.dataset={};this.files=[];this.elements={}}
+  constructor(){this.children=[];this.value='';this.checked=false;this.disabled=false;this.dataset={};this.files=[];this.elements={};this.isConnected=true}
   append(...items){this.children.push(...items)}
   replaceChildren(...items){this.children=items}
   setAttribute(){}
+  addEventListener(){}
+  dispatchEvent(){}
   contains(){return false}
   set innerHTML(value){throw new Error('Untrusted profile data may not use innerHTML')}
 }
@@ -14,12 +16,15 @@ const selectors={};
 for(const id of ['role-profile-select','role-profile-preview','role-profile-apply','role-profile-export','role-profile-summary'])selectors['#'+id]=new Element();
 const form=new Element(),save=new Element(),file=new Element(),panel=new Element(),notice=new Element();
 form.querySelector=()=>save;
-for(const key of ['name','include_evaluator','new_version'])form.elements[key]=new Element();
+for(const key of ['name','include_evaluator','new_version']){form.elements[key]=new Element();form.elements[key].name=key}
+form.elements[Symbol.iterator]=function*(){yield* Object.values(this)};
 selectors.form=form;selectors['input[type=file]']=file;panel.querySelector=key=>selectors[key];
 const handlers={};
 globalThis.document={querySelector:key=>key==='#role-profiles'?panel:key==='[data-story-id]'?{dataset:{storyId:'target'}}:key==='#notice'?notice:null,
-  createElement:()=>new Element(),addEventListener:(key,fn)=>handlers[key]=fn};
+  dispatchEvent:()=>{},createElement:()=>new Element(),addEventListener:(key,fn)=>handlers[key]=fn};
 globalThis.setTimeout=()=>0;globalThis.clearTimeout=()=>{};
+globalThis.CustomEvent=class extends Event{};
+let applyRelease=null;
 let revision=4,applied=0,reloaded=0,confirmed=false,lastBody=null;
 const confirmations=[];
 globalThis.confirm=message=>{confirmations.push(message);return confirmed};
@@ -33,6 +38,7 @@ globalThis.fetch=async(url,options={})=>{
     roles:{writer:{provider:{provider:'local',model:'model <img>'},context_tokens:8192,max_output_tokens:2048}},
     prompts:{writer:{prompt:{text:null}}},evaluator:null,warnings:[]};
   else if(url.endsWith('/apply')){
+    if(applyRelease)await new Promise(resolve=>applyRelease=resolve);
     if(body.expected_revision!==revision)return {ok:false,json:async()=>({detail:'Конфлікт ревізії'})};
     applied++;revision++;data={revision};
   } else throw new Error('Unexpected request '+url);
@@ -50,6 +56,13 @@ handlers.input({target:{closest:()=>form}});assert.equal(apply.disabled,true);as
 await preview.onclick();confirmed=false;await apply.onclick();assert.equal(applied,0);assert.equal(reloaded,0);
 assert.match(confirmations.at(-1),/незбережені зміни/i);
 confirmed=true;revision=5;await apply.onclick();assert.equal(applied,0);assert.equal(reloaded,0);assert.equal(notice.dataset.kind,'error');
-await preview.onclick();await apply.onclick();assert.equal(applied,1);assert.equal(reloaded,1);assert.equal(lastBody.expected_revision,5);
+await preview.onclick();
+const {registerSettingsForm,settingsBusy}=await import(pathToFileURL(root+'/src/storygen/web/static/settings-workspace.js'));
+const foreign=new Element(),foreignInput=new Element();foreignInput.name='prompt';foreign.elements=[foreignInput];
+registerSettingsForm('writer',{form:foreign,label:'Writer',section:'models'});
+applyRelease=true;const applying=apply.onclick();await tick();
+assert.equal(settingsBusy(),true);assert.equal(foreignInput.disabled,true,'profile apply must lock neighboring edits');
+applyRelease();await applying;assert.equal(settingsBusy(),false);assert.equal(foreignInput.disabled,false);
+assert.equal(applied,1);assert.equal(reloaded,1);assert.equal(lastBody.expected_revision,5);
 select.value='';select.onchange();assert.equal(apply.disabled,true);assert.equal(preview.disabled,true);
 console.log('R-11 UI: preview, dirty reset, cancel, CAS error, apply/reload, safe text passed');

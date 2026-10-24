@@ -32,7 +32,7 @@ def memory_statistics(view,scene,memory_id,*,first=False):
         return {'available':False,'version_id':ref.id,'stale':ref.stale,'reason':'Журнал не можна порахувати: перевірте структуру та джерела до цієї сцени'}
 
 
-def scene_statistics(repo,scene_id,stage):
+def scene_statistics(repo,scene_id,stage,editor_source_head=None,editor_source_version_id=None):
     from ..authoring.blueprints import get_role_settings
     from ..generation.context import build_context,ContextOverflow
     from ..generation.editor_loop import context as edit_context
@@ -55,10 +55,14 @@ def scene_statistics(repo,scene_id,stage):
         context.update(reason=None,model=role.provider.model,provider=role.provider.provider)
         try:
             if stage=='edit':
-                id=scene.heads.get('prose') or scene.heads.get('draft')
-                if not id:raise ValueError('Спершу створіть прозу або чернетку')
+                from ..generation.editor_loop import source
+                _,ref=source(view,scene_id,source_head=editor_source_head,version_id=editor_source_version_id)
+                id=ref.id
                 ctx=edit_context(view,scene_id,role,id)
-            else:ctx=build_context(view,scene_id,stage,role)
+                context['editor_source_version_id']=id
+            else:
+                if editor_source_head or editor_source_version_id:raise ValueError('Явне джерело дозволено лише для редактури')
+                ctx=build_context(view,scene_id,stage,role)
             context.update(available=True,within_limits=True,**ctx.context_breakdown)
         except ContextOverflow as exc:
             context.update(available=True,within_limits=False,reason=str(exc),**(exc.breakdown or {}))

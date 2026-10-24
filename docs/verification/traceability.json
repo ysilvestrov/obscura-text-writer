@@ -1373,6 +1373,143 @@
         "tests/generation/test_scene_statistics.py::test_editor_preview_uses_actual_working_source_and_schema",
         "tests/web/test_scene_statistics_api.py::test_statistics_get_has_no_writes_or_dispatch"
       ]
+    },
+    {
+      "id": "R20-WORKSPACE-S01",
+      "requirement": "R20-WORKSPACE",
+      "scope": "R-20: перевірка конкретних guards/контрактів; браузерне компонування й літературна якість не підтверджуються цими тестами.",
+      "tests": [
+        "tests/web/test_workspace_route.py::test_workspace_route_save_and_source_regressions",
+        "tests/web/test_workspace_route.py::test_workspace_controller_guards_async_save_and_review"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#r20-workspace",
+        "reason": "DOM guards не підтверджують CSS/геометрію, фокус і повний браузерний маршрут."
+      }
+    },
+    {
+      "id": "R20-WORKSPACE-S02",
+      "requirement": "R20-WORKSPACE",
+      "scope": "R-20: перевірка конкретних guards/контрактів; браузерне компонування й літературна якість не підтверджуються цими тестами.",
+      "tests": [
+        "tests/web/test_workspace_route.py::test_workspace_controller_guards_async_save_and_review",
+        "tests/generation/test_editor_loop.py::test_first_no_changes_completes_without_acceptance"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#r20-workspace",
+        "reason": "DOM guards не підтверджують CSS/геометрію, фокус і повний браузерний маршрут."
+      }
+    },
+    {
+      "id": "R20-EDITOR-SOURCE-S01",
+      "requirement": "R20-EDITOR-SOURCE",
+      "scope": "R-20: перевірка конкретних guards/контрактів; браузерне компонування й літературна якість не підтверджуються цими тестами.",
+      "tests": [
+        "tests/generation/test_editor_source.py::test_explicit_editor_source_is_used_when_both_materials_exist",
+        "tests/generation/test_editor_source.py::test_changed_source_after_enqueue_never_switches_or_calls_model",
+        "tests/generation/test_editor_source.py::test_incomplete_explicit_source_is_not_enqueued"
+      ]
+    },
+    {
+      "id": "R20-EDITOR-SOURCE-S02",
+      "requirement": "R20-EDITOR-SOURCE",
+      "scope": "R-20: перевірка конкретних guards/контрактів; браузерне компонування й літературна якість не підтверджуються цими тестами.",
+      "tests": [
+        "tests/generation/test_editor_source.py::test_statistics_uses_the_same_explicit_source_as_enqueue",
+        "tests/generation/test_editor_source.py::test_source_readiness_reports_captured_version"
+      ]
+    },
+    {
+      "id": "R20-RECOVERY-S01",
+      "requirement": "R20-RECOVERY",
+      "scope": "R-20: перевірка конкретних guards/контрактів; браузерне компонування й літературна якість не підтверджуються цими тестами.",
+      "tests": [
+        "tests/web/test_workspace_navigation.py::test_workspace_settings_links_and_usage_are_explicit"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#r20-workspace",
+        "reason": "DOM guards не підтверджують CSS/геометрію, фокус і повний браузерний маршрут."
+      }
+    },
+    {
+      "id": "R20-RECOVERY-S02",
+      "requirement": "R20-RECOVERY",
+      "scope": "R-20: перевірка конкретних guards/контрактів; браузерне компонування й літературна якість не підтверджуються цими тестами.",
+      "tests": [
+        "tests/web/test_workspace_navigation.py::test_workspace_settings_links_and_usage_are_explicit",
+        "tests/billing/test_ledger.py::test_summary_last_call_tracks_send_order_not_later_settlement"
+      ]
+    },
+    {
+      "id": "DATA-006-S03",
+      "requirement": "DATA-006",
+      "scope": "Кошик твору з історичними зупиненими запусками, відмова/active/cancel failure; збереження матеріалів.",
+      "tests": [
+        "tests/web/test_trash_api.py::test_trash_ui_preserves_unsaved_buffers",
+        "tests/web/test_trash_api.py::test_cancel_stopped_run_then_trash_preserves_materials"
+      ]
+    },
+    {
+      "id": "DATA-RENAME-S01",
+      "requirement": "DATA-RENAME",
+      "scope": "CAS/no-op/валідація/кошик та inline введення без зміни рукопису.",
+      "tests": [
+        "tests/web/test_story_title.py::test_rename_story_preserves_materials_and_checks_revision",
+        "tests/web/test_story_title.py::test_story_title_ui_preserves_input_and_scene_buffer"
+      ]
+    },
+    {
+      "id": "DATA-001-S02",
+      "requirement": "DATA-001",
+      "scope": "Завантаження пакетних шаблонів та імпорт складу/часових рядків без неявної класифікації карток.",
+      "tests": [
+        "tests/web/test_author_templates.py::test_downloadable_templates_import_with_cast_and_overnight_timing"
+      ]
+    },
+    {
+      "id": "R21-SETTINGS-S01",
+      "requirement": "R21-SETTINGS",
+      "scope": "R-21: конкретні guards і контракт форми; без доказу літературної якості чи поведінки реальних моделей.",
+      "tests": [
+        "tests/web/test_settings_workspace.py::test_settings_workspace_regressions",
+        "tests/web/test_role_profile_ui.py::test_role_profiles_preview_dirty_conflict_and_apply"
+      ]
+    },
+    {
+      "id": "R21-SETTINGS-S02",
+      "requirement": "R21-SETTINGS",
+      "scope": "R-21: конкретні guards і контракт форми; без доказу літературної якості чи поведінки реальних моделей.",
+      "tests": [
+        "tests/web/test_settings_workspace.py::test_settings_page_exposes_sections_without_json_only_evaluator",
+        "tests/web/test_workspace_navigation.py::test_workspace_settings_links_and_usage_are_explicit"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#r21-settings",
+        "reason": "Node/API guards не підтверджують компонування, клавіатурний фокус і всю інтеграцію DOM."
+      }
+    },
+    {
+      "id": "R21-EVALUATOR-FORM-S01",
+      "requirement": "R21-EVALUATOR-FORM",
+      "scope": "R-21: конкретні guards і контракт форми; без доказу літературної якості чи поведінки реальних моделей.",
+      "tests": [
+        "tests/web/test_settings_workspace.py::test_settings_workspace_regressions",
+        "tests/web/test_evaluator_toggle_ui.py::test_off_switch_works_with_unfinished_json"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#r21-settings",
+        "reason": "Node/API guards не підтверджують компонування, клавіатурний фокус і всю інтеграцію DOM."
+      }
+    },
+    {
+      "id": "R21-EVALUATOR-FORM-S02",
+      "requirement": "R21-EVALUATOR-FORM",
+      "scope": "R-21: конкретні guards і контракт форми; без доказу літературної якості чи поведінки реальних моделей.",
+      "tests": [
+        "tests/web/test_settings_workspace.py::test_settings_workspace_regressions",
+        "tests/web/test_evaluation.py::test_candidate_profile_is_not_presented_as_quality_pass",
+        "tests/web/test_evaluation.py::test_block_metadata_and_manual_enqueue_explain_original_cause"
+      ]
     }
   ]
 }

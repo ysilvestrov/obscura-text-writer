@@ -8,6 +8,10 @@ from .files import FileStore
 
 
 class Repository:
+    def rename_story(self,story_id,title,expected_revision):
+        from .authoring import rename_story
+        return rename_story(self,story_id,title,expected_revision)
+
     def unchanged_scene_text(self,scene_id,head,text,expected_revision):
         from .authoring import unchanged_scene_text
         return unchanged_scene_text(self,scene_id,head,text,expected_revision)

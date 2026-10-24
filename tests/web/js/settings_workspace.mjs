@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+import {SettingsDrafts,settingsSignature,settingsRoute} from '../../../src/storygen/web/static/settings-state.js';
+const drafts=new SettingsDrafts();
+drafts.register('editor',{model:'old',prompt:'original'});drafts.register('writer',{model:'old',prompt:'writer'});
+drafts.change('writer',{model:'old',prompt:'pending'});
+drafts.change('editor',{model:'new',prompt:'original'});drafts.saved('editor');
+assert.equal(drafts.dirty('writer'),true);assert.equal(drafts.dirty('editor'),false);
+drafts.rebase('writer',{model:'new'});assert.deepEqual(drafts.get('writer').current,{model:'new',prompt:'pending'});assert.equal(drafts.dirty('writer'),true);
+assert.equal(drafts.changedFields('writer',['model']),false);assert.equal(drafts.changedFields('writer',['prompt']),true);
+drafts.setBusy('writer',true);assert.equal(drafts.anyBusy(),true);drafts.setBusy('writer',false);
+assert.deepEqual(drafts.reset('writer'),{model:'new',prompt:'writer'});assert.equal(drafts.anyDirty(),false);
+drafts.register('evaluation',{value:0});drafts.setError('evaluation','network');assert.equal(drafts.get('evaluation').error,'network');
+assert.equal(settingsSignature({b:null,a:0}),settingsSignature({a:0,b:null}));assert.notEqual(settingsSignature({a:null}),settingsSignature({a:0}));
+assert.deepEqual(settingsRoute('?section=other&role=editor'),{section:'models',role:'editor'});
+assert.deepEqual(settingsRoute('?section=budget&role=bad'),{section:'budget',role:'planner'});
+console.log('Settings draft registry regressions passed');

@@ -1,0 +1,22 @@
+import assert from 'node:assert/strict';
+import {installStoryTitle} from '../../../src/storygen/web/static/story-title.js';
+class Element {hidden=false;disabled=false;value='';textContent='';listeners={};focus(){this.focused=true}select(){}addEventListener(n,f){this.listeners[n]=f}}
+const nodes=Object.fromEntries(['#story-title','#rename-story','#story-title-form','#story-title-input','#story-title-submit','#story-title-error'].map(id=>[id,new Element()]));
+const events={};globalThis.document={title:'Стара — Obscura',addEventListener(n,f){events[n]=f}};
+globalThis.addEventListener=(n,f)=>{events[n]=f};
+const state={storyId:'s',view:{story:{title:'Стара',revision:3}},dirty:true,mode:'draft',bufferEpoch:7};
+let requests=[],fail=false,resolveSave;
+installStoryTitle({root:{querySelector:id=>nodes[id]},state,json:(method,body)=>({method,body}),api:async(url,options)=>{if(!options)return {story:{title:'Серверна',revision:4}};requests.push([url,options]);if(fail)throw Error('Конфлікт ревізії');return new Promise(resolve=>{resolveSave=()=>resolve({title:options.body.title,revision:5})})}});
+const edit=nodes['#rename-story'],input=nodes['#story-title-input'],form=nodes['#story-title-form'];
+edit.listeners.click();assert.equal(input.value,'Стара');assert.equal(form.hidden,false);
+input.value='Нова';input.listeners.keydown({key:'Escape',preventDefault(){}});assert.equal(form.hidden,true);assert.equal(requests.length,0);
+edit.listeners.click();input.value='  ';await form.listeners.submit({preventDefault(){}});assert.equal(requests.length,0);
+input.value='Нова';fail=true;await form.listeners.submit({preventDefault(){}});assert.equal(input.value,'Нова');assert.equal(form.hidden,false);assert.match(nodes['#story-title-error'].textContent,/Конфлікт/);
+input.listeners.keydown({key:'Escape',preventDefault(){}});edit.listeners.click();assert.equal(input.value,'Серверна');input.value='Нова';
+fail=false;const pending=form.listeners.submit({preventDefault(){}});assert.equal(input.disabled,true);
+await form.listeners.submit({preventDefault(){}});assert.equal(requests.length,2,'no duplicate submit');
+resolveSave();await pending;
+assert.equal(nodes['#story-title'].textContent,'Нова');assert.equal(document.title,'Нова — Obscura');assert.equal(form.hidden,true);
+assert.equal(state.view.story.revision,5);assert.equal(state.dirty,true);assert.equal(state.bufferEpoch,7);
+assert.deepEqual(requests.at(-1),['/api/stories/s',{method:'PATCH',body:{title:'Нова',expected_revision:4}}]);
+console.log('Story title editing regressions passed');

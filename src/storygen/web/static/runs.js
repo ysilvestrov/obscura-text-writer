@@ -1,6 +1,8 @@
 import {acceptedContinuation} from './acceptance.js';
 import {api,json,notice} from './api.js';
-import {state,refresh} from './editor.js';
+import {state,refresh,loadBuffer,textEditor} from './editor.js';
+import {registerWorkspaceCommand} from './workspace-commands.js';
+import {assertReadyDispatch} from './workspace-state.js';
 import {operationReason,confirmationText,runKind,controlReason,materialReason,editorLoopOperation} from './run-readiness.js';
 const controls=document.querySelector('#generation-controls'),status=document.querySelector('#run-status'),live=document.querySelector('#live-text');
 const terminal=new Set(['completed','failed','cancelled','interrupted','needs_review','alternative','paused']);
@@ -9,7 +11,7 @@ let active=null,source=null,last=0,started=Date.now(),followEpoch=0;
 let readiness=null,readinessEpoch=0,historyRuns=null,pendingReadiness=null,pendingEpoch=0;
 let continuation=null;
 const actions=[];
-function updateControls(){for(const item of actions){let reason=item.operation?operationReason(state,readiness?.operations[item.operation]):['latest','proposal','apply'].includes(item.action)?materialReason(item.action,state,historyRuns):item.action==='accepted'?operationReason(state,{ready:!!continuation,reason:'Спершу виберіть або прийміть результат зупиненого етапу'}):item.action?controlReason(item.action,active):'';if(['resume','repeat'].includes(item.action))reason=reason||operationReason(state,pendingReadiness);if(item.busy)reason='Виконуємо запит…';item.button.disabled=!!reason;item.button.title=reason;item.hint.textContent=reason;item.button.setAttribute('aria-describedby',item.hint.id)}}
+function updateControls(){for(const item of actions){let reason=item.operation?operationReason(state,readiness?.operations[item.operation]):['latest','proposal','apply'].includes(item.action)?materialReason(item.action,state,historyRuns):item.action==='accepted'?operationReason(state,{ready:!!continuation,reason:'Спершу виберіть або прийміть результат зупиненого етапу'}):item.action?controlReason(item.action,active):'';if(['resume','repeat'].includes(item.action))reason=reason||operationReason(state,pendingReadiness);if(item.busy)reason='Виконуємо запит…';item.button.disabled=!!reason;item.button.title=reason;item.hint.textContent=reason;item.button.setAttribute('aria-describedby',item.hint.id);if(['pause','cancel','resume','repeat','accepted'].includes(item.action))item.wrapper.hidden=!!reason}}
 async function loadPending(){
   const epoch=++pendingEpoch;pendingReadiness=null;continuation=null;updateControls();if(!active)return;
   const runId=active.id;
@@ -24,12 +26,24 @@ async function loadPending(){
     if(epoch===pendingEpoch){pendingReadiness=result;continuation=candidate;updateControls()}
   }catch(error){if(epoch===pendingEpoch){pendingReadiness={ready:false,reason:error.message};updateControls()}}
 }
-async function loadReadiness(){const epoch=++readinessEpoch;readiness=null;updateControls();try{const [result,runs]=await Promise.all([api(`/api/stories/${state.storyId}/readiness${state.scene?'?scene_id='+encodeURIComponent(state.scene.id):''}`),api(`/api/stories/${state.storyId}/runs`)]);if(epoch===readinessEpoch){readiness=result;historyRuns=runs.runs;updateControls()}}catch(error){if(epoch===readinessEpoch){readiness={operations:Object.fromEntries(['prepare','brief','draft','edit','memory','scene','remaining','rebuild_memory','edit_loop'].map(key=>[key,{ready:false,reason:error.message}]))};updateControls();notice(error.message,'error')}}}
+function selectedSource(options={}){
+  if(options.editor_source_head)return {editor_source_head:options.editor_source_head,editor_source_version_id:options.editor_source_version_id};
+  const head=['draft','prose'].includes(state.mode)?state.mode:null;
+  return head&&state.scene?.heads[head]?{editor_source_head:head,editor_source_version_id:state.scene.heads[head]}:{};
+}
+async function loadReadiness(options={}){
+  const epoch=++readinessEpoch;readiness=null;state.workspaceReadiness=null;updateControls();document.dispatchEvent(new CustomEvent('workspace-readiness'));
+  try{
+    const query=new URLSearchParams(state.scene?{scene_id:state.scene.id,...selectedSource(options)}:{});
+    const [result,runs]=await Promise.all([api(`/api/stories/${state.storyId}/readiness?${query}`),api(`/api/stories/${state.storyId}/runs`)]);
+    if(epoch===readinessEpoch){readiness=result;historyRuns=runs.runs;state.workspaceReadiness=result;state.workspaceRuns=historyRuns;updateControls();document.dispatchEvent(new CustomEvent('workspace-readiness'))}
+  }catch(error){if(epoch===readinessEpoch){readiness={operations:Object.fromEntries(['prepare','brief','draft','edit','memory','scene','remaining','rebuild_memory','edit_loop'].map(key=>[key,{ready:false,reason:error.message}]))};state.workspaceReadiness=readiness;updateControls();notice(error.message,'error')}}
+}
 for(const event of ['story-refreshed','scene-selected','evaluation-policy-changed'])document.addEventListener(event,()=>{loadReadiness();if(active&&terminal.has(active.state))loadPending()});
-document.addEventListener('editor-state-changed',updateControls);
+document.addEventListener('editor-state-changed',()=>{updateControls();if(state.mode!==state.workspaceReadinessMode){state.workspaceReadinessMode=state.mode;void loadReadiness()}});
 document.querySelector('#editor').addEventListener('input',updateControls);
 const elapsed=document.createElement('p');
-function draw(run){active=run;status.dataset.kind=run.warning&&run.state!=='failed'?'warning':runKind(run.state);status.setAttribute('role',run.state==='failed'?'alert':'status');status.replaceChildren();const p=document.createElement('p');p.textContent=names[run.state]||run.state;status.append(p);for(const message of [...new Set([run.error,run.warning].filter(Boolean))]){const e=document.createElement('p');e.textContent=message;status.append(e)}elapsed.textContent=terminal.has(run.state)?'':elapsed.textContent;status.append(elapsed);updateControls();if(terminal.has(run.state))loadPending()}
+function draw(run){active=run;state.workspaceRun=run;document.dispatchEvent(new CustomEvent('workspace-run-state',{detail:run}));status.dataset.kind=run.warning&&run.state!=='failed'?'warning':runKind(run.state);status.setAttribute('role',run.state==='failed'?'alert':'status');status.replaceChildren();const p=document.createElement('p');p.textContent=names[run.state]||run.state;status.append(p);for(const message of [...new Set([run.error,run.warning].filter(Boolean))]){const e=document.createElement('p');e.textContent=message;status.append(e)}elapsed.textContent=terminal.has(run.state)?'':elapsed.textContent;status.append(elapsed);updateControls();if(terminal.has(run.state))loadPending()}
 setInterval(()=>{if(active&&!terminal.has(active.state))elapsed.textContent=`Минуло ${Math.floor((Date.now()-started)/1000)} с`},1000);
 async function follow(run){
   const epoch=++followEpoch;let stateFetch=0;
@@ -52,10 +66,12 @@ async function follow(run){
   source.onerror=()=>{if(epoch===followEpoch&&active&&!terminal.has(active.state))notice('Зв’язок із подіями перервано; браузер перепідключиться. Стан запуску уточнюється на сервері.','warning')};
 }
 document.addEventListener('run-enqueued',event=>follow(event.detail).catch(error=>notice(error.message,'error')));
-async function start(mode,stage){
+async function start(mode,stage,options={}){
+  const captured={sceneId:state.scene?.id,epoch:state.bufferEpoch,mode:state.mode};
   if(!state.scene&&mode!=='prepare')throw new Error('Оберіть сцену');
   if(state.dirty)throw new Error('Спершу збережіть ручні правки');
-  await loadReadiness();
+  await loadReadiness(options);
+  assertReadyDispatch(state,captured);
   let operation=readiness?.operations[stage||mode];
   const passLimit=Number(document.querySelector('#edit-pass-limit')?.value||5);
   const usesEditorLoop=['edit_loop','scene','remaining'].includes(mode);
@@ -65,12 +81,13 @@ async function start(mode,stage){
   if(!confirm(confirmationText(operation)))return;
   const request={story_id:state.storyId,scene_id:mode==='prepare'?null:state.scene.id,mode,stage:stage||null,pause_after:document.querySelector('#pause-each').checked?['brief','draft','edit','memory']:[]};
   if(usesEditorLoop){request.edit_pass_limit=passLimit;request.edit_workflow='loop'}
+  if(mode==='edit_loop')Object.assign(request,selectedSource(options));
   request.budget_limit_usd=document.querySelector('#run-budget')?.value||null;
   const key='storygen.pending.'+JSON.stringify(request);let requestId=localStorage.getItem(key)||crypto.randomUUID();localStorage.setItem(key,requestId);
-  const run=await api('/api/runs',json('POST',{request_id:requestId,request}));localStorage.removeItem(key);await follow(run);
+  const run=await api('/api/runs',json('POST',{request_id:requestId,request}));localStorage.removeItem(key);await follow(run);return active;
 }
 controls.hidden=false;
-function button(label,fn,operation=null,action=null){const wrapper=document.createElement('span');wrapper.className='run-action';const b=document.createElement('button'),hint=document.createElement('small');hint.id='run-reason-'+actions.length;b.className='secondary';b.textContent=label;const item={button:b,hint,operation,action,busy:false};actions.push(item);b.onclick=async()=>{item.busy=true;updateControls();try{await fn()}catch(e){notice(e.message,'error')}finally{item.busy=false;updateControls()}};wrapper.append(b,hint);controls.append(wrapper);updateControls();return wrapper}
+function button(label,fn,operation=null,action=null){const wrapper=document.createElement('span');wrapper.className='run-action';const b=document.createElement('button'),hint=document.createElement('small');hint.id='run-reason-'+actions.length;b.className='secondary';b.textContent=label;const item={button:b,hint,wrapper,operation,action,busy:false};actions.push(item);b.onclick=async()=>{item.busy=true;updateControls();try{await fn()}catch(e){notice(e.message,'error')}finally{item.busy=false;updateControls()}};wrapper.append(b,hint);(document.querySelector('#run-actions')&&['pause','cancel','resume','repeat','accepted'].includes(action)?document.querySelector('#run-actions'):controls).append(wrapper);updateControls();return wrapper}
 button('Підготувати структуру',()=>start('prepare'),'prepare');
 for(const [stage,label] of Object.entries({brief:'Створити завдання',draft:'Написати',edit:'Редагувати',memory:'Оновити пам’ять'})){
   if(stage==='edit'){
@@ -95,7 +112,10 @@ button('Продовжити',()=>resumeRun(false),null,'resume');
 button('Повторити перерваний етап',()=>resumeRun(true),null,'repeat');
 button('Перебудувати пам’ять далі',()=>start('rebuild_memory'),'rebuild_memory');
 button('Переглянути останній запуск',async()=>{const runs=(await api(`/api/stories/${state.storyId}/runs`)).runs;if(runs.length)await follow(runs.at(-1))},null,'latest');
-button('Переглянути пропозицію структури',async()=>{const runs=(await api(`/api/stories/${state.storyId}/runs`)).runs;const run=[...runs].reverse().find(r=>r.request.mode==='prepare'&&r.state==='completed');if(!run)throw new Error('Немає завершеної пропозиції');const details=await api('/api/runs/'+run.id);const ref=details.attempts.at(-1).result_version_id;const proposal=(await api('/api/versions/'+ref)).text;const editor=document.querySelector('#editor');if(state.dirty)throw new Error('Спершу збережіть правки');editor.value=proposal;state.mode='blueprint';state.dirty=false;document.querySelector('#current-kind').textContent='ПРОПОЗИЦІЯ СТРУКТУРИ (JSON)';document.querySelector('#save-text').disabled=true;updateControls()},null,'proposal');
-button('Застосувати пропозицію структури',async()=>{if(state.mode!=='blueprint')throw new Error('Спершу перегляньте пропозицію');const proposal=JSON.parse(document.querySelector('#editor').value);if(!confirm('Застосувати відредаговану пропозицію канону й персонажів? Наявні сцени залишаться під вашим контролем.'))return;await api(`/api/stories/${state.storyId}/blueprint/apply`,json('POST',{proposal,expected_revision:state.view.story.revision}));state.dirty=false;await refresh();notice('Канон і персонажів застосовано')},null,'apply');
+button('Переглянути пропозицію структури',async()=>{const runs=(await api(`/api/stories/${state.storyId}/runs`)).runs;const run=[...runs].reverse().find(r=>r.request.mode==='prepare'&&r.state==='completed');if(!run)throw new Error('Немає завершеної пропозиції');const details=await api('/api/runs/'+run.id);const ref=details.attempts.at(-1).result_version_id;const proposal=(await api('/api/versions/'+ref)).text;const editor=document.querySelector('#editor');if(state.dirty)throw new Error('Спершу збережіть правки');loadBuffer(state.scene,'blueprint',proposal);state.dirty=false;document.querySelector('#current-kind').textContent='ПРОПОЗИЦІЯ СТРУКТУРИ (JSON)';document.querySelector('#save-text').disabled=true;updateControls()},null,'proposal');
+button('Застосувати пропозицію структури',async()=>{if(state.mode!=='blueprint')throw new Error('Спершу перегляньте пропозицію');const proposal=JSON.parse(textEditor.read());if(!confirm('Застосувати відредаговану пропозицію канону й персонажів? Наявні сцени залишаться під вашим контролем.'))return;await api(`/api/stories/${state.storyId}/blueprint/apply`,json('POST',{proposal,expected_revision:state.view.story.revision}));state.dirty=false;await refresh();notice('Канон і персонажів застосовано')},null,'apply');
 loadReadiness();
 api(`/api/stories/${state.storyId}/runs`).then(result=>{if(result.runs.length)follow(result.runs.at(-1)).catch(e=>notice(e.message,'error'))}).catch(e=>notice(e.message,'error'));
+
+registerWorkspaceCommand('run',async options=>{try{return await start(options.mode,options.stage,options)}catch(error){document.dispatchEvent(new CustomEvent('workspace-operation-error',{detail:{stage:options.mode==='edit_loop'?'edit':options.stage||options.mode,message:error.message}}));throw error}});
+registerWorkspaceCommand('refresh-readiness',loadReadiness);
