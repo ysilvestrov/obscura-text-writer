@@ -35,24 +35,8 @@ def validate_memory(snapshot: MemorySnapshot,source_versions: dict[str,str]) -> 
 
 
 def journal_before(repo,scene_id: str) -> MemoryJournal:
-    scene=repo.get_scene(scene_id)
-    previous=[s for s in repo.list_scenes(scene.story_id) if s.position<scene.position]
-    if not previous:
-        return MemoryJournal()
-    selected={}
-    for item in previous:
-        prose_id=item.heads.get('prose')
-        if not prose_id:
-            raise ValueError('Потрібні актуальна проза й пам’ять попередніх сцен')
-        selected[prose_id]=repo.read_text(prose_id)
-    memory_id=previous[-1].heads.get('memory')
-    if not memory_id or repo.get_version(memory_id).stale:
-        raise ValueError('Спершу оновіть пам’ять попередньої сцени')
-    try:
-        snapshot=load_memory(repo.read_text(memory_id))
-        return validate_memory_journal(snapshot,selected)
-    except ValueError:
-        raise ValueError('Попередня пам’ять не відповідає вибраній прозі; оновіть пам’ять') from None
+    from .reuse import journal_for_read
+    return journal_for_read(repo,scene_id)
 
 
 def memory_before(repo,scene_id: str) -> MemorySnapshot:
@@ -71,7 +55,8 @@ def save_scene_memory(repo,scene_id,text,expected_revision):
     scene=view.get_scene(scene_id)
     if scene.revision!=expected_revision:
         raise RevisionConflict('Пам’ять або прозу сцени вже оновлено. Відкрийте вкладку «Пам’ять» заново; незбережені правки спершу скопіюйте окремо.')
-    previous=journal_before(view,scene_id)
+    from .reuse import memory_for_manual_edit
+    previous,provenance,accepted_memory_ids=memory_for_manual_edit(view,scene_id)
     prose_id=scene.heads.get('prose')
     if not prose_id:raise ValueError('Спершу виберіть прозу')
     ref=view.get_version(prose_id)
@@ -84,6 +69,8 @@ def save_scene_memory(repo,scene_id,text,expected_revision):
     earlier=[s for s in view.list_scenes(scene.story_id) if s.position<scene.position]
     if earlier:refs.append(earlier[-1].heads['memory'])
     snapshot=build_dependency_snapshot(view,scene_id,'memory',RoleSettings(provider=ProviderSettings(model='manual-memory')),refs)
+    snapshot.memory_provenance=provenance
+    snapshot.accepted_stale_memory_ids=accepted_memory_ids
     version=repo.save_version(scene.story_id,scene_id,'memory',journal.model_dump_json(),refs,dependency_snapshot=snapshot)
     repo.set_head(scene_id,'memory',version.id,expected_revision)
     return version

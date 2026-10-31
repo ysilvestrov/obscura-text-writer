@@ -1,0 +1,186 @@
+{
+  "L1": {
+    "calls": 8,
+    "valid": 7,
+    "invalid": 1,
+    "refusals": 0,
+    "seconds_min": 10.594,
+    "seconds_max": 18.718,
+    "reasoning_tokens_observed": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "all_unloaded_after": true,
+    "invalid_cases": [
+      "intimacy-issue"
+    ]
+  },
+  "L2": {
+    "calls": 8,
+    "valid": 8,
+    "invalid": 0,
+    "refusals": 0,
+    "seconds_min": 10.375,
+    "seconds_max": 23.625,
+    "reasoning_tokens_observed": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "all_unloaded_after": true,
+    "invalid_cases": []
+  },
+  "L3": {
+    "calls": 8,
+    "valid": 6,
+    "invalid": 2,
+    "refusals": 0,
+    "seconds_min": 9.407,
+    "seconds_max": 25.734,
+    "reasoning_tokens_observed": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "all_unloaded_after": true,
+    "invalid_cases": [
+      "nude-issue",
+      "intimacy-issue"
+    ]
+  },
+  "L4": {
+    "calls": 8,
+    "valid": 8,
+    "invalid": 0,
+    "refusals": 0,
+    "seconds_min": 8.016,
+    "seconds_max": 23.812,
+    "reasoning_tokens_observed": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "all_unloaded_after": true,
+    "invalid_cases": []
+  },
+  "L5": {
+    "calls": 8,
+    "valid": 8,
+    "invalid": 0,
+    "refusals": 0,
+    "seconds_min": 0.812,
+    "seconds_max": 0.922,
+    "reasoning_tokens_observed": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "all_unloaded_after": true,
+    "invalid_cases": []
+  },
+  "L6": {
+    "calls": 8,
+    "valid": 7,
+    "invalid": 1,
+    "refusals": 0,
+    "seconds_min": 0.844,
+    "seconds_max": 4.953,
+    "reasoning_tokens_observed": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "all_unloaded_after": true,
+    "invalid_cases": [
+      "nude-clean"
+    ]
+  },
+  "C1": {
+    "calls": 8,
+    "valid": 8,
+    "invalid": 0,
+    "refusals": 0,
+    "seconds_min": 0.61,
+    "seconds_max": 1.156,
+    "reasoning_tokens_observed": [
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    ],
+    "calculated_cost_note": "Usage tariff calculation, shared ledger"
+  },
+  "C2": {
+    "calls": 8,
+    "valid": 8,
+    "invalid": 0,
+    "refusals": 0,
+    "seconds_min": 1.813,
+    "seconds_max": 4.0,
+    "reasoning_tokens_observed": [
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    ],
+    "calculated_cost_note": "Usage tariff calculation, shared ledger"
+  },
+  "runtime": {
+    "Bionic": "1.1.8 build 10",
+    "selected_engine": "CUDA12 llama.cpp (Windows) 2.66.0",
+    "runtime_commit": null,
+    "binary_sha256": {
+      "llama.dll": "d3e2417bbd5e75f165248a77a2bc87eb793cfda3be84b527bcde4e35ba127217",
+      "llama-server-impl.dll": "e0651e2bffea59f57316c98b069f364bb39803361f46f6f8f27adb5da6fd4eab",
+      "ggml-cuda.dll": "57e57646b45460f5f893fec16d85d5edb44eb3232c25336fdfaa21a5d04554c4"
+    },
+    "driver": "582.05",
+    "gpu": "RTX 5070 Laptop GPU",
+    "VRAM_MiB": 8151,
+    "power_scheme": "Balanced",
+    "AC_connected_after_dev": true,
+    "battery_percent_after_dev": 96,
+    "power_not_continuously_logged": true
+  },
+  "cloud_cost_usd": "0.0054546",
+  "holdout_calls": 0
+}

@@ -65,7 +65,7 @@ def import_sources(repo: Repository,story_id: str,files: list[SourceFile]) -> Im
                     result.created_character_cards+=len(cards)
                     result.warnings.append(f'Створено початкових карток персонажів: {len(cards)}. Часову доступність описів не перевірено; перегляньте картки.')
                 else:
-                    result.warnings.append('Картки не створено: потрібні заголовки імен, наприклад «## Олена», з описом нижче. Файл збережено; можна додати картки вручну або підготувати структуру.')
+                    result.warnings.append('Картки не створено: потрібні заголовки імен, наприклад «## Лєра», з описом нижче. Файл збережено; можна додати картки вручну або підготувати структуру.')
 
         if file.kind=="source_plan":
             proposed=suggest_scene_sections(text)

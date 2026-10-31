@@ -14,20 +14,36 @@ def merge_warnings(existing: str | None,messages: list[str]) -> str | None:
 class RunRequest(DomainModel):
     story_id: str
     scene_id: str | None = None
-    mode: Literal['stage','scene','remaining','prepare','rebuild_memory','evaluate','classify','edit_loop','publication_suggest'] = 'scene'
+    mode: Literal['stage','scene','remaining','prepare','rebuild_memory','evaluate','classify','edit_loop','publication_suggest','rewrite','impact'] = 'scene'
+    impact_plan_fingerprint: str | None = Field(default=None,pattern=r'^[a-f0-9]{64}$')
+    impact_protocol: Literal[3] | None = None
     edit_pass_limit: int = Field(default=5,ge=1,le=10,strict=True)
     edit_workflow: Literal['single','loop'] = 'single'
     editor_source_head: Literal['draft','prose'] | None = None
     editor_source_version_id: str | None = Field(default=None,min_length=1)
     proposal_attempt_id: str | None = None
     proposal_fingerprint: str | None = None
+    source_version_id: str | None = None
+    comment_set_id: str | None = None
+    comment_fingerprint: str | None = Field(default=None,pattern=r'^[a-f0-9]{64}$')
     stage: Literal['brief','draft','edit','memory'] | None = None
     pause_after: list[Literal['brief','draft','edit','memory']] = Field(default_factory=list)
     evaluation_mode: Literal['scene','edit_pair','story'] = 'scene'
     budget_limit_usd: str | None = None
+    memory_approval: str | None = Field(default=None,pattern=r'^[a-f0-9]{64}$')
 
     @model_validator(mode='after')
     def valid(self):
+        if self.impact_protocol and self.mode!='impact':raise ValueError('Протокол перевірки дозволений лише для impact')
+        if self.impact_plan_fingerprint and self.mode!='impact':raise ValueError('Знімок впливу дозволений лише для impact')
+        if self.mode=='impact' and self.scene_id is not None:raise ValueError('Перевірка впливу належить твору')
+        if self.mode=='rewrite':
+            if not all([self.scene_id,self.source_version_id,self.comment_set_id,self.comment_fingerprint]):
+                raise ValueError('Оберіть збережену чернетку та конкретний набір коментарів')
+        elif any([self.source_version_id,self.comment_set_id,self.comment_fingerprint]):
+            raise ValueError('Джерело й коментарі дозволені лише для переписування')
+        if self.memory_approval is not None and (self.mode!='stage' or self.stage!='memory'):
+            raise ValueError('Підтвердження пам’яті дозволено лише для окремого етапу пам’яті')
         if bool(self.editor_source_head) != bool(self.editor_source_version_id):
             raise ValueError('Вкажіть вид і конкретну версію джерела редактури разом')
         if self.editor_source_head and self.mode != 'edit_loop':
@@ -56,6 +72,7 @@ class Run(DomainModel):
     cursor: int = 0
     error: str | None = None
     warning: str | None = None
+    impact: dict | None = None
     editor_loop: dict | None = None
     editor_loops: dict[str,dict] = Field(default_factory=dict)
     created_at: str = Field(default_factory=now)

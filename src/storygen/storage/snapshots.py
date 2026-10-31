@@ -16,7 +16,7 @@ def build_dependency_snapshot(
     scope = (
         'patches'
         if stage == 'edit' and settings.edit_mode in {'patches', 'diff'}
-        else 'prose_edit' if stage == 'edit' else stage
+        else 'prose_edit' if stage == 'edit' else 'author_rewrite' if stage=='rewrite' else stage
     )
     selectors = []
     order = []
@@ -81,10 +81,11 @@ def build_dependency_snapshot(
         previous = [s for s in scenes if s.position < scene.position]
         if previous:
             head(previous[-1], 'memory')
-        for name in {'brief': [], 'draft': ['brief'], 'prose_edit': ['brief', 'draft'], 'author_text': []}[scope]:
+        for name in {'brief': [], 'draft': ['brief'], 'prose_edit': ['brief', 'draft'], 'author_text': [],'author_rewrite': []}[scope]:
             head(scene, name)
     return DependencySnapshot(
         scope=scope,
+        frozen_author_source_id=next((id for id in input_refs if view.get_version(id).scene_id==scene_id and view.get_version(id).kind=='draft'),None) if scope=='author_rewrite' else None,
         selectors=selectors,
         refs={id: view.get_version(id).sha256 for id in dict.fromkeys(input_refs)},
         ref_baselines={
@@ -138,7 +139,7 @@ def compare_snapshot(view, snapshot: DependencySnapshot | dict) -> list[Dependen
     snapshot = DependencySnapshot.model_validate(snapshot)
     changes = []
     selectors=list(snapshot.selectors)
-    if snapshot.scope in {'brief','draft','prose_edit','author_text'} and not any(s.field=='memory_projection_policy' for s in selectors):
+    if snapshot.scope in {'brief','draft','prose_edit','author_text','author_rewrite'} and not any(s.field=='memory_projection_policy' for s in selectors):
         owner=next((s.owner_id for s in selectors if s.kind=='scene' and s.field=='title'),None)
         if owner:selectors.append(DependencySelector(kind='scene',owner_id=owner,field='memory_projection_policy',expected=[]))
     for selector in selectors:
@@ -162,7 +163,14 @@ def compare_snapshot(view, snapshot: DependencySnapshot | dict) -> list[Dependen
             actual_baseline=view.acceptances[id].id if id in view.acceptances else None
             if actual_baseline!=snapshot.ref_baselines.get(id):
                 changes.append(DependencyChange(version_id=id,expected=snapshot.ref_baselines.get(id),current=actual_baseline,reason="source_baseline_changed"))
-            if snapshot.scope!='author_text' and ref.stale and id not in snapshot.accepted_stale_prose_ids:
+            approved_memory=(snapshot.scope=='memory' and ref.kind=='memory'
+                             and id in snapshot.accepted_stale_memory_ids
+                             and any(p.memory_id==id for p in snapshot.memory_provenance))
+            frozen=(snapshot.scope=='author_rewrite' and id==snapshot.frozen_author_source_id and ref.kind=='draft'
+                    and ref.story_id==view.story.id and any(s.kind=='scene' and s.owner_id==ref.scene_id and s.field=='title' for s in snapshot.selectors))
+            if snapshot.scope=='author_rewrite' and id==snapshot.frozen_author_source_id and not frozen:
+                raise ValueError('Невідповідне історичне джерело')
+            if snapshot.scope!='author_text' and not frozen and ref.stale and id not in snapshot.accepted_stale_prose_ids and not approved_memory:
                 changes.append(DependencyChange(version_id=id,reason='source_stale'))
         except (KeyError, ValueError, OSError):
             changes.append(DependencyChange(version_id=id, expected=sha, reason='source_unavailable'))
@@ -242,6 +250,18 @@ def resolve_freshness(view, version_id: str) -> FreshnessResult:
                 if hidden!=expected:reasons.append(DependencyChange(selector=DependencySelector(kind='scene',owner_id=ref.scene_id,field='memory_projection_policy',expected=expected),expected=expected,current=hidden,reason='selector_changed'))
         else:
             reasons.extend(compare_snapshot(view, baseline))
+        # A review adds live dependencies even when the original version was fresh.
+        # A later explicit author rebase supersedes that review, retaining its own contract.
+        from ..review.store import latest as latest_review,current_acceptance
+        reviewed=latest_review(view,version_id)
+        review_applies=reviewed and (not acceptance or reviewed.target.baseline_ids.get(version_id)==acceptance.id)
+        if not any(r.reason in {'incomplete','integrity_error'} for r in reasons):
+            if review_applies:
+                if current_acceptance(view,version_id):reasons=[]
+                else:reasons.append(DependencyChange(version_id=version_id,reason='review_basis_changed'))
+            elif reasons:
+                from .impact_validity import valid_overlay
+                if valid_overlay(view,version_id):reasons=[]
         result = FreshnessResult(
             stale=bool(reasons),
             reasons=reasons,
@@ -292,5 +312,8 @@ def build_author_baseline(view, scene_id: str) -> DependencySnapshot:
         select('scene',scene.id,field,getattr(scene,field))
     from ..memory.forwarding import hidden_before
     select('scene',scene.id,'memory_projection_policy',sorted(hidden_before(view,scene.id)))
+    previous=[item for item in scenes if item.position<scene.position]
+    for item,name in [(item,'prose') for item in previous]+([(previous[-1],'memory')] if previous else []):
+        id=item.heads.get(name);select('head',item.id,name,id);include(id)
     return DependencySnapshot(scope='author_text',selectors=selectors,refs=refs,scene_order=order,
         ref_baselines={id:view.acceptances[id].id if id in view.acceptances else None for id in refs})

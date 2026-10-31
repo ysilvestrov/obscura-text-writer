@@ -15,13 +15,13 @@ def test_story_view_returns_name_registry_without_character_descriptions(tmp_pat
         repo.publish_story_material(story.id,'characters_version_id',ref.id,repo.get_story(story.id).revision)
     with TestClient(app,base_url='http://127.0.0.1:8765') as client:
         assert client.get('/api/stories/'+story.id).json()['character_names']=={}
-        publish('Олена')
+        publish('Лєра')
         result=client.get('/api/stories/'+story.id).json()
-        assert result['character_names']=={'internal-a':'Олена'}
+        assert result['character_names']=={'internal-a':'Лєра'}
         assert result['scenes'][0]['character_ids']==['internal-a']
         assert 'ПРИВАТНИЙ ОПИС' not in json.dumps(result,ensure_ascii=False)
-        publish('ОЛЕНА')
-        assert client.get('/api/stories/'+story.id).json()['character_names']=={'internal-a':'ОЛЕНА'}
+        publish('ЛЄРА')
+        assert client.get('/api/stories/'+story.id).json()['character_names']=={'internal-a':'ЛЄРА'}
 
 
 def test_story_view_preserves_effective_review_status_after_dependency_return(tmp_path):

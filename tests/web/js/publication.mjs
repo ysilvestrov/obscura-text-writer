@@ -61,6 +61,11 @@ initialRelease();
 await tick();
 await tick();
 assert.equal(nodes['#publication-save'].disabled,true);
+const {setLocale}=await import(pathToFileURL(root+'/src/storygen/web/static/i18n.js'));
+const emptyAuthor=nodes['#publication-author-choice'].children[0];
+setLocale('en');assert.equal(emptyAuthor.textContent,'Choose a credit from the directory');
+setLocale('uk');assert.equal(emptyAuthor.textContent,'Оберіть підпис із довідника');
+assert.equal(nodes['#publication-save'].disabled,true,'Locale switch must not dirty the card');
 // Generation never fills the form. Review preserves a field edited during the request.
 fields.genres.append(new Option('Оповідання','short_story'));
 proposals=[{attempt_id:'attempt',fingerprint:'hash',model:'fake-planner',created_at:'now',can_apply:true,warnings:['Порожнє поле genres <img>: оберіть вручну.'],

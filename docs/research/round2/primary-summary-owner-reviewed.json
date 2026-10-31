@@ -1,0 +1,1056 @@
+{
+  "models": {
+    "C1": {
+      "aggregate": {
+        "total": 144,
+        "outcomes": {
+          "TP": 72,
+          "TN": 52,
+          "FP": 8,
+          "question-missed": 6,
+          "question-ok": 6
+        },
+        "clean_denominator": 60,
+        "issue_denominator": 84,
+        "fp": 8,
+        "miss": 0,
+        "valid": 144
+      },
+      "thresholds_passed": false,
+      "flip": {
+        "changed": 2,
+        "cases": 48,
+        "rate": 0.041666666666666664
+      },
+      "draws": {
+        "1": {
+          "total": 48,
+          "outcomes": {
+            "TP": 24,
+            "TN": 17,
+            "FP": 3,
+            "question-missed": 2,
+            "question-ok": 2
+          },
+          "clean_denominator": 20,
+          "issue_denominator": 28,
+          "fp": 3,
+          "miss": 0,
+          "valid": 48
+        },
+        "2": {
+          "total": 48,
+          "outcomes": {
+            "TN": 18,
+            "TP": 24,
+            "question-ok": 2,
+            "question-missed": 2,
+            "FP": 2
+          },
+          "clean_denominator": 20,
+          "issue_denominator": 28,
+          "fp": 2,
+          "miss": 0,
+          "valid": 48
+        },
+        "3": {
+          "total": 48,
+          "outcomes": {
+            "TN": 17,
+            "TP": 24,
+            "question-ok": 2,
+            "FP": 3,
+            "question-missed": 2
+          },
+          "clean_denominator": 20,
+          "issue_denominator": 28,
+          "fp": 3,
+          "miss": 0,
+          "valid": 48
+        }
+      },
+      "contexts": {
+        "neutral": {
+          "total": 72,
+          "outcomes": {
+            "TP": 36,
+            "TN": 25,
+            "FP": 5,
+            "question-missed": 3,
+            "question-ok": 3
+          },
+          "clean_denominator": 30,
+          "issue_denominator": 42,
+          "fp": 5,
+          "miss": 0,
+          "valid": 72
+        },
+        "adult": {
+          "total": 72,
+          "outcomes": {
+            "TP": 36,
+            "TN": 27,
+            "question-ok": 3,
+            "FP": 3,
+            "question-missed": 3
+          },
+          "clean_denominator": 30,
+          "issue_denominator": 42,
+          "fp": 3,
+          "miss": 0,
+          "valid": 72
+        }
+      }
+    },
+    "C2": {
+      "aggregate": {
+        "total": 144,
+        "outcomes": {
+          "TP": 72,
+          "TN": 48,
+          "question-missed": 12,
+          "FP": 12
+        },
+        "clean_denominator": 60,
+        "issue_denominator": 84,
+        "fp": 12,
+        "miss": 0,
+        "valid": 144
+      },
+      "thresholds_passed": false,
+      "flip": {
+        "changed": 3,
+        "cases": 48,
+        "rate": 0.0625
+      },
+      "draws": {
+        "1": {
+          "total": 48,
+          "outcomes": {
+            "TP": 24,
+            "TN": 16,
+            "question-missed": 4,
+            "FP": 4
+          },
+          "clean_denominator": 20,
+          "issue_denominator": 28,
+          "fp": 4,
+          "miss": 0,
+          "valid": 48
+        },
+        "2": {
+          "total": 48,
+          "outcomes": {
+            "TN": 16,
+            "TP": 24,
+            "question-missed": 4,
+            "FP": 4
+          },
+          "clean_denominator": 20,
+          "issue_denominator": 28,
+          "fp": 4,
+          "miss": 0,
+          "valid": 48
+        },
+        "3": {
+          "total": 48,
+          "outcomes": {
+            "TN": 16,
+            "TP": 24,
+            "FP": 4,
+            "question-missed": 4
+          },
+          "clean_denominator": 20,
+          "issue_denominator": 28,
+          "fp": 4,
+          "miss": 0,
+          "valid": 48
+        }
+      },
+      "contexts": {
+        "neutral": {
+          "total": 72,
+          "outcomes": {
+            "TP": 36,
+            "TN": 24,
+            "question-missed": 6,
+            "FP": 6
+          },
+          "clean_denominator": 30,
+          "issue_denominator": 42,
+          "fp": 6,
+          "miss": 0,
+          "valid": 72
+        },
+        "adult": {
+          "total": 72,
+          "outcomes": {
+            "TP": 36,
+            "TN": 24,
+            "question-missed": 6,
+            "FP": 6
+          },
+          "clean_denominator": 30,
+          "issue_denominator": 42,
+          "fp": 6,
+          "miss": 0,
+          "valid": 72
+        }
+      }
+    },
+    "L1": {
+      "aggregate": {
+        "total": 144,
+        "outcomes": {
+          "TP": 66,
+          "FP": 60,
+          "question-missed": 11,
+          "invalid": 7
+        },
+        "clean_denominator": 60,
+        "issue_denominator": 84,
+        "fp": 60,
+        "miss": 9,
+        "valid": 137
+      },
+      "thresholds_passed": false,
+      "flip": {
+        "changed": 2,
+        "cases": 48,
+        "rate": 0.041666666666666664
+      },
+      "draws": {
+        "1": {
+          "total": 48,
+          "outcomes": {
+            "TP": 22,
+            "FP": 20,
+            "question-missed": 3,
+            "invalid": 3
+          },
+          "clean_denominator": 20,
+          "issue_denominator": 28,
+          "fp": 20,
+          "miss": 4,
+          "valid": 45
+        },
+        "2": {
+          "total": 48,
+          "outcomes": {
+            "FP": 20,
+            "TP": 22,
+            "question-missed": 4,
+            "invalid": 2
+          },
+          "clean_denominator": 20,
+          "issue_denominator": 28,
+          "fp": 20,
+          "miss": 2,
+          "valid": 46
+        },
+        "3": {
+          "total": 48,
+          "outcomes": {
+            "FP": 20,
+            "TP": 22,
+            "question-missed": 4,
+            "invalid": 2
+          },
+          "clean_denominator": 20,
+          "issue_denominator": 28,
+          "fp": 20,
+          "miss": 3,
+          "valid": 46
+        }
+      },
+      "contexts": {
+        "neutral": {
+          "total": 72,
+          "outcomes": {
+            "TP": 33,
+            "FP": 30,
+            "question-missed": 6,
+            "invalid": 3
+          },
+          "clean_denominator": 30,
+          "issue_denominator": 42,
+          "fp": 30,
+          "miss": 4,
+          "valid": 69
+        },
+        "adult": {
+          "total": 72,
+          "outcomes": {
+            "TP": 33,
+            "FP": 30,
+            "invalid": 4,
+            "question-missed": 5
+          },
+          "clean_denominator": 30,
+          "issue_denominator": 42,
+          "fp": 30,
+          "miss": 5,
+          "valid": 68
+        }
+      }
+    },
+    "L2": {
+      "aggregate": {
+        "total": 144,
+        "outcomes": {
+          "TP": 67,
+          "FP": 58,
+          "question-missed": 12,
+          "FN": 4,
+          "invalid": 3
+        },
+        "clean_denominator": 60,
+        "issue_denominator": 84,
+        "fp": 58,
+        "miss": 10,
+        "valid": 141
+      },
+      "thresholds_passed": false,
+      "flip": {
+        "changed": 3,
+        "cases": 48,
+        "rate": 0.0625
+      },
+      "draws": {
+        "1": {
+          "total": 48,
+          "outcomes": {
+            "TP": 22,
+            "FP": 20,
+            "question-missed": 4,
+            "FN": 1,
+            "invalid": 1
+          },
+          "clean_denominator": 20,
+          "issue_denominator": 28,
+          "fp": 20,
+          "miss": 3,
+          "valid": 47
+        },
+        "2": {
+          "total": 48,
+          "outcomes": {
+            "FP": 18,
+            "TP": 23,
+            "question-missed": 4,
+            "FN": 1,
+            "invalid": 2
+          },
+          "clean_denominator": 20,
+          "issue_denominator": 28,
+          "fp": 18,
+          "miss": 3,
+          "valid": 46
+        },
+        "3": {
+          "total": 48,
+          "outcomes": {
+            "FP": 20,
+            "TP": 22,
+            "FN": 2,
+            "question-missed": 4
+          },
+          "clean_denominator": 20,
+          "issue_denominator": 28,
+          "fp": 20,
+          "miss": 4,
+          "valid": 48
+        }
+      },
+      "contexts": {
+        "neutral": {
+          "total": 72,
+          "outcomes": {
+            "TP": 32,
+            "FP": 29,
+            "question-missed": 6,
+            "FN": 4,
+            "invalid": 1
+          },
+          "clean_denominator": 30,
+          "issue_denominator": 42,
+          "fp": 29,
+          "miss": 6,
+          "valid": 71
+        },
+        "adult": {
+          "total": 72,
+          "outcomes": {
+            "TP": 35,
+            "FP": 29,
+            "question-missed": 6,
+            "invalid": 2
+          },
+          "clean_denominator": 30,
+          "issue_denominator": 42,
+          "fp": 29,
+          "miss": 4,
+          "valid": 70
+        }
+      }
+    },
+    "L3": {
+      "aggregate": {
+        "total": 144,
+        "outcomes": {
+          "TP": 23,
+          "FP": 39,
+          "invalid": 51,
+          "question-missed": 10,
+          "FN": 3,
+          "TN": 16,
+          "question-ok": 2
+        },
+        "clean_denominator": 60,
+        "issue_denominator": 84,
+        "fp": 39,
+        "miss": 56,
+        "valid": 93
+      },
+      "thresholds_passed": false,
+      "flip": {
+        "changed": 13,
+        "cases": 48,
+        "rate": 0.2708333333333333
+      },
+      "draws": {
+        "1": {
+          "total": 48,
+          "outcomes": {
+            "TP": 9,
+            "FP": 13,
+            "invalid": 15,
+            "question-missed": 3,
+            "FN": 1,
+            "TN": 6,
+            "question-ok": 1
+          },
+          "clean_denominator": 20,
+          "issue_denominator": 28,
+          "fp": 13,
+          "miss": 17,
+          "valid": 33
+        },
+        "2": {
+          "total": 48,
+          "outcomes": {
+            "TN": 6,
+            "invalid": 18,
+            "question-ok": 1,
+            "FP": 12,
+            "question-missed": 3,
+            "FN": 1,
+            "TP": 7
+          },
+          "clean_denominator": 20,
+          "issue_denominator": 28,
+          "fp": 12,
+          "miss": 19,
+          "valid": 30
+        },
+        "3": {
+          "total": 48,
+          "outcomes": {
+            "FP": 14,
+            "TP": 7,
+            "invalid": 18,
+            "TN": 4,
+            "FN": 1,
+            "question-missed": 4
+          },
+          "clean_denominator": 20,
+          "issue_denominator": 28,
+          "fp": 14,
+          "miss": 20,
+          "valid": 30
+        }
+      },
+      "contexts": {
+        "neutral": {
+          "total": 72,
+          "outcomes": {
+            "TP": 7,
+            "FP": 19,
+            "question-missed": 4,
+            "invalid": 28,
+            "FN": 3,
+            "TN": 9,
+            "question-ok": 2
+          },
+          "clean_denominator": 30,
+          "issue_denominator": 42,
+          "fp": 19,
+          "miss": 32,
+          "valid": 44
+        },
+        "adult": {
+          "total": 72,
+          "outcomes": {
+            "invalid": 23,
+            "TP": 16,
+            "FP": 20,
+            "TN": 7,
+            "question-missed": 6
+          },
+          "clean_denominator": 30,
+          "issue_denominator": 42,
+          "fp": 20,
+          "miss": 24,
+          "valid": 49
+        }
+      }
+    },
+    "L4": {
+      "aggregate": {
+        "total": 144,
+        "outcomes": {
+          "TP": 69,
+          "FP": 60,
+          "question-missed": 12,
+          "FN": 2,
+          "invalid": 1
+        },
+        "clean_denominator": 60,
+        "issue_denominator": 84,
+        "fp": 60,
+        "miss": 7,
+        "valid": 143
+      },
+      "thresholds_passed": false,
+      "flip": {
+        "changed": 2,
+        "cases": 48,
+        "rate": 0.041666666666666664
+      },
+      "draws": {
+        "1": {
+          "total": 48,
+          "outcomes": {
+            "TP": 24,
+            "FP": 20,
+            "question-missed": 4
+          },
+          "clean_denominator": 20,
+          "issue_denominator": 28,
+          "fp": 20,
+          "miss": 1,
+          "valid": 48
+        },
+        "2": {
+          "total": 48,
+          "outcomes": {
+            "FP": 20,
+            "TP": 22,
+            "question-missed": 4,
+            "FN": 2
+          },
+          "clean_denominator": 20,
+          "issue_denominator": 28,
+          "fp": 20,
+          "miss": 4,
+          "valid": 48
+        },
+        "3": {
+          "total": 48,
+          "outcomes": {
+            "FP": 20,
+            "TP": 23,
+            "question-missed": 4,
+            "invalid": 1
+          },
+          "clean_denominator": 20,
+          "issue_denominator": 28,
+          "fp": 20,
+          "miss": 2,
+          "valid": 47
+        }
+      },
+      "contexts": {
+        "neutral": {
+          "total": 72,
+          "outcomes": {
+            "TP": 35,
+            "FP": 30,
+            "question-missed": 6,
+            "invalid": 1
+          },
+          "clean_denominator": 30,
+          "issue_denominator": 42,
+          "fp": 30,
+          "miss": 2,
+          "valid": 71
+        },
+        "adult": {
+          "total": 72,
+          "outcomes": {
+            "TP": 34,
+            "FP": 30,
+            "question-missed": 6,
+            "FN": 2
+          },
+          "clean_denominator": 30,
+          "issue_denominator": 42,
+          "fp": 30,
+          "miss": 5,
+          "valid": 72
+        }
+      }
+    },
+    "L5": {
+      "aggregate": {
+        "total": 144,
+        "outcomes": {
+          "FN": 19,
+          "FP": 30,
+          "TP": 53,
+          "question-missed": 12,
+          "TN": 27,
+          "invalid": 3
+        },
+        "clean_denominator": 60,
+        "issue_denominator": 84,
+        "fp": 30,
+        "miss": 30,
+        "valid": 141
+      },
+      "thresholds_passed": false,
+      "flip": {
+        "changed": 16,
+        "cases": 48,
+        "rate": 0.3333333333333333
+      },
+      "draws": {
+        "1": {
+          "total": 48,
+          "outcomes": {
+            "FN": 7,
+            "FP": 11,
+            "TP": 17,
+            "question-missed": 4,
+            "TN": 9
+          },
+          "clean_denominator": 20,
+          "issue_denominator": 28,
+          "fp": 11,
+          "miss": 10,
+          "valid": 48
+        },
+        "2": {
+          "total": 48,
+          "outcomes": {
+            "TN": 11,
+            "TP": 18,
+            "FP": 8,
+            "question-missed": 4,
+            "invalid": 1,
+            "FN": 6
+          },
+          "clean_denominator": 20,
+          "issue_denominator": 28,
+          "fp": 8,
+          "miss": 10,
+          "valid": 47
+        },
+        "3": {
+          "total": 48,
+          "outcomes": {
+            "FP": 11,
+            "TP": 18,
+            "invalid": 2,
+            "question-missed": 4,
+            "FN": 6,
+            "TN": 7
+          },
+          "clean_denominator": 20,
+          "issue_denominator": 28,
+          "fp": 11,
+          "miss": 10,
+          "valid": 46
+        }
+      },
+      "contexts": {
+        "neutral": {
+          "total": 72,
+          "outcomes": {
+            "FN": 11,
+            "FP": 14,
+            "question-missed": 6,
+            "TP": 25,
+            "TN": 15,
+            "invalid": 1
+          },
+          "clean_denominator": 30,
+          "issue_denominator": 42,
+          "fp": 14,
+          "miss": 17,
+          "valid": 71
+        },
+        "adult": {
+          "total": 72,
+          "outcomes": {
+            "TP": 28,
+            "TN": 12,
+            "FP": 16,
+            "question-missed": 6,
+            "FN": 8,
+            "invalid": 2
+          },
+          "clean_denominator": 30,
+          "issue_denominator": 42,
+          "fp": 16,
+          "miss": 13,
+          "valid": 70
+        }
+      }
+    },
+    "L6": {
+      "aggregate": {
+        "total": 144,
+        "outcomes": {
+          "invalid": 27,
+          "TN": 26,
+          "FP": 21,
+          "TP": 62,
+          "question-missed": 8
+        },
+        "clean_denominator": 60,
+        "issue_denominator": 84,
+        "fp": 21,
+        "miss": 15,
+        "valid": 117
+      },
+      "thresholds_passed": false,
+      "flip": {
+        "changed": 11,
+        "cases": 48,
+        "rate": 0.22916666666666666
+      },
+      "draws": {
+        "1": {
+          "total": 48,
+          "outcomes": {
+            "invalid": 9,
+            "TN": 9,
+            "FP": 7,
+            "TP": 21,
+            "question-missed": 2
+          },
+          "clean_denominator": 20,
+          "issue_denominator": 28,
+          "fp": 7,
+          "miss": 4,
+          "valid": 39
+        },
+        "2": {
+          "total": 48,
+          "outcomes": {
+            "TN": 9,
+            "TP": 20,
+            "FP": 7,
+            "question-missed": 3,
+            "invalid": 9
+          },
+          "clean_denominator": 20,
+          "issue_denominator": 28,
+          "fp": 7,
+          "miss": 6,
+          "valid": 39
+        },
+        "3": {
+          "total": 48,
+          "outcomes": {
+            "TN": 8,
+            "TP": 21,
+            "FP": 7,
+            "invalid": 9,
+            "question-missed": 3
+          },
+          "clean_denominator": 20,
+          "issue_denominator": 28,
+          "fp": 7,
+          "miss": 5,
+          "valid": 39
+        }
+      },
+      "contexts": {
+        "neutral": {
+          "total": 72,
+          "outcomes": {
+            "invalid": 17,
+            "TN": 12,
+            "FP": 10,
+            "TP": 30,
+            "question-missed": 3
+          },
+          "clean_denominator": 30,
+          "issue_denominator": 42,
+          "fp": 10,
+          "miss": 8,
+          "valid": 55
+        },
+        "adult": {
+          "total": 72,
+          "outcomes": {
+            "TP": 32,
+            "invalid": 10,
+            "TN": 14,
+            "FP": 11,
+            "question-missed": 5
+          },
+          "clean_denominator": 30,
+          "issue_denominator": 42,
+          "fp": 11,
+          "miss": 7,
+          "valid": 62
+        }
+      }
+    }
+  },
+  "baselines": {
+    "K1": {
+      "aggregate": {
+        "total": 144,
+        "outcomes": {
+          "FP": 60,
+          "TP": 72,
+          "question-missed": 12
+        },
+        "clean_denominator": 60,
+        "issue_denominator": 84,
+        "fp": 60,
+        "miss": 0,
+        "valid": 144
+      },
+      "thresholds_passed": false
+    },
+    "K2": {
+      "aggregate": {
+        "total": 144,
+        "outcomes": {
+          "TN": 60,
+          "FN": 72,
+          "question-missed": 12
+        },
+        "clean_denominator": 60,
+        "issue_denominator": 84,
+        "fp": 0,
+        "miss": 84,
+        "valid": 144
+      },
+      "thresholds_passed": false
+    }
+  },
+  "l5_dominators": [],
+  "provisional": false,
+  "controls_support_comparison": false,
+  "model_conclusion_allowed": false,
+  "note": "Owner panel complete: 144 primary slots and all 60 secondary candidates reviewed; other 1008 primary slots retain executor labels. Control gate remains separate.",
+  "secondary": {
+    "measurement": "secondary",
+    "candidates": 60,
+    "reviewed": 60,
+    "pending_owner": 0,
+    "provisional_outcomes": {
+      "TP": 52,
+      "FP": 6,
+      "FN": 2
+    },
+    "verified_outcomes": {
+      "TP": 52,
+      "FP": 6,
+      "FN": 2
+    },
+    "excluded": 0,
+    "provisional_excluded": 0,
+    "provisional_found_facts": 59,
+    "provisional_missed_facts": 2,
+    "provisional_issue_fact_denominator": 61,
+    "provisional_clean_denominator": 6,
+    "provisional_false_alarms": 6,
+    "provisional_extra_findings": 12,
+    "verified_found_facts": 57,
+    "verified_missed_facts": 4,
+    "verified_issue_fact_denominator": 61,
+    "verified_clean_denominator": 6,
+    "verified_false_alarms": 6,
+    "verified_extra_findings": 12
+  },
+  "finance": {
+    "dev-C1": {
+      "calls": 8,
+      "cost_usd": "0.0029012",
+      "held_usd": "0"
+    },
+    "dev-C2": {
+      "calls": 8,
+      "cost_usd": "0.0025534",
+      "held_usd": "0"
+    },
+    "quality-C1": {
+      "calls": 144,
+      "cost_usd": "0.0666887",
+      "held_usd": "0"
+    },
+    "quality-C2": {
+      "calls": 144,
+      "cost_usd": "0.0561438",
+      "held_usd": "0"
+    }
+  },
+  "time_window_derived_from_checkpoints": {
+    "first_http_approx": "2026-10-29T11:50:07.728096+00:00",
+    "last_saved": "2026-10-29T16:44:55.205138+00:00",
+    "elapsed_seconds": 17687.477042
+  },
+  "owner_review": {
+    "completed": true,
+    "primary_slots": 144,
+    "primary_fact_units": 19,
+    "primary_case_draws": 18,
+    "secondary_candidates": 60,
+    "unrevised_executor_slots": 1008,
+    "submission_sha256": "124a48246d4b722bf2570754bdb44b89b0f7a1c0337d0e9536bcb1f34941ec27",
+    "chat_corrections": [
+      {
+        "case": "A2-adult-b",
+        "draw": 2,
+        "model": "M08",
+        "decision": "valid",
+        "note": "Галочка помилкова — відповідь валідна"
+      },
+      {
+        "case": "E1-adult-a",
+        "draw": 1,
+        "model": "M05",
+        "decision": "invalid",
+        "note": "Так, обидві відповіді невалідні; застосувати детальніше рішення S01 про пропущене ліве зап’ястко"
+      },
+      {
+        "case": "E1-adult-a",
+        "draw": 2,
+        "model": "M05",
+        "decision": "invalid",
+        "note": "Так, обидві відповіді невалідні; застосувати детальніше рішення S31 про пропущене ліве зап’ястко"
+      },
+      {
+        "case": "C2-adult-b",
+        "draw": 3,
+        "model": "M07",
+        "decision": "invalid",
+        "note": "Невалідне — пропущено суперечність"
+      }
+    ],
+    "whole_response_marks": {
+      "valid": 167,
+      "invalid": 37
+    },
+    "whole_response_primary": {
+      "valid": 119,
+      "invalid": 25
+    },
+    "whole_response_secondary": {
+      "invalid": 12,
+      "valid": 48
+    },
+    "selection_bias": "TP-enriched shared panel; whole-response acceptance is not a full-corpus accuracy estimate."
+  },
+  "primary_classification_changes": [
+    {
+      "case": "E1-neutral-b",
+      "draw": 1,
+      "config": "L2",
+      "changes": {
+        "outcome": {
+          "before": "FN",
+          "after": "TP"
+        },
+        "tp_ids": {
+          "before": [],
+          "after": [
+            "E1-g1"
+          ]
+        },
+        "fn_ids": {
+          "before": [
+            "E1-g1"
+          ],
+          "after": []
+        },
+        "extra_findings": {
+          "before": 1,
+          "after": 0
+        }
+      }
+    }
+  ],
+  "whole_response_by_model": {
+    "C1": {
+      "primary": {
+        "valid": 18
+      },
+      "secondary": {}
+    },
+    "C2": {
+      "primary": {
+        "valid": 18
+      },
+      "secondary": {}
+    },
+    "L1": {
+      "primary": {
+        "valid": 16,
+        "invalid": 2
+      },
+      "secondary": {
+        "valid": 6
+      }
+    },
+    "L2": {
+      "primary": {
+        "valid": 14,
+        "invalid": 4
+      },
+      "secondary": {
+        "valid": 1,
+        "invalid": 1
+      }
+    },
+    "L3": {
+      "primary": {
+        "valid": 14,
+        "invalid": 4
+      },
+      "secondary": {
+        "invalid": 11,
+        "valid": 40
+      }
+    },
+    "L4": {
+      "primary": {
+        "invalid": 5,
+        "valid": 13
+      },
+      "secondary": {
+        "valid": 1
+      }
+    },
+    "L5": {
+      "primary": {
+        "invalid": 10,
+        "valid": 8
+      },
+      "secondary": {}
+    },
+    "L6": {
+      "primary": {
+        "valid": 18
+      },
+      "secondary": {}
+    }
+  }
+}

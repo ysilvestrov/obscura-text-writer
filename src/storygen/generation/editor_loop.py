@@ -137,7 +137,7 @@ def save_pass_result(repo,attempt,ctx,original,text):
         attempt.context['edit_loop_stop']='no_changes'
         attempt.result_version_id=ctx.fragments['copyedit_draft_id']
     else:
-        ref=repo.save_version(ctx.story_id,ctx.scene_id,'draft',text,ctx.input_refs,run.id,dependency_snapshot=ctx.dependency_snapshot)
+        ref=repo.save_version(ctx.story_id,ctx.scene_id,'draft',text,ctx.input_refs,run.id,dependency_snapshot=ctx.dependency_snapshot,content_format=ctx.fragments.get('output_content_format','plain'))
         attempt.result_version_id=ref.id
     attempt.state='completed'
     return repo.save_attempt(attempt)
@@ -153,7 +153,7 @@ def initialize(worker,run):
         source_head=run.request.editor_source_head,version_id=run.request.editor_source_version_id)
     settings=role(repo,run.story_id)
     ctx=context(repo,scene.id,settings,ref.id)
-    base=repo.save_version(run.story_id,scene.id,'draft',repo.read_text(ref.id),ctx.input_refs,run.id,dependency_snapshot=ctx.dependency_snapshot)
+    base=repo.save_version(run.story_id,scene.id,'draft',repo.read_text(ref.id),ctx.input_refs,run.id,dependency_snapshot=ctx.dependency_snapshot,content_format=ref.content_format)
     with worker.condition:
         current=worker.get_run(run.id)
         data=dict(source_version_id=ref.id,base_version_id=base.id,current_version_id=base.id,
@@ -201,6 +201,14 @@ def finish(worker,run,reason):
                     successful_attempt_ids=[a.id for a in model_attempts(repo,run) if a.state=='completed'])
             with repo.files.open_partial(summary.partial_path) as out:out.write(after.encode('utf-8'))
             repo.save_attempt(summary)
+    if before==after and reason=='no_changes':
+        with worker.condition:
+            current=worker.get_run(run.id)
+            if current.state not in {'cancelled','cancellation_requested'} and not worker.cancel_event.is_set():
+                proof=next((a for a in reversed(model_attempts(repo,current)) if a.state=='completed' and a.context.get('edit_loop_stop')=='no_changes'),None)
+                if not proof:raise ValueError('Немає успішної перевірки без змін')
+                from ..storage.editor_loop_store import publish_unchanged_prose
+                publish_unchanged_prose(repo,current.id,task_key(current),proof.id)
     with worker.condition:
         current=worker.get_run(run.id)
         data=progress(current)
@@ -221,6 +229,8 @@ def finish(worker,run,reason):
             advance=bool(usable)
             if not usable:current.error='Редактор не запропонував змін. Немає актуальної прийнятої прози з цим текстом; пам’ять не запускалася.'
         current.warning=STOP_NAMES[reason]+f". Спроб: {data['attempt_count']} із {current.request.edit_pass_limit}."+(' Перегляньте спільні правки.' if summary else ' Сумарних змін немає; прийняття недоступне.')
+        if data.get('no_change_prose_version_id') and current.state!='cancelled':
+            current.warning=STOP_NAMES['no_changes']+f". Спроб: {data['attempt_count']} із {current.request.edit_pass_limit}. Прозу збережено автоматично без змін."
         if reason=='pass_failed':
             count=sum(a.state=='completed' for a in model_attempts(repo,current))
             current.warning+=f" Успішних проходів: {count}. Причина зупинки: {data.get('failure_message') or 'Невдалий прохід редактора'}."

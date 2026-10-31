@@ -72,13 +72,82 @@ def test_chain_and_one_final_subset_review(tmp_path,mode):
     assert len(calls)==3
 
 
-def test_first_no_changes_completes_without_acceptance(tmp_path):
-    repo,scene,draft,worker,run,calls=seeded(tmp_path,['{"edits":[]}'])
+@pytest.mark.parametrize('mode,response',[('patches','{"edits":[]}'),('diff',SOURCE)])
+def test_first_no_changes_completes_without_acceptance(tmp_path,mode,response):
+    repo,scene,draft,worker,run,calls=seeded(tmp_path,[response],mode=mode)
     worker._execute(run.id);current=worker.get_run(run.id)
     assert current.state=='completed' and len(calls)==1
     assert current.editor_loop['stop_reason']=='no_changes'
     assert not current.editor_loop.get('proposal_attempt_id')
+    prose=repo.get_version(repo.get_scene(scene.id).heads['prose'])
+    assert prose.kind=='edited' and not prose.stale and repo.read_text(prose.id)==SOURCE
+    assert repo.get_scene(scene.id).heads['draft']==draft.id
+    assert current.editor_loop['no_change_prose_version_id']==prose.id
+
+
+def test_no_changes_publication_is_idempotent_and_preserves_markdown(tmp_path):
+    from storygen.generation import editor_loop
+    repo,scene,_,worker,run,calls=seeded(tmp_path,['{"edits":[]}'])
+    ref=repo.save_version(scene.story_id,scene.id,'draft','**Вечір** був _тихим_.',[],content_format='markdown')
+    repo.set_head(scene.id,'draft',ref.id,repo.get_scene(scene.id).revision)
+    worker._execute(run.id)
+    current=worker.get_run(run.id);head=repo.get_scene(scene.id).heads['prose']
+    revision=repo.get_scene(scene.id).revision
+    editor_loop.finish(worker,current,'no_changes')
+    assert repo.get_scene(scene.id).heads['prose']==head
+    assert repo.get_scene(scene.id).revision==revision
+    assert repo.get_version(head).content_format=='markdown'
+    assert repo.read_text(head)=='**Вечір** був _тихим_.' and len(calls)==1
+
+
+def test_no_changes_reuses_identical_selected_prose(tmp_path):
+    repo,scene,_,worker,run,calls=seeded(tmp_path,['{"edits":[]}'])
+    prose=repo.save_version(scene.story_id,scene.id,'manual',SOURCE,[])
+    repo.set_head(scene.id,'prose',prose.id,repo.get_scene(scene.id).revision)
+    revision=repo.get_scene(scene.id).revision
+    worker._execute(run.id)
+    assert worker.get_run(run.id).state=='completed'
+    assert repo.get_scene(scene.id).heads['prose']==prose.id
+    assert repo.get_scene(scene.id).revision==revision
+
+
+def test_no_changes_publication_rolls_back_head_and_checkpoint_together(tmp_path,monkeypatch):
+    from storygen.generation import editor_loop
+    repo,scene,_,worker,run,calls=seeded(tmp_path,['{"edits":[]}'])
+    real_finish=editor_loop.finish
+    monkeypatch.setattr(editor_loop,'finish',lambda *args:None)
+    worker._execute(run.id)
+    monkeypatch.setattr(editor_loop,'finish',real_finish)
+    with repo.db.connection() as db:
+        db.execute("CREATE TRIGGER reject_publication BEFORE INSERT ON run_events WHEN NEW.type='editor_no_changes_published' BEGIN SELECT RAISE(ABORT,'synthetic rollback'); END")
+    with pytest.raises(Exception,match='synthetic rollback'):
+        real_finish(worker,worker.get_run(run.id),'no_changes')
+    assert 'prose' not in repo.get_scene(scene.id).heads
+    assert not worker.get_run(run.id).editor_loop.get('no_change_prose_version_id')
+    with repo.db.connection() as db:db.execute('DROP TRIGGER reject_publication')
+    real_finish(worker,worker.get_run(run.id),'no_changes')
+    assert worker.get_run(run.id).state=='completed' and len(calls)==1
+
+
+@pytest.mark.parametrize('response',['','   ',GenerationEvent(type='error',message='reasoning exhausted')])
+def test_empty_or_failed_first_pass_never_publishes_prose(tmp_path,response):
+    repo,scene,draft,worker,run,calls=seeded(tmp_path,[response])
+    worker._execute(run.id)
+    assert worker.get_run(run.id).state=='failed' and len(calls)==1
     assert repo.get_scene(scene.id).heads=={'draft':draft.id}
+
+
+def test_changed_scene_blocks_no_changes_publication(tmp_path):
+    repo,scene,draft,worker,run,calls=seeded(tmp_path,[])
+    def mutate(ctx,cancel):
+        replacement=repo.save_version(scene.story_id,scene.id,'draft','Новий текст.',[])
+        repo.set_head(scene.id,'draft',replacement.id,repo.get_scene(scene.id).revision)
+        return '{"edits":[]}'
+    worker.gateway_factory=lambda _:type('Gateway',(),{'stream':lambda self,ctx,cancel:iter([
+        GenerationEvent(type='delta',text=mutate(ctx,cancel)),GenerationEvent(type='terminal',finish_reason='stop')])})()
+    worker._execute(run.id)
+    assert worker.get_run(run.id).state=='failed'
+    assert 'prose' not in repo.get_scene(scene.id).heads
 
 
 @pytest.mark.parametrize('limit',[1,2])

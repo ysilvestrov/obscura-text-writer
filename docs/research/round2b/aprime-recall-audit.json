@@ -1,0 +1,3887 @@
+{
+  "stage": "offline-aprime-recall-audit",
+  "models": {
+    "C1": {
+      "A_found_per_draw": [
+        28,
+        28,
+        28
+      ],
+      "A_total_found": 84,
+      "A_denominator": 84,
+      "A_mean_found_over28": 28.0,
+      "A_mean_exact": "28",
+      "A_technical_misses_per_draw": [
+        0,
+        0,
+        0
+      ],
+      "Aprime_found": 28,
+      "Aprime_denominator": 28,
+      "Aprime_missed": 0,
+      "delta_found": 0.0,
+      "delta_exact": "0",
+      "noticeable_loss": false,
+      "Aprime_invalid_calls": 0,
+      "Aprime_technical_missed_facts": 0,
+      "Aprime_valid_empty_missed_facts": 0,
+      "Aprime_valid_nonempty_missed_facts": 0,
+      "Aprime_valid_gold_denominator": 28,
+      "Aprime_extra_findings": 0,
+      "Aprime_source_address_defect_calls": 0
+    },
+    "C2": {
+      "A_found_per_draw": [
+        28,
+        28,
+        28
+      ],
+      "A_total_found": 84,
+      "A_denominator": 84,
+      "A_mean_found_over28": 28.0,
+      "A_mean_exact": "28",
+      "A_technical_misses_per_draw": [
+        0,
+        0,
+        0
+      ],
+      "Aprime_found": 28,
+      "Aprime_denominator": 28,
+      "Aprime_missed": 0,
+      "delta_found": 0.0,
+      "delta_exact": "0",
+      "noticeable_loss": false,
+      "Aprime_invalid_calls": 0,
+      "Aprime_technical_missed_facts": 0,
+      "Aprime_valid_empty_missed_facts": 0,
+      "Aprime_valid_nonempty_missed_facts": 0,
+      "Aprime_valid_gold_denominator": 28,
+      "Aprime_extra_findings": 0,
+      "Aprime_source_address_defect_calls": 0
+    },
+    "L3": {
+      "A_found_per_draw": [
+        11,
+        9,
+        8
+      ],
+      "A_total_found": 28,
+      "A_denominator": 84,
+      "A_mean_found_over28": 9.333333333333334,
+      "A_mean_exact": "28/3",
+      "A_technical_misses_per_draw": [
+        16,
+        18,
+        19
+      ],
+      "Aprime_found": 14,
+      "Aprime_denominator": 28,
+      "Aprime_missed": 14,
+      "delta_found": 4.666667,
+      "delta_exact": "14/3",
+      "noticeable_loss": false,
+      "Aprime_invalid_calls": 11,
+      "Aprime_technical_missed_facts": 12,
+      "Aprime_valid_empty_missed_facts": 2,
+      "Aprime_valid_nonempty_missed_facts": 0,
+      "Aprime_valid_gold_denominator": 16,
+      "Aprime_extra_findings": 0,
+      "Aprime_source_address_defect_calls": 2
+    },
+    "L5": {
+      "A_found_per_draw": [
+        18,
+        18,
+        18
+      ],
+      "A_total_found": 54,
+      "A_denominator": 84,
+      "A_mean_found_over28": 18.0,
+      "A_mean_exact": "18",
+      "A_technical_misses_per_draw": [
+        0,
+        0,
+        0
+      ],
+      "Aprime_found": 21,
+      "Aprime_denominator": 28,
+      "Aprime_missed": 7,
+      "delta_found": 3.0,
+      "delta_exact": "3",
+      "noticeable_loss": false,
+      "Aprime_invalid_calls": 1,
+      "Aprime_technical_missed_facts": 1,
+      "Aprime_valid_empty_missed_facts": 3,
+      "Aprime_valid_nonempty_missed_facts": 3,
+      "Aprime_valid_gold_denominator": 27,
+      "Aprime_extra_findings": 0,
+      "Aprime_source_address_defect_calls": 0
+    },
+    "L6": {
+      "A_found_per_draw": [
+        24,
+        22,
+        23
+      ],
+      "A_total_found": 69,
+      "A_denominator": 84,
+      "A_mean_found_over28": 23.0,
+      "A_mean_exact": "23",
+      "A_technical_misses_per_draw": [
+        4,
+        6,
+        5
+      ],
+      "Aprime_found": 19,
+      "Aprime_denominator": 28,
+      "Aprime_missed": 9,
+      "delta_found": -4.0,
+      "delta_exact": "-4",
+      "noticeable_loss": true,
+      "Aprime_invalid_calls": 6,
+      "Aprime_technical_missed_facts": 9,
+      "Aprime_valid_empty_missed_facts": 0,
+      "Aprime_valid_nonempty_missed_facts": 0,
+      "Aprime_valid_gold_denominator": 19,
+      "Aprime_extra_findings": 1,
+      "Aprime_source_address_defect_calls": 0
+    }
+  },
+  "case_count": 24,
+  "facts_per_draw": 28,
+  "Aprime_issue_responses": 120,
+  "valid_responses": 102,
+  "invalid_responses": 18,
+  "groups_adjudicated": 102,
+  "protocol": "docs/research/2026-10-30-aprime-recall-review-protocol.md",
+  "protocol_commit": "e1f6fc1",
+  "protocol_sha256": "bebf40148afdfbf09ed33996ad957041efb4ded96f6e8661d17c2fad15388b4d",
+  "adjudication_sha256": "1728ae7bcc0283db602196d0f316232817fc50d7b7e4a64fc36ebfa440404f07",
+  "records_sha256": "a1be512a42f972d35cf90fbe8d1e334aa352ee532250b0882a6ae93a60975c88",
+  "baseline_sha256": "b79f19a0e82e78f5712b51124bab71e172625008d3339aacc529c99deba23a7e",
+  "cloud_28_of28": true,
+  "local_noticeable_losses": [
+    "L6"
+  ],
+  "recommended_branch": "v2_scoped_sentence_recommended",
+  "approved": false,
+  "v2_created": false,
+  "new_inference_calls": 0,
+  "stop": true,
+  "limitations": "Executor-assistant semantic mapping, not independent owner adjudication; descriptive one-draw versus three-draw comparison; source-address defects flagged separately from fact recognition under historical primary matching.",
+  "comparison_by_case": [
+    {
+      "case": "A1-adult-b",
+      "config": "C1",
+      "gold_ids": [
+        "A1-g1"
+      ],
+      "A_found": [
+        [
+          "A1-g1"
+        ],
+        [
+          "A1-g1"
+        ],
+        [
+          "A1-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "A1-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "A1-adult-b/R03",
+      "Aprime_concern_matches": {
+        "0": [
+          "A1-g1"
+        ]
+      },
+      "Aprime_review_note": "Offline reading against exact sources/target: concrete time/body-side/knowledge contradiction correctly identified.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "c4d3f70b560d74c10706c99136ca830e071f2b07fde7ec40c967af0eb787f34b"
+    },
+    {
+      "case": "A1-adult-b",
+      "config": "C2",
+      "gold_ids": [
+        "A1-g1"
+      ],
+      "A_found": [
+        [
+          "A1-g1"
+        ],
+        [
+          "A1-g1"
+        ],
+        [
+          "A1-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "A1-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "A1-adult-b/R01",
+      "Aprime_concern_matches": {
+        "0": [
+          "A1-g1"
+        ]
+      },
+      "Aprime_review_note": "Offline reading against exact sources/target: concrete time/body-side/knowledge contradiction correctly identified.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "7f4e96d96006080ccacc53af7a5c187969493e93914658ffc6d946f142a2b4c3"
+    },
+    {
+      "case": "A1-adult-b",
+      "config": "L3",
+      "gold_ids": [
+        "A1-g1"
+      ],
+      "A_found": [
+        [],
+        [],
+        []
+      ],
+      "Aprime_found": [],
+      "Aprime_missed": [
+        "A1-g1"
+      ],
+      "Aprime_valid": false,
+      "adjudication_group": null,
+      "Aprime_concern_matches": {},
+      "Aprime_review_note": "Primary invalid: all expected facts missed; no content repair or secondary substitution.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "8e01620d290d1f25cbdc68f3e2b6ec7b78da574ec4b20d69c56a55576161fe1d"
+    },
+    {
+      "case": "A1-adult-b",
+      "config": "L5",
+      "gold_ids": [
+        "A1-g1"
+      ],
+      "A_found": [
+        [
+          "A1-g1"
+        ],
+        [
+          "A1-g1"
+        ],
+        []
+      ],
+      "Aprime_found": [
+        "A1-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "A1-adult-b/R02",
+      "Aprime_concern_matches": {
+        "0": [
+          "A1-g1"
+        ]
+      },
+      "Aprime_review_note": "Offline reading against exact sources/target: concrete time/body-side/knowledge contradiction correctly identified.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "39a2378504657bc5639242e522d7a991d6f77fdc26a44ede8fb5bceb5beabcd9"
+    },
+    {
+      "case": "A1-adult-b",
+      "config": "L6",
+      "gold_ids": [
+        "A1-g1"
+      ],
+      "A_found": [
+        [
+          "A1-g1"
+        ],
+        [
+          "A1-g1"
+        ],
+        [
+          "A1-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "A1-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "A1-adult-b/R04",
+      "Aprime_concern_matches": {
+        "0": [
+          "A1-g1"
+        ]
+      },
+      "Aprime_review_note": "Offline reading against exact sources/target: concrete time/body-side/knowledge contradiction correctly identified.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "ddd19e02b7ee7eb42ddeb315699e98b293f76e9bd441ba3e73f93cb73e02ebc8"
+    },
+    {
+      "case": "A1-neutral-b",
+      "config": "C1",
+      "gold_ids": [
+        "A1-g1"
+      ],
+      "A_found": [
+        [
+          "A1-g1"
+        ],
+        [
+          "A1-g1"
+        ],
+        [
+          "A1-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "A1-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "A1-neutral-b/R03",
+      "Aprime_concern_matches": {
+        "0": [
+          "A1-g1"
+        ]
+      },
+      "Aprime_review_note": "Offline reading against exact sources/target: concrete time/body-side/knowledge contradiction correctly identified.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "fa103db5ceb2b606d7bd6202c0353e1f36b0cf16363ed3887cedb985b8f7dcaa"
+    },
+    {
+      "case": "A1-neutral-b",
+      "config": "C2",
+      "gold_ids": [
+        "A1-g1"
+      ],
+      "A_found": [
+        [
+          "A1-g1"
+        ],
+        [
+          "A1-g1"
+        ],
+        [
+          "A1-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "A1-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "A1-neutral-b/R01",
+      "Aprime_concern_matches": {
+        "0": [
+          "A1-g1"
+        ]
+      },
+      "Aprime_review_note": "Offline reading against exact sources/target: concrete time/body-side/knowledge contradiction correctly identified.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "70b80b84b236c9504e184d37c4c86d8bcf5aa4910d9d232d449f99c708504f2f"
+    },
+    {
+      "case": "A1-neutral-b",
+      "config": "L3",
+      "gold_ids": [
+        "A1-g1"
+      ],
+      "A_found": [
+        [],
+        [],
+        []
+      ],
+      "Aprime_found": [],
+      "Aprime_missed": [
+        "A1-g1"
+      ],
+      "Aprime_valid": false,
+      "adjudication_group": null,
+      "Aprime_concern_matches": {},
+      "Aprime_review_note": "Primary invalid: all expected facts missed; no content repair or secondary substitution.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "5c241b9ed1eedb635ff12068632d54d06be04c7f5488662c76e7f5326a3597aa"
+    },
+    {
+      "case": "A1-neutral-b",
+      "config": "L5",
+      "gold_ids": [
+        "A1-g1"
+      ],
+      "A_found": [
+        [
+          "A1-g1"
+        ],
+        [
+          "A1-g1"
+        ],
+        [
+          "A1-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "A1-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "A1-neutral-b/R02",
+      "Aprime_concern_matches": {
+        "0": [
+          "A1-g1"
+        ]
+      },
+      "Aprime_review_note": "Offline reading against exact sources/target: concrete time/body-side/knowledge contradiction correctly identified.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "fe73d4f98467ae9708487b52b41afdd9b369283e5138249cc0bdd5f919a6744c"
+    },
+    {
+      "case": "A1-neutral-b",
+      "config": "L6",
+      "gold_ids": [
+        "A1-g1"
+      ],
+      "A_found": [
+        [
+          "A1-g1"
+        ],
+        [
+          "A1-g1"
+        ],
+        [
+          "A1-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "A1-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "A1-neutral-b/R04",
+      "Aprime_concern_matches": {
+        "0": [
+          "A1-g1"
+        ]
+      },
+      "Aprime_review_note": "Offline reading against exact sources/target: concrete time/body-side/knowledge contradiction correctly identified.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "c7e71fa65c799fd1da8d2b1f1009fbac32416808532182f9e074bfa86087a094"
+    },
+    {
+      "case": "A2-adult-b",
+      "config": "C1",
+      "gold_ids": [
+        "A2-g1"
+      ],
+      "A_found": [
+        [
+          "A2-g1"
+        ],
+        [
+          "A2-g1"
+        ],
+        [
+          "A2-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "A2-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "A2-adult-b/R02",
+      "Aprime_concern_matches": {
+        "0": [
+          "A2-g1"
+        ]
+      },
+      "Aprime_review_note": "Offline reading against exact sources/target: concrete time/body-side/knowledge contradiction correctly identified.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "c4307c1351f3da355aef46ba4d6ca8bc16ca6d6e18996f3775571a172f973ada"
+    },
+    {
+      "case": "A2-adult-b",
+      "config": "C2",
+      "gold_ids": [
+        "A2-g1"
+      ],
+      "A_found": [
+        [
+          "A2-g1"
+        ],
+        [
+          "A2-g1"
+        ],
+        [
+          "A2-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "A2-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "A2-adult-b/R05",
+      "Aprime_concern_matches": {
+        "0": [
+          "A2-g1"
+        ]
+      },
+      "Aprime_review_note": "Offline reading against exact sources/target: concrete time/body-side/knowledge contradiction correctly identified.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "48e3c75c826be46725749edcabd4bdfe470c1b37ced7501f6a457978cb96ce15"
+    },
+    {
+      "case": "A2-adult-b",
+      "config": "L3",
+      "gold_ids": [
+        "A2-g1"
+      ],
+      "A_found": [
+        [
+          "A2-g1"
+        ],
+        [
+          "A2-g1"
+        ],
+        [
+          "A2-g1"
+        ]
+      ],
+      "Aprime_found": [],
+      "Aprime_missed": [
+        "A2-g1"
+      ],
+      "Aprime_valid": true,
+      "adjudication_group": "A2-adult-b/R01",
+      "Aprime_concern_matches": {},
+      "Aprime_review_note": "No concerns: expected gold fact not found.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "f5c95527888fa24fec167ef6fa60d03557961fb94e2f61647ccabe15ec95655d"
+    },
+    {
+      "case": "A2-adult-b",
+      "config": "L5",
+      "gold_ids": [
+        "A2-g1"
+      ],
+      "A_found": [
+        [
+          "A2-g1"
+        ],
+        [],
+        [
+          "A2-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "A2-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "A2-adult-b/R04",
+      "Aprime_concern_matches": {
+        "0": [
+          "A2-g1"
+        ]
+      },
+      "Aprime_review_note": "Offline reading against exact sources/target: concrete time/body-side/knowledge contradiction correctly identified.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "597b54a0f69316b74d208b5c5ee4871efd84b51030e369566d2e5161fa5f44f8"
+    },
+    {
+      "case": "A2-adult-b",
+      "config": "L6",
+      "gold_ids": [
+        "A2-g1"
+      ],
+      "A_found": [
+        [
+          "A2-g1"
+        ],
+        [
+          "A2-g1"
+        ],
+        [
+          "A2-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "A2-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "A2-adult-b/R03",
+      "Aprime_concern_matches": {
+        "0": [
+          "A2-g1"
+        ]
+      },
+      "Aprime_review_note": "Offline reading against exact sources/target: concrete time/body-side/knowledge contradiction correctly identified.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "9ee1d44bda69bd490af8fd569bb19e378698e3840099f69405e5b591e5627fe7"
+    },
+    {
+      "case": "A2-neutral-b",
+      "config": "C1",
+      "gold_ids": [
+        "A2-g1"
+      ],
+      "A_found": [
+        [
+          "A2-g1"
+        ],
+        [
+          "A2-g1"
+        ],
+        [
+          "A2-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "A2-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "A2-neutral-b/R01",
+      "Aprime_concern_matches": {
+        "0": [
+          "A2-g1"
+        ]
+      },
+      "Aprime_review_note": "Offline reading against exact sources/target: concrete time/body-side/knowledge contradiction correctly identified.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "5ba58bb2123d9186a5bc0583aa13c959721afc5702cf7e29f9bd4bca09afa95b"
+    },
+    {
+      "case": "A2-neutral-b",
+      "config": "C2",
+      "gold_ids": [
+        "A2-g1"
+      ],
+      "A_found": [
+        [
+          "A2-g1"
+        ],
+        [
+          "A2-g1"
+        ],
+        [
+          "A2-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "A2-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "A2-neutral-b/R04",
+      "Aprime_concern_matches": {
+        "0": [
+          "A2-g1"
+        ]
+      },
+      "Aprime_review_note": "Offline reading against exact sources/target: concrete time/body-side/knowledge contradiction correctly identified.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "70b6069f285ce79d565fd44334fe5e9bf91415b885c4e0debbb6a3b046ae2fc0"
+    },
+    {
+      "case": "A2-neutral-b",
+      "config": "L3",
+      "gold_ids": [
+        "A2-g1"
+      ],
+      "A_found": [
+        [],
+        [],
+        []
+      ],
+      "Aprime_found": [],
+      "Aprime_missed": [
+        "A2-g1"
+      ],
+      "Aprime_valid": true,
+      "adjudication_group": "A2-neutral-b/R03",
+      "Aprime_concern_matches": {},
+      "Aprime_review_note": "No concerns: expected gold fact not found.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "4916e0a42f4cb6f1e52064c28d98b617e537cfdb3af54fdf4c3b78ae9b6bfa80"
+    },
+    {
+      "case": "A2-neutral-b",
+      "config": "L5",
+      "gold_ids": [
+        "A2-g1"
+      ],
+      "A_found": [
+        [
+          "A2-g1"
+        ],
+        [
+          "A2-g1"
+        ],
+        [
+          "A2-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "A2-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "A2-neutral-b/R02",
+      "Aprime_concern_matches": {
+        "0": [
+          "A2-g1"
+        ]
+      },
+      "Aprime_review_note": "Offline reading against exact sources/target: concrete time/body-side/knowledge contradiction correctly identified.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "2fdbe64f81033e1e6f4c3c49ee247c71d3b2b3d9cd14d494959b7972dc0cc606"
+    },
+    {
+      "case": "A2-neutral-b",
+      "config": "L6",
+      "gold_ids": [
+        "A2-g1"
+      ],
+      "A_found": [
+        [
+          "A2-g1"
+        ],
+        [
+          "A2-g1"
+        ],
+        [
+          "A2-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "A2-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "A2-neutral-b/R05",
+      "Aprime_concern_matches": {
+        "0": [
+          "A2-g1"
+        ]
+      },
+      "Aprime_review_note": "Offline reading against exact sources/target: concrete time/body-side/knowledge contradiction correctly identified.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "f6517fb04a26a5f75c2acdc0909e859e63080e44ceecddb0ddd0c91002d3194c"
+    },
+    {
+      "case": "A3-adult-b",
+      "config": "C1",
+      "gold_ids": [
+        "A3-g1"
+      ],
+      "A_found": [
+        [
+          "A3-g1"
+        ],
+        [
+          "A3-g1"
+        ],
+        [
+          "A3-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "A3-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "A3-adult-b/R04",
+      "Aprime_concern_matches": {
+        "0": [
+          "A3-g1"
+        ]
+      },
+      "Aprime_review_note": "Offline reading against exact sources/target: concrete time/body-side/knowledge contradiction correctly identified.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "bc8c54733be93ea8720ca8af60ff6c2d75e489b9af929801fab83e654147e0ca"
+    },
+    {
+      "case": "A3-adult-b",
+      "config": "C2",
+      "gold_ids": [
+        "A3-g1"
+      ],
+      "A_found": [
+        [
+          "A3-g1"
+        ],
+        [
+          "A3-g1"
+        ],
+        [
+          "A3-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "A3-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "A3-adult-b/R01",
+      "Aprime_concern_matches": {
+        "0": [
+          "A3-g1"
+        ]
+      },
+      "Aprime_review_note": "Offline reading against exact sources/target: concrete time/body-side/knowledge contradiction correctly identified.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "437461c90f6c10fe97a5fc65f9443ebd9a3fea55511ca2942f8352cdb57e4d7b"
+    },
+    {
+      "case": "A3-adult-b",
+      "config": "L3",
+      "gold_ids": [
+        "A3-g1"
+      ],
+      "A_found": [
+        [],
+        [],
+        []
+      ],
+      "Aprime_found": [],
+      "Aprime_missed": [
+        "A3-g1"
+      ],
+      "Aprime_valid": false,
+      "adjudication_group": null,
+      "Aprime_concern_matches": {},
+      "Aprime_review_note": "Primary invalid: all expected facts missed; no content repair or secondary substitution.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "cbf69f72893430696b998b593f13ee15f9e84755abee89325bc2e51e57651b4e"
+    },
+    {
+      "case": "A3-adult-b",
+      "config": "L5",
+      "gold_ids": [
+        "A3-g1"
+      ],
+      "A_found": [
+        [],
+        [],
+        [
+          "A3-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "A3-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "A3-adult-b/R02",
+      "Aprime_concern_matches": {
+        "0": [
+          "A3-g1"
+        ]
+      },
+      "Aprime_review_note": "Offline reading against exact sources/target: concrete time/body-side/knowledge contradiction correctly identified.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "40cd096264aa8888da9e9d48640de382ba1273e8dd226478d472862a70c8f51a"
+    },
+    {
+      "case": "A3-adult-b",
+      "config": "L6",
+      "gold_ids": [
+        "A3-g1"
+      ],
+      "A_found": [
+        [
+          "A3-g1"
+        ],
+        [
+          "A3-g1"
+        ],
+        [
+          "A3-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "A3-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "A3-adult-b/R03",
+      "Aprime_concern_matches": {
+        "0": [
+          "A3-g1"
+        ]
+      },
+      "Aprime_review_note": "Offline reading against exact sources/target: concrete time/body-side/knowledge contradiction correctly identified.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "c051bac918250fee49361210293cacf1e3e7bcb634f2eb37cd9f0bda4eec0281"
+    },
+    {
+      "case": "A3-neutral-b",
+      "config": "C1",
+      "gold_ids": [
+        "A3-g1"
+      ],
+      "A_found": [
+        [
+          "A3-g1"
+        ],
+        [
+          "A3-g1"
+        ],
+        [
+          "A3-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "A3-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "A3-neutral-b/R02",
+      "Aprime_concern_matches": {
+        "0": [
+          "A3-g1"
+        ]
+      },
+      "Aprime_review_note": "Offline reading against exact sources/target: concrete time/body-side/knowledge contradiction correctly identified.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "13589c5192e3198c7aa2e5e8e1a37e2f53e4a2a5108188f0588ee0a806071f1b"
+    },
+    {
+      "case": "A3-neutral-b",
+      "config": "C2",
+      "gold_ids": [
+        "A3-g1"
+      ],
+      "A_found": [
+        [
+          "A3-g1"
+        ],
+        [
+          "A3-g1"
+        ],
+        [
+          "A3-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "A3-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "A3-neutral-b/R03",
+      "Aprime_concern_matches": {
+        "0": [
+          "A3-g1"
+        ]
+      },
+      "Aprime_review_note": "Offline reading against exact sources/target: concrete time/body-side/knowledge contradiction correctly identified.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "ee8d390b037b5568007af5561553aa3f5ba10d941a005ae5f07e146a749abab2"
+    },
+    {
+      "case": "A3-neutral-b",
+      "config": "L3",
+      "gold_ids": [
+        "A3-g1"
+      ],
+      "A_found": [
+        [],
+        [],
+        []
+      ],
+      "Aprime_found": [],
+      "Aprime_missed": [
+        "A3-g1"
+      ],
+      "Aprime_valid": false,
+      "adjudication_group": null,
+      "Aprime_concern_matches": {},
+      "Aprime_review_note": "Primary invalid: all expected facts missed; no content repair or secondary substitution.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "53c0bd13a23df65c07f41aceb68f8f13f15b17c8880c77ff4865a269cbaa0de8"
+    },
+    {
+      "case": "A3-neutral-b",
+      "config": "L5",
+      "gold_ids": [
+        "A3-g1"
+      ],
+      "A_found": [
+        [],
+        [],
+        []
+      ],
+      "Aprime_found": [
+        "A3-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "A3-neutral-b/R01",
+      "Aprime_concern_matches": {
+        "0": [
+          "A3-g1"
+        ]
+      },
+      "Aprime_review_note": "Offline reading against exact sources/target: concrete time/body-side/knowledge contradiction correctly identified.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "64a5c73538fcbb1db494079a3f3dd05e6f3eba2a1f67892acddd901ff048e5ba"
+    },
+    {
+      "case": "A3-neutral-b",
+      "config": "L6",
+      "gold_ids": [
+        "A3-g1"
+      ],
+      "A_found": [
+        [
+          "A3-g1"
+        ],
+        [
+          "A3-g1"
+        ],
+        [
+          "A3-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "A3-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "A3-neutral-b/R04",
+      "Aprime_concern_matches": {
+        "0": [
+          "A3-g1"
+        ]
+      },
+      "Aprime_review_note": "Offline reading against exact sources/target: concrete time/body-side/knowledge contradiction correctly identified.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "9ec080351ee75c64f6f606ebfd409f384f1ccb5478044a3df7ff65a956252103"
+    },
+    {
+      "case": "B1-adult-b",
+      "config": "C1",
+      "gold_ids": [
+        "B1-g1"
+      ],
+      "A_found": [
+        [
+          "B1-g1"
+        ],
+        [
+          "B1-g1"
+        ],
+        [
+          "B1-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "B1-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "B1-adult-b/R04",
+      "Aprime_concern_matches": {
+        "0": [
+          "B1-g1"
+        ]
+      },
+      "Aprime_review_note": "Correct explicit exterior-colour/key-uniqueness/participant-count contradiction against exact target and source.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "003ff123d67e0d8b9d6694598f8688b46807b632763d7cb93c40d1f17fc428e2"
+    },
+    {
+      "case": "B1-adult-b",
+      "config": "C2",
+      "gold_ids": [
+        "B1-g1"
+      ],
+      "A_found": [
+        [
+          "B1-g1"
+        ],
+        [
+          "B1-g1"
+        ],
+        [
+          "B1-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "B1-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "B1-adult-b/R02",
+      "Aprime_concern_matches": {
+        "0": [
+          "B1-g1"
+        ]
+      },
+      "Aprime_review_note": "Correct explicit exterior-colour/key-uniqueness/participant-count contradiction against exact target and source.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "72c5d85bdeceaf5b3be1f8c99dd7a0740c8aee2cc900c1e77e807abb581f30bb"
+    },
+    {
+      "case": "B1-adult-b",
+      "config": "L3",
+      "gold_ids": [
+        "B1-g1"
+      ],
+      "A_found": [
+        [
+          "B1-g1"
+        ],
+        [
+          "B1-g1"
+        ],
+        [
+          "B1-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "B1-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "B1-adult-b/R03",
+      "Aprime_concern_matches": {
+        "0": [
+          "B1-g1"
+        ]
+      },
+      "Aprime_review_note": "Correct explicit exterior-colour/key-uniqueness/participant-count contradiction against exact target and source. Source address S1 is wrong (fact is in S2), but blue/red exterior fact itself is correctly found. Retain existing fact-recall criterion; flag proof quality separately.",
+      "Aprime_source_address_defect": true,
+      "Aprime_checkpoint_sha256": "796f2cabb69838a234315e82510feca83cab3ca82e9d23a8d65318b2cbd713aa"
+    },
+    {
+      "case": "B1-adult-b",
+      "config": "L5",
+      "gold_ids": [
+        "B1-g1"
+      ],
+      "A_found": [
+        [
+          "B1-g1"
+        ],
+        [
+          "B1-g1"
+        ],
+        [
+          "B1-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "B1-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "B1-adult-b/R05",
+      "Aprime_concern_matches": {
+        "0": [
+          "B1-g1"
+        ]
+      },
+      "Aprime_review_note": "Correct explicit exterior-colour/key-uniqueness/participant-count contradiction against exact target and source.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "ca611a807b1be901a7e90d1c70926ebb0f84f259cb3838a84d978ab20dff0bed"
+    },
+    {
+      "case": "B1-adult-b",
+      "config": "L6",
+      "gold_ids": [
+        "B1-g1"
+      ],
+      "A_found": [
+        [
+          "B1-g1"
+        ],
+        [
+          "B1-g1"
+        ],
+        [
+          "B1-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "B1-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "B1-adult-b/R01",
+      "Aprime_concern_matches": {
+        "0": [
+          "B1-g1"
+        ]
+      },
+      "Aprime_review_note": "Correct explicit exterior-colour/key-uniqueness/participant-count contradiction against exact target and source.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "d0385cbdebc7da6a5ef5f7ef8c8295280df78be8100b37c9472f07da1b643a75"
+    },
+    {
+      "case": "B1-neutral-b",
+      "config": "C1",
+      "gold_ids": [
+        "B1-g1"
+      ],
+      "A_found": [
+        [
+          "B1-g1"
+        ],
+        [
+          "B1-g1"
+        ],
+        [
+          "B1-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "B1-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "B1-neutral-b/R05",
+      "Aprime_concern_matches": {
+        "0": [
+          "B1-g1"
+        ]
+      },
+      "Aprime_review_note": "Correct explicit exterior-colour/key-uniqueness/participant-count contradiction against exact target and source.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "b938a3967fc0d33b5ddaef7e338033fcfaa7cc1db4c08e135d5e8b57929d72bf"
+    },
+    {
+      "case": "B1-neutral-b",
+      "config": "C2",
+      "gold_ids": [
+        "B1-g1"
+      ],
+      "A_found": [
+        [
+          "B1-g1"
+        ],
+        [
+          "B1-g1"
+        ],
+        [
+          "B1-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "B1-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "B1-neutral-b/R04",
+      "Aprime_concern_matches": {
+        "0": [
+          "B1-g1"
+        ]
+      },
+      "Aprime_review_note": "Correct explicit exterior-colour/key-uniqueness/participant-count contradiction against exact target and source.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "f00d633067cf5d4b709730dde20469a8792e342e20b70d8905e596e74b90cfb1"
+    },
+    {
+      "case": "B1-neutral-b",
+      "config": "L3",
+      "gold_ids": [
+        "B1-g1"
+      ],
+      "A_found": [
+        [],
+        [],
+        []
+      ],
+      "Aprime_found": [
+        "B1-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "B1-neutral-b/R03",
+      "Aprime_concern_matches": {
+        "0": [
+          "B1-g1"
+        ]
+      },
+      "Aprime_review_note": "Correct explicit exterior-colour/key-uniqueness/participant-count contradiction against exact target and source. Source address S1 is wrong (fact is in S2), but blue/red exterior fact itself is correctly found. Retain existing fact-recall criterion; flag proof quality separately.",
+      "Aprime_source_address_defect": true,
+      "Aprime_checkpoint_sha256": "f1a86d06b884fd4076ded8f38880918457a71ac4c98b771e4aeee0c3a509111e"
+    },
+    {
+      "case": "B1-neutral-b",
+      "config": "L5",
+      "gold_ids": [
+        "B1-g1"
+      ],
+      "A_found": [
+        [
+          "B1-g1"
+        ],
+        [
+          "B1-g1"
+        ],
+        [
+          "B1-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "B1-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "B1-neutral-b/R01",
+      "Aprime_concern_matches": {
+        "0": [
+          "B1-g1"
+        ]
+      },
+      "Aprime_review_note": "Correct explicit exterior-colour/key-uniqueness/participant-count contradiction against exact target and source.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "634a1fcfd87b8813469fea5afaaf4fbb755accf3ece8e8ec7d373608e0d8ec4e"
+    },
+    {
+      "case": "B1-neutral-b",
+      "config": "L6",
+      "gold_ids": [
+        "B1-g1"
+      ],
+      "A_found": [
+        [
+          "B1-g1"
+        ],
+        [
+          "B1-g1"
+        ],
+        [
+          "B1-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "B1-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "B1-neutral-b/R02",
+      "Aprime_concern_matches": {
+        "0": [
+          "B1-g1"
+        ]
+      },
+      "Aprime_review_note": "Correct explicit exterior-colour/key-uniqueness/participant-count contradiction against exact target and source.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "d44e64dc25001467b7f5a5a387715e1dd12785b2d3f2fbc078fafd3b8b402a94"
+    },
+    {
+      "case": "B2-adult-b",
+      "config": "C1",
+      "gold_ids": [
+        "B2-g1"
+      ],
+      "A_found": [
+        [
+          "B2-g1"
+        ],
+        [
+          "B2-g1"
+        ],
+        [
+          "B2-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "B2-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "B2-adult-b/R03",
+      "Aprime_concern_matches": {
+        "0": [
+          "B2-g1"
+        ]
+      },
+      "Aprime_review_note": "Correct explicit exterior-colour/key-uniqueness/participant-count contradiction against exact target and source.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "f8733b1a0906c67d7a94fb678e9ffa59e190c61618fbc9a5910ef772f9933652"
+    },
+    {
+      "case": "B2-adult-b",
+      "config": "C2",
+      "gold_ids": [
+        "B2-g1"
+      ],
+      "A_found": [
+        [
+          "B2-g1"
+        ],
+        [
+          "B2-g1"
+        ],
+        [
+          "B2-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "B2-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "B2-adult-b/R01",
+      "Aprime_concern_matches": {
+        "0": [
+          "B2-g1"
+        ]
+      },
+      "Aprime_review_note": "Correct explicit exterior-colour/key-uniqueness/participant-count contradiction against exact target and source.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "284d71963ef13664e0f9b89b53d3d629756dfbc9edb3b1fb28c9ee28582c496f"
+    },
+    {
+      "case": "B2-adult-b",
+      "config": "L3",
+      "gold_ids": [
+        "B2-g1"
+      ],
+      "A_found": [
+        [],
+        [],
+        []
+      ],
+      "Aprime_found": [],
+      "Aprime_missed": [
+        "B2-g1"
+      ],
+      "Aprime_valid": false,
+      "adjudication_group": null,
+      "Aprime_concern_matches": {},
+      "Aprime_review_note": "Primary invalid: all expected facts missed; no content repair or secondary substitution.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "61dcfa7a73687901a948a5bb0759e290bef6b5d501e2e429281e20d60836b1b4"
+    },
+    {
+      "case": "B2-adult-b",
+      "config": "L5",
+      "gold_ids": [
+        "B2-g1"
+      ],
+      "A_found": [
+        [
+          "B2-g1"
+        ],
+        [
+          "B2-g1"
+        ],
+        [
+          "B2-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "B2-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "B2-adult-b/R02",
+      "Aprime_concern_matches": {
+        "0": [
+          "B2-g1"
+        ]
+      },
+      "Aprime_review_note": "Correct explicit exterior-colour/key-uniqueness/participant-count contradiction against exact target and source.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "51c5c1326c0fe0b9588475d99629eb1fe8a4ff379f2fc0c34ce954cd3a1b6ab2"
+    },
+    {
+      "case": "B2-adult-b",
+      "config": "L6",
+      "gold_ids": [
+        "B2-g1"
+      ],
+      "A_found": [
+        [],
+        [
+          "B2-g1"
+        ],
+        [
+          "B2-g1"
+        ]
+      ],
+      "Aprime_found": [],
+      "Aprime_missed": [
+        "B2-g1"
+      ],
+      "Aprime_valid": false,
+      "adjudication_group": null,
+      "Aprime_concern_matches": {},
+      "Aprime_review_note": "Primary invalid: all expected facts missed; no content repair or secondary substitution.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "085b3f308b81e1fabe45b0d00a8ef4c7dd872ccdee382bcfac76949ee89a586e"
+    },
+    {
+      "case": "B2-neutral-b",
+      "config": "C1",
+      "gold_ids": [
+        "B2-g1"
+      ],
+      "A_found": [
+        [
+          "B2-g1"
+        ],
+        [
+          "B2-g1"
+        ],
+        [
+          "B2-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "B2-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "B2-neutral-b/R03",
+      "Aprime_concern_matches": {
+        "0": [
+          "B2-g1"
+        ]
+      },
+      "Aprime_review_note": "Correct explicit exterior-colour/key-uniqueness/participant-count contradiction against exact target and source.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "83f6ac0137cb6d238ab60b5deb54d6e6fcfef5b14f168a95d4926314ef6dda55"
+    },
+    {
+      "case": "B2-neutral-b",
+      "config": "C2",
+      "gold_ids": [
+        "B2-g1"
+      ],
+      "A_found": [
+        [
+          "B2-g1"
+        ],
+        [
+          "B2-g1"
+        ],
+        [
+          "B2-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "B2-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "B2-neutral-b/R02",
+      "Aprime_concern_matches": {
+        "0": [
+          "B2-g1"
+        ]
+      },
+      "Aprime_review_note": "Correct explicit exterior-colour/key-uniqueness/participant-count contradiction against exact target and source.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "c49b8f87483ea8b362b3f7078e396eb818d66e1c80babecd163bf2b3551464e0"
+    },
+    {
+      "case": "B2-neutral-b",
+      "config": "L3",
+      "gold_ids": [
+        "B2-g1"
+      ],
+      "A_found": [
+        [],
+        [],
+        []
+      ],
+      "Aprime_found": [],
+      "Aprime_missed": [
+        "B2-g1"
+      ],
+      "Aprime_valid": false,
+      "adjudication_group": null,
+      "Aprime_concern_matches": {},
+      "Aprime_review_note": "Primary invalid: all expected facts missed; no content repair or secondary substitution.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "b1428a4a034135d08a55e601150f61ae920615ac1e04fd6e9d20006c9f7e5d51"
+    },
+    {
+      "case": "B2-neutral-b",
+      "config": "L5",
+      "gold_ids": [
+        "B2-g1"
+      ],
+      "A_found": [
+        [
+          "B2-g1"
+        ],
+        [
+          "B2-g1"
+        ],
+        [
+          "B2-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "B2-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "B2-neutral-b/R01",
+      "Aprime_concern_matches": {
+        "0": [
+          "B2-g1"
+        ]
+      },
+      "Aprime_review_note": "Correct explicit exterior-colour/key-uniqueness/participant-count contradiction against exact target and source.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "40b028f934fc4c9caea82bfc8f0542671a82860d75e70cf6ffc890558b45fbb7"
+    },
+    {
+      "case": "B2-neutral-b",
+      "config": "L6",
+      "gold_ids": [
+        "B2-g1"
+      ],
+      "A_found": [
+        [
+          "B2-g1"
+        ],
+        [],
+        []
+      ],
+      "Aprime_found": [],
+      "Aprime_missed": [
+        "B2-g1"
+      ],
+      "Aprime_valid": false,
+      "adjudication_group": null,
+      "Aprime_concern_matches": {},
+      "Aprime_review_note": "Primary invalid: all expected facts missed; no content repair or secondary substitution.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "ef2593249e5a0456985a861d8ea06c929d45f00c3f9dfa598b048625b4f0a848"
+    },
+    {
+      "case": "B3-adult-b",
+      "config": "C1",
+      "gold_ids": [
+        "B3-g1"
+      ],
+      "A_found": [
+        [
+          "B3-g1"
+        ],
+        [
+          "B3-g1"
+        ],
+        [
+          "B3-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "B3-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "B3-adult-b/R02",
+      "Aprime_concern_matches": {
+        "0": [
+          "B3-g1"
+        ]
+      },
+      "Aprime_review_note": "Correct explicit exterior-colour/key-uniqueness/participant-count contradiction against exact target and source.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "e7e6822068a23e3b3b53d66a0b6dab7c0095db8504a8be3371ee563cd9d8d07b"
+    },
+    {
+      "case": "B3-adult-b",
+      "config": "C2",
+      "gold_ids": [
+        "B3-g1"
+      ],
+      "A_found": [
+        [
+          "B3-g1"
+        ],
+        [
+          "B3-g1"
+        ],
+        [
+          "B3-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "B3-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "B3-adult-b/R03",
+      "Aprime_concern_matches": {
+        "0": [
+          "B3-g1"
+        ]
+      },
+      "Aprime_review_note": "Correct explicit exterior-colour/key-uniqueness/participant-count contradiction against exact target and source.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "494d77cb80c283e6b9a511828dc254de673eded5d30aa0484e91c778fb16b009"
+    },
+    {
+      "case": "B3-adult-b",
+      "config": "L3",
+      "gold_ids": [
+        "B3-g1"
+      ],
+      "A_found": [
+        [
+          "B3-g1"
+        ],
+        [
+          "B3-g1"
+        ],
+        [
+          "B3-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "B3-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "B3-adult-b/R05",
+      "Aprime_concern_matches": {
+        "0": [
+          "B3-g1"
+        ]
+      },
+      "Aprime_review_note": "Correct explicit exterior-colour/key-uniqueness/participant-count contradiction against exact target and source.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "8de975b5ab4306cd264c5e1ca240dd76e7948cf8ea3d27e26b9a45d96ec3ce0a"
+    },
+    {
+      "case": "B3-adult-b",
+      "config": "L5",
+      "gold_ids": [
+        "B3-g1"
+      ],
+      "A_found": [
+        [
+          "B3-g1"
+        ],
+        [
+          "B3-g1"
+        ],
+        [
+          "B3-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "B3-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "B3-adult-b/R04",
+      "Aprime_concern_matches": {
+        "0": [
+          "B3-g1"
+        ]
+      },
+      "Aprime_review_note": "Correct explicit exterior-colour/key-uniqueness/participant-count contradiction against exact target and source.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "b682e888f9b0a3f2c36e121a30fc07523b39c544ace2c89ac781ecd567b33cb1"
+    },
+    {
+      "case": "B3-adult-b",
+      "config": "L6",
+      "gold_ids": [
+        "B3-g1"
+      ],
+      "A_found": [
+        [
+          "B3-g1"
+        ],
+        [
+          "B3-g1"
+        ],
+        [
+          "B3-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "B3-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "B3-adult-b/R01",
+      "Aprime_concern_matches": {
+        "0": [
+          "B3-g1"
+        ]
+      },
+      "Aprime_review_note": "Correct explicit exterior-colour/key-uniqueness/participant-count contradiction against exact target and source.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "05cd2add9016e2054d375cc93fdc6d41c060d5c42a1940406804933bc08b69d4"
+    },
+    {
+      "case": "B3-neutral-b",
+      "config": "C1",
+      "gold_ids": [
+        "B3-g1"
+      ],
+      "A_found": [
+        [
+          "B3-g1"
+        ],
+        [
+          "B3-g1"
+        ],
+        [
+          "B3-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "B3-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "B3-neutral-b/R03",
+      "Aprime_concern_matches": {
+        "0": [
+          "B3-g1"
+        ]
+      },
+      "Aprime_review_note": "Correct explicit exterior-colour/key-uniqueness/participant-count contradiction against exact target and source.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "8ff0677a8f763a6d045fe6f094efb4ba59b3536d45ae52519ebb5c4d3ffb157b"
+    },
+    {
+      "case": "B3-neutral-b",
+      "config": "C2",
+      "gold_ids": [
+        "B3-g1"
+      ],
+      "A_found": [
+        [
+          "B3-g1"
+        ],
+        [
+          "B3-g1"
+        ],
+        [
+          "B3-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "B3-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "B3-neutral-b/R04",
+      "Aprime_concern_matches": {
+        "0": [
+          "B3-g1"
+        ]
+      },
+      "Aprime_review_note": "Correct explicit exterior-colour/key-uniqueness/participant-count contradiction against exact target and source.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "30102ce9f7f0bdcfc4bc35c27ebe50755425d2419add728dd922312c7b9d758c"
+    },
+    {
+      "case": "B3-neutral-b",
+      "config": "L3",
+      "gold_ids": [
+        "B3-g1"
+      ],
+      "A_found": [
+        [],
+        [],
+        []
+      ],
+      "Aprime_found": [
+        "B3-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "B3-neutral-b/R01",
+      "Aprime_concern_matches": {
+        "0": [
+          "B3-g1"
+        ]
+      },
+      "Aprime_review_note": "Correct explicit exterior-colour/key-uniqueness/participant-count contradiction against exact target and source.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "b480affbf97e5b4951a1bc4d5e19d7995454508fad2d7eae5267b139c3a970e5"
+    },
+    {
+      "case": "B3-neutral-b",
+      "config": "L5",
+      "gold_ids": [
+        "B3-g1"
+      ],
+      "A_found": [
+        [],
+        [
+          "B3-g1"
+        ],
+        [
+          "B3-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "B3-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "B3-neutral-b/R02",
+      "Aprime_concern_matches": {
+        "0": [
+          "B3-g1"
+        ]
+      },
+      "Aprime_review_note": "Correct explicit exterior-colour/key-uniqueness/participant-count contradiction against exact target and source.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "08b550325d90008b45dd3747e216b82a3b63b9d4c0c665ada2c883f4858b2897"
+    },
+    {
+      "case": "B3-neutral-b",
+      "config": "L6",
+      "gold_ids": [
+        "B3-g1"
+      ],
+      "A_found": [
+        [
+          "B3-g1"
+        ],
+        [],
+        [
+          "B3-g1"
+        ]
+      ],
+      "Aprime_found": [],
+      "Aprime_missed": [
+        "B3-g1"
+      ],
+      "Aprime_valid": false,
+      "adjudication_group": null,
+      "Aprime_concern_matches": {},
+      "Aprime_review_note": "Primary invalid: all expected facts missed; no content repair or secondary substitution.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "5a4258ad3056296db86d8d65cb46181ed8d7170cd0bf8df5c1380337eeeea547"
+    },
+    {
+      "case": "C1-adult-b",
+      "config": "C1",
+      "gold_ids": [
+        "C1-g1"
+      ],
+      "A_found": [
+        [
+          "C1-g1"
+        ],
+        [
+          "C1-g1"
+        ],
+        [
+          "C1-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "C1-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "C1-adult-b/R02",
+      "Aprime_concern_matches": {
+        "0": [
+          "C1-g1"
+        ]
+      },
+      "Aprime_review_note": "Prior reading/visit contradiction explicitly identified; rhetorical request to choose source versus target does not remove the correctly found fact.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "f4a68fe63ec7fa72eb8519cd8b42b759c23c7ac95a3c49d4435500fe3946ca72"
+    },
+    {
+      "case": "C1-adult-b",
+      "config": "C2",
+      "gold_ids": [
+        "C1-g1"
+      ],
+      "A_found": [
+        [
+          "C1-g1"
+        ],
+        [
+          "C1-g1"
+        ],
+        [
+          "C1-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "C1-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "C1-adult-b/R01",
+      "Aprime_concern_matches": {
+        "0": [
+          "C1-g1"
+        ]
+      },
+      "Aprime_review_note": "Prior reading/visit contradiction explicitly identified; rhetorical request to choose source versus target does not remove the correctly found fact.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "ca7c149450515987957ec59f2f942e174e301aeee64c684def07160b05091f76"
+    },
+    {
+      "case": "C1-adult-b",
+      "config": "L3",
+      "gold_ids": [
+        "C1-g1"
+      ],
+      "A_found": [
+        [
+          "C1-g1"
+        ],
+        [
+          "C1-g1"
+        ],
+        [
+          "C1-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "C1-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "C1-adult-b/R05",
+      "Aprime_concern_matches": {
+        "0": [
+          "C1-g1"
+        ]
+      },
+      "Aprime_review_note": "Prior reading/visit contradiction explicitly identified; rhetorical request to choose source versus target does not remove the correctly found fact.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "536bc161234820d5ae867140233445e1966cab875b864fd6ef2faeefe43cc303"
+    },
+    {
+      "case": "C1-adult-b",
+      "config": "L5",
+      "gold_ids": [
+        "C1-g1"
+      ],
+      "A_found": [
+        [],
+        [],
+        []
+      ],
+      "Aprime_found": [],
+      "Aprime_missed": [
+        "C1-g1"
+      ],
+      "Aprime_valid": true,
+      "adjudication_group": "C1-adult-b/R04",
+      "Aprime_concern_matches": {},
+      "Aprime_review_note": "Empty concerns: prior-event fact missed.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "847455c0786040cf0ade8f5d172851862d53512ca286a1aaf0be13c663bff536"
+    },
+    {
+      "case": "C1-adult-b",
+      "config": "L6",
+      "gold_ids": [
+        "C1-g1"
+      ],
+      "A_found": [
+        [
+          "C1-g1"
+        ],
+        [
+          "C1-g1"
+        ],
+        [
+          "C1-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "C1-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "C1-adult-b/R03",
+      "Aprime_concern_matches": {
+        "0": [
+          "C1-g1"
+        ]
+      },
+      "Aprime_review_note": "Prior reading/visit contradiction explicitly identified; rhetorical request to choose source versus target does not remove the correctly found fact.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "705804ba434b955daff3754ce4069120839fc0b0091dabefff69f6aae7ec485e"
+    },
+    {
+      "case": "C1-neutral-b",
+      "config": "C1",
+      "gold_ids": [
+        "C1-g1"
+      ],
+      "A_found": [
+        [
+          "C1-g1"
+        ],
+        [
+          "C1-g1"
+        ],
+        [
+          "C1-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "C1-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "C1-neutral-b/R02",
+      "Aprime_concern_matches": {
+        "0": [
+          "C1-g1"
+        ]
+      },
+      "Aprime_review_note": "Prior reading/visit contradiction explicitly identified; rhetorical request to choose source versus target does not remove the correctly found fact.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "59fbfbbee7c3b4166d709616eab968f31086d54f690689a1e521a5f6e1bee001"
+    },
+    {
+      "case": "C1-neutral-b",
+      "config": "C2",
+      "gold_ids": [
+        "C1-g1"
+      ],
+      "A_found": [
+        [
+          "C1-g1"
+        ],
+        [
+          "C1-g1"
+        ],
+        [
+          "C1-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "C1-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "C1-neutral-b/R04",
+      "Aprime_concern_matches": {
+        "0": [
+          "C1-g1"
+        ]
+      },
+      "Aprime_review_note": "Prior reading/visit contradiction explicitly identified; rhetorical request to choose source versus target does not remove the correctly found fact.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "b67b77d27caaff0bc335c134e771a7858ec4ce39efd0a6daf443553bcd3b2bac"
+    },
+    {
+      "case": "C1-neutral-b",
+      "config": "L3",
+      "gold_ids": [
+        "C1-g1"
+      ],
+      "A_found": [
+        [
+          "C1-g1"
+        ],
+        [
+          "C1-g1"
+        ],
+        []
+      ],
+      "Aprime_found": [
+        "C1-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "C1-neutral-b/R03",
+      "Aprime_concern_matches": {
+        "0": [
+          "C1-g1"
+        ]
+      },
+      "Aprime_review_note": "Prior reading/visit contradiction explicitly identified; rhetorical request to choose source versus target does not remove the correctly found fact.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "62440911e361d77ed44d6e9d0fdb576624ce61b86ba51798a5bebf4d384f965c"
+    },
+    {
+      "case": "C1-neutral-b",
+      "config": "L5",
+      "gold_ids": [
+        "C1-g1"
+      ],
+      "A_found": [
+        [],
+        [],
+        []
+      ],
+      "Aprime_found": [],
+      "Aprime_missed": [
+        "C1-g1"
+      ],
+      "Aprime_valid": true,
+      "adjudication_group": "C1-neutral-b/R05",
+      "Aprime_concern_matches": {},
+      "Aprime_review_note": "Empty concerns: prior-event fact missed.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "723df83d4bedf07e695be2dd2b67d7c6b5b7e18342ebbb75730867ee17ae184b"
+    },
+    {
+      "case": "C1-neutral-b",
+      "config": "L6",
+      "gold_ids": [
+        "C1-g1"
+      ],
+      "A_found": [
+        [],
+        [
+          "C1-g1"
+        ],
+        [
+          "C1-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "C1-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "C1-neutral-b/R01",
+      "Aprime_concern_matches": {
+        "0": [
+          "C1-g1"
+        ]
+      },
+      "Aprime_review_note": "Prior reading/visit contradiction explicitly identified; rhetorical request to choose source versus target does not remove the correctly found fact.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "0802e036359303fc5dbde56d4e1833258d43baca533bb2f426705ed2f37febd6"
+    },
+    {
+      "case": "C2-adult-b",
+      "config": "C1",
+      "gold_ids": [
+        "C2-g1"
+      ],
+      "A_found": [
+        [
+          "C2-g1"
+        ],
+        [
+          "C2-g1"
+        ],
+        [
+          "C2-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "C2-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "C2-adult-b/R02",
+      "Aprime_concern_matches": {
+        "0": [
+          "C2-g1"
+        ]
+      },
+      "Aprime_review_note": "Prior reading/visit contradiction explicitly identified; rhetorical request to choose source versus target does not remove the correctly found fact.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "0e018677505a70527b9452f1aa7726cd0f2fbd45574928d4de886b0c13d3c8ad"
+    },
+    {
+      "case": "C2-adult-b",
+      "config": "C2",
+      "gold_ids": [
+        "C2-g1"
+      ],
+      "A_found": [
+        [
+          "C2-g1"
+        ],
+        [
+          "C2-g1"
+        ],
+        [
+          "C2-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "C2-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "C2-adult-b/R04",
+      "Aprime_concern_matches": {
+        "0": [
+          "C2-g1"
+        ]
+      },
+      "Aprime_review_note": "Prior reading/visit contradiction explicitly identified; rhetorical request to choose source versus target does not remove the correctly found fact.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "aeeb829d7594474df10d08910611016bc597df9e7fe3a1f19d85f07eb5804279"
+    },
+    {
+      "case": "C2-adult-b",
+      "config": "L3",
+      "gold_ids": [
+        "C2-g1"
+      ],
+      "A_found": [
+        [],
+        [],
+        []
+      ],
+      "Aprime_found": [],
+      "Aprime_missed": [
+        "C2-g1"
+      ],
+      "Aprime_valid": false,
+      "adjudication_group": null,
+      "Aprime_concern_matches": {},
+      "Aprime_review_note": "Primary invalid: all expected facts missed; no content repair or secondary substitution.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "637608fae654fa7adf4343ed7cca685c1b70b702046b703fadbfc345280daa78"
+    },
+    {
+      "case": "C2-adult-b",
+      "config": "L5",
+      "gold_ids": [
+        "C2-g1"
+      ],
+      "A_found": [
+        [
+          "C2-g1"
+        ],
+        [
+          "C2-g1"
+        ],
+        []
+      ],
+      "Aprime_found": [],
+      "Aprime_missed": [
+        "C2-g1"
+      ],
+      "Aprime_valid": true,
+      "adjudication_group": "C2-adult-b/R03",
+      "Aprime_concern_matches": {},
+      "Aprime_review_note": "Empty concerns: prior-event fact missed.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "a45b068a41be9612216e75212e5eaf4b7e56995b708f438b5bd4d3c0e0c8a0a0"
+    },
+    {
+      "case": "C2-adult-b",
+      "config": "L6",
+      "gold_ids": [
+        "C2-g1"
+      ],
+      "A_found": [
+        [
+          "C2-g1"
+        ],
+        [
+          "C2-g1"
+        ],
+        [
+          "C2-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "C2-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "C2-adult-b/R01",
+      "Aprime_concern_matches": {
+        "0": [
+          "C2-g1"
+        ]
+      },
+      "Aprime_review_note": "Prior reading/visit contradiction explicitly identified; rhetorical request to choose source versus target does not remove the correctly found fact.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "a4c04284b555307bd7b0435223588b691101d57e83a078dc1a3392ee5044813a"
+    },
+    {
+      "case": "C2-neutral-b",
+      "config": "C1",
+      "gold_ids": [
+        "C2-g1"
+      ],
+      "A_found": [
+        [
+          "C2-g1"
+        ],
+        [
+          "C2-g1"
+        ],
+        [
+          "C2-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "C2-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "C2-neutral-b/R02",
+      "Aprime_concern_matches": {
+        "0": [
+          "C2-g1"
+        ]
+      },
+      "Aprime_review_note": "Prior reading/visit contradiction explicitly identified; rhetorical request to choose source versus target does not remove the correctly found fact.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "ee520928068344a5ac00d9eb2c637550aba0fa394b3875c5ddcf23002cf38cef"
+    },
+    {
+      "case": "C2-neutral-b",
+      "config": "C2",
+      "gold_ids": [
+        "C2-g1"
+      ],
+      "A_found": [
+        [
+          "C2-g1"
+        ],
+        [
+          "C2-g1"
+        ],
+        [
+          "C2-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "C2-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "C2-neutral-b/R01",
+      "Aprime_concern_matches": {
+        "0": [
+          "C2-g1"
+        ]
+      },
+      "Aprime_review_note": "Prior reading/visit contradiction explicitly identified; rhetorical request to choose source versus target does not remove the correctly found fact.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "ed25e398f425cf96d15dcc869b6ed2e0e267e5a3ddf8157d0ff2109a012934f8"
+    },
+    {
+      "case": "C2-neutral-b",
+      "config": "L3",
+      "gold_ids": [
+        "C2-g1"
+      ],
+      "A_found": [
+        [],
+        [],
+        []
+      ],
+      "Aprime_found": [
+        "C2-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "C2-neutral-b/R04",
+      "Aprime_concern_matches": {
+        "0": [
+          "C2-g1"
+        ]
+      },
+      "Aprime_review_note": "Prior reading/visit contradiction explicitly identified; rhetorical request to choose source versus target does not remove the correctly found fact.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "5b2eb5236e9cf7b8176392f126634e6e1aeacb7e848b9e60e74fd0262ac15731"
+    },
+    {
+      "case": "C2-neutral-b",
+      "config": "L5",
+      "gold_ids": [
+        "C2-g1"
+      ],
+      "A_found": [
+        [],
+        [],
+        []
+      ],
+      "Aprime_found": [],
+      "Aprime_missed": [
+        "C2-g1"
+      ],
+      "Aprime_valid": false,
+      "adjudication_group": null,
+      "Aprime_concern_matches": {},
+      "Aprime_review_note": "Primary invalid: all expected facts missed; no content repair or secondary substitution.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "5594b64e56299346cf1ccec90f693167f7bed2c802b3250d22be9dca9a15a0a9"
+    },
+    {
+      "case": "C2-neutral-b",
+      "config": "L6",
+      "gold_ids": [
+        "C2-g1"
+      ],
+      "A_found": [
+        [
+          "C2-g1"
+        ],
+        [
+          "C2-g1"
+        ],
+        [
+          "C2-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "C2-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "C2-neutral-b/R03",
+      "Aprime_concern_matches": {
+        "0": [
+          "C2-g1"
+        ]
+      },
+      "Aprime_review_note": "Prior reading/visit contradiction explicitly identified; rhetorical request to choose source versus target does not remove the correctly found fact.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "b5eb85ee4ffec23d3acda87f6dd4695e8dbe5a5ecb5c4140d6745e15238a200a"
+    },
+    {
+      "case": "E1-adult-a",
+      "config": "C1",
+      "gold_ids": [
+        "E1-g1",
+        "E1-g2"
+      ],
+      "A_found": [
+        [
+          "E1-g1",
+          "E1-g2"
+        ],
+        [
+          "E1-g1",
+          "E1-g2"
+        ],
+        [
+          "E1-g1",
+          "E1-g2"
+        ]
+      ],
+      "Aprime_found": [
+        "E1-g1",
+        "E1-g2"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "E1-adult-a/R01",
+      "Aprime_concern_matches": {
+        "0": [
+          "E1-g1"
+        ],
+        "1": [
+          "E1-g2"
+        ]
+      },
+      "Aprime_review_note": "Explicit 11:00/14:00 time contradiction found. Independent right/left wrist reversal found in concern1.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "327910fa547dc835cd1cb37961dcc6aef9f28ebe8f564c1221e39d619a17314a"
+    },
+    {
+      "case": "E1-adult-a",
+      "config": "C2",
+      "gold_ids": [
+        "E1-g1",
+        "E1-g2"
+      ],
+      "A_found": [
+        [
+          "E1-g1",
+          "E1-g2"
+        ],
+        [
+          "E1-g1",
+          "E1-g2"
+        ],
+        [
+          "E1-g1",
+          "E1-g2"
+        ]
+      ],
+      "Aprime_found": [
+        "E1-g1",
+        "E1-g2"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "E1-adult-a/R03",
+      "Aprime_concern_matches": {
+        "0": [
+          "E1-g1"
+        ],
+        "1": [
+          "E1-g2"
+        ]
+      },
+      "Aprime_review_note": "Explicit 11:00/14:00 time contradiction found. Independent right/left wrist reversal found in concern1.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "8f32ebb711b49e63cf8f3927b84bdc89848e22b7ba488898def7327a24667147"
+    },
+    {
+      "case": "E1-adult-a",
+      "config": "L3",
+      "gold_ids": [
+        "E1-g1",
+        "E1-g2"
+      ],
+      "A_found": [
+        [],
+        [],
+        []
+      ],
+      "Aprime_found": [],
+      "Aprime_missed": [
+        "E1-g1",
+        "E1-g2"
+      ],
+      "Aprime_valid": false,
+      "adjudication_group": null,
+      "Aprime_concern_matches": {},
+      "Aprime_review_note": "Primary invalid: all expected facts missed; no content repair or secondary substitution.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "6ae281d09b284a88e018ddb912ff65227b39ed171e25015c7871f441d456e0c4"
+    },
+    {
+      "case": "E1-adult-a",
+      "config": "L5",
+      "gold_ids": [
+        "E1-g1",
+        "E1-g2"
+      ],
+      "A_found": [
+        [
+          "E1-g1"
+        ],
+        [
+          "E1-g1"
+        ],
+        [
+          "E1-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "E1-g1"
+      ],
+      "Aprime_missed": [
+        "E1-g2"
+      ],
+      "Aprime_valid": true,
+      "adjudication_group": "E1-adult-a/R02",
+      "Aprime_concern_matches": {
+        "0": [
+          "E1-g1"
+        ]
+      },
+      "Aprime_review_note": "Explicit 11:00/14:00 time contradiction found. No wrist contradiction reported; do not credit the second fact from a time-only finding.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "af2739722fd170f903d0ca1387458bd817f181c981b43e92dee92d5ad7ba8c39"
+    },
+    {
+      "case": "E1-adult-a",
+      "config": "L6",
+      "gold_ids": [
+        "E1-g1",
+        "E1-g2"
+      ],
+      "A_found": [
+        [
+          "E1-g1",
+          "E1-g2"
+        ],
+        [
+          "E1-g1",
+          "E1-g2"
+        ],
+        [
+          "E1-g1",
+          "E1-g2"
+        ]
+      ],
+      "Aprime_found": [],
+      "Aprime_missed": [
+        "E1-g1",
+        "E1-g2"
+      ],
+      "Aprime_valid": false,
+      "adjudication_group": null,
+      "Aprime_concern_matches": {},
+      "Aprime_review_note": "Primary invalid: all expected facts missed; no content repair or secondary substitution.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "3cd63f8d8f9f8e28afeb42f97dae18600f720a8524d7a345ba09cc98cc1bd5d8"
+    },
+    {
+      "case": "E1-adult-b",
+      "config": "C1",
+      "gold_ids": [
+        "E1-g1"
+      ],
+      "A_found": [
+        [
+          "E1-g1"
+        ],
+        [
+          "E1-g1"
+        ],
+        [
+          "E1-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "E1-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "E1-adult-b/R04",
+      "Aprime_concern_matches": {
+        "0": [
+          "E1-g1"
+        ]
+      },
+      "Aprime_review_note": "Explicit 11:00/14:00 time contradiction found.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "7c59f9290c378335054e4f6b11fdaaf04ba0b71ca6b6a19999b0f9571214a7b5"
+    },
+    {
+      "case": "E1-adult-b",
+      "config": "C2",
+      "gold_ids": [
+        "E1-g1"
+      ],
+      "A_found": [
+        [
+          "E1-g1"
+        ],
+        [
+          "E1-g1"
+        ],
+        [
+          "E1-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "E1-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "E1-adult-b/R03",
+      "Aprime_concern_matches": {
+        "0": [
+          "E1-g1"
+        ]
+      },
+      "Aprime_review_note": "Explicit 11:00/14:00 time contradiction found.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "039e2407941e930411a9f4685caa3b7eb4bcc03ea9dc2bfdb4fefa12cd94891c"
+    },
+    {
+      "case": "E1-adult-b",
+      "config": "L3",
+      "gold_ids": [
+        "E1-g1"
+      ],
+      "A_found": [
+        [],
+        [],
+        []
+      ],
+      "Aprime_found": [],
+      "Aprime_missed": [
+        "E1-g1"
+      ],
+      "Aprime_valid": false,
+      "adjudication_group": null,
+      "Aprime_concern_matches": {},
+      "Aprime_review_note": "Primary invalid: all expected facts missed; no content repair or secondary substitution.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "5dbecc490b06f26e6de7bad6ee5db6f62fe3ff040b157d7875f9c430a02f1e96"
+    },
+    {
+      "case": "E1-adult-b",
+      "config": "L5",
+      "gold_ids": [
+        "E1-g1"
+      ],
+      "A_found": [
+        [
+          "E1-g1"
+        ],
+        [
+          "E1-g1"
+        ],
+        [
+          "E1-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "E1-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "E1-adult-b/R01",
+      "Aprime_concern_matches": {
+        "0": [
+          "E1-g1"
+        ]
+      },
+      "Aprime_review_note": "Explicit 11:00/14:00 time contradiction found.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "8f8a5b31793c2975e0086ddc1cb98c37b0e9c3b121095b7f90b4d6441a38cff7"
+    },
+    {
+      "case": "E1-adult-b",
+      "config": "L6",
+      "gold_ids": [
+        "E1-g1"
+      ],
+      "A_found": [
+        [
+          "E1-g1"
+        ],
+        [
+          "E1-g1"
+        ],
+        [
+          "E1-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "E1-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "E1-adult-b/R02",
+      "Aprime_concern_matches": {
+        "0": [
+          "E1-g1"
+        ]
+      },
+      "Aprime_review_note": "Explicit 11:00/14:00 time contradiction found.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "26668e2111850dafed87ecf7d8273729d3168dad7f86801aba8722f593dea998"
+    },
+    {
+      "case": "E1-neutral-a",
+      "config": "C1",
+      "gold_ids": [
+        "E1-g1",
+        "E1-g2"
+      ],
+      "A_found": [
+        [
+          "E1-g1",
+          "E1-g2"
+        ],
+        [
+          "E1-g1",
+          "E1-g2"
+        ],
+        [
+          "E1-g1",
+          "E1-g2"
+        ]
+      ],
+      "Aprime_found": [
+        "E1-g1",
+        "E1-g2"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "E1-neutral-a/R03",
+      "Aprime_concern_matches": {
+        "0": [
+          "E1-g1"
+        ],
+        "1": [
+          "E1-g2"
+        ]
+      },
+      "Aprime_review_note": "Explicit 11:00/14:00 time contradiction found. Independent right/left wrist reversal found in concern1.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "b1d8719d5defd2aab9fc711fe4e300d6b244d35b8c7dc6b269456a2eb78438cd"
+    },
+    {
+      "case": "E1-neutral-a",
+      "config": "C2",
+      "gold_ids": [
+        "E1-g1",
+        "E1-g2"
+      ],
+      "A_found": [
+        [
+          "E1-g1",
+          "E1-g2"
+        ],
+        [
+          "E1-g1",
+          "E1-g2"
+        ],
+        [
+          "E1-g1",
+          "E1-g2"
+        ]
+      ],
+      "Aprime_found": [
+        "E1-g1",
+        "E1-g2"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "E1-neutral-a/R02",
+      "Aprime_concern_matches": {
+        "0": [
+          "E1-g1"
+        ],
+        "1": [
+          "E1-g2"
+        ]
+      },
+      "Aprime_review_note": "Explicit 11:00/14:00 time contradiction found. Independent right/left wrist reversal found in concern1.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "924f09000b64f48165af453882ae3ad7e63351438812ba7eb1f9c13fb6324262"
+    },
+    {
+      "case": "E1-neutral-a",
+      "config": "L3",
+      "gold_ids": [
+        "E1-g1",
+        "E1-g2"
+      ],
+      "A_found": [
+        [],
+        [],
+        []
+      ],
+      "Aprime_found": [
+        "E1-g1",
+        "E1-g2"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "E1-neutral-a/R01",
+      "Aprime_concern_matches": {
+        "0": [
+          "E1-g1"
+        ],
+        "1": [
+          "E1-g2"
+        ]
+      },
+      "Aprime_review_note": "Explicit 11:00/14:00 time contradiction found. Independent right/left wrist reversal found in concern1.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "67fec0864df35884ffe62ea0607959e29a9217afed0488d8bf38ab01498d7a3d"
+    },
+    {
+      "case": "E1-neutral-a",
+      "config": "L5",
+      "gold_ids": [
+        "E1-g1",
+        "E1-g2"
+      ],
+      "A_found": [
+        [
+          "E1-g1"
+        ],
+        [
+          "E1-g1"
+        ],
+        [
+          "E1-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "E1-g1"
+      ],
+      "Aprime_missed": [
+        "E1-g2"
+      ],
+      "Aprime_valid": true,
+      "adjudication_group": "E1-neutral-a/R04",
+      "Aprime_concern_matches": {
+        "0": [
+          "E1-g1"
+        ]
+      },
+      "Aprime_review_note": "Explicit 11:00/14:00 time contradiction found. No wrist contradiction reported; do not credit the second fact from a time-only finding.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "64171212a6a6dd34ef695a8044aa471b70e458b1b4575cab204b20b2405bf7bf"
+    },
+    {
+      "case": "E1-neutral-a",
+      "config": "L6",
+      "gold_ids": [
+        "E1-g1",
+        "E1-g2"
+      ],
+      "A_found": [
+        [
+          "E1-g1",
+          "E1-g2"
+        ],
+        [
+          "E1-g1",
+          "E1-g2"
+        ],
+        [
+          "E1-g1",
+          "E1-g2"
+        ]
+      ],
+      "Aprime_found": [],
+      "Aprime_missed": [
+        "E1-g1",
+        "E1-g2"
+      ],
+      "Aprime_valid": false,
+      "adjudication_group": null,
+      "Aprime_concern_matches": {},
+      "Aprime_review_note": "Primary invalid: all expected facts missed; no content repair or secondary substitution.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "16dae501928dd5927a0cdbf59ee3ad5a1f2c37818ba8f42dd587c07ffa693db4"
+    },
+    {
+      "case": "E1-neutral-b",
+      "config": "C1",
+      "gold_ids": [
+        "E1-g1"
+      ],
+      "A_found": [
+        [
+          "E1-g1"
+        ],
+        [
+          "E1-g1"
+        ],
+        [
+          "E1-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "E1-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "E1-neutral-b/R03",
+      "Aprime_concern_matches": {
+        "0": [
+          "E1-g1"
+        ]
+      },
+      "Aprime_review_note": "Explicit 11:00/14:00 time contradiction found.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "08503dcf676d9885dcabd241cf22e7bdb47018529b4caeffd0cc5508898bbb6e"
+    },
+    {
+      "case": "E1-neutral-b",
+      "config": "C2",
+      "gold_ids": [
+        "E1-g1"
+      ],
+      "A_found": [
+        [
+          "E1-g1"
+        ],
+        [
+          "E1-g1"
+        ],
+        [
+          "E1-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "E1-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "E1-neutral-b/R04",
+      "Aprime_concern_matches": {
+        "0": [
+          "E1-g1"
+        ]
+      },
+      "Aprime_review_note": "Explicit 11:00/14:00 time contradiction found.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "56ad594fecf120f1d162a16e14d1c8abebe10c4693a55982d9dc423c7074b5b1"
+    },
+    {
+      "case": "E1-neutral-b",
+      "config": "L3",
+      "gold_ids": [
+        "E1-g1"
+      ],
+      "A_found": [
+        [],
+        [],
+        []
+      ],
+      "Aprime_found": [
+        "E1-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "E1-neutral-b/R02",
+      "Aprime_concern_matches": {
+        "0": [
+          "E1-g1"
+        ]
+      },
+      "Aprime_review_note": "Explicit 11:00/14:00 time contradiction found.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "b7ac9a29523d8c388c78e7a0f5773e167a7259060b2e2a9062440afa12c08bf0"
+    },
+    {
+      "case": "E1-neutral-b",
+      "config": "L5",
+      "gold_ids": [
+        "E1-g1"
+      ],
+      "A_found": [
+        [],
+        [
+          "E1-g1"
+        ],
+        [
+          "E1-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "E1-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "E1-neutral-b/R05",
+      "Aprime_concern_matches": {
+        "0": [
+          "E1-g1"
+        ]
+      },
+      "Aprime_review_note": "Explicit 11:00/14:00 time contradiction found.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "dd4bab871ca65e2d30381be465a4693f65656d4dad56e81c203b14824845dd57"
+    },
+    {
+      "case": "E1-neutral-b",
+      "config": "L6",
+      "gold_ids": [
+        "E1-g1"
+      ],
+      "A_found": [
+        [
+          "E1-g1"
+        ],
+        [
+          "E1-g1"
+        ],
+        [
+          "E1-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "E1-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "E1-neutral-b/R01",
+      "Aprime_concern_matches": {
+        "0": [
+          "E1-g1"
+        ]
+      },
+      "Aprime_review_note": "Explicit 11:00/14:00 time contradiction found. Concern1 is unfounded extra commentary on compatible prior injury; not a gold fact.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "9e4b9712366415835402c94d1d2817794fdc85a85d11a85ff47b555cfbea86e1"
+    },
+    {
+      "case": "E2-adult-a",
+      "config": "C1",
+      "gold_ids": [
+        "E2-g1",
+        "E2-g2"
+      ],
+      "A_found": [
+        [
+          "E2-g1",
+          "E2-g2"
+        ],
+        [
+          "E2-g1",
+          "E2-g2"
+        ],
+        [
+          "E2-g1",
+          "E2-g2"
+        ]
+      ],
+      "Aprime_found": [
+        "E2-g1",
+        "E2-g2"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "E2-adult-a/R03",
+      "Aprime_concern_matches": {
+        "0": [
+          "E2-g1"
+        ],
+        "1": [
+          "E2-g2"
+        ]
+      },
+      "Aprime_review_note": "Explicit prior shared trip versus first meeting today correctly identified. Independent location contradiction also explicitly identified.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "db989a1cf4108d4b825d7bee6b1822631b94a58f2759d06790eeba4e6cf5876f"
+    },
+    {
+      "case": "E2-adult-a",
+      "config": "C2",
+      "gold_ids": [
+        "E2-g1",
+        "E2-g2"
+      ],
+      "A_found": [
+        [
+          "E2-g1",
+          "E2-g2"
+        ],
+        [
+          "E2-g1",
+          "E2-g2"
+        ],
+        [
+          "E2-g1",
+          "E2-g2"
+        ]
+      ],
+      "Aprime_found": [
+        "E2-g1",
+        "E2-g2"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "E2-adult-a/R01",
+      "Aprime_concern_matches": {
+        "0": [
+          "E2-g1"
+        ],
+        "1": [
+          "E2-g2"
+        ]
+      },
+      "Aprime_review_note": "Explicit prior shared trip versus first meeting today correctly identified. Independent location contradiction also explicitly identified.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "7b9ffda41a4c23adbfe33e31c1bed8a19fb29057a0c36e5b181a67c712bef366"
+    },
+    {
+      "case": "E2-adult-a",
+      "config": "L3",
+      "gold_ids": [
+        "E2-g1",
+        "E2-g2"
+      ],
+      "A_found": [
+        [
+          "E2-g1",
+          "E2-g2"
+        ],
+        [
+          "E2-g1",
+          "E2-g2"
+        ],
+        []
+      ],
+      "Aprime_found": [
+        "E2-g1",
+        "E2-g2"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "E2-adult-a/R04",
+      "Aprime_concern_matches": {
+        "0": [
+          "E2-g2"
+        ],
+        "1": [
+          "E2-g1"
+        ]
+      },
+      "Aprime_review_note": "Explicit prior shared trip versus first meeting today correctly identified. Two independent facts, reversed concern order.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "a03bde7631dfd63458a68e327d400dc92f7d749d597e4d2a0259a1494a04cfcf"
+    },
+    {
+      "case": "E2-adult-a",
+      "config": "L5",
+      "gold_ids": [
+        "E2-g1",
+        "E2-g2"
+      ],
+      "A_found": [
+        [
+          "E2-g1",
+          "E2-g2"
+        ],
+        [
+          "E2-g2"
+        ],
+        [
+          "E2-g2"
+        ]
+      ],
+      "Aprime_found": [
+        "E2-g1",
+        "E2-g2"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "E2-adult-a/R02",
+      "Aprime_concern_matches": {
+        "0": [
+          "E2-g1",
+          "E2-g2"
+        ]
+      },
+      "Aprime_review_note": "Explicit prior shared trip versus first meeting today correctly identified. One concern explicitly identifies both history and basement/ground-room contradictions.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "27c0aaf822ec9c5f29ef0d448d6620b596843481e602f85e27aba20e8f5917ce"
+    },
+    {
+      "case": "E2-adult-a",
+      "config": "L6",
+      "gold_ids": [
+        "E2-g1",
+        "E2-g2"
+      ],
+      "A_found": [
+        [],
+        [],
+        []
+      ],
+      "Aprime_found": [
+        "E2-g1",
+        "E2-g2"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "E2-adult-a/R05",
+      "Aprime_concern_matches": {
+        "0": [
+          "E2-g1",
+          "E2-g2"
+        ]
+      },
+      "Aprime_review_note": "Explicit prior shared trip versus first meeting today correctly identified. One concern explicitly identifies both history and basement/ground-room contradictions.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "6f7827915997c99d69d150e8ef24a5826d821ec8d300da72aaf8f68f7213e6ad"
+    },
+    {
+      "case": "E2-adult-b",
+      "config": "C1",
+      "gold_ids": [
+        "E2-g1"
+      ],
+      "A_found": [
+        [
+          "E2-g1"
+        ],
+        [
+          "E2-g1"
+        ],
+        [
+          "E2-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "E2-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "E2-adult-b/R04",
+      "Aprime_concern_matches": {
+        "0": [
+          "E2-g1"
+        ]
+      },
+      "Aprime_review_note": "Explicit prior shared trip versus first meeting today correctly identified.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "12d04bae802b2e9b88368d34f31a6c89529666f18b20069f0d16a809835f21d0"
+    },
+    {
+      "case": "E2-adult-b",
+      "config": "C2",
+      "gold_ids": [
+        "E2-g1"
+      ],
+      "A_found": [
+        [
+          "E2-g1"
+        ],
+        [
+          "E2-g1"
+        ],
+        [
+          "E2-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "E2-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "E2-adult-b/R01",
+      "Aprime_concern_matches": {
+        "0": [
+          "E2-g1"
+        ]
+      },
+      "Aprime_review_note": "Explicit prior shared trip versus first meeting today correctly identified.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "f9b2d840f94bd4e30d695642640cc9c3b8447c99e21cc69fec67227babd191cd"
+    },
+    {
+      "case": "E2-adult-b",
+      "config": "L3",
+      "gold_ids": [
+        "E2-g1"
+      ],
+      "A_found": [
+        [
+          "E2-g1"
+        ],
+        [],
+        [
+          "E2-g1"
+        ]
+      ],
+      "Aprime_found": [],
+      "Aprime_missed": [
+        "E2-g1"
+      ],
+      "Aprime_valid": false,
+      "adjudication_group": null,
+      "Aprime_concern_matches": {},
+      "Aprime_review_note": "Primary invalid: all expected facts missed; no content repair or secondary substitution.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "ffb9bb02feae72a6376657a65fd2ff521ae4d4ce90a4d731656e889ad573c07f"
+    },
+    {
+      "case": "E2-adult-b",
+      "config": "L5",
+      "gold_ids": [
+        "E2-g1"
+      ],
+      "A_found": [
+        [
+          "E2-g1"
+        ],
+        [
+          "E2-g1"
+        ],
+        [
+          "E2-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "E2-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "E2-adult-b/R03",
+      "Aprime_concern_matches": {
+        "0": [
+          "E2-g1"
+        ]
+      },
+      "Aprime_review_note": "Explicit prior shared trip versus first meeting today correctly identified.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "745c0a49cd2177878e2f02a15ded6af3fe33b2505279d72423ba9127fb57572b"
+    },
+    {
+      "case": "E2-adult-b",
+      "config": "L6",
+      "gold_ids": [
+        "E2-g1"
+      ],
+      "A_found": [
+        [
+          "E2-g1"
+        ],
+        [
+          "E2-g1"
+        ],
+        [
+          "E2-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "E2-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "E2-adult-b/R02",
+      "Aprime_concern_matches": {
+        "0": [
+          "E2-g1"
+        ]
+      },
+      "Aprime_review_note": "Explicit prior shared trip versus first meeting today correctly identified.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "4979dda3d1162f59246af60817c1fa671ed93496f23abafc23635fd1e8fff807"
+    },
+    {
+      "case": "E2-neutral-a",
+      "config": "C1",
+      "gold_ids": [
+        "E2-g1",
+        "E2-g2"
+      ],
+      "A_found": [
+        [
+          "E2-g1",
+          "E2-g2"
+        ],
+        [
+          "E2-g1",
+          "E2-g2"
+        ],
+        [
+          "E2-g1",
+          "E2-g2"
+        ]
+      ],
+      "Aprime_found": [
+        "E2-g1",
+        "E2-g2"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "E2-neutral-a/R01",
+      "Aprime_concern_matches": {
+        "0": [
+          "E2-g1"
+        ],
+        "1": [
+          "E2-g2"
+        ]
+      },
+      "Aprime_review_note": "Explicit prior shared trip versus first meeting today correctly identified. Independent location contradiction also explicitly identified.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "009d83767e2ceaf37f35e6af4c57532c1d265e7dcce7980c716122d3fb3e3cb5"
+    },
+    {
+      "case": "E2-neutral-a",
+      "config": "C2",
+      "gold_ids": [
+        "E2-g1",
+        "E2-g2"
+      ],
+      "A_found": [
+        [
+          "E2-g1",
+          "E2-g2"
+        ],
+        [
+          "E2-g1",
+          "E2-g2"
+        ],
+        [
+          "E2-g1",
+          "E2-g2"
+        ]
+      ],
+      "Aprime_found": [
+        "E2-g1",
+        "E2-g2"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "E2-neutral-a/R04",
+      "Aprime_concern_matches": {
+        "0": [
+          "E2-g1"
+        ],
+        "1": [
+          "E2-g2"
+        ]
+      },
+      "Aprime_review_note": "Explicit prior shared trip versus first meeting today correctly identified. Independent location contradiction also explicitly identified.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "43609f0cad5463d80485a2faadc00cf034d8576d6ead85316001c282681137f2"
+    },
+    {
+      "case": "E2-neutral-a",
+      "config": "L3",
+      "gold_ids": [
+        "E2-g1",
+        "E2-g2"
+      ],
+      "A_found": [
+        [
+          "E2-g1",
+          "E2-g2"
+        ],
+        [
+          "E2-g1",
+          "E2-g2"
+        ],
+        [
+          "E2-g1",
+          "E2-g2"
+        ]
+      ],
+      "Aprime_found": [
+        "E2-g1",
+        "E2-g2"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "E2-neutral-a/R02",
+      "Aprime_concern_matches": {
+        "0": [
+          "E2-g2"
+        ],
+        "1": [
+          "E2-g1"
+        ]
+      },
+      "Aprime_review_note": "Explicit prior shared trip versus first meeting today correctly identified. Two independent facts, reversed concern order.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "3c5b22fca8966f34c994a2bbe53ce75341c2892aa5b60a7ccb315760838a94c4"
+    },
+    {
+      "case": "E2-neutral-a",
+      "config": "L5",
+      "gold_ids": [
+        "E2-g1",
+        "E2-g2"
+      ],
+      "A_found": [
+        [
+          "E2-g1"
+        ],
+        [
+          "E2-g1"
+        ],
+        [
+          "E2-g2"
+        ]
+      ],
+      "Aprime_found": [
+        "E2-g1"
+      ],
+      "Aprime_missed": [
+        "E2-g2"
+      ],
+      "Aprime_valid": true,
+      "adjudication_group": "E2-neutral-a/R03",
+      "Aprime_concern_matches": {
+        "0": [
+          "E2-g1"
+        ]
+      },
+      "Aprime_review_note": "Explicit prior shared trip versus first meeting today correctly identified. Location not mentioned in explanation; S3 reference alone does not find E2-g2.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "eb03534a37da361296dca2a759f2cd6d1cfb7d12f40a5a8158e9c38fb5f0e046"
+    },
+    {
+      "case": "E2-neutral-a",
+      "config": "L6",
+      "gold_ids": [
+        "E2-g1",
+        "E2-g2"
+      ],
+      "A_found": [
+        [
+          "E2-g1",
+          "E2-g2"
+        ],
+        [],
+        []
+      ],
+      "Aprime_found": [],
+      "Aprime_missed": [
+        "E2-g1",
+        "E2-g2"
+      ],
+      "Aprime_valid": false,
+      "adjudication_group": null,
+      "Aprime_concern_matches": {},
+      "Aprime_review_note": "Primary invalid: all expected facts missed; no content repair or secondary substitution.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "e9495adefd2d8a0c8e40c35087258bc2c1ce592664d935ae3fd653d0d9eaa558"
+    },
+    {
+      "case": "E2-neutral-b",
+      "config": "C1",
+      "gold_ids": [
+        "E2-g1"
+      ],
+      "A_found": [
+        [
+          "E2-g1"
+        ],
+        [
+          "E2-g1"
+        ],
+        [
+          "E2-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "E2-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "E2-neutral-b/R03",
+      "Aprime_concern_matches": {
+        "0": [
+          "E2-g1"
+        ]
+      },
+      "Aprime_review_note": "Explicit prior shared trip versus first meeting today correctly identified.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "32476730aa7cb212517df4c6a2e68d50e38b3d050eeb4799578e8d6ed33a377e"
+    },
+    {
+      "case": "E2-neutral-b",
+      "config": "C2",
+      "gold_ids": [
+        "E2-g1"
+      ],
+      "A_found": [
+        [
+          "E2-g1"
+        ],
+        [
+          "E2-g1"
+        ],
+        [
+          "E2-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "E2-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "E2-neutral-b/R04",
+      "Aprime_concern_matches": {
+        "0": [
+          "E2-g1"
+        ]
+      },
+      "Aprime_review_note": "Explicit prior shared trip versus first meeting today correctly identified.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "27d14ca6d6281b12be601157be8d2a5c7a5a1b544adfbfed9c74e420aa864a37"
+    },
+    {
+      "case": "E2-neutral-b",
+      "config": "L3",
+      "gold_ids": [
+        "E2-g1"
+      ],
+      "A_found": [
+        [
+          "E2-g1"
+        ],
+        [],
+        [
+          "E2-g1"
+        ]
+      ],
+      "Aprime_found": [],
+      "Aprime_missed": [
+        "E2-g1"
+      ],
+      "Aprime_valid": false,
+      "adjudication_group": null,
+      "Aprime_concern_matches": {},
+      "Aprime_review_note": "Primary invalid: all expected facts missed; no content repair or secondary substitution.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "c550990bc66dd57bd2404d921e9b9c5690766b3abc451bd762bc2e0aa03421a8"
+    },
+    {
+      "case": "E2-neutral-b",
+      "config": "L5",
+      "gold_ids": [
+        "E2-g1"
+      ],
+      "A_found": [
+        [
+          "E2-g1"
+        ],
+        [
+          "E2-g1"
+        ],
+        [
+          "E2-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "E2-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "E2-neutral-b/R01",
+      "Aprime_concern_matches": {
+        "0": [
+          "E2-g1"
+        ]
+      },
+      "Aprime_review_note": "Explicit prior shared trip versus first meeting today correctly identified.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "e59800a2c5e9cb15a1776c63e0524c2aad649d7ebaa8d090b2b6371d924397ef"
+    },
+    {
+      "case": "E2-neutral-b",
+      "config": "L6",
+      "gold_ids": [
+        "E2-g1"
+      ],
+      "A_found": [
+        [
+          "E2-g1"
+        ],
+        [
+          "E2-g1"
+        ],
+        [
+          "E2-g1"
+        ]
+      ],
+      "Aprime_found": [
+        "E2-g1"
+      ],
+      "Aprime_missed": [],
+      "Aprime_valid": true,
+      "adjudication_group": "E2-neutral-b/R02",
+      "Aprime_concern_matches": {
+        "0": [
+          "E2-g1"
+        ]
+      },
+      "Aprime_review_note": "Explicit prior shared trip versus first meeting today correctly identified.",
+      "Aprime_source_address_defect": false,
+      "Aprime_checkpoint_sha256": "9877033109b1fc52eaf9b38217ccf58d3d77e4b8f0ba1c257509c33c8b163121"
+    }
+  ],
+  "subsequent_owner_decision": {
+    "date": "2026-10-30",
+    "decision": "approve_v1_for_holdout_preparation",
+    "protocol_deviation": "L6 strict-loss trigger technical; valid-subset recall19/19. Preserve original recommendation and results.",
+    "report_l6_invalid_separately": true
+  }
+}

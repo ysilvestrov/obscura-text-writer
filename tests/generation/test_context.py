@@ -38,3 +38,15 @@ def test_budget_overflow_is_explicit(tmp_path):
     with pytest.raises(ContextOverflow) as exc:
         build_context(repo,scene.id,'brief',RoleSettings(provider=ProviderSettings(model='x'),context_tokens=1024,max_output_tokens=512))
     assert exc.value.estimated_tokens>512
+
+
+@pytest.mark.parametrize("tokens,chars,expected", [
+    (138612,80403,"Перевищено операційний ліміт входу: 80403 символів, дозволено 80000"),
+    (250000,80403,"Перевищено токенний та операційний ліміти входу"),
+    (250000,79000,"Перевищено токенний ліміт входу"),
+])
+def test_overflow_names_the_actual_limit(tokens,chars,expected):
+    error=ContextOverflow(tokens,245760,chars,max_input_chars=80000)
+    assert expected in str(error)
+    assert "Текст не обрізано" in str(error)
+    assert "245760" in str(error)

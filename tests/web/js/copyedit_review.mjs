@@ -113,6 +113,12 @@ for(const protocol_version of [1,2]){
   assert.equal(accept.hidden,true);assert.equal(accept.disabled,true);
   assert.ok(nodes.some(e=>e.textContent==='Прийняття недоступне; поточний текст не змінено.'));
   await accept.onclick();assert.equal(emptyPosts,0);
+  const {setLocale}=await import(pathToFileURL(root+'/src/storygen/web/static/i18n.js'));
+  const caption=nodes.find(e=>e.tagName==='option');
+  setLocale('en');assert.equal(caption.textContent,'2026-10-21 · no changes');
+  setLocale('uk');assert.equal(caption.textContent,'2026-10-21 · без змін');
+  setLocale('en');assert.equal(caption.textContent,'2026-10-21 · no changes');
+  setLocale('uk');
 }
 
 // One sentence may contain distant dependent changes: one checkbox, raw indices preserved.

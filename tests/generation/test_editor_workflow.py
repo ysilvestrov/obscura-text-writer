@@ -60,14 +60,16 @@ def test_two_scenes_wait_for_one_review_each_then_continue_memory(tmp_path,mode)
     assert len(memory['source_prose_ids'])==2
 
 
-def test_initial_noop_does_not_create_prose_or_run_memory(tmp_path):
+def test_initial_noop_creates_prose_and_continues_memory(tmp_path):
     repo,scenes,worker,run,calls=setup_workflow(tmp_path,no_changes=True)
     worker._execute(run.id)
     current=worker.get_run(run.id)
-    assert current.state=='failed'
-    assert 'змін' in current.error
-    assert [c.stage for c in calls]==['brief','draft','edit']
-    assert 'prose' not in repo.get_scene(scenes[0].id).heads
+    assert current.state=='completed',current.error
+    assert [c.stage for c in calls]==['brief','draft','edit','memory']*2
+    for scene in scenes:
+        heads=repo.get_scene(scene.id).heads
+        assert repo.read_text(heads['prose'])==repo.read_text(heads['draft'])
+        assert 'memory' in heads
     assert not current.editor_loops['2']['proposal_attempt_id']
 
 
@@ -198,3 +200,4 @@ def test_local_summary_recovery_does_not_require_new_editor_configuration(tmp_pa
     worker.resume(run.id);worker._execute(run.id)
     assert worker.get_run(run.id).state=='needs_review'
     assert len([c for c in calls if c.stage=='edit'])==1
+

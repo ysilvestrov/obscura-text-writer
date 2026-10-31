@@ -63,3 +63,41 @@ def good_report():
 @pytest.fixture
 def calibrated_profile():
     return ScoringProfile(version="test-v1", calibrated=True, evaluator_fingerprint="test", calibration_fingerprint="test")
+
+
+@pytest.fixture
+def rewrite_case(tmp_path):
+    from storygen.domain import StoryCreate, SceneCreate
+    from storygen.storage.repository import Repository
+    from storygen.authoring.comments import CommentPayload, comment_fingerprint
+    from storygen.providers.models import ProviderSettings, RoleSettings
+    from storygen.authoring.blueprints import save_role_settings
+    from storygen.run_models import RunRequest
+    repo=Repository(tmp_path)
+    story=repo.create_story(StoryCreate(title='Нейтральний тест'))
+    scene=repo.create_scene(story.id,SceneCreate(title='Парк',beats='Прогулянка парком.'))
+    source=repo.save_version(story.id,scene.id,'draft','Вечір був **тихим**. Вона йшла додому.',[],content_format='markdown')
+    repo.set_head(scene.id,'draft',source.id,scene.revision)
+    role=RoleSettings(provider=ProviderSettings(model='fake-writer',response_mode='json_schema'),context_tokens=32768,max_output_tokens=4096)
+    save_role_settings(repo,story.id,'writer',role,repo.get_story(story.id).revision)
+    scene=repo.get_scene(scene.id)
+    saved=repo.save_draft_with_comments(scene.id,repo.read_text(source.id),'markdown',scene.revision,0,
+        CommentPayload(general='Зробити лаконічніше.',comments=[dict(id='note1',instruction='Додати емоцій.',anchor=dict(start=0,end=5,source_quote='Вечір',display_quote='Вечір'))]),expected_source_version_id=source.id)
+    notes=saved['comment_set']
+    request=RunRequest(story_id=story.id,scene_id=scene.id,mode='rewrite',source_version_id=source.id,comment_set_id=notes.id,comment_fingerprint=comment_fingerprint(notes,source))
+    return repo,scene,source,notes,role,request
+
+
+@pytest.fixture
+def rewrite_proposal(rewrite_case):
+    import threading
+    from storygen.generation.assisted_writing import build_rewrite_context
+    from storygen.generation.stages import execute_stage
+    from storygen.providers.streaming import GenerationEvent
+    repo,scene,source,notes,role,request=rewrite_case
+    class Gateway:
+        def stream(self,*_):
+            yield GenerationEvent(type='delta',text='Вечір був **світлим**. Вона поспішала додому.')
+            yield GenerationEvent(type='terminal',finish_reason='stop')
+    attempt=execute_stage(repo,scene.id,'rewrite',build_rewrite_context(repo,request),Gateway(),threading.Event(),lambda _:None)
+    return repo,scene,source,notes,attempt

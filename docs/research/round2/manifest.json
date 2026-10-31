@@ -1,0 +1,298 @@
+{
+  "experiment": "local-planner-round-2",
+  "status": "primary-complete-owner-reviewed-report",
+  "harness_frozen": true,
+  "holdout_approved": true,
+  "holdout_sha256": "016dd8572b59f766d342d8cd317c4087fa4ef3a41ae2c0fddc3e8cb50875d194",
+  "author": {
+    "model": "gpt-6.1-sol",
+    "display_name": "GPT 6.1 Sol",
+    "thinking": "medium",
+    "identity_source": "Owner message 2026-10-28; not independently inferred from runtime",
+    "excluded_from_cloud_participants": true
+  },
+  "seed": 20261028,
+  "schedule": {
+    "draws": 3,
+    "block_cases": 8,
+    "rotate_configuration_order_per_block": true,
+    "seed_controls_order_not_provider_sampling": true
+  },
+  "result_cap_characters": 4096,
+  "max_concerns": 3,
+  "local_temperature": 0.1,
+  "local_reasoning_effort": "none",
+  "max_output_tokens": 4096,
+  "transport_attempts_limit": 3,
+  "cloud_models": {
+    "C1": {
+      "provider": "google",
+      "model": "gemini-3.5-flash-lite"
+    },
+    "C2": {
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5"
+    }
+  },
+  "cloud_budget_approved": true,
+  "weights_prepared": true,
+  "dev_qualified": true,
+  "production_modified": false,
+  "inference_calls": 1264,
+  "owner_decisions": [
+    {
+      "date": "2026-10-28",
+      "decision": "Author identity supplied by owner: GPT 6.1 Sol, thinking medium"
+    },
+    {
+      "date": "2026-10-28",
+      "decision": "Anthropic native schema may omit unsupported length/item constraints; preserve them as instruction and apply common local validation"
+    },
+    {
+      "date": "2026-10-28",
+      "decision": "All 48 examples approved explicitly in chat after draft corrections"
+    },
+    {
+      "date": "2026-10-28",
+      "decision": "Download and local conversion approved within 230 GB in artifacts/round-2; no paid API approval"
+    },
+    {
+      "date": "2026-10-29",
+      "decision": "C1 Gemini 3.5 Flash-Lite, C2 Haiku 5.5; shared $10 including dev and targeted Argon/Opus escalation; no OpenAI calls"
+    },
+    {
+      "date": "2026-10-29",
+      "decision": "Senior models: three draws and complete quartets of each failed template, identical selected cases"
+    },
+    {
+      "date": "2026-10-29",
+      "decision": "Owner requested WSL quantization after Windows executable remained blocked; same pinned source and Q4_K_M recipe for all four"
+    },
+    {
+      "date": "2026-10-29",
+      "decision": "Complete remaining old dev cases after invalid replies without replay/repair or prompt/schema/holdout changes"
+    },
+    {
+      "date": "2026-10-29",
+      "decision": "L5 criterion uses separate FP/miss/valid metrics with Pareto dominance; ties/tradeoffs do not establish inferiority"
+    },
+    {
+      "date": "2026-10-29",
+      "decision": "Separate L3 repeatability experiment approved: three new draws of nude/intimacy issue examples plus both clean controls,12localcalls,no prompt/schema changes"
+    },
+    {
+      "date": "2026-10-29",
+      "decision": "Owner requested investigating prompt-wording hypothesis; research-only A/B and check-focused exploratory C run before freeze, no activation in product or main experiment"
+    },
+    {
+      "date": "2026-10-29",
+      "decision": "Follow prompt-freeze amendment: A for every primary participant, closed secondary descriptive metric, owner review of all candidates, B7 first after main report; scope source_refs only and both defects may coexist explicitly approved"
+    },
+    {
+      "date": "2026-10-29",
+      "decision": "Shared seeded case/draw/fact panel covers at least20percent TP per model; all model answers with hidden labels; every secondary candidate reviewed separately"
+    }
+  ],
+  "deviations": [
+    {
+      "configuration": "C2",
+      "kind": "provider-schema-relaxation",
+      "approved": true,
+      "removed_keywords": [
+        "minLength",
+        "maxLength",
+        "maxItems",
+        "minItems greater than 1"
+      ],
+      "mitigation": "Exact restrictions appended to system instruction; original schema and protocol3 validation retained locally",
+      "limitation": "C2 constrained decoding and system suffix differ; report explicitly, no claim of identical wire schema"
+    }
+  ],
+  "open_decisions_before_freeze": [],
+  "holdout_encoding": "UTF-8 LF; hash matches tracked Git bytes",
+  "platform_snapshot_sha256_before_lf": "865b96ca45fdafa9c3214b2ebeed900de6d75a5afb09cf234d82d5ce5b964dad",
+  "implementation_notes": [
+    {
+      "date": "2026-10-28",
+      "by": "executor",
+      "note": "Post-approval byte normalization CRLF to repository LF; text and gold unchanged, canonical hash replaces platform-specific snapshot hash"
+    }
+  ],
+  "cloud_budget_usd": "10.00",
+  "cloud_amendment": "docs/research/2026-10-29-round-2-cloud-amendment.md",
+  "cloud_escalation": {
+    "models": [
+      "gemini-4-argon",
+      "claude-opus-5-5"
+    ],
+    "draws": 3,
+    "selection": "union of C1/C2 failed templates, full quartets, same cases for both",
+    "report_separately": true,
+    "included_in_shared_budget": true
+  },
+  "weights_provenance": "docs/research/round2/weights-provenance.json",
+  "cloud_dev": {
+    "C1": {
+      "attempted": 8,
+      "valid": 8
+    },
+    "C2": {
+      "attempted": 8,
+      "valid": 8
+    },
+    "calculated_cost_usd": "0.0054546",
+    "not_holdout": true
+  },
+  "dev_summary": "docs/research/round2/dev-summary.json",
+  "dev_report": "docs/research/2026-10-29-round-2-dev-results.md",
+  "l5_comparison": "Pareto: one L1-L4 no worse in FP, miss and valid, strictly better in at least one; complete equal denominators required",
+  "paired_12b_load": {
+    "context_tokens": 32768,
+    "UI_GPU_layers": 38,
+    "engine_log_n_gpu_layers": 39,
+    "same_for_L3_L4": true,
+    "automatic_optimize": false,
+    "load_only_verified": true,
+    "not_a_timing_measurement": true
+  },
+  "dev_repeatability": {
+    "model": "L3",
+    "calls": 12,
+    "cases": 4,
+    "draws": 3,
+    "separate_from_original_dev": true,
+    "summary": "docs/research/round2/L3-repeatability-summary.json",
+    "report": "docs/research/2026-10-29-L3-dev-repeatability.md",
+    "request_prompt_schema_unchanged": true,
+    "invalid": 6,
+    "valid": 6,
+    "complete_false_on_both_issue_cases_every_draw": true
+  },
+  "dev_prompt_probe": {
+    "model": "L3",
+    "calls": 36,
+    "arms": [
+      "A-original",
+      "B-complete-clarified",
+      "C-check-focused"
+    ],
+    "summary": "docs/research/round2/L3-prompt-probe-summary.json",
+    "report": "docs/research/2026-10-29-L3-complete-prompt-probe.md",
+    "experimental_candidates_active": false,
+    "schema_validator_unchanged": true,
+    "valid_by_arm": {
+      "A": 6,
+      "B": 6,
+      "C": 12
+    },
+    "false_findings_on_clean_by_arm": {
+      "A": 0,
+      "B": 0,
+      "C": 3
+    }
+  },
+  "dev_admission": {
+    "source": "docs/research/2026-10-29-round-2-prompt-freeze-amendment.md",
+    "all_eight_completed_original_dev": true,
+    "invalids_retained_in_primary": true,
+    "qualification_means_technical_run_complete_not_quality_thresholds": true
+  },
+  "primary_prompt": {
+    "condition": "A",
+    "source": "src/storygen/generation/resources/review_part_uk_v3.txt",
+    "sha256_sent_utf8": "885140b1bee3bcba2ab5916c5f643221805f2715c56a5b3cd73591713b0b8266",
+    "tuning_stopped": true,
+    "provider_schema_suffix_deviation_preserved_for_C2": true
+  },
+  "secondary_policy": {
+    "version": "round2-contract-defects-v1",
+    "closed_defects": [
+      "incomplete_processing",
+      "duplicate_source_reference"
+    ],
+    "duplicate_scope": "source_refs only",
+    "combination_allowed": true,
+    "original_budget_and_schema_checked_before_shadow": true,
+    "primary_status_never_replaced": true,
+    "executor_labels_provisional": true,
+    "owner_reviews_all_candidates": true,
+    "threshold_eligible": false,
+    "rejection_code_registry": [
+      "provider_refusal",
+      "output_length",
+      "unfinished_response",
+      "empty_response",
+      "invalid_json",
+      "schema_invalid",
+      "incomplete_processing",
+      "response_budget_exceeded",
+      "concerns_limit",
+      "duplicate_carry_reference",
+      "unknown_reference",
+      "wrong_reference_kind",
+      "duplicate_source_reference",
+      "duplicate_target_reference",
+      "missing_evidence",
+      "unknown_change_reference",
+      "validator_rejected",
+      "malformed_provider_envelope",
+      "transport_error",
+      "provider_http_error"
+    ],
+    "secondary_exclusion_codes": [
+      "duplicate_change_reference"
+    ],
+    "scope_approved_in_chat": true
+  },
+  "bonus_order": [
+    "B7",
+    "B1",
+    "B2",
+    "B3",
+    "B4",
+    "B6",
+    "B5"
+  ],
+  "B7": {
+    "prompt": "C",
+    "path": "docs/research/round2/prompts/check-focused-uk.txt",
+    "sha256_sent_utf8": "db63f19b7c9e341b6769a88ee995758363b37cfc269e269bc84be40b25a4cfe7",
+    "models": [
+      "L1",
+      "L3"
+    ],
+    "cases": 48,
+    "draws": 1,
+    "after_main_report_and_owner_review": true,
+    "same_harness": true,
+    "compare_to_individual_A_draw_not_3_draw_aggregate": true,
+    "not_randomized_with_primary": true
+  },
+  "holdout_lifecycle": {
+    "independent_until_first_main_run": true,
+    "after_main_round": "dev",
+    "further_prompt_confirmation_requires_new_holdout": true
+  },
+  "secondary_dev_audit": "docs/research/round2/secondary-dev-audit.json",
+  "review_policy": {
+    "approved": true,
+    "primary_TP_fraction": "1/5",
+    "unit": "case/draw/gold-contradiction",
+    "panel_seed": 2026102903,
+    "same_panel_for_all_primary_models": true,
+    "include_all_model_replies_even_misses": true,
+    "selection": "seeded shared fact order; add items helping any unmet ceil(TP/5) quota until all quotas met",
+    "secondary_owner_review": "all candidates, not sampled",
+    "executor_labels_not_owner_confirmation": true,
+    "blinding_seed_file": "artifacts/round-2/private-blinding-seed.json",
+    "blind_labels_seed_sha256": "9225f9ed681bb9008ae16d70d6224458d9bf2622e75b704bbbff6ea398dfb0a4"
+  },
+  "frozen_manifest": "docs/research/round2/frozen-primary.json",
+  "frozen_code_commit": "8f6dc5f95df661427709394564100b319479eb69",
+  "holdout_calls": 1152,
+  "primary_progress_note": "All1152 primary slots complete;1060strictvalid/92invalid. Owner reviewed144primary slots (19fact units) and all60secondary; other1008 retain executor labels. L5control gate remains false. No timing/senior/B7 run.",
+  "primary_report": "docs/research/2026-10-29-local-planner-round-2-report.md",
+  "owner_review_complete": true,
+  "current_corpus_status": "dev-after-completed-primary-round",
+  "primary_owner_summary": "docs/research/round2/primary-summary-owner-reviewed.json"
+}

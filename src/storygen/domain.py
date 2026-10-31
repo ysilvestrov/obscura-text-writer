@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from typing import Literal
 from uuid import uuid4
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 from .dependency_models import DependencySnapshot
 
 
@@ -78,6 +78,7 @@ class VersionRef(DomainModel):
     scene_id: str | None
     kind: VersionKind
     format: Literal["text","json"] = "text"
+    content_format: Literal['plain','markdown'] = 'plain'
     sha256: str
     relative_path: str
     source_run_id: str | None = None
@@ -88,6 +89,12 @@ class VersionRef(DomainModel):
     prompt_contract: PromptContract | None = None
     input_refs: list[str] = Field(default_factory=list)
     created_at: str = Field(default_factory=now)
+
+    @model_validator(mode='after')
+    def author_text_format(self):
+        if self.content_format=='markdown' and (self.kind not in {'draft','edited','manual'} or self.format!='text'):
+            raise ValueError('Markdown дозволено лише для текстових версій чернетки та прози')
+        return self
 
 
 class StageAttempt(DomainModel):

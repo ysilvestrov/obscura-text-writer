@@ -25,10 +25,7 @@ def build_publication_context(repo,story_id):
     chars=len(json.dumps(body,ensure_ascii=False,separators=(',',':')))
     limit=planner.context_tokens-planner.max_output_tokens
     if prediction['input_tokens']>limit or chars>planner.max_input_chars:
-        error=ContextOverflow(prediction['input_tokens'],limit,chars)
-        if chars>planner.max_input_chars:
-            error.args=(str(error)+f' Ліміт запиту: {planner.max_input_chars} символів.',)
-        raise error
+        raise ContextOverflow(prediction['input_tokens'],limit,chars,max_input_chars=planner.max_input_chars)
     return ContextBundle(story_id=story_id,scene_id=None,stage='publication_suggest',scene_revision=None,
         story_revision=captured.story.revision,settings=planner,system_text=system,user_text=user,
         input_refs=[ref.id for scene,ref in captured.scenes],fingerprint=fingerprint({'request':body,'sources':stamp,'prompt_version':2}),

@@ -4,8 +4,9 @@ import json
 import re
 from pathlib import Path
 from typing import Literal
-from ..publication.book import capture,EXPORTER,INCOMPLETE
+from ..publication.book import capture,EXPORTER
 from ..storage.files import StorageCorruption
+from ..markdown_document import to_plain_text,escape_plain_markdown
 
 FORMATS={'md','txt','fb2','epub','pdf'}
 
@@ -21,11 +22,10 @@ def export_story(repo,story_id: str,format: Literal['md','txt','fb2','epub','pdf
     else:
         parts=[]
         for chapter in book.chapters:
-            heading=('## ' if format=='md' else '')+chapter.title
-            marker='\n[НЕЗАВЕРШЕНО: '+'; '.join(chapter.entry['warnings'])+']\n' if chapter.entry['warnings'] else ''
-            parts.append(heading+'\n'+marker+'\n'+chapter.text)
-        title=('# ' if format=='md' else '')+book.title
-        if book.warnings:title+='\n\n['+INCOMPLETE+']'
+            heading=('## '+escape_plain_markdown(chapter.title)) if format=='md' else chapter.title
+            text=to_plain_text(chapter.text,chapter.content_format) if format=='txt' else chapter.text if chapter.content_format=='markdown' else escape_plain_markdown(chapter.text)
+            parts.append(heading+'\n\n'+text)
+        title=('# '+escape_plain_markdown(book.title)) if format=='md' else book.title
         content=(title+'\n\n'+'\n\n'.join(parts)+'\n').encode('utf-8')
     name=f'{book.export_id}.{format}'
     relative=f'stories/{story_id}/exports/{name}'

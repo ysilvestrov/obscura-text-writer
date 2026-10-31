@@ -1,0 +1,9 @@
+# Виправлення: ручний текст після memory forwarding, статуси й повідомлення
+
+Поза чергою за актуальним bug report власника. Причина підтверджена read-only API: останні ручні draft сцени6 complete=true, stale=true, dependency_snapshot=null. resolve_freshness вважає будь-яку legacy версію створеною до hidden_before=[]; новий ручний save теж legacy без інформації про поточний вибір. UI needs_review має пріоритет навіть для плану без тексту. Notice не має close і не очищається на scene-selected.
+
+1. RED→GREEN: ручні draft/prose після прихованого факту зберігаються; старі версії не стають fresh, CAS/історія/legacy raw invalidation залишаються. Мінімальний nullable VersionRef.manual_projection_policy фіксує sorted hidden_before тільки для нових ручних text saves; це не author acceptance і не вигадана залежність від усіх планів. Для старих None очікується[]; full dependency snapshots/acceptances мають попередній пріоритет. Без міграції/backfill.
+2. Не змінювати needs_review у storage: status UI «Не почато» для plan-only, «Немає тексту» для brief-only, «Є чернетка» для draft безneeds_review; тексти з needs_review як раніше. Не маскувати readiness.
+3. Static dismissible notice з «Закрити», clearTimeout при hide, очищення на успішному scene-selected (не при скасованому переході), поточні timers/ролі зберігаються. SPEC+traceability, Node/API regressions, UI smoke, full verify й окремий local commit. Без модельних запитів/робочих data edits/перезапуску сервера без потреби.
+
+Реалізовано й перевірено:905passed/1skipped, artifacts/verification-fyu11z38/result.json;24точкові регресії, окремий P2 review regression style invalidation RED→GREEN, browser desktop/mobile close/status/scene-reset. Погоджений server restart виконано без active runs, revisions/heads незмінні. Root SPEC UI-FEEDBACK/MANUAL-POLICY й traceability оновлено. Після full verification змінені тільки записи приймання, runtime/tests незмінні.

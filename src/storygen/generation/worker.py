@@ -63,7 +63,37 @@ class RunCoordinator:
         scenes=self.repo.list_scenes(request.story_id)
         if request.scene_id and request.scene_id not in {s.id for s in scenes}:
             raise ValueError('Сцена не належить цьому твору')
-        if request.mode=='publication_suggest':
+        impact_plan=None;impact_prepared=None;impact_data=None
+        if request.mode=='impact':
+            if request.impact_protocol==3 and any(r.impact and r.impact.get('protocol')==3 and r.state in {'queued','running','paused','needs_review','pause_requested','cancellation_requested'} for r in self.list_runs(request.story_id)):
+                raise ValueError('Спершу завершіть або скасуйте поточний перегляд книги')
+            from .impact_context import readiness as impact_readiness
+            from ..impact.models import ImpactPlan
+            impact_prepared=impact_readiness(self.repo,request)
+            if not impact_prepared['ready']:raise ValueError(impact_prepared['reason'])
+            impact_plan=ImpactPlan.model_validate(impact_prepared['plan'])
+            if impact_prepared.get('protocol')==3:
+                order=[s.id for s in scenes];stamp=impact_prepared['fingerprint']
+                tasks=[dict(scene_id=id,stage='review_scene') for id in order]
+                impact_data=dict(protocol=3,scene_order=order,scene_cursor=0,phase='prepare',proofs={},specs={},order=[],roots=[],pending_memory=False)
+            elif impact_prepared.get('protocol')==2:
+                manifest=impact_prepared['chunk_manifest']
+                stamp=manifest['fingerprint'];tasks=manifest['tasks']
+                impact_data={'protocol':2,'manifest':manifest,'proofs':{}}
+            else:
+                from .impact_context import tasks_for
+                stamp=impact_plan.fingerprint;tasks=tasks_for(impact_plan)
+                impact_data={'plan':impact_plan.model_dump(),'deltas':{}}
+            if request.impact_plan_fingerprint!=stamp:raise RevisionConflict('Передумови змінилися; оновіть попередній перегляд')
+            if any(r.request.mode=='impact' and r.state in {'queued','running','pause_requested','cancellation_requested'} for r in self.list_runs(request.story_id)):
+                raise ValueError('Перевірка впливу цього твору вже виконується')
+            from ..authoring.blueprints import get_role_settings as impact_roles
+            planner=impact_roles(self.repo,request.story_id).get('planner')
+            if (impact_prepared.get('paid') or planner and planner.provider.provider in {'venice','openrouter'}) and request.budget_limit_usd is None:
+                raise ValueError('Потрібен явний ліміт бюджету перевірки впливу')
+        elif request.mode=='rewrite':
+            tasks=[{'scene_id':request.scene_id,'stage':'rewrite'}]
+        elif request.mode=='publication_suggest':
             tasks=[{'scene_id':None,'stage':'publication_suggest'}]
         elif request.mode=='prepare':
             tasks=[{'scene_id':None,'stage':'prepare'}]
@@ -101,6 +131,8 @@ class RunCoordinator:
                 if existing.request!=request:
                     raise RevisionConflict('request_id уже використано для іншого запиту')
                 return existing
+            if request.mode=='impact' and any(r.request.mode=='impact' and r.state in {'queued','running','pause_requested','cancellation_requested'} for r in self.list_runs(request.story_id)):
+                raise ValueError('Перевірка впливу цього твору вже виконується')
             if request.mode=='publication_suggest' and any(
                 r.request.mode=='publication_suggest' and r.state in {'queued','running','pause_requested','cancellation_requested'}
                 for r in self.list_runs(request.story_id)
@@ -129,10 +161,10 @@ class RunCoordinator:
                 require_available(self.repo, request.story_id, evaluation.config)
             else:
                 from .readiness import preview
-                readiness=preview(self.repo,request)
+                readiness=impact_prepared or preview(self.repo,request)
                 if not readiness['ready']:
                     raise ValueError(readiness['reason'])
-            candidate=Run(id=new_id(),story_id=request.story_id,request_id=request_id,request=request,tasks=tasks)
+            candidate=Run(id=new_id(),story_id=request.story_id,request_id=request_id,request=request,tasks=tasks,impact=impact_data)
             run,created=self.repo.enqueue_run(candidate)
             if created:
                 self.event(run.id,'state',{'state':'queued'})
@@ -187,6 +219,11 @@ class RunCoordinator:
     def resume(self, id: str, repeat_interrupted: bool = False) -> Run:
         with self.condition:
             run=self.get_run(id)
+            if run.impact and run.impact.get('protocol')==3:
+                from ..review.runner import resume
+                result=resume(self,run,repeat_interrupted)
+                self.condition.notify_all()
+                return result
             if run.state not in TERMINAL-{'completed'}:
                 raise ValueError('Запуск ще виконується')
             attempts=self.repo.list_attempts(run.story_id,run.id)
@@ -221,6 +258,24 @@ class RunCoordinator:
                 )
             ):
                 uncertain.append(True)  # Legacy evaluator runs before persisted attempts also need explicit repeat.
+            if uncertain and run.request.mode=='impact' and run.impact.get('protocol')==2:
+                from ..impact.result_budget import recoverable_failure
+                if all(recoverable_failure(a) for a in uncertain):
+                    from ..impact.chunk_validation import validate_manifest
+                    from .impact_chunk_runner import load_results,reusable
+                    manifest=validate_manifest(run.impact['manifest'])
+                    if manifest.wire_schema_version==2:
+                        # Recovery must not mutate the attempt before live eligibility passes.
+                        ready=self.run_readiness(id)
+                        if not ready['ready']:raise ValueError(ready['reason'])
+                        from ..impact.planning import capture_target
+                        from ..impact.planning import TEXT_STAMP_EXCLUDE
+                        target=next(t for t in manifest.plan.targets if t.version_id==task['version_id'])
+                        live=capture_target(self.repo.context_view(run.story_id),target.version_id)
+                        if live.model_dump(exclude=TEXT_STAMP_EXCLUDE|{'baseline_ids'})!=target.model_dump(exclude=TEXT_STAMP_EXCLUDE|{'baseline_ids'}) or self.repo.get_scene(target.scene_id).heads.get(target.material)!=target.version_id:
+                            raise ValueError('Передумови або цільовий текст змінилися; збережену відповідь не відновлено')
+                        recovered=reusable(self.repo,run,manifest,task,load_results(self.repo,run,manifest))
+                        if recovered is not None:uncertain=[]  # Exact saved stop response; no repeated inference.
             if uncertain and not repeat_interrupted:
                 raise ValueError('Потрібне явне рішення повторити перерваний або невдалий етап')
             result=self.run_readiness(id)
@@ -378,6 +433,14 @@ class RunCoordinator:
         return message
 
     def _execute(self, id: str) -> None:
+        if self.get_run(id).request.mode=='impact':
+            if self.get_run(id).impact.get('protocol')==3:
+                from ..review.runner import execute
+            elif self.get_run(id).impact.get('protocol')==2:
+                from .impact_chunk_runner import execute
+            else:
+                from .impact_runner import execute
+            return execute(self,id)
         if self.get_run(id).request.mode=='edit_loop':
             from .editor_loop import execute
             return execute(self,id)
@@ -412,8 +475,11 @@ class RunCoordinator:
                 if self.get_run(id).state=='running':
                     continue
                 return
-            if stage in {'classify','publication_suggest'}:
-                if stage=='publication_suggest':
+            if stage in {'classify','publication_suggest','rewrite'}:
+                if stage=='rewrite':
+                    from .assisted_writing import build_rewrite_context
+                    context=build_rewrite_context(self.repo,run.request)
+                elif stage=='publication_suggest':
                     from .publication_metadata import build_publication_context
                     context=build_publication_context(self.repo,run.story_id)
                 else:
@@ -438,7 +504,7 @@ class RunCoordinator:
                 )
                 with self.condition:
                     current=self.get_run(id)
-                    current.state='cancelled' if stage=='publication_suggest' and (self.cancel_event.is_set() or current.state in {'cancellation_requested','cancelled'}) else attempt.state
+                    current.state='cancelled' if stage in {'publication_suggest','rewrite'} and (self.cancel_event.is_set() or current.state in {'cancellation_requested','cancelled'}) else attempt.state
                     current.error=attempt.error
                     warnings=attempt.context.get('publication_warnings',[])
                     if warnings:
@@ -477,7 +543,7 @@ class RunCoordinator:
                     [v.id for v in sources]
                 )
             else:
-                context=build_context(self.repo,scene_id,stage,role)
+                context=build_context(self.repo,scene_id,stage,role,memory_approval=run.request.memory_approval if stage=='memory' else None)
                 # Reuse only the selected completed stage with exactly matching source/config input.
                 scene=self.repo.get_scene(scene_id)
                 head={'brief':'brief','draft':'draft','edit':'prose','memory':'memory'}[stage]

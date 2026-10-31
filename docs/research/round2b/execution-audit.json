@@ -1,0 +1,32 @@
+{
+  "stage": "execution-freeze-stop",
+  "execution_sha256": "30419ff93043bc410233cd8e87b68273a0514b8b1464d69782ca1ff940cb24e0",
+  "input_sha256": "ce1b4068175e470d3671c93bf1c23c7d568643992638306b0ec6cbe8734f291d",
+  "execution_commit": "3014cda",
+  "implementation_commit": "f05ae25",
+  "slots": 720,
+  "exact_body_matches": 720,
+  "distinct_wires": 240,
+  "dry_run_http_calls": 0,
+  "inference_calls": 0,
+  "backend_load_only_models": [
+    "L3",
+    "L5",
+    "L6"
+  ],
+  "backend_generation_calls": 0,
+  "offline_tests_passed": 264,
+  "verification": "artifacts/verification-opzcomfd/result.json",
+  "quality_authorized": false,
+  "activated": false,
+  "settled_usd": "0.1711025",
+  "held_usd": "0",
+  "available_usd": "9.8288975",
+  "review": {
+    "candidate": "a8c877708a3b829dc2336413d356becbfea3485dbb708f272740a8c771cef053",
+    "critical": 0,
+    "important": 0,
+    "synthetic_tests": 19,
+    "subsequent_self_audit": "parent junction escape fixed; two RED/GREEN regressions; full 264-test suite passed"
+  }
+}

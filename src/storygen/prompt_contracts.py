@@ -1,6 +1,14 @@
 """Prompt identity contracts shared by authoring, storage and generation."""
 from .domain import PromptContract
 
+MARKDOWN_PRESERVATION = '''ФОРМАТ АВТОРСЬКОГО ТЕКСТУ — MARKDOWN
+Відповідь прози зберігається як Markdown. Використовуй лише абзаци, переноси,
+**жирний** і _курсив_, коли вони доречні. Не додавай заголовків, HTML, зображень,
+посилань або зовнішньої code fence. Зберігай чинне форматування та буквальні
+escape/entity фрагменти поза потрібними правками; форматні маркери не є подіями
+чи фактами твору. Для JSON-правок збережи задану JSON-схему: дослівні якорі
+посилаються на raw Markdown, без видалення його маркерів перед цитуванням.'''
+
 
 def expected_contract(stage, settings) -> PromptContract:
     mode = {'prepare': 'blueprint', 'brief': 'brief', 'draft': 'prose',

@@ -1,41 +1,42 @@
+import {t,msg,labelEntries,getLocale,uiText,uiAttr,uiHTML,diagnostic} from './i18n.js';
 export function acceptanceReason(state,ref){
-  if(state.saving)return 'Дочекайтеся завершення збереження';
-  if(state.dirty)return 'Спершу збережіть ручні правки';
-  if(!state.scene)return 'Оберіть сцену';
-  if(!ref?.complete||!['draft','edited','manual'].includes(ref.kind))return 'Оберіть завершену чернетку або прозу';
+  if(state.saving)return t("m_cbac60d6d919");
+  if(state.dirty)return t("m_a4c2e86ecc1a");
+  if(!state.scene)return t("m_f0f1417db6de");
+  if(!ref?.complete||!['draft','edited','manual'].includes(ref.kind))return t("m_d6a28f9c4076");
   return '';
 }
 let closePreview=()=>{};
 export function closeAcceptancePreview(){closePreview()}
-const reasons={selector_changed:'Змінено джерело',selector_unavailable:'Джерело недоступне',source_baseline_changed:'Змінено авторське рішення',source_stale:'Застаріле джерело',legacy_stale:'Застаріла версія без перевіреного знімка',incomplete:'Незавершена версія',integrity_error:'Порушена цілісність',source_unavailable:'Джерело недоступне',dependency_cycle:'Цикл залежностей'};
-const value=v=>v==null?'відсутнє':Array.isArray(v)?v.join(', '):String(v);
+const reasons={get review_basis_changed(){return t("review.basis_changed")},get selector_changed(){return t("m_8b91b89ae0c0")},get selector_unavailable(){return t("m_de55f106214d")},get source_baseline_changed(){return t("m_050f9db160c7")},get source_stale(){return t("m_f25bde6a2fc5")},get legacy_stale(){return t("m_9c6aa2eab83a")},get incomplete(){return t("m_9490802988fa")},get integrity_error(){return t("m_0c212402e872")},get source_unavailable(){return t("m_de55f106214d")},get dependency_cycle(){return t("m_29def73798da")}};
+const value=v=>v==null?t("m_554e24318ede"):Array.isArray(v)?v.join(', '):String(v);
 export async function openAcceptance({state,ref,api,json,panel,notice,onAccepted}){
   const reason=acceptanceReason(state,ref);if(reason)throw new Error(reason);
   closePreview();
   const sceneId=state.scene.id,epoch=state.bufferEpoch;
   const preview=await api(`/api/scenes/${sceneId}/acceptance-preview?version_id=${encodeURIComponent(ref.id)}`);
-  if(state.scene?.id!==sceneId||state.bufferEpoch!==epoch||state.dirty)throw new Error('Редактор змінився. Відкрийте перегляд прийняття заново');
+  if(state.scene?.id!==sceneId||state.bufferEpoch!==epoch||state.dirty)throw new Error(t("m_44e3922c2d3a"));
   const container=document.createElement('section');container.className='acceptance-preview';
-  const title=document.createElement('h3');title.textContent='Перегляд авторського прийняття';title.id='acceptance-title';container.setAttribute('aria-labelledby',title.id);
-  const warning=document.createElement('p');warning.textContent='Прийняття зробить цей текст поточним за новою базою залежностей. Пам’ять і оцінювання потребуватимуть окремого оновлення.';
-  const text=document.createElement('pre');text.textContent=preview.text;
+  const title=document.createElement('h3');uiText(title,"textContent",()=>(t("m_b689fe961d15")));title.id='acceptance-title';container.setAttribute('aria-labelledby',title.id);
+  const warning=document.createElement('p');uiText(warning,"textContent",()=>(t("m_04364d197a4e")));
+  const text=document.createElement('pre');uiText(text,"textContent",()=>(preview.text));
   const changes=document.createElement('ul');
-  for(const change of preview.changes){const item=document.createElement('li');item.textContent=`${reasons[change.reason]||change.reason}: ${change.selector?.field||change.version_id||ref.id} · було: ${value(change.expected)}; тепер: ${value(change.current)}`;changes.append(item)}
-  if(!preview.changes.length){const item=document.createElement('li');item.textContent='Змін залежностей не виявлено.';changes.append(item)}
-  const commit=document.createElement('button');commit.textContent=ref.kind==='draft'?'Підтверджую прийняття чернетки':'Підтверджую прийняття прози';
-  const cancel=document.createElement('button');cancel.className='secondary';cancel.textContent='Закрити перегляд';
+  for(const change of preview.changes){const item=document.createElement('li');uiText(item,"textContent",()=>(t("m_eb44a6ffaad5",{p0:(reasons[diagnostic(change.reason)]||diagnostic(change.reason)),p1:(change.selector?.field||change.version_id||ref.id),p2:(value(change.expected)),p3:(value(change.current))})));changes.append(item)}
+  if(!preview.changes.length){const item=document.createElement('li');uiText(item,"textContent",()=>(t("m_44ad3b502cc5")));changes.append(item)}
+  const commit=document.createElement('button');uiText(commit,"textContent",()=>(ref.kind==='draft'?t("m_2eaeb066a721"):t("m_ea020c200019")));
+  const cancel=document.createElement('button');cancel.className='secondary';uiText(cancel,"textContent",()=>(t("m_3a0a2f657a53")));
   let busy=false,invalid=false;
-  function update(){const reason=acceptanceReason(state,ref)||((state.scene?.id!==sceneId||state.bufferEpoch!==epoch)?'Редактор змінився. Перегляньте заново':'');commit.disabled=busy||invalid||!!reason;commit.title=reason}
+  function update(){const reason=acceptanceReason(state,ref)||((state.scene?.id!==sceneId||state.bufferEpoch!==epoch)?t("m_8e19494e4a9d"):'');commit.disabled=busy||invalid||!!reason;uiText(commit,"title",()=>(diagnostic(reason)))}
   function close(){document.removeEventListener?.('editor-state-changed',update);container.replaceChildren();container.remove?.();closePreview=()=>{}}
   closePreview=close;cancel.onclick=close;
   commit.onclick=async()=>{
     update();if(commit.disabled)return;
-    busy=true;update();commit.textContent='Зберігаємо рішення…';
+    busy=true;update();uiText(commit,"textContent",()=>(t("m_899b666b7143")));
     try{
       const result=await api(`/api/scenes/${sceneId}/accept-version`,json('POST',{version_id:ref.id,expected_revision:preview.expected_revision,preview_fingerprint:preview.preview_fingerprint}));
-      close();await onAccepted(result,{sceneId,epoch});notice('Авторське прийняття збережено','success');
-    }catch(error){invalid=true;notice(error.message+' Відкрийте перегляд заново.','error')}
-    finally{busy=false;commit.textContent=invalid?'Потрібен новий перегляд':'Прийнято';update()}
+      close();await onAccepted(result,{sceneId,epoch});notice(msg("m_3168b7c7d041"),'success');
+    }catch(error){invalid=true;notice(error.message+t("m_f28d647d5a9e"),'error')}
+    finally{busy=false;uiText(commit,"textContent",()=>(invalid?t("m_6fbd2274993c"):t("m_974213107ec3")));update()}
   };
   document.addEventListener('editor-state-changed',update);update();
   container.append(title,warning,text,changes,commit,cancel);panel.append(container);title.tabIndex=-1;title.focus();

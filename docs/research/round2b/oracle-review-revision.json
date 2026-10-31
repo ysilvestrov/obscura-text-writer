@@ -1,0 +1,306 @@
+{
+  "revision": 4,
+  "date": "2026-10-30",
+  "original_annotation_archive": "oracle-blind-v3-annotated.md",
+  "prior_annotated_panel_sha256": "c92647bf30ab8951c685b7541fe57099b9555e4be2cd4698976ed3b8b87e58ad",
+  "single_template_repair": true,
+  "owner_corrections": [
+    {
+      "position": 16,
+      "old_label": "clean",
+      "new_label": "issue",
+      "source": "direct user message 2026-10-30: accidental checkbox",
+      "previous_annotation": "- [ x ] clean\n- [ ] issue\n- [ ] question\n- Цитата для issue:\n- Джерело та пояснення / питання:"
+    }
+  ],
+  "items": [
+    {
+      "position": 1,
+      "status": "unchanged",
+      "change_kind": "unchanged",
+      "annotation": "- [ x] clean\n- [ ] issue\n- [ ] question\n- Цитата для issue:\n- Джерело та пояснення / питання:"
+    },
+    {
+      "position": 2,
+      "status": "unchanged",
+      "change_kind": "unchanged",
+      "annotation": "- [ ] clean\n- [x ] issue\n- [ ] question\n- Цитата для issue: Софія озвалася з сусіднього крісла\n- Джерело та пояснення / питання: T1,S2 - різні місця перебування Софії"
+    },
+    {
+      "position": 3,
+      "status": "unchanged",
+      "change_kind": "unchanged",
+      "annotation": "- [x ] clean\n- [ ] issue\n- [ ] question\n- Цитата для issue:\n- Джерело та пояснення / питання:"
+    },
+    {
+      "position": 4,
+      "status": "unchanged",
+      "change_kind": "unchanged",
+      "annotation": "- [ ] clean\n- [ x] issue\n- [ ] question\n- Цитата для issue: Адреса сховища: Садова, 6\n- Джерело та пояснення / питання: T1, S2 протиріччя в номері дому"
+    },
+    {
+      "position": 5,
+      "status": "unchanged",
+      "change_kind": "unchanged",
+      "annotation": "- [ x ] clean\n- [ ] issue\n- [ ] question\n- Цитата для issue:\n- Джерело та пояснення / питання:"
+    },
+    {
+      "position": 6,
+      "status": "unchanged",
+      "change_kind": "unchanged",
+      "annotation": "- [ ] clean\n- [ x ] issue\n- [ ] question\n- Цитата для issue: українські слова були надруковані у вступі\n- Джерело та пояснення / питання: T1, S2: конфлікт мов"
+    },
+    {
+      "position": 7,
+      "status": "unchanged",
+      "change_kind": "unchanged",
+      "annotation": "- [x ] clean\n- [ ] issue\n- [ ] question\n- Цитата для issue:\n- Джерело та пояснення / питання:"
+    },
+    {
+      "position": 8,
+      "status": "unchanged",
+      "change_kind": "unchanged",
+      "annotation": "- [ x] clean\n- [ ] issue\n- [ ] question\n- Цитата для issue:\n- Джерело та пояснення / питання:"
+    },
+    {
+      "position": 9,
+      "status": "unchanged",
+      "change_kind": "unchanged",
+      "annotation": "- [x ] clean\n- [ ] issue\n- [ ] question\n- Цитата для issue:\n- Джерело та пояснення / питання:"
+    },
+    {
+      "position": 10,
+      "status": "unchanged",
+      "change_kind": "unchanged",
+      "annotation": "- [ ] clean\n- [x ] issue\n- [ ] question\n- Цитата для issue: Софія озвалася з сусіднього крісла\n- Джерело та пояснення / питання: T1,S2 - різні місця перебування Софії"
+    },
+    {
+      "position": 11,
+      "status": "unchanged",
+      "change_kind": "unchanged",
+      "annotation": "- [ ] clean\n- [ x ] issue\n- [ ] question\n- Цитата для issue: виклала по вісім пластин на кожен піднос\n- Джерело та пояснення / питання: T1, S2: 8 x 2 = 16 пластин, а в S2 їх 12"
+    },
+    {
+      "position": 12,
+      "status": "unchanged",
+      "change_kind": "unchanged",
+      "annotation": "- [ ] clean\n- [ x ] issue\n- [ ] question\n- Цитата для issue:  стрілки показували 10:15\n- Джерело та пояснення / питання: T1, S2: протиріччя часу"
+    },
+    {
+      "position": 13,
+      "status": "recheck",
+      "change_kind": "content",
+      "annotation": "- [ x ] clean\n- [ ] issue\n- [ ] question\n- Цитата для issue:\n- Джерело та пояснення / питання:"
+    },
+    {
+      "position": 14,
+      "status": "unchanged",
+      "change_kind": "unchanged",
+      "annotation": "- [ ] clean\n- [ x ] issue\n- [ ] question\n- Цитата для issue: коли стрілки показували 10:15\n- Джерело та пояснення / питання: T1, S2 - неузгодженність часу"
+    },
+    {
+      "position": 15,
+      "status": "recheck",
+      "change_kind": "content",
+      "annotation": "- [ x ] clean\n- [ ] issue\n- [ ] question\n- Цитата для issue:\n- Джерело та пояснення / питання:"
+    },
+    {
+      "position": 16,
+      "status": "unchanged",
+      "change_kind": "unchanged",
+      "annotation": "- [ ] clean\n- [x] issue\n- [ ] question\n- Цитата для issue: Ключем, що лишився на кільці, вона відімкнула студію\n- Джерело та пояснення / питання: Підтверджено власником у чаті 30.10.2026: clean була випадковою позначкою; на кільці мав залишитися ключ від шафки (як у №41)."
+    },
+    {
+      "position": 17,
+      "status": "unchanged",
+      "change_kind": "unchanged",
+      "annotation": "- [ x ] clean\n- [ ] issue\n- [ ] question\n- Цитата для issue:\n- Джерело та пояснення / питання:"
+    },
+    {
+      "position": 18,
+      "status": "unchanged",
+      "change_kind": "unchanged",
+      "annotation": "- [ x ] clean\n- [ ] issue\n- [ ] question\n- Цитата для issue:\n- Джерело та пояснення / питання:"
+    },
+    {
+      "position": 19,
+      "status": "unchanged",
+      "change_kind": "unchanged",
+      "annotation": "- [ x ] clean\n- [ ] issue\n- [ ] question\n- Цитата для issue:\n- Джерело та пояснення / питання:"
+    },
+    {
+      "position": 20,
+      "status": "unchanged",
+      "change_kind": "unchanged",
+      "annotation": "- [ ] clean\n- [ x ] issue\n- [ ] question\n- Цитата для issue: олічила всі пелюстки мозаїки: їх виявилося шість\n- Джерело та пояснення / питання: T1, S2: протиріччя в кількості лепестків"
+    },
+    {
+      "position": 21,
+      "status": "unchanged",
+      "change_kind": "unchanged",
+      "annotation": "- [ ] clean\n- [ x] issue\n- [ ] question\n- Цитата для issue: залишивши зелений розчерк,\n- Джерело та пояснення / питання: T1, S3. Ручка з синіми чернилами зазвичай не оставляє зелений розчерк"
+    },
+    {
+      "position": 22,
+      "status": "unchanged",
+      "change_kind": "unchanged",
+      "annotation": "- [ x ] clean\n- [ ] issue\n- [ ] question\n- Цитата для issue:\n- Джерело та пояснення / питання:"
+    },
+    {
+      "position": 23,
+      "status": "unchanged",
+      "change_kind": "unchanged",
+      "annotation": "- [ ] clean\n- [ x] issue\n- [ ] question\n- Цитата для issue: На табло світилися цифри 15:40\n- Джерело та пояснення / питання: T1, S2: неузгодженість часу"
+    },
+    {
+      "position": 24,
+      "status": "unchanged",
+      "change_kind": "unchanged",
+      "annotation": "- [ ] clean\n- [x ] issue\n- [ ] question\n- Цитата для issue: залишивши зелений розчерк, і глянула у вікно на подвір’я\n- Джерело та пояснення / питання: T1, S2: неузгодженість по наяності вікон в кімнаті. T1, S2: неузгодженість по кольору розчерку"
+    },
+    {
+      "position": 25,
+      "status": "recheck",
+      "change_kind": "content",
+      "annotation": "- [ x ] clean\n- [ ] issue\n- [ ] question\n- Цитата для issue:\n- Джерело та пояснення / питання:"
+    },
+    {
+      "position": 26,
+      "status": "unchanged",
+      "change_kind": "unchanged",
+      "annotation": "- [ ] clean\n- [ x ] issue\n- [ ] question\n- Цитата для issue: Адреса сховища: Садова, 6\n- Джерело та пояснення / питання: T1, S2: конфлікт адреси"
+    },
+    {
+      "position": 27,
+      "status": "unchanged",
+      "change_kind": "unchanged",
+      "annotation": "- [ ] clean\n- [ x ] issue\n- [ ] question\n- Цитата для issue: виклала по вісім пластин на кожен піднос\n- Джерело та пояснення / питання: T1, S2: 8 х 2 = 16 пластін, а їх було 12"
+    },
+    {
+      "position": 28,
+      "status": "unchanged",
+      "change_kind": "unchanged",
+      "annotation": "- [ ] clean\n- [ x ] issue\n- [ ] question\n- Цитата для issue:  відчинила сейф, коли стрілки показували 10:15, і виклала на тканину шість браслетів\n- Джерело та пояснення / питання: T1, S2: неузгодженість по часу. T1, S3: неузгодженість кількісті браслету."
+    },
+    {
+      "position": 29,
+      "status": "unchanged",
+      "change_kind": "unchanged",
+      "annotation": "- [ ] clean\n- [ ] issue\n- [ x ] question\n- Цитата для issue: обхопила пальцями кільце фокуса й повільно повернула його. \n- Джерело та пояснення / питання: T1, S3, S2.  Треба обрати одну з карток А,Б"
+    },
+    {
+      "position": 30,
+      "status": "unchanged",
+      "change_kind": "unchanged",
+      "annotation": "- [ x ] clean\n- [ ] issue\n- [ ] question\n- Цитата для issue:\n- Джерело та пояснення / питання:"
+    },
+    {
+      "position": 31,
+      "status": "unchanged",
+      "change_kind": "unchanged",
+      "annotation": "- [ x ] clean\n- [ ] issue\n- [ ] question\n- Цитата для issue:\n- Джерело та пояснення / питання:"
+    },
+    {
+      "position": 32,
+      "status": "unchanged",
+      "change_kind": "unchanged",
+      "annotation": "- [ ] clean\n- [ x ] issue\n- [ ] question\n- Цитата для issue:\n- Джерело та пояснення / питання: T1, S2: розбіжність кольору ручки і розчерку\n Зауваження до передумов: S1 стверджує що персонажі погодили межі зйомки, але приводить тільки одного персонажа (Ірина), що створює некоректність формулювання."
+    },
+    {
+      "position": 33,
+      "status": "unchanged",
+      "change_kind": "unchanged",
+      "annotation": "- [ x ] clean\n- [ ] issue\n- [ ] question\n- Цитата для issue:\n- Джерело та пояснення / питання:"
+    },
+    {
+      "position": 34,
+      "status": "unchanged",
+      "change_kind": "unchanged",
+      "annotation": "- [ ] clean\n- [ ] issue\n- [ x ] question\n- Цитата для issue:\n- Джерело та пояснення / питання:  T1, S2, S3: треба вирішити конфлікт між картками щодо поверху галереї"
+    },
+    {
+      "position": 35,
+      "status": "unchanged",
+      "change_kind": "unchanged",
+      "annotation": "- [ x ] clean\n- [ ] issue\n- [ ] question\n- Цитата для issue:\n- Джерело та пояснення / питання:"
+    },
+    {
+      "position": 36,
+      "status": "unchanged",
+      "change_kind": "unchanged",
+      "annotation": "- [ ] clean\n- [ x ] issue\n- [ ] question\n- Цитата для issue: відчинила сейф, коли стрілки показували 10:15, і виклала на тканину шість браслетів\n- Джерело та пояснення / питання: T1, S2: конфлікт часу. T1, S3: різна кількість браслетів"
+    },
+    {
+      "position": 37,
+      "status": "unchanged",
+      "change_kind": "unchanged",
+      "annotation": "- [ x ] clean\n- [ ] issue\n- [ ] question\n- Цитата для issue:\n- Джерело та пояснення / питання:"
+    },
+    {
+      "position": 38,
+      "status": "unchanged",
+      "change_kind": "unchanged",
+      "annotation": "- [ x ] clean\n- [ ] issue\n- [ ] question\n- Цитата для issue:\n- Джерело та пояснення / питання:"
+    },
+    {
+      "position": 39,
+      "status": "unchanged",
+      "change_kind": "unchanged",
+      "annotation": "- [ ] clean\n- [ ] issue\n- [ x ] question\n- Цитата для issue: переступила поріг залу й опинилася безпосередньо на майданчику третього поверху\n- Джерело та пояснення / питання: T1, S2, S3: треба вирішити конфлікт між картками щодо поверху галереї"
+    },
+    {
+      "position": 40,
+      "status": "recheck",
+      "change_kind": "content",
+      "annotation": "- [ x] clean\n- [ ] issue\n- [ ] question\n- Цитата для issue:\n- Джерело та пояснення / питання:"
+    },
+    {
+      "position": 41,
+      "status": "unchanged",
+      "change_kind": "unchanged",
+      "annotation": "- [ ] clean\n- [ x ] issue\n- [ ] question\n- Цитата для issue: ключем, що лишився на кільці, вона відімкнула студію\n- Джерело та пояснення / питання: T1, S2: на кільці мав залишитися ключ від шафи"
+    },
+    {
+      "position": 42,
+      "status": "unchanged",
+      "change_kind": "unchanged",
+      "annotation": "- [ ] clean\n- [ ] issue\n- [ x ] question\n- Цитата для issue: обхопила пальцями кільце фокуса й повільно повернула його.\n- Джерело та пояснення / питання: T1, S2, S3 - конфлікт карток щодо об'єктиву"
+    },
+    {
+      "position": 43,
+      "status": "unchanged",
+      "change_kind": "unchanged",
+      "annotation": "- [ ] clean\n- [ x ] issue\n- [ ] question\n- Цитата для issue: залишивши зелений розчерк, і глянула у вікно на подвір’я.\n- Джерело та пояснення / питання: T1, S3: конфлікт кольору. T1, S3: конфлікт наявності вікон"
+    },
+    {
+      "position": 44,
+      "status": "unchanged",
+      "change_kind": "unchanged",
+      "annotation": "- [ x ] clean\n- [ ] issue\n- [ ] question\n- Цитата для issue:\n- Джерело та пояснення / питання:"
+    },
+    {
+      "position": 45,
+      "status": "unchanged",
+      "change_kind": "unchanged",
+      "annotation": "- [ ] clean\n- [ x ] issue\n- [ ] question\n- Цитата для issue: На табло світилися цифри 15:40, коли пором відходив від причалу\n- Джерело та пояснення / питання: T1, S2: конфлікт часу"
+    },
+    {
+      "position": 46,
+      "status": "unchanged",
+      "change_kind": "unchanged",
+      "annotation": "- [ x ] clean\n- [ ] issue\n- [ ] question\n- Цитата для issue:\n- Джерело та пояснення / питання:"
+    },
+    {
+      "position": 47,
+      "status": "unchanged",
+      "change_kind": "unchanged",
+      "annotation": "- [ ] clean\n- [ x ] issue\n- [ ] question\n- Цитата для issue: українські слова були надруковані у вступі\n- Джерело та пояснення / питання: : T1, S2: конфлікт мов"
+    },
+    {
+      "position": 48,
+      "status": "unchanged",
+      "change_kind": "unchanged",
+      "annotation": "- [ ] clean\n- [ x ] issue\n- [ ] question \n- Цитата для issue: полічила всі пелюстки мозаїки: їх виявилося шість\n- Джерело та пояснення / питання: T1, S2: конфлікт кількості пелюсток"
+    }
+  ]
+}

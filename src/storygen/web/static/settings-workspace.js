@@ -1,9 +1,10 @@
+import {t,msg,labelEntries,getLocale,uiText,uiAttr,uiHTML,diagnostic} from './i18n.js';
 import {SettingsDrafts,settingsRoute} from './settings-state.js';
 
 export const settingsDrafts=new SettingsDrafts();
 const forms=new Map(),root=document.querySelector('.settings-page');
-const labels={writing:'Письмо',models:'Моделі',evaluator:'Оцінювач',budget:'Бюджет',profiles:'Комплекти'};
-const roles={planner:'Планувальник',writer:'Письменник',editor:'Редактор',memory:'Пам’ять'};
+const labels={get writing(){return t("m_88f778367baf")},get models(){return t("m_9d43f6fcda82")},get evaluator(){return t("m_04c7075b6943")},get budget(){return t("m_0773ed49428f")},get profiles(){return t("m_bd94099c1720")}};
+const roles={get planner(){return t("m_38c94c25c4af")},get writer(){return t("m_75515c07207a")},get editor(){return t("m_65d42cf1679c")},get memory(){return t("m_aa1cfb48cc30")}};
 let route=settingsRoute(globalThis.location?.search||''),navigationAllowed=false;
 const fields=form=>Object.fromEntries([...form.elements].filter(e=>e.name&&!['submit','button','file'].includes(e.type)&&!(e.dataset.derived==='true'&&form.dataset.rawPending!=='true')).map(e=>[e.name,e.type==='checkbox'?e.checked:e.value]));
 const selectedKey=()=>route.section==='models'?route.role:route.section;
@@ -27,11 +28,11 @@ export function settingsRebaseFields(key,names){sync(key);const value=settingsDr
 export function confirmSettingsReplacement(keys,names=null){
   keys.forEach(sync);
   const affected=keys.filter(k=>names?settingsDrafts.changedFields(k,names):settingsDrafts.dirty(k));
-  return !affected.length||confirm('Є незбережені правки: '+affected.map(k=>forms.get(k)?.label||k).join(', ')+'. Замінити відповідні налаштування?');
+  return !affected.length||confirm(t("m_4a83b83f52ac")+affected.map(k=>forms.get(k)?.label||k).join(', ')+t("m_24e0783e85ed"));
 }
 export async function withSettingsSave(key,work){
-  if(settingsDrafts.anyBusy())throw new Error('Дочекайтеся завершення збереження');
-  const entry=forms.get(key);if(!entry)throw new Error('Форму ще не завантажено');
+  if(settingsDrafts.anyBusy())throw new Error(t("m_cbac60d6d919"));
+  const entry=forms.get(key);if(!entry)throw new Error(t("m_041152c8523b"));
   sync(key);settingsDrafts.setBusy(key,true);settingsDrafts.setError(key,null);
   document.dispatchEvent(new CustomEvent('settings-save-state'));
   const previous=[...new Set([...forms.values()].flatMap(v=>[...v.form.elements]))].map(e=>[e,e.disabled]);previous.forEach(([e])=>e.disabled=true);draw();
@@ -51,17 +52,17 @@ function draw(){
   for(const pane of root.querySelectorAll('[data-settings-section]'))pane.hidden=pane.dataset.settingsSection!==route.section;
   for(const button of root.querySelectorAll('[data-settings-nav]')){
     const key=button.dataset.settingsNav,dirty=[...forms].some(([k,v])=>v.section===key&&settingsDrafts.dirty(k));
-    button.textContent=labels[key]+(dirty?' · незбережено':'');button.classList.toggle('active',key===route.section);button.setAttribute('aria-current',key===route.section?'page':'false');
+    uiText(button,"textContent",()=>(labels[key]+(dirty?t("m_5837eb667064"):'')));button.classList.toggle('active',key===route.section);button.setAttribute('aria-current',key===route.section?'page':'false');
   }
   for(const button of root.querySelectorAll('[data-settings-role]')){
-    const role=button.dataset.settingsRole;button.textContent=roles[role]+(settingsDrafts.dirty(role)?' · незбережено':'');button.classList.toggle('active',role===route.role);button.setAttribute('aria-pressed',String(role===route.role));
+    const role=button.dataset.settingsRole;uiText(button,"textContent",()=>(roles[role]+(settingsDrafts.dirty(role)?t("m_5837eb667064"):'')));button.classList.toggle('active',role===route.role);button.setAttribute('aria-pressed',String(role===route.role));
   }
   for(const form of root.querySelectorAll('form[data-role]'))form.hidden=route.section!=='models'||form.dataset.role!==route.role;
   const key=selectedKey(),entry=forms.get(key),record=settingsDrafts.get(key),save=root.querySelector('#settings-save'),reset=root.querySelector('#settings-reset');
-  root.querySelector('#settings-section-title').textContent=labels[route.section];root.querySelector('#settings-section-mobile').value=route.section;
-  save.textContent=entry?'Зберегти: '+entry.label:'Зберегти';save.hidden=!entry;reset.hidden=!entry;
+  uiText(root.querySelector('#settings-section-title'),"textContent",()=>(labels[route.section]));root.querySelector('#settings-section-mobile').value=route.section;
+  uiText(save,"textContent",()=>(entry?t("m_5612089c6bba")+entry.label:t("m_bf610d493cb4")));save.hidden=!entry;reset.hidden=!entry;
   save.disabled=!entry||settingsDrafts.anyBusy()||!settingsDrafts.dirty(key)||entry.form.dataset.saveBlocked==='true';reset.disabled=!entry||settingsDrafts.anyBusy()||!settingsDrafts.dirty(key);
-  root.querySelector('#settings-save-status').textContent=record?.busy?'Зберігаємо…':record?.error||(!entry?'Оберіть потрібну дію в розділі':settingsDrafts.dirty(key)?'Незбережені зміни':'Без змін');
+  uiText(root.querySelector('#settings-save-status'),"textContent",()=>(record?.busy?t("m_284972eb2a43"):diagnostic(record?.error)||(!entry?t("m_90ff64df1843"):settingsDrafts.dirty(key)?t("m_ee929a68273c"):t("m_0117849a201e"))));
 }
 if(root){
   for(const button of root.querySelectorAll('[data-settings-nav]'))button.onclick=()=>{route.section=button.dataset.settingsNav;draw()};
@@ -69,7 +70,7 @@ if(root){
   root.querySelector('#settings-section-mobile').onchange=event=>{route.section=event.target.value;draw()};
   root.querySelector('#settings-save').onclick=()=>forms.get(selectedKey())?.form.requestSubmit();
   root.querySelector('#settings-reset').onclick=async()=>{
-    const key=selectedKey(),entry=forms.get(key);if(!entry||settingsDrafts.anyBusy()||!confirm('Відкинути ручні правки: '+entry.label+'?'))return;
+    const key=selectedKey(),entry=forms.get(key);if(!entry||settingsDrafts.anyBusy()||!confirm(t("m_6fd8e12ff721")+entry.label+'?'))return;
     try{await resetSettingsForm(key)}catch(error){settingsDrafts.setError(key,error.message);draw()}
   };
   document.addEventListener('settings-show-role',event=>showSettingsRole(event.detail));

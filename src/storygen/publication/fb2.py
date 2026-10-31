@@ -6,7 +6,8 @@ from importlib.resources import files
 from urllib.parse import urlparse
 from pathlib import PurePosixPath
 from xml.etree import ElementTree as ET
-from .book import EXPORTER,INCOMPLETE,chapter_lines,lines,xml_bytes
+from .book import EXPORTER,lines,xml_bytes
+from .markup import chapter_paragraphs,append_xml_runs
 
 NS='http://www.gribuser.ru/xml/fictionbook/2.0'
 
@@ -57,12 +58,11 @@ def render(book):
     add(document,'date',book.created_at[:10],value=book.created_at[:10]);add(document,'id',book.edition_id);add(document,'version','1.0')
     for field in ['publisher','isbn','rights']:
         if getattr(card,field):add(description,'custom-info',getattr(card,field),**{'info-type':'publication-'+field})
-    if book.warnings:add(description,'custom-info',INCOMPLETE,**{'info-type':'export-status'})
     body=add(root,'body')
-    if book.warnings:add(add(body,'title'),'p',INCOMPLETE)
     for index,chapter in enumerate(book.chapters,1):
         section=add(body,'section',id=f'chapter-{index}');add(add(section,'title'),'p',chapter.title)
-        for line in chapter_lines(chapter):add(section,'p',line) if line else add(section,'empty-line')
-    if not book.chapters:add(add(body,'section'),'p',INCOMPLETE)
+        for runs in chapter_paragraphs(chapter):
+            append_xml_runs(add(section,'p'),runs,italic='emphasis') if runs else add(section,'empty-line')
+    if not book.chapters:add(add(body,'section'),'p')
     if book.cover:add(root,'binary',base64.b64encode(book.cover).decode('ascii'),id='cover',**{'content-type':book.snapshot.publication.cover.mime_type})
     result=xml_bytes(root);validate(result);return result

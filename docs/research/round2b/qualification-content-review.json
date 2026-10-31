@@ -1,0 +1,366 @@
+{
+  "reviewer": "executor offline reading; not independent owner/model judging",
+  "calls": 40,
+  "records": [
+    {
+      "label": "C1",
+      "case": "letter-clean",
+      "expected_issue": false,
+      "status": "valid",
+      "raw_concerns": 0,
+      "recognized_valid_issue": false,
+      "note": "Сумісний clean без зауважень."
+    },
+    {
+      "label": "C1",
+      "case": "letter-issue",
+      "expected_issue": true,
+      "status": "valid",
+      "raw_concerns": 1,
+      "recognized_valid_issue": true,
+      "note": "Правильний конкретний issue."
+    },
+    {
+      "label": "C1",
+      "case": "nude-clean",
+      "expected_issue": false,
+      "status": "valid",
+      "raw_concerns": 0,
+      "recognized_valid_issue": false,
+      "note": "Сумісний clean без зауважень."
+    },
+    {
+      "label": "C1",
+      "case": "nude-issue",
+      "expected_issue": true,
+      "status": "valid",
+      "raw_concerns": 1,
+      "recognized_valid_issue": true,
+      "note": "Правильний конкретний issue."
+    },
+    {
+      "label": "C1",
+      "case": "intimacy-clean",
+      "expected_issue": false,
+      "status": "valid",
+      "raw_concerns": 0,
+      "recognized_valid_issue": false,
+      "note": "Сумісний clean без зауважень."
+    },
+    {
+      "label": "C1",
+      "case": "intimacy-issue",
+      "expected_issue": true,
+      "status": "valid",
+      "raw_concerns": 1,
+      "recognized_valid_issue": true,
+      "note": "Правильний конкретний issue."
+    },
+    {
+      "label": "C1",
+      "case": "violence-clean",
+      "expected_issue": false,
+      "status": "valid",
+      "raw_concerns": 0,
+      "recognized_valid_issue": false,
+      "note": "Сумісний clean без зауважень."
+    },
+    {
+      "label": "C1",
+      "case": "violence-issue",
+      "expected_issue": true,
+      "status": "valid",
+      "raw_concerns": 1,
+      "recognized_valid_issue": true,
+      "note": "Правильний конкретний issue."
+    },
+    {
+      "label": "C2",
+      "case": "letter-clean",
+      "expected_issue": false,
+      "status": "valid",
+      "raw_concerns": 0,
+      "recognized_valid_issue": false,
+      "note": "Сумісний clean без зауважень."
+    },
+    {
+      "label": "C2",
+      "case": "letter-issue",
+      "expected_issue": true,
+      "status": "valid",
+      "raw_concerns": 1,
+      "recognized_valid_issue": true,
+      "note": "Правильний конкретний issue."
+    },
+    {
+      "label": "C2",
+      "case": "nude-clean",
+      "expected_issue": false,
+      "status": "valid",
+      "raw_concerns": 0,
+      "recognized_valid_issue": false,
+      "note": "Сумісний clean без зауважень."
+    },
+    {
+      "label": "C2",
+      "case": "nude-issue",
+      "expected_issue": true,
+      "status": "valid",
+      "raw_concerns": 1,
+      "recognized_valid_issue": true,
+      "note": "Правильний конкретний issue."
+    },
+    {
+      "label": "C2",
+      "case": "intimacy-clean",
+      "expected_issue": false,
+      "status": "valid",
+      "raw_concerns": 0,
+      "recognized_valid_issue": false,
+      "note": "Сумісний clean без зауважень."
+    },
+    {
+      "label": "C2",
+      "case": "intimacy-issue",
+      "expected_issue": true,
+      "status": "valid",
+      "raw_concerns": 1,
+      "recognized_valid_issue": true,
+      "note": "Правильний конкретний issue."
+    },
+    {
+      "label": "C2",
+      "case": "violence-clean",
+      "expected_issue": false,
+      "status": "valid",
+      "raw_concerns": 0,
+      "recognized_valid_issue": false,
+      "note": "Сумісний clean без зауважень."
+    },
+    {
+      "label": "C2",
+      "case": "violence-issue",
+      "expected_issue": true,
+      "status": "valid",
+      "raw_concerns": 1,
+      "recognized_valid_issue": true,
+      "note": "Правильний конкретний issue."
+    },
+    {
+      "label": "L3",
+      "case": "letter-clean",
+      "expected_issue": false,
+      "status": "valid",
+      "raw_concerns": 0,
+      "recognized_valid_issue": false,
+      "note": "Сумісний clean без зауважень."
+    },
+    {
+      "label": "L3",
+      "case": "letter-issue",
+      "expected_issue": true,
+      "status": "valid",
+      "raw_concerns": 1,
+      "recognized_valid_issue": true,
+      "note": "Правильний конкретний issue."
+    },
+    {
+      "label": "L3",
+      "case": "nude-clean",
+      "expected_issue": false,
+      "status": "valid",
+      "raw_concerns": 0,
+      "recognized_valid_issue": false,
+      "note": "Сумісний clean без зауважень."
+    },
+    {
+      "label": "L3",
+      "case": "nude-issue",
+      "expected_issue": true,
+      "status": "invalid",
+      "raw_concerns": 1,
+      "recognized_valid_issue": false,
+      "note": "Конфлікт часу названо; complete=false, primary invalid, без ремонту."
+    },
+    {
+      "label": "L3",
+      "case": "intimacy-clean",
+      "expected_issue": false,
+      "status": "valid",
+      "raw_concerns": 0,
+      "recognized_valid_issue": false,
+      "note": "Сумісний clean без зауважень."
+    },
+    {
+      "label": "L3",
+      "case": "intimacy-issue",
+      "expected_issue": true,
+      "status": "invalid",
+      "raw_concerns": 1,
+      "recognized_valid_issue": false,
+      "note": "Конфлікт названо, але question замість issue та complete=false; primary invalid."
+    },
+    {
+      "label": "L3",
+      "case": "violence-clean",
+      "expected_issue": false,
+      "status": "valid",
+      "raw_concerns": 0,
+      "recognized_valid_issue": false,
+      "note": "Сумісний clean без зауважень."
+    },
+    {
+      "label": "L3",
+      "case": "violence-issue",
+      "expected_issue": true,
+      "status": "valid",
+      "raw_concerns": 1,
+      "recognized_valid_issue": true,
+      "note": "Правильний конкретний issue."
+    },
+    {
+      "label": "L5",
+      "case": "letter-clean",
+      "expected_issue": false,
+      "status": "valid",
+      "raw_concerns": 0,
+      "recognized_valid_issue": false,
+      "note": "Сумісний clean без зауважень."
+    },
+    {
+      "label": "L5",
+      "case": "letter-issue",
+      "expected_issue": true,
+      "status": "valid",
+      "raw_concerns": 0,
+      "recognized_valid_issue": false,
+      "note": "Valid порожній concerns пропускає очікуваний факт."
+    },
+    {
+      "label": "L5",
+      "case": "nude-clean",
+      "expected_issue": false,
+      "status": "valid",
+      "raw_concerns": 0,
+      "recognized_valid_issue": false,
+      "note": "Сумісний clean без зауважень."
+    },
+    {
+      "label": "L5",
+      "case": "nude-issue",
+      "expected_issue": true,
+      "status": "valid",
+      "raw_concerns": 1,
+      "recognized_valid_issue": true,
+      "note": "Правильний конкретний issue."
+    },
+    {
+      "label": "L5",
+      "case": "intimacy-clean",
+      "expected_issue": false,
+      "status": "valid",
+      "raw_concerns": 0,
+      "recognized_valid_issue": false,
+      "note": "Сумісний clean без зауважень."
+    },
+    {
+      "label": "L5",
+      "case": "intimacy-issue",
+      "expected_issue": true,
+      "status": "valid",
+      "raw_concerns": 0,
+      "recognized_valid_issue": false,
+      "note": "Valid порожній concerns пропускає очікуваний факт."
+    },
+    {
+      "label": "L5",
+      "case": "violence-clean",
+      "expected_issue": false,
+      "status": "valid",
+      "raw_concerns": 1,
+      "recognized_valid_issue": false,
+      "note": "Хибний issue: дія здоровою правою рукою сумісна з травмою лівого зап’ястка."
+    },
+    {
+      "label": "L5",
+      "case": "violence-issue",
+      "expected_issue": true,
+      "status": "invalid",
+      "raw_concerns": 1,
+      "recognized_valid_issue": false,
+      "note": "Конфлікт сторони опіку названо, але немає target evidence і дубль source_refs; invalid."
+    },
+    {
+      "label": "L6",
+      "case": "letter-clean",
+      "expected_issue": false,
+      "status": "valid",
+      "raw_concerns": 0,
+      "recognized_valid_issue": false,
+      "note": "Сумісний clean без зауважень."
+    },
+    {
+      "label": "L6",
+      "case": "letter-issue",
+      "expected_issue": true,
+      "status": "valid",
+      "raw_concerns": 1,
+      "recognized_valid_issue": true,
+      "note": "Правильний конкретний issue."
+    },
+    {
+      "label": "L6",
+      "case": "nude-clean",
+      "expected_issue": false,
+      "status": "invalid",
+      "raw_concerns": 1,
+      "recognized_valid_issue": false,
+      "note": "Хибне зауваження до повторного погодження меж; source_refs порожні, invalid."
+    },
+    {
+      "label": "L6",
+      "case": "nude-issue",
+      "expected_issue": true,
+      "status": "valid",
+      "raw_concerns": 1,
+      "recognized_valid_issue": true,
+      "note": "Правильний конкретний issue."
+    },
+    {
+      "label": "L6",
+      "case": "intimacy-clean",
+      "expected_issue": false,
+      "status": "valid",
+      "raw_concerns": 0,
+      "recognized_valid_issue": false,
+      "note": "Сумісний clean без зауважень."
+    },
+    {
+      "label": "L6",
+      "case": "intimacy-issue",
+      "expected_issue": true,
+      "status": "valid",
+      "raw_concerns": 1,
+      "recognized_valid_issue": true,
+      "note": "Правильний конкретний issue."
+    },
+    {
+      "label": "L6",
+      "case": "violence-clean",
+      "expected_issue": false,
+      "status": "valid",
+      "raw_concerns": 1,
+      "recognized_valid_issue": false,
+      "note": "Хибний issue: дія здоровою правою рукою сумісна з травмою лівого зап’ястка."
+    },
+    {
+      "label": "L6",
+      "case": "violence-issue",
+      "expected_issue": true,
+      "status": "valid",
+      "raw_concerns": 1,
+      "recognized_valid_issue": true,
+      "note": "Правильний конкретний issue."
+    }
+  ]
+}

@@ -8,13 +8,29 @@ from .files import FileStore
 
 
 class Repository:
+    def impact(self,action,**data):
+        from .impact_store import operation
+        return operation(self,action,**data)
+
+    def get_comment_state(self,scene_id):
+        from .comment_store import get_comment_state
+        return get_comment_state(self,scene_id)
+
+    def get_comment_set(self,scene_id,id=None):
+        from .comment_store import get_comment_set
+        return get_comment_set(self,scene_id,id)
+
+    def save_draft_with_comments(self,scene_id,text,content_format,expected_revision,expected_comments_revision,payload,*,expected_source_version_id):
+        from .comment_store import save_draft_with_comments
+        return save_draft_with_comments(self,scene_id,text,content_format,expected_revision,expected_comments_revision,payload,expected_source_version_id=expected_source_version_id)
+
     def rename_story(self,story_id,title,expected_revision):
         from .authoring import rename_story
         return rename_story(self,story_id,title,expected_revision)
 
-    def unchanged_scene_text(self,scene_id,head,text,expected_revision):
+    def unchanged_scene_text(self,scene_id,head,text,expected_revision,content_format=None):
         from .authoring import unchanged_scene_text
-        return unchanged_scene_text(self,scene_id,head,text,expected_revision)
+        return unchanged_scene_text(self,scene_id,head,text,expected_revision,content_format)
 
     def publication(self, action, **data):
         from .publication_store import operation
@@ -179,6 +195,12 @@ class Repository:
             db.execute('BEGIN')
             return ContextView(self, db, story_id)
 
+    def review(self,action,**kwargs):
+        from . import review_store
+        commands={'operation':review_store.operation,'publish_scene':review_store.publish_scene,
+            'save_report':review_store.save_report,'save_dispositions':review_store.save_dispositions}
+        return commands[action](self,**kwargs)
+
     def preview_acceptance(self, scene_id, version_id):
         from .acceptance import preview_acceptance
         return preview_acceptance(self, scene_id, version_id)
@@ -240,8 +262,10 @@ class Repository:
             ref=self._get(db,'versions',id,VersionRef)
             self._active_story(db,ref.story_id)
             if ref.scene_id:self._active_scene(db,ref.scene_id)
-            if ref.dependency_snapshot is None and ref.manual_projection_policy is None and not any(json.loads(r[0]).get('version_id')==ref.id for r in db.execute('SELECT payload FROM app_settings WHERE key LIKE ?',('acceptance:'+ref.story_id+':%',))):
-                return ref
+            if ref.dependency_snapshot is None and ref.manual_projection_policy is None:
+                author_accepted=any(json.loads(r[0]).get('version_id')==ref.id for r in db.execute('SELECT payload FROM app_settings WHERE key LIKE ?',('acceptance:'+ref.story_id+':%',)))
+                reviewed=any(json.loads(r[0]).get('target',{}).get('version_id')==ref.id for r in db.execute('SELECT payload FROM app_settings WHERE key LIKE ?',('review3:'+ref.story_id+':acceptance:%',)))
+                if not author_accepted and not reviewed:return ref
             from .context_view import ContextView
             return ContextView(self,db,ref.story_id).get_version(id)
 
@@ -320,7 +344,9 @@ class Repository:
             self._touch_story(db,story_id)
         return scene
 
-    def save_version(self,story_id: str,scene_id: str | None,kind: str,text: str,input_refs: list[str],source_run_id: str | None = None,dependency_snapshot=None,prompt_contract=None,manual_projection_policy=None) -> VersionRef:
+    def save_version(self,story_id: str,scene_id: str | None,kind: str,text: str,input_refs: list[str],source_run_id: str | None = None,dependency_snapshot=None,prompt_contract=None,manual_projection_policy=None,content_format='plain') -> VersionRef:
+        if content_format not in {'plain','markdown'} or content_format=='markdown' and kind not in {'draft','edited','manual'}:
+            raise ValueError('Markdown дозволено лише для чернетки та прози')
         if prompt_contract is not None and kind!='prompt':
             raise ValueError('Контракт дозволено лише для промпту')
         self.get_story(story_id)
@@ -332,7 +358,7 @@ class Repository:
         format="json" if kind in {"character_cards","style","memory","evaluation","brief"} else "text"
         id=new_id()
         data=text.encode("utf-8")
-        version=VersionRef(id=id,story_id=story_id,scene_id=scene_id,kind=kind,format=format,sha256=hashlib.sha256(data).hexdigest(),
+        version=VersionRef(id=id,story_id=story_id,scene_id=scene_id,kind=kind,format=format,content_format=content_format,sha256=hashlib.sha256(data).hexdigest(),
             relative_path=f"stories/{story_id}/versions/{id}.{'json' if format=='json' else 'txt'}",input_refs=input_refs,source_run_id=source_run_id,dependency_snapshot=dependency_snapshot,prompt_contract=prompt_contract,manual_projection_policy=manual_projection_policy)
         self.files.write(version.relative_path,data)
         with self.db.connection() as db:

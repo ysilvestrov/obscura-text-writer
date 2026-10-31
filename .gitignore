@@ -20,6 +20,9 @@ __pycache__/
 .pytest-tmp/
 .mypy_cache/
 .ruff_cache/
+node_modules/
+frontend/test-results/
+frontend/playwright-report/
 *.egg-info/
 build/
 dist/
@@ -32,6 +35,9 @@ input/
 temp_briefs/
 output_story/
 artifacts/
+# Research gold stays private until the owner completes blind annotation.
+docs/research/round2b/oracle-key.json
+docs/research/round2b/holdout-draft.json
 private/
 backups/
 exports/

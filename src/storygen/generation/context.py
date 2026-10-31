@@ -19,13 +19,24 @@ from ..story_horizon import selected_plan_scenes,horizon_future_count,horizon_in
 
 
 class ContextOverflow(ValueError):
-    def __init__(self,estimated_tokens: int,limit: int,chars: int,memory_chars: int=0,breakdown=None):
+    def __init__(self,estimated_tokens: int,limit: int,chars: int,memory_chars: int=0,breakdown=None,*,max_input_chars: int | None=None):
         self.breakdown=breakdown
         self.estimated_tokens=estimated_tokens
         self.limit=limit
         self.chars=chars
         contribution=f' Проєкція пам’яті: {memory_chars} символів.' if memory_chars else ''
-        super().__init__(f'Контекст завеликий: приблизно {estimated_tokens} токенів, доступно {limit}; {chars} символів. Текст не обрізано.'+contribution)
+        self.max_input_chars=max_input_chars
+        if max_input_chars is None:
+            message=f'Контекст завеликий: приблизно {estimated_tokens} токенів, доступно {limit}; {chars} символів. Текст не обрізано.'
+        else:
+            if estimated_tokens>limit and chars>max_input_chars:
+                reason='Перевищено токенний та операційний ліміти входу'
+            elif chars>max_input_chars:
+                reason='Перевищено операційний ліміт входу'
+            else:
+                reason='Перевищено токенний ліміт входу'
+            message=f'{reason}: {chars} символів, дозволено {max_input_chars}; приблизно {estimated_tokens} токенів, доступно {limit}. Текст не обрізано.'
+        super().__init__(message+contribution)
 
 
 class ContextBundle(DomainModel):
@@ -52,18 +63,29 @@ class ContextBundle(DomainModel):
     context_breakdown: dict = Field(default_factory=dict)
 
 
-def make_context(repo,story,scene,stage,settings,sections,refs,fragments=None,accepted_prose_ids=(),memory_metrics=None,context_warnings=None):
+def make_context(repo,story,scene,stage,settings,sections,refs,fragments=None,accepted_prose_ids=(),memory_metrics=None,context_warnings=None,memory_provenance=(),accepted_memory_ids=()):
     if hasattr(repo, 'context_view'):
         repo=repo.context_view(story.id)
         story=repo.get_story(story.id)
         scene=repo.get_scene(scene.id) if scene else None
     prompt_id=settings.prepare_prompt_version_id if stage=='prepare' else settings.prompt_version_id
-    ref=validate_role_prompt(repo,story.id,stage,settings)
+    ref=None if stage=='rewrite' else validate_role_prompt(repo,story.id,stage,settings)
     if ref:
         system=repo.read_text(ref.id)
         refs.append(ref.id)
     else:
-        system=role_prompt(stage,settings)
+        if stage=='rewrite':
+            from importlib.resources import files
+            system=files('storygen.generation').joinpath('resources','assisted_writer_uk_v1.txt').read_text(encoding='utf-8')
+        else:system=role_prompt(stage,settings)
+    fragments=dict(fragments or {})
+    if stage in {'draft','edit','rewrite'}:
+        source_id=fragments.get('copyedit_draft_id') or fragments.get('rewrite_source_id')
+        content_format='markdown' if stage=='draft' else repo.get_version(source_id).content_format if source_id else 'plain'
+        fragments['output_content_format']=content_format
+        if content_format=='markdown':
+            from ..prompt_contracts import MARKDOWN_PRESERVATION
+            system+='\n\n'+MARKDOWN_PRESERVATION
     warnings=list(context_warnings or [])
     if prompt_id and stage in {'brief','draft','edit'} and OTHER_MATERIAL_WARNING not in warnings:
         warnings.append(OTHER_MATERIAL_WARNING)
@@ -78,17 +100,24 @@ def make_context(repo,story,scene,stage,settings,sections,refs,fragments=None,ac
     from .context_metrics import request_breakdown
     breakdown=request_breakdown(api_request,sections,stage,prediction,settings)
     if estimate>limit or chars>settings.max_input_chars:
-        raise ContextOverflow(estimate,limit,chars,(memory_metrics or {}).get('projection_chars',(memory_metrics or {}).get('catalog_chars',0)),breakdown)
+        raise ContextOverflow(estimate,limit,chars,(memory_metrics or {}).get('projection_chars',(memory_metrics or {}).get('catalog_chars',0)),breakdown,max_input_chars=settings.max_input_chars)
     accepted_stale=[id for id in dict.fromkeys(accepted_prose_ids) if id in refs and (ref:=repo.get_version(id)).stale and ref.kind in {'edited','manual'}]
     fingerprint=hashlib.sha256(json.dumps({'system':system,'user':user,'settings':settings.model_dump(),'refs':refs,'accepted_stale_prose_ids':accepted_stale,'order':build_dependency_snapshot(repo,scene.id if scene else None,stage,settings,refs).scene_order},ensure_ascii=False,sort_keys=True).encode()).hexdigest()
     snapshot=build_dependency_snapshot(repo,scene.id if scene else None,stage,settings,refs)
-    head={'brief':'brief','draft':'draft','edit':'prose','memory':'memory'}.get(stage)
+    from ..dependency_models import MemoryReuseApproval
+    snapshot.memory_provenance=[MemoryReuseApproval.model_validate(p) for p in memory_provenance]
+    snapshot.accepted_stale_memory_ids=list(accepted_memory_ids)
+    if memory_provenance:
+        fingerprint=hashlib.sha256((fingerprint+snapshot.model_dump_json()).encode()).hexdigest()
+    head={'brief':'brief','draft':'draft','edit':'prose','memory':'memory','rewrite':'draft'}.get(stage)
     target=TargetCAS(scene_id=scene.id,head=head,version_id=scene.heads.get(head),head_revision=scene.head_revisions.get(head,0)) if scene and head else None
     return ContextBundle(context_breakdown=breakdown,api_request=api_request,token_estimate=prediction,estimate_method=prediction['method'],dependency_snapshot=snapshot,target_cas=target,story_id=story.id,scene_id=scene.id if scene else None,stage=stage,scene_revision=scene.revision if scene else None,story_revision=story.revision,settings=settings,system_text=system,user_text=user,input_refs=list(dict.fromkeys(refs)),accepted_stale_prose_ids=accepted_stale,fingerprint=fingerprint,estimated_tokens=estimate,fragments=fragments or {},memory_metrics=memory_metrics or {},context_warnings=list(dict.fromkeys(warnings)))
 
 
-def build_context(repo,scene_id: str,stage: str,settings: RoleSettings,*,editor_source_id: str | None=None) -> ContextBundle:
-    if stage not in {'brief','draft','edit','memory'}:
+def build_context(repo,scene_id: str,stage: str,settings: RoleSettings,*,editor_source_id: str | None=None,memory_approval: str | None=None) -> ContextBundle:
+    if memory_approval is not None and stage!='memory':
+        raise ValueError('Підтвердження пам’яті дозволено лише для її оновлення')
+    if stage not in {'brief','draft','edit','memory','rewrite'}:
         raise ValueError('Невідомий етап сцени')
     scene=repo.get_scene(scene_id)
     if hasattr(repo, 'context_view'):
@@ -102,12 +131,14 @@ def build_context(repo,scene_id: str,stage: str,settings: RoleSettings,*,editor_
     sections=[f'СЦЕНА {scene.position+1}/{len(scenes)}: {scene.title}\nЦільовий обсяг: {scene.target_words} слів.']
     def add(label,id):
         ref=repo.get_version(id)
-        if (ref.stale and not (stage=='memory' and ref.kind in {'edited','manual'})) or not ref.complete:
+        if (ref.stale and not (stage=='memory' and ref.kind in {'edited','manual'}) and not (stage=='rewrite' and id==editor_source_id)) or not ref.complete:
             raise ValueError('Контекст містить застарілий матеріал; потрібне оновлення')
         refs.append(id)
         sections.append(f'{label} [version_id={id}]\n'+repo.read_text(id))
     if stage=='memory':
-        past=journal_before(repo,scene.id)
+        from ..memory.reuse import memory_for_update, provenance_warnings
+        past,approval,provenance=memory_for_update(repo,scene.id,memory_approval)
+        reuse={'memory_provenance':provenance,'accepted_memory_ids':[approval['memory_id']] if approval else [],'context_warnings':provenance_warnings(provenance)}
         previous=[s for s in scenes if s.position<scene.position]
         prose_id=scene.heads.get('prose')
         if not prose_id:raise ValueError('Спершу виберіть завершену прозу')
@@ -123,12 +154,12 @@ def build_context(repo,scene_id: str,stage: str,settings: RoleSettings,*,editor_
             sections=['ЧИННІ ТВЕРДЖЕННЯ — КАТАЛОГ ДЛЯ ОПЕРАЦІЙ\n'+catalog,
                 'ДОЗВОЛЕНІ CHARACTER_IDS ДЛЯ НОВИХ СТАНІВ\n'+json.dumps(scene.character_ids,ensure_ascii=False),
                 f'ПОТОЧНА ПРОЗА [version_id={prose_id}] — НУМЕРОВАНІ ФРАГМЕНТИ\n'+render_fragments(repo.read_text(prose_id))]
-            return make_context(repo,story,scene,stage,settings,sections,refs,{'previous_memory':past.model_dump_json(),'expected_source_prose_ids':json.dumps(expected),'memory_allowed_character_ids':json.dumps(scene.character_ids)},accepted_prose_ids=expected,
+            return make_context(repo,story,scene,stage,settings,sections,refs,{'previous_memory':past.model_dump_json(),'expected_source_prose_ids':json.dumps(expected),'memory_allowed_character_ids':json.dumps(scene.character_ids)},accepted_prose_ids=expected,**reuse,
                 memory_metrics={'projection_version':'memory-catalog-v2','journal_chars':len(past.model_dump_json()),'catalog_chars':len(catalog),'event_count':len(past.events)})
         sections=['ПОПЕРЕДНЯ ПЕРЕВІРЕНА ПАМ’ЯТЬ\n'+legacy_view(past).model_dump_json(),
             'EXPECTED_SOURCE_PROSE_IDS — скопіюй цей список точно у source_prose_ids:\n'+json.dumps(expected)]
         add('ПОТОЧНА ПРОЗА — ЄДИНЕ ДЖЕРЕЛО НОВИХ ФАКТІВ',prose_id)
-        return make_context(repo,story,scene,stage,settings,sections,refs,{'expected_source_prose_ids':json.dumps(expected),'previous_memory':past.model_dump_json()},accepted_prose_ids=expected)
+        return make_context(repo,story,scene,stage,settings,sections,refs,{'expected_source_prose_ids':json.dumps(expected),'previous_memory':past.model_dump_json()},accepted_prose_ids=expected,**reuse)
     if stage=='edit' and settings.edit_mode in {'patches','diff'}:
         from .evidence import render_fragments
         draft_id=editor_source_id or scene.heads.get('draft')
@@ -174,8 +205,12 @@ def build_context(repo,scene_id: str,stage: str,settings: RoleSettings,*,editor_
         sections.append('АВТОРСЬКИЙ ОРІЄНТИР ФІНАЛУ — ЗАДУМ, НЕ ЗДІЙСНЕНІ ПОДІЇ\n'+profile.ending_goal)
         if count is None:sections.append(horizon_instructions(scene,len(scenes)))
     past=journal_before(repo,scene.id)
+    from ..memory.reuse import provenance_before, provenance_warnings
+    inherited_provenance=provenance_before(repo,scene.id)
+    warnings.extend(provenance_warnings(inherited_provenance))
     from ..memory.forwarding import hidden_before
-    projection=project_memory(past,scene.character_ids,{s.heads['prose']:s.position+1 for s in scenes if s.position<scene.position and s.heads.get('prose')},hidden_claim_ids=hidden_before(repo,scene.id))
+    scene_numbers={s.id:s.position+1 for s in scenes if s.position<scene.position}
+    projection=project_memory(past,scene.character_ids,{id:scene_numbers[repo.get_version(id).scene_id] for id in past.source_prose_ids},hidden_claim_ids=hidden_before(repo,scene.id))
     sections.append('ЗДІЙСНЕНІ ПОДІЇ — ПЕРЕВІРЕНА ПАМ’ЯТЬ\n'+projection.text)
     previous=[s for s in scenes if s.position<scene.position]
     fragments={}
@@ -185,10 +220,14 @@ def build_context(repo,scene_id: str,stage: str,settings: RoleSettings,*,editor_
         tail=repo.read_text(previous[-1].heads['prose'])[-profile.previous_tail_chars:] if profile.previous_tail_chars else ''
         fragments['previous_prose_tail']=tail
         sections.append('ЗАВЕРШЕННЯ ПОПЕРЕДНЬОЇ СЦЕНИ (явно вибраний фрагмент)\n'+tail)
-    required={'brief':[],'draft':['brief'],'edit':['brief','draft'],'memory':['prose']}[stage]
+    if stage=='rewrite':
+        fragments['rewrite_source_id']=editor_source_id
+        add('ЗБЕРЕЖЕНА ЧЕРНЕТКА ДЛЯ ПЕРЕПИСУВАННЯ',editor_source_id)
+    required={'rewrite':[],'brief':[],'draft':['brief'],'edit':['brief','draft'],'memory':['prose']}[stage]
     for head in required:
         version_id=editor_source_id if stage=='edit' and head=='draft' and editor_source_id else scene.heads.get(head)
         if not version_id:
             raise ValueError('Спершу завершіть попередній етап: '+head)
+        if stage=='edit' and head=='draft':fragments['copyedit_draft_id']=version_id
         add({'brief':'ЗАВДАННЯ ПИСЬМЕННИКУ','draft':'ЧЕРНЕТКА ДЛЯ РЕДАКТУРИ','prose':'ПОТОЧНА ПРОЗА — ДЖЕРЕЛО НОВОЇ ПАМ’ЯТІ'}[head],version_id)
-    return make_context(repo,story,scene,stage,settings,sections,refs,fragments,accepted_prose_ids=past.source_prose_ids,memory_metrics=projection.metrics,context_warnings=warnings)
+    return make_context(repo,story,scene,stage,settings,sections,refs,fragments,accepted_prose_ids=past.source_prose_ids,memory_metrics=projection.metrics,context_warnings=warnings,memory_provenance=inherited_provenance)

@@ -149,6 +149,7 @@ class EvaluatorConfig(StrictModel):
     max_input_chars: int = Field(gt=0)
     codex_command: str = "codex"
     venice_include_system_prompt: bool = False
+    local_disable_thinking: bool = False
     venice_disable_thinking: bool = False
 
     @model_validator(mode="after")

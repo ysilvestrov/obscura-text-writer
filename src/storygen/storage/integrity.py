@@ -109,8 +109,8 @@ def check_integrity(root: Path) -> IntegrityReport:
             db.execute('PRAGMA query_only=ON')
             db.execute('BEGIN')
             schema=db.execute('PRAGMA user_version').fetchone()[0]
-            if schema not in {2,3}:
-                report.add('unsupported_schema', 'storygen.sqlite3', 'Підтримуються схеми 2 та 3; міграції не виконуються')
+            if schema not in {2,3,4}:
+                report.add('unsupported_schema', 'storygen.sqlite3', 'Підтримуються схеми 2, 3 та 4; міграції не виконуються')
                 return report
             if db.execute('PRAGMA integrity_check').fetchall() != [('ok',)]:
                 report.add('sqlite_integrity', 'storygen.sqlite3', 'SQLite integrity_check виявив помилки')
@@ -146,6 +146,9 @@ def check_integrity(root: Path) -> IntegrityReport:
                 if ref.dependency_snapshot is not None:
                     snapshot=ref.dependency_snapshot
                     invalid=any(id not in versions or versions[id].story_id!=ref.story_id or versions[id].sha256!=sha for id,sha in snapshot.refs.items())
+                    if snapshot.scope=='author_rewrite':
+                        frozen=versions.get(snapshot.frozen_author_source_id)
+                        invalid=invalid or not frozen or frozen.kind!='draft' or not frozen.complete or frozen.scene_id!=ref.scene_id or frozen.id==ref.id
                     invalid=invalid or snapshot.scope!='author_text' and set(snapshot.refs)!=set(ref.input_refs)
                     invalid=invalid or len(snapshot.scene_order)!=len(set(snapshot.scene_order)) or any(id not in scenes or scenes[id].story_id!=ref.story_id for id in snapshot.scene_order)
                     invalid=invalid or not set(snapshot.ref_baselines)<=set(snapshot.refs)
@@ -213,9 +216,16 @@ def check_integrity(root: Path) -> IntegrityReport:
                         report.add('invalid_source', source.get('id', story_id), 'Невірний імпортований матеріал')
                 except (ValueError, KeyError, TypeError):
                     report.add('invalid_payload', story_id, 'Некоректні метадані джерела')
-            if schema==3:
+            if schema>=3:
                 from .publication_checks import check_publications
                 check_publications(db,report,stories,verify_file,root)
+            from .impact_checks import check_impact
+            check_impact(db,report,stories,scenes,versions,root)
+            from .review_checks import check_reviews
+            check_reviews(db,report,stories,scenes,versions,root)
+            if schema>=4:
+                from .comment_checks import check_comments
+                check_comments(db,report,stories,scenes,versions,verify_file,root)
         finally:
             db.close()
     except sqlite3.Error:
@@ -225,7 +235,7 @@ def check_integrity(root: Path) -> IntegrityReport:
         relative = path.relative_to(root)
         if path in tracked or relative.as_posix() in {'storygen.sqlite3', 'storygen.sqlite3-wal', 'storygen.sqlite3-shm', 'storygen.sqlite3-journal', 'worker.lock'}:
             continue
-        if len(relative.parts) >= 4 and relative.parts[0] == 'stories' and (relative.parts[2] in {'versions', 'sources'} or relative.parts[2:4]==('publication','covers')):
+        if len(relative.parts) >= 4 and relative.parts[0] == 'stories' and (relative.parts[2] in {'versions', 'sources','c'} or relative.parts[2:4]==('publication','covers')):
             report.add('orphan_blob', relative, 'Immutable файл не зареєстрований у каталозі')
         else:
             report.auxiliary_files += 1

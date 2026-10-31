@@ -5,7 +5,8 @@ import zipfile
 from datetime import datetime
 from urllib.parse import urlsplit
 from xml.etree import ElementTree as ET
-from .book import INCOMPLETE,chapter_lines,xml_bytes
+from .book import xml_bytes
+from .markup import chapter_paragraphs,append_xml_runs
 
 XHTML='http://www.w3.org/1999/xhtml'
 OPF='http://www.idpf.org/2007/opf'
@@ -51,7 +52,6 @@ def render(book):
         add(metadata,'meta',card.cycle_title,id='series',property='belongs-to-collection')
         add(metadata,'meta','series',refines='#series',property='collection-type')
         if card.cycle_number is not None:add(metadata,'meta',str(card.cycle_number),refines='#series',property='group-position')
-    if book.warnings:add(metadata,'meta',INCOMPLETE,property='obscura:export-status')
     manifest=add(root,'manifest');spine=add(root,'spine')
     resources={}
     def resource(id,name,mime,data,properties=None,reading=False):
@@ -69,15 +69,14 @@ def render(book):
     nav_element=add(nav_body,'nav',**{'epub:type':'toc','id':'toc'});add(nav_element,'h1','Зміст');toc=add(nav_element,'ol')
     chapters=book.chapters
     if not chapters:
-        blank,body=page(book.title,card.language);add(body,'h1',book.title);add(body,'p',INCOMPLETE)
-        resource('incomplete','incomplete.xhtml','application/xhtml+xml',xml_bytes(blank),reading=True)
-        add(add(toc,'li'),'a','Незавершений твір',href='incomplete.xhtml')
+        blank,body=page(book.title,card.language);add(body,'h1',book.title)
+        resource('title-page','title.xhtml','application/xhtml+xml',xml_bytes(blank),reading=True)
+        add(add(toc,'li'),'a',book.title,href='title.xhtml')
     for index,chapter in enumerate(chapters,1):
         name=f'chapter-{index}.xhtml';document,body=page(chapter.title,card.language);add(body,'h1',chapter.title)
-        if book.warnings and index==1:add(body,'aside',INCOMPLETE)
-        for line in chapter_lines(chapter):
-            paragraph=add(body,'p',line or None)
-            if not line:add(paragraph,'br')
+        for runs in chapter_paragraphs(chapter):
+            paragraph=append_xml_runs(add(body,'p'),runs)
+            if not runs:add(paragraph,'br')
         resource(f'chapter-{index}',name,'application/xhtml+xml',xml_bytes(document),reading=True)
         add(add(toc,'li'),'a',chapter.title,href=name)
     resource('nav','nav.xhtml','application/xhtml+xml',xml_bytes(nav),'nav')

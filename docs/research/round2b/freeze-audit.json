@@ -1,0 +1,42 @@
+{
+  "snapshot_sha256": "ce1b4068175e470d3671c93bf1c23c7d568643992638306b0ec6cbe8734f291d",
+  "author_model": "gpt-6.1-sol",
+  "source_commit": "5268a2a0ecc79bd1653d737d130eabf6a49fddae",
+  "unique_native_requests": 240,
+  "slots": 720,
+  "local_slots": 432,
+  "cloud_slots": 288,
+  "all_generations_caps_verified": true,
+  "strict_primary_unchanged": true,
+  "secondary_source_refs_only": true,
+  "question_kind_not_repaired": true,
+  "paid_dispatches_this_stage": 0,
+  "holdout_dispatches": 0,
+  "settled_usd": "0.1711025",
+  "held_usd": "0",
+  "available_usd": "9.8288975",
+  "baselines": {
+    "always-issue": {
+      "fp": 60,
+      "miss": 0,
+      "valid": 144
+    },
+    "always-clean": {
+      "fp": 0,
+      "miss": 84,
+      "valid": 144
+    }
+  },
+  "quality_authorized": false,
+  "execution_harness_complete": false,
+  "tests": {
+    "result": "artifacts/verification-zof9qsgy/result.json",
+    "passed": 243
+  },
+  "code_review": {
+    "scope": "code-only; no holdout or seed access",
+    "important_findings": 2,
+    "all_fixed_red_green": true
+  },
+  "verification": "snapshot/file/model/runtime-binary/package/ledger checks; deterministic schedule; native contracts rebuilt exactly; exact source archive; secrets absent from public manifest"
+}

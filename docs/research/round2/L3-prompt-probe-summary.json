@@ -1,0 +1,736 @@
+{
+  "date": "2026-10-29",
+  "scope": "prompt-only L3 diagnostic; not holdout or official model ranking",
+  "completed_calls": 36,
+  "paid_calls": 0,
+  "arms": {
+    "A": {
+      "calls": 12,
+      "valid": 6,
+      "complete_false": 6,
+      "clean_calls": 6,
+      "issue_calls": 6,
+      "clean_false_findings_calls": 0,
+      "issue_explanations_manually_checked_correct": 6,
+      "finish_reason_stop": 12,
+      "reasoning_all_zero": true,
+      "cases": {
+        "nude-clean": [
+          {
+            "draw": 1,
+            "status": "valid",
+            "complete": true,
+            "concern_count": 0,
+            "concern_kinds": [],
+            "manual_content_assessment": "clean",
+            "seconds": 12.688,
+            "output_tokens": 46,
+            "response_text_sha256": "89acea8dc23b921d5a79dd727d41e4b4054ea72d1b4f5092db87d717c672e4da"
+          },
+          {
+            "draw": 2,
+            "status": "valid",
+            "complete": true,
+            "concern_count": 0,
+            "concern_kinds": [],
+            "manual_content_assessment": "clean",
+            "seconds": 10.438,
+            "output_tokens": 46,
+            "response_text_sha256": "89acea8dc23b921d5a79dd727d41e4b4054ea72d1b4f5092db87d717c672e4da"
+          },
+          {
+            "draw": 3,
+            "status": "valid",
+            "complete": true,
+            "concern_count": 0,
+            "concern_kinds": [],
+            "manual_content_assessment": "clean",
+            "seconds": 10.719,
+            "output_tokens": 46,
+            "response_text_sha256": "89acea8dc23b921d5a79dd727d41e4b4054ea72d1b4f5092db87d717c672e4da"
+          }
+        ],
+        "nude-issue": [
+          {
+            "draw": 1,
+            "status": "invalid",
+            "complete": false,
+            "concern_count": 1,
+            "concern_kinds": [
+              "issue"
+            ],
+            "manual_content_assessment": "correct-contradiction-explanation",
+            "seconds": 24.625,
+            "output_tokens": 148,
+            "response_text_sha256": "d9568e10d4a44c355903db358b944b59be82dfda9f44f6bfba7ff61081d967e0"
+          },
+          {
+            "draw": 2,
+            "status": "invalid",
+            "complete": false,
+            "concern_count": 1,
+            "concern_kinds": [
+              "issue"
+            ],
+            "manual_content_assessment": "correct-contradiction-explanation",
+            "seconds": 24.578,
+            "output_tokens": 148,
+            "response_text_sha256": "d9568e10d4a44c355903db358b944b59be82dfda9f44f6bfba7ff61081d967e0"
+          },
+          {
+            "draw": 3,
+            "status": "invalid",
+            "complete": false,
+            "concern_count": 1,
+            "concern_kinds": [
+              "issue"
+            ],
+            "manual_content_assessment": "correct-contradiction-explanation",
+            "seconds": 24.547,
+            "output_tokens": 148,
+            "response_text_sha256": "d9568e10d4a44c355903db358b944b59be82dfda9f44f6bfba7ff61081d967e0"
+          }
+        ],
+        "intimacy-clean": [
+          {
+            "draw": 1,
+            "status": "valid",
+            "complete": true,
+            "concern_count": 0,
+            "concern_kinds": [],
+            "manual_content_assessment": "clean",
+            "seconds": 10.547,
+            "output_tokens": 46,
+            "response_text_sha256": "89acea8dc23b921d5a79dd727d41e4b4054ea72d1b4f5092db87d717c672e4da"
+          },
+          {
+            "draw": 2,
+            "status": "valid",
+            "complete": true,
+            "concern_count": 0,
+            "concern_kinds": [],
+            "manual_content_assessment": "clean",
+            "seconds": 10.61,
+            "output_tokens": 46,
+            "response_text_sha256": "89acea8dc23b921d5a79dd727d41e4b4054ea72d1b4f5092db87d717c672e4da"
+          },
+          {
+            "draw": 3,
+            "status": "valid",
+            "complete": true,
+            "concern_count": 0,
+            "concern_kinds": [],
+            "manual_content_assessment": "clean",
+            "seconds": 10.375,
+            "output_tokens": 46,
+            "response_text_sha256": "89acea8dc23b921d5a79dd727d41e4b4054ea72d1b4f5092db87d717c672e4da"
+          }
+        ],
+        "intimacy-issue": [
+          {
+            "draw": 1,
+            "status": "invalid",
+            "complete": false,
+            "concern_count": 1,
+            "concern_kinds": [
+              "issue"
+            ],
+            "manual_content_assessment": "correct-contradiction-explanation",
+            "seconds": 24.265,
+            "output_tokens": 153,
+            "response_text_sha256": "d96378fbbb6346a76ee7cff699e3bb60bfab9c87f661e1c8d60ddf63d64bf385"
+          },
+          {
+            "draw": 2,
+            "status": "invalid",
+            "complete": false,
+            "concern_count": 1,
+            "concern_kinds": [
+              "issue"
+            ],
+            "manual_content_assessment": "correct-contradiction-explanation",
+            "seconds": 24.75,
+            "output_tokens": 157,
+            "response_text_sha256": "3411994a4ade9f9d35546c9bb7da138230d8d982999f5d4a00cb760afb38276a"
+          },
+          {
+            "draw": 3,
+            "status": "invalid",
+            "complete": false,
+            "concern_count": 1,
+            "concern_kinds": [
+              "issue"
+            ],
+            "manual_content_assessment": "correct-contradiction-explanation",
+            "seconds": 25.297,
+            "output_tokens": 160,
+            "response_text_sha256": "17563778930ab68f8e1e1e904665df412549c4772683eb6226101173c294f995"
+          }
+        ]
+      },
+      "seconds_p50": 18.477,
+      "seconds_total": 213.439,
+      "schedule": [
+        {
+          "case": "nude-clean",
+          "draw": 1,
+          "arm": "A",
+          "pair": 0
+        },
+        {
+          "case": "intimacy-clean",
+          "draw": 1,
+          "arm": "A",
+          "pair": 1
+        },
+        {
+          "case": "intimacy-issue",
+          "draw": 1,
+          "arm": "A",
+          "pair": 2
+        },
+        {
+          "case": "nude-issue",
+          "draw": 1,
+          "arm": "A",
+          "pair": 3
+        },
+        {
+          "case": "intimacy-issue",
+          "draw": 2,
+          "arm": "A",
+          "pair": 4
+        },
+        {
+          "case": "nude-issue",
+          "draw": 2,
+          "arm": "A",
+          "pair": 5
+        },
+        {
+          "case": "nude-clean",
+          "draw": 2,
+          "arm": "A",
+          "pair": 6
+        },
+        {
+          "case": "intimacy-clean",
+          "draw": 2,
+          "arm": "A",
+          "pair": 7
+        },
+        {
+          "case": "intimacy-issue",
+          "draw": 3,
+          "arm": "A",
+          "pair": 8
+        },
+        {
+          "case": "nude-issue",
+          "draw": 3,
+          "arm": "A",
+          "pair": 9
+        },
+        {
+          "case": "intimacy-clean",
+          "draw": 3,
+          "arm": "A",
+          "pair": 10
+        },
+        {
+          "case": "nude-clean",
+          "draw": 3,
+          "arm": "A",
+          "pair": 11
+        }
+      ],
+      "system_sha256_utf8": "885140b1bee3bcba2ab5916c5f643221805f2715c56a5b3cd73591713b0b8266"
+    },
+    "B": {
+      "calls": 12,
+      "valid": 6,
+      "complete_false": 6,
+      "clean_calls": 6,
+      "issue_calls": 6,
+      "clean_false_findings_calls": 0,
+      "issue_explanations_manually_checked_correct": 6,
+      "finish_reason_stop": 12,
+      "reasoning_all_zero": true,
+      "cases": {
+        "nude-clean": [
+          {
+            "draw": 1,
+            "status": "valid",
+            "complete": true,
+            "concern_count": 0,
+            "concern_kinds": [],
+            "manual_content_assessment": "clean",
+            "seconds": 12.969,
+            "output_tokens": 46,
+            "response_text_sha256": "89acea8dc23b921d5a79dd727d41e4b4054ea72d1b4f5092db87d717c672e4da"
+          },
+          {
+            "draw": 2,
+            "status": "valid",
+            "complete": true,
+            "concern_count": 0,
+            "concern_kinds": [],
+            "manual_content_assessment": "clean",
+            "seconds": 12.203,
+            "output_tokens": 46,
+            "response_text_sha256": "89acea8dc23b921d5a79dd727d41e4b4054ea72d1b4f5092db87d717c672e4da"
+          },
+          {
+            "draw": 3,
+            "status": "valid",
+            "complete": true,
+            "concern_count": 0,
+            "concern_kinds": [],
+            "manual_content_assessment": "clean",
+            "seconds": 12.156,
+            "output_tokens": 46,
+            "response_text_sha256": "89acea8dc23b921d5a79dd727d41e4b4054ea72d1b4f5092db87d717c672e4da"
+          }
+        ],
+        "nude-issue": [
+          {
+            "draw": 1,
+            "status": "invalid",
+            "complete": false,
+            "concern_count": 1,
+            "concern_kinds": [
+              "issue"
+            ],
+            "manual_content_assessment": "correct-contradiction-explanation",
+            "seconds": 29.078,
+            "output_tokens": 166,
+            "response_text_sha256": "003f7fbd95b53713da28f9351a9d858981acc4ab67c281e3d3c6667c1426db40"
+          },
+          {
+            "draw": 2,
+            "status": "invalid",
+            "complete": false,
+            "concern_count": 1,
+            "concern_kinds": [
+              "issue"
+            ],
+            "manual_content_assessment": "correct-contradiction-explanation",
+            "seconds": 29.188,
+            "output_tokens": 166,
+            "response_text_sha256": "003f7fbd95b53713da28f9351a9d858981acc4ab67c281e3d3c6667c1426db40"
+          },
+          {
+            "draw": 3,
+            "status": "invalid",
+            "complete": false,
+            "concern_count": 1,
+            "concern_kinds": [
+              "issue"
+            ],
+            "manual_content_assessment": "correct-contradiction-explanation",
+            "seconds": 29.047,
+            "output_tokens": 166,
+            "response_text_sha256": "d7e9d07cf37fb5a078653e5a1b4e04447cb342ba282680875010176e0ef80113"
+          }
+        ],
+        "intimacy-clean": [
+          {
+            "draw": 1,
+            "status": "valid",
+            "complete": true,
+            "concern_count": 0,
+            "concern_kinds": [],
+            "manual_content_assessment": "clean",
+            "seconds": 11.937,
+            "output_tokens": 46,
+            "response_text_sha256": "89acea8dc23b921d5a79dd727d41e4b4054ea72d1b4f5092db87d717c672e4da"
+          },
+          {
+            "draw": 2,
+            "status": "valid",
+            "complete": true,
+            "concern_count": 0,
+            "concern_kinds": [],
+            "manual_content_assessment": "clean",
+            "seconds": 11.984,
+            "output_tokens": 46,
+            "response_text_sha256": "89acea8dc23b921d5a79dd727d41e4b4054ea72d1b4f5092db87d717c672e4da"
+          },
+          {
+            "draw": 3,
+            "status": "valid",
+            "complete": true,
+            "concern_count": 0,
+            "concern_kinds": [],
+            "manual_content_assessment": "clean",
+            "seconds": 11.985,
+            "output_tokens": 46,
+            "response_text_sha256": "89acea8dc23b921d5a79dd727d41e4b4054ea72d1b4f5092db87d717c672e4da"
+          }
+        ],
+        "intimacy-issue": [
+          {
+            "draw": 1,
+            "status": "invalid",
+            "complete": false,
+            "concern_count": 1,
+            "concern_kinds": [
+              "issue"
+            ],
+            "manual_content_assessment": "correct-contradiction-explanation",
+            "seconds": 32.969,
+            "output_tokens": 195,
+            "response_text_sha256": "a9705526d48770397d2020454cec65826a4dde83c7960092e855e956a6001087"
+          },
+          {
+            "draw": 2,
+            "status": "invalid",
+            "complete": false,
+            "concern_count": 1,
+            "concern_kinds": [
+              "issue"
+            ],
+            "manual_content_assessment": "correct-contradiction-explanation",
+            "seconds": 28.079,
+            "output_tokens": 161,
+            "response_text_sha256": "d3c7dfc62c5ef1aa5b001833aaac89945d90af343c642a93db4353a9d72f05b4"
+          },
+          {
+            "draw": 3,
+            "status": "invalid",
+            "complete": false,
+            "concern_count": 1,
+            "concern_kinds": [
+              "issue"
+            ],
+            "manual_content_assessment": "correct-contradiction-explanation",
+            "seconds": 32.875,
+            "output_tokens": 195,
+            "response_text_sha256": "a9705526d48770397d2020454cec65826a4dde83c7960092e855e956a6001087"
+          }
+        ]
+      },
+      "seconds_p50": 20.524,
+      "seconds_total": 254.47,
+      "schedule": [
+        {
+          "case": "nude-clean",
+          "draw": 1,
+          "arm": "B",
+          "pair": 0
+        },
+        {
+          "case": "intimacy-clean",
+          "draw": 1,
+          "arm": "B",
+          "pair": 1
+        },
+        {
+          "case": "intimacy-issue",
+          "draw": 1,
+          "arm": "B",
+          "pair": 2
+        },
+        {
+          "case": "nude-issue",
+          "draw": 1,
+          "arm": "B",
+          "pair": 3
+        },
+        {
+          "case": "intimacy-issue",
+          "draw": 2,
+          "arm": "B",
+          "pair": 4
+        },
+        {
+          "case": "nude-issue",
+          "draw": 2,
+          "arm": "B",
+          "pair": 5
+        },
+        {
+          "case": "nude-clean",
+          "draw": 2,
+          "arm": "B",
+          "pair": 6
+        },
+        {
+          "case": "intimacy-clean",
+          "draw": 2,
+          "arm": "B",
+          "pair": 7
+        },
+        {
+          "case": "intimacy-issue",
+          "draw": 3,
+          "arm": "B",
+          "pair": 8
+        },
+        {
+          "case": "nude-issue",
+          "draw": 3,
+          "arm": "B",
+          "pair": 9
+        },
+        {
+          "case": "intimacy-clean",
+          "draw": 3,
+          "arm": "B",
+          "pair": 10
+        },
+        {
+          "case": "nude-clean",
+          "draw": 3,
+          "arm": "B",
+          "pair": 11
+        }
+      ],
+      "system_sha256_utf8": "cf1d67b86208485417b32523d180459e67356f81f5fd45a4cd21733654d59e7d"
+    },
+    "C": {
+      "calls": 12,
+      "valid": 12,
+      "complete_false": 0,
+      "clean_calls": 6,
+      "issue_calls": 6,
+      "clean_false_findings_calls": 3,
+      "issue_explanations_manually_checked_correct": 6,
+      "finish_reason_stop": 12,
+      "reasoning_all_zero": true,
+      "cases": {
+        "nude-clean": [
+          {
+            "draw": 1,
+            "status": "valid",
+            "complete": true,
+            "concern_count": 1,
+            "concern_kinds": [
+              "issue"
+            ],
+            "manual_content_assessment": "false-alarm",
+            "seconds": 25.688,
+            "output_tokens": 185,
+            "response_text_sha256": "252b66c8b0e26287373da10ee7a911d615e9469f9d7958bd85abc4c0f85941b7"
+          },
+          {
+            "draw": 2,
+            "status": "valid",
+            "complete": true,
+            "concern_count": 1,
+            "concern_kinds": [
+              "issue"
+            ],
+            "manual_content_assessment": "false-alarm",
+            "seconds": 21.938,
+            "output_tokens": 155,
+            "response_text_sha256": "f3946d00ab5235b35e2a4007b908415eb33236a0bd5b0af999a5e40a4179accc"
+          },
+          {
+            "draw": 3,
+            "status": "valid",
+            "complete": true,
+            "concern_count": 1,
+            "concern_kinds": [
+              "issue"
+            ],
+            "manual_content_assessment": "false-alarm",
+            "seconds": 24.36,
+            "output_tokens": 174,
+            "response_text_sha256": "1e24c301a4bf3400cfa2da373fd1b49d17e3036d817cad55b60bc90e9c4caa2c"
+          }
+        ],
+        "nude-issue": [
+          {
+            "draw": 1,
+            "status": "valid",
+            "complete": true,
+            "concern_count": 1,
+            "concern_kinds": [
+              "issue"
+            ],
+            "manual_content_assessment": "correct-contradiction-explanation",
+            "seconds": 22.344,
+            "output_tokens": 148,
+            "response_text_sha256": "4a1aee72bf317d5d3127555ee4bed25b15316b0b7a0aa6a4e5f15687021ccb2e"
+          },
+          {
+            "draw": 2,
+            "status": "valid",
+            "complete": true,
+            "concern_count": 1,
+            "concern_kinds": [
+              "issue"
+            ],
+            "manual_content_assessment": "correct-contradiction-explanation",
+            "seconds": 20.938,
+            "output_tokens": 145,
+            "response_text_sha256": "e061fe1276f858707524564cd516074f3861a86c9dc28a9d4e99afbc5c506c88"
+          },
+          {
+            "draw": 3,
+            "status": "valid",
+            "complete": true,
+            "concern_count": 1,
+            "concern_kinds": [
+              "issue"
+            ],
+            "manual_content_assessment": "correct-contradiction-explanation",
+            "seconds": 20.672,
+            "output_tokens": 145,
+            "response_text_sha256": "e061fe1276f858707524564cd516074f3861a86c9dc28a9d4e99afbc5c506c88"
+          }
+        ],
+        "intimacy-clean": [
+          {
+            "draw": 1,
+            "status": "valid",
+            "complete": true,
+            "concern_count": 0,
+            "concern_kinds": [],
+            "manual_content_assessment": "clean",
+            "seconds": 7.812,
+            "output_tokens": 38,
+            "response_text_sha256": "68e52586a60d15ab7252b249edec2f4a1f2d4a371bd2a5c84a36f4167ecf50b3"
+          },
+          {
+            "draw": 2,
+            "status": "valid",
+            "complete": true,
+            "concern_count": 0,
+            "concern_kinds": [],
+            "manual_content_assessment": "clean",
+            "seconds": 7.812,
+            "output_tokens": 38,
+            "response_text_sha256": "68e52586a60d15ab7252b249edec2f4a1f2d4a371bd2a5c84a36f4167ecf50b3"
+          },
+          {
+            "draw": 3,
+            "status": "valid",
+            "complete": true,
+            "concern_count": 0,
+            "concern_kinds": [],
+            "manual_content_assessment": "clean",
+            "seconds": 7.844,
+            "output_tokens": 38,
+            "response_text_sha256": "68e52586a60d15ab7252b249edec2f4a1f2d4a371bd2a5c84a36f4167ecf50b3"
+          }
+        ],
+        "intimacy-issue": [
+          {
+            "draw": 1,
+            "status": "valid",
+            "complete": true,
+            "concern_count": 1,
+            "concern_kinds": [
+              "issue"
+            ],
+            "manual_content_assessment": "correct-contradiction-explanation",
+            "seconds": 20.75,
+            "output_tokens": 148,
+            "response_text_sha256": "fb623efb6b33a2384776a66ef9d9843e81cdd8a2e1550f8ba838f679c9dbb399"
+          },
+          {
+            "draw": 2,
+            "status": "valid",
+            "complete": true,
+            "concern_count": 1,
+            "concern_kinds": [
+              "issue"
+            ],
+            "manual_content_assessment": "correct-contradiction-explanation",
+            "seconds": 20.734,
+            "output_tokens": 148,
+            "response_text_sha256": "fb623efb6b33a2384776a66ef9d9843e81cdd8a2e1550f8ba838f679c9dbb399"
+          },
+          {
+            "draw": 3,
+            "status": "valid",
+            "complete": true,
+            "concern_count": 1,
+            "concern_kinds": [
+              "issue"
+            ],
+            "manual_content_assessment": "correct-contradiction-explanation",
+            "seconds": 20.86,
+            "output_tokens": 148,
+            "response_text_sha256": "fb623efb6b33a2384776a66ef9d9843e81cdd8a2e1550f8ba838f679c9dbb399"
+          }
+        ]
+      },
+      "seconds_p50": 20.805,
+      "seconds_total": 221.752,
+      "schedule": [
+        {
+          "case": "nude-issue",
+          "draw": 1,
+          "arm": "C"
+        },
+        {
+          "case": "intimacy-clean",
+          "draw": 1,
+          "arm": "C"
+        },
+        {
+          "case": "intimacy-issue",
+          "draw": 1,
+          "arm": "C"
+        },
+        {
+          "case": "nude-clean",
+          "draw": 1,
+          "arm": "C"
+        },
+        {
+          "case": "nude-issue",
+          "draw": 2,
+          "arm": "C"
+        },
+        {
+          "case": "intimacy-clean",
+          "draw": 2,
+          "arm": "C"
+        },
+        {
+          "case": "intimacy-issue",
+          "draw": 2,
+          "arm": "C"
+        },
+        {
+          "case": "nude-clean",
+          "draw": 2,
+          "arm": "C"
+        },
+        {
+          "case": "intimacy-issue",
+          "draw": 3,
+          "arm": "C"
+        },
+        {
+          "case": "nude-clean",
+          "draw": 3,
+          "arm": "C"
+        },
+        {
+          "case": "nude-issue",
+          "draw": 3,
+          "arm": "C"
+        },
+        {
+          "case": "intimacy-clean",
+          "draw": 3,
+          "arm": "C"
+        }
+      ],
+      "system_sha256_utf8": "db63f19b7c9e341b6769a88ee995758363b37cfc269e269bc84be40b25a4cfe7"
+    }
+  },
+  "A_B_design": "12 matched pairs with balanced AB/BA order",
+  "C_design": "12 exploratory calls after A/B; not randomized third arm",
+  "schema_data_settings_unchanged": true,
+  "no_repairs_or_retries": true,
+  "production_prompt_modified": false,
+  "semantic_annotation_note": "Developer inspection against four known dev texts; not blinded owner adjudication. Content-correct explanations do not turn invalid replies into TP.",
+  "unique_provider_completion_ids": 36,
+  "gpu_restored_empty": true
+}

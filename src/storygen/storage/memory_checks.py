@@ -22,7 +22,11 @@ def check_memory_versions(report,root,versions):
             snapshot=ref.dependency_snapshot
             if snapshot and snapshot.scope=='memory':
                 heads={s.owner_id:s.expected for s in snapshot.selectors if s.kind=='head' and s.field=='prose'}
-                if owners!=snapshot.scene_order or journal.source_prose_ids!=[heads.get(id) for id in snapshot.scene_order]:
+                from ..memory.reuse import approved_source_pairs
+                pairs=approved_source_pairs(snapshot.memory_provenance)
+                if owners!=snapshot.scene_order or any(
+                        old!=heads.get(owner) and (old,heads.get(owner)) not in pairs
+                        for owner,old in zip(owners,journal.source_prose_ids)):
                     raise ValueError('Пам’ять порушує зафіксований префікс сцен')
             else:
                 report.limitations.append(ref.id+': історичний порядок legacy-пам’яті без snapshot не доведений; джерела й цитати перевірені.')

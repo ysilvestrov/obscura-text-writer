@@ -1,3 +1,4 @@
+import {t,msg,labelEntries,getLocale,uiText,uiAttr,uiHTML} from './i18n.js';
 import {api,json,notice} from './api.js';
 import {state,refresh,loadBuffer} from './editor.js';
 import {mountCopyeditReview} from './copyedits.js';
@@ -8,8 +9,8 @@ if(host){
   const component=mountCopyeditReview({host,state,api,json,notice,onAvailability:value=>{state.reviewAvailability=value;document.dispatchEvent(new CustomEvent('workspace-review-state'))},onQueued:run=>document.dispatchEvent(new CustomEvent('run-enqueued',{detail:run})),onApplied:async(result,captured)=>{
     const version=await api('/api/versions/'+result.version.id);
     if(state.scene?.id===captured.sceneId&&!state.dirty&&!state.saving&&state.bufferEpoch===captured.epoch){
-      loadBuffer(result.scene,'prose',version.text);
-      document.querySelector('#current-kind').textContent='ПРОЗА';
+      loadBuffer(result.scene,'prose',version.text,'current',version.version);
+      uiText(document.querySelector('#current-kind'),"textContent",()=>(t("m_4d4d7bad7b2a")));
     }
     await refresh();
   }});

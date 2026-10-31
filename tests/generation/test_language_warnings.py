@@ -2,7 +2,7 @@ import pytest
 
 
 @pytest.mark.parametrize('text,code,quote', [
-    ('Олена сказала: это дивно.', 'non_ukrainian_letters', 'э'),
+    ('Лєра сказала: это дивно.', 'non_ukrainian_letters', 'э'),
     ('Cлужанки зайшли.', 'mixed_alphabet', 'Cлужанки'),
     ('Вона вона чекала.', 'repeated_word', 'Вона вона'),
     ('- Я прийшла.', 'dialogue_dash', '-'),
@@ -21,7 +21,7 @@ def test_local_warnings_have_exact_evidence(text, code, quote):
 @pytest.mark.parametrize('text', [
     'Вона йшла, відбиваючи ритм кроками.',
     '— Це не ваша провина.',
-    'Олена знімає дорослу клієнтку оголеною. Вони погодили деталі фотосесії.',
+    'Лєра знімає дорослу клієнтку оголеною. Вони погодили деталі фотосесії.',
     'Він ударив нападника. На підлогу впала крапля крові.',
     '',
 ])

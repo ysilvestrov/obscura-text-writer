@@ -32,14 +32,48 @@ class DependencySelector(DependencyModel):
         return self
 
 
+class MemoryReuseApproval(DependencyModel):
+    fingerprint: str = Field(pattern=r'^[a-f0-9]{64}$')
+    scene_id: str
+    memory_id: str
+    memory_scene_number: int = Field(ge=1)
+    source_prose_ids: list[str]
+    current_source_prose_ids: list[str]
+    changed_version_count: int = Field(ge=0)
+    changed_text_count: int = Field(ge=0)
+    risk: bool
+
+    @model_validator(mode='after')
+    def exact_prefix(self):
+        count=len(self.source_prose_ids)
+        if (count!=len(self.current_source_prose_ids) or len(set(self.source_prose_ids))!=count
+                or len(set(self.current_source_prose_ids))!=count
+                or not 0<=self.changed_text_count<=self.changed_version_count<=count
+                or self.risk!=bool(self.changed_text_count)):
+            raise ValueError('Некоректна база авторського підтвердження пам’яті')
+        return self
+
+
 class DependencySnapshot(DependencyModel):
     schema_version: Literal[1] = 1
-    scope: Literal['prepare', 'brief', 'draft', 'prose_edit', 'patches', 'memory', 'evaluation', 'author_text']
+    scope: Literal['prepare', 'brief', 'draft', 'prose_edit', 'patches', 'memory', 'evaluation', 'author_text', 'author_rewrite']
+    frozen_author_source_id: str | None = None
     selectors: list[DependencySelector]
     refs: dict[str, str]
     ref_baselines: dict[str, str | None] = Field(default_factory=dict)
     scene_order: list[str]
     accepted_stale_prose_ids: list[str] = Field(default_factory=list)
+    accepted_stale_memory_ids: list[str] = Field(default_factory=list)
+    memory_provenance: list[MemoryReuseApproval] = Field(default_factory=list)
+
+
+    @model_validator(mode='after')
+    def frozen_source_scope(self):
+        if (self.scope=='author_rewrite') != bool(self.frozen_author_source_id):
+            raise ValueError('Історичне джерело дозволене лише для author_rewrite')
+        if self.frozen_author_source_id and self.frozen_author_source_id not in self.refs:
+            raise ValueError('Історичне джерело відсутнє у refs')
+        return self
 
 
 class TargetCAS(DependencyModel):

@@ -15,6 +15,7 @@ class ProviderSettings(DomainModel):
     include_usage: bool = False
     response_mode: Literal['prompt_json','json_schema'] = 'prompt_json'
     venice_include_system_prompt: bool = False
+    local_disable_thinking: bool = False
     venice_disable_thinking: bool = False
     venice_reasoning_effort: Literal['none','low','medium','high','xhigh','max'] | None = None
 

@@ -7,6 +7,12 @@ from .prompts import validate_role_prompt
 
 
 def preview(repo, request):
+    if request.mode=='impact':
+        from .impact_context import readiness
+        return readiness(repo,request)
+    if request.mode=='rewrite':
+        from .assisted_writing import readiness
+        return readiness(repo,request)
     if request.mode=='publication_suggest':
         from .publication_metadata import readiness
         return readiness(repo,request)
@@ -80,7 +86,14 @@ def preview(repo, request):
                     if not prose or not prose.complete or prose.kind not in {'edited','manual'}:
                         raise ValueError(f'Спершу виберіть завершену прозу сцени {target.position+1}')
             # Later tasks may consume outputs that this run has not generated yet.
-            context=build_context(repo,scene.id,stages[0],settings[STAGE_ROLES[stages[0]]])
+            from ..memory.reuse import MemoryApprovalRequired
+            try:
+                context=build_context(repo,scene.id,stages[0],settings[STAGE_ROLES[stages[0]]],memory_approval=request.memory_approval)
+            except MemoryApprovalRequired as approval:
+                if request.mode!='stage' or request.stage!='memory':raise
+                # Probe all remaining limits before offering consent; never enqueue this probe.
+                context=build_context(repo,scene.id,'memory',settings['memory'],memory_approval=approval.review['fingerprint'])
+                result['memory_review']=approval.review
             result['warnings']=context.context_warnings.copy()
             literary=any(stage in {'brief','draft'} or stage=='edit' and settings['editor'].edit_mode=='prose' for stage in stages)
             if literary:
@@ -96,12 +109,22 @@ def preview(repo, request):
             if repo.billing('summary',scope='story:'+story.id)['limit_nanos'] is None:
                 raise ValueError('Спершу задайте явний ліміт бюджету в налаштуваннях')
         result['ready']=True
+        if result.get('memory_review'):
+            result.update(ready=False,can_confirm=True,reason='Попередня пам’ять потребує авторського підтвердження')
     except (ValueError,KeyError) as exc:
         result['reason']=str(exc) if isinstance(exc,ValueError) else 'Матеріал не знайдено; оновіть сторінку'
     return result
 
 
 def pending_preview(repo,run):
+    if run.request.mode=='impact':
+        from .impact_context import readiness
+        return readiness(repo,run.request,run)
+    if run.request.mode=='rewrite':
+        if any(a.stage=='rewrite' and a.context.get('rewrite_proposal') for a in repo.list_attempts(run.story_id,run.id)):
+            return dict(ready=False,reason='Спершу перегляньте пропозицію письменника; новий виклик запускається окремо',roles={},calls=0,evaluator=None)
+        from .assisted_writing import readiness
+        return readiness(repo,run.request)
     if run.request.mode=='publication_suggest':
         from .publication_metadata import readiness
         return readiness(repo,run.request)
