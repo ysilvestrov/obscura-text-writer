@@ -7,6 +7,29 @@ from storygen.storage.backup import create_backup,restore_backup
 from storygen.characters.models import load_characters
 
 
+@pytest.mark.req('MAINT-001')
+@pytest.mark.parametrize('source_break,quote_break,valid', [
+    ('\n', '\n', True), ('\r\n', '\r\n', True), ('\r', '\r', True),
+    ('\r\n', '\n', False), ('\n', '\r\n', False),
+])
+@pytest.mark.parametrize('legacy', [False, True])
+def test_character_citations_use_exact_source_newlines(tmp_path,source_break,quote_break,valid,legacy):
+    repo=Repository(tmp_path)
+    story=repo.create_story(StoryCreate(title='Переноси рядків'))
+    source=repo.save_version(story.id,None,'source_characters','Анна.'+source_break+'Має ключ.',[])
+    citation={'version_id':source.id,'quote':'Анна.'+quote_break+'Має ключ.'}
+    if legacy:
+        card={'id':'A','name':'Анна','description':'Має ключ.','sources':[citation]}
+    else:
+        card={'schema_version':2,'id':'A','name':'Анна','entries':[
+            {'id':'e','text':'Має ключ.','origin':'imported','sources':[citation]}]}
+    repo.save_version(story.id,None,'character_cards',json.dumps([card]),[source.id])
+    before={p.relative_to(tmp_path):p.read_bytes() for p in tmp_path.rglob('*') if p.is_file()}
+    report=check_integrity(tmp_path)
+    assert report.ok is valid, report.issues
+    assert before=={p.relative_to(tmp_path):p.read_bytes() for p in tmp_path.rglob('*') if p.is_file()}
+
+
 @pytest.mark.parametrize('damage',['foreign_anchor','bad_quote','duplicate_id'])
 def test_fsck_checks_character_semantics(tmp_path,damage):
     repo=Repository(tmp_path);story=repo.create_story(StoryCreate(title='Картки'))

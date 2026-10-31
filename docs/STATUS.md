@@ -2,20 +2,20 @@
 
 **ПЕРЕВІРКА ПРОЙШЛА** — свідчення конкретного запуску, не поточного довільного стану.
 
-- Початок (UTC): 2026-10-30T20:43:48.703259+00:00
-- Завершення (UTC): 2026-10-30T20:44:00.335659+00:00
-- Базовий commit: `c2fe67307d71e129005391df09edd6d96aebd7d0`
+- Початок (UTC): 2026-10-31T13:52:54.380917+00:00
+- Завершення (UTC): 2026-10-31T14:00:41.455707+00:00
+- Базовий commit: `4d1736fe81404e7c018f364cef736e3e879ecdde`
 - Незакомічені зміни під час перевірки: `true`
-- SHA-256 вихідного знімка: `f4075845d35f4b15e0ab29952078a953319e4546be3e8bafddcfcb02d1149df8`
+- SHA-256 вихідного знімка: `601e42d268e2d04a26547aab4c72902e616637c0094b57672a98d8d155599c0e`
 - Зміна знімка під час прогону: `false`
 - Exit code: `0`
-- Фактичні testcase результати JUnit: passed: 264 · failed: 0 · errors: 0 · skipped: 0
-- Тривалість: 11.62 с
+- Фактичні testcase результати JUnit: passed: 1567 · failed: 0 · errors: 0 · skipped: 1
+- Тривалість: 467.08 с
 
 Точний argv (JSON, не shell-команда):
 
 ```json
-["C:\\Projects\\text-generator\\.venv\\Scripts\\python.exe", "-m", "pytest", "docs/research/round2", "docs/research/round2b", "-q", "--junitxml=C:\\Projects\\text-generator\\artifacts\\verification-opzcomfd\\junit.xml", "--basetemp=C:\\Projects\\text-generator\\artifacts\\verification-opzcomfd\\test-tmp"]
+["C:\\Projects\\text-generator\\.venv\\Scripts\\python.exe", "-m", "pytest", "tests", "docs/research", "-q", "--junitxml=C:\\Projects\\text-generator\\artifacts\\verification-_na3zpm3\\junit.xml", "--basetemp=C:\\Projects\\text-generator\\artifacts\\verification-_na3zpm3\\test-tmp"]
 ```
 
 Результат стосується лише наведеної команди й вихідного знімка. Якщо в argv зазначено окремі файли або фільтри, це часткова перевірка. Збір (collection) не є виконанням; skipped не зараховано до passed. Відсутній або непридатний XML позначається непідтвердженим. Після зміни вихідних файлів звіт історичний. Власний STATUS і artifacts виключено зі знімка; початкова ревізія може мати dirty=true, оскільки звіт створюється до коміту.

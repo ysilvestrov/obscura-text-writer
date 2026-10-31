@@ -763,6 +763,14 @@
       ]
     },
     {
+      "id": "MAINT-001-S02",
+      "requirement": "MAINT-001",
+      "scope": "Точні LF/CRLF/CR цитати legacy/schema2 карток, відхилення неточних переносів та незмінність файлів під час fsck.",
+      "tests": [
+        "tests/storage/test_character_integrity.py::test_character_citations_use_exact_source_newlines"
+      ]
+    },
+    {
       "id": "MAINT-002-S01",
       "requirement": "MAINT-002",
       "scope": "Зайнятий каталог. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
