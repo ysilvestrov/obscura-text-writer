@@ -1,0 +1,19 @@
+# R-18 — Статистика сцени, пам’яті та запиту
+
+23.10.2026. Рішення власника: компактний рядок під редактором + розгортана панель; символи з пробілами, слова з внутрішніми апострофами/дефісами; незбережений буфер окремо.
+
+## Контракт
+
+Read-only GET /api/scenes/{scene_id}/statistics?stage=brief|draft|edit|memory. Збережені plan/brief/draft/prose рахуються тільки за selected heads (plan без head — поточні beats), із version_id/stale/complete; відсутній матеріал не маскується нулем. Проза: words/target_words. Історія/альтернативи не подвоюють обсяг. Символ — Unicode code point, включно з пробілами/переносами; слова — літери/цифри з внутрішніми ' ’ ʼ - ‐ ‑ після NFC; тире розділяє слова.
+
+Пам’ять: попередній префікс і журнал після поточної сцени, чинні claims за чотирма категоріями, історичні events/add/update/retire, внесок поточної сцени. Джерела з майбутніх/невідомих сцен роблять відповідну статистику недоступною, а не додаються до префікса. Stale журнал можна порахувати лише з явною позначкою; непридатні дані дають причину, не нулі.
+
+Контекст: використовувати справжній build_context; standalone edit — чинний editor_loop.context з selected prose або draft. Без мережі/черги/резерву. make_context формує metadata-only breakdown із тих самих system/sections/API body, не змінюючи повідомлення чи бюджети. Групи: system, plans, characters, memory, previous prose tail, brief, draft/prose, other, response schema, protocol. JSON-escaped UTF-8 bytes груп + protocol дорівнюють canonical request bytes. Оцінка токенів розподілена пропорційно цим bytes; фіксований резерв256 і rounding — protocol, сума дорівнює чинній token_estimate. Це розподіл оцінки, не фактична токенізація. ContextOverflow не приховує вже обчислену розбивку й ліміти; відсутні prerequisites дають unavailable reason. Фактичний usage останньої модельної спроби — окремо з датою/моделлю; не приписувати поточній оцінці. Немає text/prompts/секретів у відповіді statistics.
+
+UI: details із таблицями й select етапу, лінива загрузка при відкритті/оновленні/зміні сцени; async scene/token guard. Компактний рядок рахує видимий буфер локально на input без API; dirty/saving/history/JSON/table memory мають явні підписи, пам’ять не видається за прозу. Незбережені зміни не впливають на серверну статистику/контекст. Без polling і модельних викликів. Чинні кольори/компонування збережено. Додатковий nullable context_breakdown у ContextBundle, старі attempts читаються без міграції. Специфікація не є літературною оцінкою.
+
+## Приймання
+
+Pure Unicode counts; selected-only stats; prefix excludes future; context partition sums and identical request; overflow readable; API no writes/dispatch; frontend typing/history/race/no raw HTML. SPEC/traceability/check_docs/verify; browser desktop/mobile на синтетичних даних, independent review. Робочі матеріали не редагувати.
+
+R-18 приймання: scripts/verify.py -q **973 passed,1 skipped**,0failed/errors; artifacts/verification-i6za6pm6/result.json, source_changed_during_run=false. Independent review saving caption виправлено й покрито; browser final desktop1280×720/mobile390×844 без overflow/JSerrors — artifacts/r18-ui/result.json і screenshots. Синтетичний server8879 зупинено, viewport повернено; робочих даних у UI-тесті немає. Після перевірки відсутності active runs точний server8765 перезапущено; publication cards/revisions/heads обох творів незмінні — artifacts/r18-statistics-restart-result.json; новий read-only GET перевірено HTTP200 — artifacts/r18-working-api.json. Модельних викликів/нових витрат немає. Runtime/tests після full verify не змінювалися, лише docs завершення/плану. R-18 завершена; R-14 потребує конкретного SQL profiling baseline, R-15 — виміряних чергових затримок і підтвердження owner щодо паралельності. Умовні міграції/паралельність наперед не виконуються. Локальний коміт без push.

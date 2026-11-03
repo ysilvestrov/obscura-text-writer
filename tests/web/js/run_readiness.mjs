@@ -1,12 +1,17 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 // The application serves ES modules directly, without a Node package manifest.
-const source=readFileSync(new URL('../../../src/storygen/web/static/run-readiness.js',import.meta.url),'utf8');
+const source=readFileSync(new URL('../../../src/storygen/web/static/run-readiness.js',import.meta.url),'utf8').replace("'./i18n.js'",JSON.stringify(new URL('../../../src/storygen/web/static/i18n.js',import.meta.url).href));
 const {operationReason,confirmationText,runKind,controlReason,materialReason,editorLoopOperation}=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
 assert.match(operationReason({dirty:true},{ready:true}),/збережіть/);
 assert.match(operationReason({saving:true},{ready:true}),/збереження/);
 assert.equal(operationReason({},{ready:false,reason:'Немає чернетки'}),'Немає чернетки');
 assert.equal(operationReason({},{ready:true}),'');
+assert.equal(operationReason({},{ready:false,can_confirm:true,memory_review:{fingerprint:'approved'}}),'');
+const reuse=confirmationText({calls:1,roles:{memory:{provider:'local',model:'memory-model'}},memory_review:{memory_scene_number:8,changed_version_count:6,changed_text_count:0,risk:false}});
+assert.match(reuse,/Тексти справді змінено: 0/);assert.match(reuse,/дослівно збігаються/);
+const risky=confirmationText({calls:1,roles:{},memory_review:{memory_scene_number:8,changed_version_count:1,changed_text_count:1,risk:true}});
+assert.match(risky,/Факти можуть не відповідати/);
 const confirmation=confirmationText({calls:1,roles:{memory:{provider:'local',model:'memory-model'}},evaluator:null});
 assert.match(confirmation,/memory-model/);assert.doesNotMatch(confirmation,/writer|editor|Оцінювач/);
 assert.equal(runKind('failed'),'error');assert.equal(runKind('completed'),'success');assert.equal(runKind('interrupted'),'warning');

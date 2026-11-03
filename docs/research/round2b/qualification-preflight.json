@@ -1,0 +1,18 @@
+{
+  "stage": "round2b-qualification-v1",
+  "sha256": "391085810b5598bdedac680245f674274c5f0f6f3cdbb4c272e3c747143157d3",
+  "calls": 40,
+  "cloud_calls": 16,
+  "reserves": {
+    "C1": "0.1147424",
+    "C2": "0.0278072"
+  },
+  "total_reserve": "0.1425496",
+  "available_before": "9.8347373",
+  "prompt_sha256": "55fe4d840642b93c69d01d1b2a4d5d421282b99e51bf6ac054d27028593a9088",
+  "systematic_invalid_threshold": 2,
+  "gates_policy": "Complete old dev without repairs; >=2/8 invalid or >=3/4 clean concerns gates holdout. Resource/reasoning/refusal stops immediately.",
+  "offline_verification": "artifacts/verification-jglvs3u1/result.json",
+  "calls_before_commit": 0,
+  "quality_authorized": false
+}

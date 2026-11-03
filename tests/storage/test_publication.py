@@ -33,7 +33,7 @@ def test_schema2_migration_defaults_and_old_export(tmp_path,story_id):
     assert view.card.revision==0 and view.effective_title=='Стара книга'
     assert view.card.language=='uk' and not view.authors
     with repo.db.connection() as db:
-        assert db.execute('PRAGMA user_version').fetchone()[0]==3
+        assert db.execute('PRAGMA user_version').fetchone()[0]==4
         assert db.execute('SELECT COUNT(*) FROM story_publications').fetchone()[0]==0
         assert db.execute('SELECT payload FROM stories').fetchone()[0]==story.model_dump_json()
 

@@ -1,0 +1,18 @@
+{
+  "name": "obscura-authoring",
+  "private": true,
+  "type": "module",
+  "scripts": {"build": "node build.mjs", "test:bridge": "node ../tests/web/js/markdown-bridge.mjs"},
+  "dependencies": {
+    "mdast-util-from-markdown": "2.1.0",
+    "mdast-util-to-markdown": "2.2.0",
+    "prosemirror-commands": "1.7.2",
+    "prosemirror-history": "1.5.1",
+    "prosemirror-keymap": "1.2.3",
+    "prosemirror-model": "1.25.12",
+    "prosemirror-state": "1.4.4",
+    "prosemirror-transform": "1.12.4",
+    "prosemirror-view": "1.42.8"
+  },
+  "devDependencies": {"esbuild": "0.28.2", "@playwright/test": "1.64.1"}
+}

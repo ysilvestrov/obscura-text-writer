@@ -5,7 +5,8 @@ import json
 import threading
 from importlib.resources import files
 from xml.sax.saxutils import escape
-from .book import INCOMPLETE,chapter_lines
+from .markup import chapter_paragraphs,reportlab_runs
+from ..markdown_document import to_plain_text
 
 _FONT_LOCK=threading.Lock()
 PROFILE={'name':'A5','width_mm':148,'height_mm':210,'margin_mm':17,'bottom_mm':18,'font_size':11,'leading':15}
@@ -37,9 +38,9 @@ def render(book):
         pdfmetrics.registerFontFamily('ObscuraNotoSerif-Regular',normal='ObscuraNotoSerif-Regular',bold='ObscuraNotoSerif-Bold',italic='ObscuraNotoSerif-Italic',boldItalic='ObscuraNotoSerif-BoldItalic')
     regular='ObscuraNotoSerif-Regular';bold='ObscuraNotoSerif-Bold'
     publication=book.snapshot.publication;card=publication.card
-    visible=[book.title,card.cycle_title,card.publisher,card.publication_date,INCOMPLETE,'Зміст',
-        *[p.display_name for p in publication.authors],*[c.title+'\n'+c.text for c in book.chapters]]
-    for font in [regular,bold]:
+    visible=[book.title,card.cycle_title,card.publisher,card.publication_date,'Зміст',
+        *[p.display_name for p in publication.authors],*[c.title+'\n'+to_plain_text(c.text,c.content_format) for c in book.chapters]]
+    for font in [regular,bold,'ObscuraNotoSerif-Italic','ObscuraNotoSerif-BoldItalic']:
         glyphs=pdfmetrics.getFont(font).face.charToGlyph
         missing=next((c for text in visible for c in text if c not in '\n\r\t' and not glyphs.get(ord(c))),None)
         if missing is not None:raise ValueError(f'PDF: Noto Serif не підтримує символ U+{ord(missing):04X}; текст не замінено')
@@ -75,17 +76,15 @@ def render(book):
         flow.append(Paragraph(escape(cycle),front))
     for text in [card.publisher,card.publication_date]:
         if text:flow.append(Paragraph(escape(text),front))
-    if book.warnings:flow.append(Paragraph(escape(INCOMPLETE),front))
     flow.extend([NextPageTemplate('Body'),PageBreak(),Paragraph('Зміст',heading)])
     if book.chapters:
         toc=TableOfContents();toc.levelStyles=[toc_style];flow.append(toc)
     else:flow.append(Paragraph('Немає сцен',front))
     for index,chapter in enumerate(book.chapters,1):
         flow.append(PageBreak());h=Paragraph(escape(chapter.title),heading);h.chapter_key=f'chapter-{index}';flow.append(h)
-        paragraph_lines=list(chapter_lines(chapter))
-        while paragraph_lines and not paragraph_lines[-1]:paragraph_lines.pop()
-        for line in paragraph_lines:flow.append(Paragraph(escape(line),body) if line else Spacer(1,7.5))
-    if not book.chapters:flow.extend([PageBreak(),Paragraph(escape(INCOMPLETE),front)])
+        paragraphs=list(chapter_paragraphs(chapter))
+        while paragraphs and not paragraphs[-1]:paragraphs.pop()
+        for runs in paragraphs:flow.append(Paragraph(reportlab_runs(runs),body) if runs else Spacer(1,7.5))
     try:doc.multiBuild(flow,maxPasses=10)
     except Exception as exc:
         from reportlab.platypus.doctemplate import LayoutError

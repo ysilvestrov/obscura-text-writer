@@ -44,6 +44,7 @@ if(mode.startsWith('auto-')){
   server={...server,revision:1,heads:{[kind]:'m-new'}};
   await refresh();
   if(condition==='typing'){
+    for(let tick=0;tick<10&&!releaseRead;tick++)await new Promise(setImmediate);
     assert.ok(releaseRead,'current material must be fetched');
     editor.value='Правка під час завантаження';editor.trigger('input');releaseRead();
   }

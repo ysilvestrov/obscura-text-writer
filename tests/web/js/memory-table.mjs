@@ -6,6 +6,7 @@ class Element{
   append(...items){this.children.push(...items);}
   replaceChildren(...items){this.children=items;}
   setAttribute(k,v){this[k]=v;}
+  addEventListener(){}
   set innerHTML(_){throw Error('Untrusted text may not become HTML');}
 }
 const nodes=Object.fromEntries(['memory-view','editor','save-text','save-state'].map(id=>['#'+id,new Element()]));

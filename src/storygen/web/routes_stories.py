@@ -42,7 +42,8 @@ def story_view(id: str,request: Request):
     story=view.get_story(id)
     from ..characters.models import load_characters
     names={card.id:card.name for card in load_characters(view.read_text(story.characters_version_id))} if story.characters_version_id else {}
-    return {"story":story,"scenes":[view.effective_scene(scene.id) for scene in view.list_scenes(id)],"sources":[view.get_version(v.id) for v in view.versions.values() if v.kind in {"source_plan","source_characters"}],"character_names":names}
+    from ..impact.presentation import scene_status
+    return {"impact_status":scene_status(view),"story":story,"scenes":[view.effective_scene(scene.id) for scene in view.list_scenes(id)],"sources":[view.get_version(v.id) for v in view.versions.values() if v.kind in {"source_plan","source_characters"}],"character_names":names}
 
 
 @router.patch('/api/stories/{id}')

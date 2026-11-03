@@ -1,0 +1,570 @@
+{
+  "scope": "Original64 dev replies revalidated offline; no new inference",
+  "original_files_unchanged": true,
+  "calls": 64,
+  "primary_status_unchanged": 64,
+  "rejection_counts": {
+    "duplicate_source_reference": 1,
+    "incomplete_processing": 2,
+    "missing_evidence": 1
+  },
+  "records": [
+    {
+      "config": "L1",
+      "case": "letter-clean",
+      "primary_status": "valid",
+      "rejection_codes": [],
+      "secondary_eligible": false,
+      "contract_defects": []
+    },
+    {
+      "config": "L1",
+      "case": "letter-issue",
+      "primary_status": "valid",
+      "rejection_codes": [],
+      "secondary_eligible": false,
+      "contract_defects": []
+    },
+    {
+      "config": "L1",
+      "case": "nude-clean",
+      "primary_status": "valid",
+      "rejection_codes": [],
+      "secondary_eligible": false,
+      "contract_defects": []
+    },
+    {
+      "config": "L1",
+      "case": "nude-issue",
+      "primary_status": "valid",
+      "rejection_codes": [],
+      "secondary_eligible": false,
+      "contract_defects": []
+    },
+    {
+      "config": "L1",
+      "case": "intimacy-clean",
+      "primary_status": "valid",
+      "rejection_codes": [],
+      "secondary_eligible": false,
+      "contract_defects": []
+    },
+    {
+      "config": "L1",
+      "case": "intimacy-issue",
+      "primary_status": "invalid",
+      "rejection_codes": [
+        "duplicate_source_reference"
+      ],
+      "secondary_eligible": true,
+      "contract_defects": [
+        "duplicate_source_reference"
+      ],
+      "executor_secondary_outcome": "TP",
+      "owner_review": "pending"
+    },
+    {
+      "config": "L1",
+      "case": "violence-clean",
+      "primary_status": "valid",
+      "rejection_codes": [],
+      "secondary_eligible": false,
+      "contract_defects": []
+    },
+    {
+      "config": "L1",
+      "case": "violence-issue",
+      "primary_status": "valid",
+      "rejection_codes": [],
+      "secondary_eligible": false,
+      "contract_defects": []
+    },
+    {
+      "config": "L2",
+      "case": "letter-clean",
+      "primary_status": "valid",
+      "rejection_codes": [],
+      "secondary_eligible": false,
+      "contract_defects": []
+    },
+    {
+      "config": "L2",
+      "case": "letter-issue",
+      "primary_status": "valid",
+      "rejection_codes": [],
+      "secondary_eligible": false,
+      "contract_defects": []
+    },
+    {
+      "config": "L2",
+      "case": "nude-clean",
+      "primary_status": "valid",
+      "rejection_codes": [],
+      "secondary_eligible": false,
+      "contract_defects": []
+    },
+    {
+      "config": "L2",
+      "case": "nude-issue",
+      "primary_status": "valid",
+      "rejection_codes": [],
+      "secondary_eligible": false,
+      "contract_defects": []
+    },
+    {
+      "config": "L2",
+      "case": "intimacy-clean",
+      "primary_status": "valid",
+      "rejection_codes": [],
+      "secondary_eligible": false,
+      "contract_defects": []
+    },
+    {
+      "config": "L2",
+      "case": "intimacy-issue",
+      "primary_status": "valid",
+      "rejection_codes": [],
+      "secondary_eligible": false,
+      "contract_defects": []
+    },
+    {
+      "config": "L2",
+      "case": "violence-clean",
+      "primary_status": "valid",
+      "rejection_codes": [],
+      "secondary_eligible": false,
+      "contract_defects": []
+    },
+    {
+      "config": "L2",
+      "case": "violence-issue",
+      "primary_status": "valid",
+      "rejection_codes": [],
+      "secondary_eligible": false,
+      "contract_defects": []
+    },
+    {
+      "config": "L3",
+      "case": "letter-clean",
+      "primary_status": "valid",
+      "rejection_codes": [],
+      "secondary_eligible": false,
+      "contract_defects": []
+    },
+    {
+      "config": "L3",
+      "case": "letter-issue",
+      "primary_status": "valid",
+      "rejection_codes": [],
+      "secondary_eligible": false,
+      "contract_defects": []
+    },
+    {
+      "config": "L3",
+      "case": "nude-clean",
+      "primary_status": "valid",
+      "rejection_codes": [],
+      "secondary_eligible": false,
+      "contract_defects": []
+    },
+    {
+      "config": "L3",
+      "case": "nude-issue",
+      "primary_status": "invalid",
+      "rejection_codes": [
+        "incomplete_processing"
+      ],
+      "secondary_eligible": true,
+      "contract_defects": [
+        "incomplete_processing"
+      ],
+      "executor_secondary_outcome": "TP",
+      "owner_review": "pending"
+    },
+    {
+      "config": "L3",
+      "case": "intimacy-clean",
+      "primary_status": "valid",
+      "rejection_codes": [],
+      "secondary_eligible": false,
+      "contract_defects": []
+    },
+    {
+      "config": "L3",
+      "case": "intimacy-issue",
+      "primary_status": "invalid",
+      "rejection_codes": [
+        "incomplete_processing"
+      ],
+      "secondary_eligible": true,
+      "contract_defects": [
+        "incomplete_processing"
+      ],
+      "executor_secondary_outcome": "TP",
+      "owner_review": "pending"
+    },
+    {
+      "config": "L3",
+      "case": "violence-clean",
+      "primary_status": "valid",
+      "rejection_codes": [],
+      "secondary_eligible": false,
+      "contract_defects": []
+    },
+    {
+      "config": "L3",
+      "case": "violence-issue",
+      "primary_status": "valid",
+      "rejection_codes": [],
+      "secondary_eligible": false,
+      "contract_defects": []
+    },
+    {
+      "config": "L4",
+      "case": "letter-clean",
+      "primary_status": "valid",
+      "rejection_codes": [],
+      "secondary_eligible": false,
+      "contract_defects": []
+    },
+    {
+      "config": "L4",
+      "case": "letter-issue",
+      "primary_status": "valid",
+      "rejection_codes": [],
+      "secondary_eligible": false,
+      "contract_defects": []
+    },
+    {
+      "config": "L4",
+      "case": "nude-clean",
+      "primary_status": "valid",
+      "rejection_codes": [],
+      "secondary_eligible": false,
+      "contract_defects": []
+    },
+    {
+      "config": "L4",
+      "case": "nude-issue",
+      "primary_status": "valid",
+      "rejection_codes": [],
+      "secondary_eligible": false,
+      "contract_defects": []
+    },
+    {
+      "config": "L4",
+      "case": "intimacy-clean",
+      "primary_status": "valid",
+      "rejection_codes": [],
+      "secondary_eligible": false,
+      "contract_defects": []
+    },
+    {
+      "config": "L4",
+      "case": "intimacy-issue",
+      "primary_status": "valid",
+      "rejection_codes": [],
+      "secondary_eligible": false,
+      "contract_defects": []
+    },
+    {
+      "config": "L4",
+      "case": "violence-clean",
+      "primary_status": "valid",
+      "rejection_codes": [],
+      "secondary_eligible": false,
+      "contract_defects": []
+    },
+    {
+      "config": "L4",
+      "case": "violence-issue",
+      "primary_status": "valid",
+      "rejection_codes": [],
+      "secondary_eligible": false,
+      "contract_defects": []
+    },
+    {
+      "config": "L5",
+      "case": "letter-clean",
+      "primary_status": "valid",
+      "rejection_codes": [],
+      "secondary_eligible": false,
+      "contract_defects": []
+    },
+    {
+      "config": "L5",
+      "case": "letter-issue",
+      "primary_status": "valid",
+      "rejection_codes": [],
+      "secondary_eligible": false,
+      "contract_defects": []
+    },
+    {
+      "config": "L5",
+      "case": "nude-clean",
+      "primary_status": "valid",
+      "rejection_codes": [],
+      "secondary_eligible": false,
+      "contract_defects": []
+    },
+    {
+      "config": "L5",
+      "case": "nude-issue",
+      "primary_status": "valid",
+      "rejection_codes": [],
+      "secondary_eligible": false,
+      "contract_defects": []
+    },
+    {
+      "config": "L5",
+      "case": "intimacy-clean",
+      "primary_status": "valid",
+      "rejection_codes": [],
+      "secondary_eligible": false,
+      "contract_defects": []
+    },
+    {
+      "config": "L5",
+      "case": "intimacy-issue",
+      "primary_status": "valid",
+      "rejection_codes": [],
+      "secondary_eligible": false,
+      "contract_defects": []
+    },
+    {
+      "config": "L5",
+      "case": "violence-clean",
+      "primary_status": "valid",
+      "rejection_codes": [],
+      "secondary_eligible": false,
+      "contract_defects": []
+    },
+    {
+      "config": "L5",
+      "case": "violence-issue",
+      "primary_status": "valid",
+      "rejection_codes": [],
+      "secondary_eligible": false,
+      "contract_defects": []
+    },
+    {
+      "config": "L6",
+      "case": "letter-clean",
+      "primary_status": "valid",
+      "rejection_codes": [],
+      "secondary_eligible": false,
+      "contract_defects": []
+    },
+    {
+      "config": "L6",
+      "case": "letter-issue",
+      "primary_status": "valid",
+      "rejection_codes": [],
+      "secondary_eligible": false,
+      "contract_defects": []
+    },
+    {
+      "config": "L6",
+      "case": "nude-clean",
+      "primary_status": "invalid",
+      "rejection_codes": [
+        "missing_evidence"
+      ],
+      "secondary_eligible": false,
+      "contract_defects": []
+    },
+    {
+      "config": "L6",
+      "case": "nude-issue",
+      "primary_status": "valid",
+      "rejection_codes": [],
+      "secondary_eligible": false,
+      "contract_defects": []
+    },
+    {
+      "config": "L6",
+      "case": "intimacy-clean",
+      "primary_status": "valid",
+      "rejection_codes": [],
+      "secondary_eligible": false,
+      "contract_defects": []
+    },
+    {
+      "config": "L6",
+      "case": "intimacy-issue",
+      "primary_status": "valid",
+      "rejection_codes": [],
+      "secondary_eligible": false,
+      "contract_defects": []
+    },
+    {
+      "config": "L6",
+      "case": "violence-clean",
+      "primary_status": "valid",
+      "rejection_codes": [],
+      "secondary_eligible": false,
+      "contract_defects": []
+    },
+    {
+      "config": "L6",
+      "case": "violence-issue",
+      "primary_status": "valid",
+      "rejection_codes": [],
+      "secondary_eligible": false,
+      "contract_defects": []
+    },
+    {
+      "config": "C1",
+      "case": "letter-clean",
+      "primary_status": "valid",
+      "rejection_codes": [],
+      "secondary_eligible": false,
+      "contract_defects": []
+    },
+    {
+      "config": "C1",
+      "case": "letter-issue",
+      "primary_status": "valid",
+      "rejection_codes": [],
+      "secondary_eligible": false,
+      "contract_defects": []
+    },
+    {
+      "config": "C1",
+      "case": "nude-clean",
+      "primary_status": "valid",
+      "rejection_codes": [],
+      "secondary_eligible": false,
+      "contract_defects": []
+    },
+    {
+      "config": "C1",
+      "case": "nude-issue",
+      "primary_status": "valid",
+      "rejection_codes": [],
+      "secondary_eligible": false,
+      "contract_defects": []
+    },
+    {
+      "config": "C1",
+      "case": "intimacy-clean",
+      "primary_status": "valid",
+      "rejection_codes": [],
+      "secondary_eligible": false,
+      "contract_defects": []
+    },
+    {
+      "config": "C1",
+      "case": "intimacy-issue",
+      "primary_status": "valid",
+      "rejection_codes": [],
+      "secondary_eligible": false,
+      "contract_defects": []
+    },
+    {
+      "config": "C1",
+      "case": "violence-clean",
+      "primary_status": "valid",
+      "rejection_codes": [],
+      "secondary_eligible": false,
+      "contract_defects": []
+    },
+    {
+      "config": "C1",
+      "case": "violence-issue",
+      "primary_status": "valid",
+      "rejection_codes": [],
+      "secondary_eligible": false,
+      "contract_defects": []
+    },
+    {
+      "config": "C2",
+      "case": "letter-clean",
+      "primary_status": "valid",
+      "rejection_codes": [],
+      "secondary_eligible": false,
+      "contract_defects": []
+    },
+    {
+      "config": "C2",
+      "case": "letter-issue",
+      "primary_status": "valid",
+      "rejection_codes": [],
+      "secondary_eligible": false,
+      "contract_defects": []
+    },
+    {
+      "config": "C2",
+      "case": "nude-clean",
+      "primary_status": "valid",
+      "rejection_codes": [],
+      "secondary_eligible": false,
+      "contract_defects": []
+    },
+    {
+      "config": "C2",
+      "case": "nude-issue",
+      "primary_status": "valid",
+      "rejection_codes": [],
+      "secondary_eligible": false,
+      "contract_defects": []
+    },
+    {
+      "config": "C2",
+      "case": "intimacy-clean",
+      "primary_status": "valid",
+      "rejection_codes": [],
+      "secondary_eligible": false,
+      "contract_defects": []
+    },
+    {
+      "config": "C2",
+      "case": "intimacy-issue",
+      "primary_status": "valid",
+      "rejection_codes": [],
+      "secondary_eligible": false,
+      "contract_defects": []
+    },
+    {
+      "config": "C2",
+      "case": "violence-clean",
+      "primary_status": "valid",
+      "rejection_codes": [],
+      "secondary_eligible": false,
+      "contract_defects": []
+    },
+    {
+      "config": "C2",
+      "case": "violence-issue",
+      "primary_status": "valid",
+      "rejection_codes": [],
+      "secondary_eligible": false,
+      "contract_defects": []
+    }
+  ],
+  "secondary": {
+    "measurement": "secondary",
+    "candidates": 3,
+    "reviewed": 0,
+    "pending_owner": 3,
+    "provisional_outcomes": {
+      "TP": 3
+    },
+    "verified_outcomes": {},
+    "excluded": 0,
+    "provisional_excluded": 0,
+    "provisional_found_facts": 3,
+    "provisional_missed_facts": 0,
+    "provisional_issue_fact_denominator": 3,
+    "provisional_clean_denominator": 0,
+    "provisional_false_alarms": 0,
+    "provisional_extra_findings": 0,
+    "verified_found_facts": 0,
+    "verified_missed_facts": 0,
+    "verified_issue_fact_denominator": 0,
+    "verified_clean_denominator": 0,
+    "verified_false_alarms": 0,
+    "verified_extra_findings": 0
+  },
+  "note": "Executor TP labels are provisional; owner review pending for all3. Original primary invalid statuses unchanged; not a holdout result."
+}

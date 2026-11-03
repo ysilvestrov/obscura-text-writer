@@ -85,3 +85,79 @@
 6. Перейти із помилки контексту за role/scene/material, змінити поле, повернутися до матеріалу. Вихід із dirty форм має попередження; бюджетна звірка/тариф зберігаються своїми діями.
 
 Це процедура, не звіт про виконання. Фактично виконані кроки й обмеження браузерного інструмента записуються в журналі R-21; автоматичні результати — у STATUS.md.
+
+
+<a id="r24-localization"></a>
+## R-24: UA/EN інтерфейс без зміни матеріалів
+
+На окремому синтетичному творі без API-ключів перевірити:
+1. Перший вхід en-US/uk-UA, явну UA/EN перевагу, повернення/нову сторінку; html.lang, title, aria labels. Для інших мов fallback uk.
+2. У редакторі відкрити чернетку, ввести незбережений текст з HTML-подібними символами й {p1}, встановити selection; перемкнути мову. Значення, dirty, selection і сцена збережені; вкладені статуси не зникають. SSE fake delta і partial не стираються при перемиканні.
+3. У налаштуваннях змінити Writer/Editor без Save, перемкнути мову/роль/розділ; буфери й dirty мітки збережені. Перевірити Evaluator, пороги/checkbox labels, classifier, prompt text, бюджет і комплекти; поля авторських значень/ID незмінні.
+4. Перевірити бібліотеку, імпорт, персонажів/add/edit/delete, пам’ять/forwarding, trash, history/acceptance, publication/186 genres, export labels, помилку API й original diagnostics обома мовами. Не змінювати реальні твори й не викликати платні моделі.
+5. Desktop/mobile390 та клавіатура: вибір мови доступний, активний стан видимий, довгі підписи без overflow/перекриття. Перевірити браузерний console й screenshots обох мов на нейтральних прикладах.
+
+Наявність процедури не означає її виконання. Фактичні кроки/межі — у журналі R-24, автоматичні результати — через verify.py у STATUS.md.
+
+
+<a id="r22-visual-editor"></a>
+## R-22b: форматування, plain сумісність і browser runner
+
+На синтетичному сервері без .env і production даних виконати `pnpm --dir frontend exec playwright test rich-editor.spec.mjs` (після dev install та `playwright install chromium`). Сценарії визначено у tests/web/browser/rich-editor.spec.mjs; сервер tests/web/browser/server.py завжди створює тимчасовий каталог і заборонені gateways. Порт8976 має бути вільним; чинний сервер не підміняти.
+
+Перевірити desktop/mobile: strong/em, no-op ID, Ctrl+B/undo/redo, actual Save та undo після нього, UA/EN з selection і dirty, повернення до plain плану, literal legacy зірочки, text-only HTML-paste, reload/один adapter, readonly history/disabled toolbar. Окремо оглянути нейтральні screenshots на overflow, focus, читабельність, висоту editor й сталість правої панелі. JS runner не входить у pytest STATUS; фактичний прогін і межі фіксуються окремо в журналі. Наявність цієї процедури не означає виконання всіх майбутніх UI сценаріїв коментарів/експорту.
+
+
+<a id="r23-comments"></a>
+## R-23: коментарі у чернетці
+
+На синтетичному сервері без ключів запустити `pnpm --dir frontend exec playwright test comments.spec.mjs rich-editor.spec.mjs`. Desktop/mobile: вибрати фрагмент, відкрити коментар, змінити інструкцію, Escape/повторне відкриття/видалення; заборонити перетин. Додати загальний коментар, явно Save, reload, правка всередині, undo/redo, Save pending, перевірити origin. Створити коментар на незбереженому тексті, змінити його, Save/reload/явно переприв’язати. Перемикання UA/EN з відкритим popover зберігає ввід. Інша вкладка змінює notes:409 зберігає робочий ввід і розблоковує форму. Перевірити multiline paste з двома paragraphs. Записати фактичний результат окремо; наявність процедури не означає PASS.
+
+
+<a id="r23-rewrite"></a>
+## R-23: переписування за коментарями
+
+На синтетичному сервері без ключів запустити `pnpm --dir frontend exec playwright test rewrite-review.spec.mjs`. Desktop/mobile: general comment, dirty Save/Cancel (жодного run), Save+confirmation (один fake writer), readonly review у draft, початково немає вибору. Вибрати цілу групу, побачити assembled preview, apply: новий draft, prose незмінна, notes очищено. Повторити з reject-all: source ID і notes ID незмінні. Перевірити history instructions, location labels та UA/EN. UI execution не є перевіркою літературної якості або реальної моделі. Фактичні результати записувати окремо.
+
+
+Додаткова R-23 регресія: у двох вкладках відкрити ті самі збережені notes; друга змінює лише notes. Rewrite у першій SHALL показати конфлікт без нового run, зберігши її показаний ввід. Автоматично перевіряється Playwright scenario `rewrite never substitutes another tab notes for the locally reviewed set`. Text undo після явного reattach не повертає стару прив’язку; Node comment-state regression перевіряє, що два valid ranges не перетинаються.
+
+R-22 прокрутка: Playwright `long draft scrolls internally while formatting toolbar stays in place` у rich-editor.spec.mjs перевіряє desktop/mobile на100 абзацах: обмежена висота, внутрішній scrollTop, незмінні координати toolbar та scrollY сторінки.
+
+
+<a id="r20-position"></a>
+## R-20: місце роботи після reload
+
+На синтетичному сервері запустити `pnpm --dir frontend exec playwright test workspace-position.spec.mjs`: desktop/mobile, друга scene+draft →reload; інший story має власний вибір; bare link повертає remembered місце. Явний URL перевизначає його, наступний вибір+reload не повертає старий query. Trash обраної сцени дає перший plan; blocked localStorage не перешкоджає URL restore. History перегляд не замінює remembered current material; payload містить лише scene_id/material. Результат runner записати окремо; наявність процедури не є виконанням.
+
+
+<a id="r20-brief-review"></a>
+## R-20: pending завдання в основному workflow
+
+`pnpm --dir frontend exec playwright test brief-proposal.spec.mjs` на синтетичному сервері: stale old head + new proposed brief. Перевірити новий JSON у вкладці й явний список змін/accept; Save не приймає його, accept вибирає exact displayed version й розблоковує draft за придатного контексту. Dirty edit блокує accept до Save, після Save приймається саме нова авторська версія. Конкурентна зміна scene дає помилку без втрати тексту. Story refresh відкритого чистого brief підхоплює нову пропозицію без head change; dirty ввод лишається. Desktop/mobile, без реальних моделей; наявність процедури не є звітом про виконання.
+
+
+<a id="r28-impact"></a>
+## R-28 — Браузерний сценарій перевірки впливу
+
+Виконати `pnpm --dir frontend exec playwright test impact.spec.mjs` на синтетичному сервері tests/web/browser/server.py, без .env/production data/реальних gateway. Обидва проєкти desktop/mobile мають пройти: preview показує synthetic planner/calls; protocol3 clean не змінює prose ID; concerns мають точні цитати; legacy reject перевіряється API-тестами; введений незбережений текст і UA/EN switch не губляться. Нейтральні screenshot у artifacts/r28-impact; проглянути desktop/mobile разом та скопіювати підтверджені зображення до docs/images. Сам цей опис не підтверджує виконання; свідчення — журнал і результат runner.
+
+
+<a id="r28-preview-wait"></a>
+### R-28: очікування попереднього перегляду
+
+На синтетичному сервері виконати `pnpm --dir frontend exec playwright test --config playwright.config.mjs impact.spec.mjs`. Сценарії `slow impact preview is visible immediately and can be cancelled without dispatch`, `impact preview timeout unlocks controls and reports a specific cause`, `failed impact preview unlocks retry and does not retain stale start action`: route hold робить затримку контрольованою; loading/elapsed/cancel видимі, start прихований; cancel і virtual clock121с повертають кнопку без run. HTTP503 дає пояснення, наступний preview успішний. Виконати desktop/mobile; production API й модельні витрати відсутні.
+
+
+<a id="run-recovery-visible"></a>
+## Видимість відновлення після налаштувань
+
+На синтетичному стенді виконати `pnpm --dir frontend exec playwright test --config playwright.config.mjs --grep "restored failed run"`. Сценарій у tests/web/browser/impact.spec.mjs перевіряє desktop/mobile: останній failed run, затриману readiness, конфігураційну відмову, перехід у налаштування та повернення. Repeat має бути видимим і disabled із причиною; жодного resume POST. Для фактично ready run додатково перевірити доступну кнопку без натискання; completed run не має repeat. Сам опис не є підтвердженням виконання.
+
+
+<a id="sequential-review"></a>
+## Послідовний перегляд книги
+
+У frontend виконати `pnpm exec playwright test --config playwright.config.mjs impact.spec.mjs sequential-review.spec.mjs` на синтетичному сервері. Desktop/mobile: повний clean результат автоматично завершується; concerns мають source/target уривки; reject-all приймає без зайвого confirm, fix choices зберігаються через reload/settings return. Dirty проза блокує finish; після Save finish оновлює пам’ять без нового search. UA/EN labels змінюються, авторський текст — ні. Контрольовані preview wait/cancel/timeout/error не запускають модель. Старі protocol1/2 API/replay перевіряються Python-тестами tests/web/test_impact_api.py та tests/impact. Знімки нейтральної панелі: artifacts/sequential-review. Наявність процедури не підтверджує її виконання.
+
+Додатковий R-28k сценарій `legacy current-consistency mode is explicit in preview and restored author report`: `/test-impact?legacy=true` показує Поточні передумови/Current premises; report явно без історичного порівняння після reload і UA/EN; reject-all завершує сесію. Тільки synthetic data.

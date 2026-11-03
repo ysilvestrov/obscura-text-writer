@@ -58,3 +58,23 @@ def test_classifier_json_validation_identifies_field_without_echo(tmp_path):
         assert result.status_code==422
         assert 'max_output_tokens' in result.json()['detail']
         assert 'secret-invalid-value' not in result.text
+
+
+def test_rewrite_review_api_and_wrong_scene(rewrite_proposal):
+    repo,scene,source,notes,attempt=rewrite_proposal
+    app=create_app(AppSettings(data_dir=repo.root,env_file=repo.root/'missing.env'))
+    client=TestClient(app,base_url='http://127.0.0.1')
+    base=f'/api/scenes/{scene.id}/rewrites'
+    listed=client.get(base)
+    assert listed.status_code==200 and listed.json()['attempts'][0]['id']==attempt.id
+    p=client.get(base+'/'+attempt.id).json()
+    body=dict(selected_indices=[],expected_revision=p['expected_revision'],proposal_fingerprint=p['proposal_fingerprint'],expected_comments_revision=notes.revision)
+    preview=client.post(base+'/'+attempt.id+'/selection-preview',json=body)
+    assert preview.status_code==200 and preview.json()['text']==repo.read_text(source.id)
+    result=client.post(base+'/'+attempt.id+'/apply', json=body)
+    assert result.status_code==200 and result.json()['version'] is None
+    assert client.get(base+'/'+attempt.id).json()['can_apply'] is False
+
+    from storygen.domain import SceneCreate
+    other=repo.create_scene(scene.story_id,SceneCreate(title='Інша сцена'))
+    assert client.get(f'/api/scenes/{other.id}/rewrites/{attempt.id}').status_code==400

@@ -6,8 +6,7 @@ from ..publication_models import PublicationSnapshot
 import re
 
 EDITION_NAMESPACE=UUID('f194517a-40c4-52c1-8d82-74d6c82bb54b')
-EXPORTER={'name':'Obscura Text Writer','version':'0.1.0','protocol':2}
-INCOMPLETE='НЕЗАВЕРШЕНО — див. попередження у сценах і manifest'
+EXPORTER={'name':'Obscura Text Writer','version':'0.1.0','protocol':4}
 
 
 @dataclass(frozen=True)
@@ -15,6 +14,7 @@ class Chapter:
     title: str
     text: str
     entry: dict
+    content_format: str = 'plain'
 
 
 @dataclass(frozen=True)
@@ -40,14 +40,16 @@ def capture(repo,story_id,format,allow_incomplete):
     chapters=[];warnings=[]
     if not snapshot.scenes:warnings.append('Немає сцен')
     for scene,ref in snapshot.scenes:
-        entry={'scene_id':scene.id,'title':scene.title,'position':scene.position,'version_id':ref.id if ref else None,'warnings':[]}
+        content_format=ref.content_format if ref else 'plain'
+        entry={'scene_id':scene.id,'title':scene.title,'position':scene.position,'version_id':ref.id if ref else None,'content_format':content_format,'warnings':[]}
         text=''
         if ref:
             if ref.stale or not ref.complete or scene.needs_review:entry['warnings'].append('Сцена застаріла або потребує перегляду')
             text=repo.files.read(ref.relative_path,ref.sha256).decode('utf-8');entry['sha256']=ref.sha256
         else:entry['warnings'].append('Немає завершеної вибраної прози')
-        entry['word_count']=len(re.findall(r"\b[\w’'-]+\b",text))
-        warnings.extend(entry['warnings']);chapters.append(Chapter(scene.title,text,entry))
+        from ..markdown_document import to_plain_text
+        entry['word_count']=len(re.findall(r"\b[\w’'-]+\b",to_plain_text(text,content_format)))
+        warnings.extend(entry['warnings']);chapters.append(Chapter(scene.title,text,entry,content_format))
     if warnings and not allow_incomplete:raise ValueError('Експорт зупинено: є відсутні або застарілі сцени. Явно дозвольте неповний експорт.')
     cover=None
     if publication.cover:
@@ -63,7 +65,6 @@ def lines(text):return text.replace('\r\n','\n').replace('\r','\n').split('\n')
 
 
 def chapter_lines(chapter):
-    if chapter.entry['warnings']:yield '[НЕЗАВЕРШЕНО: '+'; '.join(chapter.entry['warnings'])+']'
     yield from lines(chapter.text)
 
 

@@ -6,16 +6,16 @@ from storygen.characters.models import load_characters
 
 TEXT="""## Персонажі
 
-## Олена
+## Лєра
 Фотографка. Точний опис.
 
 ### Звички
 Любить ранкову каву.
 
-## Наталя:
-Сестра Олени.
+## Марія:
+Сестра Лєри.
 """
-PLAN='Сцена 1: Дзвінок\nХто бере участь: Олена, Наталя.'
+PLAN='Сцена 1: Дзвінок\nХто бере участь: Лєра, Марія.'
 
 
 @pytest.mark.parametrize('characters_first',[False,True])
@@ -27,7 +27,7 @@ def test_character_import_creates_proven_cards_and_fills_scene_cast(tmp_path,cha
     actual=repo.get_story(story.id)
     assert actual.characters_version_id is not None
     cards=load_characters(repo.read_text(actual.characters_version_id))
-    assert [c.name for c in cards]==['Олена','Наталя']
+    assert [c.name for c in cards]==['Лєра','Марія']
     assert '### Звички' in cards[0].entries[0].text
     for card in cards:
         entry=card.entries[0]

@@ -1,8 +1,9 @@
+import {t,msg,labelEntries,getLocale,uiText,uiAttr,uiHTML} from './i18n.js';
 import {settingsLink,returnLink} from './workspace-links.js';
 
 const settings=document.querySelector('.settings-page');
 if(settings){
-  const link=document.querySelector('#settings-return')||document.createElement('a');link.textContent='← Повернутися до сцени';
+  const link=document.querySelector('#settings-return')||document.createElement('a');uiText(link,"textContent",()=>(t("m_b38276cdf9d4")));
   link.href=returnLink(settings.dataset.storyId,location.search);if(!link.parentElement)settings.prepend(link);
   const role=new URLSearchParams(location.search).get('role');
   let roleFocused=false;
@@ -12,14 +13,16 @@ if(settings){
 }
 const workspace=document.querySelector('#workspace');
 if(workspace){
-  const {state}=await import('./editor.js');
+  const {state,initialWorkspacePosition}=await import('./editor.js');
+  const {resolveWorkspacePosition}=await import('./workspace-position.js');
+  await import('./versions.js');
   const {invokeWorkspaceCommand}=await import('./workspace-commands.js');
   const link=document.querySelector('#workspace-error-settings');
   function show(role){
     const href=state.scene&&settingsLink(state.storyId,state.scene.id,state.mode,role);
-    link.hidden=!href;if(href){link.href=href;link.textContent='Налаштувати '+({planner:'планувальника',writer:'письменника',editor:'редактора',memory:'пам’ять'}[role])}
+    link.hidden=!href;if(href){link.href=href;uiText(link,"textContent",()=>(t("m_1a02bd37b311")+({get planner(){return t("m_1e464d8b93dd")},get writer(){return t("m_496366aa31cf")},get editor(){return t("m_15d82eb3de76")},get memory(){return t("m_de7953232eda")}}[role])))}
   }
-  link.onclick=event=>{if(state.dirty||state.saving){event.preventDefault();document.dispatchEvent(new CustomEvent('workspace-navigation-blocked'));void import('./api.js').then(({notice})=>notice('Спершу збережіть ручні правки перед налаштуваннями','warning'))}};
+  link.onclick=event=>{if(state.dirty||state.saving){event.preventDefault();document.dispatchEvent(new CustomEvent('workspace-navigation-blocked'));void import('./api.js').then(({notice})=>notice(msg("m_df05df152938"),'warning'))}};
   document.addEventListener('workspace-operation-error',event=>show({brief:'planner',draft:'writer',edit:'editor',memory:'memory',prepare:'planner'}[event.detail.stage]));
   document.addEventListener('workspace-readiness',()=>{
     const operation={plan:'brief',brief:'draft',draft:'edit_loop',prose:'memory'}[state.mode];
@@ -29,18 +32,19 @@ if(workspace){
   });
   document.addEventListener('workspace-run-state',event=>{
     const run=event.detail,task=run.tasks?.[run.cursor];
-    if(run.state==='failed'||run.warning)show(run.request.mode==='edit_loop'?'editor':{brief:'planner',draft:'writer',edit:'editor',memory:'memory',prepare:'planner'}[task?.stage||run.request.stage||run.request.mode]);
+    if(run.state==='failed'||run.warning)show(run.impact?.protocol===3?(run.impact.phase==='memory_refresh'||run.impact.phase==='prepare'?'memory':'planner'):run.request.mode==='edit_loop'?'editor':{brief:'planner',draft:'writer',edit:'editor',memory:'memory',prepare:'planner'}[task?.stage||run.request.stage||run.request.mode]);
     else link.hidden=true;
   });
   document.addEventListener('scene-selected',()=>{link.hidden=true});
-  let returned=false;
-  document.addEventListener('story-refreshed',async()=>{
-    if(returned||!state.view)return;returned=true;
-    const query=new URLSearchParams(location.search),scene=state.view.scenes.find(s=>s.id===query.get('scene'));
-    if(!scene)return;
-    const {selectScene}=await import('./editor.js');
-    if(state.dirty||state.saving)return;
-    await selectScene(scene);
-    const mode=query.get('material');if(['plan','brief','draft','review','prose','memory'].includes(mode))await invokeWorkspaceCommand('show',mode);
-  });
+  let restored=false;
+  async function restorePosition(){
+    if(restored||!state.view||!state.scene)return;restored=true;
+    const target=resolveWorkspacePosition(state.view.scenes,initialWorkspacePosition);
+    // Only the initial automatic buffer can be restored; never replace newer input/navigation.
+    if(!target||state.scene.id!==target.scene.id||state.bufferEpoch!==1||state.mode!=='plan'||state.dirty||state.saving)return;
+    if(target.material!=='plan')await invokeWorkspaceCommand('show',target.material);
+  }
+  const restore=()=>restorePosition().catch(error=>import('./api.js').then(({notice})=>notice(error.message,'error')));
+  document.addEventListener('story-refreshed',restore);
+  void restore();
 }

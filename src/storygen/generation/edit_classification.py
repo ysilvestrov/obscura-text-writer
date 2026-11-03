@@ -86,7 +86,7 @@ def build_classification_context(repo,request):
     body=generation_request('classify',role,PROMPT,user,{})
     prediction=token_estimate(repo,config.provider.provider,config.provider.base_url,body)
     if prediction['input_tokens']>config.context_tokens-config.max_output_tokens or len(PROMPT)+len(user)>config.max_input_chars:
-        raise ContextOverflow(prediction['input_tokens'],config.context_tokens-config.max_output_tokens,len(PROMPT)+len(user))
+        raise ContextOverflow(prediction['input_tokens'],config.context_tokens-config.max_output_tokens,len(PROMPT)+len(user),max_input_chars=config.max_input_chars)
     key=hashlib.sha256(json.dumps({'proposal':fingerprint,'request':body,'prompt_version':1},ensure_ascii=False,sort_keys=True).encode()).hexdigest()
     return ContextBundle(story_id=attempt.story_id,scene_id=scene.id,stage='classify',scene_revision=scene.revision,
         story_revision=view.story.revision,settings=role,system_text=PROMPT,user_text=user,input_refs=attempt.context['input_refs'],

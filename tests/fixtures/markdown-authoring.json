@@ -1,0 +1,80 @@
+[
+  {
+    "name": "plain literal formatting",
+    "format": "plain",
+    "source": "Лєра *бачить* **зорі**.\r\n\r\n_Слова_ &amp; <i>тут</i>.",
+    "expected_visible": "Лєра *бачить* **зорі**.\r\n\r\n_Слова_ &amp; <i>тут</i>."
+  },
+  {
+    "name": "marks and combined Unicode",
+    "format": "markdown",
+    "source": "**Жирне та _курсив_**. 👩🏽‍💻 е́.\r\n\r\nДругий абзац.\r\n",
+    "expected_visible": "Жирне та курсив. 👩🏽‍💻 е́.\r\n\r\nДругий абзац.\r\n"
+  },
+  {
+    "name": "empty paragraphs",
+    "format": "markdown",
+    "source": "\r\n\r\nПерший.\r\n\r\n\r\n\r\nДругий.\r\n\r\n",
+    "expected_visible": "\r\n\r\nПерший.\r\n\r\n\r\n\r\nДругий.\r\n\r\n"
+  },
+  {
+    "name": "breaks escapes entities",
+    "format": "markdown",
+    "source": "М'який\nперенос.  \nЖорсткий\\\nПеренос. \\*текст\\* &amp; &#x1F600; &#233;.",
+    "expected_visible": "М'який\nперенос.\nЖорсткий\nПеренос. *текст* & 😀 é."
+  },
+  {
+    "name": "opaque structures",
+    "format": "markdown",
+    "source": "# Заголовок\n\n- перше\n- друге\n\n[Лінк](https://example.org) ![Фото](https://example.org/a.png)\n\n<script>alert(1)</script>\n\n```html\n<b>текст</b>\n```",
+    "expected_visible": "# Заголовок\n\n- перше\n- друге\n\n[Лінк](https://example.org) ![Фото](https://example.org/a.png)\n\n<script>alert(1)</script>\n\n```html\n<b>текст</b>\n```"
+  },
+  {
+    "name": "repeated words",
+    "format": "markdown",
+    "source": "Вона **знала**. Вона **знала**.",
+    "expected_visible": "Вона знала. Вона знала."
+  },
+  {
+    "name": "empty",
+    "format": "plain",
+    "source": "",
+    "expected_visible": ""
+  },
+  {
+    "name": "soft-indent",
+    "format": "markdown",
+    "source": "a\n b",
+    "expected_visible": "a\nb"
+  },
+  {
+    "name": "soft-trailing",
+    "format": "markdown",
+    "source": "a \nb",
+    "expected_visible": "a\nb"
+  },
+  {
+    "name": "soft-indent-crlf",
+    "format": "markdown",
+    "source": "a\r\n b",
+    "expected_visible": "a\nb"
+  },
+  {
+    "name": "soft-trailing-crlf",
+    "format": "markdown",
+    "source": "a \r\nb",
+    "expected_visible": "a\nb"
+  },
+  {
+    "name": "unicode-line",
+    "format": "markdown",
+    "source": "alpha beta",
+    "expected_visible": "alpha beta"
+  },
+  {
+    "name": "unicode-paragraph",
+    "format": "markdown",
+    "source": "alpha beta",
+    "expected_visible": "alpha beta"
+  }
+]

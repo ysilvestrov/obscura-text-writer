@@ -1,0 +1,3 @@
+minimumReleaseAgeExclude:
+  - prosemirror-view@1.42.8
+verifyDepsBeforeRun: false

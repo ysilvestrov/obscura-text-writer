@@ -1,3 +1,4 @@
+import {t,msg,labelEntries,getLocale,uiText,uiAttr,uiHTML} from './i18n.js';
 export class CharacterBuffer{
   cards=[];revision=null;dirty=false;saving=false;epoch=0;loadToken=0;previewToken=0;
   beginLoad(){return ++this.loadToken}
@@ -7,7 +8,7 @@ export class CharacterBuffer{
   }
   changed(){this.dirty=true;this.epoch++;this.loadToken++}
   beginSave(){
-    if(this.saving)throw new Error('Зачекайте завершення збереження');
+    if(this.saving)throw new Error(t("m_01f186c728c3"));
     this.saving=true;this.loadToken++;return {epoch:this.epoch,cards:structuredClone(this.cards),expected_revision:this.revision};
   }
   saved(data,snapshot){

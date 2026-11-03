@@ -52,13 +52,14 @@ def commit_copyedit_selection(
                 raise RevisionConflict('Підсумковий результат циклу ще не готовий до прийняття')
         indices = validate_indices(indices, len(proposal.edits))
         from ..sentence_groups import validate_group_selection
-        validate_group_selection(original,proposal,indices)
+        validate_group_selection(original,proposal,indices,view.get_version(attempt.context['copyedit_proposal']['draft_id']).content_format)
         ref = repo._get(db, 'versions', result_ref.id, VersionRef)
         snapshot = DependencySnapshot.model_validate(attempt.context['dependency_snapshot'])
         if (
             ref.story_id != scene.story_id
             or ref.scene_id != scene.id
             or ref.kind != 'edited'
+            or ref.content_format != view.get_version(attempt.context['copyedit_proposal']['draft_id']).content_format
             or ref.input_refs != attempt.context['input_refs']
             or ref.dependency_snapshot != snapshot
             or view.read_text(ref.id) != apply_proposal(original, proposal, indices)

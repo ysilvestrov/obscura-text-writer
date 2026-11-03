@@ -21,7 +21,8 @@ def test_export_blocks_partial_stale_or_missing_scene_by_default(tmp_path):
     repo=Repository(tmp_path);story=repo.create_story(StoryCreate(title='Твір'));repo.create_scene(story.id,SceneCreate(title='Без тексту'))
     with pytest.raises(ValueError):export_story(repo,story.id,'txt')
     path=export_story(repo,story.id,'txt',allow_incomplete=True)
-    assert 'НЕЗАВЕРШЕНО' in path.read_text(encoding='utf-8')
+    assert 'НЕЗАВЕРШЕНО' not in path.read_text(encoding='utf-8')
+    assert json.loads(path.with_suffix('.manifest.json').read_text(encoding='utf-8'))['warnings']
 
 
 @pytest.mark.parametrize('format', ['md', 'txt'])

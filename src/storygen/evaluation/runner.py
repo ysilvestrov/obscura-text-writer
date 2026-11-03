@@ -22,11 +22,17 @@ def digest(value) -> str:
     return hashlib.sha256(encoded).hexdigest()
 
 
+def identity_config(config):
+    data=config.model_dump()
+    if not config.local_disable_thinking:data.pop('local_disable_thinking',None)
+    return data
+
+
 def evaluator_fingerprint(config: EvaluatorConfig, rubric: Rubric) -> str:
     from .prompting import resource_text
     from .suites import canonical_suite_hash
     from ..generation.language import language_suite_hash
-    identity={"config": config.model_dump(), "rubric": rubric.model_dump(), "prompt": resource_text("evaluator_uk_v1.txt"),
+    identity={"config": identity_config(config), "rubric": rubric.model_dump(), "prompt": resource_text("evaluator_uk_v1.txt"),
         'protocol_version': 2, 'suite_hash': canonical_suite_hash(), 'language_suite_hash': language_suite_hash()}
     if config.provider=='venice' and config.venice_disable_thinking:
         from ..providers.requests import venice_reasoning
@@ -36,7 +42,7 @@ def evaluator_fingerprint(config: EvaluatorConfig, rubric: Rubric) -> str:
 
 def fingerprint_inputs(case: EvaluationCase, rubric: Rubric, profile: ScoringProfile, config: EvaluatorConfig, reverse_pair: bool = False) -> str:
     return digest({"case": case.model_dump(), "rubric": rubric.model_dump(), "profile": profile.model_dump(),
-        "config": config.model_dump(), "request": build_request(case, rubric, config, reverse_pair).model_dump()})
+        "config": identity_config(config), "request": build_request(case, rubric, config, reverse_pair).model_dump()})
 
 
 def current_commit() -> str | None:

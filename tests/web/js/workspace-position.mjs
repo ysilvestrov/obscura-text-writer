@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+import {readWorkspacePosition,rememberWorkspacePosition,resolveWorkspacePosition,updateWorkspaceUrl} from '../../../src/storygen/web/static/workspace-position.js';
+const values=new Map(),storage={getItem:k=>values.get(k),setItem:(k,v)=>values.set(k,v)};
+rememberWorkspacePosition('storyA',{scene_id:'s2',material:'draft'},storage);
+assert.deepEqual(readWorkspacePosition('storyA','',storage),{scene_id:'s2',material:'draft'});
+assert.equal(readWorkspacePosition('storyB','',storage),null);
+assert.deepEqual(readWorkspacePosition('storyA','?scene=s1&material=prose',storage),{scene_id:'s1',material:'prose'});
+assert.equal(rememberWorkspacePosition('storyA',{scene_id:'s1',material:'history'},storage),false);
+assert.deepEqual(resolveWorkspacePosition([{id:'s1'}],{scene_id:'deleted',material:'draft'}),{scene:{id:'s1'},material:'plan'});
+assert.equal(resolveWorkspacePosition([],null),null);
+values.set('obscura.workspace.v1.storyA','bad json');assert.equal(readWorkspacePosition('storyA','',storage),null);
+const denied={getItem(){throw Error('denied')},setItem(){throw Error('denied')}};
+assert.equal(readWorkspacePosition('storyA','',denied),null);assert.equal(rememberWorkspacePosition('storyA',{scene_id:'s1',material:'plan'},denied),false);
+let url;updateWorkspaceUrl({scene_id:'s2',material:'memory'},{href:'http://localhost/stories/storyA?scene=s1&material=draft'},{state:null,replaceState:(_s,_t,next)=>url=next});
+assert.equal(new URL(url).search,'?scene=s2&material=memory');
+console.log('Workspace position ownership/fallback/storage/URL passed');

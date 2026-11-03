@@ -14,6 +14,14 @@ class ContextView:
             'SELECT payload FROM scenes WHERE story_id=? ORDER BY position,id', (story_id,))]}
         self.versions = {v.id: v for v in [VersionRef.model_validate_json(r[0]) for r in db.execute(
             'SELECT payload FROM versions WHERE story_id=? ORDER BY rowid', (story_id,))]}
+        from .impact_validity import load
+        self.impact_records,self.impact_applications,self.impact_proofs=load(db,story_id)
+        self.impact_current_cache={}
+        from ..review.store import load as load_review
+        self.review_reports,self.review_acceptances,self.review_operations,self.review_proofs=load_review(db,story_id)
+        self.review_current_cache={}
+        from .review_authority import load as load_authority
+        self.review_authority,self.review_authority_operations=load_authority(db,story_id)
         self.token_profiles = [json.loads(r[0]) for r in db.execute("SELECT payload FROM app_settings WHERE key LIKE 'token_profile:%' ORDER BY key")]
         self.sources = {}
         for row in db.execute('SELECT payload FROM source_files WHERE story_id=? ORDER BY rowid', (story_id,)):
@@ -63,7 +71,7 @@ class ContextView:
     def effective_scene(self, id):
         scene=self.get_scene(id)
         prose=self.versions.get(scene.heads.get('prose'))
-        if prose and (prose.dependency_snapshot is not None or prose.id in self.acceptances):
+        if prose and (prose.dependency_snapshot is not None or prose.id in self.acceptances or any(scope[0]==id for scope in self.review_authority) or any(r.target.version_id==prose.id for r in self.impact_records.values()) or any(r.target.version_id==prose.id for r in self.review_acceptances)):
             scene.needs_review=self.get_version(prose.id).stale
         elif prose and prose.manual_projection_policy is not None:
             scene.needs_review=scene.needs_review or self.get_version(prose.id).stale

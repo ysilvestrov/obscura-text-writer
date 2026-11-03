@@ -1,0 +1,230 @@
+{
+  "stage": "round2b-aprime-dev",
+  "prompt_frozen": true,
+  "new_holdout_authored": true,
+  "permanently_excluded_dev_cases": [
+    "dev2b-D-time-question",
+    "dev2b-D-time-clean",
+    "dev2b-D-injury-question",
+    "dev2b-D-injury-clean"
+  ],
+  "iterations": [
+    {
+      "iteration": 1,
+      "status": "owner-approved-frozen-for-holdout-preparation",
+      "prompt_path": "docs/research/round2b/prompts/check-aprime-v1-uk.txt",
+      "prompt_sha256": "55fe4d840642b93c69d01d1b2a4d5d421282b99e51bf6ac054d27028593a9088",
+      "manifest_sha256": "f95152b4ade71ee28fdf7426179f537fd1aae88c7ca6a5c824c38b4c10374143",
+      "participants": [
+        "C1",
+        "C2",
+        "L3",
+        "L5",
+        "L6"
+      ],
+      "dev_cases": 44,
+      "local_calls": 132,
+      "cloud_calls": 88,
+      "max_reserve_usd": "0.7933660",
+      "available_before_usd": "9.8717129",
+      "rule": "Original A plus one approved contradictory-premise rule; no other tuning in this iteration.",
+      "stop": "Owner reviews prompt SHA and dev results before any freeze or new holdout.",
+      "summary": {
+        "C1": {
+          "calls": 44,
+          "valid": 44,
+          "invalid": 0,
+          "refusal": 0,
+          "clean_calls": 18,
+          "clean_with_concerns": 1,
+          "clean_strict_fp": 1,
+          "clean_invalid": 0,
+          "question_calls": 2,
+          "question_as_issue": 0,
+          "question_empty": 1,
+          "question_only": 1,
+          "question_unreadable": 0,
+          "issue_calls": 24,
+          "issue_empty": 0
+        },
+        "C2": {
+          "calls": 44,
+          "valid": 44,
+          "invalid": 0,
+          "refusal": 0,
+          "clean_calls": 18,
+          "clean_with_concerns": 0,
+          "clean_strict_fp": 0,
+          "clean_invalid": 0,
+          "question_calls": 2,
+          "question_as_issue": 0,
+          "question_empty": 0,
+          "question_only": 2,
+          "question_unreadable": 0,
+          "issue_calls": 24,
+          "issue_empty": 0
+        },
+        "L3": {
+          "calls": 44,
+          "valid": 33,
+          "invalid": 11,
+          "refusal": 0,
+          "clean_calls": 18,
+          "clean_with_concerns": 3,
+          "clean_strict_fp": 3,
+          "clean_invalid": 0,
+          "question_calls": 2,
+          "question_as_issue": 1,
+          "question_empty": 1,
+          "question_only": 0,
+          "question_unreadable": 0,
+          "issue_calls": 24,
+          "issue_empty": 2
+        },
+        "L5": {
+          "calls": 44,
+          "valid": 43,
+          "invalid": 1,
+          "refusal": 0,
+          "clean_calls": 18,
+          "clean_with_concerns": 10,
+          "clean_strict_fp": 10,
+          "clean_invalid": 0,
+          "question_calls": 2,
+          "question_as_issue": 2,
+          "question_empty": 0,
+          "question_only": 0,
+          "question_unreadable": 0,
+          "issue_calls": 24,
+          "issue_empty": 3
+        },
+        "L6": {
+          "calls": 44,
+          "valid": 32,
+          "invalid": 12,
+          "refusal": 0,
+          "clean_calls": 18,
+          "clean_with_concerns": 8,
+          "clean_strict_fp": 3,
+          "clean_invalid": 5,
+          "question_calls": 2,
+          "question_as_issue": 2,
+          "question_empty": 0,
+          "question_only": 0,
+          "question_unreadable": 0,
+          "issue_calls": 24,
+          "issue_empty": 0
+        }
+      },
+      "audit": {
+        "passed": true,
+        "calls": 220,
+        "statuses": {
+          "valid": 196,
+          "invalid": 24
+        },
+        "attempts": 220,
+        "cloud_calls": 88,
+        "local_calls": 132,
+        "cost_usd": "0.0369756",
+        "held_usd": "0",
+        "available_usd": "9.8347373",
+        "rejection_codes": {
+          "C1": {},
+          "C2": {},
+          "L3": {
+            "incomplete_processing": 11
+          },
+          "L5": {
+            "duplicate_source_reference": 1
+          },
+          "L6": {
+            "missing_evidence": 12
+          }
+        },
+        "load_sessions": 3,
+        "gpu_restored_empty": true,
+        "prompt_sha256": "55fe4d840642b93c69d01d1b2a4d5d421282b99e51bf6ac054d27028593a9088",
+        "manifest_sha256": "f95152b4ade71ee28fdf7426179f537fd1aae88c7ca6a5c824c38b4c10374143"
+      },
+      "dev_dataset_sha256": "8fee48ad796d6cc761be497b1d482d515f16f26275ddb05be23c4f1651c63307",
+      "source_commit_before_inference": "0675c17",
+      "executor_content_review": "Offline reading of all20 D replies and22 clean concerns; not independent owner adjudication.",
+      "issue_fact_recall": "Completed offline on2026-10-30; see recall audit, frozen primary rules; no new inference.",
+      "recall_audit": {
+        "report": "docs/research/2026-10-30-aprime-recall-audit-report.md",
+        "aggregates": "docs/research/round2b/aprime-recall-audit.json",
+        "recommended_branch": "v2_scoped_sentence_recommended",
+        "approved": false,
+        "v2_created": false,
+        "owner_override": "approve_v1"
+      }
+    }
+  ],
+  "excluded_dev_input_fingerprints": {
+    "dev2b-D-time-question": "07ea187bdc6c50a8ca48addcba58d82cad76b4b959b3f7e2d18b1f7d6cf847d4",
+    "dev2b-D-time-clean": "d04b4090fafab2b62fef5055efec50f65f377b1544906b59c2224ec027977f3b",
+    "dev2b-D-injury-question": "8f3c20a7f592d5d9d8440033a126c1a14933ef41c490535b0382a44450e4f4e2",
+    "dev2b-D-injury-clean": "fbdd5c234adb545c2778f41b4f770d1f144b46e06e5bd871018250989b3cdc3e"
+  },
+  "owner_decision": {
+    "date": "2026-10-30",
+    "decision": "approve_aprime_v1_for_holdout_preparation",
+    "deviation": "Override recommended v2 branch: L6 trigger is technical, not observed semantic recall loss. Keep strict invalid counting.",
+    "l6_issue_invalid_aprime": 6,
+    "l6_issue_calls": 24,
+    "l6_valid_fact_recall": [
+      19,
+      19
+    ],
+    "report_l6_invalid_separately": true,
+    "prompt_changes": [
+      "contradictory canon rule",
+      "general narrowing of issue"
+    ],
+    "fp_attribution": "Do not attribute FP reduction solely to D rule.",
+    "l6_issue_invalid_A_range_per_draw": [
+      3,
+      4
+    ]
+  },
+  "stage3": {
+    "status": "owner-oracle-complete-awaiting-dev",
+    "manifest": "docs/research/round2b/manifest.json",
+    "model_calls": 0,
+    "dataset_frozen": false,
+    "revision": 4,
+    "owner_labels_scored": true,
+    "comparison": "docs/research/2026-10-30-round-2b-oracle-comparison.md",
+    "open_disagreement_positions": [],
+    "pending_reassessment_positions": [],
+    "owner_oracle_complete": true,
+    "completion": "docs/research/round2b/oracle-comparison-revision4.json",
+    "reviewed_corpus": "docs/research/round2b/holdout-reviewed.json"
+  },
+  "qualification": {
+    "status": "complete-stop-l3-admission",
+    "report": "docs/research/2026-10-30-round2b-qualification-report.md",
+    "calls": 40,
+    "valid": 36,
+    "invalid": 4,
+    "refusal": 0,
+    "gate": "L3:systematic_invalid",
+    "holdout_calls": 0,
+    "quality_authorized": false,
+    "owner_l3_admission": {
+      "date": "2026-10-30",
+      "accepted": true,
+      "primary_invalid_unchanged": true,
+      "expected_valid_threshold_failure": "predeclared owner expectation, not observed holdout result"
+    }
+  },
+  "freeze": {
+    "status": "input-freeze-complete-stop",
+    "snapshot": "docs/research/round2b/frozen-quality.json",
+    "snapshot_sha256": "ce1b4068175e470d3671c93bf1c23c7d568643992638306b0ec6cbe8734f291d",
+    "quality_authorized": false,
+    "execution_harness_complete": false,
+    "calls_this_stage": 0
+  }
+}

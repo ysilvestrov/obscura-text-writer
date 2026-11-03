@@ -13,7 +13,7 @@ from storygen.storage.integrity import check_integrity
 from storygen.storage.integrity import readonly_database
 
 
-@pytest.mark.parametrize('schema',[2,3])
+@pytest.mark.parametrize('schema',[2,3,4])
 def test_publication_cold_backup_restore_schema2_and_3(tmp_path,schema):
     source=tmp_path/'source'
     if schema==2:
@@ -30,6 +30,11 @@ def test_publication_cold_backup_restore_schema2_and_3(tmp_path,schema):
         cover=repo.publication('upload_cover',story_id=story.id,content=blob.getvalue())
         repo.publication('save_card',story_id=story.id,data=PublicationData(author_ids=[author.id],cover_id=cover.id),expected_revision=0,expected_signature_revisions={author.id:0})
         repo.publication('update_signature',id=author.id,expected_revision=0,archived=True)
+        if schema==3:
+            # A genuine legacy fixture: the latest Repository creates schema4.
+            with repo.db.connection() as db:
+                db.execute('DROP TABLE authoring_comment_sets')
+                db.execute('PRAGMA user_version=3')
     backup=create_backup(source,tmp_path/'backup')
     from contextlib import closing
     with closing(readonly_database(backup/'data/storygen.sqlite3')) as db:
@@ -37,7 +42,7 @@ def test_publication_cold_backup_restore_schema2_and_3(tmp_path,schema):
     restored=restore_backup(backup,tmp_path/'restored')
     assert check_integrity(restored).ok
     view=Repository(restored).publication('get_card',story_id=story.id)
-    if schema==3:
+    if schema>=3:
         assert view.authors[0].display_name=='Псевдонім' and view.authors[0].archived_at
         assert view.cover.sha256==cover.sha256
     else:assert view.card.revision==0

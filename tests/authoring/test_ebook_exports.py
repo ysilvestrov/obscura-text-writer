@@ -79,7 +79,8 @@ def test_incomplete_ebooks_are_explicit_and_bad_controls_rejected(tmp_path,forma
     with pytest.raises(ValueError,match='неповний'):export_story(repo,story.id,format)
     path=export_story(repo,story.id,format,True)
     raw=path.read_bytes() if format=='fb2' else zipfile.ZipFile(path).read('EPUB/chapter-2.xhtml')
-    assert 'НЕЗАВЕРШЕНО' in raw.decode('utf-8')
+    assert 'НЕЗАВЕРШЕНО' not in raw.decode('utf-8')
+    assert json.loads(path.with_suffix('.manifest.json').read_text(encoding='utf-8'))['warnings']
     scene=repo.list_scenes(story.id)[0]
     save_manual_prose(repo,scene.id,'Текст\x00заборонений XML символ.',scene.revision)
     with pytest.raises(ValueError,match='XML'):export_story(repo,story.id,format,True)

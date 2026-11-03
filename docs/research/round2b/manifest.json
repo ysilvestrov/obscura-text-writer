@@ -1,0 +1,42 @@
+{
+  "stage": "holdout-2b-owner-oracle-complete-awaiting-dev",
+  "date": "2026-10-30",
+  "author_model": "gpt-6.1-sol",
+  "author_identity_source": "owner confirmation in this chat, 2026-10-30",
+  "prompt_sha256": "55fe4d840642b93c69d01d1b2a4d5d421282b99e51bf6ac054d27028593a9088",
+  "prompt_approval_commit": "768550e",
+  "input_sha256": "2df183f0956f37ca809c0fcee9c34ad1d8b821d556559d498a512f1e61e88025",
+  "seed_sha256": "6d3d7467124b2b79c4a1b94960b40ac94f891f900b026f36f45176adbc2692a6",
+  "files": {
+    "oracle-blind-v1-annotated.md": "90b3bfbc46391e9643e78c6550e21c7a2c0fb68913ae2931309d9c058b0c33fd",
+    "oracle-blind-v2-annotated.md": "2519e37870fb11616db5985dcf66320912fe2a73ff66859e974c43909e3e44e0",
+    "oracle-blind-v3-annotated.md": "c92647bf30ab8951c685b7541fe57099b9555e4be2cd4698976ed3b8b87e58ad",
+    "holdout-draft.json": "2b3b5c9f8b1c45131eb3cae93599c08922fb83d837ad3af6c25d8f15ed986d3a",
+    "oracle-key.json": "c9ea61df313316e37126ed21b1816ad862e9041837beae493e3312c43a30ad19",
+    "oracle-review-revision.json": "429938533b61153da0ed3159698612139d951a108f0e97d32da0ec45bdb73751",
+    "oracle-blind.md": "89d59c5791f31f9b14d1e58dfb7902b08c94f54017e3858586df6a8762cd97c7"
+  },
+  "cases": 48,
+  "self_check": "passed before render",
+  "model_calls": 0,
+  "owner_oracle_pending": false,
+  "dataset_frozen": false,
+  "l6_invalid_must_be_reported_separately": true,
+  "source_sha256": "216a3a06218c19e330619ca8ca5e9313b458d25e5942aa69ac23631d0a4f2e67",
+  "revision": 4,
+  "prior_manifest_sha256": "8204f048bff035644c478bdc80c57d7029aad39ed987137fdfd1c234936897c3",
+  "review_revision_file": "oracle-review-revision.json",
+  "revision_counts": {
+    "recheck": 4,
+    "unchanged": 44
+  },
+  "change_counts": {
+    "content": 4,
+    "unchanged": 44
+  },
+  "revision_reason": "Owner-approved unambiguous black leather upper including shafts; explicit owner correction of label16; await four repeated decisions.",
+  "owner_oracle_complete": true,
+  "oracle_completion_file": "oracle-comparison-revision4.json",
+  "reviewed_holdout_file": "holdout-reviewed.json",
+  "reviewed_holdout_sha256": "2b3b5c9f8b1c45131eb3cae93599c08922fb83d837ad3af6c25d8f15ed986d3a"
+}

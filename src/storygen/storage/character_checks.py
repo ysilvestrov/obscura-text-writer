@@ -20,7 +20,7 @@ def check_character_versions(report,root,versions,scenes,stories):
                         source=versions.get(citation.version_id)
                         if not source or source.story_id!=ref.story_id or source.kind not in {'source_plan','source_characters'} or not source.complete:
                             raise ValueError('Невірне джерело картки')
-                        if citation.quote not in contained_path(root,source.relative_path).read_text(encoding='utf-8'):
+                        if citation.quote not in contained_path(root,source.relative_path).read_bytes().decode('utf-8'):
                             raise ValueError('Цитата відсутня у джерелі')
         except (ValueError,KeyError,OSError,TypeError):
             report.add('invalid_characters',ref.id,'Некоректні картки, джерела або сцена доступності')

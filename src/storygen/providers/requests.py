@@ -40,12 +40,20 @@ def generation_request(stage, settings, system, user, fragments):
         'max_tokens': settings.max_output_tokens, 'temperature': settings.temperature, 'stream': True}
     if settings.stop_sequences: body['stop'] = settings.stop_sequences
     if provider.include_usage: body['stream_options'] = {'include_usage': True}
+    if provider.provider == 'local' and provider.local_disable_thinking:
+        body['reasoning_effort'] = 'none'
     if provider.provider == 'venice':
         body['venice_parameters'] = venice_options(provider)
         body.update(venice_reasoning(provider))
-    structured = stage in {'prepare', 'brief', 'memory','classify','publication_suggest'} or (stage == 'edit' and settings.edit_mode == 'patches')
+    structured = stage in {'prepare', 'brief', 'memory','classify','publication_suggest','impact_delta','impact_check','impact_part'} or (stage == 'edit' and settings.edit_mode == 'patches')
     if provider.response_mode == 'json_schema' and structured:
-        if stage=='publication_suggest':
+        if stage=='impact_part':
+            from ..impact.chunk_models import PartResult
+            model=PartResult
+        elif stage in {'impact_delta','impact_check'}:
+            from ..impact.models import DeltaReport,CheckReport
+            model=DeltaReport if stage=='impact_delta' else CheckReport
+        elif stage=='publication_suggest':
             from ..publication_suggestions import PublicationSuggestions
             model=PublicationSuggestions
         elif stage=='classify':
@@ -53,7 +61,8 @@ def generation_request(stage, settings, system, user, fragments):
             model=Classification
         else:
             model = CopyEdits if stage == 'edit' else MemoryOperations if stage == 'memory' and settings.memory_mode == 'evidence_delta' else {'prepare': StoryBlueprint, 'brief': WritersBrief, 'memory': MemorySnapshot}[stage]
-        schema = strict_schema(model)
+        schema = fragments.get('impact_wire_schema') if stage=='impact_part' else None
+        schema = schema if schema is not None else strict_schema(model)
         if stage == 'memory' and settings.memory_mode == 'snapshot' and fragments.get('expected_source_prose_ids'):
             allowed = json.loads(fragments['expected_source_prose_ids'])
             schema['properties']['source_prose_ids'].update({'minItems': len(allowed), 'maxItems': len(allowed), 'items': {'type': 'string', 'enum': allowed}})
@@ -68,6 +77,8 @@ def evaluation_request(config, request):
     if request.response_mode == 'json_schema':
         body['response_format'] = {'type': 'json_schema', 'json_schema': {'name': 'story_evaluation', 'strict': True, 'schema': request.response_schema}}
         if config.provider == 'openrouter': body['provider'] = {'require_parameters': True}
+    if config.provider == 'local' and config.local_disable_thinking:
+        body['reasoning_effort'] = 'none'
     if config.provider == 'venice':
         body['venice_parameters'] = venice_options(config)
         body.update(venice_reasoning(config))

@@ -65,7 +65,7 @@ def test_no_dispatch_or_run_on_context_overflow_or_full_card(tmp_path):
     save_role_settings(repo,story.id,'planner',role,repo.get_story(story.id).revision)
     with pytest.raises(ContextOverflow):build_publication_context(repo,story.id)
     called=[];worker=RunCoordinator(repo,gateway_factory=lambda p:called.append(p))
-    with pytest.raises(ValueError,match='Контекст'):worker.enqueue(RunRequest(story_id=story.id,mode='publication_suggest'),'overflow')
+    with pytest.raises(ValueError,match='Перевищено токенний та операційний ліміти входу'):worker.enqueue(RunRequest(story_id=story.id,mode='publication_suggest'),'overflow')
     assert not called and not repo.list_runs(story.id) and not repo.list_attempts(story.id)
     repo.publication('save_card',story_id=story.id,data=PublicationData(annotation='Авторська',genres=['short_story'],keywords=['тег']),expected_revision=0,expected_signature_revisions={})
     with pytest.raises(ValueError,match='порожніх'):build_publication_context(repo,story.id)

@@ -34,6 +34,9 @@ def memory_view_from_view(view,scene_id):
         'can_save':False,'reason':'Спершу створіть пам’ять сцени','memory_id':memory_id}
     if not memory_id:return result
     journal=load_memory(view.read_text(memory_id))
+    from .reuse import provenance_warnings
+    ref=view.get_version(memory_id)
+    result['warnings']=provenance_warnings(ref.dependency_snapshot.memory_provenance if ref.dependency_snapshot else [])
     active=replay_memory(journal)
     entries=dict(active)
     for event in journal.events:
@@ -42,6 +45,9 @@ def memory_view_from_view(view,scene_id):
     labels={'facts':'Факт','character_states':'Стан персонажа','open_threads':'Сюжетна лінія','timeline':'Хронологія'}
     for event in entries.values():
         source=sources.get(event.source_version_id)
+        if source is None:
+            historical=view.get_version(event.source_version_id)
+            source=next((s for s in scenes if s.id==historical.scene_id and historical.story_id==scene.story_id and s.position<=scene.position),None)
         result['rows'].append({'claim_id':event.claim_id,'text':event.text,'category':event.category,
             'category_label':labels[event.category],'source_scene':source.position+1 if source else None,
             'source_title':source.title if source else 'Попереднє джерело','quote':event.quote,

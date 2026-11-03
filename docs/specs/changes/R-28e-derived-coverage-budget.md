@@ -1,0 +1,9 @@
+# R-28e — Виправлення обліку службового покриття
+
+Дефект26.10: збережений check повернув643chars raw JSON/stop; canonical5299, з них3418chars значень covered_ids, які додає код. Без службового поля модельні дані1866chars і вкладаються в cap4096. Підвищення резерву саме не вирішує дефект.
+
+Для wire2 canonical result budget SHALL враховувати всі поля, що доставляються наступній моделі, включно з розкритими source evidence/target quotes/inherited findings, але виключати тільки covered_ids: модель їх не генерує, child wire їх не передає. Raw wire cap незмінний; wire1 covered_ids генерує модель, тому старий повний cap лишається. Повнота coverage, immutable graph, дослівність цитат, ownership/CAS не послаблюються. Packing мінімального wire2 result використовує той самий облік. Це виправлення помилкового розміщення audit metadata у модельному резерві, без нової JSON/wire/API/schema/SQL версії; старі completed proofs — строгіша підмножина й лишаються валідними.
+
+За явного відновлення («Повторити перерваний етап») від автора reusable може повторно валідовувати лише failed/stop impact_part з колишньою конкретною помилкою canonical cap та точним frozen manifest/task/API body/owner. Нова валідація мусить пройти всі gates. До запису перевіряється completed copy; raw файл/usage/API request не переписуються. Старий стан/error/impact_failure зберігаються в validation_history з revision/reason/timestamp. Поточні state/error/result оновлюються тільки після успіху. Інші відмови/length/schema errors не ремонтуються. Повторна невдала валідація не спричиняє автоматичного API retry. Completed checkpoint повторно використовує цю відповідь після crash.
+
+Не запускати книгу автоматично. Зараз лише offline діагностика saved response, виправлення та synthetic tests/review/check_docs; після fresh safe-state restart автор сам продовжує старий run. Інші ролі/налаштування не змінюються.

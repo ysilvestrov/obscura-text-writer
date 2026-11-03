@@ -1,0 +1,246 @@
+{
+  "date": "2026-10-29",
+  "phase": "separate-L3-dev-repeatability-not-holdout",
+  "authorized_new_calls": 12,
+  "completed": 12,
+  "paid_calls": 0,
+  "content_retries": 0,
+  "transport_retries": 0,
+  "request_bodies_exactly_equal_original_dev": true,
+  "echo_load_config_exactly_equal_original_dev": true,
+  "temperature": 0.1,
+  "context_tokens": 32768,
+  "max_output_tokens": 4096,
+  "reasoning_tokens_all_zero": true,
+  "gpu_restored_empty": true,
+  "schedule": [
+    {
+      "case": "intimacy-clean",
+      "draw": 1
+    },
+    {
+      "case": "nude-issue",
+      "draw": 1
+    },
+    {
+      "case": "nude-clean",
+      "draw": 1
+    },
+    {
+      "case": "intimacy-issue",
+      "draw": 1
+    },
+    {
+      "case": "intimacy-clean",
+      "draw": 2
+    },
+    {
+      "case": "nude-clean",
+      "draw": 2
+    },
+    {
+      "case": "nude-issue",
+      "draw": 2
+    },
+    {
+      "case": "intimacy-issue",
+      "draw": 2
+    },
+    {
+      "case": "nude-clean",
+      "draw": 3
+    },
+    {
+      "case": "nude-issue",
+      "draw": 3
+    },
+    {
+      "case": "intimacy-clean",
+      "draw": 3
+    },
+    {
+      "case": "intimacy-issue",
+      "draw": 3
+    }
+  ],
+  "request_sha256_canonical_json": {
+    "nude-clean": "3a6d69e7befb09322acb5f29cf65159aa8d7b4ecbe751d5ea6a7e27ae4c4995c",
+    "nude-issue": "c267bf77847d201a1b73d8f81faaa45f9cccb222678aeb72ac4729e356b41b83",
+    "intimacy-clean": "6105dd7829f040d021b7e9e6d24ea724ea8a6ea6f89c648e001eb54350f7b062",
+    "intimacy-issue": "4ab68e70ba3aeca615c3ccc9391908c680983461ab0c21cc128a01a3198fa0b0"
+  },
+  "cases": {
+    "nude-clean": {
+      "original_status": "valid",
+      "original_complete": true,
+      "repeats": [
+        {
+          "draw": 1,
+          "status": "valid",
+          "complete": true,
+          "seconds": 10.844,
+          "finish_reason": "stop",
+          "output_tokens": 46,
+          "response_text_sha256": "89acea8dc23b921d5a79dd727d41e4b4054ea72d1b4f5092db87d717c672e4da",
+          "concern_count": 0,
+          "concern_kinds": []
+        },
+        {
+          "draw": 2,
+          "status": "valid",
+          "complete": true,
+          "seconds": 10.921,
+          "finish_reason": "stop",
+          "output_tokens": 46,
+          "response_text_sha256": "89acea8dc23b921d5a79dd727d41e4b4054ea72d1b4f5092db87d717c672e4da",
+          "concern_count": 0,
+          "concern_kinds": []
+        },
+        {
+          "draw": 3,
+          "status": "valid",
+          "complete": true,
+          "seconds": 10.844,
+          "finish_reason": "stop",
+          "output_tokens": 46,
+          "response_text_sha256": "89acea8dc23b921d5a79dd727d41e4b4054ea72d1b4f5092db87d717c672e4da",
+          "concern_count": 0,
+          "concern_kinds": []
+        }
+      ]
+    },
+    "nude-issue": {
+      "original_status": "invalid",
+      "original_complete": false,
+      "repeats": [
+        {
+          "draw": 1,
+          "status": "invalid",
+          "complete": false,
+          "seconds": 25.031,
+          "finish_reason": "stop",
+          "output_tokens": 148,
+          "response_text_sha256": "d9568e10d4a44c355903db358b944b59be82dfda9f44f6bfba7ff61081d967e0",
+          "concern_count": 1,
+          "concern_kinds": [
+            "issue"
+          ]
+        },
+        {
+          "draw": 2,
+          "status": "invalid",
+          "complete": false,
+          "seconds": 24.875,
+          "finish_reason": "stop",
+          "output_tokens": 148,
+          "response_text_sha256": "d9568e10d4a44c355903db358b944b59be82dfda9f44f6bfba7ff61081d967e0",
+          "concern_count": 1,
+          "concern_kinds": [
+            "issue"
+          ]
+        },
+        {
+          "draw": 3,
+          "status": "invalid",
+          "complete": false,
+          "seconds": 24.828,
+          "finish_reason": "stop",
+          "output_tokens": 148,
+          "response_text_sha256": "d9568e10d4a44c355903db358b944b59be82dfda9f44f6bfba7ff61081d967e0",
+          "concern_count": 1,
+          "concern_kinds": [
+            "issue"
+          ]
+        }
+      ]
+    },
+    "intimacy-clean": {
+      "original_status": "valid",
+      "original_complete": true,
+      "repeats": [
+        {
+          "draw": 1,
+          "status": "valid",
+          "complete": true,
+          "seconds": 12.609,
+          "finish_reason": "stop",
+          "output_tokens": 46,
+          "response_text_sha256": "89acea8dc23b921d5a79dd727d41e4b4054ea72d1b4f5092db87d717c672e4da",
+          "concern_count": 0,
+          "concern_kinds": []
+        },
+        {
+          "draw": 2,
+          "status": "valid",
+          "complete": true,
+          "seconds": 10.985,
+          "finish_reason": "stop",
+          "output_tokens": 46,
+          "response_text_sha256": "89acea8dc23b921d5a79dd727d41e4b4054ea72d1b4f5092db87d717c672e4da",
+          "concern_count": 0,
+          "concern_kinds": []
+        },
+        {
+          "draw": 3,
+          "status": "valid",
+          "complete": true,
+          "seconds": 10.953,
+          "finish_reason": "stop",
+          "output_tokens": 46,
+          "response_text_sha256": "89acea8dc23b921d5a79dd727d41e4b4054ea72d1b4f5092db87d717c672e4da",
+          "concern_count": 0,
+          "concern_kinds": []
+        }
+      ]
+    },
+    "intimacy-issue": {
+      "original_status": "invalid",
+      "original_complete": false,
+      "repeats": [
+        {
+          "draw": 1,
+          "status": "invalid",
+          "complete": false,
+          "seconds": 24.297,
+          "finish_reason": "stop",
+          "output_tokens": 148,
+          "response_text_sha256": "fbca95434a8474afd3a1782019b5c23ba675b497663b9fe0cc38e4a31d8fdf5e",
+          "concern_count": 1,
+          "concern_kinds": [
+            "issue"
+          ]
+        },
+        {
+          "draw": 2,
+          "status": "invalid",
+          "complete": false,
+          "seconds": 26.015,
+          "finish_reason": "stop",
+          "output_tokens": 160,
+          "response_text_sha256": "17563778930ab68f8e1e1e904665df412549c4772683eb6226101173c294f995",
+          "concern_count": 1,
+          "concern_kinds": [
+            "issue"
+          ]
+        },
+        {
+          "draw": 3,
+          "status": "invalid",
+          "complete": false,
+          "seconds": 25.922,
+          "finish_reason": "stop",
+          "output_tokens": 160,
+          "response_text_sha256": "17563778930ab68f8e1e1e904665df412549c4772683eb6226101173c294f995",
+          "concern_count": 1,
+          "concern_kinds": [
+            "issue"
+          ]
+        }
+      ]
+    }
+  },
+  "all_finish_reason_stop": true,
+  "seconds_total_generation": 218.124,
+  "seconds_p50": 18.453,
+  "unique_provider_response_ids": 12
+}

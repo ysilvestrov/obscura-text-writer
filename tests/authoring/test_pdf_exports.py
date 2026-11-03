@@ -76,7 +76,7 @@ def test_pdf_empty_incomplete_book_has_no_toc_placeholder(tmp_path):
     with pytest.raises(ValueError,match='неповний'):export_story(repo,story.id,'pdf')
     path=export_story(repo,story.id,'pdf',True)
     text=''.join(p.extract_text() for p in PdfReader(path).pages)
-    assert 'НЕЗАВЕРШЕНО' in text and 'Placeholder' not in text
+    assert 'НЕЗАВЕРШЕНО' not in text and 'Placeholder' not in text
 
 def test_pdf_contents_never_interprets_author_markup(tmp_path):
     repo,story=seeded(tmp_path,count=1,cover=False)

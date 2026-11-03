@@ -17,7 +17,7 @@ def rename_story(repo,story_id,title,expected_revision):
     return story
 
 
-def unchanged_scene_text(repo,scene_id,head,text,expected_revision):
+def unchanged_scene_text(repo,scene_id,head,text,expected_revision,content_format=None):
     """Reuse only the selected identical material; never rebase or accept it."""
     with repo.db.connection() as db:
         db.execute('BEGIN IMMEDIATE')
@@ -28,6 +28,8 @@ def unchanged_scene_text(repo,scene_id,head,text,expected_revision):
         from ..domain import VersionRef
         ref=repo._get(db,'versions',id,VersionRef)
         if ref.scene_id!=scene.id or ref.story_id!=scene.story_id or not ref.complete:
+            return None
+        if content_format is not None and content_format!=ref.content_format:
             return None
         if repo.files.read(ref.relative_path,ref.sha256)!=text.encode('utf-8'):
             return None

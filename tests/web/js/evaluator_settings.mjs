@@ -16,9 +16,12 @@ d.makeCandidate();assert.throws(()=>d.read(),/режим/);d.patch({policy:'repo
 d=new EvaluatorDraft(saved);d.setRaw(JSON.stringify({...saved,profile:{...saved.profile,calibrated:true,evaluator_fingerprint:'fake'}}));assert.throws(()=>d.applyRaw(),/калібрування/);
 d=new EvaluatorDraft(saved);d.patch({config:{...d.current.config,temperature:0,timeout_seconds:1}});assert.equal(d.read().config.temperature,0);
 assert.throws(()=>new EvaluatorDraft({...saved,context_tokens:1024}).read(),/контекст/);
-for(const fields of [{temperature:'0.1'},{venice_disable_thinking:'false'},{model:123}]){
+for(const fields of [{temperature:'0.1'},{venice_disable_thinking:'false'},{local_disable_thinking:'false'},{model:123}]){
  d=new EvaluatorDraft(saved);d.setRaw(JSON.stringify({...saved,config:{...saved.config,...fields}}));
  assert.throws(()=>d.applyRaw(),'raw types must not be coerced by form controls');assert.deepEqual(d.current,saved);
 }
 d=new EvaluatorDraft(saved);d.setRaw(JSON.stringify({...saved,profile:{...saved.profile,evaluator_fingerprint:'fake'}}));assert.throws(()=>d.applyRaw(),/калібрування/);
 console.log('Evaluator draft, JSON and calibration regressions passed');
+
+const local=readConnection({}, {provider:'local',model:'qwen',base_url:'http://localhost:1235/v1',timeout:'3600',key_env:'',response_mode:'json_schema',local_disable_thinking:true},'evaluator');
+assert.equal(local.local_disable_thinking,true);

@@ -1,0 +1,676 @@
+{
+  "status": "All six weight artifacts prepared and verified; pre-freeze dev qualification in progress",
+  "download_client": "0.36.2",
+  "models": [
+    {
+      "repo": "Qwen/Qwen3.5-9B",
+      "revision": "c202236235762e1c871ad0ccb60c8ee5ba337b9a",
+      "gated": false,
+      "files": [
+        {
+          "name": "model.safetensors-00001-of-00004.safetensors",
+          "size": 5276436216
+        },
+        {
+          "name": "model.safetensors-00002-of-00004.safetensors",
+          "size": 5335161512
+        },
+        {
+          "name": "model.safetensors-00003-of-00004.safetensors",
+          "size": 5368717440
+        },
+        {
+          "name": "model.safetensors-00004-of-00004.safetensors",
+          "size": 3325995712
+        }
+      ],
+      "total_bytes": 19306310880,
+      "base_model": [
+        "Qwen/Qwen3.5-9B-Base"
+      ]
+    },
+    {
+      "repo": "huihui-ai/Huihui-Qwen3.5-9B-abliterated",
+      "revision": "05b9e7c9b978ba29bdb8f50a49c30e4b91183339",
+      "gated": false,
+      "files": [
+        {
+          "name": "model.safetensors-00001-of-00004.safetensors",
+          "size": 5276436216
+        },
+        {
+          "name": "model.safetensors-00002-of-00004.safetensors",
+          "size": 5335161512
+        },
+        {
+          "name": "model.safetensors-00003-of-00004.safetensors",
+          "size": 5368717440
+        },
+        {
+          "name": "model.safetensors-00004-of-00004.safetensors",
+          "size": 3325995712
+        }
+      ],
+      "total_bytes": 19306310880,
+      "base_model": [
+        "Qwen/Qwen3.5-9B"
+      ]
+    },
+    {
+      "repo": "google/gemma-3-12b-it",
+      "revision": "96b6f1eccf38110c56df3a15bffe176da04bfd80",
+      "gated": "manual",
+      "files": [
+        {
+          "name": "model-00001-of-00005.safetensors",
+          "size": 4979902192
+        },
+        {
+          "name": "model-00002-of-00005.safetensors",
+          "size": 4931296592
+        },
+        {
+          "name": "model-00003-of-00005.safetensors",
+          "size": 4931296656
+        },
+        {
+          "name": "model-00004-of-00005.safetensors",
+          "size": 4931296656
+        },
+        {
+          "name": "model-00005-of-00005.safetensors",
+          "size": 4601000928
+        }
+      ],
+      "total_bytes": 24374793024,
+      "base_model": "google/gemma-3-12b-pt"
+    },
+    {
+      "repo": "INSAIT-Institute/MamayLM-Gemma-3-12B-IT-v2.0",
+      "revision": "3cb02013b6b37cfe10f4b3da0fcddc1acef7f244",
+      "gated": false,
+      "files": [
+        {
+          "name": "model-00001-of-00005.safetensors",
+          "size": 4939493432
+        },
+        {
+          "name": "model-00002-of-00005.safetensors",
+          "size": 4931296656
+        },
+        {
+          "name": "model-00003-of-00005.safetensors",
+          "size": 4931296656
+        },
+        {
+          "name": "model-00004-of-00005.safetensors",
+          "size": 4931296656
+        },
+        {
+          "name": "model-00005-of-00005.safetensors",
+          "size": 4641409680
+        }
+      ],
+      "total_bytes": 24374793080,
+      "base_model": "google/gemma-3-12B-it"
+    },
+    {
+      "repo": "unsloth/gemma-4-E4B-it-GGUF",
+      "revision": "bfc15c382204943c3a8fff0c750b94ae2364d7a3",
+      "gated": false,
+      "files": [
+        {
+          "name": "gemma-4-E4B-it-Q4_K_M.gguf",
+          "size": 4977171584
+        }
+      ],
+      "total_bytes": 4977171584,
+      "base_model": "google/gemma-4-E4B-it"
+    }
+  ],
+  "toolchain": {
+    "tag": "b11960",
+    "commit": "8642541b255bfb5dc39cd351a178be09013a55d6",
+    "source_archive_sha256": "46301ef33daaa9429658e4dc4bbc104e0cc77a832fe28f904e11d1bad664303e",
+    "assets": [
+      {
+        "name": "llama-b11960-bin-win-cpu-x64.zip",
+        "size": 24407745,
+        "url": "https://github.com/ggml-org/llama.cpp/releases/download/b11960/llama-b11960-bin-win-cpu-x64.zip",
+        "digest": "sha256:73f962f82850d244db47eaacb9d913637027b82399124324298576d58c5f4287"
+      }
+    ]
+  },
+  "source_verification": [
+    {
+      "configuration": "L1",
+      "repo": "Qwen/Qwen3.5-9B",
+      "revision": "c202236235762e1c871ad0ccb60c8ee5ba337b9a",
+      "files": [
+        {
+          "file": "README.md",
+          "bytes": 77643,
+          "sha256": "c5f5a8c2dddab69cfbf05279235aa5fddb137939a06539c4c7637aa900fef6d0"
+        },
+        {
+          "file": "chat_template.jinja",
+          "bytes": 7756,
+          "sha256": "a4aee8afcf2e0711942cf848899be66016f8d14a889ff9ede07bca099c28f715"
+        },
+        {
+          "file": "config.json",
+          "bytes": 3126,
+          "sha256": "d0883072e01861ed0b2d47be3c16c36a8e81c224c7ffaa310c6558fb3f932b05"
+        },
+        {
+          "file": "merges.txt",
+          "bytes": 3353259,
+          "sha256": "a9d356d7bdf1ef4949e3e748e95b8e10ad9d4e2e838eddc38a0a7b6b94d1db8d"
+        },
+        {
+          "file": "model.safetensors-00001-of-00004.safetensors",
+          "bytes": 5276436216,
+          "sha256": "db6f444b43d318c92f360a13a25561a6a65b10c0631b8ed305a426dbaa6c380e"
+        },
+        {
+          "file": "model.safetensors-00002-of-00004.safetensors",
+          "bytes": 5335161512,
+          "sha256": "31c7d7e2dd5d207840b31cc59083c8f4c4718959149e0358c0364052bb9a0330"
+        },
+        {
+          "file": "model.safetensors-00003-of-00004.safetensors",
+          "bytes": 5368717440,
+          "sha256": "7ec36ba3a4176a44c3c0876ad80c56a2f70c84bf008d82e9501df642f17dadec"
+        },
+        {
+          "file": "model.safetensors-00004-of-00004.safetensors",
+          "bytes": 3325995712,
+          "sha256": "b62b0c4cd7e44edee103ee8f4fe225f246d5e768e07bfd5f25b63a8aa1fdd0c6"
+        },
+        {
+          "file": "model.safetensors.index.json",
+          "bytes": 79657,
+          "sha256": "26d3539b516be613f39563617cb9d33b3f83d401298125be392c80cefb8f7fe5"
+        },
+        {
+          "file": "preprocessor_config.json",
+          "bytes": 390,
+          "sha256": "27225450ac9c6529872ee1924fcb0962ff5634834f817040f444118116f4e516"
+        },
+        {
+          "file": "tokenizer.json",
+          "bytes": 12807982,
+          "sha256": "5f9e4d4901a92b997e463c1f46055088b6cca5ca61a6522d1b9f64c4bb81cb42"
+        },
+        {
+          "file": "tokenizer_config.json",
+          "bytes": 16710,
+          "sha256": "316230d6a809701f4db5ea8f8fc862bc3a6f3229c937c174e674ff3ca0a64ac8"
+        },
+        {
+          "file": "video_preprocessor_config.json",
+          "bytes": 385,
+          "sha256": "7768af27c1fafa9cc9011c1dc20067e03f8915e03b63504550e11d5066986d13"
+        },
+        {
+          "file": "vocab.json",
+          "bytes": 6722759,
+          "sha256": "ce99b4cb2983d118806ce0a8b777a35b093e2000a503ebde25853284c9dfa003"
+        }
+      ]
+    },
+    {
+      "configuration": "L2",
+      "repo": "huihui-ai/Huihui-Qwen3.5-9B-abliterated",
+      "revision": "05b9e7c9b978ba29bdb8f50a49c30e4b91183339",
+      "files": [
+        {
+          "file": "README.md",
+          "bytes": 2473,
+          "sha256": "16bc18f37912a7f05006bffceba950779eb1d7fdf8d6530606205dd9aaa19afd"
+        },
+        {
+          "file": "chat_template.jinja",
+          "bytes": 7756,
+          "sha256": "a4aee8afcf2e0711942cf848899be66016f8d14a889ff9ede07bca099c28f715"
+        },
+        {
+          "file": "config.json",
+          "bytes": 3126,
+          "sha256": "d0883072e01861ed0b2d47be3c16c36a8e81c224c7ffaa310c6558fb3f932b05"
+        },
+        {
+          "file": "merges.txt",
+          "bytes": 3353259,
+          "sha256": "a9d356d7bdf1ef4949e3e748e95b8e10ad9d4e2e838eddc38a0a7b6b94d1db8d"
+        },
+        {
+          "file": "model.safetensors-00001-of-00004.safetensors",
+          "bytes": 5276436216,
+          "sha256": "919d422e1522951d441157378518e3a0c61c0b5abc94ce9d1f5ba38d2cdae69d"
+        },
+        {
+          "file": "model.safetensors-00002-of-00004.safetensors",
+          "bytes": 5335161512,
+          "sha256": "fd66bab5b3ed0cb96bf263a64b406934d0cff09dedae0488cd7bb9fa0e7639f8"
+        },
+        {
+          "file": "model.safetensors-00003-of-00004.safetensors",
+          "bytes": 5368717440,
+          "sha256": "582ddb2558d0fe05170073d8646bb5f752fbb731995c42194641fb0610722061"
+        },
+        {
+          "file": "model.safetensors-00004-of-00004.safetensors",
+          "bytes": 3325995712,
+          "sha256": "f95d920ce0073a8aa97827e791e639d44efeac47b7fc5fd99a417bb6838e364f"
+        },
+        {
+          "file": "model.safetensors.index.json",
+          "bytes": 79657,
+          "sha256": "26d3539b516be613f39563617cb9d33b3f83d401298125be392c80cefb8f7fe5"
+        },
+        {
+          "file": "preprocessor_config.json",
+          "bytes": 390,
+          "sha256": "27225450ac9c6529872ee1924fcb0962ff5634834f817040f444118116f4e516"
+        },
+        {
+          "file": "tokenizer.json",
+          "bytes": 12807982,
+          "sha256": "5f9e4d4901a92b997e463c1f46055088b6cca5ca61a6522d1b9f64c4bb81cb42"
+        },
+        {
+          "file": "tokenizer_config.json",
+          "bytes": 16710,
+          "sha256": "316230d6a809701f4db5ea8f8fc862bc3a6f3229c937c174e674ff3ca0a64ac8"
+        },
+        {
+          "file": "video_preprocessor_config.json",
+          "bytes": 385,
+          "sha256": "7768af27c1fafa9cc9011c1dc20067e03f8915e03b63504550e11d5066986d13"
+        },
+        {
+          "file": "vocab.json",
+          "bytes": 6722759,
+          "sha256": "ce99b4cb2983d118806ce0a8b777a35b093e2000a503ebde25853284c9dfa003"
+        }
+      ]
+    },
+    {
+      "configuration": "L3",
+      "repo": "google/gemma-3-12b-it",
+      "revision": "96b6f1eccf38110c56df3a15bffe176da04bfd80",
+      "files": [
+        {
+          "file": "README.md",
+          "bytes": 25126,
+          "sha256": "bcd00f0d73a59772e5cac6a98519e8f5eca15f1354cd3889c916e45ba16d8c2e"
+        },
+        {
+          "file": "added_tokens.json",
+          "bytes": 35,
+          "sha256": "50b2f405ba56a26d4913fd772089992252d7f942123cc0a034d96424221ba946"
+        },
+        {
+          "file": "chat_template.json",
+          "bytes": 1615,
+          "sha256": "fe16baf728db49457cde32802cd7efc0ac8a7a9877dbe22fe3322b2d9dc6ccd9"
+        },
+        {
+          "file": "config.json",
+          "bytes": 916,
+          "sha256": "39172c4124d3470341bbbb25f2926fd97edf68f0fe3a9fa4cde6acb9b7ed2cc6"
+        },
+        {
+          "file": "generation_config.json",
+          "bytes": 215,
+          "sha256": "fd9324becc53c4be610db39e13a613006f09fd6ef71a95fb6320dc33157490a3"
+        },
+        {
+          "file": "model-00001-of-00005.safetensors",
+          "bytes": 4979902192,
+          "sha256": "4847447e92599833e8dbaa3067cd201c3bb5c052efa91f11ba891e43234f7832"
+        },
+        {
+          "file": "model-00002-of-00005.safetensors",
+          "bytes": 4931296592,
+          "sha256": "891bd54eed03cba9ee1e705533a02a8217fcc29f356e4a1f53e5fd0d178883ad"
+        },
+        {
+          "file": "model-00003-of-00005.safetensors",
+          "bytes": 4931296656,
+          "sha256": "7cee411d9d57324e50ce064a192cc5a858276d508611b12fc599e0c9767112e0"
+        },
+        {
+          "file": "model-00004-of-00005.safetensors",
+          "bytes": 4931296656,
+          "sha256": "8bc75a29a730c9e743cad013feda3b0991a913fafe787c58a1c6e20afad97723"
+        },
+        {
+          "file": "model-00005-of-00005.safetensors",
+          "bytes": 4601000928,
+          "sha256": "ed14bd4908c98fed9f61e8cd410167e0846de9abd78e0452ab092072e5d9252d"
+        },
+        {
+          "file": "model.safetensors.index.json",
+          "bytes": 108605,
+          "sha256": "788cc42a1a92835df62d9a3791f47105f63504c7c404637a73288e9b11bc7b82"
+        },
+        {
+          "file": "preprocessor_config.json",
+          "bytes": 570,
+          "sha256": "f688d6bb20c5017601c4011de7ca656da8485b540b05013efdaf986c0fcc918d"
+        },
+        {
+          "file": "processor_config.json",
+          "bytes": 70,
+          "sha256": "3ffd5f11778dc73e2b69b3c00535e4121e1badf7018136263cd17b5b34fbaa53"
+        },
+        {
+          "file": "special_tokens_map.json",
+          "bytes": 662,
+          "sha256": "2f7b0adf4fb469770bb1490e3e35df87b1dc578246c5e7e6fc76ecf33213a397"
+        },
+        {
+          "file": "tokenizer.json",
+          "bytes": 33384568,
+          "sha256": "4667f2089529e8e7657cfb6d1c19910ae71ff5f28aa7ab2ff2763330affad795"
+        },
+        {
+          "file": "tokenizer.model",
+          "bytes": 4689074,
+          "sha256": "1299c11d7cf632ef3b4e11937501358ada021bbdf7c47638d13c0ee982f2e79c"
+        },
+        {
+          "file": "tokenizer_config.json",
+          "bytes": 1156999,
+          "sha256": "bfe25c2735e395407beb78456ea9a6984a1f00d8c16fa04a8b75f2a614cf53e1"
+        }
+      ]
+    },
+    {
+      "configuration": "L4",
+      "repo": "INSAIT-Institute/MamayLM-Gemma-3-12B-IT-v2.0",
+      "revision": "3cb02013b6b37cfe10f4b3da0fcddc1acef7f244",
+      "files": [
+        {
+          "file": "README.md",
+          "bytes": 3936,
+          "sha256": "5bf4c106d59291c65e8798b346248c24c30fffc391a62b60eeefedc95ac8c973"
+        },
+        {
+          "file": "added_tokens.json",
+          "bytes": 35,
+          "sha256": "50b2f405ba56a26d4913fd772089992252d7f942123cc0a034d96424221ba946"
+        },
+        {
+          "file": "chat_template.json",
+          "bytes": 1614,
+          "sha256": "ec2c77ae38d74b8009fb105a07b0ebf8c75a13281e181cc3dce670a4a5fe0001"
+        },
+        {
+          "file": "config.json",
+          "bytes": 2804,
+          "sha256": "89795290a04de188c98bded7b65fcc8366d3b4586d883dcc5751395b9cd76c78"
+        },
+        {
+          "file": "model-00001-of-00005.safetensors",
+          "bytes": 4939493432,
+          "sha256": "718626149d560a990648d6d8c3a54c4f8719739b13556964790a3efb305ee3e3"
+        },
+        {
+          "file": "model-00002-of-00005.safetensors",
+          "bytes": 4931296656,
+          "sha256": "b143ef5f9a3e46fab64d883cf5df06a48a5ca5e1899238cbe352aa108a32cdb8"
+        },
+        {
+          "file": "model-00003-of-00005.safetensors",
+          "bytes": 4931296656,
+          "sha256": "94de704c9825219a93c691cadc80e366e489baf5e9e2e61397fc93d8eedffacb"
+        },
+        {
+          "file": "model-00004-of-00005.safetensors",
+          "bytes": 4931296656,
+          "sha256": "b65fd837df3eac872b88d8ff2872defc1c1bb6d495be6bae9468b02228678ec8"
+        },
+        {
+          "file": "model-00005-of-00005.safetensors",
+          "bytes": 4641409680,
+          "sha256": "410d29ced9b68cff309bee2e8871e20758413607f64c5328bc884d7d68bae781"
+        },
+        {
+          "file": "model.safetensors.index.json",
+          "bytes": 104328,
+          "sha256": "417499de9b05b4c1afe2bf9e4d3028b6a7ea9680d0678185587f36489619b8b7"
+        },
+        {
+          "file": "preprocessor_config.json",
+          "bytes": 570,
+          "sha256": "f688d6bb20c5017601c4011de7ca656da8485b540b05013efdaf986c0fcc918d"
+        },
+        {
+          "file": "processor_config.json",
+          "bytes": 70,
+          "sha256": "3ffd5f11778dc73e2b69b3c00535e4121e1badf7018136263cd17b5b34fbaa53"
+        },
+        {
+          "file": "special_tokens_map.json",
+          "bytes": 662,
+          "sha256": "2f7b0adf4fb469770bb1490e3e35df87b1dc578246c5e7e6fc76ecf33213a397"
+        },
+        {
+          "file": "tokenizer.json",
+          "bytes": 33384568,
+          "sha256": "4667f2089529e8e7657cfb6d1c19910ae71ff5f28aa7ab2ff2763330affad795"
+        },
+        {
+          "file": "tokenizer.model",
+          "bytes": 4689074,
+          "sha256": "1299c11d7cf632ef3b4e11937501358ada021bbdf7c47638d13c0ee982f2e79c"
+        },
+        {
+          "file": "tokenizer_config.json",
+          "bytes": 1156999,
+          "sha256": "bfe25c2735e395407beb78456ea9a6984a1f00d8c16fa04a8b75f2a614cf53e1"
+        }
+      ]
+    },
+    {
+      "configuration": "L6",
+      "repo": "unsloth/gemma-4-E4B-it-GGUF",
+      "revision": "bfc15c382204943c3a8fff0c750b94ae2364d7a3",
+      "download_client": "huggingface-hub==0.36.2",
+      "files": [
+        {
+          "file": "gemma-4-E4B-it-Q4_K_M.gguf",
+          "bytes": 4977171584,
+          "sha256": "85a896a047553e842f25297ee5b031d64ff30147d9c4af17b1e4b394cd1fab87"
+        }
+      ]
+    }
+  ],
+  "conversions": [
+    {
+      "configuration": "L1",
+      "state": "q4-complete",
+      "command": [
+        "artifacts/round-2/tooling/converter-env/Scripts/python.exe",
+        "artifacts/round-2/tooling/source/ggml-org-llama.cpp-8642541/convert_hf_to_gguf.py",
+        "artifacts/round-2/weights/L1",
+        "--outfile",
+        "artifacts/round-2/converted/L1.f16.gguf",
+        "--outtype",
+        "f16"
+      ],
+      "output": "artifacts/round-2/converted/L1.f16.gguf",
+      "bytes": 18407321504,
+      "quantized_file": "artifacts/round-2/converted/L1.Q4_K_M.gguf",
+      "quantized_bytes": 5780090784,
+      "quantized_sha256": "7e55c9034df0c4fa477932413033160312d399681422759d5dd8df930c70f2bb",
+      "quantizer_platform": "Ubuntu WSL2",
+      "conversion_command": [
+        "artifacts/round-2/tooling/converter-env/Scripts/python.exe",
+        "artifacts/round-2/tooling/source/ggml-org-llama.cpp-8642541/convert_hf_to_gguf.py",
+        "artifacts/round-2/weights/L1",
+        "--outfile",
+        "artifacts/round-2/converted/L1.f16.gguf",
+        "--outtype",
+        "f16"
+      ],
+      "quantize_recipe": [
+        "llama-quantize",
+        "L1.f16.gguf",
+        "L1.Q4_K_M.gguf",
+        "Q4_K_M"
+      ]
+    },
+    {
+      "configuration": "L2",
+      "state": "q4-complete",
+      "quantizer_platform": "Ubuntu WSL2",
+      "seconds": 115.0779999999977,
+      "quantized_file": "artifacts/round-2/converted/L2.Q4_K_M.gguf",
+      "quantized_bytes": 5780090816,
+      "quantized_sha256": "72b064521f095915e09cdbe95a82e5d6a8ccfeddbf5c61dad2cb70a15f6bc4df",
+      "conversion_command": [
+        "artifacts/round-2/tooling/converter-env/Scripts/python.exe",
+        "artifacts/round-2/tooling/source/ggml-org-llama.cpp-8642541/convert_hf_to_gguf.py",
+        "artifacts/round-2/weights/L2",
+        "--outfile",
+        "artifacts/round-2/converted/L2.f16.gguf",
+        "--outtype",
+        "f16"
+      ],
+      "quantize_recipe": [
+        "llama-quantize",
+        "L2.f16.gguf",
+        "L2.Q4_K_M.gguf",
+        "Q4_K_M"
+      ]
+    },
+    {
+      "configuration": "L3",
+      "state": "q4-complete",
+      "quantizer_platform": "Ubuntu WSL2",
+      "seconds": 145.86000000000058,
+      "quantized_file": "artifacts/round-2/converted/L3.Q4_K_M.gguf",
+      "quantized_bytes": 7300778432,
+      "quantized_sha256": "9f696f8aa1e79c69ca9dbf982fdef53f152315e41930d41d46af1ef0caeb8e50",
+      "conversion_command": [
+        "artifacts/round-2/tooling/converter-env/Scripts/python.exe",
+        "artifacts/round-2/tooling/source/ggml-org-llama.cpp-8642541/convert_hf_to_gguf.py",
+        "artifacts/round-2/weights/L3",
+        "--outfile",
+        "artifacts/round-2/converted/L3.f16.gguf",
+        "--outtype",
+        "f16"
+      ],
+      "quantize_recipe": [
+        "llama-quantize",
+        "L3.f16.gguf",
+        "L3.Q4_K_M.gguf",
+        "Q4_K_M"
+      ]
+    },
+    {
+      "configuration": "L4",
+      "state": "q4-complete",
+      "quantizer_platform": "Ubuntu WSL2",
+      "seconds": 148.78099999999904,
+      "quantized_file": "artifacts/round-2/converted/L4.Q4_K_M.gguf",
+      "quantized_bytes": 7300778464,
+      "quantized_sha256": "7cdfc70daa52c27d6a0d8f9fa4ede68baab14b88002137d990653b26bd3c18d1",
+      "conversion_command": [
+        "artifacts/round-2/tooling/converter-env/Scripts/python.exe",
+        "artifacts/round-2/tooling/source/ggml-org-llama.cpp-8642541/convert_hf_to_gguf.py",
+        "artifacts/round-2/weights/L4",
+        "--outfile",
+        "artifacts/round-2/converted/L4.f16.gguf",
+        "--outtype",
+        "f16"
+      ],
+      "quantize_recipe": [
+        "llama-quantize",
+        "L4.f16.gguf",
+        "L4.Q4_K_M.gguf",
+        "Q4_K_M"
+      ]
+    }
+  ],
+  "converter_requirements": [
+    "certifi==2026.10.23",
+    "charset-normalizer==3.5.2",
+    "colorama==0.4.6",
+    "filelock==4.2.4",
+    "fsspec==2026.9.0",
+    "gguf==0.19.0",
+    "huggingface_hub==0.36.2",
+    "idna==3.20",
+    "Jinja2==3.1.6",
+    "MarkupSafe==3.0.4",
+    "mpmath==1.3.0",
+    "networkx==3.7",
+    "numpy==2.2.6",
+    "packaging==26.3",
+    "protobuf==4.25.9",
+    "PyYAML==6.0.3",
+    "regex==2026.9.29",
+    "requests==2.34.2",
+    "safetensors==0.8.0",
+    "sentencepiece==0.2.2",
+    "setuptools==81.0.0",
+    "sympy==1.14.0",
+    "tokenizers==0.22.2",
+    "torch==2.11.0+cpu",
+    "tqdm==4.70.1",
+    "transformers==4.57.6",
+    "typing_extensions==4.16.0",
+    "urllib3==2.8.0"
+  ],
+  "quantizer_build": {
+    "platform": "Ubuntu WSL2",
+    "kernel": "6.18.33.2-microsoft-standard-WSL2",
+    "compiler": "GNU 15.2.0",
+    "cmake": "4.4.5",
+    "cmake_archive_sha256": "ed85135c5a5135b45e50423cb406dea04ca3338da0b8ef3c9ede963559680be0",
+    "flags": [
+      "CMAKE_BUILD_TYPE=Release",
+      "GGML_CUDA=OFF",
+      "LLAMA_CURL=OFF",
+      "LLAMA_BUILD_TESTS=OFF",
+      "LLAMA_BUILD_SERVER=OFF",
+      "LLAMA_BUILD_TOOLS=ON",
+      "LLAMA_BUILD_EXAMPLES=OFF",
+      "GGML_NATIVE=OFF",
+      "BUILD_SHARED_LIBS=OFF",
+      "GIT_EXE:FILEPATH="
+    ],
+    "build_number": 11960,
+    "build_commit": "8642541b255bfb5dc39cd351a178be09013a55d6",
+    "target": "llama-quantize",
+    "parallel": 8,
+    "imatrix": false
+  },
+  "existing_L5": {
+    "repo": "mradermacher/Huihui-Qwen3.5-4B-abliterated-GGUF",
+    "filename": "Huihui-Qwen3.5-4B-abliterated.Q5_K_M.gguf",
+    "bytes": 3108758848,
+    "sha256": "a93fe75df87619da6f28bef8faf895799a8bbda238c29bc0dbb40ae418054ad4",
+    "revision": null,
+    "note": "Existing round-one artifact; current hash verified. Original repository revision unknown."
+  },
+  "L6": {
+    "configuration": "L6",
+    "repo": "unsloth/gemma-4-E4B-it-GGUF",
+    "revision": "bfc15c382204943c3a8fff0c750b94ae2364d7a3",
+    "filename": "gemma-4-E4B-it-Q4_K_M.gguf",
+    "bytes": 4977171584,
+    "sha256": "85a896a047553e842f25297ee5b031d64ff30147d9c4af17b1e4b394cd1fab87",
+    "recipe": "Upstream Q4_K_M, not own conversion; separate architecture control"
+  },
+  "actual_download_clients": {
+    "L1-L4": "2.3.0",
+    "L6": "0.36.2"
+  },
+  "download_client_note": "download_client is the pinned reproducible helper version; original successful L1-L4 downloads used 2.3.0 before its L6 partial-loss defect was diagnosed"
+}

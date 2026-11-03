@@ -13,7 +13,7 @@ def sentence_context(text,start,end):
     return dict(context_before=text[left:start],context_after=text[end:right])
 
 
-def sentence_groups(original,proposal):
+def sentence_groups(original,proposal,content_format='plain'):
     from .evidence import fragment_text
     fragments=None;units=[]
     for index,edit in enumerate(proposal.edits):
@@ -32,6 +32,18 @@ def sentence_groups(original,proposal):
             merged[-1]['right']=max(merged[-1]['right'],unit['right'])
             merged[-1]['units'].append(unit)
         else:merged.append(dict(left=unit['left'],right=unit['right'],units=[unit]))
+    if content_format=='markdown':
+        from .markdown_document import format_dependency_groups
+        candidate=original
+        for unit in sorted(units,key=lambda item:item['start'],reverse=True):
+            candidate=candidate[:unit['start']]+unit['replacement']+candidate[unit['end']:]
+        for dependency in format_dependency_groups(original,candidate,units):
+            owners=[index for index,group in enumerate(merged) if dependency & {unit['index'] for unit in group['units']}]
+            if len(owners)>1:
+                first,last=min(owners),max(owners)
+                selected=merged[first:last+1]
+                merged[first:last+1]=[dict(left=min(g['left'] for g in selected),right=max(g['right'] for g in selected),
+                                              units=[unit for group in selected for unit in group['units']])]
     groups=[]
     for group in merged:
         before=[];after=[];cursor=group['left']
@@ -49,9 +61,9 @@ def sentence_groups(original,proposal):
     return groups
 
 
-def validate_group_selection(original,proposal,indices):
+def validate_group_selection(original,proposal,indices,content_format='plain'):
     selected=set(indices)
-    for group in sentence_groups(original,proposal):
+    for group in sentence_groups(original,proposal,content_format):
         members=set(group['indices'])
         if selected & members and not members<=selected:
-            raise ValueError('Правки одного речення потрібно приймати або відхиляти разом; відкрийте перегляд знову')
+            raise ValueError('Взаємозалежні правки речення або форматування потрібно приймати чи відхиляти разом; відкрийте перегляд знову')

@@ -1,0 +1,1171 @@
+{
+  "stage": "owner-oracle-complete-awaiting-dev",
+  "date": "2026-10-30",
+  "review_revision": 4,
+  "owner_oracle_complete": true,
+  "dataset_frozen": false,
+  "harness_frozen": false,
+  "model_calls_on_new_holdout": 0,
+  "verdict_agreement": [
+    48,
+    48
+  ],
+  "facts_reflected": [
+    28,
+    28
+  ],
+  "open_disagreements": [],
+  "prompt_sha256": "55fe4d840642b93c69d01d1b2a4d5d421282b99e51bf6ac054d27028593a9088",
+  "reviewed_holdout_sha256": "2b3b5c9f8b1c45131eb3cae93599c08922fb83d837ad3af6c25d8f15ed986d3a",
+  "owner_panel_sha256": "4a8f996b9a4df1056bf9dfabff03045ddce81a124ee09876ba68d1313f71d496",
+  "key_sha256": "c9ea61df313316e37126ed21b1816ad862e9041837beae493e3312c43a30ad19",
+  "draft_manifest_sha256": "9820e36fc17b8b5683f29c5cd32d5547f3f0fc818bc1365ae5b85e1b6d430810",
+  "caveat": "Input repairs were repeated with the same owner. This is not a fresh independent blind evaluation; agreement is not model accuracy.",
+  "prior_technical_notes": "Quote/source-address typos at20/24/32/43 remain documented in revision3 comparison; fact recognition is separate from source-address precision.",
+  "records": [
+    {
+      "position": 1,
+      "case_id": "A1-neutral-a",
+      "owner": {
+        "label": "clean",
+        "quote": "",
+        "note": ""
+      },
+      "gold": {
+        "verdict": "clean",
+        "contradictions": [],
+        "clean_reason": "Час відходу відповідає справному табло й розкладу.",
+        "question_reason": ""
+      },
+      "verdict_match": true,
+      "author_fact_ids_supported_by_owner_explanation": []
+    },
+    {
+      "position": 2,
+      "case_id": "B3-adult-b",
+      "owner": {
+        "label": "issue",
+        "quote": "Софія озвалася з сусіднього крісла",
+        "note": "T1,S2 - різні місця перебування Софії"
+      },
+      "gold": {
+        "verdict": "issue",
+        "contradictions": [
+          {
+            "id": "B3-g1",
+            "type": "location",
+            "severity": "major",
+            "source_indices": [
+              1
+            ],
+            "target_quote": "Софія озвалася з сусіднього крісла"
+          }
+        ],
+        "clean_reason": "",
+        "question_reason": ""
+      },
+      "verdict_match": true,
+      "author_fact_ids_supported_by_owner_explanation": [
+        "B3-g1"
+      ]
+    },
+    {
+      "position": 3,
+      "case_id": "D2-adult-b",
+      "owner": {
+        "label": "clean",
+        "quote": "",
+        "note": ""
+      },
+      "gold": {
+        "verdict": "clean",
+        "contradictions": [],
+        "clean_reason": "Окреме рішення лишає чинною картку А, де ручне фокусування можливе.",
+        "question_reason": ""
+      },
+      "verdict_match": true,
+      "author_fact_ids_supported_by_owner_explanation": []
+    },
+    {
+      "position": 4,
+      "case_id": "C1-neutral-b",
+      "owner": {
+        "label": "issue",
+        "quote": "Адреса сховища: Садова, 6",
+        "note": "T1, S2 протиріччя в номері дому"
+      },
+      "gold": {
+        "verdict": "issue",
+        "contradictions": [
+          {
+            "id": "C1-g1",
+            "type": "prior_knowledge",
+            "severity": "major",
+            "source_indices": [
+              1
+            ],
+            "target_quote": "Садова, 6"
+          }
+        ],
+        "clean_reason": "",
+        "question_reason": ""
+      },
+      "verdict_match": true,
+      "author_fact_ids_supported_by_owner_explanation": [
+        "C1-g1"
+      ]
+    },
+    {
+      "position": 5,
+      "case_id": "D1-adult-b",
+      "owner": {
+        "label": "clean",
+        "quote": "",
+        "note": ""
+      },
+      "gold": {
+        "verdict": "clean",
+        "contradictions": [],
+        "clean_reason": "Окреме рішення надає пріоритет розташуванню з картки А.",
+        "question_reason": ""
+      },
+      "verdict_match": true,
+      "author_fact_ids_supported_by_owner_explanation": []
+    },
+    {
+      "position": 6,
+      "case_id": "B4-adult-b",
+      "owner": {
+        "label": "issue",
+        "quote": "українські слова були надруковані у вступі",
+        "note": "T1, S2: конфлікт мов"
+      },
+      "gold": {
+        "verdict": "issue",
+        "contradictions": [
+          {
+            "id": "B4-g1",
+            "type": "language",
+            "severity": "major",
+            "source_indices": [
+              1
+            ],
+            "target_quote": "Українські слова були надруковані у вступі"
+          }
+        ],
+        "clean_reason": "",
+        "question_reason": ""
+      },
+      "verdict_match": true,
+      "author_fact_ids_supported_by_owner_explanation": [
+        "B4-g1"
+      ]
+    },
+    {
+      "position": 7,
+      "case_id": "B3-adult-a",
+      "owner": {
+        "label": "clean",
+        "quote": "",
+        "note": ""
+      },
+      "gold": {
+        "verdict": "clean",
+        "contradictions": [],
+        "clean_reason": "Дистанційний голос не додає фізично присутньої людини.",
+        "question_reason": ""
+      },
+      "verdict_match": true,
+      "author_fact_ids_supported_by_owner_explanation": []
+    },
+    {
+      "position": 8,
+      "case_id": "C1-neutral-a",
+      "owner": {
+        "label": "clean",
+        "quote": "",
+        "note": ""
+      },
+      "gold": {
+        "verdict": "clean",
+        "contradictions": [],
+        "clean_reason": "Повторне використання вчорашньої записки зберігає відому адресу.",
+        "question_reason": ""
+      },
+      "verdict_match": true,
+      "author_fact_ids_supported_by_owner_explanation": []
+    },
+    {
+      "position": 9,
+      "case_id": "A2-neutral-a",
+      "owner": {
+        "label": "clean",
+        "quote": "",
+        "note": ""
+      },
+      "gold": {
+        "verdict": "clean",
+        "contradictions": [],
+        "clean_reason": "Два підноси по шість дають дванадцять пластин.",
+        "question_reason": ""
+      },
+      "verdict_match": true,
+      "author_fact_ids_supported_by_owner_explanation": []
+    },
+    {
+      "position": 10,
+      "case_id": "B3-neutral-b",
+      "owner": {
+        "label": "issue",
+        "quote": "Софія озвалася з сусіднього крісла",
+        "note": "T1,S2 - різні місця перебування Софії"
+      },
+      "gold": {
+        "verdict": "issue",
+        "contradictions": [
+          {
+            "id": "B3-g1",
+            "type": "location",
+            "severity": "major",
+            "source_indices": [
+              1
+            ],
+            "target_quote": "Софія озвалася з сусіднього крісла"
+          }
+        ],
+        "clean_reason": "",
+        "question_reason": ""
+      },
+      "verdict_match": true,
+      "author_fact_ids_supported_by_owner_explanation": [
+        "B3-g1"
+      ]
+    },
+    {
+      "position": 11,
+      "case_id": "A2-adult-b",
+      "owner": {
+        "label": "issue",
+        "quote": "виклала по вісім пластин на кожен піднос",
+        "note": "T1, S2: 8 x 2 = 16 пластин, а в S2 їх 12"
+      },
+      "gold": {
+        "verdict": "issue",
+        "contradictions": [
+          {
+            "id": "A2-g1",
+            "type": "object_count",
+            "severity": "major",
+            "source_indices": [
+              1
+            ],
+            "target_quote": "по вісім пластин"
+          }
+        ],
+        "clean_reason": "",
+        "question_reason": ""
+      },
+      "verdict_match": true,
+      "author_fact_ids_supported_by_owner_explanation": [
+        "A2-g1"
+      ]
+    },
+    {
+      "position": 12,
+      "case_id": "E1-adult-b",
+      "owner": {
+        "label": "issue",
+        "quote": "стрілки показували 10:15",
+        "note": "T1, S2: протиріччя часу"
+      },
+      "gold": {
+        "verdict": "issue",
+        "contradictions": [
+          {
+            "id": "E1-g1",
+            "type": "time",
+            "severity": "major",
+            "source_indices": [
+              1
+            ],
+            "target_quote": "10:15"
+          }
+        ],
+        "clean_reason": "",
+        "question_reason": ""
+      },
+      "verdict_match": true,
+      "author_fact_ids_supported_by_owner_explanation": [
+        "E1-g1"
+      ]
+    },
+    {
+      "position": 13,
+      "case_id": "B1-adult-b",
+      "owner": {
+        "label": "issue",
+        "quote": "Червона халява",
+        "note": "T1, S2: конфлікт кольору халяв"
+      },
+      "gold": {
+        "verdict": "issue",
+        "contradictions": [
+          {
+            "id": "B1-g1",
+            "type": "appearance",
+            "severity": "major",
+            "source_indices": [
+              1
+            ],
+            "target_quote": "Червона халява"
+          }
+        ],
+        "clean_reason": "",
+        "question_reason": ""
+      },
+      "verdict_match": true,
+      "author_fact_ids_supported_by_owner_explanation": [
+        "B1-g1"
+      ]
+    },
+    {
+      "position": 14,
+      "case_id": "E1-neutral-b",
+      "owner": {
+        "label": "issue",
+        "quote": "коли стрілки показували 10:15",
+        "note": "T1, S2 - неузгодженність часу"
+      },
+      "gold": {
+        "verdict": "issue",
+        "contradictions": [
+          {
+            "id": "E1-g1",
+            "type": "time",
+            "severity": "major",
+            "source_indices": [
+              1
+            ],
+            "target_quote": "10:15"
+          }
+        ],
+        "clean_reason": "",
+        "question_reason": ""
+      },
+      "verdict_match": true,
+      "author_fact_ids_supported_by_owner_explanation": [
+        "E1-g1"
+      ]
+    },
+    {
+      "position": 15,
+      "case_id": "B1-neutral-b",
+      "owner": {
+        "label": "issue",
+        "quote": "Червона халява",
+        "note": "T1, S2: конфлікт кольору халяв"
+      },
+      "gold": {
+        "verdict": "issue",
+        "contradictions": [
+          {
+            "id": "B1-g1",
+            "type": "appearance",
+            "severity": "major",
+            "source_indices": [
+              1
+            ],
+            "target_quote": "Червона халява"
+          }
+        ],
+        "clean_reason": "",
+        "question_reason": ""
+      },
+      "verdict_match": true,
+      "author_fact_ids_supported_by_owner_explanation": [
+        "B1-g1"
+      ]
+    },
+    {
+      "position": 16,
+      "case_id": "B2-adult-b",
+      "owner": {
+        "label": "issue",
+        "quote": "Ключем, що лишився на кільці, вона відімкнула студію",
+        "note": "Підтверджено власником у чаті 30.10.2026: clean була випадковою позначкою; на кільці мав залишитися ключ від шафки (як у №41)."
+      },
+      "gold": {
+        "verdict": "issue",
+        "contradictions": [
+          {
+            "id": "B2-g1",
+            "type": "object_identity",
+            "severity": "major",
+            "source_indices": [
+              1
+            ],
+            "target_quote": "Ключем, що лишився на кільці, вона відімкнула студію"
+          }
+        ],
+        "clean_reason": "",
+        "question_reason": ""
+      },
+      "verdict_match": true,
+      "author_fact_ids_supported_by_owner_explanation": [
+        "B2-g1"
+      ]
+    },
+    {
+      "position": 17,
+      "case_id": "C1-adult-a",
+      "owner": {
+        "label": "clean",
+        "quote": "",
+        "note": ""
+      },
+      "gold": {
+        "verdict": "clean",
+        "contradictions": [],
+        "clean_reason": "Повторне використання вчорашньої записки зберігає відому адресу.",
+        "question_reason": ""
+      },
+      "verdict_match": true,
+      "author_fact_ids_supported_by_owner_explanation": []
+    },
+    {
+      "position": 18,
+      "case_id": "D2-neutral-b",
+      "owner": {
+        "label": "clean",
+        "quote": "",
+        "note": ""
+      },
+      "gold": {
+        "verdict": "clean",
+        "contradictions": [],
+        "clean_reason": "Окреме рішення лишає чинною картку А, де ручне фокусування можливе.",
+        "question_reason": ""
+      },
+      "verdict_match": true,
+      "author_fact_ids_supported_by_owner_explanation": []
+    },
+    {
+      "position": 19,
+      "case_id": "B2-adult-a",
+      "owner": {
+        "label": "clean",
+        "quote": "",
+        "note": ""
+      },
+      "gold": {
+        "verdict": "clean",
+        "contradictions": [],
+        "clean_reason": "Обмеження єдиного ключа стосується студійного замка, не шафки.",
+        "question_reason": ""
+      },
+      "verdict_match": true,
+      "author_fact_ids_supported_by_owner_explanation": []
+    },
+    {
+      "position": 20,
+      "case_id": "C2-adult-b",
+      "owner": {
+        "label": "issue",
+        "quote": "олічила всі пелюстки мозаїки: їх виявилося шість",
+        "note": "T1, S2: протиріччя в кількості лепестків"
+      },
+      "gold": {
+        "verdict": "issue",
+        "contradictions": [
+          {
+            "id": "C2-g1",
+            "type": "known_detail",
+            "severity": "major",
+            "source_indices": [
+              1
+            ],
+            "target_quote": "їх виявилося шість"
+          }
+        ],
+        "clean_reason": "",
+        "question_reason": ""
+      },
+      "verdict_match": true,
+      "author_fact_ids_supported_by_owner_explanation": [
+        "C2-g1"
+      ]
+    },
+    {
+      "position": 21,
+      "case_id": "E2-neutral-b",
+      "owner": {
+        "label": "issue",
+        "quote": "залишивши зелений розчерк,",
+        "note": "T1, S3. Ручка з синіми чернилами зазвичай не оставляє зелений розчерк"
+      },
+      "gold": {
+        "verdict": "issue",
+        "contradictions": [
+          {
+            "id": "E2-g1",
+            "type": "ink",
+            "severity": "major",
+            "source_indices": [
+              2
+            ],
+            "target_quote": "зелений розчерк"
+          }
+        ],
+        "clean_reason": "",
+        "question_reason": ""
+      },
+      "verdict_match": true,
+      "author_fact_ids_supported_by_owner_explanation": [
+        "E2-g1"
+      ]
+    },
+    {
+      "position": 22,
+      "case_id": "C2-neutral-a",
+      "owner": {
+        "label": "clean",
+        "quote": "",
+        "note": ""
+      },
+      "gold": {
+        "verdict": "clean",
+        "contradictions": [],
+        "clean_reason": "Повторне звіряння з ескізом сумісне з попереднім відвіданням і незмінним орнаментом.",
+        "question_reason": ""
+      },
+      "verdict_match": true,
+      "author_fact_ids_supported_by_owner_explanation": []
+    },
+    {
+      "position": 23,
+      "case_id": "A1-neutral-b",
+      "owner": {
+        "label": "issue",
+        "quote": "На табло світилися цифри 15:40",
+        "note": "T1, S2: неузгодженість часу"
+      },
+      "gold": {
+        "verdict": "issue",
+        "contradictions": [
+          {
+            "id": "A1-g1",
+            "type": "time",
+            "severity": "major",
+            "source_indices": [
+              1
+            ],
+            "target_quote": "15:40"
+          }
+        ],
+        "clean_reason": "",
+        "question_reason": ""
+      },
+      "verdict_match": true,
+      "author_fact_ids_supported_by_owner_explanation": [
+        "A1-g1"
+      ]
+    },
+    {
+      "position": 24,
+      "case_id": "E2-neutral-a",
+      "owner": {
+        "label": "issue",
+        "quote": "залишивши зелений розчерк, і глянула у вікно на подвір’я",
+        "note": "T1, S2: неузгодженість по наяності вікон в кімнаті. T1, S2: неузгодженість по кольору розчерку"
+      },
+      "gold": {
+        "verdict": "issue",
+        "contradictions": [
+          {
+            "id": "E2-g1",
+            "type": "ink",
+            "severity": "major",
+            "source_indices": [
+              2
+            ],
+            "target_quote": "зелений розчерк"
+          },
+          {
+            "id": "E2-g2",
+            "type": "location",
+            "severity": "major",
+            "source_indices": [
+              1
+            ],
+            "target_quote": "у вікно на подвір’я"
+          }
+        ],
+        "clean_reason": "",
+        "question_reason": ""
+      },
+      "verdict_match": true,
+      "author_fact_ids_supported_by_owner_explanation": [
+        "E2-g1",
+        "E2-g2"
+      ]
+    },
+    {
+      "position": 25,
+      "case_id": "B1-adult-a",
+      "owner": {
+        "label": "clean",
+        "quote": "",
+        "note": ""
+      },
+      "gold": {
+        "verdict": "clean",
+        "contradictions": [],
+        "clean_reason": "Червоний колір стосується підошви, не чорної шкіряної частини.",
+        "question_reason": ""
+      },
+      "verdict_match": true,
+      "author_fact_ids_supported_by_owner_explanation": []
+    },
+    {
+      "position": 26,
+      "case_id": "C1-adult-b",
+      "owner": {
+        "label": "issue",
+        "quote": "Адреса сховища: Садова, 6",
+        "note": "T1, S2: конфлікт адреси"
+      },
+      "gold": {
+        "verdict": "issue",
+        "contradictions": [
+          {
+            "id": "C1-g1",
+            "type": "prior_knowledge",
+            "severity": "major",
+            "source_indices": [
+              1
+            ],
+            "target_quote": "Садова, 6"
+          }
+        ],
+        "clean_reason": "",
+        "question_reason": ""
+      },
+      "verdict_match": true,
+      "author_fact_ids_supported_by_owner_explanation": [
+        "C1-g1"
+      ]
+    },
+    {
+      "position": 27,
+      "case_id": "A2-neutral-b",
+      "owner": {
+        "label": "issue",
+        "quote": "виклала по вісім пластин на кожен піднос",
+        "note": "T1, S2: 8 х 2 = 16 пластін, а їх було 12"
+      },
+      "gold": {
+        "verdict": "issue",
+        "contradictions": [
+          {
+            "id": "A2-g1",
+            "type": "object_count",
+            "severity": "major",
+            "source_indices": [
+              1
+            ],
+            "target_quote": "по вісім пластин"
+          }
+        ],
+        "clean_reason": "",
+        "question_reason": ""
+      },
+      "verdict_match": true,
+      "author_fact_ids_supported_by_owner_explanation": [
+        "A2-g1"
+      ]
+    },
+    {
+      "position": 28,
+      "case_id": "E1-neutral-a",
+      "owner": {
+        "label": "issue",
+        "quote": "відчинила сейф, коли стрілки показували 10:15, і виклала на тканину шість браслетів",
+        "note": "T1, S2: неузгодженість по часу. T1, S3: неузгодженість кількісті браслету."
+      },
+      "gold": {
+        "verdict": "issue",
+        "contradictions": [
+          {
+            "id": "E1-g1",
+            "type": "time",
+            "severity": "major",
+            "source_indices": [
+              1
+            ],
+            "target_quote": "10:15"
+          },
+          {
+            "id": "E1-g2",
+            "type": "object_count",
+            "severity": "major",
+            "source_indices": [
+              2
+            ],
+            "target_quote": "шість браслетів"
+          }
+        ],
+        "clean_reason": "",
+        "question_reason": ""
+      },
+      "verdict_match": true,
+      "author_fact_ids_supported_by_owner_explanation": [
+        "E1-g1",
+        "E1-g2"
+      ]
+    },
+    {
+      "position": 29,
+      "case_id": "D2-adult-a",
+      "owner": {
+        "label": "question",
+        "quote": "обхопила пальцями кільце фокуса й повільно повернула його.",
+        "note": "T1, S3, S2.  Треба обрати одну з карток А,Б"
+      },
+      "gold": {
+        "verdict": "question",
+        "contradictions": [],
+        "clean_reason": "",
+        "question_reason": "Який опис об’єктива чинний?"
+      },
+      "verdict_match": true,
+      "author_fact_ids_supported_by_owner_explanation": []
+    },
+    {
+      "position": 30,
+      "case_id": "D1-neutral-b",
+      "owner": {
+        "label": "clean",
+        "quote": "",
+        "note": ""
+      },
+      "gold": {
+        "verdict": "clean",
+        "contradictions": [],
+        "clean_reason": "Окреме рішення надає пріоритет розташуванню з картки А.",
+        "question_reason": ""
+      },
+      "verdict_match": true,
+      "author_fact_ids_supported_by_owner_explanation": []
+    },
+    {
+      "position": 31,
+      "case_id": "B2-neutral-a",
+      "owner": {
+        "label": "clean",
+        "quote": "",
+        "note": ""
+      },
+      "gold": {
+        "verdict": "clean",
+        "contradictions": [],
+        "clean_reason": "Обмеження єдиного ключа стосується студійного замка, не шафки.",
+        "question_reason": ""
+      },
+      "verdict_match": true,
+      "author_fact_ids_supported_by_owner_explanation": []
+    },
+    {
+      "position": 32,
+      "case_id": "E2-adult-b",
+      "owner": {
+        "label": "issue",
+        "quote": "",
+        "note": "T1, S2: розбіжність кольору ручки і розчерку\n Зауваження до передумов: S1 стверджує що персонажі погодили межі зйомки, але приводить тільки одного персонажа (Ірина), що створює некоректність формулювання."
+      },
+      "gold": {
+        "verdict": "issue",
+        "contradictions": [
+          {
+            "id": "E2-g1",
+            "type": "ink",
+            "severity": "major",
+            "source_indices": [
+              2
+            ],
+            "target_quote": "зелений розчерк"
+          }
+        ],
+        "clean_reason": "",
+        "question_reason": ""
+      },
+      "verdict_match": true,
+      "author_fact_ids_supported_by_owner_explanation": [
+        "E2-g1"
+      ]
+    },
+    {
+      "position": 33,
+      "case_id": "B4-neutral-a",
+      "owner": {
+        "label": "clean",
+        "quote": "",
+        "note": ""
+      },
+      "gold": {
+        "verdict": "clean",
+        "contradictions": [],
+        "clean_reason": "Мова рукописних полів не обмежена мовою друкованого тексту.",
+        "question_reason": ""
+      },
+      "verdict_match": true,
+      "author_fact_ids_supported_by_owner_explanation": []
+    },
+    {
+      "position": 34,
+      "case_id": "D1-adult-a",
+      "owner": {
+        "label": "question",
+        "quote": "",
+        "note": "T1, S2, S3: треба вирішити конфлікт між картками щодо поверху галереї"
+      },
+      "gold": {
+        "verdict": "question",
+        "contradictions": [],
+        "clean_reason": "",
+        "question_reason": "Яку картку розташування вважати чинною?"
+      },
+      "verdict_match": true,
+      "author_fact_ids_supported_by_owner_explanation": []
+    },
+    {
+      "position": 35,
+      "case_id": "A2-adult-a",
+      "owner": {
+        "label": "clean",
+        "quote": "",
+        "note": ""
+      },
+      "gold": {
+        "verdict": "clean",
+        "contradictions": [],
+        "clean_reason": "Два підноси по шість дають дванадцять пластин.",
+        "question_reason": ""
+      },
+      "verdict_match": true,
+      "author_fact_ids_supported_by_owner_explanation": []
+    },
+    {
+      "position": 36,
+      "case_id": "E1-adult-a",
+      "owner": {
+        "label": "issue",
+        "quote": "відчинила сейф, коли стрілки показували 10:15, і виклала на тканину шість браслетів",
+        "note": "T1, S2: конфлікт часу. T1, S3: різна кількість браслетів"
+      },
+      "gold": {
+        "verdict": "issue",
+        "contradictions": [
+          {
+            "id": "E1-g1",
+            "type": "time",
+            "severity": "major",
+            "source_indices": [
+              1
+            ],
+            "target_quote": "10:15"
+          },
+          {
+            "id": "E1-g2",
+            "type": "object_count",
+            "severity": "major",
+            "source_indices": [
+              2
+            ],
+            "target_quote": "шість браслетів"
+          }
+        ],
+        "clean_reason": "",
+        "question_reason": ""
+      },
+      "verdict_match": true,
+      "author_fact_ids_supported_by_owner_explanation": [
+        "E1-g1",
+        "E1-g2"
+      ]
+    },
+    {
+      "position": 37,
+      "case_id": "B4-adult-a",
+      "owner": {
+        "label": "clean",
+        "quote": "",
+        "note": ""
+      },
+      "gold": {
+        "verdict": "clean",
+        "contradictions": [],
+        "clean_reason": "Мова рукописних полів не обмежена мовою друкованого тексту.",
+        "question_reason": ""
+      },
+      "verdict_match": true,
+      "author_fact_ids_supported_by_owner_explanation": []
+    },
+    {
+      "position": 38,
+      "case_id": "A1-adult-a",
+      "owner": {
+        "label": "clean",
+        "quote": "",
+        "note": ""
+      },
+      "gold": {
+        "verdict": "clean",
+        "contradictions": [],
+        "clean_reason": "Час відходу відповідає справному табло й розкладу.",
+        "question_reason": ""
+      },
+      "verdict_match": true,
+      "author_fact_ids_supported_by_owner_explanation": []
+    },
+    {
+      "position": 39,
+      "case_id": "D1-neutral-a",
+      "owner": {
+        "label": "question",
+        "quote": "переступила поріг залу й опинилася безпосередньо на майданчику третього поверху",
+        "note": "T1, S2, S3: треба вирішити конфлікт між картками щодо поверху галереї"
+      },
+      "gold": {
+        "verdict": "question",
+        "contradictions": [],
+        "clean_reason": "",
+        "question_reason": "Яку картку розташування вважати чинною?"
+      },
+      "verdict_match": true,
+      "author_fact_ids_supported_by_owner_explanation": []
+    },
+    {
+      "position": 40,
+      "case_id": "B1-neutral-a",
+      "owner": {
+        "label": "clean",
+        "quote": "",
+        "note": ""
+      },
+      "gold": {
+        "verdict": "clean",
+        "contradictions": [],
+        "clean_reason": "Червоний колір стосується підошви, не чорної шкіряної частини.",
+        "question_reason": ""
+      },
+      "verdict_match": true,
+      "author_fact_ids_supported_by_owner_explanation": []
+    },
+    {
+      "position": 41,
+      "case_id": "B2-neutral-b",
+      "owner": {
+        "label": "issue",
+        "quote": "ключем, що лишився на кільці, вона відімкнула студію",
+        "note": "T1, S2: на кільці мав залишитися ключ від шафи"
+      },
+      "gold": {
+        "verdict": "issue",
+        "contradictions": [
+          {
+            "id": "B2-g1",
+            "type": "object_identity",
+            "severity": "major",
+            "source_indices": [
+              1
+            ],
+            "target_quote": "Ключем, що лишився на кільці, вона відімкнула студію"
+          }
+        ],
+        "clean_reason": "",
+        "question_reason": ""
+      },
+      "verdict_match": true,
+      "author_fact_ids_supported_by_owner_explanation": [
+        "B2-g1"
+      ]
+    },
+    {
+      "position": 42,
+      "case_id": "D2-neutral-a",
+      "owner": {
+        "label": "question",
+        "quote": "обхопила пальцями кільце фокуса й повільно повернула його.",
+        "note": "T1, S2, S3 - конфлікт карток щодо об'єктиву"
+      },
+      "gold": {
+        "verdict": "question",
+        "contradictions": [],
+        "clean_reason": "",
+        "question_reason": "Який опис об’єктива чинний?"
+      },
+      "verdict_match": true,
+      "author_fact_ids_supported_by_owner_explanation": []
+    },
+    {
+      "position": 43,
+      "case_id": "E2-adult-a",
+      "owner": {
+        "label": "issue",
+        "quote": "залишивши зелений розчерк, і глянула у вікно на подвір’я.",
+        "note": "T1, S3: конфлікт кольору. T1, S3: конфлікт наявності вікон"
+      },
+      "gold": {
+        "verdict": "issue",
+        "contradictions": [
+          {
+            "id": "E2-g1",
+            "type": "ink",
+            "severity": "major",
+            "source_indices": [
+              2
+            ],
+            "target_quote": "зелений розчерк"
+          },
+          {
+            "id": "E2-g2",
+            "type": "location",
+            "severity": "major",
+            "source_indices": [
+              1
+            ],
+            "target_quote": "у вікно на подвір’я"
+          }
+        ],
+        "clean_reason": "",
+        "question_reason": ""
+      },
+      "verdict_match": true,
+      "author_fact_ids_supported_by_owner_explanation": [
+        "E2-g1",
+        "E2-g2"
+      ]
+    },
+    {
+      "position": 44,
+      "case_id": "C2-adult-a",
+      "owner": {
+        "label": "clean",
+        "quote": "",
+        "note": ""
+      },
+      "gold": {
+        "verdict": "clean",
+        "contradictions": [],
+        "clean_reason": "Повторне звіряння з ескізом сумісне з попереднім відвіданням і незмінним орнаментом.",
+        "question_reason": ""
+      },
+      "verdict_match": true,
+      "author_fact_ids_supported_by_owner_explanation": []
+    },
+    {
+      "position": 45,
+      "case_id": "A1-adult-b",
+      "owner": {
+        "label": "issue",
+        "quote": "На табло світилися цифри 15:40, коли пором відходив від причалу",
+        "note": "T1, S2: конфлікт часу"
+      },
+      "gold": {
+        "verdict": "issue",
+        "contradictions": [
+          {
+            "id": "A1-g1",
+            "type": "time",
+            "severity": "major",
+            "source_indices": [
+              1
+            ],
+            "target_quote": "15:40"
+          }
+        ],
+        "clean_reason": "",
+        "question_reason": ""
+      },
+      "verdict_match": true,
+      "author_fact_ids_supported_by_owner_explanation": [
+        "A1-g1"
+      ]
+    },
+    {
+      "position": 46,
+      "case_id": "B3-neutral-a",
+      "owner": {
+        "label": "clean",
+        "quote": "",
+        "note": ""
+      },
+      "gold": {
+        "verdict": "clean",
+        "contradictions": [],
+        "clean_reason": "Дистанційний голос не додає фізично присутньої людини.",
+        "question_reason": ""
+      },
+      "verdict_match": true,
+      "author_fact_ids_supported_by_owner_explanation": []
+    },
+    {
+      "position": 47,
+      "case_id": "B4-neutral-b",
+      "owner": {
+        "label": "issue",
+        "quote": "українські слова були надруковані у вступі",
+        "note": ": T1, S2: конфлікт мов"
+      },
+      "gold": {
+        "verdict": "issue",
+        "contradictions": [
+          {
+            "id": "B4-g1",
+            "type": "language",
+            "severity": "major",
+            "source_indices": [
+              1
+            ],
+            "target_quote": "Українські слова були надруковані у вступі"
+          }
+        ],
+        "clean_reason": "",
+        "question_reason": ""
+      },
+      "verdict_match": true,
+      "author_fact_ids_supported_by_owner_explanation": [
+        "B4-g1"
+      ]
+    },
+    {
+      "position": 48,
+      "case_id": "C2-neutral-b",
+      "owner": {
+        "label": "issue",
+        "quote": "полічила всі пелюстки мозаїки: їх виявилося шість",
+        "note": "T1, S2: конфлікт кількості пелюсток"
+      },
+      "gold": {
+        "verdict": "issue",
+        "contradictions": [
+          {
+            "id": "C2-g1",
+            "type": "known_detail",
+            "severity": "major",
+            "source_indices": [
+              1
+            ],
+            "target_quote": "їх виявилося шість"
+          }
+        ],
+        "clean_reason": "",
+        "question_reason": ""
+      },
+      "verdict_match": true,
+      "author_fact_ids_supported_by_owner_explanation": [
+        "C2-g1"
+      ]
+    }
+  ]
+}

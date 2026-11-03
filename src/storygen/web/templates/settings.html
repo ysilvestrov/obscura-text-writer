@@ -1,36 +1,37 @@
 {% extends "base.html" %}
-{% block title %}Налаштування — {{story.title}} — Obscura{% endblock %}
+{% block title_attributes %} data-i18n-title-prefix="m_2b21fe4c61d3" data-ui-title-author="{{ story.title }}"{% endblock %}
+{% block title %}{{ t('m_2b21fe4c61d3') }} {{story.title}} — Obscura{% endblock %}
 {% block content %}
 <main class="settings-page" data-story-id="{{story.id}}">
-<a id="settings-return" class="muted" href="/stories/{{story.id}}">← Повернутися до сцени</a><h1>Налаштування</h1><p class="muted">{{story.title}} · налаштування цього оповідання</p>
-<label class="settings-mobile-nav" for="settings-section-mobile">Розділ<select id="settings-section-mobile"><option value="writing">Письмо</option><option value="models">Моделі</option><option value="evaluator">Оцінювач</option><option value="budget">Бюджет</option><option value="profiles">Комплекти</option></select></label>
-<div class="settings-layout"><nav class="settings-nav" aria-label="Розділи налаштувань"><button type="button" data-settings-nav="writing">Письмо</button><button type="button" data-settings-nav="models">Моделі</button><button type="button" data-settings-nav="evaluator">Оцінювач</button><button type="button" data-settings-nav="budget">Бюджет</button><button type="button" data-settings-nav="profiles">Комплекти</button><p class="muted">Правки залишаються при перемиканні розділів і ролей.</p></nav>
-<div class="settings-content"><header class="settings-toolbar"><h2 id="settings-section-title">Моделі</h2><div class="actions"><span id="settings-save-status" role="status">Завантажуємо…</span><button id="settings-reset" type="button" class="secondary" hidden>Відкинути правки</button><button id="settings-save" type="button" disabled>Зберегти</button></div></header>
-<section data-settings-section="writing" hidden><form id="profile-form" class="panel"><h2>Профіль письма</h2>
-<label>Жанр<input name="genre"></label><label>Тональність<input name="tone"></label>
-<label>Точка зору<input name="point_of_view"></label><label>Час<input name="tense"></label>
-<label>Правила стилю<textarea name="rules" rows="3"></textarea></label>
-<label>Авторський орієнтир фіналу (необов’язково)<textarea name="ending_goal" rows="3" maxlength="12000"></textarea></label>
-<p>Спільний задум розв’язки. Це не команда завершити поточну сцену; пам’ять і мовна редактура його не отримують. Без орієнтира режим лише поточної сцени дає попередження.</p>
-<label>Завершення попередньої сцени, символів<input type="number" name="previous_tail_chars" min="0" max="12000"></label>
-<button>Зберегти профіль</button></form>
+<a id="settings-return" class="muted" href="/stories/{{story.id}}"><span data-i18n="m_b38276cdf9d4">{{ t('m_b38276cdf9d4') }}</span></a><h1><span data-i18n="m_2aac46060bb4">{{ t('m_2aac46060bb4') }}</span></h1><p class="muted">{{story.title}} <span data-i18n="m_240cd48ed57a">{{ t('m_240cd48ed57a') }}</span></p>
+<label class="settings-mobile-nav" for="settings-section-mobile"><span data-i18n="m_10744d06961f">{{ t('m_10744d06961f') }}</span><select id="settings-section-mobile"><option value="writing" data-i18n="m_88f778367baf">{{ t('m_88f778367baf') }}</option><option value="models" data-i18n="m_9d43f6fcda82">{{ t('m_9d43f6fcda82') }}</option><option value="evaluator" data-i18n="m_04c7075b6943">{{ t('m_04c7075b6943') }}</option><option value="budget" data-i18n="m_0773ed49428f">{{ t('m_0773ed49428f') }}</option><option value="profiles" data-i18n="m_bd94099c1720">{{ t('m_bd94099c1720') }}</option></select></label>
+<div class="settings-layout"><nav class="settings-nav" aria-label="{{ t('m_8f48c8358c43') }}" data-i18n-attrs='{"aria-label": "m_8f48c8358c43"}'><button type="button" data-settings-nav="writing"><span data-i18n="m_88f778367baf">{{ t('m_88f778367baf') }}</span></button><button type="button" data-settings-nav="models"><span data-i18n="m_9d43f6fcda82">{{ t('m_9d43f6fcda82') }}</span></button><button type="button" data-settings-nav="evaluator"><span data-i18n="m_04c7075b6943">{{ t('m_04c7075b6943') }}</span></button><button type="button" data-settings-nav="budget"><span data-i18n="m_0773ed49428f">{{ t('m_0773ed49428f') }}</span></button><button type="button" data-settings-nav="profiles"><span data-i18n="m_bd94099c1720">{{ t('m_bd94099c1720') }}</span></button><p class="muted"><span data-i18n="m_5920f9a90156">{{ t('m_5920f9a90156') }}</span></p></nav>
+<div class="settings-content"><header class="settings-toolbar"><h2 id="settings-section-title"><span data-i18n="m_9d43f6fcda82">{{ t('m_9d43f6fcda82') }}</span></h2><div class="actions"><span id="settings-save-status" role="status"><span data-i18n="m_b19e12c11755">{{ t('m_b19e12c11755') }}</span></span><button id="settings-reset" type="button" class="secondary" hidden><span data-i18n="m_17adff9cc65e">{{ t('m_17adff9cc65e') }}</span></button><button id="settings-save" type="button" disabled><span data-i18n="m_bf610d493cb4">{{ t('m_bf610d493cb4') }}</span></button></div></header>
+<section data-settings-section="writing" hidden><form id="profile-form" class="panel"><h2><span data-i18n="m_7365ebb71905">{{ t('m_7365ebb71905') }}</span></h2>
+<label><span data-i18n="m_aa8ab253026a">{{ t('m_aa8ab253026a') }}</span><input name="genre"></label><label><span data-i18n="m_d21a2c8d8a78">{{ t('m_d21a2c8d8a78') }}</span><input name="tone"></label>
+<label><span data-i18n="m_3b201d560e93">{{ t('m_3b201d560e93') }}</span><input name="point_of_view"></label><label><span data-i18n="m_9ce65a67b301">{{ t('m_9ce65a67b301') }}</span><input name="tense"></label>
+<label><span data-i18n="m_a87519494d05">{{ t('m_a87519494d05') }}</span><textarea name="rules" rows="3"></textarea></label>
+<label><span data-i18n="m_36702fd30578">{{ t('m_36702fd30578') }}</span><textarea name="ending_goal" rows="3" maxlength="12000"></textarea></label>
+<p><span data-i18n="m_cd1876627f27">{{ t('m_cd1876627f27') }}</span></p>
+<label><span data-i18n="m_8de58ecc02db">{{ t('m_8de58ecc02db') }}</span><input type="number" name="previous_tail_chars" min="0" max="12000"></label>
+<button><span data-i18n="m_52e63ff32323">{{ t('m_52e63ff32323') }}</span></button></form>
 </section>
-<section data-settings-section="models"><div class="settings-roles" aria-label="Ролі моделей"><button type="button" class="secondary" data-settings-role="planner">Планувальник</button><button type="button" class="secondary" data-settings-role="writer">Письменник</button><button type="button" class="secondary" data-settings-role="editor">Редактор</button><button type="button" class="secondary" data-settings-role="memory">Пам’ять</button></div><p id="settings-loading" role="status">Завантажуємо налаштування ролей…</p><div id="role-settings"></div></section>
+<section data-settings-section="models"><div class="settings-roles" aria-label="{{ t('m_ee65b1cda412') }}" data-i18n-attrs='{"aria-label": "m_ee65b1cda412"}'><button type="button" class="secondary" data-settings-role="planner"><span data-i18n="m_38c94c25c4af">{{ t('m_38c94c25c4af') }}</span></button><button type="button" class="secondary" data-settings-role="writer"><span data-i18n="m_75515c07207a">{{ t('m_75515c07207a') }}</span></button><button type="button" class="secondary" data-settings-role="editor"><span data-i18n="m_65d42cf1679c">{{ t('m_65d42cf1679c') }}</span></button><button type="button" class="secondary" data-settings-role="memory"><span data-i18n="m_aa1cfb48cc30">{{ t('m_aa1cfb48cc30') }}</span></button></div><p id="settings-loading" role="status"><span data-i18n="m_7a19b7d084d9">{{ t('m_7a19b7d084d9') }}</span></p><div id="role-settings"></div></section>
 <section data-settings-section="evaluator" hidden><div id="evaluator-settings"></div></section>
 <section data-settings-section="budget" hidden><div id="settings-budget-content"></div></section>
 <section data-settings-section="profiles" hidden><section id="role-profiles" class="panel" aria-labelledby="role-profiles-title">
-<h2 id="role-profiles-title">Збережені комплекти моделей</h2>
-<p>Перенесіть чотири ролі та їхні промпти між оповіданнями. Зміна комплекту не оновлює твори автоматично.</p>
-<label>Комплект і версія<select id="role-profile-select"><option value="">Завантаження…</option></select></label>
-<div class="actions"><button type="button" id="role-profile-preview" class="secondary" disabled>Переглянути комплект</button><button type="button" id="role-profile-apply" disabled>Застосувати до твору</button><button type="button" id="role-profile-export" class="secondary" disabled>Експортувати JSON</button></div>
+<h2 id="role-profiles-title"><span data-i18n="m_2f04eaab0577">{{ t('m_2f04eaab0577') }}</span></h2>
+<p><span data-i18n="m_1d10f693a335">{{ t('m_1d10f693a335') }}</span></p>
+<label><span data-i18n="m_a1928c4daa58">{{ t('m_a1928c4daa58') }}</span><select id="role-profile-select"><option value="" data-i18n="m_09fa21f2ecc7">{{ t('m_09fa21f2ecc7') }}</option></select></label>
+<div class="actions"><button type="button" id="role-profile-preview" class="secondary" disabled><span data-i18n="m_25c15c876d3c">{{ t('m_25c15c876d3c') }}</span></button><button type="button" id="role-profile-apply" disabled><span data-i18n="m_cc8bb4527fea">{{ t('m_cc8bb4527fea') }}</span></button><button type="button" id="role-profile-export" class="secondary" disabled><span data-i18n="m_9d1d2081560d">{{ t('m_9d1d2081560d') }}</span></button></div>
 <div id="role-profile-summary" aria-live="polite"></div>
-<details><summary>Зберегти поточні налаштування або імпортувати комплект</summary>
-<p>Зберігаються лише вже збережені налаштування ролей. Спочатку збережіть зміни у формах нижче.</p>
-<form id="role-profile-capture"><label>Назва комплекту<input name="name" maxlength="100" required></label>
-<label><input type="checkbox" name="include_evaluator"> Додати Evaluator без допуску калібрування</label>
-<label><input type="checkbox" name="new_version"> Зберегти нову версію вибраного комплекту</label>
-<button>Зберегти комплект</button></form>
-<label>Імпортувати комплект із JSON<input id="role-profile-import" type="file" accept=".json,application/json"></label>
+<details><summary><span data-i18n="m_f1458d7a54d1">{{ t('m_f1458d7a54d1') }}</span></summary>
+<p><span data-i18n="m_410b08a8f2ad">{{ t('m_410b08a8f2ad') }}</span></p>
+<form id="role-profile-capture"><label><span data-i18n="m_87f9f6f8cde3">{{ t('m_87f9f6f8cde3') }}</span><input name="name" maxlength="100" required></label>
+<label><input type="checkbox" name="include_evaluator"> <span data-i18n="m_8df32cf71cd7">{{ t('m_8df32cf71cd7') }}</span></label>
+<label><input type="checkbox" name="new_version"> <span data-i18n="m_0ea1de233b65">{{ t('m_0ea1de233b65') }}</span></label>
+<button><span data-i18n="m_f7fa10fba2ff">{{ t('m_f7fa10fba2ff') }}</span></button></form>
+<label><span data-i18n="m_276ae1b33f5b">{{ t('m_276ae1b33f5b') }}</span><input id="role-profile-import" type="file" accept=".json,application/json"></label>
 </details>
 </section></section>
 </div></div></main><script type="module" src="/static/settings.js"></script><script type="module" src="/static/workspace-navigation.js"></script><script type="module" src="/static/role-profiles.js"></script><script type="module" src="/static/evaluation.js"></script><script type="module" src="/static/budget.js"></script>
