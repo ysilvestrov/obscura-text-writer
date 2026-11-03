@@ -5,6 +5,7 @@ from pathlib import Path
 from ..domain import RevisionConflict, Scene, SceneCreate, Story, StoryCreate, VersionRef, StageAttempt, new_id
 from .database import Database
 from .files import FileStore
+from . import review_authority
 
 
 class Repository:
@@ -197,7 +198,7 @@ class Repository:
 
     def review(self,action,**kwargs):
         from . import review_store
-        commands={'operation':review_store.operation,'publish_scene':review_store.publish_scene,
+        commands={'priority_decide':review_authority.priority_decide,'priorities':review_authority.snapshot,'operation':review_store.operation,'publish_scene':review_store.publish_scene,
             'save_report':review_store.save_report,'save_dispositions':review_store.save_dispositions}
         return commands[action](self,**kwargs)
 
@@ -264,8 +265,9 @@ class Repository:
             if ref.scene_id:self._active_scene(db,ref.scene_id)
             if ref.dependency_snapshot is None and ref.manual_projection_policy is None:
                 author_accepted=any(json.loads(r[0]).get('version_id')==ref.id for r in db.execute('SELECT payload FROM app_settings WHERE key LIKE ?',('acceptance:'+ref.story_id+':%',)))
-                reviewed=any(json.loads(r[0]).get('target',{}).get('version_id')==ref.id for r in db.execute('SELECT payload FROM app_settings WHERE key LIKE ?',('review3:'+ref.story_id+':acceptance:%',)))
-                if not author_accepted and not reviewed:return ref
+                reviewed=any(json.loads(r[0]).get('target',{}).get('version_id')==ref.id for r in db.execute('SELECT payload FROM app_settings WHERE key LIKE ? OR key LIKE ?',('review3:'+ref.story_id+':acceptance:%','review4:'+ref.story_id+':acceptance:%')))
+                policies,_=review_authority.load(db,ref.story_id)
+                if not author_accepted and not reviewed and not any(scope[0]==ref.scene_id for scope in policies):return ref
             from .context_view import ContextView
             return ContextView(self,db,ref.story_id).get_version(id)
 

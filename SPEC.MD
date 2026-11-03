@@ -3028,6 +3028,8 @@ THEN repeat SHALL бути видимим, disabled з поясненням; п�
 
 ### Requirement: REVIEW-SESSION — Окрема авторська й модельна підстава актуальності
 
+Контракт4 зберігає report/acceptance schema4 у review4 namespace; Repository.review спільний із review3. Монотонна authority_revision на scene/material є спільним gate для review3/4 і native baseline; legacy означає 0. Створення/заміна/скасування пріоритету append-only збільшує ревізію, скасування не оживляє старих acceptance. Partial не дозволяє жодного author/model acceptance; повний author acceptance4 і його поточна чинність потребують replay всіх raw proofs. Автоматична model authority4 заблокована до окремої кваліфікації.
+
 Послідовна review-сесія використовує mode=impact/protocol3; legacy impact1/2 не переписуються. Нові typed report/acceptance/operation records зберігаються в app_settings під review3 namespace, без SQL міграції. SQLite-транзакції й читання операцій належать storage/review_store.py за публічним Repository.review; review/store.py є domain facade без SQL/private repository доступу. Scene acceptance SHALL бути прив’язаний до exact target version/hash, live source/dependency snapshot, поточної сцени сесії, ownership та operation ID. Automatic model_no_concerns потребує повного verified proof і порожніх concerns. Author authority не переписує model report і не приймає memory/evaluator автоматично. Повтор operation ID з іншим payload відхиляється. Свіжість не обходить incomplete/integrity gates; source зміна знову робить acceptance нечинним. Parent review acceptance IDs входять у downstream review baseline.
 
 #### Scenario: REVIEW-SESSION-S01 — Авторське прийняття й точні джерела
@@ -3071,7 +3073,9 @@ THEN UI SHALL називати режим поточних передумов т
 
 ### Requirement: REVIEW-PARTS — Окремий компактний wire3 пошуку
 
-Protocol3 SHALL фіксувати план лише поточної сцени: повні target/source тексти, точні перекриті інтервали, налаштування й системний промпт. Кожна частина delta/check/synthesis має content-addressed ID. Delta бачить старі/нові передумови; check — чинні уривки та явно позначені скасовані правила. Модель повертає обмежені зміни/зауваження й короткі aliases, без summary або переліку всіх доказів. Код перевіряє scope/type/side та зберігає глобальні адреси без розкриття цитат у результат. Усі changed old/new інтервали й усі source-new × target інтервали MUST бути доставлені; synthesis наслідує зауваження кодом. Запити розбиваються за реальним серіалізованим body й токенним/символьним бюджетом; дані не обрізаються. review_part використовує accounting і збереження raw наявного execute_stage; native schema builder impact_part не змінює legacy replay.
+Для явно обраного review_contract_version=4 застосовується окремий prompt/schema й classifier_version=1. Delta повертає changes та порожній candidates; інші фази — до4 contradiction/information_gap, analysis_status done/unable, без model kind/complete. Exact Unicode offsets/quotes перевіряються лише у доставлених фрагментах. Premise-фаза доставляє всі source-new пари i≤j, включно з внутрішніми суперечностями, у виміряних групах; check отримує scoped machine-owned premise_authority/current_rules. Класифікація враховує тільки точні твердження й явний пріоритет, не транзитивність несумісності. Загальна межа10000 dispatched задач перевіряється до виклику; при розбитті preflight має додаткову межу100000 пар, без sampling. Підрахунок початкових фаз включає обов’язкові synthesis для одного leaf; нові докази можуть змінити подальше пакування, тому це оцінка, а upper bound —10000 частин однієї сцени. Платний preview наводить консервативну межу вартості початкового пошуку за чинним тарифом/max_input_chars, без пам’яті й майбутніх сцен. Кожен dispatch повторно перевіряє реальний body і бюджет. Локальний контракт4 вимагає окремого активного кваліфікованого counter для нового system hash, native JSON schema й вимкненого thinking; зникнення/пошкодження counter блокує виклик замість fallback.
+
+Для контракту3 Protocol3 SHALL фіксувати план лише поточної сцени: повні target/source тексти, точні перекриті інтервали, налаштування й системний промпт. Кожна частина delta/check/synthesis має content-addressed ID. Delta бачить старі/нові передумови; check — чинні уривки та явно позначені скасовані правила. Модель повертає обмежені зміни/зауваження й короткі aliases, без summary або переліку всіх доказів. Код перевіряє scope/type/side та зберігає глобальні адреси без розкриття цитат у результат. Усі changed old/new інтервали й усі source-new × target інтервали MUST бути доставлені; synthesis наслідує зауваження кодом. Запити розбиваються за реальним серіалізованим body й токенним/символьним бюджетом; дані не обрізаються. review_part використовує accounting і збереження raw наявного execute_stage; native schema builder impact_part не змінює legacy replay.
 
 #### Scenario: REVIEW-PARTS-S01 — Повне покриття й scoped посилання
 
@@ -3088,7 +3092,9 @@ THEN SHALL відтворити exact API body, owner/run/scene/stop, ідент
 
 ### Requirement: REVIEW-SEQUENCE — Хронологічна сесія й пам’ять
 
-RunRequest.impact_protocol=3 SHALL явно обирати новий виконавець; відсутність поля зберігає legacy1/2. Run.impact зберігає початковий порядок сцен, scene_cursor, phase, поточний план і завершені proof IDs. Перед кожною сценою формується живий план; відсутні/актуальні матеріали не викликають пошук. Повний пошук без зауважень SHALL автоматично приймати сцену; зауваження/питання зупиняють у needs_review/awaiting_author. До пошуку й переходу далі пам’ять оновлюється найстаршою першою лише для поточного префікса прози через наявні context/validation/accounting. Історичні докази не отримують неявної згоди. Зміна порядку, джерел чи target heads зупиняє застосування; збережені завершені пошуки відтворюються без повторного виклику. Невдала пам’ять/пошук потребує explicit repeat; awaiting_author не відновлюється generic resume. Preview показує початкові виклики й невідомий майбутній обсяг; кожен платний етап перевіряє story/run budget, включно з пам’яттю. SQL4 лишається незмінним.
+Контракт4 зберігає partial report з exact unresolved_task_ids і task-tagged diagnostics; виконання зупиняється як failed/partial_result. Explicit repeat прибирає з checkpoint тільки непридатні задачі та їхніх нащадків, не переписує історичний report і не повторює придатних задач. Completed partial attempts не є reusable proofs. Кожний material має власні premise/synthesis dependencies, що не змішують авторські scopes.
+
+RunRequest.impact_protocol=3 SHALL явно обирати новий виконавець; відсутність поля зберігає legacy1/2. Run.impact зберігає початковий порядок сцен, scene_cursor, phase, поточний план і завершені proof IDs. Перед кожною сценою формується живий план; відсутні/актуальні матеріали не викликають пошук. Для контракту3 повний пошук без зауважень SHALL автоматично приймати сцену; зауваження/питання зупиняють у needs_review/awaiting_author. До пошуку й переходу далі пам’ять оновлюється найстаршою першою лише для поточного префікса прози через наявні context/validation/accounting. Історичні докази не отримують неявної згоди. Зміна порядку, джерел чи target heads зупиняє застосування; збережені завершені пошуки відтворюються без повторного виклику. Невдала пам’ять/пошук потребує explicit repeat; awaiting_author не відновлюється generic resume. Preview показує початкові виклики й невідомий майбутній обсяг; кожен платний етап перевіряє story/run budget, включно з пам’яттю. SQL4 лишається незмінним.
 
 #### Scenario: REVIEW-SEQUENCE-S01 — Чистий пошук або пауза автора
 
@@ -3122,6 +3128,8 @@ THEN SHALL відхилити запит; ідентичний operation ID не
 
 ### Requirement: REVIEW-WORKSPACE — Послідовний авторський перегляд у workspace
 
+Capability review_contract_versions=[3,4] дозволяє явний UI-вибір доказового формату; відсутність поля/старий клієнт лишає3, невідома версія відхиляється. UA/EN показує точні цитати, вид проблеми, перелік незавершених частин і read-only partial. Автор може обрати чинне твердження конфліктної пари або скасувати пріоритет; рішення інвалідує відкритий needs_review run як alternative і потребує нового preview. Пріоритети належать конкретній сцені й brief/prose; ланцюжок preferred/superseded заборонений. Новий формат не створює model authority автоматично до окремої кваліфікації.
+
 Нова кнопка перевірки книги SHALL використовувати /review protocol3, показувати початкову оцінку викликів та невідомий майбутній обсяг, потребу memory refresh і явний ліміт платної сесії. Панель показує хід сцен, concern message і точні target/source уривки з назвами передумов, окремі reject/fix та пакетне reject-all. author_editing має одну дію завершення; choices самі не запускають генерацію. Generic resume не замінює рішення автора, але відновлення невдалого review доступне навіть після іншої операції. Cancel зберігає матеріали. Reload/settings return відновлює durable session/dispositions; dirty/saving блокує рішення й не замінює буфер. Чинний workspaceRun має пріоритет над застарілим рядком історії; workspace-readiness повторно обчислює доступність авторських дій, щоб завершений пошук не залишав їх disabled. Нові labels UA/EN перемикаються без reload. Зміна налаштувань застосовується до наступної фізичної спроби, завершені proofs лишаються зі своїми frozen settings; зменшений бюджет може зупинити наступну частину до dispatch. Qualified local counter використовується лише за exact active model/endpoint/system binding з перевіркою artifact hashes, інакше правдивий conservative fallback; новий prompt не успадковує стару кваліфікацію.
 
 #### Scenario: REVIEW-WORKSPACE-S01 — Рішення та захист буфера
@@ -3147,6 +3155,8 @@ THEN SHALL приховати несумісні нові дії; changed_while_
 
 ### Requirement: REVIEW-INTEGRITY — Offline цілісність і відновлення
 
+Backup/fsck SHALL включати review4 і review-authority журнали. Авторські events відтворюються з первинних commands, exact statement IDs і попереднього hash/revision. Report4 повторно нормалізується з raw, перевіряє scoped premise coverage, dependencies, кандидати, diagnostics та unresolved tasks. Відмінність report4 від replay або mutation авторського рішення блокує authority. Legacy contract3 лишається за власним wire; після authority_revision>0 він не може створити нове прийняття для обходу авторського рішення.
+
 Стандартний fsck/backup/restore SHALL перевіряти review3 reports, accepted targets, source hashes, raw proof graph та exact operation payload. Застарілий історичний report не видаляється й не вважається current лише через успіх fsck. Missing/tampered proofs або authority без операції є invalid_review. Прийняття сцени не дозволяє непомітно використати нові heads після checkpoint: перед memory_refresh повторно перевіряється exact authority; external conflict зупиняє сесію як alternative до нового preview. Старі wire1/2 та їхні докази не мігруються.
 
 #### Scenario: REVIEW-INTEGRITY-S01 — Перенесення та пошкодження доказу
@@ -3167,3 +3177,59 @@ THEN SHALL зупинитися як alternative до модельного ви�
 GIVEN застаріла пам’ять з авторськими власними записами або affected forwarding choices, чи спроба перервана до checkpoint
 WHEN сесія намагається перебудувати журнал або відновити виклик
 THEN SHALL зупинити перебудову з назвою сцени й вимогою ручного оновлення, не стираючи старий журнал; unresolved failed/running/interrupted/cancelled attempts потребують explicit repeat навіть без failed_attempt marker; завершена відповідь до checkpoint знаходиться й перевіряється за exact geometry перед вибором нових settings. Operation IDs з двокрапками не змінюють namespace запису.
+
+## Контракт4 доказової перевірки
+
+Статус на 03.11.2026: реалізовано окремий контракт4 у protocol3; старий контракт3 лишається типовим за відсутності review_contract_version. [Специфікація зміни](docs/superpowers/specs/2026-11-03-review-evidence-contract-design.md) описує мотиви й межі. Новий semantic benchmark та автоматичний модельний допуск не активовано: повний report4 потребує авторського рішення, partial не дозволяє прийняття. Наявні тести перевіряють програмний контракт на синтетичних відповідях, а не якість моделей.
+
+### Requirement: REVIEW-NEXT — Доказовий контракт перевірки
+
+Контракт4 SHALL відділяти модельне знаходження несумісності від перевірки точних доказів, авторського пріоритету, категоризації та завершеності плану кодом. Сам JSON або модельний самозвіт MUST NOT створювати authority. Це не доказ семантичної повноти пошуку.
+
+#### Scenario: REVIEW-NEXT-S01 — Авторський пріоритет конкретних тверджень
+
+GIVEN точні source-твердження з version/hash і явне авторське рішення для сцени/матеріалу
+WHEN будується новий snapshot або змінюється рішення/джерело
+THEN рішення SHALL діяти лише у своєму scope й для exact тверджень; цикл/чужий source або ланцюжок із одночасно preferred/superseded твердженням відхиляється, зміна інвалідує acceptance без переписування історії.
+
+#### Scenario: REVIEW-NEXT-S02 — Адресовані пари доказів
+
+GIVEN candidate із двома endpoints і цитатами
+WHEN перевіряється його структурна придатність
+THEN SHALL перевірити точні offsets/quotes у доставлених фрагментах і ролі; невідомі, змінені чи target↔target докази не дозволяють чистого результату; код не оголошує цитатний збіг доказом змістової несумісності.
+
+#### Scenario: REVIEW-NEXT-S03 — Категорія після розв’язання передумов
+
+GIVEN структурно придатні кандидати та граф повернутих source-конфліктів
+WHEN код застосовує явні авторські рішення
+THEN невирішений конфлікт SHALL давати question, target проти чинної однозначної передумови — issue, проти явно відкинутої — suppressed; прогалина окремо дає information_gap; несумісність не вважається транзитивною.
+
+#### Scenario: REVIEW-NEXT-S04 — Покриття передумов і тексту
+
+GIVEN незмінний план із premise_check, check і synthesis
+WHEN виконується preflight або відтворення результату
+THEN SHALL перевірити доставку всіх необхідних source-пар, кожного source-інтервалу для внутрішніх суперечностей і source-new × target інтервалів, залежності й бюджет; пропущена пара/proof або перевищений ліміт не дозволяє завершення чи прихованого sampling.
+
+#### Scenario: REVIEW-NEXT-S05 — Часткові знахідки без authority
+
+GIVEN валідна envelope з придатним і відхиленим кандидатом або незавершена задача
+WHEN результати зберігаються й показуються автору
+THEN придатні знахідки SHALL зберігатися з provenance, report лишається partial, а model/author acceptance блокується; synthesis не усуває блокерів і не видаляє дочірніх знахідок.
+
+#### Scenario: REVIEW-NEXT-S06 — Версії, replay і відновлення
+
+GIVEN старі review3 та нові report4 із raw/graph/priority proofs
+WHEN працюють resume, fsck, backup або freshness
+THEN SHALL відтворювати кожний контракт за його версією, не мігрувати старі докази потай і не давати authority при mutation body/raw/graph/decision; спільна authority_revision блокує старі acceptance/native baseline після зміни пріоритетів і обхід контрактом3; читання не викликає inference.
+
+#### Scenario: REVIEW-NEXT-S07 — Явний вибір і зрозумілий UI
+
+GIVEN клієнти з різною підтримкою review_contract_versions
+WHEN готується preview або показується report
+THEN відсутність нового поля SHALL зберігати контракт3, явний непідтримуваний 4 відхиляється, UA/EN UI показує цитати, пріоритети, partial та лише дозволені дії; reload не запускає модель.
+
+#### Scenario: REVIEW-NEXT-S08 — Окреме оцінювання нового контракту
+
+GIVEN результати старих 720 відповідей і проєкт контракту4
+WHEN готується кваліфікація
+THEN нові semantic метрики SHALL вимірюватися окремим frozen планом із новими авторськи перевіреними прикладами; старі ручні пари не є автоматичним benchmark, новий бюджет/виклики/допуск потребують окремої активації.

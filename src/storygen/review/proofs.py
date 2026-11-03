@@ -16,6 +16,9 @@ def verify_part(attempt,plan,spec,results,read_partial,story_id,run_id):
 
 
 def verify_report(report,attempts,read_partial):
+    if report.schema_version==4:
+        from .proofs4 import verify_report as verify4
+        return verify4(report,attempts,read_partial)
     plan=report.coverage['plan'];order=report.coverage['order'];roots=report.coverage['roots']
     from .capture import validate_basis
     validate_basis(plan)

@@ -25,7 +25,7 @@ def overview(story_id:str,request:Request):
     from ..review.capture import plan_review
     repo=request.app.state.repo;view=repo.context_view(story_id);plan=plan_review(view)
     records=repo.impact('state',story_id=story_id)
-    return dict(review_protocols=[1,2,3],pending=[_target(t) for t in plan.targets],reports=[public_record(row['record'],row['current'],row['memory_needs_update'],repo.get_attempt(row['record'].delta_attempt_id).context.get('impact_result'),row['memory_check_current'],row['memory_evidence_status']) for row in records],scene_status=scene_status(view))
+    return dict(review_protocols=[1,2,3],review_contract_versions=[3,4],pending=[_target(t) for t in plan.targets],reports=[public_record(row['record'],row['current'],row['memory_needs_update'],repo.get_attempt(row['record'].delta_attempt_id).context.get('impact_result'),row['memory_check_current'],row['memory_evidence_status']) for row in records],scene_status=scene_status(view))
 
 
 @router.post('/api/stories/{story_id}/impact/preview')

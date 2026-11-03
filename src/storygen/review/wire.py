@@ -10,6 +10,9 @@ def compact(value):return len(json.dumps(value,ensure_ascii=False,separators=(',
 
 
 def request_for(plan,spec,results):
+    if plan.get('contract_version')==4:
+        from .wire4 import request_for as request4
+        return request4(plan,spec,results)
     refs=list(dict.fromkeys(spec['source_refs']+spec['target_refs']))
     rules=[]
     for result in results.values():
@@ -54,6 +57,9 @@ def request_for(plan,spec,results):
 
 
 def validate_part(raw,plan,spec,results):
+    if plan.get('contract_version')==4:
+        from .wire4 import validate_part as validate4
+        return validate4(raw,plan,spec,results)
     model=DeltaResponse if spec['phase']=='delta' else CheckResponse
     parsed=model.model_validate(raw)
     if not parsed.complete:raise ValueError('Пошук частини незавершено; збережені зауваження доступні, автоматичного повтору немає')

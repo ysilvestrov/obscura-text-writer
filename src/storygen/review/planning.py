@@ -68,7 +68,10 @@ def registry_for(targets):
     return registry
 
 
-def prepare_scene(repo,scene_id):
+def prepare_scene(repo,scene_id,contract_version=3):
+    if contract_version==4:
+        from .planning4 import prepare_scene as prepare4
+        return prepare4(repo,scene_id)
     scene=repo.get_scene(scene_id);view=repo.context_view(scene.story_id)
     targets=[t for t in plan_review(view).targets if t.scene_id==scene_id]
     if any(t.blockers for t in targets):raise ValueError('; '.join('Сцена '+str(t.position+1)+' «'+t.scene_title+'» · '+('завдання' if t.material=='brief' else 'проза')+': '+', '.join(dict.fromkeys(t.blockers)) for t in targets if t.blockers))
@@ -87,6 +90,9 @@ def prepare_scene(repo,scene_id):
 
 
 def check_specs(repo,plan,results):
+    if plan.get('contract_version')==4:
+        from .planning4 import check_specs as check4
+        return check4(repo,plan,results)
     sources=[id for id,r in plan['registry'].items() if r['kind']=='source' and r['side']=='new']
     rules=[r['id'] for value in results.values() for r in value['changes']]
     deps=[id for id,value in results.items() if value['phase']=='delta']
@@ -98,6 +104,9 @@ def check_specs(repo,plan,results):
 
 
 def synthesis_spec(repo,plan,children,results):
+    if plan.get('contract_version')==4:
+        from .planning4 import synthesis_spec as synthesis4
+        return synthesis4(repo,plan,children,results)
     refs=list(dict.fromkeys(id for child in children for id in results[child]['carry_refs']))
     sources=[id for id in refs if plan['registry'][id]['kind']=='source']
     targets=[id for id in refs if plan['registry'][id]['kind']=='target']
@@ -107,6 +116,9 @@ def synthesis_spec(repo,plan,children,results):
 
 
 def validate_coverage(plan,specs):
+    if plan.get('contract_version')==4:
+        from .planning4 import validate_coverage as validate4
+        return validate4(plan,specs)
     reg=plan['registry'];delta=set();pairs=set();seen_targets=set()
     for s in specs:
         if s['id']!=stamp(s):raise ValueError('Змінено ідентичність частини')
@@ -118,3 +130,8 @@ def validate_coverage(plan,specs):
     sources={id for id,r in reg.items() if r['kind']=='source' and r['side']=='new'}
     targets={id for id,r in reg.items() if r['kind']=='target'}
     if delta!=required_delta or seen_targets!=targets or pairs!={(a,b) for a in sources for b in targets}:raise ValueError('Неповне покриття передумов або тексту')
+
+
+def premise_specs(repo,plan,results):
+    from .planning4 import premise_specs as premises4
+    return premises4(repo,plan,results)

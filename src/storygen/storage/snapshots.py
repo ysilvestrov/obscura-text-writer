@@ -262,6 +262,12 @@ def resolve_freshness(view, version_id: str) -> FreshnessResult:
             elif reasons:
                 from .impact_validity import valid_overlay
                 if valid_overlay(view,version_id):reasons=[]
+        from .review_authority import revision
+        material='brief' if ref.kind=='brief' else 'prose' if ref.kind in {'edited','manual'} else None
+        if material and ref.scene_id and revision(view,ref.scene_id,material):
+            current=current_acceptance(view,version_id)
+            if not current or getattr(current,'authority_revision',0)!=revision(view,ref.scene_id,material):
+                reasons.append(DependencyChange(version_id=version_id,reason='review_basis_changed'))
         result = FreshnessResult(
             stale=bool(reasons),
             reasons=reasons,

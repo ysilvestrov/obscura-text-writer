@@ -2,6 +2,7 @@
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import sys
+sys.path.insert(0,str(Path(__file__).resolve().parents[3]))
 
 import uvicorn
 
@@ -25,7 +26,18 @@ def forbidden_gateway(*args, **kwargs):
                 else:
                     data=json.loads(context.user_text)
                     raw=dict(complete=True,changes=[],questions=[]) if data['phase']=='delta' else dict(complete=True,concerns=[],carry_refs=[])
-                    if context.settings.provider.model.endswith('-changes') and data['phase']=='check':
+                    if data.get('contract_version')==4:
+                        raw=dict(analysis_status='done',reason=None,candidates=[])
+                        if data['phase']=='delta':raw['changes']=[]
+                        if data['phase']=='premise_check':
+                            sources=[k for k,v in data['evidence'].items() if v['kind']=='source' and 'Марія знає про лист.' in v['text'] and 'Марія не знає про лист.' in v['text']]
+                            if sources:
+                                ref=sources[0]
+                                def ep(quote):
+                                    start=data['evidence'][ref]['text'].index(quote)
+                                    return dict(ref=ref,start=start,end=start+len(quote),quote=quote)
+                                raw['candidates']=[dict(type='contradiction',left=ep('Марія знає про лист.'),right=ep('Марія не знає про лист.'),explanation='Дві передумови потребують авторського вибору.')]
+                    elif context.settings.provider.model.endswith('-changes') and data['phase']=='check':
                         target=next(k for k,v in data['evidence'].items() if v['kind']=='target')
                         source=next(k for k,v in data['evidence'].items() if v['kind']=='source' and 'Марія' in v['text'])
                         raw['concerns']=[dict(kind='issue',message='Уточніть знання Марії відповідно до нових подій.',change_refs=[data['evidence'][source]['change']],target_refs=[target],source_refs=[source])]
@@ -118,7 +130,7 @@ def main():
             return fixture
 
         @app.post('/test-impact')
-        def impact_fixture(changes:bool=False,chunked:bool=False,memory_fail:bool=False,legacy:bool=False):
+        def impact_fixture(changes:bool=False,chunked:bool=False,memory_fail:bool=False,legacy:bool=False,evidence:bool=False):
             from storygen.generation.dependencies import save_manual_prose
             from storygen.authoring.blueprints import save_role_settings
             from storygen.providers.models import RoleSettings,ProviderSettings
@@ -134,9 +146,13 @@ def main():
                     raw.dependency_snapshot=None;raw.input_refs=[];raw.stale=True
                     db.execute('UPDATE versions SET payload=? WHERE id=?',(raw.model_dump_json(),prose.id))
                     db.execute('DELETE FROM dependency_edges WHERE target_id=?',(prose.id,))
-            save_manual_prose(repo,first.id,'Марія не знає про лист.' if changes else 'Марія знає про лист. Вечір настав.'*(120 if chunked else 1),repo.get_scene(first.id).revision)
+            text='Марія знає про лист. Марія не знає про лист.' if evidence else 'Марія не знає про лист.' if changes else 'Марія знає про лист. Вечір настав.'*(120 if chunked else 1)
+            save_manual_prose(repo,first.id,text,repo.get_scene(first.id).revision)
             save_role_settings(repo,story.id,'planner',RoleSettings(provider=ProviderSettings(model='synthetic-impact'+('-changes' if changes else '')),context_tokens=24000 if chunked else 32768,max_output_tokens=2048 if chunked else 8192,max_input_chars=14000 if chunked else 80000),repo.get_story(story.id).revision)
             save_role_settings(repo,story.id,'memory',RoleSettings(provider=ProviderSettings(model='synthetic-impact-memory'+('-fail:'+second.id if memory_fail else '')),context_tokens=32768,max_output_tokens=2048),repo.get_story(story.id).revision)
+            if evidence:
+                from tests.review.counter4 import activate_counter4
+                activate_counter4(repo,second.id)
             return dict(story_id=story.id,scene_id=second.id,prose_id=prose.id)
 
         uvicorn.run(app, host='127.0.0.1', port=port, log_level='warning')

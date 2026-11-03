@@ -17,6 +17,7 @@ class RunRequest(DomainModel):
     mode: Literal['stage','scene','remaining','prepare','rebuild_memory','evaluate','classify','edit_loop','publication_suggest','rewrite','impact'] = 'scene'
     impact_plan_fingerprint: str | None = Field(default=None,pattern=r'^[a-f0-9]{64}$')
     impact_protocol: Literal[3] | None = None
+    review_contract_version: Literal[3,4] | None = None
     edit_pass_limit: int = Field(default=5,ge=1,le=10,strict=True)
     edit_workflow: Literal['single','loop'] = 'single'
     editor_source_head: Literal['draft','prose'] | None = None
@@ -34,6 +35,7 @@ class RunRequest(DomainModel):
 
     @model_validator(mode='after')
     def valid(self):
+        if self.review_contract_version is not None and (self.mode!='impact' or self.impact_protocol!=3):raise ValueError('Версія контракту дозволена лише для послідовної перевірки')
         if self.impact_protocol and self.mode!='impact':raise ValueError('Протокол перевірки дозволений лише для impact')
         if self.impact_plan_fingerprint and self.mode!='impact':raise ValueError('Знімок впливу дозволений лише для impact')
         if self.mode=='impact' and self.scene_id is not None:raise ValueError('Перевірка впливу належить твору')

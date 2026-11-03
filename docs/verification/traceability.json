@@ -2310,6 +2310,86 @@
         "procedure": "docs/verification/manual.md#sequential-review",
         "reason": "Browser sequential-review legacy current-consistency UA/EN desktop/mobile, reload та author reject."
       }
+    },
+    {
+      "id": "REVIEW-NEXT-S01",
+      "requirement": "REVIEW-NEXT",
+      "scope": "Синтетична програмна перевірка контракту4; не semantic benchmark і не допуск моделі.",
+      "tests": [
+        "tests/review/test_authority4.py::test_priority_is_append_only_idempotent_and_invalidates_legacy",
+        "tests/review/test_authority4.py::test_priority_replacement_is_atomic",
+        "tests/review/test_evidence_contract.py::test_priority_rejects_chains_cycles_and_foreign_statements"
+      ]
+    },
+    {
+      "id": "REVIEW-NEXT-S02",
+      "requirement": "REVIEW-NEXT",
+      "scope": "Синтетична програмна перевірка контракту4; не semantic benchmark і не допуск моделі.",
+      "tests": [
+        "tests/review/test_evidence_contract.py::test_offsets_preserve_crlf_and_unicode",
+        "tests/review/test_evidence_contract.py::test_known_ref_is_not_permission_to_quote_outside_delivered_span"
+      ]
+    },
+    {
+      "id": "REVIEW-NEXT-S03",
+      "requirement": "REVIEW-NEXT",
+      "scope": "Синтетична програмна перевірка контракту4; не semantic benchmark і не допуск моделі.",
+      "tests": [
+        "tests/review/test_evidence_contract.py::test_pair_classification_and_gap",
+        "tests/review/test_evidence_contract.py::test_priority_suppresses_only_exact_statement",
+        "tests/review/test_contract4_planning.py::test_check_receives_machine_owned_unresolved_premises"
+      ]
+    },
+    {
+      "id": "REVIEW-NEXT-S04",
+      "requirement": "REVIEW-NEXT",
+      "scope": "Синтетична програмна перевірка контракту4; не semantic benchmark і не допуск моделі.",
+      "tests": [
+        "tests/review/test_contract4_planning.py::test_premises_include_diagonal_and_complete_pairs",
+        "tests/review/test_contract4_runner.py::test_preview_counts_include_forced_premise_synthesis",
+        "tests/review/test_counter4.py::test_new_local_prompt_requires_its_own_qualified_counter"
+      ]
+    },
+    {
+      "id": "REVIEW-NEXT-S05",
+      "requirement": "REVIEW-NEXT",
+      "scope": "Синтетична програмна перевірка контракту4; не semantic benchmark і не допуск моделі.",
+      "tests": [
+        "tests/review/test_contract4_runner.py::test_contract4_preserves_findings_and_never_accepts_partial",
+        "tests/review/test_contract4_runner.py::test_partial_retry_requires_consent_and_reuses_only_complete_tasks"
+      ]
+    },
+    {
+      "id": "REVIEW-NEXT-S06",
+      "requirement": "REVIEW-NEXT",
+      "scope": "Синтетична програмна перевірка контракту4; не semantic benchmark і не допуск моделі.",
+      "tests": [
+        "tests/review/test_contract4_runner.py::test_report4_replay_and_backup_are_exact",
+        "tests/review/test_contract4_runner.py::test_author_acceptance4_rechecks_original_raw",
+        "tests/review/test_authority4.py::test_priority_history_detects_derived_state_tampering",
+        "tests/review/test_authority4.py::test_priority_invalidates_fresh_native_baseline"
+      ]
+    },
+    {
+      "id": "REVIEW-NEXT-S07",
+      "requirement": "REVIEW-NEXT",
+      "scope": "Синтетична програмна перевірка контракту4; не semantic benchmark і не допуск моделі.",
+      "tests": [
+        "tests/web/test_review4_api.py::test_capability_preview_and_scoped_priority_round_trip",
+        "tests/review/test_contract4_planning.py::test_legacy_plan_and_request_remain_unversioned"
+      ]
+    },
+    {
+      "id": "REVIEW-NEXT-S08",
+      "requirement": "REVIEW-NEXT",
+      "scope": "Синтетична програмна перевірка контракту4; не semantic benchmark і не допуск моделі.",
+      "tests": [
+        "tests/review/test_contract4_runner.py::test_contract4_preserves_findings_and_never_accepts_partial"
+      ],
+      "manual": {
+        "procedure": "docs/superpowers/specs/2026-11-03-review-evidence-contract-design.md#design-review",
+        "reason": "Підготовка незалежного semantic набору й окрема активація бюджету/викликів потребують авторського рішення; автоматичні тести перевіряють лише блокування автоматичного прийняття."
+      }
     }
   ]
 }

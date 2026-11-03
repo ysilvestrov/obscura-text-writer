@@ -21,3 +21,20 @@ Decisions and session progress survive reload and settings navigation. Unsaved e
 Earlier impact checks remain in history in their original format. The new button starts protocol3. Journals and proofs are included in normal backup and integrity checks; no SQLite migration is required.
 
 If a rebuild could erase author-maintained memory entries or lose forwarding choices, it stops before a model call and names the scene. Update that scene’s memory manually, preserving the required entries and checking your choices, then resume review. The old journal is not overwritten automatically. Invalid older journals also require manual repair.
+
+
+## Review with exact evidence
+
+Before previewing, choose **Review with exact evidence** to use the new format. **Standard review** retains the earlier format. The new format first compares premises, including statements within one passage, then compares the text with the premises. The model supplies exact quote pairs; code verifies addresses and determines their category. Exact quotes establish provenance, not the correctness of the model’s reasoning.
+
+**Correction needed** identifies a contradiction with an unambiguous current premise. **Premise conflict** requires an author decision; **Missing information** names information needed for this check. Choose the first or second statement as current for this scene material. This affects that statement, not the whole document. The decision is stored separately, invalidates the current review and requires a new preview. Standard review cannot bypass it. Under **Author priorities for this scene**, revoke a priority if needed; revocation also requires review and never restores an old acceptance.
+
+**Review incomplete** retains valid findings and lists incomplete parts. It cannot be accepted or dismissed to continue. Explicit retry reruns only invalid parts and dependent synthesis tasks; completed verified parts are reused. Invalid JSON and truncated responses are never automatically repaired.
+
+In this release the new format requires **author confirmation even when no concerns are found**. Automatic model acceptance awaits a separate evaluation. Completing the planned tasks does not guarantee that the model found every contradiction.
+
+Local evidence review requires native JSON schema, disabled thinking and an explicitly activated qualified token counter bound to the new system prompt. Old bindings are not transferred; missing or corrupt counters block dispatch. See [token budgeting](../token-budget.md) for offline registration and activation. Selecting the format does not perform qualification.
+
+Premise-pair counts grow quadratically, but fitting premises are grouped in one request. Initial call counts are estimates because returned evidence may change later packing. One-scene search is limited to10000 parts; splitting preflight is additionally limited to100000 pairs. Paid preview shows a conservative one-scene search cost ceiling for that limit, excluding memory and subsequent scenes. Existing story/session budget checks still apply; search never increases a budget itself.
+
+![Neutral example of a premise conflict](../images/review-evidence.png)

@@ -13,6 +13,17 @@ def resume(worker,run,repeat):
     if any(r.id!=run.id and r.impact and r.impact.get('protocol')==3 and r.state in {'queued','running','paused','needs_review','pause_requested','cancellation_requested'} for r in worker.list_runs(run.story_id)):raise ValueError('Інший перегляд книги вже відкрито')
     if run.state not in {'failed','interrupted','paused','cancelled'}:raise ValueError('Спершу завершіть авторський перегляд зауважень')
     if run.impact.get('phase') in {'awaiting_author','author_editing'}:raise ValueError('Потрібне авторське рішення у панелі перевірки книги')
+    if run.impact.get('phase')=='partial_result':
+        if not repeat:raise ValueError('Потрібне явне рішення повторити незавершену перевірку')
+        attempts={a.id:a for a in worker.repo.list_attempts(run.story_id,run.id)}
+        data=run.impact;invalid=set()
+        for key in data['order']:
+            result=attempts[data['proofs'][key]].context.get('review_result',{})
+            if result.get('execution_state')!='complete' or any(dep in invalid for dep in data['specs'][key]['dependencies']):invalid.add(key)
+        data['order']=[key for key in data['order'] if key not in invalid]
+        data['specs']={key:value for key,value in data['specs'].items() if key not in invalid}
+        data['proofs']={key:value for key,value in data['proofs'].items() if key not in invalid}
+        data.update(phase='search',roots=[]);data.pop('current_report_id',None)
     latest={}
     for a in worker.repo.list_attempts(run.story_id,run.id):
         if a.stage not in {'memory','review_part'} or a.context.get('run_cursor')!=run.cursor:continue
@@ -31,6 +42,10 @@ def resume(worker,run,repeat):
 
 
 def live_plan(repo,plan):
+    if plan.get('contract_version')==4:
+        from ..storage.review_authority import snapshot
+        live=snapshot(repo,plan['story_id'],plan['scene_id'])
+        if any(live[k]!=plan[k] for k in ['priorities','statements','authority_revisions']):raise RevisionConflict('Авторські пріоритети змінилися; створіть нову перевірку')
     view=repo.context_view(plan['story_id'])
     for raw in plan['targets']:
         t=ImpactTarget.model_validate(raw)
@@ -99,11 +114,14 @@ def next_search(repo,run,results):
         shape=lambda s:{k:v for k,v in s.items() if k not in {'id','settings'}}
         saved=next((s for s in d['specs'].values() if shape(s)==shape(spec)),None)
         if saved:return saved
-        saved=next((a.context['review_spec'] for a in reversed(attempts) if a.stage=='review_part' and a.state=='completed' and a.finish_reason=='stop' and a.context.get('review_plan_id')==plan['id'] and shape(a.context.get('review_spec',{}))==shape(spec)),None)
+        saved=next((a.context['review_spec'] for a in reversed(attempts) if a.stage=='review_part' and a.state=='completed' and a.finish_reason=='stop' and a.context.get('review_result',{}).get('execution_state','complete')=='complete' and a.context.get('review_plan_id')==plan['id'] and shape(a.context.get('review_spec',{}))==shape(spec)),None)
         if saved:return saved  # Answer persisted before checkpoint/settings change.
         spec={**spec,'settings':get_role_settings(repo,run.story_id)['planner'].model_dump()}
         spec['id']=stamp(spec)
         return spec
+    if plan.get('contract_version')==4:
+        from .runner4 import next_search as next4
+        return next4(repo,run,results,pinned)
     for spec in plan['delta_specs']:
         spec=pinned(spec)
         if spec['id'] not in results:return spec
@@ -154,14 +172,15 @@ def execute(worker,id):
                     for key in ['scene_plan','current_report_id','acceptance_operation']:d.pop(key,None)
                     d.update(proofs={},specs={},order=[],roots=[]);run.cursor=cursor+1;worker._save(run)
                     worker.event(id,'state',dict(state=run.state,scene_cursor=d['scene_cursor'],parts=0));continue
-                plan=prepare_scene(repo,scene.id)
+                plan=prepare_scene(repo,scene.id,contract_version=run.request.review_contract_version or 3)
                 if not plan['targets']:
                     d['phase']='memory_refresh';worker._save(run);continue
                 d.update(scene_plan=plan,phase='search',proofs={},specs={},order=[],roots=[]);worker._save(run);continue
             if d['phase']!='search':raise ValueError('Невідомий стан послідовного перегляду')
             plan=d['scene_plan'];live_plan(repo,plan);results=results_for(repo,run);spec=next_search(repo,run,results)
             if spec:
-                matches=[a for a in repo.list_attempts(run.story_id,run.id) if a.stage=='review_part' and a.context.get('review_plan_id')==plan['id'] and a.context.get('review_spec')==spec and a.state=='completed']
+                if plan.get('contract_version')==4 and len(d['order'])>=10000:raise ValueError('Пошук перевищує 10000 задач; новий виклик заблоковано')
+                matches=[a for a in repo.list_attempts(run.story_id,run.id) if a.stage=='review_part' and a.context.get('review_plan_id')==plan['id'] and a.context.get('review_spec')==spec and a.state=='completed' and a.context.get('review_result',{}).get('execution_state','complete')=='complete']
                 if matches:
                     a=matches[-1];verify_part(a,plan,spec,results,repo.files.read_partial,run.story_id,run.id)
                 else:
@@ -171,6 +190,12 @@ def execute(worker,id):
                 if current.state in {'cancelled','cancellation_requested'}:continue
                 current.impact['proofs'][spec['id']]=a.id;current.impact['specs'][spec['id']]=spec;current.impact['order'].append(spec['id']);worker._save(current)
                 worker.event(id,'state',dict(state=current.state,scene_cursor=current.impact['scene_cursor'],parts=len(current.impact['order'])));continue
+            if plan.get('contract_version')==4:
+                from .runner4 import make_report
+                report=make_report(run,results)
+                verify_report(report,{a.id:a for a in repo.list_attempts(run.story_id,run.id)},repo.files.read_partial)
+                # New model profiles need a separate semantic qualification before auto authority.
+                save_report(repo,run,report);worker.event(id,'state',dict(state='needs_review' if report.complete else 'failed'));return
             concerns={c['id']:c for result in results.values() for c in result['concerns']}
             report=SceneReport(story_id=run.story_id,scene_id=scene.id,run_id=run.id,targets=plan['targets'],complete=True,concerns=list(concerns.values()),
                 registry=plan['registry'],part_specs=d['specs'],proofs=d['proofs'],coverage=dict(plan=plan,order=d['order'],roots=d['roots']))

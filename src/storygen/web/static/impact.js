@@ -14,7 +14,13 @@ const activeStates=new Set(['queued','running','pause_requested','cancellation_r
 const isOpen=r=>r&&(activeStates.has(r.state)||(r.impact?.protocol===3&&['paused','needs_review'].includes(r.state)));
 const active=()=>isOpen(state.workspaceRun)||(state.workspaceRuns||[]).some(isOpen);
 const node=(tag,text,className)=>{const e=document.createElement(tag);if(text!=null)e.textContent=text;if(className)e.className=className;return e};
-function controls(){previewButton.disabled=busy||state.saving||active();start.disabled=busy||state.saving||state.dirty||active()||!preview?.ready;}
+const contractLabel=node('label');contractLabel.hidden=true;
+const contractName=node('span');uiText(contractName,'textContent',()=>t('review4.method'));
+const contractSelect=node('select');contractSelect.id='review-contract-version';
+for(const [value,key] of [['3','review4.classic'],['4','review4.evidence']]){const option=node('option');option.value=value;uiText(option,'textContent',()=>t(key));contractSelect.append(option);}
+contractLabel.append(contractName,contractSelect);previewButton.before(contractLabel);
+contractSelect.onchange=()=>{preview=null;previewPanel.hidden=true;controls();};
+function controls(){contractSelect.disabled=busy||state.saving||active();previewButton.disabled=busy||state.saving||active();start.disabled=busy||state.saving||state.dirty||active()||!preview?.ready;}
 function renderReports(){
   if(!cached)return;
   uiText(document.querySelector('#impact-count'),'textContent',()=>t('impact.pending_count',{p0:cached.pending.length}));
@@ -45,7 +51,7 @@ function renderReports(){
 }
 async function load(){
   const epoch=++loadEpoch;
-  try{const data=await api(`/api/stories/${state.storyId}/impact`);if(epoch!==loadEpoch)return;cached=data;const capable=data.review_protocols?.includes(3);panel.dataset.reviewProtocol=capable?'3':'unsupported';panel.hidden=!capable;renderReports();controls();}
+  try{const data=await api(`/api/stories/${state.storyId}/impact`);if(epoch!==loadEpoch)return;cached=data;const capable=data.review_protocols?.includes(3);contractLabel.hidden=!data.review_contract_versions?.includes(4);panel.dataset.reviewProtocol=capable?'3':'unsupported';panel.hidden=!capable;renderReports();controls();}
   catch(error){if(epoch===loadEpoch&&panel.open)notice(error.message,'error');}
 }
 previewButton.onclick=async()=>{
@@ -63,7 +69,7 @@ previewButton.onclick=async()=>{
   elapsed();const ticker=setInterval(elapsed,1000);
   const timeout=setTimeout(()=>{timedOut=true;controller.abort();},PREVIEW_TIMEOUT_MS);
   try{
-    preview=await api(`/api/stories/${state.storyId}/review/preview`,{...json('POST',{}),signal:controller.signal});
+    preview=await api(`/api/stories/${state.storyId}/review/preview`,{...json('POST',cached?.review_contract_versions?.includes(4)?{review_contract_version:Number(contractSelect.value)}:{}),signal:controller.signal});
     if(controller.signal.aborted)throw new DOMException('Aborted','AbortError');
     if(!preview.ready)throw new Error(preview.reason||t('impact.none'));
     const prepared=preview;
@@ -73,6 +79,7 @@ previewButton.onclick=async()=>{
     const paid=!!preview.paid||preview.upper_cost_nanos!=null;document.querySelector('#impact-limit-label').hidden=!paid;
     if(paid)limit.value=preview.upper_cost_nanos==null?'':(preview.upper_cost_nanos/1e9).toFixed(9);
     uiText(document.querySelector('#impact-cost'),'textContent',()=>paid?(prepared.upper_cost_nanos==null?t('review.paid_help'):t('impact.upper',{p0:usd(prepared.upper_cost_nanos)})):t('impact.local'));
+    if(prepared.contract_version===4&&prepared.initial_search_upper_cost_nanos!=null)uiText(document.querySelector('#impact-cost'),'textContent',()=>t('review4.initial_upper',{p0:usd(prepared.initial_search_upper_cost_nanos)})+' '+t('review.paid_help'));
     previewPanel.hidden=false;start.hidden=false;
     document.querySelector('#impact-progress').textContent='';
   }catch(error){
@@ -91,7 +98,7 @@ previewButton.onclick=async()=>{
 start.onclick=async()=>{
   if(!preview||busy)return;if(state.dirty||state.saving){notice(t('impact.unsaved'),'warning');return;}
   busy=true;controls();
-  try{const run=await api(`/api/stories/${state.storyId}/review`,json('POST',{request_id:crypto.randomUUID(),fingerprint:preview.plan.fingerprint,budget_limit_usd:preview.paid||preview.upper_cost_nanos!=null?limit.value||null:null}));previewPanel.hidden=true;preview=null;document.dispatchEvent(new CustomEvent('run-enqueued',{detail:run}));notice(t('impact.queued'));}
+  try{const run=await api(`/api/stories/${state.storyId}/review`,json('POST',{request_id:crypto.randomUUID(),fingerprint:preview.plan.fingerprint,...(preview.contract_version===4?{review_contract_version:4}:{}),budget_limit_usd:preview.paid||preview.upper_cost_nanos!=null?limit.value||null:null}));previewPanel.hidden=true;preview=null;document.dispatchEvent(new CustomEvent('run-enqueued',{detail:run}));notice(t('impact.queued'));}
   catch(error){notice(error.message,'error');}finally{busy=false;controls();}
 };
 document.querySelector('#impact-cancel-preview').onclick=()=>{if(previewController){previewController.abort();return;}preview=null;previewPanel.hidden=true;controls();};

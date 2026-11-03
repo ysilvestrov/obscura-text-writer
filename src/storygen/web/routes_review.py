@@ -1,5 +1,6 @@
 """Versioned sequential review commands; every dispatch is explicit."""
 from fastapi import APIRouter,Request
+from typing import Literal
 from pydantic import Field
 from ..domain import DomainModel
 from ..run_models import RunRequest
@@ -13,6 +14,21 @@ class Start(DomainModel):
     request_id:str=Field(min_length=1,max_length=200)
     fingerprint:str=Field(pattern=r'^[a-f0-9]{64}$')
     budget_limit_usd:str|None=None
+    review_contract_version:Literal[3,4]|None=None
+
+
+class Preview(DomainModel):
+    review_contract_version:Literal[3,4]=3
+
+
+class Priority(DomainModel):
+    material:Literal['brief','prose']
+    expected_revision:int=Field(ge=0,strict=True)
+    operation_id:str=Field(min_length=1,max_length=200)
+    preferred:dict|None=None
+    superseded:dict|None=None
+    revoke_id:str|None=None
+    replace_id:str|None=None
 
 
 class Decision(DomainModel):
@@ -22,8 +38,8 @@ class Decision(DomainModel):
 
 
 @router.post('/api/stories/{story_id}/review/preview')
-def preview(story_id:str,request:Request):
-    result=readiness(request.app.state.repo,RunRequest(story_id=story_id,mode='impact',impact_protocol=3))
+def preview(story_id:str,request:Request,body:Preview|None=None):
+    result=readiness(request.app.state.repo,RunRequest(story_id=story_id,mode='impact',impact_protocol=3,review_contract_version=body.review_contract_version if body else None))
     if result.get('plan'):
         result['plan']=dict(story_id=story_id,fingerprint=result['fingerprint'],targets=[{k:t[k] for k in ['scene_id','scene_title','material','version_id','blockers']} for t in result['plan']['targets']])
     return result
@@ -31,7 +47,17 @@ def preview(story_id:str,request:Request):
 
 @router.post('/api/stories/{story_id}/review')
 def start(story_id:str,body:Start,request:Request):
-    return request.app.state.coordinator.enqueue(RunRequest(story_id=story_id,mode='impact',impact_protocol=3,impact_plan_fingerprint=body.fingerprint,budget_limit_usd=body.budget_limit_usd),body.request_id)
+    return request.app.state.coordinator.enqueue(RunRequest(story_id=story_id,mode='impact',impact_protocol=3,review_contract_version=body.review_contract_version,impact_plan_fingerprint=body.fingerprint,budget_limit_usd=body.budget_limit_usd),body.request_id)
+
+
+@router.get('/api/stories/{story_id}/review/priorities/{scene_id}')
+def priorities(story_id:str,scene_id:str,request:Request):
+    return request.app.state.repo.review('priorities',story_id=story_id,scene_id=scene_id)
+
+
+@router.post('/api/stories/{story_id}/review/priorities/{scene_id}')
+def priority(story_id:str,scene_id:str,body:Priority,request:Request):
+    return request.app.state.repo.review('priority_decide',story_id=story_id,scene_id=scene_id,**body.model_dump())
 
 
 @router.get('/api/stories/{story_id}/review/{run_id}')

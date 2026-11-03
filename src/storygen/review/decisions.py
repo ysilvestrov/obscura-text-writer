@@ -23,7 +23,10 @@ def _preview(repo,view,run):
         targets.append(t)
     basis=dict(report_id=report.id,phase=data['phase'],scene_cursor=data['scene_cursor'],targets=[t.fingerprint for t in targets],dispositions=data.get('dispositions',{}))
     changed=data['phase']=='awaiting_author' and [t.fingerprint for t in targets]!=[t.fingerprint for t in report.targets]
-    return dict(run_id=run.id,state=run.state,phase=data['phase'],scene_id=scene.id,report=report.model_dump(),targets=[t.model_dump() for t in targets],dispositions=data.get('dispositions',{}),fingerprint=fingerprint(basis),changed_while_waiting=changed)
+    if report.schema_version==4:
+        from ..storage.review_authority import revision
+        changed=changed or any(revision(view,scene.id,t.material)!=report.authority_revisions.get(t.material,0) for t in targets)
+    return dict(run_id=run.id,state=run.state,phase=data['phase'],scene_id=scene.id,report=report.model_dump(),targets=[t.model_dump() for t in targets],dispositions=data.get('dispositions',{}),fingerprint=fingerprint(basis),changed_while_waiting=changed,automatic_acceptance_allowed=report.schema_version==3)
 
 
 def preview(repo,story_id,run_id):
@@ -59,9 +62,9 @@ def _command(worker,story_id,run_id,expected,operation_id,choices,action):
             choices=p['dispositions']
         if action=='decide' and any(v=='fix' for v in choices.values()):
             return repo.review('save_dispositions',run_id=run_id,expected=expected,operation_id=operation_id,command=command,choices=choices)
-        from .models import SceneReport
+        from .models4 import report_model
         from ..impact.models import ImpactTarget
-        result=publish_scene(repo,run_id,SceneReport.model_validate(p['report']),'author_revised' if action=='finish' else 'author_rejected',operation_id,
+        result=publish_scene(repo,run_id,report_model(p['report']).model_validate(p['report']),'author_revised' if action=='finish' else 'author_rejected',operation_id,
             accepted_targets=[ImpactTarget.model_validate(t) for t in p['targets']],dispositions=choices,command=command)
         worker.event(run_id,'state',dict(state='queued'));worker.condition.notify_all()
         return dict(state='queued',**result)

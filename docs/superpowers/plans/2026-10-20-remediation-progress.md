@@ -981,3 +981,11 @@ R-28k поставлено27.10:1293PASS/1SKIP verification-v4p8q2ak/source_chan
 ## 31.10.2026 — quality 2b завершено, звіт і STOP
 
 [Звіт](../../research/2026-10-30-round2b-quality-report.md): 720/720, 598 valid, 122 invalid, 0 transport retries. Перевірені identity/result/body SHA всіх слотів. Provisional C2: 0/60 FP, 0/84 miss, 144/144 valid; C1: 13 FP, 0 miss. L6: 87/144 invalid; L3 secondary: 27 кандидатів лише complete=false, поза порогами. Спільна сліпа панель 17 TP-позицій × 5 моделей + 27 secondary; авторське оцінювання не виконано. Quality $0.1372275, shared settled $0.3083300, held 0, available $9.6916700. Офлайн-звірки похідних даних пройшли; model calls для оцінки 0, frozen код незмінний. STOP для рев’ю, timing/escalation/B7 не запускалися.
+
+
+## 03.11.2026 — Контракт4 доказової перевірки
+
+Прямо погоджені [специфікація](../specs/2026-11-03-review-evidence-contract-design.md) та початок реалізації. [План і журнал](2026-11-03-review-evidence-contract.md). Реалізовано exact statement pairs, scoped append-only author priorities з replacement/revoke, спільний authority revision barrier, premise/check/synthesis, partial+explicit retry, report4/raw replay/backup/fsck, capability/API, UA/EN UI та інструкції. Локальний новий prompt потребує окремого qualified counter; автоматичне прийняття4 заблоковано до окремої semantic кваліфікації. Нових model calls0, budget activation0. Цільові review/API83 passed до останньої legacy поправки; додаткові4 регресії passed. Старі browser72 passed; нові desktop/mobile2 passed після виправлення імпорту synthetic fixture. Повний pytest записується через scripts/verify.py у STATUS. Жодного твердження про покращення семантичних метрик моделей без нового оцінювання.
+
+
+Підсумкова перевірка контракту4: scripts/verify.py infrastructure — **1599 passed,1 skipped,0 failed/errors**,558.91s, source_changed_during_run=false; [STATUS](../../STATUS.md), artifacts/verification-_wo_qkr_/result.json. Пропуск — платформна перевірка symlink. Browser72 legacy +2 evidence desktop/mobile пройшли. Незалежне рев’ю — без залишкових Critical/Important; ui detector[] і нейтральні screenshots перевірено. Source/research originals у початковій теці не перезаписані, нові model calls0. Семантична кваліфікація моделей/платний benchmark лишаються окремо неактивованими.

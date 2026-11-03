@@ -8,6 +8,7 @@ from .planning import measurement
 
 def build(repo,plan,spec,results):
     body,prediction,chars=measurement(repo,plan,spec,results);role=RoleSettings.model_validate(spec['settings'])
+    if plan.get('contract_version')==4 and role.provider.provider=='local' and prediction['method']!='qualified_local_tokenizer':raise ValueError('Кваліфікований локальний лічильник недоступний; потрібен новий попередній перегляд')
     limit=role.context_tokens-role.max_output_tokens
     if prediction['input_tokens']>limit or chars>role.max_input_chars:raise ContextOverflow(prediction['input_tokens'],limit,chars,max_input_chars=role.max_input_chars)
     return ContextBundle(story_id=plan['story_id'],scene_id=plan['scene_id'],stage='review_part',scene_revision=None,
