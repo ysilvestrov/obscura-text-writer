@@ -2,20 +2,20 @@
 
 **ПЕРЕВІРКА ПРОЙШЛА** — свідчення конкретного запуску, не поточного довільного стану.
 
-- Початок (UTC): 2026-11-03T22:02:20.776358+00:00
-- Завершення (UTC): 2026-11-03T22:11:40.817253+00:00
-- Базовий commit: `10f226715a677fed9f75a43eeeb44bdf1f054582`
+- Початок (UTC): 2026-11-05T19:26:34.581343+00:00
+- Завершення (UTC): 2026-11-05T19:26:36.876868+00:00
+- Базовий commit: `4448869905fee0cd9bdc1baddce6a83daec2f0d9`
 - Незакомічені зміни під час перевірки: `true`
-- SHA-256 вихідного знімка: `53038c98f4db81e05fd538514061ccc1df5e03a14a42b9c38768f195db44d74e`
+- SHA-256 вихідного знімка: `296db490bc2ea70163c4c595915d120df9a8393b55b538be6416314e57a95ed0`
 - Зміна знімка під час прогону: `false`
 - Exit code: `0`
-- Фактичні testcase результати JUnit: passed: 1599 · failed: 0 · errors: 0 · skipped: 1
-- Тривалість: 560.03 с
+- Фактичні testcase результати JUnit: passed: 24 · failed: 0 · errors: 0 · skipped: 0
+- Тривалість: 2.30 с
 
 Точний argv (JSON, не shell-команда):
 
 ```json
-["C:\\Projects\\text-generator\\.venv\\Scripts\\python.exe", "-m", "pytest", "tests", "docs/research", "-q", "--junitxml=C:\\Users\\yuriy\\.codex\\worktrees\\review-evidence-contract\\text-generator\\artifacts\\verification-_wo_qkr_\\junit.xml", "--basetemp=C:/Projects/text-generator/artifacts/t4-full-suite"]
+["C:\\Projects\\text-generator\\.venv\\Scripts\\python.exe", "-m", "pytest", "tests/web/test_character_availability.py", "tests/web/test_workspace_navigation.py", "tests/web/test_localization.py", "tests/authoring/test_character_import.py", "tests/characters", "-q", "--junitxml=C:\\Projects\\text-generator\\artifacts\\verification-4ckgjh61\\junit.xml", "--basetemp=C:\\Projects\\text-generator\\artifacts\\verification-4ckgjh61\\test-tmp"]
 ```
 
 Результат стосується лише наведеної команди й вихідного знімка. Якщо в argv зазначено окремі файли або фільтри, це часткова перевірка. Збір (collection) не є виконанням; skipped не зараховано до passed. Відсутній або непридатний XML позначається непідтвердженим. Після зміни вихідних файлів звіт історичний. Власний STATUS і artifacts виключено зі знімка; початкова ревізія може мати dirty=true, оскільки звіт створюється до коміту.

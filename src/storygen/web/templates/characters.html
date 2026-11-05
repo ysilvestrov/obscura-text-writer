@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}{{ t('characters.nav') }} — {{story.title}} — Obscura{% endblock %}
+{% block title_attributes %} data-i18n-title-prefix="characters.nav" data-ui-title-author="{{story.title}}"{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="/static/characters-page.css">
+<main id="characters-page" class="characters-page" data-story-id="{{story.id}}">
+<a id="characters-return" href="/stories/{{story.id}}" data-i18n="m_b38276cdf9d4">{{ t('m_b38276cdf9d4') }}</a>
+<header class="characters-heading"><h1 data-i18n="m_f4686f929610">{{ t('m_f4686f929610') }}</h1><p>{{story.title}}</p></header>
+<section id="characters-editor" class="character-editor"></section>
+</main>
+{% endblock %}
+{% block scripts %}<script type="module" src="/static/characters.js"></script>{% endblock %}

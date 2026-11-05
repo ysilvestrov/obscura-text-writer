@@ -1,0 +1,22 @@
+.characters-page { width: min(1440px, 100%); margin-inline: auto; padding: 32px clamp(16px, 3vw, 48px) 64px; }
+.characters-heading { margin-block: 24px 32px; }
+.characters-heading h1 { margin-bottom: 8px; font-size: clamp(25px, 3vw, 38px); text-wrap: balance; }
+.characters-heading p { color: var(--text-secondary); overflow-wrap: anywhere; }
+.characters-page .character-editor > p { max-width: 75ch; }
+.characters-page .characters-tools { position: sticky; top: 0; z-index: 2; padding-block: 12px; background: var(--bg-app); border-bottom: 1px solid var(--border-color); }
+.characters-page fieldset { padding-block: 24px; border-top: 1px solid var(--border-color); }
+.characters-page legend { font-size: 25px; }
+.characters-page fieldset > label { max-width: 36rem; }
+.characters-page .character-entry { display: grid; grid-template-columns: minmax(0, 1fr) minmax(220px, 300px); gap: 12px 32px; }
+.characters-page .character-entry > label:first-child { grid-column: 1; grid-row: 1 / span 5; }
+.characters-page .character-entry > :not(:first-child) { grid-column: 2; }
+.characters-page .character-entry > label[hidden] { display: none; }
+.characters-page textarea { min-height: 20rem; resize: vertical; font-family: var(--font-writing); line-height: 1.65; }
+.characters-page label, .characters-page select { min-width: 0; }
+.characters-page .character-preview { padding: 16px; background: var(--bg-surface); }
+@media (max-width: 760px) {
+  .characters-page { padding-top: 20px; }
+  .characters-page .character-entry { display: flex; flex-direction: column; gap: 12px; }
+  .characters-page .characters-tools { position: static; }
+  .characters-page textarea { min-height: 16rem; }
+}

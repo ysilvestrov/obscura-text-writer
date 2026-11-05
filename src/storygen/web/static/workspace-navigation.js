@@ -14,6 +14,15 @@ if(settings){
 const workspace=document.querySelector('#workspace');
 if(workspace){
   const {state,initialWorkspacePosition}=await import('./editor.js');
+  const charactersLink=document.querySelector('#workspace-characters');
+  const updateCharactersLink=()=>{
+    if(!charactersLink)return;
+    const query=new URLSearchParams();
+    if(state.scene){query.set('scene',state.scene.id);query.set('material',state.mode);}
+    charactersLink.href=`/stories/${encodeURIComponent(state.storyId)}/characters`+(query.size?'?'+query:'');
+  };
+  document.addEventListener('editor-state-changed',updateCharactersLink);
+  updateCharactersLink();
   const {resolveWorkspacePosition}=await import('./workspace-position.js');
   await import('./versions.js');
   const {invokeWorkspaceCommand}=await import('./workspace-commands.js');

@@ -2390,6 +2390,18 @@
         "procedure": "docs/superpowers/specs/2026-11-03-review-evidence-contract-design.md#design-review",
         "reason": "Підготовка незалежного semantic набору й окрема активація бюджету/викликів потребують авторського рішення; автоматичні тести перевіряють лише блокування автоматичного прийняття."
       }
+    },
+    {
+      "id": "CHARACTER-TIME-S03",
+      "requirement": "CHARACTER-TIME",
+      "scope": "Окремий маршрут і навігація персонажів; desktop/mobile, збереження, preview та dirty перевіряються браузерною процедурою.",
+      "tests": [
+        "tests/web/test_character_availability.py::test_character_page_is_independent_and_linked_from_story"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#characters-page",
+        "reason": "Геометрія сторінки й browser beforeunload потребують браузера; автоматизована процедура Playwright."
+      }
     }
   ]
 }

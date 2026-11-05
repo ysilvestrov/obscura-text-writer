@@ -61,3 +61,18 @@ def test_character_buffer_preserves_new_edits_and_rejects_stale_preview():
     root=Path(__file__).resolve().parents[2]
     result=subprocess.run([node,str(root/'tests/web/js/character_editor.mjs'),str(root)],capture_output=True,text=True,encoding='utf-8',timeout=15)
     assert result.returncode==0,result.stderr
+
+
+def test_character_page_is_independent_and_linked_from_story(tmp_path):
+    app=create_app(AppSettings(data_dir=tmp_path))
+    with TestClient(app,base_url='http://127.0.0.1:8765') as client:
+        story=client.post('/api/stories',json={'title':'Картки'}).json()
+        page=client.get(f"/stories/{story['id']}/characters")
+        assert page.status_code==200
+        assert 'id="characters-page"' in page.text
+        assert '/static/characters.js' in page.text
+        assert '/static/editor.js' not in page.text
+        workspace=client.get(f"/stories/{story['id']}").text
+        assert 'id="workspace-characters"' in workspace
+        assert '/static/characters.js' not in workspace
+        assert client.get('/stories/missing/characters').status_code==404

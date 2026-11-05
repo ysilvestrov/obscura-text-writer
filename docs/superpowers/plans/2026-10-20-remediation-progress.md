@@ -989,3 +989,8 @@ R-28k поставлено27.10:1293PASS/1SKIP verification-v4p8q2ak/source_chan
 
 
 Підсумкова перевірка контракту4: scripts/verify.py infrastructure — **1599 passed,1 skipped,0 failed/errors**,558.91s, source_changed_during_run=false; [STATUS](../../STATUS.md), artifacts/verification-_wo_qkr_/result.json. Пропуск — платформна перевірка symlink. Browser72 legacy +2 evidence desktop/mobile пройшли. Незалежне рев’ю — без залишкових Critical/Important; ui detector[] і нейтральні screenshots перевірено. Source/research originals у початковій теці не перезаписані, нові model calls0. Семантична кваліфікація моделей/платний benchmark лишаються окремо неактивованими.
+
+
+## 05.11.2026 — Окрема сторінка персонажів
+
+Прямий погоджений запит власника: «Персонажі» поруч із «Налаштуваннями» у верхній навігації, окремий широкий редактор. [Специфікація](../../specs/changes/character-availability-page-2026-11-05.md), [план і журнал](2026-11-05-character-availability-page.md). Реалізовано маршрут, незалежний редактор, desktop/mobile, повернення до scene/material, UA/EN і beforeunload. API, цитати й CAS збережено.24 цільові pytest пройшли через verify.py;6 браузерних перевірок пройшли. check_docs узгоджений. Оновлено runbook, English guide та нейтральні знімки. Перевірений результат у головній теці; сторонній research-файл збережено.
