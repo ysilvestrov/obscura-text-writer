@@ -2410,6 +2410,15 @@
       "tests": [
         "tests/web/test_word_targets.py::test_word_targets_above_recommendation_round_trip"
       ]
+    },
+    {
+      "id": "IMPORT-NUMBER-S01",
+      "requirement": "IMPORT-NUMBER",
+      "scope": "Точні секції, fallback і ручне збереження номерів.",
+      "tests": [
+        "tests/authoring/test_import_sections.py::test_sections_keep_exact_text_and_unnumbered_subheadings",
+        "tests/authoring/test_import_sections.py::test_manual_plan_number_updates_and_conflict_is_atomic"
+      ]
     }
   ]
 }

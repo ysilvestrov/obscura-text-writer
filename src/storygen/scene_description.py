@@ -44,3 +44,9 @@ def resolve_participants(names,cards):
             problems.append(('Неоднозначне ім’я' if matches else 'Невідомий персонаж')+': '+name[:120])
         elif matches[0] not in ids:ids.append(matches[0])
     return ids,problems
+
+
+def explicit_scene_number(text):
+    first=next((line for line in text.splitlines() if line.strip()),'')
+    match=re.match(r'(?i)^[ \t]*(?:#{1,6}[ \t]*)?(?:\*\*)?Сцена[ \t]+(\d+)[.:][ \t]*.+$',first)
+    return int(match[1]) if match else None
