@@ -256,6 +256,7 @@ def register_source(repo, story_id, metadata):
         _material(repo, db, story_id, metadata['version_id'], metadata['kind'])
         previous = repo._active_source(db, story_id, metadata['kind'])
         db.execute('INSERT INTO source_files VALUES(?,?,?)', (metadata['id'], story_id, json.dumps(metadata, ensure_ascii=False)))
+        db.execute('INSERT INTO active_sources VALUES(?,?,?) ON CONFLICT(story_id,kind) DO UPDATE SET version_id=excluded.version_id',(story_id,metadata['kind'],metadata['version_id']))
         repo._touch_story(db, story_id)
         if previous:
             invalidate_in_transaction(repo, db, [previous.id])

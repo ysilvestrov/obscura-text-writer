@@ -2419,6 +2419,16 @@
         "tests/authoring/test_import_sections.py::test_sections_keep_exact_text_and_unnumbered_subheadings",
         "tests/authoring/test_import_sections.py::test_manual_plan_number_updates_and_conflict_is_atomic"
       ]
+    },
+    {
+      "id": "IMPORT-PUBLISH-S01",
+      "requirement": "IMPORT-PUBLISH",
+      "scope": "CAS, atomic rollback і migration active source.",
+      "tests": [
+        "tests/storage/test_import_publication.py::test_cas_and_journal_do_not_replace_active_source",
+        "tests/storage/test_import_publication.py::test_publication_rolls_back_after_first_scene",
+        "tests/storage/test_import_publication.py::test_schema4_backfill_preserves_latest_selector_and_explicit_number"
+      ]
     }
   ]
 }

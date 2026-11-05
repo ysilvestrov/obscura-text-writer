@@ -277,11 +277,18 @@ class Repository:
             return stories if include_trashed else [s for s in stories if not s.trashed_at]
 
     def _active_source(self,db,story_id,kind):
-        for row in db.execute('SELECT payload FROM source_files WHERE story_id=? ORDER BY rowid DESC',(story_id,)):
-            metadata=json.loads(row[0])
-            if metadata['kind']==kind:
-                return self._get(db,'versions',metadata['version_id'],VersionRef)
-        return None
+        row=db.execute('SELECT version_id FROM active_sources WHERE story_id=? AND kind=?',(story_id,kind)).fetchone()
+        return self._get(db,'versions',row[0],VersionRef) if row else None
+
+    def list_source_files(self,story_id):
+        with self.db.connection() as db:
+            self._active_story(db,story_id)
+            from .import_store import source_files
+            return source_files(db,story_id)
+
+    def publish_import(self,story_id,expected_revision,publication):
+        from .import_store import publish_import
+        return publish_import(self,story_id,expected_revision,publication)
 
     def active_source(self,story_id,kind):
         with self.db.connection() as db:

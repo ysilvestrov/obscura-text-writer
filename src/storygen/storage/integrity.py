@@ -109,8 +109,8 @@ def check_integrity(root: Path) -> IntegrityReport:
             db.execute('PRAGMA query_only=ON')
             db.execute('BEGIN')
             schema=db.execute('PRAGMA user_version').fetchone()[0]
-            if schema not in {2,3,4}:
-                report.add('unsupported_schema', 'storygen.sqlite3', 'Підтримуються схеми 2, 3 та 4; міграції не виконуються')
+            if schema not in {2,3,4,5}:
+                report.add('unsupported_schema', 'storygen.sqlite3', 'Підтримуються схеми 2–5; міграції не виконуються')
                 return report
             if db.execute('PRAGMA integrity_check').fetchall() != [('ok',)]:
                 report.add('sqlite_integrity', 'storygen.sqlite3', 'SQLite integrity_check виявив помилки')
@@ -216,6 +216,11 @@ def check_integrity(root: Path) -> IntegrityReport:
                         report.add('invalid_source', source.get('id', story_id), 'Невірний імпортований матеріал')
                 except (ValueError, KeyError, TypeError):
                     report.add('invalid_payload', story_id, 'Некоректні метадані джерела')
+            if schema>=5:
+                for owner,kind,id in db.execute('SELECT story_id,kind,version_id FROM active_sources'):
+                    ref=versions.get(id)
+                    if owner not in stories or not ref or ref.story_id!=owner or ref.kind!=kind or not ref.complete:
+                        report.add('invalid_active_source',id,'Невірний активний матеріал')
             if schema>=3:
                 from .publication_checks import check_publications
                 check_publications(db,report,stories,verify_file,root)
