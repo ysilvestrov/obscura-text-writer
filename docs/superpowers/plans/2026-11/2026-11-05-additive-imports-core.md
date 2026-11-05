@@ -1,0 +1,99 @@
+# План реалізації: ядро доповнювального імпорту
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** Реалізувати серверне ядро погодженого доповнювального імпорту й атомарне збереження обсягу твору.
+
+**Architecture:** Чистий розбір секцій готує зміни без запису. Repository публікує один файл транзакційно: журнал, явний selector активного джерела, нові сцени/картки та їхні голови. HTTP-оркестрація повертає результат кожного файла. Інтерфейс і налаштування письма отримають окремий план після наскрізного рев’ю цього ядра.
+
+**Tech Stack:** Python, Pydantic, SQLite, FastAPI, pytest; без нових залежностей.
+
+**Spec:** docs/specs/changes/additive-imports-writing-target-2026-11-05.md — затверджено власником у цьому чаті.
+
+## Global Constraints
+
+- Дубль сцени — явний номер, незалежно від назви;02 і2 збігаються. Позиція не є номером. Без номера кожна секція нова.
+- Дубль персонажа — чинний name_key; наявні IDs/entries/citations не перезаписуються.
+- Нові сцени додаються наприкінці; попередні beats/heads/цілі зберігаються. Новий орієнтир при доповненні —1000; початковий імпорт розподіляє story.target_words.
+- Сирі bytes незмінні. Активний план накопичує тільки прийняті нові секції; імпорт лише дублів не змінює selector та не інвалідує матеріали.
+- Один файл публікується атомарно з CAS. Multipart проходить повну попередню валідацію; після runtime-помилки подальші файли не застосовуються.
+- Обсяг твору — ціле число від5000 без верхньої межі15000; profile+target зберігаються атомарно. Немає модельних викликів.
+- Архітектурні зміни відразу відбиваються в SPEC.MD та traceability. Документація українською; UI UA/EN готується в наступному плані.
+- Сторонній docs/research/2026-11-01-local-planner-round-2-summary.md не змінювати й не включати до комітів.
+
+## Review Focus
+
+1. Старі імпорти з однаковим timestamp: зберегти саме попередній активний вибір, не переплутати порядок журналу з selector.
+2. Збій після створення першої сцени: відкотити всі SQL-зміни файла, зберегти інший успішний файл; дозволені лише неопубліковані blobs.
+3. Legacy fallback «Сцена 1» без авторського заголовка: не перетворювати автоматичну назву на номер1.
+4. Ручна правка картки після часткового імпорту: prepare читає чинні картки, а не останній сирий файл.
+5. Збереження лише обсягу: не створити style-версію та не змінити цілі сцен; CAS-конфлікт не публікує половину письмового профілю.
+
+## Поділ роботи
+
+Це поведінкова зміна з необхідними новими storage-операціями, не окремий косметичний рефакторинг. Не перебудовувати сторонні модулі в цьому PR. Якщо під час реалізації знадобиться винесення чинного коду без зміни поведінки, оформити його окремим PR із незмінними очікуваннями тестів перед поведінковою зміною.
+
+Ядро — чотири задачі нижче, один окремий PR після попереднього PR#5. План інтерфейсу не пишеться наперед: він залежить від фактичних API та результату наскрізного рев’ю ядра. Інтерфейсний PR охопить поле «Письмо», журнал, результати імпорту, UA/EN та desktop/mobile. Публікація ядра має чітко пояснювати тимчасову відсутність нових UI-полів.
+
+## Task 1: Секції плану та авторський номер
+
+**Files:** новий `src/storygen/authoring/import_sections.py`; `src/storygen/scene_description.py`, `src/storygen/domain.py`, `src/storygen/storage/scene_metadata.py`, `src/storygen/storage/authoring.py`; новий `tests/authoring/test_import_sections.py`, тести ручного збереження плану в `tests/authoring/`.
+
+**Interfaces:** `PlanSection(title: str, text: str, author_scene_number: int | None)`; `split_plan(text: str) -> tuple[str, list[PlanSection]]` повертає преамбулу й дослівні секції; `explicit_scene_number(text: str) -> int | None`. `Scene`/`SceneCreate` мають optional `author_scene_number`, default null; номер не виводиться з position. Legacy backfill належить Task2.
+
+- [ ] Написати параметризовані тести: однаковий номер із різними назвами/роздільниками;02/2; TXT і Markdown; змішаний `## Сцена 2`, `## Інтерлюдія`, `### Спогад` дає дві секції; CR/LF/CRLF секції зберігають текст; fallback без заголовків має номер null.
+- [ ] Виконати `.venv/Scripts/python.exe -X utf8 -m pytest tests/authoring/test_import_sections.py -q`; зафіксувати RED через відсутній модуль.
+- [ ] Реалізувати чистий розбір за правилами розділу5 специфікації. Рівень Markdown береться з нумерованих сцен, інакше з найменшого не-контейнерного заголовка. TXT-нумерована секція завжди є межею; глибший ненумерований заголовок залишається описом.
+- [ ] Додати тести manual save: зміна номера2→3 синхронізує поле, видалення заголовка очищає його; display rename/reorder не змінюють; зайнятий номер відхиляється атомарно. Реалізувати в чинному транзакційному шляху ручного збереження плану.
+- [ ] Запустити нові тести та `tests/authoring/test_imports.py`; оновити SPEC/traceability для номера й зафіксувати коміт.
+
+## Task 2: Явні активні джерела та атомарна публікація файла
+
+**Files:** нові `src/storygen/storage/migrations/005_import_sources.sql`, `src/storygen/storage/import_store.py`; `storage/database.py`, `storage/repository.py`, `storage/context_view.py`, `storage/integrity.py`, `storage/snapshots.py`; новий `tests/storage/test_import_publication.py`, чинні backup/restore тести.
+
+**Interfaces:** `Repository.list_source_files(story_id) -> list[dict]` повертає журнал з name/kind/version_id/created_at. `Repository.publish_import(story_id, expected_revision, publication: ImportPublication) -> ImportPublicationResult`. Строгі `ImportPublication`/`ImportPublicationResult` у незалежному `src/storygen/import_models.py` містять metadata сирого файла, nullable active_plan_version_id, nullable character_cards_version_id, підготовлені нові scene payloads і plan refs; storage не імпортує generation або HTTP. `active_source` зберігає попередню сигнатуру.
+
+- [ ] Написати RED-тести: selector не залежить від останнього журналу; CAS не змінює журнал/голови; fault injection після першої сцени відкочує всю SQL-публікацію; повтор дублів з незміненими selectors не робить версії stale.
+- [ ] Міграція створює `active_sources(story_id, kind, version_id)` із ключем story_id/kind та власністю refs. Backfill копіює попередній вибір останнього source_files rowid для кожного типу; timestamp не підміняє цей порядок. Nullable номер старої сцени визначається за правилами специфікації; fallback/неоднозначні випадки лишаються null.
+- [ ] Реалізувати publish_import через один BEGIN IMMEDIATE, expected_revision і перевірку власності/complete/hash всіх підготовлених refs. Спочатку всі перевірки, потім публікація журналу, selectors, карток і сцен. Інвалідація — лише за зміною активного змісту/карток, не при додаванні запису журналу. Синхронізація cast у тій самій транзакції.
+- [ ] Repository і ContextView читають однаковий selector. У контекстному знімку додати journal metadata; похідні версії не входять до list_source_files. Перевірити залежності snapshots без зміни історичних refs.
+- [ ] Fsck перевіряє ownership/kind selectors і формат author_scene_number, дозволяє історичні snapshots. Backup/restore включає нову таблицю; читання старого backup у підтримуваному порядку міграцій не втрачає активного вибору.
+- [ ] Запустити `.venv/Scripts/python.exe -X utf8 -m pytest tests/storage/test_import_publication.py tests/storage -q`, оновити storage SPEC/traceability та зробити коміт.
+
+## Task 3: Доповнювальний імпорт і HTTP-результат кожного файла
+
+**Files:** `src/storygen/authoring/imports.py`, `src/storygen/import_models.py`, `src/storygen/characters/service.py`, `src/storygen/generation/pipeline.py`, `src/storygen/web/routes_stories.py`; `tests/authoring/test_imports.py`, `tests/authoring/test_character_import.py`, новий `tests/web/test_additive_imports.py`.
+
+**Consumes:** split_plan/PlanSection з Task1; publish_import/list_source_files/active_source з Task2.
+
+**Produces:** сумісний ImportResult із `created_scene_ids`, `skipped_character_names`, `skipped_scene_numbers`, `files`, `partial`; елемент files має client_index/name/kind/status/source_id/version_id/created_scene_ids/created_character_cards/skipped_character_names/skipped_scene_numbers/warnings/error. Статуси imported/failed/not_processed, IDs за відсутності null. Клієнтський індекс не береться з назви файла.
+
+- [ ] RED: повторний файл персонажів із новою карткою та дублем; збережені ручні entries/IDs/citations; нормалізовані імена; опублікований порожній набір; файл лише з дублями не створює character_cards версію.
+- [ ] RED: сцени за номером; дублі в одному файлі; одна назва з різними номерами; повтор ненумерованих секцій додає нові; збереження старих heads/вступу/обсягів; нова сцена наприкінці має1000. Повтор нумерованого файла не змінює active source й freshness.
+- [ ] Реалізувати підготовку на captured view: поточні картки плюс прийняті нові; поточний план плюс точні нові секції. Нові immutable blobs готуються до publish_import; input_refs містять їхні реальні джерела. Не використовувати послідовні незалежні repo.create_scene/register_source/save_character_material для однієї файлової публікації.
+- [ ] Prepare читає поточні картки з усіма entries/мітками та ref character_cards, сирий опис — лише legacy fallback. Тест ручної зміни після імпорту перевіряє, що старий сирий текст не підміняє чинне значення.
+- [ ] Додати HTTP-тести: весь multipart prevalidation до запису400/413; перший runtime CAS409 з files; успішний перший/невдалий другий/необроблений третій —200 partial=true з точними підсумками. Не відлунювати приватні bytes у помилках. Старі поля result зберегти; structured lists не залежать від мови warnings.
+- [ ] GET story додає `source_files` та `active_sources`, зберігаючи старе поле sources на час переходу UI. `source_files` містить реальні назви та created_at версій, newest-first зі стабільним ID tie-break; без похідних версій.
+- [ ] Запустити `.venv/Scripts/python.exe -X utf8 -m pytest tests/authoring tests/web/test_additive_imports.py tests/generation/test_character_context.py -q`; оновити DATA-001/CHARACTER-IMPORT у SPEC, traceability й коміт.
+
+## Task 4: Атомарний серверний scope «Письмо» і наскрізне приймання ядра
+
+**Files:** `src/storygen/web/routes_settings.py`, `src/storygen/authoring/blueprints.py`, `src/storygen/storage/authoring.py`, `src/storygen/storage/repository.py`; новий `tests/web/test_writing_target_settings.py`, новий `tests/integration/test_additive_import_flow.py`.
+
+**Interfaces:** SettingsChange.target_words — optional int ge5000. `update_story_profile(repo, story_id, profile, expected_revision, target_words=None)` зберігає сумісність старих викликів. `Repository.publish_writing_settings(story_id, expected_revision, target_words, style_version_id)` атомарно оновлює змінені поля. Параметр target_words відхиляється для role/shared-provider; GET settings повертає story як раніше.
+
+- [ ] RED: story25000, незмінні цілі сцен; profile+target один CAS; stale revision не змінює жодного поля; запит без target залишає старий обсяг; target у role/shared-provider відхиляється.
+- [ ] Реалізувати валідований server save; якщо profile не змінився, не створювати зайвої style-версії. Тест чистої зміни target перевіряє сталий style_version_id і кількість style refs; активні generation attempts не змінюються.
+- [ ] Наскрізний тест: початковий план/персонажі → ручні зміни → частковий імпорт нових і дублів → prepare без gateway → snapshot → fsck → backup/restore → перевірка активного плану, цитат, карток і номерів. Окремо два captured views з одною revision: лише одна публікація проходить.
+- [ ] Внести лише реалізовані контракти в SPEC.MD/traceability, додати UA/EN API-примітки про ще не оновлений UI. Не оголошувати інтерфейс завершеним.
+- [ ] Виконати check_docs.py і scripts/verify.py з усіма новими та відповідними authoring/storage/settings/context tests; записати фактичний результат у docs/STATUS.md.
+- [ ] Виконати наскрізне рев’ю всього ядра, зафіксувати findings і усунути суттєві. Після цього скласти окремий план UI на основі реальних контрактів, а не цього попереднього переліку.
+- [ ] Перевірити сторонні зміни основної теки, коміт/push/PR; залишити C:\Projects\text-generator на перевіреному результаті. Не merge без окремого дозволу. Вказати PR/коміт/стан теки у підсумку.
+
+## Самоперевірка плану
+
+Розділи2–7 специфікації покрито ядром. Інтерфейсна частина розділів2–4 та UA/EN повідомлення/знімки навмисно винесені в наступний план після рев’ю ядра. Не вводиться нова продуктова семантика дублів. Найбільший ризик — атомарна публікація й відділення selectors від журналу; вони отримують окремі storage та інтеграційні перевірки перед UI.
+
+## Статус
+
+План підготовлено; реалізація ще не почата. Рекомендований спосіб: inline у поточному чаті з окремим незалежним рев’ю всього ядра. Повторне погодження самої специфікації не потрібне; план очікує перегляду відповідно до writing-plans.
