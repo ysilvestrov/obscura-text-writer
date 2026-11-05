@@ -2402,6 +2402,14 @@
         "procedure": "docs/verification/manual.md#characters-page",
         "reason": "Геометрія сторінки й browser beforeunload потребують браузера; автоматизована процедура Playwright."
       }
+    },
+    {
+      "id": "WORD-TARGET-S01",
+      "requirement": "WORD-TARGET",
+      "scope": "Обсяг твору й сцени понад рекомендацію та нижня межа.",
+      "tests": [
+        "tests/web/test_word_targets.py::test_word_targets_above_recommendation_round_trip"
+      ]
     }
   ]
 }

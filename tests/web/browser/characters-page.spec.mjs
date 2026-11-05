@@ -65,3 +65,19 @@ test('unsaved manuscript is protected before opening characters',async({page,req
   await expect(page.locator('#workspace')).toBeVisible();
   await expect(page.locator('#editor')).toHaveValue('Незбережений план.');
 });
+
+
+test('word target recommendation permits larger values',async({page,request})=>{
+  await page.goto('/');
+  const target=page.locator('[name="target_words"]');
+  await target.fill('25000');
+  expect(await target.evaluate(el=>el.checkValidity())).toBeTruthy();
+  await expect(page.locator('#word-target-help')).toContainText(/15.?000/);
+  const f=await(await request.post('/test-fixture')).json();
+  await page.goto(`/stories/${f.story_id}`);
+  await page.locator('.workspace-context > summary').click();
+  const scene=page.locator('#scene-settings [name="target_words"]');
+  await scene.fill('30000');
+  expect(await scene.evaluate(el=>el.checkValidity())).toBeTruthy();
+  await expect(page.locator('#scene-target-help')).toContainText(/15.?000/);
+});

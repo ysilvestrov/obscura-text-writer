@@ -28,7 +28,7 @@ class StorageCorruption(ValueError):
 
 class StoryCreate(DomainModel):
     title: str = Field(min_length=1,max_length=300)
-    target_words: int = Field(default=7000,ge=5000,le=15000)
+    target_words: int = Field(default=7000,ge=5000)
 
 
 class Story(StoryCreate):
@@ -46,7 +46,7 @@ class SceneCreate(DomainModel):
     title: str = Field(min_length=1,max_length=300)
     beats: str = ""
     position: int | None = Field(default=None,ge=0)
-    target_words: int = Field(default=1000,ge=1,le=15000)
+    target_words: int = Field(default=1000,ge=1)
     character_ids: list[str] = Field(default_factory=list)
 
 
