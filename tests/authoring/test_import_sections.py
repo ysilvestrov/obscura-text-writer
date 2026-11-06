@@ -29,3 +29,10 @@ def test_manual_plan_number_updates_and_conflict_is_atomic(tmp_path):
     assert repo.get_scene(a.id).beats==a.beats
     a=repo.update_scene_plan(a.id,'Без номера',a.revision)
     assert a.author_scene_number is None
+
+
+def test_unnumbered_markdown_before_txt_number_is_a_scene():
+    text='## Інтерлюдія\nТиша\nСцена 2: Зустріч\nРозмова'
+    preamble,sections=split_plan(text)
+    assert preamble==''
+    assert [s.author_scene_number for s in sections]==[None,2]

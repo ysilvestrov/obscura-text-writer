@@ -14,7 +14,7 @@ def invalidate_story_materials(repo,db,story_id):
         repo._save_scene(db,scene)
 
 
-def invalidate_in_transaction(repo,db,changed_version_ids: list[str],exclude=()) -> list[str]:
+def invalidate_in_transaction(repo,db,changed_version_ids: list[str],exclude=(),preserve=()) -> list[str]:
     queue=list(changed_version_ids)
     visited=set(queue)
     affected=[]
@@ -28,6 +28,7 @@ def invalidate_in_transaction(repo,db,changed_version_ids: list[str],exclude=())
                 affected.append(id)
     scene_ids=set()
     for id in affected:
+        if id in preserve:continue
         ref=repo._get(db,'versions',id,VersionRef)
         ref.stale=True
         db.execute('UPDATE versions SET payload=? WHERE id=?',(ref.model_dump_json(),id))

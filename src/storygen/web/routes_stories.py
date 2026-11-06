@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Request
+from fastapi.responses import JSONResponse
 
-from ..authoring.imports import SourceFile, import_sources
+from ..authoring.imports import SourceFile, import_sources, ImportBatchConflict, ImportBatchFailure, ImportTooLarge
 from ..authoring.service import reorder_scenes, update_scene, update_scene_plan, rename_story
 from ..domain import DomainModel, SceneCreate, StoryCreate
 
@@ -48,7 +49,7 @@ def story_view(id: str,request: Request):
     from ..characters.models import load_characters
     names={card.id:card.name for card in load_characters(view.read_text(story.characters_version_id))} if story.characters_version_id else {}
     from ..impact.presentation import scene_status
-    return {"impact_status":scene_status(view),"story":story,"scenes":[view.effective_scene(scene.id) for scene in view.list_scenes(id)],"sources":[view.get_version(v.id) for v in view.versions.values() if v.kind in {"source_plan","source_characters"}],"character_names":names}
+    return {"impact_status":scene_status(view),"story":story,"scenes":[view.effective_scene(scene.id) for scene in view.list_scenes(id)],"sources":[view.get_version(v.id) for v in view.versions.values() if v.kind in {"source_plan","source_characters"}],"character_names":names,"source_files":view.source_files,"active_sources":view.sources}
 
 
 @router.patch('/api/stories/{id}')
@@ -66,7 +67,10 @@ async def sources(id: str,request: Request):
             await item.close()
     if not uploads:
         raise ValueError("Виберіть план або персонажів")
-    return import_sources(request.app.state.repo,id,uploads)
+    try:return import_sources(request.app.state.repo,id,uploads)
+    except ImportBatchConflict as error:return JSONResponse(status_code=409,content=error.result.model_dump())
+    except ImportBatchFailure as error:return JSONResponse(status_code=400,content=error.result.model_dump())
+    except ImportTooLarge as error:return JSONResponse(status_code=413,content={'detail':str(error)})
 
 
 @router.post("/api/stories/{id}/scenes")

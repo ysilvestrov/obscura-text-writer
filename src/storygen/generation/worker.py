@@ -527,12 +527,8 @@ class RunCoordinator:
             if stage=='prepare':
                 view=self.repo.context_view(run.story_id)
                 story=view.get_story(run.story_id)
-                sources = [
-                    s for s in [
-                        view.active_source(story.id, 'source_plan'),
-                        view.active_source(story.id, 'source_characters'),
-                    ] if s
-                ]
+                from .prepare_sources import prepare_sources
+                sources=prepare_sources(view,story)
                 context=make_context(
                     view,
                     story,

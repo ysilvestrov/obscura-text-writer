@@ -202,7 +202,7 @@ def publish_story_material(repo, story_id, field, version_id, expected_revision)
         repo._save_story(db, story)
         from .invalidation import invalidate_in_transaction, invalidate_story_materials
         if previous:
-            invalidate_in_transaction(repo, db, [previous])
+            invalidate_in_transaction(repo, db, [previous],exclude=[version_id])
         else:
             invalidate_story_materials(repo, db, story_id)
         if field=='characters_version_id':
@@ -230,7 +230,7 @@ def publish_blueprint(repo, story_id, canon_id, character_cards_id, scenes, expe
         story.characters_version_id = character_cards_id
         story.revision += 1
         repo._save_story(db, story)
-        invalidate_in_transaction(repo, db, previous)
+        invalidate_in_transaction(repo, db, previous,exclude=[canon_id,character_cards_id]+[ref.id for _,ref in planned])
         invalidate_story_materials(repo, db, story_id)
         for position, (data, plan) in enumerate(planned):
             scene = Scene(id=new_id(), story_id=story_id, **{**data.model_dump(), 'position': position})
@@ -262,3 +262,24 @@ def register_source(repo, story_id, metadata):
             invalidate_in_transaction(repo, db, [previous.id])
         elif metadata['kind'] == 'source_characters':
             invalidate_story_materials(repo, db, story_id)
+
+
+def publish_writing_settings(repo,story_id,expected_revision,target_words,style_version_id):
+    with repo.db.connection() as db:
+        db.execute('BEGIN IMMEDIATE')
+        story=repo._active_story(db,story_id)
+        _revision(story,expected_revision)
+        candidate=Story.model_validate({**story.model_dump(),**({'target_words':target_words} if target_words is not None else {})})
+        previous=story.style_version_id
+        if style_version_id:
+            ref=_material(repo,db,story_id,style_version_id,'style')
+            repo.files.read(ref.relative_path,ref.sha256)
+            candidate.style_version_id=style_version_id
+        if candidate==story:return story
+        candidate.revision+=1
+        repo._save_story(db,candidate)
+        if style_version_id and style_version_id!=previous:
+            from .invalidation import invalidate_in_transaction,invalidate_story_materials
+            if previous:invalidate_in_transaction(repo,db,[previous])
+            else:invalidate_story_materials(repo,db,story_id)
+        return candidate

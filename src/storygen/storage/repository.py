@@ -69,6 +69,10 @@ class Repository:
         from .authoring import set_scene_trashed
         return set_scene_trashed(self, story_id, scene_id, expected_revision, restore)
 
+    def publish_writing_settings(self,story_id,expected_revision,target_words,style_version_id):
+        from .authoring import publish_writing_settings
+        return publish_writing_settings(self,story_id,expected_revision,target_words,style_version_id)
+
     def publish_story_material(self, story_id, field, version_id, expected_revision):
         from .authoring import publish_story_material
         return publish_story_material(self, story_id, field, version_id, expected_revision)
