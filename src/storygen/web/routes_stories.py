@@ -31,6 +31,11 @@ def story_page(id: str,request: Request):
     return request.app.state.templates.TemplateResponse(request=request,name="story.html",context={"story":request.app.state.repo.get_story(id)})
 
 
+@router.get("/stories/{id}/characters")
+def characters_page(id: str,request: Request):
+    return request.app.state.templates.TemplateResponse(request=request,name="characters.html",context={"story":request.app.state.repo.get_story(id)})
+
+
 @router.post("/api/stories")
 def create_story(data: StoryCreate,request: Request):
     return request.app.state.repo.create_story(data)

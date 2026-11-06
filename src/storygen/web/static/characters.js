@@ -1,37 +1,37 @@
 import {live,t,msg,labelEntries,getLocale,uiText,uiAttr,uiHTML,diagnostic} from './i18n.js';
 import {api,json,notice} from './api.js';
-import {state,refresh} from './editor.js';
+import {returnLink} from './workspace-links.js';
 import {CharacterBuffer} from './characters-state.js';
 
-const host=document.querySelector('#context-content');
+const host=document.querySelector('#characters-page');
 if(host){
-  const buffer=new CharacterBuffer(),panel=document.createElement('details');panel.className='character-editor';
-  const summary=document.createElement('summary');uiText(summary,"textContent",()=>(t("m_f4686f929610")));panel.append(summary);host.after(panel);
+  const buffer=new CharacterBuffer(),panel=document.querySelector('#characters-editor');
+  const storyId=host.dataset.storyId,initialScene=new URLSearchParams(location.search).get('scene');
+  document.querySelector('#characters-return').href=returnLink(storyId,location.search);
   const help=document.createElement('p');uiText(help,"textContent",()=>(t("m_e80514b7871e")));panel.append(help);
-  const form=document.createElement('form'),list=document.createElement('div'),status=document.createElement('p');status.setAttribute('role','status');
-  const tools=document.createElement('div');tools.className='actions';
+  const form=document.createElement('form'),list=document.createElement('div'),status=document.createElement('p');status.setAttribute('role','status');status.id='characters-status';
+  const tools=document.createElement('div');tools.className='actions characters-tools';
   const button=(text,fn)=>{const b=document.createElement('button');b.type='button';b.className='secondary';uiText(b,"textContent",()=>(text));b.onclick=fn;return b};
-  const save=document.createElement('button');save.type='submit';uiText(save,"textContent",()=>(t("m_62a3e0c3c375")));
+  const save=document.createElement('button');save.type='submit';save.id='characters-save';uiText(save,"textContent",()=>(t("m_62a3e0c3c375")));
   const add=button(live(()=>(t("m_02e19be588cb"))),()=>{buffer.cards.push({id:null,schema_version:2,name:'',entries:[]});changed();render()});
-  const reload=button(live(()=>(t("m_ca97d079f3b6"))),()=>load(true));tools.append(save,add,reload);form.append(list,tools,status);panel.append(form);
+  const reload=button(live(()=>(t("m_ca97d079f3b6"))),()=>load(true));add.id='characters-add';tools.append(save,add,reload);form.append(tools,status,list);panel.append(form);
   const source=document.createElement('details'),sourceTitle=document.createElement('summary'),sourceText=document.createElement('pre');uiText(sourceTitle,"textContent",()=>(t("m_f617494aaf91")));sourceText.className='character-preview';source.append(sourceTitle,sourceText);panel.append(source);
   const previewLabel=document.createElement('label');uiText(previewLabel,"textContent",()=>(t("m_8f752c2d0363")));
   const previewScene=document.createElement('select');previewLabel.append(previewScene);
-  const preview=button(live(()=>(t("m_9476f44d3175"))),showPreview),previewInfo=document.createElement('p'),previewText=document.createElement('pre');previewText.className='character-preview';previewInfo.setAttribute('role','status');panel.append(previewLabel,preview,previewInfo,previewText);
+  const preview=button(live(()=>(t("m_9476f44d3175"))),showPreview),previewInfo=document.createElement('p'),previewText=document.createElement('pre');preview.id='characters-preview';previewText.id='characters-preview-text';previewText.className='character-preview';previewInfo.setAttribute('role','status');panel.append(previewLabel,preview,previewInfo,previewText);
   let metadata=null,previewBusy=false;
-  const url=()=>`/api/stories/${state.storyId}/characters`;
+  const url=()=>`/api/stories/${storyId}/characters`;
   function update(){
     save.disabled=buffer.saving||!buffer.dirty||buffer.revision===null;add.disabled=buffer.saving||buffer.revision===null;
     reload.disabled=buffer.saving;preview.disabled=buffer.saving||previewBusy||!previewScene.value||buffer.revision===null;
     list.querySelectorAll('fieldset').forEach(field=>field.disabled=buffer.saving);
-    state.characterDirty=buffer.dirty||buffer.saving;
-    document.dispatchEvent(new CustomEvent('editor-state-changed'));
+
   }
   function changed(){buffer.changed();uiText(status,"textContent",()=>(t("m_525315c068da")));uiText(previewInfo,"textContent",()=>(t("m_e2ea033c762a")));uiText(previewText,"textContent",()=>(''));update()}
   function field(label,value,oninput,tag='input'){
     const wrapper=document.createElement('label');uiText(wrapper,"textContent",()=>(label));
     const input=document.createElement(tag);input.value=value||'';input.required=true;
-    if(tag==='textarea')input.rows=3;
+    if(tag==='textarea')input.rows=12;
     input.oninput=()=>{oninput(input.value);changed()};wrapper.append(input);return wrapper;
   }
   function render(){
@@ -79,7 +79,7 @@ if(host){
       metadata=data;uiText(status,"textContent",()=>(data.warnings.join(' ')||t("m_32af7a849848")));source.hidden=!data.source;uiText(sourceText,"textContent",()=>(data.source?.text||''));
       const selected=previewScene.value;previewScene.replaceChildren();
       for(const scene of data.scenes){const opt=document.createElement('option');opt.value=scene.id;uiText(opt,"textContent",()=>(`${scene.position+1}. ${scene.title}`));previewScene.append(opt)}
-      if(data.scenes.some(s=>s.id===selected))previewScene.value=selected;else if(state.scene)previewScene.value=state.scene.id;
+      if(data.scenes.some(s=>s.id===selected))previewScene.value=selected;else if(data.scenes.some(s=>s.id===initialScene))previewScene.value=initialScene;
       render();
     }catch(error){uiText(status,"textContent",()=>(diagnostic(error.message)));notice(error.message,'error');update()}
   }
@@ -88,9 +88,9 @@ if(host){
     const snapshot=buffer.beginSave();update();
     try{
       const data=await api(url(),json('PUT',{cards:snapshot.cards,expected_revision:snapshot.expected_revision}));
-      if(buffer.saved(data,snapshot)){metadata=data;uiText(status,"textContent",()=>(t("m_962885cd6c4c")));render();notice(msg("m_e83504ed5d8a"))}
+      if(buffer.saved(data,snapshot)){metadata=data;source.hidden=!data.source;uiText(sourceText,"textContent",()=>(data.source?.text||''));uiText(status,"textContent",()=>(t("m_962885cd6c4c")));render();notice(msg("m_e83504ed5d8a"))}
       else{uiText(status,"textContent",()=>(t("m_8542f3691e5d")));notice(status.textContent,'warning')}
-      await refresh();
+
     }catch(error){buffer.failed();uiText(status,"textContent",()=>(diagnostic(error.message)));notice(error.message,'error')}
     finally{update()}
   };
@@ -106,8 +106,6 @@ if(host){
     finally{previewBusy=false;update()}
   }
   previewScene.onchange=()=>{buffer.previewToken++;uiText(previewText,"textContent",()=>(''));uiText(previewInfo,"textContent",()=>(t("m_733e7d9098f5")))};
-  document.addEventListener('story-refreshed',()=>load());
-  document.addEventListener('scene-selected',()=>{if(state.scene&&[...previewScene.options].some(o=>o.value===state.scene.id))previewScene.value=state.scene.id;buffer.previewToken++;uiText(previewText,"textContent",()=>(''))});
   globalThis.addEventListener('beforeunload',event=>{if(buffer.dirty||buffer.saving){event.preventDefault();event.returnValue=''}});
   load();
 }

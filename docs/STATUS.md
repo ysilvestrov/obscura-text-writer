@@ -2,20 +2,20 @@
 
 **ПЕРЕВІРКА ПРОЙШЛА** — свідчення конкретного запуску, не поточного довільного стану.
 
-- Початок (UTC): 2026-11-03T22:02:20.776358+00:00
-- Завершення (UTC): 2026-11-03T22:11:40.817253+00:00
-- Базовий commit: `10f226715a677fed9f75a43eeeb44bdf1f054582`
+- Початок (UTC): 2026-11-05T22:22:41.321769+00:00
+- Завершення (UTC): 2026-11-05T22:22:43.631626+00:00
+- Базовий commit: `8f9016fc072dbb0cf967950aeaf727c075aa100f`
 - Незакомічені зміни під час перевірки: `true`
-- SHA-256 вихідного знімка: `53038c98f4db81e05fd538514061ccc1df5e03a14a42b9c38768f195db44d74e`
+- SHA-256 вихідного знімка: `18037f3a009cf811b4fee72b4c5f46afbb92e23acd288b2b8457959d79230369`
 - Зміна знімка під час прогону: `false`
 - Exit code: `0`
-- Фактичні testcase результати JUnit: passed: 1599 · failed: 0 · errors: 0 · skipped: 1
-- Тривалість: 560.03 с
+- Фактичні testcase результати JUnit: passed: 32 · failed: 0 · errors: 0 · skipped: 0
+- Тривалість: 2.31 с
 
 Точний argv (JSON, не shell-команда):
 
 ```json
-["C:\\Projects\\text-generator\\.venv\\Scripts\\python.exe", "-m", "pytest", "tests", "docs/research", "-q", "--junitxml=C:\\Users\\yuriy\\.codex\\worktrees\\review-evidence-contract\\text-generator\\artifacts\\verification-_wo_qkr_\\junit.xml", "--basetemp=C:/Projects/text-generator/artifacts/t4-full-suite"]
+["C:\\Projects\\text-generator\\.venv\\Scripts\\python.exe", "-m", "pytest", "tests/test_spec_traceability.py", "-q", "--junitxml=C:\\Projects\\text-generator\\artifacts\\verification-8m1godyf\\junit.xml", "--basetemp=C:\\Projects\\text-generator\\artifacts\\verification-8m1godyf\\test-tmp"]
 ```
 
 Результат стосується лише наведеної команди й вихідного знімка. Якщо в argv зазначено окремі файли або фільтри, це часткова перевірка. Збір (collection) не є виконанням; skipped не зараховано до passed. Відсутній або непридатний XML позначається непідтвердженим. Після зміни вихідних файлів звіт історичний. Власний STATUS і artifacts виключено зі знімка; початкова ревізія може мати dirty=true, оскільки звіт створюється до коміту.

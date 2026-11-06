@@ -161,3 +161,10 @@ R-22 прокрутка: Playwright `long draft scrolls internally while formatt
 У frontend виконати `pnpm exec playwright test --config playwright.config.mjs impact.spec.mjs sequential-review.spec.mjs` на синтетичному сервері. Desktop/mobile: повний clean результат автоматично завершується; concerns мають source/target уривки; reject-all приймає без зайвого confirm, fix choices зберігаються через reload/settings return. Dirty проза блокує finish; після Save finish оновлює пам’ять без нового search. UA/EN labels змінюються, авторський текст — ні. Контрольовані preview wait/cancel/timeout/error не запускають модель. Старі protocol1/2 API/replay перевіряються Python-тестами tests/web/test_impact_api.py та tests/impact. Знімки нейтральної панелі: artifacts/sequential-review. Наявність процедури не підтверджує її виконання.
 
 Додатковий R-28k сценарій `legacy current-consistency mode is explicit in preview and restored author report`: `/test-impact?legacy=true` показує Поточні передумови/Current premises; report явно без історичного порівняння після reload і UA/EN; reject-all завершує сесію. Тільки synthetic data.
+
+
+<a id="characters-page"></a>
+## Окрема сторінка персонажів
+
+Запустити `node frontend/node_modules/@playwright/test/cli.js test --config frontend/playwright.config.mjs characters-page --reporter=line`.
+Перевірки desktop/mobile: перехід і повернення до prose, додавання картки, довгий опис, UA/EN без втрати вводу, preview, save, порожній твір без сцен, відмова від виходу з dirty, CAS409 без втрати правок. Переглянути нейтральні `docs/images/characters-page-desktop.png` і `characters-page-mobile.png`: поля видимі, немає горизонтального переповнення.

@@ -78,3 +78,5 @@ Copy-Item .env.example .env
 Жирний, курсив і збереження джерела: [візуальний редактор](docs/visual-editor.md). Для розробника — [збірка локального JS bundle](docs/frontend-development.md).
 
 Перевірка наслідків змін після написання: [редагування книги й перевірка впливу / Book revision impact review](docs/impact-review.md). Двофазний planner-аналіз, окремі висновки для завдання/прози та пам’яті, явний бюджет і збережені докази.
+
+Інтерфейс персонажів: [інструкція українською](docs/prototype-runbook.md#часова-доступність-персонажів-r-06), [English](docs/en/characters.md).
