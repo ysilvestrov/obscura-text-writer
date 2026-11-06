@@ -5,7 +5,7 @@ from storygen.providers.streaming import GenerationEvent
 from tests.review.test_runner import fixture
 
 
-def run4(root,mode='clean'):
+def run4(root,mode='clean',wrapper=None):
     assert 'review_contract_version' in RunRequest.model_fields, 'Контракт4 ще не підключено до runtime'
     repo,story,first,second,ref,worker,run,calls=fixture(root)
     worker.cancel(run.id)
@@ -33,7 +33,9 @@ def run4(root,mode='clean'):
                     if mode=='partial':
                         bad=json.loads(json.dumps(good));bad['right']['quote']='Підробка';raw['candidates'].append(bad)
                     if mode=='unable':raw.update(analysis_status='unable',reason='Не можу завершити аналіз.')
-            yield GenerationEvent(type='delta',text=json.dumps(raw,ensure_ascii=False))
+            text=json.dumps(raw,ensure_ascii=False)
+            if wrapper:text=wrapper[0]+text+wrapper[1]
+            yield GenerationEvent(type='delta',text=text)
             yield GenerationEvent(type='terminal',finish_reason='stop')
     worker.gateway_factory=lambda _:Gateway()
     run=worker.enqueue(request,'review4-'+mode)
@@ -64,15 +66,20 @@ def test_contract4_preserves_findings_and_never_accepts_partial(tmp_path,mode):
         with pytest.raises(ValueError):decide(worker,story.id,run.id,p['fingerprint'],'bypass',{})
 
 
-def test_report4_replay_and_backup_are_exact(tmp_path):
+@pytest.mark.parametrize('wrapper',[None,("'","'"),('```json\n','\n```')])
+def test_report4_replay_and_backup_are_exact(tmp_path,wrapper):
     from storygen.review.proofs import verify_report
     from storygen.storage.backup import create_backup,restore_backup
     from storygen.storage.repository import Repository
     from storygen.storage.integrity import check_integrity
-    repo,story,first,second,ref,worker,run,calls=run4(tmp_path/'data','concern')
+    repo,story,first,second,ref,worker,run,calls=run4(tmp_path/'data','concern',wrapper)
     worker._execute(run.id)
     view=repo.context_view(story.id);report=next(iter(view.review_reports.values()))
     assert verify_report(report,view.review_proofs,repo.files.read_partial)
+    if wrapper:
+        attempts=[a for a in repo.list_attempts(story.id) if a.stage=='review_part' and a.state=='completed']
+        assert attempts
+        assert all(repo.files.read_partial(a.partial_path).startswith(wrapper[0]) for a in attempts)
     changed=report.model_copy(deep=True);changed.concerns[0].kind='question'
     with pytest.raises(ValueError):verify_report(changed,view.review_proofs,repo.files.read_partial)
     backup=create_backup(repo.root,tmp_path/'backup.zip')

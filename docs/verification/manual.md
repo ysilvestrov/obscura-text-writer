@@ -188,3 +188,9 @@ R-22 прокрутка: Playwright `long draft scrolls internally while formatt
 ## Згортання списків сцен
 
 Запустити Playwright collapsible-scenes.spec.mjs на synthetic server:65 scenes, dirty draft, selected scene/material, click/Enter, UA/EN/refresh зберігають open; імпорт поза collapsed list. Synthetic latest reports collapse без втрати articles; поточні blockers/checkpoint не ховаються. Оглянути screenshots collapsed-scenes/reports desktop/mobile. Наявність процедури не є фактичним PASS.
+
+
+<a id="model-import-metadata"></a>
+## Тарифи, ліміти й journal counts
+
+Playwright model-metadata.spec.mjs: selected model shows tariff units/caps/unknown, manual expired+stale discovery, shared classifier same tariff without limit changes; desktop/mobile UA/EN. Additive-imports case journal retains actual import counts after reload and marks old counts unknown: actual1/0/duplicate0, reload, UA/EN, missing fields unknown. Переглянути neutral model-tariff/import-journal-counts desktop/mobile PNG. Mock APIs/synthetic gateway, без key/.env/production/inference. Фактичні pytest результати — verify.py/STATUS, browser runner — окремо в журналі.

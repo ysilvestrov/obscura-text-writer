@@ -22,7 +22,7 @@ def publish_import(repo,story_id,expected_revision,publication):
         db.execute('BEGIN IMMEDIATE')
         story=repo._active_story(db,story_id)
         if story.revision!=expected_revision:raise RevisionConflict('Матеріали вже змінено; імпорт файла не застосовано')
-        metadata=publication.metadata
+        metadata=dict(publication.metadata)
         if metadata.get('kind') not in {'source_plan','source_characters'}:raise ValueError('Невірний тип джерела')
         _material(repo,db,story_id,metadata['version_id'],metadata['kind'])
         repo.files.read(metadata['relative_path'],metadata['sha256'])
@@ -34,7 +34,15 @@ def publish_import(repo,story_id,expected_revision,publication):
                 previous=repo._active_source(db,story_id,kind)
                 if not previous or previous.id!=id:changes.append((kind,id,previous.id if previous else None))
         cards=publication.character_cards_version_id
-        if cards:_material(repo,db,story_id,cards,'character_cards');protected.add(cards)
+        created_cards=0
+        if cards:
+            from ..characters.models import load_characters
+            def card_ids(version_id):
+                if not version_id:return set()
+                ref=_material(repo,db,story_id,version_id,'character_cards')
+                return {card.id for card in load_characters(repo.files.read(ref.relative_path,ref.sha256))}
+            created_cards=len(card_ids(cards)-card_ids(story.characters_version_id))
+            protected.add(cards)
         for item in publication.scenes:
             ref=_material(repo,db,story_id,item.plan_version_id,'scene_plan')
             if ref.scene_id is not None:raise ValueError('План нової сцени вже належить сцені')
@@ -42,7 +50,6 @@ def publish_import(repo,story_id,expected_revision,publication):
         for id in protected:
             ref=repo._get(db,'versions',id,VersionRef)
             repo.files.read(ref.relative_path,ref.sha256)
-        db.execute('INSERT INTO source_files VALUES(?,?,?)',(metadata['id'],story_id,json.dumps(metadata,ensure_ascii=False)))
         authored_plans={scene.heads.get('plan') for scene in [Scene.model_validate_json(r[0]) for r in db.execute('SELECT payload FROM scenes WHERE story_id=?',(story_id,))]}
         for kind,id,previous in changes:
             db.execute('INSERT INTO active_sources VALUES(?,?,?) ON CONFLICT(story_id,kind) DO UPDATE SET version_id=excluded.version_id',(story_id,kind,id))
@@ -68,6 +75,8 @@ def publish_import(repo,story_id,expected_revision,publication):
             db.execute('UPDATE versions SET scene_id=?,payload=? WHERE id=?',(scene.id,ref.model_dump_json(),ref.id))
             active.append(scene);created.append(scene.id)
         if created:repo._save_scene_order(db,active+archived)
+        metadata.update(created_scene_count=len(created),created_character_count=created_cards)
+        db.execute('INSERT INTO source_files VALUES(?,?,?)',(metadata['id'],story_id,json.dumps(metadata,ensure_ascii=False)))
         if cards:sync_story_cast(repo,db,story_id)
         story=repo._touch_story(db,story_id)
         return ImportPublicationResult(revision=story.revision,created_scene_ids=created)

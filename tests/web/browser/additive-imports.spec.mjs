@@ -175,3 +175,25 @@ test('first filtered plan does not claim multiple files were combined',async({pa
   await expect(page.locator('#context-content')).not.toContainText('Combined');
   await expect(page.locator('#import-results')).toContainText('Skipped scene numbers: 2');
 });
+
+
+test('journal retains actual import counts after reload and marks old counts unknown',async({page,request})=>{
+  const f=await(await request.post('/test-fixture')).json();
+  await request.post(`/api/stories/${f.story_id}/sources`,{multipart:{characters:{name:'first-people.md',mimeType:'text/plain',buffer:Buffer.from('## Анна\nПрацює в бібліотеці.')}}});
+  await request.post(`/api/stories/${f.story_id}/sources`,{multipart:{characters:{name:'duplicate-people.md',mimeType:'text/plain',buffer:Buffer.from('## Анна\nДубль.')}}});
+  await request.post(`/api/stories/${f.story_id}/sources`,{multipart:{plan:{name:'new-scene.md',mimeType:'text/plain',buffer:Buffer.from('Сцена 2: День\nНова подія.')}}});
+  await page.goto(`/stories/${f.story_id}`);await page.locator('[data-ui-locale=en]').click();
+  await page.locator('.workspace-context > summary').click();
+  const first=page.locator('.source-record').filter({hasText:'first-people.md'}),zero=page.locator('.source-record').filter({hasText:'duplicate-people.md'}),plan=page.locator('.source-record').filter({hasText:'new-scene.md'});
+  await expect(first).toContainText('New scenes: 0. New character cards: 1.');
+  await expect(zero).toContainText('New scenes: 0. New character cards: 0.');
+  await expect(plan).toContainText('New scenes: 1. New character cards: 0.');
+  await page.reload();await page.locator('.workspace-context > summary').click();
+  await expect(first).toContainText('New scenes: 0. New character cards: 1.');
+  await page.locator('[data-ui-locale=uk]').click();await expect(first).toContainText('Нові сцени: 0. Нові картки персонажів: 1.');
+  await page.locator('#context-content').screenshot({path:`docs/images/import-journal-counts-${test.info().project.name}.png`});
+  await page.route(`**/api/stories/${f.story_id}`,async route=>{const response=await route.fetch(),body=await response.json();for(const file of body.source_files){delete file.created_scene_count;delete file.created_character_count;}await route.fulfill({response,json:body});});
+  await page.evaluate(()=>import('/static/editor.js').then(m=>m.refresh()));
+  await expect(first).toContainText('Кількість для цього імпорту невідома');
+  await expect(first).not.toContainText('Нові сцени: 0');
+});

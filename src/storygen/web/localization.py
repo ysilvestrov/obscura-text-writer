@@ -2,6 +2,7 @@
 from functools import lru_cache
 from importlib.resources import files
 import json
+import re
 
 SUPPORTED = {'uk', 'en'}
 
@@ -57,6 +58,8 @@ def diagnostic(text,locale='uk'):
     """Only call for application diagnostics, never author fields/documents."""
     if locale=='uk' or not isinstance(text,str):
         return text
+    http=re.fullmatch(r'HTTP (\d{3}): ([\s\S]+) Автоматичного повтору немає\.',text) if len(text)<=6000 else None
+    if http:return translate('generation.http_failure',locale,p0=http[1],p1=diagnostic(http[2],locale))
     exact,patterns=_diagnostic_catalog()
     if text in exact:
         return translate(exact[text],locale)

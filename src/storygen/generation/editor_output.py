@@ -1,6 +1,6 @@
 """Narrow response-envelope handling and trusted public editor diagnostics."""
 import json
-import re
+from ..model_json import unwrap_model_json
 
 from pydantic import ValidationError
 
@@ -12,11 +12,9 @@ class EditorProtocolError(ValueError):
 
 
 def parse_editor_output(text,warnings=None):
-    content=text.strip()
     warnings=warnings if warnings is not None else []
-    fence=re.fullmatch(r'```(?:json)?[ \t]*\r?\n(.*?)\r?\n```',content,re.IGNORECASE|re.DOTALL)
-    if fence:
-        content=fence.group(1)
+    content=unwrap_model_json(text.strip())
+    if content!=text.strip():
         warnings.append('Знято одну зовнішню Markdown-обгортку JSON редактора; оригінальну відповідь збережено без змін.')
     def pairs(items):
         result={}

@@ -21,6 +21,8 @@ export function renderImportJournal(host,files=[],active={}){
     const time=document.createElement('time');const date=importDate(file.created_at);
     if(date)time.dateTime=date.toISOString();
     uiText(time,'textContent',()=>formatImportTime(file.created_at,getLocale())||t('imports.time_unknown'));row.append(time);
+    const counts=document.createElement('span');counts.className='source-counts';
+    uiText(counts,'textContent',()=>Number.isInteger(file.created_scene_count)&&file.created_scene_count>=0&&Number.isInteger(file.created_character_count)&&file.created_character_count>=0?t('imports.counts',{p0:file.created_scene_count,p1:file.created_character_count}):t('imports.counts_unknown'));row.append(counts);
     if(active[file.kind]===file.version_id){const badge=document.createElement('small');uiText(badge,'textContent',()=>t('imports.active'));row.append(badge);}
     list.append(row);
   }

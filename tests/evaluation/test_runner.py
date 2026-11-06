@@ -17,6 +17,17 @@ class StaticGateway:
         return GatewayResult(text=self.text, finish_reason="stop")
 
 
+@pytest.mark.parametrize('opening,closing', [("'", "'"), ('```json\n', '\n```'), ("'''json\n", "\n'''")])
+def test_wrapped_evaluator_preserves_raw_and_existing_scoring(sample_case, good_report, tmp_path, opening, closing):
+    raw = opening + good_report.model_dump_json() + closing
+    gateway = StaticGateway(raw)
+    outcome = evaluate(sample_case, load_rubric(), ScoringProfile(version='candidate'), config(), gateway, tmp_path)
+    assert outcome.metadata['preliminary_verdict'] == 'passed'
+    assert gateway.calls == 1
+    assert outcome.metadata['raw_response'] == raw
+    assert (tmp_path / outcome.metadata['run_id'] / 'raw_response.txt').read_text(encoding='utf-8') == raw
+
+
 def config(**values):
     return EvaluatorConfig(provider="codex_cli", model="test-model", max_input_chars=30000, **values)
 

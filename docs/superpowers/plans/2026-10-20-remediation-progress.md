@@ -1076,3 +1076,16 @@ RED select-all2 failures → GREEN2 passed; RED collapse4 failures → combined1
 
 
 UI controls cross-review7 findings:6 fixed (tests/docs clarification),1 rejected (privacy-filtered artifact omission). Таблиця у двох UI специфікаціях; посилені16 browser tests passed26.8s, production code незмінний після104 browser/185 web gate. Наступні три найближчі задачі мають окремі підготовлені специфікації тарифів/лімітів і persisted import counts; новий inference не запускався.
+
+
+## 06.11.2026 — Решта найближчих задач: model/import metadata
+
+Перші дві UX задачі збережено в [PR#9](https://github.com/ysilvestrov/obscura-text-writer/pull/9), codefa5eb83; продовжено погоджені3–5 на codex/model-import-metadata. Специфікації: model-catalog-prices-limits-2026-11-06.md та import-journal-counts-2026-11-06.md. Додано ModelOption tariff/max output, cached official/manual binding, unknown/expired labels у roles/shared connection; cloud known caps перед POST, safe HTTP/transport/missing-key failure усіх stages і durable generation_failure. Немає retry/fallback або обрізання body; Успішний OpenRouter каталог без окремих caps лишає unknown; відмова cloud каталогу не допускає completion POST.
+
+Import counts — source_files JSON без SQL migration, computed actual scene IDs/new card IDs у тій самій publication transaction, legacy unknown; journal UA/EN/reload. RED backend18, counts2+1 pass, UI4+2 failures → targeted252 regressions passed; нові25 providers/locale passed, durable memory failure persisted. Full browser110 passed2.7m, додаткові8 pricing/shared/counts passed12.1s. Один detector[], першою visual QA виявлено toast на pricing screenshot, фінальне підтвердження без toast; нових palette/layout refactor немає. Broad gate виконується через verify.py. Без production inference/config/data rewrite.
+
+
+Фінал реалізації model/import metadata: cloud catalog503 не запускає completion (нові tests), transport причини й generation_failure memory durable, source counters actualIDs atomic. Pricing/shared browser confirmation6 passed10.5s; toast прибрано із screenshot, model accessible name не включає ставки, aria-describedby пов’язує metadata. Broad verification починається на стабільному snapshot без паралельного screenshot rewrite.
+
+
+Фінальний спільний gate model/import metadata та global MODEL-JSON: **1244 passed,1 skipped,0 failures/errors**, source_changed_during_run=false, artifacts/verification-smi5njs9/result.json. check_docs.py пройшов. Раніше UI110 browser passed2.7m,8 додаткових metadata/counts/shared passed,6 фінальних pricing/accessibility passed; фінальні screenshots перевірено візуально, detector[]. Без реального inference або зміни production матеріалів.

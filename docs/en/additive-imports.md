@@ -18,3 +18,8 @@ If the journal refresh fails after a confirmed import, the confirmed result stay
 
 ![Import journal](../images/import-journal-desktop.png)
 ![Import results](../images/import-results-desktop.png)
+
+
+New journal entries show the scenes and character cards actually created by each file; skipped duplicates are excluded. These counts survive reload. Older entries without saved counters show unknown counts, rather than reconstructing them from the current story. Provider failures now retain a safe reason and HTTP status when available, distinguishing timeout, connection, key, quota and rate limit. Responses/partial text and cost accounting are preserved; there is no automatic retry.
+
+![Import counts](../images/import-journal-counts-desktop.png)

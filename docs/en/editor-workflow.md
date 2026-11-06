@@ -14,3 +14,11 @@ For a long story, click Scenes and its count to collapse the whole list and keep
 
 
 ![Collapsed results](../images/collapsed-reports-desktop.png)
+
+
+Under Settings → Models, Get the model list and choose the exact Model ID. The field hint and list show USD per1,000,000 input/output tokens, request fee and known model caps. The saved current tariff matches Budget; manual and expired tariffs are labelled. Missing data means Tariff unknown, never zero. Changing provider/URL clears the previous quote; selecting a model does not change your limits. Metadata discovery does not generate text. Exceeding a known context/output cap stops before the completion POST with the allowed value; unknown caps do not promise an unlimited window.
+
+![Model tariff](../images/model-tariff-desktop.png)
+
+
+Structured model responses, including checks, may have one paired outer JSON wrapper using backticks or apostrophes. The app removes that wrapper before validation, preserving apostrophes within text and the original raw response. Manual JSON stays strict. Surrounding explanations, incomplete blocks and invalid evidence remain errors; retry explicitly. The changed evaluator protocol requires renewed calibration before automatic qualification.

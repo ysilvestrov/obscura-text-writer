@@ -2,20 +2,20 @@
 
 **ПЕРЕВІРКА ПРОЙШЛА** — свідчення конкретного запуску, не поточного довільного стану.
 
-- Початок (UTC): 2026-11-06T14:33:25.716373+00:00
-- Завершення (UTC): 2026-11-06T14:33:54.907274+00:00
-- Базовий commit: `86d81b64663691abac4487e401b7ea5303328c22`
+- Початок (UTC): 2026-11-06T15:35:59.892249+00:00
+- Завершення (UTC): 2026-11-06T15:45:10.979861+00:00
+- Базовий commit: `fa5eb8379d175d6308dad46f6ffe1a7f07a2621c`
 - Незакомічені зміни під час перевірки: `true`
-- SHA-256 вихідного знімка: `33741e6fa86b31e0dac25fb4bfc48aebe7a602685fc0ff2e984c6ab78f6c507d`
+- SHA-256 вихідного знімка: `c3b094ccf386a8d7dcdccff4ef46b37f73ae70c276eba6b45a5c8dfe5e1a520a`
 - Зміна знімка під час прогону: `false`
 - Exit code: `0`
-- Фактичні testcase результати JUnit: passed: 185 · failed: 0 · errors: 0 · skipped: 0
-- Тривалість: 29.19 с
+- Фактичні testcase результати JUnit: passed: 1244 · failed: 0 · errors: 0 · skipped: 1
+- Тривалість: 551.09 с
 
 Точний argv (JSON, не shell-команда):
 
 ```json
-["C:\\Projects\\text-generator\\.venv\\Scripts\\python.exe", "-m", "pytest", "tests/web", "-q", "--junitxml=C:\\Projects\\text-generator\\artifacts\\verification-yi06cfb8\\junit.xml", "--basetemp=C:\\Projects\\text-generator\\artifacts\\verification-yi06cfb8\\test-tmp"]
+["C:\\Projects\\text-generator\\.venv\\Scripts\\python.exe", "-m", "pytest", "tests/providers", "tests/billing", "tests/storage", "tests/memory", "tests/generation", "tests/web", "tests/integration", "tests/evaluation", "tests/review", "tests/impact", "-q", "--junitxml=C:\\Projects\\text-generator\\artifacts\\verification-smi5njs9\\junit.xml", "--basetemp=C:\\Projects\\text-generator\\artifacts\\verification-smi5njs9\\test-tmp"]
 ```
 
 Результат стосується лише наведеної команди й вихідного знімка. Якщо в argv зазначено окремі файли або фільтри, це часткова перевірка. Збір (collection) не є виконанням; skipped не зараховано до passed. Відсутній або непридатний XML позначається непідтвердженим. Після зміни вихідних файлів звіт історичний. Власний STATUS і artifacts виключено зі знімка; початкова ревізія може мати dirty=true, оскільки звіт створюється до коміту.

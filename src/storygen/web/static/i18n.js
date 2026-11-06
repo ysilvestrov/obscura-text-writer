@@ -27,6 +27,8 @@ for(const key of Object.keys(catalogs.uk))for(const value of [catalogs.uk[key],c
 diagnosticPatterns.sort((a,b)=>b.weight-a.weight);
 export function diagnostic(text){
   if(typeof text!=='string')return text;
+  const http=text.length<=6000&&text.match(/^HTTP (\d{3}): ([\s\S]+) (?:Автоматичного повтору немає|No automatic retry)\.$/);
+  if(http)return t('generation.http_failure',{p0:http[1],p1:diagnostic(http[2])});
   if(exactDiagnostics.has(text))return t(exactDiagnostics.get(text));
   if(text.length<=6000)for(const entry of diagnosticPatterns){const match=entry.pattern.exec(text);if(match)return t(entry.key,Object.fromEntries(entry.names.map((name,index)=>[name,match[index+1]])))}
   for(const[uk,en]of [['Некоректні дані: ','Invalid data: '],['Помилка редактора: ','Editor error: '],['Помилка планувальника: ','Planner error: ']])for(const prefix of [uk,en])if(text.startsWith(prefix))return (getLocale()==='en'?en:uk)+diagnostic(text.slice(prefix.length));

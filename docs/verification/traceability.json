@@ -2543,6 +2543,111 @@
         "procedure": "docs/verification/manual.md#collapsible-scenes",
         "reason": "check_docs.py tests IDs індексує pytest; реальні автоматизовані Playwright cases перелічено в процедурі з точними файлами/назвами."
       }
+    },
+    {
+      "id": "MODEL-METADATA-S01",
+      "requirement": "MODEL-METADATA",
+      "scope": "Точні synthetic/MockTransport server contracts; жодного production inference.",
+      "tests": [
+        "tests/providers/test_catalog_metadata.py::test_catalog_exposes_exact_tariff_units_and_limits",
+        "tests/providers/test_catalog_metadata.py::test_manual_tariff_is_displayed_even_if_expired_and_local_is_unknown",
+        "tests/providers/test_catalog_metadata.py::test_invalid_metadata_is_unknown_not_free_or_unlimited",
+        "tests/providers/test_catalog_metadata.py::test_current_cached_official_tariff_matches_billing_snapshot"
+      ]
+    },
+    {
+      "id": "MODEL-METADATA-S02",
+      "requirement": "MODEL-METADATA",
+      "scope": "Точні synthetic/MockTransport server contracts; жодного production inference.",
+      "tests": [
+        "tests/providers/test_generation_diagnostics.py::test_known_limits_block_before_completion_post",
+        "tests/generation/test_editor_loop.py::test_zero_cloud_budget_blocks_loop_model_call",
+        "tests/providers/test_generation_diagnostics.py::test_failed_cloud_catalog_never_starts_completion"
+      ]
+    },
+    {
+      "id": "MODEL-METADATA-S03",
+      "requirement": "MODEL-METADATA",
+      "scope": "Точні synthetic/MockTransport server contracts; жодного production inference.",
+      "tests": [
+        "tests/web/test_model_catalog.py::test_model_catalog_labels_and_safe_http_localization"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#model-import-metadata",
+        "reason": "Playwright DOM scenarios описані точними файлами/назвами; check_docs tests IDs індексує pytest."
+      }
+    },
+    {
+      "id": "GENERATION-DIAGNOSTICS-S01",
+      "requirement": "GENERATION-DIAGNOSTICS",
+      "scope": "Точні synthetic/MockTransport server contracts; жодного production inference.",
+      "tests": [
+        "tests/providers/test_generation_diagnostics.py::test_http_status_is_specific_and_structured_for_all_stages",
+        "tests/providers/test_generation_diagnostics.py::test_provider_echo_and_credentials_never_become_diagnostics",
+        "tests/providers/test_generation_diagnostics.py::test_transport_failures_are_specific_and_never_retried",
+        "tests/providers/test_generation_diagnostics.py::test_missing_provider_key_is_safe_configuration_failure"
+      ]
+    },
+    {
+      "id": "GENERATION-DIAGNOSTICS-S02",
+      "requirement": "GENERATION-DIAGNOSTICS",
+      "scope": "Точні synthetic/MockTransport server contracts; жодного production inference.",
+      "tests": [
+        "tests/generation/test_provider_diagnostics.py::test_memory_provider_failure_is_durable_and_never_publishes",
+        "tests/web/test_model_catalog.py::test_server_translates_nested_http_reason"
+      ]
+    },
+    {
+      "id": "IMPORT-COUNTS-S01",
+      "requirement": "IMPORT-COUNTS",
+      "scope": "Точні synthetic/MockTransport server contracts; жодного production inference.",
+      "tests": [
+        "tests/storage/test_import_counts.py::test_counts_persist_new_materials_not_duplicates_or_current_totals",
+        "tests/storage/test_import_counts.py::test_counter_metadata_is_derived_atomically_and_legacy_stays_unknown"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#model-import-metadata",
+        "reason": "Playwright DOM scenarios описані точними файлами/назвами; check_docs tests IDs індексує pytest."
+      }
+    },
+    {
+      "id": "IMPORT-COUNTS-S02",
+      "requirement": "IMPORT-COUNTS",
+      "scope": "Точні synthetic/MockTransport server contracts; жодного production inference.",
+      "tests": [
+        "tests/storage/test_import_counts.py::test_failed_publication_never_leaves_counts_or_source_record",
+        "tests/storage/test_import_counts.py::test_counter_metadata_is_derived_atomically_and_legacy_stays_unknown"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#model-import-metadata",
+        "reason": "Playwright DOM scenarios описані точними файлами/назвами; check_docs tests IDs індексує pytest."
+      }
+    },
+    {
+      "id": "MODEL-JSON-S01",
+      "requirement": "MODEL-JSON",
+      "scope": "Модельна обгортка JSON; строгість, збереження оригіналу та повторна валідація.",
+      "tests": [
+        "tests/generation/test_model_json_boundaries.py::test_all_model_json_boundaries_accept_one_wrapper_without_changing_strings",
+        "tests/generation/test_model_json_boundaries.py::test_review_json_keeps_ambiguous_or_invalid_payloads_closed",
+        "tests/generation/test_model_json_boundaries.py::test_manual_json_remains_strict"
+      ]
+    },
+    {
+      "id": "MODEL-JSON-S02",
+      "requirement": "MODEL-JSON",
+      "scope": "Модельна обгортка JSON; строгість, збереження оригіналу та повторна валідація.",
+      "tests": [
+        "tests/review/test_contract4_runner.py::test_report4_replay_and_backup_are_exact"
+      ]
+    },
+    {
+      "id": "MODEL-JSON-S03",
+      "requirement": "MODEL-JSON",
+      "scope": "Модельна обгортка JSON; строгість, збереження оригіналу та повторна валідація.",
+      "tests": [
+        "tests/evaluation/test_runner.py::test_wrapped_evaluator_preserves_raw_and_existing_scoring"
+      ]
     }
   ]
 }
