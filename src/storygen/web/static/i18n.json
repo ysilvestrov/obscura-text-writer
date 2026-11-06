@@ -2001,7 +2001,8 @@
     "imports.refresh_failed": "Не вдалося оновити журнал. Результат імпорту збережено на екрані.",
     "imports.journal_updated": "Журнал оновлено",
     "imports.error_concurrent": "Матеріали вже змінено; файл не застосовано",
-    "imports.error_apply": "Не вдалося застосувати файл; попередні успішні імпорти збережено"
+    "imports.error_apply": "Не вдалося застосувати файл; попередні успішні імпорти збережено",
+    "memory.json_wrapper_removed": "Пам’ять: прибрано зовнішню обгортку JSON; вміст і докази не змінено."
   },
   "en": {
     "ui.save": "Save",
@@ -4005,6 +4006,7 @@
     "imports.refresh_failed": "Could not refresh the journal. The import result remains on screen.",
     "imports.journal_updated": "Journal updated",
     "imports.error_concurrent": "Materials have changed; the file was not applied",
-    "imports.error_apply": "Could not apply the file; previous successful imports were preserved"
+    "imports.error_apply": "Could not apply the file; previous successful imports were preserved",
+    "memory.json_wrapper_removed": "Memory: removed the outer JSON wrapper; content and evidence are unchanged."
   }
 }

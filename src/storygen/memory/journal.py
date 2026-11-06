@@ -217,9 +217,27 @@ def merge_legacy_snapshot(previous,snapshot,prose_id,prose):
     return _extend(previous,prose_id,events)
 
 
+def unwrap_model_memory(raw, warnings=None):
+    """Remove one complete model-only wrapper, never rewrite JSON contents."""
+    import re
+    text = raw.strip()
+    fenced = re.fullmatch(r"(?P<fence>`{3}|'{3})(?:json)?[ \t]*\r?\n(?P<body>[\s\S]*?)\r?\n(?P=fence)", text, re.IGNORECASE)
+    if fenced:
+        candidate = fenced['body'].strip()
+    elif len(text) >= 2 and text[0] in "'`" and text[-1] == text[0]:
+        candidate = text[1:-1].strip()
+    else:
+        return raw
+    if not (candidate.startswith('{') and candidate.endswith('}')):
+        return raw
+    if warnings is not None:
+        warnings.append('Пам’ять: прибрано зовнішню обгортку JSON; вміст і докази не змінено.')
+    return candidate
+
+
 def parse_memory_result(raw,previous,prose_id,prose,mode,allowed_character_ids,*,warnings=None):
     from .models import MemoryDelta
-    data=decode_memory(raw)
+    data=decode_memory(unwrap_model_memory(raw, warnings))
     if mode=='snapshot':
         return merge_legacy_snapshot(previous,MemorySnapshot.model_validate(data),prose_id,prose)
     if isinstance(data,dict) and 'schema_version' in data:
