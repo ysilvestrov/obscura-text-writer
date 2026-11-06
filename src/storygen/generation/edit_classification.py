@@ -1,4 +1,5 @@
 """Optional queued advice bound to an immutable editor proposal."""
+from ..model_json import unwrap_model_json
 import hashlib
 import json
 import re
@@ -36,7 +37,7 @@ def parse_classification(text,count):
             result[key]=value
         return result
     try:
-        result=Classification.model_validate(json.loads(text,object_pairs_hook=pairs))
+        result=Classification.model_validate(json.loads(unwrap_model_json(text),object_pairs_hook=pairs))
     except (ValueError,RecursionError) as exc:
         raise ValueError('Класифікатор повернув некоректний JSON або схему; сирий текст збережено') from exc
     if sorted(item.index for item in result.changes)!=list(range(count)):

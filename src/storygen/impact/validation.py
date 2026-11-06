@@ -1,4 +1,5 @@
 """Fail closed on incomplete coverage or invented evidence; no fuzzy matching."""
+from ..model_json import unwrap_model_json
 from .models import DeltaReport,CheckReport
 
 
@@ -66,7 +67,7 @@ def decode_response(raw):
             result[key]=value
         return result
     def invalid(value):raise ValueError('Відповідь перевірки містить нечислову JSON-константу')
-    try:return json.loads(raw,object_pairs_hook=pairs,parse_constant=invalid)
+    try:return json.loads(unwrap_model_json(raw),object_pairs_hook=pairs,parse_constant=invalid)
     except (json.JSONDecodeError,RecursionError):raise ValueError('Відповідь перевірки не є коректним JSON') from None
 
 

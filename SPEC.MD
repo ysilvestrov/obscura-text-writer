@@ -3357,3 +3357,100 @@ PUT settings SHALL приймати optional target_words від5000 без ве
 - GIVEN повний, частковий або втрачений результат multipart
 - WHEN автор імпортує файли чи оновлює журнал після помилки
 - THEN UI SHALL розрізняти підтверджений успіх/відмову/невідомість, зберігати результат при відмові GET й не повторювати POST автоматично; pending submit не дублює сцен.
+
+
+<a id="model-metadata"></a>
+### Requirement: MODEL-METADATA — Тариф і відомі ліміти вибраної моделі
+
+POST /api/providers/discover SHALL повертати ModelOption з nullable context_tokens/max_output_tokens/tariff. Tariff використовує чинний billing Tariff/from_catalog: USD за1M input/output і за request, kind/source/fetched_at/expires_at. Чинний cached official або manual snapshot показується узгоджено з billing; expired manual не підміняється fresh official, позначається простроченим. Невідомі/некоректні ставки не є0, відсутні caps не є unlimited. Endpoint/model/provider binding збереженого тарифу перевіряється; помилка cache не відлунює payload. GET/discovery не робить inference, не зберігає роль і не переписує тарифний cache.
+
+Role forms і shared connection widget SHALL показувати ставку/одиниці/caps у списку та під Model ID після явного завантаження моделей. До цього, для довільного ID, Local/Codex без ціни — явна невідомість. UI identity — exact model ID/provider/baseURL; source від іншого provider/URL чи stale async response не підписує іншу модель. Select/reset/UA/EN не переписують token limits або авторські поля; тариф не є гарантією фактичної ціни майбутнього виклику.
+
+Venice gateway SHALL перевіряти known context/output caps каталогу перед accounting/send, зберігаючи online/uncensored/schema policy. OpenRouter перевіряє known context_length/top_provider.max_completion_tokens; відсутній ID/окремий cap у успішному каталозі лишається unknown, без заяви про перевіреність; HTTP/transport failure cloud каталогу завершує спробу до completion POST із safe причиною. Для local нестандартний catalog не стає новою обов’язковою умовою генерації. До context cap порівнюється сума оцінки frozen input_tokens за фактичним body та вихідного резерву max_completion_tokens/max_tokens; configured context_tokens є верхньою межею ролі, а не обсягом запиту. Сам по собі завеликий configured window не блокує запит, який вміщується в cap моделі; output cap перевіряється окремо; перевищення повертає configuration без POST, без прихованого зменшення/зміни налаштувань чи retry. Серверне вікно входу додатково захищено чинними context/token guards.
+
+#### Scenario: MODEL-METADATA-S01 — Одиниці й авторитет тарифу
+GIVEN каталог або cached official/manual тариф моделі
+WHEN автор отримує список моделей
+THEN API SHALL повертати точні USD/1M і request rate з source/часом; чинний cache та expired manual мають визначений пріоритет, malformed/missing ставки і caps лишаються unknown без0/unlimited.
+
+#### Scenario: MODEL-METADATA-S02 — Відмова до POST за known caps
+GIVEN сума оцінки frozen input і резерву відповіді або сам вихідний резерв перевищує відомий cap Venice або OpenRouter
+WHEN готується cloud generation
+THEN SHALL повернути safe configuration із допустимим лімітом без POST, без зміни body/settings; успішний каталог без окремих caps зберігає unknown; відмова cloud каталогу не запускає completion, budget guard перед POST лишається чинним.
+
+#### Scenario: MODEL-METADATA-S03 — Ставка вибраної моделі
+GIVEN завантажений каталог у role/shared connection form
+WHEN автор обирає модель, змінює provider/URL або UA/EN
+THEN ставка/caps SHALL відповідати exact identity, unknown/expired позначено, stale async response не приписує ціну іншій моделі; ліміти/dirty значення не змінюються.
+
+
+
+#### Scenario: MODEL-METADATA-S04 — Задане вікно не є обсягом запиту
+- GIVEN configured context262144, model context cap256000, оцінка входу101778 і резерв8192
+- WHEN виконується preflight
+- THEN SHALL дозволити completion POST без зміни body/settings, бо109970 вкладається в cap
+- AND сума на самій межі дозволена, справжнє перевищення відхиляється; відсутні caps у успішному каталозі лишаються unknown, Venice availability guard незмінний.
+
+
+<a id="generation-diagnostics"></a>
+### Requirement: GENERATION-DIAGNOSTICS — Безпечна причина провайдерської відмови
+
+Усі етапи OpenAIGenerationGateway SHALL повертати safe failure category/HTTP status/provider code/type/очищене повідомлення через чинний api_failure. Headers, raw SDK exception/body, ключі та відлуння документів не серіалізуються. Missing key має code-owned configuration, timeout/connection/authentication/quota/rate limit/refusal різні; немає автоматичного retry/fallback. Structured error зберігається в attempt.context.generation_failure; чинні classify/publication/rewrite поля/семантики збережені. UA/EN HTTP wrapper локалізує відому вкладену application reason на сервері й клієнті, довільний provider text лишається оригінальним. Успіх без error не підміняється діагностикою.
+
+В GENERATION-DIAGNOSTICS невідомий exception, що не є APIError, SHALL мати нейтральну generation category technical без твердження про доведену відмову провайдера та без raw exception text. Відомі application reasons із no-retry suffix SHALL локалізуватися UA/EN також без HTTP-коду.
+
+#### Scenario: GENERATION-DIAGNOSTICS-S01 — HTTP і транспорт на різних етапах
+GIVEN HTTP429/400/401 або transport timeout/connection
+WHEN провайдерський запит завершується відмовою
+THEN error SHALL мати конкретний safe status/category без key/document echo; лише одна фізична completion спроба, original usage/partial і budget reserve semantics збережені.
+
+#### Scenario: GENERATION-DIAGNOSTICS-S02 — Збережена причина пам’яті
+GIVEN memory completion отримав HTTP401
+WHEN автор повертається після reload
+THEN generation_failure SHALL містити authentication/401, спроба failed без нової пам’яті, current prose не змінюється; UA/EN відомих HTTP причин повний.
+
+<a id="import-counts"></a>
+### Requirement: IMPORT-COUNTS — Доказові кількості журналу імпорту
+
+Новий source_files JSON payload SHALL мати created_scene_count/created_character_count, обчислені всередині тієї самої BEGIN IMMEDIATE: len фактично created scene IDs та різниця ID опублікованих/попередніх character cards. Передані caller metadata counters не є авторитетом і перезаписуються. Дублі не додаються до created; duplicate-only імпорт має точний0. INSERT source row/counts, selectors/cards/scenes атомарні. Історичні payload без fields лишаються незмінними й unknown; SQL schema5/backup/restore сумісні, migration/backfill не потрібні. GET source_files повертає збережені значення, не обчислює їх за теперішніми heads.
+
+Journal UI SHALL показувати created scenes/cards кожного файла обома мовами після reload. Лише nonnegative integer пара вважається відомою; missing/invalid показує unknown, не0. Source names/date/active marker й поточний scene/material збережені. Це окрема стійка історія від разового files/partial результату біля форми.
+
+#### Scenario: IMPORT-COUNTS-S01 — Нові, дубльовані й нульові матеріали
+GIVEN послідовні імпорти нових/дубльованих сцен і персонажів
+WHEN source_files читається після reopen або reload
+THEN SHALL показувати counts саме цього імпорту, включно0, не кількість заголовків чи поточний total; crafted counters не змінюють авторитет.
+
+#### Scenario: IMPORT-COUNTS-S02 — Відкат і старі записи
+GIVEN runtime/CAS failure або legacy payload без counts
+WHEN імпорт відкочується або журнал читається
+THEN failure SHALL не лишати source/counts/сцен, legacy counts лишаються unknown без переписування історії.
+
+
+<a id="model-json"></a>
+### Requirement: MODEL-JSON — Зовнішня обгортка структурованої відповіді моделі
+
+Модельні JSON-відповіді brief/prepare, edit patches, classify, publication_suggest, memory, impact_delta/check/part, review_part та evaluator SHALL використовувати спільну обмежену нормалізацію `storygen.model_json.unwrap_model_json` перед чинним строгим decoder. Знімається лише одна повна парна зовнішня обгортка JSON-об’єкта: одинарні апострофи/backticks або потрійні backticks/апострофи з окремими рядками й необов’язковим json. Вміст рядків, апострофи, backticks, цитати й докази SHALL залишатися незмінними. Пояснення навколо JSON, кілька/вкладені/непарні блоки, повторені ключі та порушення схеми/доказів не ремонтуються. Сирі partial та raw_response SHALL залишатися оригінальними; replay/fsck SHALL користуватися тим самим decoder відповідей перевірки.
+
+Нормалізація не застосовується до ручного JSON, конфігурації, доменних записів, CLI event protocol або текстової прози. Оцінювач має protocol_version3 у evaluator_fingerprint; попередня калібрація не переноситься на новий контракт автоматично. Історичні оцінки не перезаписуються. Усунено відхилення, коли коректний JSON перевірки в Markdown-блоці відхилявся, хоча пам’ять уже підтримувала цю обгортку. Невдалий запуск не повторюється автоматично.
+
+<a id="model-json-s01"></a>
+#### Scenario: MODEL-JSON-S01 — Одна обгортка на всіх модельних межах
+- GIVEN повний JSON-об’єкт у парній зовнішній обгортці
+- WHEN парситься структурована відповідь моделі
+- THEN чинна схема приймає той самий вміст без зміни внутрішніх апострофів
+- AND ручний JSON та неоднозначні/некоректні відповіді залишаються строгими.
+
+<a id="model-json-s02"></a>
+#### Scenario: MODEL-JSON-S02 — Перевірка з обгорткою після відновлення
+- GIVEN звіт перевірки побудовано з модельних відповідей у парній обгортці
+- WHEN перевіряються докази та відновлена резервна копія
+- THEN сирі відповіді незмінні й replay/fsck успішний
+- AND підміна звіту виявляється без нового inference.
+
+<a id="model-json-s03"></a>
+#### Scenario: MODEL-JSON-S03 — Обгортка оцінювача без втрати аудиту
+- GIVEN оцінювач повернув валідний звіт у парній зовнішній обгортці
+- WHEN обчислюється оцінка
+- THEN чинні scoring/evidence перевірки виконуються, оригінальний raw_response збережено та зроблено лише один запит
+- AND evaluator fingerprint відокремлює protocol3 від попередньої калібрації.

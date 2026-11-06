@@ -1076,3 +1076,31 @@ RED select-all2 failures → GREEN2 passed; RED collapse4 failures → combined1
 
 
 UI controls cross-review7 findings:6 fixed (tests/docs clarification),1 rejected (privacy-filtered artifact omission). Таблиця у двох UI специфікаціях; посилені16 browser tests passed26.8s, production code незмінний після104 browser/185 web gate. Наступні три найближчі задачі мають окремі підготовлені специфікації тарифів/лімітів і persisted import counts; новий inference не запускався.
+
+
+## 06.11.2026 — Решта найближчих задач: model/import metadata
+
+Перші дві UX задачі збережено в [PR#9](https://github.com/ysilvestrov/obscura-text-writer/pull/9), codefa5eb83; продовжено погоджені3–5 на codex/model-import-metadata. Специфікації: model-catalog-prices-limits-2026-11-06.md та import-journal-counts-2026-11-06.md. Додано ModelOption tariff/max output, cached official/manual binding, unknown/expired labels у roles/shared connection; cloud known caps перед POST, safe HTTP/transport/missing-key failure усіх stages і durable generation_failure. Немає retry/fallback або обрізання body; Успішний OpenRouter каталог без окремих caps лишає unknown; відмова cloud каталогу не допускає completion POST.
+
+Import counts — source_files JSON без SQL migration, computed actual scene IDs/new card IDs у тій самій publication transaction, legacy unknown; journal UA/EN/reload. RED backend18, counts2+1 pass, UI4+2 failures → targeted252 regressions passed; нові25 providers/locale passed, durable memory failure persisted. Full browser110 passed2.7m, додаткові8 pricing/shared/counts passed12.1s. Один detector[], першою visual QA виявлено toast на pricing screenshot, фінальне підтвердження без toast; нових palette/layout refactor немає. Broad gate виконується через verify.py. Без production inference/config/data rewrite.
+
+
+Фінал реалізації model/import metadata: cloud catalog503 не запускає completion (нові tests), transport причини й generation_failure memory durable, source counters actualIDs atomic. Pricing/shared browser confirmation6 passed10.5s; toast прибрано із screenshot, model accessible name не включає ставки, aria-describedby пов’язує metadata. Broad verification починається на стабільному snapshot без паралельного screenshot rewrite.
+
+
+Фінальний спільний gate model/import metadata та global MODEL-JSON: **1244 passed,1 skipped,0 failures/errors**, source_changed_during_run=false, artifacts/verification-smi5njs9/result.json. check_docs.py пройшов. Раніше UI110 browser passed2.7m,8 додаткових metadata/counts/shared passed,6 фінальних pricing/accessibility passed; фінальні screenshots перевірено візуально, detector[]. Без реального inference або зміни production матеріалів.
+
+
+## Global JSON і уточнення фактичного контексту06.11
+
+Cross-review: claude/default @ 3e8cec8 (author: codex) — 10 findings: 10 fixed, 0 rejected
+Таблиця рішень — у трьох специфікаціях change. Broad gate1244passed/1skipped перед review. Після review виправлено локалізацію suffix, neutral technical, точність warnings та посилено тести. Новий запит власника підтвердив дефект preflight: configured window помилково порівнювався як обсяг. Виправлено на estimated input + actual output reserve; settings/body незмінні. Новий synthetic RED6 failures/2 pass → GREEN30; подальше посилення tests149passed/3 harness failures через включення memory output у review-only expected; виправлено stage filter, exact raw comparison3passed. Повторна цільова перевірка виконується через verify.py. Production дані не копіюються в tests/review; нових paid calls немає.
+
+
+Post-review verify2rrqjwi1:540passed/1failure — старий worker warning test шукав слово Markdown, яке навмисно прибрано за finding10. Виправлено точні warning/event assertions; production code додатково не змінено. Остаточний цільовий gate повторюється.
+
+
+Фінальний post-review gate: **541 passed,0 failed/errors/skipped**, source_changed_during_run=false, artifacts/verification-qxf5vqkl/result.json. Покрито provider/billing, усі web/API/Node, evaluator, planner/editor/JSON, durable failure, counts/CAS, exact raw proof/replay/backup. Попередній широкий набір1244passed/1skipped збережено окремо. Production code після цього gate не змінюється. check_docs.py перевіряється перед фінальним комітом.
+
+
+Завершено: [PR#10](https://github.com/ysilvestrov/obscura-text-writer/pull/10), codef1a35b9 + fixesd621113, branch codex/model-import-metadata поверх PR#9. Основна тека C:\Projects\text-generator містить перевірений результат; після fresh0 active/queued локальний сервер8765 перезапущено з тими самими data/env параметрами, HTTP200 і0 active/queued підтверджено. Автоматичного повтору inference, зміни налаштувань або переписування сирих результатів немає. Сторонній untracked research-файл збережено. Merge не виконувався.

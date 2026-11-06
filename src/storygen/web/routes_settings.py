@@ -106,8 +106,8 @@ def configure_prompts(repo,story_id,change,settings):
 
 
 @router.post('/api/providers/discover')
-def models(settings: ProviderSettings):
-    return {'models':discover_models(settings)}
+def models(settings: ProviderSettings,request: Request):
+    return {'models':discover_models(settings,repo=request.app.state.repo)}
 
 
 @router.post('/api/stories/{story_id}/blueprint/apply')

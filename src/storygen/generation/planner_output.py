@@ -1,6 +1,6 @@
 """Narrow planner response envelope and trusted, value-free diagnostics."""
 import json
-import re
+from ..model_json import unwrap_model_json
 from pydantic import ValidationError
 from .models import WritersBrief,StoryBlueprint
 
@@ -9,11 +9,9 @@ class PlannerProtocolError(ValueError):pass
 
 
 def parse_planner_output(text,stage,warnings):
-    content=text.strip()
-    fence=re.fullmatch(r'```(?:json)?[ \t]*\r?\n(.*?)\r?\n```',content,re.I|re.S)
-    if fence:
-        content=fence.group(1)
-        warnings.append('Знято одну зовнішню Markdown-обгортку JSON планувальника; оригінальну відповідь збережено без змін.')
+    content=unwrap_model_json(text.strip())
+    if content!=text.strip():
+        warnings.append('Знято одну зовнішню обгортку JSON планувальника; оригінальну відповідь збережено без змін.')
     def pairs(items):
         result={}
         for key,value in items:
