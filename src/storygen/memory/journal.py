@@ -217,30 +217,33 @@ def merge_legacy_snapshot(previous,snapshot,prose_id,prose):
     return _extend(previous,prose_id,events)
 
 
-def unwrap_model_memory(raw, warnings=None):
+def unwrap_model_memory(raw):
     """Remove one complete model-only wrapper, never rewrite JSON contents."""
     import re
     text = raw.strip()
     fenced = re.fullmatch(r"(?P<fence>`{3}|'{3})(?:json)?[ \t]*\r?\n(?P<body>[\s\S]*?)\r?\n(?P=fence)", text, re.IGNORECASE)
     if fenced:
         candidate = fenced['body'].strip()
+        if any(re.fullmatch(r"(?:`{3}|'{3})(?:json)?", line.strip(), re.IGNORECASE) for line in candidate.splitlines()):
+            return raw
+    elif text.startswith(('```', "'''")):
+        return raw
     elif len(text) >= 2 and text[0] in "'`" and text[-1] == text[0]:
         candidate = text[1:-1].strip()
     else:
         return raw
     if not (candidate.startswith('{') and candidate.endswith('}')):
         return raw
-    if warnings is not None:
-        warnings.append('Пам’ять: прибрано зовнішню обгортку JSON; вміст і докази не змінено.')
     return candidate
 
 
 def parse_memory_result(raw,previous,prose_id,prose,mode,allowed_character_ids,*,warnings=None):
     from .models import MemoryDelta
-    data=decode_memory(unwrap_model_memory(raw, warnings))
+    normalized=unwrap_model_memory(raw)
+    data=decode_memory(normalized)
     if mode=='snapshot':
-        return merge_legacy_snapshot(previous,MemorySnapshot.model_validate(data),prose_id,prose)
-    if isinstance(data,dict) and 'schema_version' in data:
+        result=merge_legacy_snapshot(previous,MemorySnapshot.model_validate(data),prose_id,prose)
+    elif isinstance(data,dict) and 'schema_version' in data:
         # Model-only wire normalization; manual journals and domain validators stay strict.
         if isinstance(data.get('operations'),list):
             for index,op in enumerate(data['operations']):
@@ -250,8 +253,12 @@ def parse_memory_result(raw,previous,prose_id,prose,mode,allowed_character_ids,*
                     op['character_ids']=[]
                     if warnings is not None:
                         warnings.append(f'Пам’ять: операція {index+1} ({op["category"]}) — прибрано зайві character_ids; текст і докази не змінено.')
-        return apply_operations(previous,MemoryOperations.model_validate(data),prose_id,prose,allowed_character_ids)
-    return merge_legacy_delta(previous,MemoryDelta.model_validate(data),prose_id,prose)
+        result=apply_operations(previous,MemoryOperations.model_validate(data),prose_id,prose,allowed_character_ids)
+    else:
+        result=merge_legacy_delta(previous,MemoryDelta.model_validate(data),prose_id,prose)
+    if warnings is not None and normalized!=raw:
+        warnings.append('Пам’ять: прибрано зовнішню обгортку JSON; вміст і докази не змінено.')
+    return result
 
 
 def validate_memory_journal(journal,source_versions,previous=None):

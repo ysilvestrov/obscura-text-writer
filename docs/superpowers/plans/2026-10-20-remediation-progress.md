@@ -1051,3 +1051,12 @@ Read-only перевірено останній failed memory: sent→unresolved
 ## 06.11.2026 — Model-only обгортка JSON пам’яті
 
 Прямий запит власника прибирати зовнішні апострофи; read-only підтверджено повний Markdown json fence у збереженій відповіді. [Специфікація виправлення](../../specs/changes/memory-json-wrappers-2026-11-06.md). Base33130e0, branch codex/memory-json-wrappers. Додано зняття однієї повної парної зовнішньої обгортки лише parse_memory_result, без зміни JSON усередині/partial/manual validators. Warning UA/EN через memory_warnings/run.warning; строгі schema/evidence/duplicate key перевірки лишилися. RED12 failures/6 passes → GREEN18 passed; розширений gate498 passed,110.36s, source_changed_during_run=false, artifacts/verification-qyjkzeev/result.json. Немає нового inference або зміни production даних/налаштувань. SPEC MEMORY-004-S03/traceability та UA/EN інструкції оновлено; окремі locale перевірки й cross-review виконуються перед PR.
+
+
+Memory wrappers cross-review Claude:5 findings,5 fixed,0 rejected; таблиця у специфікації зміни. Перенесено wrapper warning після успішного parse, multi-block не нормалізується; tests manual path/boundaries/exact warnings посилено. RED6 failures/23 passes → GREEN40 wrappers+diagnostics passed. Немає нового inference або передачі приватних відповідей.
+
+
+Після review gate:514 passed/1 failed через10с timeout synthetic seven-scene flow на cursor27/28 без error; isolated повтор дав той самий timeout. Контроль з оригінальним parser33130e0 пройшов за10.19с загалом, тобто тест працює біля довільної часової межі. Для перевірки completion/export (не latency SLA) harness wait збільшено до30с; production timeout/worker не змінено. Попередні невдалі звіти збережено: artifacts/verification-48_qgjv3/result.json, artifacts/verification-vwxqc4eh/result.json; контроль artifacts/memory-wrapper-baseline.log. Фінальний весь набір повторюється після цієї test-only поправки.
+
+
+Фінальний gate після всіх review/harness виправлень: **515 passed,0 failed/errors/skipped**, source_changed_during_run=false, artifacts/verification-9k5sjzus/result.json; STATUS оновлено verify.py. check_docs.py пройшов.
