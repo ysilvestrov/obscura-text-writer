@@ -16,6 +16,10 @@ def forbidden_gateway(*args, **kwargs):
     from storygen.providers.streaming import GenerationEvent
     class Fake:
         def stream(self,context,cancel):
+            if context.stage=='edit' and context.settings.provider.model=='synthetic-slow':
+                cancel.wait(15)
+                yield GenerationEvent(type='cancelled')
+                return
             if context.stage in {'review_part','memory'} and context.settings.provider.model.startswith('synthetic-impact'):
                 import json
                 if context.stage=='memory':
@@ -127,6 +131,14 @@ def main():
             from storygen.providers.models import RoleSettings,ProviderSettings
             fixture=make_fixture()
             save_role_settings(repo,fixture['story_id'],'editor',RoleSettings(provider=ProviderSettings(model='synthetic-no-changes'),edit_mode='patches'),repo.get_story(fixture['story_id']).revision)
+            return fixture
+
+        @app.post('/test-editor-slow')
+        def editor_slow():
+            from storygen.authoring.blueprints import save_role_settings
+            from storygen.providers.models import RoleSettings,ProviderSettings
+            fixture=make_fixture()
+            save_role_settings(repo,fixture['story_id'],'editor',RoleSettings(provider=ProviderSettings(model='synthetic-slow'),edit_mode='patches'),repo.get_story(fixture['story_id']).revision)
             return fixture
 
         @app.post('/test-impact')

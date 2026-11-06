@@ -29,6 +29,11 @@ def enqueue(body: Enqueue,request: Request):
     return request.app.state.coordinator.enqueue(body.request,body.request_id)
 
 
+@router.post('/api/runs/cancel-request')
+def cancel_request(body: Enqueue,request: Request):
+    return request.app.state.coordinator.cancel_request(body.request,body.request_id)
+
+
 @router.get('/api/stories/{story_id}/runs')
 def story_runs(story_id: str,request: Request):
     return {'runs':request.app.state.coordinator.list_runs(story_id)}

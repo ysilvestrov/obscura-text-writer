@@ -2022,7 +2022,18 @@
     "generation.technical": "Не вдалося завершити запит; точну причину не встановлено.",
     "model_json.planner_wrapper": "Знято одну зовнішню обгортку JSON планувальника; оригінальну відповідь збережено без змін.",
     "model_json.editor_wrapper": "Знято одну зовнішню обгортку JSON редактора; оригінальну відповідь збережено без змін.",
-    "planner.structured_proposals": "Планувальник: структуровані proposed_changes перетворено на текст із номерами сцен; пропозиції потребують явного прийняття."
+    "planner.structured_proposals": "Планувальник: структуровані proposed_changes перетворено на текст із номерами сцен; пропозиції потребують явного прийняття.",
+    "workspace.telemetry": "{p0} · до {p1} викл.",
+    "workspace.telemetry_unknown": "Модель і кількість викликів: невідомо",
+    "workspace.model": "Модель: {p0}",
+    "workspace.volume": "Заплановано до {p0} модельних викликів (Джерело: {p1})",
+    "workspace.warnings": "Попередження: {p0}",
+    "workspace.copy_note": "Запропоновані правки потребують прийняття. Якщо змін немає, проза може зберегтися автоматично.",
+    "workspace.unknown": "невідомо",
+    "workspace.stop": "✕ Зупинити",
+    "workspace.run_plan": "План: {p0} · до {p1} викл. · {p2}",
+    "workspace.pending_unknown": "Результат запуску невідомий. Перевіряємо сервер; новий запуск тимчасово заблоковано.",
+    "workspace.storage_required": "Для безпечної перевірки запуску дозвольте локальне сховище браузера."
   },
   "en": {
     "ui.save": "Save",
@@ -4047,6 +4058,17 @@
     "generation.technical": "Could not complete the request; the exact cause is unknown.",
     "model_json.planner_wrapper": "Removed one outer planner JSON wrapper; the original response was preserved unchanged.",
     "model_json.editor_wrapper": "Removed one outer editor JSON wrapper; the original response was preserved unchanged.",
-    "planner.structured_proposals": "Planner: structured proposed_changes were converted to text with scene numbers; proposals require explicit acceptance."
+    "planner.structured_proposals": "Planner: structured proposed_changes were converted to text with scene numbers; proposals require explicit acceptance.",
+    "workspace.telemetry": "{p0} · up to {p1} calls",
+    "workspace.telemetry_unknown": "Model and call count: unknown",
+    "workspace.model": "Model: {p0}",
+    "workspace.volume": "Up to {p0} model calls planned (Source: {p1})",
+    "workspace.warnings": "Warnings: {p0}",
+    "workspace.copy_note": "Proposed changes require acceptance. If there are no changes, prose may be saved automatically.",
+    "workspace.unknown": "unknown",
+    "workspace.stop": "✕ Stop",
+    "workspace.run_plan": "Planned: {p0} · up to {p1} calls · {p2}",
+    "workspace.pending_unknown": "The run outcome is unknown. Checking the server; a new run is temporarily blocked.",
+    "workspace.storage_required": "Allow browser storage to safely reconcile the run."
   }
 }

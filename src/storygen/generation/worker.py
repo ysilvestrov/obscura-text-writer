@@ -152,6 +152,7 @@ class RunCoordinator:
                 for r in self.list_runs(request.story_id)
             ):
                 raise ValueError('Багатопрохідна редактура цієї сцени вже виконується')
+            readiness=None
             if request.mode == 'evaluate':
                 from ..evaluation.story_adapter import get_evaluation_settings
                 from ..evaluation.blocks import require_available
@@ -164,7 +165,8 @@ class RunCoordinator:
                 readiness=impact_prepared or preview(self.repo,request)
                 if not readiness['ready']:
                     raise ValueError(readiness['reason'])
-            candidate=Run(id=new_id(),story_id=request.story_id,request_id=request_id,request=request,tasks=tasks,impact=impact_data)
+            telemetry={'roles':readiness.get('roles',{}),'calls':readiness.get('calls')} if readiness is not None else None
+            candidate=Run(id=new_id(),story_id=request.story_id,request_id=request_id,request=request,tasks=tasks,impact=impact_data,planned_telemetry=telemetry)
             run,created=self.repo.enqueue_run(candidate)
             if created:
                 self.event(run.id,'state',{'state':'queued'})
@@ -216,9 +218,23 @@ class RunCoordinator:
             self.event(id,'state',{'state':run.state})
             return run
 
+    def cancel_request(self, request: RunRequest, request_id: str) -> Run:
+        if not request_id or len(request_id)>200 or request.mode not in {'stage','edit_loop'}:
+            raise ValueError('Некоректний запит скасування')
+        with self.condition:
+            existing=self.repo.find_run_by_request_id(request_id)
+            if existing:
+                if existing.request!=request:raise RevisionConflict('request_id уже використано для іншого запиту')
+                return self.cancel(existing.id)
+            candidate=Run(id=new_id(),story_id=request.story_id,request_id=request_id,request=request,tasks=[],state='cancelled',cancelled_before_enqueue=True)
+            run,created=self.repo.enqueue_run(candidate)
+            if created:self.event(run.id,'state',{'state':'cancelled'})
+            return run
+
     def resume(self, id: str, repeat_interrupted: bool = False) -> Run:
         with self.condition:
             run=self.get_run(id)
+            if run.cancelled_before_enqueue:raise ValueError('Скасований до запуску запит не можна відновити')
             if run.impact and run.impact.get('protocol')==3:
                 from ..review.runner import resume
                 result=resume(self,run,repeat_interrupted)

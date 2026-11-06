@@ -2677,6 +2677,38 @@
         "tests/generation/test_planner_proposal_objects.py::test_prepare_does_not_accept_brief_proposal_wire_shape",
         "tests/generation/test_planner_proposal_objects.py::test_manual_brief_endpoint_rejects_structured_wire_without_creating_version"
       ]
+    },
+    {
+      "id": "WORKSPACE-TELEMETRY-S01",
+      "requirement": "WORKSPACE-TELEMETRY",
+      "scope": "Попередня модельна телеметрія та запуск без загального підтвердження.",
+      "tests": [],
+      "manual": {
+        "procedure": "docs/verification/manual.md#workspace-one-click",
+        "reason": "Сценарій інтеграції браузера з синтетичним сервером перевіряється окремим Playwright runner."
+      }
+    },
+    {
+      "id": "WORKSPACE-TELEMETRY-S02",
+      "requirement": "WORKSPACE-TELEMETRY",
+      "scope": "Зупинка при затриманій або втраченій відповіді enqueue.",
+      "tests": [],
+      "manual": {
+        "procedure": "docs/verification/manual.md#workspace-one-click",
+        "reason": "Сценарій інтеграції браузера з синтетичним сервером перевіряється окремим Playwright runner."
+      }
+    },
+    {
+      "id": "WORKSPACE-TELEMETRY-S03",
+      "requirement": "WORKSPACE-TELEMETRY",
+      "scope": "Серверний збережений план і повторне відкриття.",
+      "tests": [
+        "tests/web/test_runs.py::test_run_preserves_planned_model_metadata_across_settings_changes"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#workspace-one-click",
+        "reason": "Сценарій інтеграції браузера з синтетичним сервером перевіряється окремим Playwright runner."
+      }
     }
   ]
 }

@@ -10,7 +10,26 @@ const terminal=new Set(['completed','failed','cancelled','interrupted','needs_re
 const names={get queued(){return t("m_eb3c78969040")},get running(){return t("m_b4232dd37ccb")},get pause_requested(){return t("m_7b3ff291c3da")},get paused(){return t("m_914a1d354f3b")},get cancellation_requested(){return t("m_4037d1b317aa")},get cancelled(){return t("m_7c3f9efa92f8")},get completed(){return t("m_016bc923f7ff")},get failed(){return t("m_57467fc4b91f")},get interrupted(){return t("m_e8bcb6c8f22e")},get needs_review(){return t("m_f2898eb5c9bf")},get alternative(){return t("m_ea160912aa6f")}};
 let active=null,source=null,last=0,started=Date.now(),followEpoch=0;
 let readiness=null,readinessEpoch=0,historyRuns=null,pendingReadiness=null,pendingEpoch=0;
-let continuation=null;
+let continuation=null,primaryPosting=false;
+let tabId;try{tabId=sessionStorage.getItem('storygen.tab')||crypto.randomUUID();sessionStorage.setItem('storygen.tab',tabId)}catch{tabId=null}
+const pendingKey=()=>`storygen.primary.pending.${state.storyId}.${tabId}`;
+function pendingPrimary(){try{return JSON.parse(sessionStorage.getItem(pendingKey())||'null')}catch{return null}}
+function setPendingPrimary(value){try{if(value)sessionStorage.setItem(pendingKey(),JSON.stringify(value));else sessionStorage.removeItem(pendingKey());state.workspacePending=value;document.dispatchEvent(new CustomEvent('workspace-pending-state'));return true}catch{return false}}
+let reconcilePromise=null;
+async function reconcilePrimary(){
+  if(reconcilePromise)return reconcilePromise;
+  reconcilePromise=reconcilePrimaryOnce();
+  try{return await reconcilePromise}finally{reconcilePromise=null}
+}
+async function reconcilePrimaryOnce(){
+  const pending=pendingPrimary();if(!pending)return null;
+  if(pending.cancelled){const run=await api('/api/runs/cancel-request',json('POST',{request_id:pending.requestId,request:pending.request}));if(pending.storageKey)sessionStorage.removeItem(pending.storageKey);setPendingPrimary(null);await follow(run);return run}
+  const runs=(await api(`/api/stories/${state.storyId}/runs`)).runs;
+  const run=runs.find(item=>item.request_id===pending.requestId);
+  if(!run)return null;
+  if(pending.cancelled&&['queued','running','pause_requested'].includes(run.state))await api(`/api/runs/${run.id}/cancel`,json('POST',{}));
+  if(pending.storageKey)sessionStorage.removeItem(pending.storageKey);setPendingPrimary(null);document.dispatchEvent(new CustomEvent('workspace-primary-recovered',{detail:run}));await follow(run);return run;
+}
 const actions=[];
 function updateControls(){for(const item of actions){let reason=item.operation?operationReason(state,readiness?.operations[item.operation]):['latest','proposal','apply'].includes(item.action)?materialReason(item.action,state,historyRuns):item.action==='accepted'?operationReason(state,{ready:!!continuation,reason:t("m_7795d03d9c33")}):item.action?controlReason(item.action,active):'';if(['resume','repeat'].includes(item.action))reason=reason||(active?.impact?.protocol===3&&['awaiting_author','author_editing'].includes(active.impact.phase)?t('review.author_required'):operationReason(state,pendingReadiness));if(item.busy)reason=t("m_08ee1e43995d");item.button.disabled=!!reason;uiText(item.button,"title",()=>(diagnostic(reason)));uiText(item.hint,"textContent",()=>(diagnostic(reason)));item.button.setAttribute('aria-describedby',item.hint.id);if(['pause','cancel','resume','repeat','accepted'].includes(item.action))item.wrapper.hidden=['resume','repeat'].includes(item.action)?!!controlReason(item.action,active):!!reason}}
 async function loadPending(){
@@ -36,15 +55,16 @@ async function loadReadiness(options={}){
   const epoch=++readinessEpoch;readiness=null;state.workspaceReadiness=null;updateControls();document.dispatchEvent(new CustomEvent('workspace-readiness'));
   try{
     const query=new URLSearchParams(state.scene?{scene_id:state.scene.id,...selectedSource(options)}:{});
-    const [result,runs]=await Promise.all([api(`/api/stories/${state.storyId}/readiness?${query}`),api(`/api/stories/${state.storyId}/runs`)]);
+    const fetchOptions=options.signal?{signal:options.signal}:undefined;
+    const [result,runs]=await Promise.all([api(`/api/stories/${state.storyId}/readiness?${query}`,fetchOptions),api(`/api/stories/${state.storyId}/runs`,fetchOptions)]);
     if(epoch===readinessEpoch){readiness=result;historyRuns=runs.runs;state.workspaceReadiness=result;state.workspaceRuns=historyRuns;updateControls();document.dispatchEvent(new CustomEvent('workspace-readiness'))}
-  }catch(error){if(epoch===readinessEpoch){readiness={operations:Object.fromEntries(['prepare','brief','draft','edit','memory','scene','remaining','rebuild_memory','edit_loop'].map(key=>[key,{ready:false,reason:error.message}]))};state.workspaceReadiness=readiness;updateControls();notice(error.message,'error')}}
+  }catch(error){if(error.name==='AbortError')throw error;if(epoch===readinessEpoch){readiness={operations:Object.fromEntries(['prepare','brief','draft','edit','memory','scene','remaining','rebuild_memory','edit_loop'].map(key=>[key,{ready:false,reason:error.message}]))};state.workspaceReadiness=readiness;updateControls();notice(error.message,'error')}}
 }
 for(const event of ['story-refreshed','scene-selected','evaluation-policy-changed'])document.addEventListener(event,()=>{loadReadiness();if(active&&terminal.has(active.state))loadPending()});
 document.addEventListener('editor-state-changed',()=>{updateControls();if(state.mode!==state.workspaceReadinessMode){state.workspaceReadinessMode=state.mode;void loadReadiness()}});
 textEditor.onInput(updateControls);
 const elapsed=document.createElement('p');
-function draw(run){active=run;state.workspaceRun=run;document.dispatchEvent(new CustomEvent('workspace-run-state',{detail:run}));status.dataset.kind=run.warning&&run.state!=='failed'?'warning':runKind(run.state);status.setAttribute('role',run.state==='failed'?'alert':'status');status.replaceChildren();const p=document.createElement('p');uiText(p,"textContent",()=>(names[run.state]||run.state));status.append(p);for(const message of [...new Set([run.error,run.warning].filter(Boolean))]){const e=document.createElement('p');uiText(e,"textContent",()=>(diagnostic(message)));status.append(e)}uiText(elapsed,"textContent",()=>(terminal.has(run.state)?'':elapsed.textContent));status.append(elapsed);updateControls();if(terminal.has(run.state))loadPending()}
+function draw(run){active=run;state.workspaceRun=run;document.dispatchEvent(new CustomEvent('workspace-run-state',{detail:run}));status.dataset.kind=run.warning&&run.state!=='failed'?'warning':runKind(run.state);status.setAttribute('role',run.state==='failed'?'alert':'status');status.replaceChildren();const p=document.createElement('p');uiText(p,"textContent",()=>(names[run.state]||run.state));status.append(p);const plan=run.planned_telemetry;if(plan){const summary=document.createElement('p');summary.className='muted';uiText(summary,'textContent',()=>t('workspace.run_plan',{p0:Object.values(plan.roles||{}).map(value=>`${value.provider} / ${value.model}`).join(', ')||t('workspace.unknown'),p1:plan.calls??'—',p2:t(({draft:'m_e9d875d4120b',prose:'m_9c685577453c',plan:'m_3146141c9367',brief:'m_5a2ec5eaf0a1'})[run.request.editor_source_head||({brief:'plan',draft:'brief',memory:'prose'})[run.request.stage]]||'workspace.unknown')}));status.append(summary)}for(const message of [...new Set([run.error,run.warning].filter(Boolean))]){const e=document.createElement('p');uiText(e,"textContent",()=>(diagnostic(message)));status.append(e)}uiText(elapsed,"textContent",()=>(terminal.has(run.state)?'':elapsed.textContent));status.append(elapsed);updateControls();if(terminal.has(run.state))loadPending()}
 setInterval(()=>{if(active&&!terminal.has(active.state))uiText(elapsed,"textContent",()=>(t("m_61cb5f9a3bb9",{p0:(Math.floor((Date.now()-started)/1000))})))},1000);
 async function follow(run){
   const epoch=++followEpoch;let stateFetch=0;
@@ -72,6 +92,7 @@ async function start(mode,stage,options={}){
   if(!state.scene&&mode!=='prepare')throw new Error(t("m_f0f1417db6de"));
   if(state.dirty)throw new Error(t("m_a4c2e86ecc1a"));
   await loadReadiness(options);
+  if(options.signal?.aborted)throw new DOMException('Cancelled','AbortError');
   assertReadyDispatch(state,captured);
   let operation=readiness?.operations[stage||mode];
   const passLimit=Number(document.querySelector('#edit-pass-limit')?.value||5);
@@ -79,14 +100,21 @@ async function start(mode,stage,options={}){
   if(usesEditorLoop)operation=editorLoopOperation(operation,passLimit);
   const reason=operationReason(state,operation);
   if(reason)throw new Error(reason);
-  if(!confirm(confirmationText(operation)))return;
+  if((!options.primary||operation.memory_review)&&!confirm(confirmationText(operation)))return;
   const request={story_id:state.storyId,scene_id:mode==='prepare'?null:state.scene.id,mode,stage:stage||null,pause_after:document.querySelector('#pause-each').checked?['brief','draft','edit','memory']:[]};
   if(mode==='stage'&&stage==='memory'&&operation.memory_review)request.memory_approval=operation.memory_review.fingerprint;
   if(usesEditorLoop){request.edit_pass_limit=passLimit;request.edit_workflow='loop'}
   if(mode==='edit_loop')Object.assign(request,selectedSource(options));
   request.budget_limit_usd=document.querySelector('#run-budget')?.value||null;
-  const key='storygen.pending.'+JSON.stringify(request);let requestId=localStorage.getItem(key)||crypto.randomUUID();localStorage.setItem(key,requestId);
-  const run=await api('/api/runs',json('POST',{request_id:requestId,request}));localStorage.removeItem(key);await follow(run);return active;
+  const key='storygen.pending.'+(options.primary?tabId+'.':'')+JSON.stringify(request),storage=options.primary?sessionStorage:localStorage;let requestId=storage.getItem(key)||crypto.randomUUID();storage.setItem(key,requestId);
+  if(options.signal?.aborted)throw new DOMException('Cancelled','AbortError');
+  if(options.primary&&pendingPrimary())throw new Error(t('workspace.pending_unknown'));
+  if(options.primary){if(!tabId||!setPendingPrimary({requestId,request,storageKey:key,cancelled:false}))throw new Error(t('workspace.storage_required'));options.signal?.addEventListener('abort',()=>{const pending=pendingPrimary();if(pending?.requestId===requestId)setPendingPrimary({...pending,cancelled:true})},{once:true})}
+  let run;
+  try{primaryPosting=!!options.primary;run=await api('/api/runs',json('POST',{request_id:requestId,request}))}
+  catch(error){if(options.primary){if(error.status>=400&&error.status<500&&error.status!==408){setPendingPrimary(null);storage.removeItem(key);throw error}const found=(state.workspaceRun?.request_id===requestId?state.workspaceRun:null)||await reconcilePrimary().catch(()=>null);if(found){storage.removeItem(key);return found}throw new Error(t('workspace.pending_unknown'))}throw error}
+  finally{primaryPosting=false}
+  storage.removeItem(key);await options.onCreated?.(run);if(options.primary)setPendingPrimary(null);await follow(run);return active;
 }
 controls.hidden=false;
 function button(label,fn,operation=null,action=null){const wrapper=document.createElement('span');wrapper.className='run-action';const b=document.createElement('button'),hint=document.createElement('small');hint.id='run-reason-'+actions.length;b.className='secondary';uiText(b,"textContent",()=>(label));const item={button:b,hint,wrapper,operation,action,busy:false};actions.push(item);b.onclick=async()=>{item.busy=true;updateControls();try{await fn()}catch(e){notice(e.message,'error')}finally{item.busy=false;updateControls()}};wrapper.append(b,hint);(document.querySelector('#run-actions')&&['pause','cancel','resume','repeat','accepted'].includes(action)?document.querySelector('#run-actions'):controls).append(wrapper);updateControls();return wrapper}
@@ -118,6 +146,12 @@ button(liveLabel(()=>(t("m_e1cb5a4ec579"))),async()=>{const runs=(await api(`/ap
 button(liveLabel(()=>(t("m_d2193b81e0c3"))),async()=>{if(state.mode!=='blueprint')throw new Error(t("m_01a5baeeaa81"));const proposal=JSON.parse(textEditor.read());if(!confirm(t("m_7f8d04e5c78c")))return;await api(`/api/stories/${state.storyId}/blueprint/apply`,json('POST',{proposal,expected_revision:state.view.story.revision}));state.dirty=false;await refresh();notice(msg("m_646d341468c4"))},null,'apply');
 loadReadiness();
 api(`/api/stories/${state.storyId}/runs`).then(result=>{if(result.runs.length)follow(result.runs.at(-1)).catch(e=>notice(e.message,'error'))}).catch(e=>notice(e.message,'error'));
+let reconciling=false;
+state.workspacePending=pendingPrimary();
+setInterval(async()=>{if(!pendingPrimary()||reconciling||primaryPosting)return;reconciling=true;try{await reconcilePrimary()}catch{}finally{reconciling=false}},5000);
+if(pendingPrimary())void reconcilePrimary().catch(()=>{});
 
 registerWorkspaceCommand('run',async options=>{try{return await start(options.mode,options.stage,options)}catch(error){document.dispatchEvent(new CustomEvent('workspace-operation-error',{detail:{stage:options.mode==='edit_loop'?'edit':options.stage||options.mode,message:error.message}}));throw error}});
 registerWorkspaceCommand('refresh-readiness',loadReadiness);
+registerWorkspaceCommand('cancel-run',async id=>{const run=await api(`/api/runs/${id}/cancel`,json('POST',{}));if(active?.id===id)draw(run);return run});
+registerWorkspaceCommand('cancel-pending',async()=>{const pending=pendingPrimary();if(!pending)return;setPendingPrimary({...pending,cancelled:true});return reconcilePrimary()});

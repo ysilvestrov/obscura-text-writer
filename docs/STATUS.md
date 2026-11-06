@@ -2,20 +2,20 @@
 
 **ПЕРЕВІРКА ПРОЙШЛА** — свідчення конкретного запуску, не поточного довільного стану.
 
-- Початок (UTC): 2026-11-06T16:22:03.808045+00:00
-- Завершення (UTC): 2026-11-06T16:22:08.272598+00:00
-- Базовий commit: `4d55d68aa0c59fcf126b9fbb8f74ffafc09b2013`
+- Початок (UTC): 2026-11-06T19:22:58.038844+00:00
+- Завершення (UTC): 2026-11-06T19:23:00.711908+00:00
+- Базовий commit: `8bb6cf6466b5c910391330d990b60cec78520f12`
 - Незакомічені зміни під час перевірки: `true`
-- SHA-256 вихідного знімка: `8f18e9a900ba0feb20bbfedd9c1ea22cc216ea4155f76a2517c1721801759106`
+- SHA-256 вихідного знімка: `92d434353a90d3c5e2da734ce727d56342dc9b6cf3c7ce9d9a87bd633849d448`
 - Зміна знімка під час прогону: `false`
 - Exit code: `0`
-- Фактичні testcase результати JUnit: passed: 61 · failed: 0 · errors: 0 · skipped: 0
-- Тривалість: 4.45 с
+- Фактичні testcase результати JUnit: passed: 12 · failed: 0 · errors: 0 · skipped: 0
+- Тривалість: 2.67 с
 
 Точний argv (JSON, не shell-команда):
 
 ```json
-["C:\\Projects\\text-generator\\.venv\\Scripts\\python.exe", "-m", "pytest", "tests/generation/test_planner_proposal_objects.py", "tests/generation/test_planner_output.py", "tests/generation/test_model_json_boundaries.py", "tests/web/test_manual_brief.py", "tests/web/test_localization.py", "-q", "--junitxml=C:\\Projects\\text-generator\\artifacts\\verification-pzeedox0\\junit.xml", "--basetemp=C:\\Projects\\text-generator\\artifacts\\verification-pzeedox0\\test-tmp"]
+["C:\\Users\\yuriy\\.codex\\worktrees\\workspace-telemetry\\text-generator\\.venv\\Scripts\\python.exe", "-m", "pytest", "tests/web/test_runs.py", "tests/web/test_workspace_route.py", "tests/web/test_editor_loop_ui.py", "tests/web/test_resumed_events.py", "-q", "--junitxml=C:\\Users\\yuriy\\.codex\\worktrees\\workspace-telemetry\\text-generator\\artifacts\\verification-a9bkx59z\\junit.xml", "--basetemp=C:\\Users\\yuriy\\.codex\\worktrees\\workspace-telemetry\\text-generator\\artifacts\\verification-a9bkx59z\\test-tmp"]
 ```
 
 Результат стосується лише наведеної команди й вихідного знімка. Якщо в argv зазначено окремі файли або фільтри, це часткова перевірка. Збір (collection) не є виконанням; skipped не зараховано до passed. Відсутній або непридатний XML позначається непідтвердженим. Після зміни вихідних файлів звіт історичний. Власний STATUS і artifacts виключено зі знімка; початкова ревізія може мати dirty=true, оскільки звіт створюється до коміту.
