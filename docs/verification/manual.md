@@ -194,3 +194,7 @@ R-22 прокрутка: Playwright `long draft scrolls internally while formatt
 ## Тарифи, ліміти й journal counts
 
 Playwright model-metadata.spec.mjs: selected model shows tariff units/caps/unknown, manual expired+stale discovery, shared classifier same tariff without limit changes; desktop/mobile UA/EN. Additive-imports case journal retains actual import counts after reload and marks old counts unknown: actual1/0/duplicate0, reload, UA/EN, missing fields unknown. Переглянути neutral model-tariff/import-journal-counts desktop/mobile PNG. Mock APIs/synthetic gateway, без key/.env/production/inference. Фактичні pytest результати — verify.py/STATUS, browser runner — окремо в журналі.
+<a id="workspace-one-click"></a>
+## Телеметрія та зупинка основної дії
+
+На синтетичному сервері запустити `node frontend/node_modules/@playwright/test/cli.js test --config frontend/playwright.config.mjs workspace-telemetry.spec.mjs workspace-cancel.spec.mjs save-and-run.spec.mjs`. Перевірити desktop/mobile, передзапускову модель, збереження без загального dialog, затриманий і втрачений POST, серверний cancel і відновлення плану після reload. Тести не виконують реальний inference; наявність процедури не означає її виконання.

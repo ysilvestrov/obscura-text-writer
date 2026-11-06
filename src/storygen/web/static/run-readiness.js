@@ -23,6 +23,7 @@ export function confirmationText(operation){
 export function runKind(state){return state==='completed'?'success':state==='failed'?'error':['interrupted','needs_review','alternative','cancelled','paused'].includes(state)?'warning':'info'}
 export function controlReason(action,run){
   if(!run)return t("m_35691ee7bea3");
+  if(run.cancelled_before_enqueue&&['resume','repeat'].includes(action))return t("m_aa885dcd2fb6");
   const allowed={pause:['queued','running'],cancel:['queued','running','pause_requested','paused','interrupted','needs_review','alternative'],resume:['paused','needs_review','alternative'],repeat:['failed','interrupted','cancelled']};
   return allowed[action]?.includes(run.state)?'':t("m_aa885dcd2fb6");
 }
