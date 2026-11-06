@@ -1104,3 +1104,11 @@ Post-review verify2rrqjwi1:540passed/1failure — старий worker warning te
 
 
 Завершено: [PR#10](https://github.com/ysilvestrov/obscura-text-writer/pull/10), codef1a35b9 + fixesd621113, branch codex/model-import-metadata поверх PR#9. Основна тека C:\Projects\text-generator містить перевірений результат; після fresh0 active/queued локальний сервер8765 перезапущено з тими самими data/env параметрами, HTTP200 і0 active/queued підтверджено. Автоматичного повтору inference, зміни налаштувань або переписування сирих результатів немає. Сторонній untracked research-файл збережено. Merge не виконувався.
+
+
+##06.11 — Текст proposed_changes усередині об’єктів
+
+Base382bd9d, branch codex/planner-proposal-objects. Read-only діагностика: список двох scene_number:int/change:str у prompt_json; Domain WritersBrief очікує list[str]. Власник підтвердив, що текст присутній. Окрема change spec planner-proposal-objects-2026-11-06.md: narrow model-only coercion exact keys/positive strict int/nonblank str, збереження номера й точного change, raw/review/CAS/manual invariants. RED3 failures/13 passes → GREEN41 parser/protocol regressions. Нові reload/strict guards18pass/1 harness error (Repository.list_events замість list_run_events); accessor виправлено без зміни production. Саме збережена відповідь локально проходить новий parser,2 proposals needs_review; production raw/status незмінні, inference не запускався, приватний вміст виключено з документації/тестів/review.
+
+
+Фінальний gate: **654 passed,0 failures/errors/skipped**,148.50с, source_changed_during_run=false; artifacts/verification-iiov2nhk/result.json, STATUS оновлено verify.py. Усі generation/web/integration перевірки виконано. check_docs пройшов. Новий warning на чинній панелі без зміни layout: UA/EN інструкції актуалізовано, screenshots не потребують заміни. Production raw/failed state/settings не переписано; нових inference немає.

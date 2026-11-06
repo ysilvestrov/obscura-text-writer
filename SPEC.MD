@@ -2340,7 +2340,7 @@ memory-table.js встановлюється versions.js у workbench; вкла�
 
 ### Requirement: PLANNER-JSON — Обгортка JSON та конкретні помилки планувальника
 
-Етапи brief/prepare SHALL приймати plain JSON або одну повну зовнішню Markdown-обгортку з міткою json (без урахування регістру) чи без мітки, лише whitespace поза нею. Схеми WritersBrief/StoryBlueprint, strict types, complete stream/stop, proposed_changes review та CAS/залежності SHALL залишатися незмінними. Автоматичного повтору/зміни моделі/ремонту вмісту немає.
+Етапи brief/prepare SHALL приймати plain JSON або одну повну зовнішню Markdown-обгортку з міткою json (без урахування регістру) чи без мітки, лише whitespace поза нею. Схеми WritersBrief/StoryBlueprint, strict types, complete stream/stop, proposed_changes review та CAS/залежності SHALL залишатися незмінними. Автоматичного повтору/зміни моделі/довільного ремонту вмісту немає. Єдина додаткова model-only wire-нормалізація proposed_changes визначена у PLANNER-JSON-S03; ручна/domain схема незмінна.
 
 #### Scenario: PLANNER-JSON-S01 — Валідний об’єкт у Markdown
 
@@ -2354,7 +2354,14 @@ memory-table.js встановлюється versions.js у workbench; вкла�
 - WHEN перевіряється результат
 - THEN результат не публікується, raw partial лишається; повідомлення називає JSON line/column або до3 порушень відомих структурних полів без відлуння авторських значень/довільних назв ключів. Повторних API-викликів немає.
 
-Техніка: generation/planner_output.py — anchored fullmatch для єдиної обгортки, json.loads з duplicate/nonfinite guards, потім незмінений model_validate_json (включно з його перевіркою Unicode). JSON не шукається всередині довільної прози й не лагодиться евристиками. planner_failure.category=json|schema|publication; невідома помилка збереження не називається порушенням схеми моделі. StageAttempt.context містить planner_failure/planner_warnings, worker зливає warnings у run і context_warning event. Сирий StreamBuffer/usage/finish reason не переписуються. Зміна не стосується parser memory/editor/evaluation/publication_suggest. Старі failed attempts не перезаписуються й їхній результат не приймається приховано. Нова схема БД або зміна конфігурації провайдерів не потрібні. Усунене відхилення: валідний brief із Markdown-обгорткою помилково відхилявся загальною помилкою, яка приховувала причину.
+Техніка: generation/planner_output.py використовує спільний model_json.unwrap_model_json для єдиної обгортки, json.loads з duplicate/nonfinite guards, обмежену wire-нормалізацію proposed_changes і незмінений model_validate_json (включно з його перевіркою Unicode). Для brief дозволений лише object із рівно scene_number (strict positive int, не bool) і change (непорожній str): рядок «Сцена N: {change}» зберігає номер, точний текст, порядок і дублікати. Інші об’єкти/типи/додаткові ключі лишаються schema error. Рядки не змінюються. Якщо нормалізація не потрібна, зберігається точний JSON після зняття обгортки; інакше version містить normalized JSON, а partial — точну початкову відповідь. Лише після успішної strict валідації додається безпечний UA/EN planner warning; needs_review та явний accept-brief залишаються обов’язковими. Manual/domain WritersBrief і prepare не приймають цю wire-форму. JSON не шукається всередині довільної прози й не лагодиться евристиками. planner_failure.category=json|schema|publication; невідома помилка збереження не називається порушенням схеми моделі. StageAttempt.context містить planner_failure/planner_warnings, worker зливає warnings у run і context_warning event. Сирий StreamBuffer/usage/finish reason не переписуються. Зміна не стосується parser memory/editor/evaluation/publication_suggest. Старі failed attempts не перезаписуються й їхній результат не приймається приховано. Нова схема БД або зміна конфігурації провайдерів не потрібні. Усунене відхилення: валідний brief із Markdown-обгорткою помилково відхилявся загальною помилкою, яка приховувала причину.
+
+#### Scenario: PLANNER-JSON-S03 — Текст пропозиції всередині об’єкта
+- GIVEN модельний brief містить proposed_changes зі звичайними рядками або об’єктами рівно scene_number/change дозволених типів
+- WHEN відповідь завершена stop й проходить чинні guards
+- THEN candidate version SHALL містити list[str] із точними текстами та номерами сцен, needs_review без автоматичного head
+- AND original partial незмінний, warning збережено в attempt/run/events після reload обома мовами, нового inference немає
+- AND неповні/невідомі об’єкти, bool/string/непозитивний номер, порожній або вкладений change та duplicate keys відхиляються; manual JSON залишається строгим.
 
 ### Requirement: R18-STATS — Локальна статистика матеріалів, пам’яті й контексту
 
