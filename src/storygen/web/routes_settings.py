@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Request
+from pydantic import Field
 
 from ..authoring.blueprints import apply_blueprint, get_role_settings, save_role_settings, update_story_profile, save_shared_provider
 from ..domain import DomainModel
@@ -11,6 +12,7 @@ router=APIRouter()
 
 
 class SettingsChange(DomainModel):
+    target_words: int | None = Field(default=None,ge=5000)
     expected_revision: int
     role: str | None = None
     settings: RoleSettings | None = None
@@ -34,7 +36,7 @@ class SharedProviderChange(SettingsChange):
 def shared_provider(story_id: str,change: SharedProviderChange,request: Request):
     repo=request.app.state.repo
     settings=change.settings
-    if change.profile is not None:raise ValueError('Профіль зберігається окремо')
+    if change.profile is not None or change.target_words is not None:raise ValueError('Профіль і обсяг зберігаються окремо')
     if change.role:
         if settings is None:raise ValueError('Потрібні налаштування ролі')
         settings=configure_prompts(repo,story_id,change,settings)
@@ -66,8 +68,10 @@ def read_settings(story_id: str,request: Request):
 @router.put('/api/stories/{story_id}/settings')
 def write_settings(story_id: str,change: SettingsChange,request: Request):
     repo=request.app.state.repo
-    if change.profile is not None and change.role is None:
-        return update_story_profile(repo,story_id,change.profile,change.expected_revision)
+    if change.role is None and (change.profile is not None or change.target_words is not None):
+        if change.settings is not None or change.prompt_text is not None or change.prepare_prompt_text is not None:raise ValueError('Письмо зберігається окремо від ролей')
+        return update_story_profile(repo,story_id,change.profile,change.expected_revision,change.target_words)
+    if change.target_words is not None:raise ValueError('Обсяг зберігається у розділі Письмо')
     if not change.role or change.settings is None or change.profile is not None:
         raise ValueError('Збережіть окремо профіль або одну роль')
     settings=configure_prompts(repo,story_id,change,change.settings)

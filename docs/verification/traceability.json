@@ -2410,6 +2410,62 @@
       "tests": [
         "tests/web/test_word_targets.py::test_word_targets_above_recommendation_round_trip"
       ]
+    },
+    {
+      "id": "IMPORT-NUMBER-S01",
+      "requirement": "IMPORT-NUMBER",
+      "scope": "Точні секції, fallback і ручне збереження номерів.",
+      "tests": [
+        "tests/authoring/test_import_sections.py::test_sections_keep_exact_text_and_unnumbered_subheadings",
+        "tests/authoring/test_import_sections.py::test_manual_plan_number_updates_and_conflict_is_atomic",
+        "tests/web/test_cross_review_imports.py::test_explicit_create_number_is_not_silently_dropped"
+      ]
+    },
+    {
+      "id": "IMPORT-PUBLISH-S01",
+      "requirement": "IMPORT-PUBLISH",
+      "scope": "CAS, atomic rollback і migration active source.",
+      "tests": [
+        "tests/storage/test_import_publication.py::test_cas_and_journal_do_not_replace_active_source",
+        "tests/storage/test_import_publication.py::test_publication_rolls_back_after_first_scene",
+        "tests/storage/test_import_publication.py::test_schema4_backfill_preserves_latest_selector_and_explicit_number"
+      ]
+    },
+    {
+      "id": "IMPORT-ADDITIVE-S01",
+      "requirement": "IMPORT-ADDITIVE",
+      "scope": "Нова серверна поведінка; інтерфейсний етап окремо.",
+      "tests": [
+        "tests/web/test_additive_imports.py::test_mixed_numbered_and_unnumbered_import_preserves_active_plan",
+        "tests/web/test_additive_imports.py::test_characters_add_only_new_names_and_keep_exact_existing_payload",
+        "tests/web/test_additive_imports.py::test_appending_plan_keeps_previous_authored_plan_usable",
+        "tests/web/test_additive_imports.py::test_unnumbered_future_sections_are_not_global_instructions",
+        "tests/web/test_additive_imports.py::test_blueprint_citing_current_cards_publishes_fresh_material",
+        "tests/web/test_additive_imports.py::test_card_version_citations_remain_editable_and_extendable",
+        "tests/integration/test_additive_import_flow.py::test_additive_flow_current_cards_prepare_snapshot_and_backup",
+        "tests/web/test_cross_review_imports.py::test_appended_plan_preserves_current_canon_and_cards_citing_old_plan",
+        "tests/web/test_cross_review_imports.py::test_duplicate_numbered_file_does_not_stale_current_heads",
+        "tests/web/test_cross_review_imports.py::test_empty_cleaned_heading_uses_default_title"
+      ]
+    },
+    {
+      "id": "IMPORT-ADDITIVE-S02",
+      "requirement": "IMPORT-ADDITIVE",
+      "scope": "Нова серверна поведінка; інтерфейсний етап окремо.",
+      "tests": [
+        "tests/web/test_additive_imports.py::test_multipart_reports_partial_without_retry_and_prevalidates_all",
+        "tests/web/test_cross_review_imports.py::test_failed_character_file_never_claims_published_cards",
+        "tests/web/test_cross_review_imports.py::test_first_runtime_conflict_returns_409_per_file_results",
+        "tests/web/test_cross_review_imports.py::test_oversized_uploads_return_413_before_publication"
+      ]
+    },
+    {
+      "id": "WRITING-TARGET-S01",
+      "requirement": "WRITING-TARGET",
+      "scope": "Нова серверна поведінка; інтерфейсний етап окремо.",
+      "tests": [
+        "tests/web/test_writing_target_settings.py::test_writing_target_and_profile_are_atomic_and_noop_preserves_style"
+      ]
     }
   ]
 }

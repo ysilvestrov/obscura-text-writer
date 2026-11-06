@@ -1,5 +1,5 @@
 """Scene metadata derived from author plans within storage transactions."""
-from ..scene_description import parse_scene_description,resolve_participants
+from ..scene_description import parse_scene_description,resolve_participants,explicit_scene_number
 from ..characters.models import load_characters
 from ..domain import Story,Scene,VersionRef
 
@@ -14,6 +14,18 @@ def story_cards(repo,db,story_id):
 def apply_description(repo,db,scene,text,*,include_title=True,cards=None):
     previous=(scene.title,scene.character_ids.copy())
     parsed=parse_scene_description(text)
+    if include_title:
+        creating=not db.execute('SELECT 1 FROM scenes WHERE id=?',(scene.id,)).fetchone()
+        number=explicit_scene_number(text)
+        if creating and scene.author_scene_number is not None:
+            if number is not None and number!=scene.author_scene_number:raise ValueError('Номер сцени суперечить заголовку плану')
+            number=scene.author_scene_number
+        if number is not None and (number!=scene.author_scene_number or creating):
+            for row in db.execute('SELECT payload FROM scenes WHERE story_id=?',(scene.story_id,)):
+                other=Scene.model_validate_json(row[0])
+                if other.id!=scene.id and not other.trashed_at and other.author_scene_number==number:
+                    raise ValueError(f'Номер сцени {number} вже використано')
+        scene.author_scene_number=number
     if include_title and parsed.title:scene.title=parsed.title
     if parsed.participants is not None:
         if cards is None:cards=story_cards(repo,db,scene.story_id)

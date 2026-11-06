@@ -22,7 +22,23 @@ class Database:
             if db.execute("PRAGMA user_version").fetchone()[0] == 3:
                 sql=files("storygen.storage").joinpath("migrations/004_authoring_comments.sql").read_text(encoding="utf-8")
                 db.executescript("BEGIN IMMEDIATE;\n"+sql+"\nPRAGMA user_version=4;\nCOMMIT;")
-            if db.execute("PRAGMA user_version").fetchone()[0] != 4:
+            if db.execute("PRAGMA user_version").fetchone()[0] == 4:
+                sql=files("storygen.storage").joinpath("migrations/005_import_sources.sql").read_text(encoding="utf-8")
+                db.execute('BEGIN IMMEDIATE')
+                # Execute without executescript: payload backfill and schema advance are one transaction.
+                for statement in sql.split(';'):
+                    if statement.strip():db.execute(statement)
+                import json
+                from ..scene_description import explicit_scene_number
+                for row in db.execute('SELECT id,payload FROM scenes').fetchall():
+                    data=json.loads(row['payload'])
+                    if 'author_scene_number' not in data:
+                        data['author_scene_number']=explicit_scene_number(data.get('beats',''))
+                        if data['author_scene_number'] is None:
+                            data['author_scene_number']=explicit_scene_number(data.get('title',''))
+                        db.execute('UPDATE scenes SET payload=? WHERE id=?',(json.dumps(data,ensure_ascii=False),row['id']))
+                db.execute('PRAGMA user_version=5')
+            if db.execute("PRAGMA user_version").fetchone()[0] != 5:
                 raise ValueError("Непідтримувана версія бази даних")
 
     @contextmanager
