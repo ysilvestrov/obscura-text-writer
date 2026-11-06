@@ -400,3 +400,13 @@ pre { white-space: pre-wrap; overflow-wrap: anywhere; font: 14px/1.7 var(--font-
 #review-session h3{margin:1.5rem 0 .75rem}
 #review-session h4{margin:1.25rem 0 .5rem}
 #review-session>.actions{margin:1rem 0}
+
+.source-journal { list-style: none; padding: 0; margin: 12px 0; }
+.source-record { padding-block: 12px; border-top: 1px solid var(--border-color); overflow-wrap: anywhere; }
+.source-record > * { display: block; }
+.source-record time, .source-record small { color: var(--text-secondary); font-size: 13px; }
+.import-results { border-top: 1px solid var(--border-color); padding-top: 16px; margin-top: 16px; overflow-wrap: anywhere; }
+.import-results h3 { font-size: 15px; margin-top: 0; }
+.import-file-result { margin-block: 16px; }
+.import-results p { margin-block: 8px; }
+.import-character-link { display: inline-flex; align-items: center; min-height: 42px; text-decoration: underline; }

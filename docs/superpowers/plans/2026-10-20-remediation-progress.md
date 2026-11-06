@@ -1019,3 +1019,11 @@ R-28k поставлено27.10:1293PASS/1SKIP verification-v4p8q2ak/source_chan
 
 
 Фінальна перевірка дозволеного cross-review: 1365 passed,1 skipped,0 failed/errors; 512.80s; source_changed_during_run=false; artifacts/verification-i1djlcvi/result.json. Таблиця8 findings:6 fixed,2 rejected опублікована в PR#6; джерела, секрети й приватні матеріали поза очищеним allowlist не передавалися рецензенту.
+
+
+## 06.11.2026 — Завершення погодженого UI доповнювального імпорту
+
+За затвердженим UI-планом реалізовано обсяг у «Налаштування → Письмо», Save/Reset/preflight без верхньої межі; журнал назв і локальних дат/часу; per-file partial/error, кількості й дублі; захист pending та збереження scene/material. Незалежний ui_review:2 мережеві findings виправлено RED→GREEN. Повний браузерний набір **94 passed**, desktop/mobile,2.0m, artifacts/ui-browser-suite.log. Шість нейтральних нових screenshots оглянуто: writing target і journal/results desktop/mobile без overflow; жодних приватних матеріалів. UI detector один прогін, inherited Jinja black warnings — false positives. UA/EN інструкції, SPEC/traceability оновлено; check_docs.py пройшов. Фактичний pytest gate — у STATUS через verify.py; зовнішній дозволений cross-review виконується після коміту. Сторонній research-файл не змінено.
+
+
+Фінальний UI gate: verify.py tests/web — **185 passed,0 failed/errors/skipped**, source_changed_during_run=false, artifacts/verification-u3crjc8x/result.json. Browser **94 passed**,2.0m; шість screenshots desktop/mobile візуально підтверджені.

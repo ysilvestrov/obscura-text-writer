@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import {pathToFileURL} from 'node:url';
+globalThis.document={querySelector:()=>null,addEventListener:()=>{}};
+const {importDate,formatImportTime}=await import(pathToFileURL(process.argv[2]+'/src/storygen/web/static/import-journal.js'));
+assert.equal(importDate(null),null);assert.equal(importDate('invalid'),null);assert.equal(importDate('0'),null);
+assert.equal(importDate('2026-11-06T06:07:08+00:00').toISOString(),'2026-11-06T06:07:08.000Z');
+assert.match(formatImportTime('2026-11-06T06:07:08Z','uk','Europe/Warsaw'),/07:07:08/);
+assert.match(formatImportTime('2026-11-06T06:07:08Z','en','Europe/Warsaw'),/GMT\+1/);
+assert.equal(formatImportTime(null,'en','UTC'),null);
+const {api,APIError}=await import(pathToFileURL(process.argv[2]+'/src/storygen/web/static/api.js'));
+const data={files:[{status:'failed'}],partial:false};
+globalThis.fetch=async()=>new Response(JSON.stringify(data),{status:409});
+await assert.rejects(()=>api('/test'),error=>{assert.ok(error instanceof APIError);assert.equal(error.status,409);assert.deepEqual(error.data,data);return true;});
