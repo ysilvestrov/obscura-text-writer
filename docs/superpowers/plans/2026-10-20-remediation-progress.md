@@ -1063,3 +1063,16 @@ Memory wrappers cross-review Claude:5 findings,5 fixed,0 rejected; таблиц�
 
 
 Завершено: [PR](https://github.com/ysilvestrov/obscura-text-writer/pull/8), code398b8b6, branch codex/memory-json-wrappers поверх UI PR#7. Основна тека містить перевірений код; idle-сервер127.0.0.1:8765 перезапущено з тими самими data/env параметрами, HTTP200 і0 active/queued runs після старту. Без нового inference/зміни налаштувань/переписування production partial. Сторонній untracked research-файл збережено; merge не виконувався.
+
+
+## 06.11.2026 — Перші дві найближчі UX задачі
+
+Власник погодив початок найближчих задач. Пакет1 — [select-all](../../specs/changes/rewrite-select-all-2026-11-06.md), code86d81b6: локальне позначення всіх rewrite groups без POST/apply, явний актуальний preview обов’язковий; UA/EN, guards і readonly спільного component збережено. Пакет2 — [згортання](../../specs/changes/collapsible-scene-lists-2026-11-06.md): пряме уточнення обох екранів і60+ сцен, що відсувають імпорт; native details списку з count і sibling importer, disclosure історії reports зі збереженням open при locale/refresh, blockers/checkpoint зовні.
+
+RED select-all2 failures → GREEN2 passed; RED collapse4 failures → combined16 targeted desktop/mobile passed, включно stale subset preview та busy apply. UI detector один прогін: inherited Jinja black color — false positive, нового CSS/palette немає. Візуальний перший пакет виявив screenshot sticky overlay/надто високий sidebar crop; виправлено лише спосіб захоплення, остаточна перевірка й повний browser/web gate тривають. Production дані/налаштування/inference не змінено, сторонній research-файл збережено.
+
+
+Фінальний спільний UI gate:104 Playwright desktop/mobile passed,2.6m (artifacts/near-term-controls-browser-final.log);185 web/API/Node passed через verify.py, source_changed_during_run=false (artifacts/verification-yi06cfb8/result.json). check_docs пройшов,6 нейтральних screenshots оглянуто. Попередній full browser102 passed/2 failures був помилкою тестового EN locator після UA-switch при screenshot; виправлено stable data attr із окремою перевіркою тексту.
+
+
+UI controls cross-review7 findings:6 fixed (tests/docs clarification),1 rejected (privacy-filtered artifact omission). Таблиця у двох UI специфікаціях; посилені16 browser tests passed26.8s, production code незмінний після104 browser/185 web gate. Наступні три найближчі задачі мають окремі підготовлені специфікації тарифів/лімітів і persisted import counts; новий inference не запускався.

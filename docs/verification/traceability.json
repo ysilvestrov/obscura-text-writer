@@ -2513,6 +2513,36 @@
         "tests/memory/test_model_json_wrappers.py::test_unsupported_boundaries_stay_unchanged"
       ],
       "scope": "Модельні обгортки, незмінні внутрішні тексти/partial, строгі schema/evidence/manual перевірки та warning після reload; synthetic gateway, без inference."
+    },
+    {
+      "id": "R23-REVIEW-S03",
+      "requirement": "R23-REVIEW",
+      "scope": "Локальний select-all та поточний preview/apply у Playwright desktop/mobile, без production inference.",
+      "tests": [],
+      "manual": {
+        "procedure": "docs/verification/manual.md#r23-select-all",
+        "reason": "check_docs.py tests IDs індексує pytest; реальні автоматизовані Playwright cases перелічено в процедурі з точними файлами/назвами."
+      }
+    },
+    {
+      "id": "R20-WORKSPACE-SCENES",
+      "requirement": "R20-WORKSPACE",
+      "scope": "DOM disclosure, keyboard, dirty text й scene/material на desktop/mobile.",
+      "tests": [],
+      "manual": {
+        "procedure": "docs/verification/manual.md#collapsible-scenes",
+        "reason": "check_docs.py tests IDs індексує pytest; реальні автоматизовані Playwright cases перелічено в процедурі з точними файлами/назвами."
+      }
+    },
+    {
+      "id": "IMPACT-UI-HISTORY",
+      "requirement": "IMPACT-UI",
+      "scope": "tests/web/browser/collapsible-scenes.spec.mjs: latest scene reports collapse and retain state across language and refresh — current/history reports, blockers, порожня історія, keyboard, locale/refresh; не перевірка dirty буфера.",
+      "tests": [],
+      "manual": {
+        "procedure": "docs/verification/manual.md#collapsible-scenes",
+        "reason": "check_docs.py tests IDs індексує pytest; реальні автоматизовані Playwright cases перелічено в процедурі з точними файлами/назвами."
+      }
     }
   ]
 }
