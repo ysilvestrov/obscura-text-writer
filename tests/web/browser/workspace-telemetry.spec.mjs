@@ -4,14 +4,26 @@ test('draft displays editor and planned calls before starting',async({page,reque
   const fixture=await(await request.post('/test-editor-no-changes')).json();
   await page.goto(`/stories/${fixture.story_id}?scene=${fixture.scene_id}&material=draft`);
   const telemetry=page.locator('#workspace-telemetry');
-  await expect(telemetry).toContainText('synthetic-no-changes');
-  await expect(telemetry).toContainText('5');
+  await expect(telemetry).toHaveText(/^(local \/ synthetic-no-changes · up to 5 calls|local \/ synthetic-no-changes · до 5 викл\.)$/);
   await expect(telemetry).not.toContainText('⚠');
+  await page.locator('[data-ui-locale="uk"]').click();await expect(telemetry).toHaveText('local / synthetic-no-changes · до 5 викл.');
+  await page.locator('[data-ui-locale="en"]').click();await expect(telemetry).toHaveText('local / synthetic-no-changes · up to 5 calls');
+  await page.locator('#edit-pass-limit').evaluate(el=>{el.value='3';el.dispatchEvent(new Event('input',{bubbles:true}))});
+  await expect(telemetry).toHaveText('local / synthetic-no-changes · up to 3 calls');
   await page.locator('#workspace-primary').focus();
   await expect(page.locator('#workspace-telemetry-details')).toBeVisible();
   await page.screenshot({path:testInfo.outputPath('telemetry.png')});
   await page.locator('[data-mode="memory"]').click();
   await expect(telemetry).toBeHidden();
+});
+
+test('legacy run with no saved plan is explicitly unknown',async({page,request})=>{
+  const fixture=await(await request.post('/test-editor-no-changes')).json();
+  const response=await request.post('/api/runs',{data:{request_id:crypto.randomUUID(),request:{story_id:fixture.story_id,scene_id:fixture.scene_id,mode:'edit_loop'}}});
+  const id=(await response.json()).id;
+  await page.route(`**/api/runs/${id}`,async route=>{const response=await route.fetch(),data=await response.json();data.run.planned_telemetry=null;await route.fulfill({response,json:data})});
+  await page.goto(`/stories/${fixture.story_id}?scene=${fixture.scene_id}&material=draft`);
+  await expect(page.locator('#run-status')).toContainText(/невідомо|unknown/i);
 });
 
 test('sidebar retains the planned model after reload',async({page,request})=>{
@@ -33,3 +45,16 @@ test('keyboard can open telemetry when the primary action is disabled',async({pa
   await page.locator('#workspace-telemetry').focus();
   await expect(page.locator('#workspace-telemetry-details')).toBeVisible();
 });
+
+for(const [mode,stage,role] of [['plan','brief','planner'],['brief','draft','writer'],['draft','edit_loop','editor'],['prose','memory','memory']]){
+  test(`${mode} shows its model and warning before a single-click start`,async({page,request})=>{
+    const fixture=await(await request.post('/test-editor-no-changes')).json();let calls=0,dialogs=0;
+    await page.route('**/api/stories/*/readiness*',async route=>{const response=await route.fetch(),data=await response.json();data.operations[stage]={...data.operations[stage],ready:true,roles:{[role]:{provider:'local',model:`synthetic-${role}`}},calls:1,warnings:['Synthetic warning']};await route.fulfill({response,json:data})});
+    await page.route('**/api/runs',async route=>{if(route.request().method()!=='POST')return route.continue();calls++;await route.fulfill({status:400,json:{detail:'Synthetic stop'}})});
+    page.on('dialog',async dialog=>{dialogs++;await dialog.dismiss()});
+    await page.goto(`/stories/${fixture.story_id}?scene=${fixture.scene_id}&material=${mode}`);
+    const telemetry=page.locator('#workspace-telemetry');await expect(telemetry).toContainText(`synthetic-${role}`);await expect(telemetry).toContainText('⚠');
+    await telemetry.focus();await expect(page.locator('#workspace-telemetry-details')).toContainText('Synthetic warning');
+    await expect(page.locator('#workspace-primary')).toBeEnabled();await page.locator('#workspace-primary').click();await expect.poll(()=>calls).toBe(1);expect(dialogs).toBe(0);
+  });
+}

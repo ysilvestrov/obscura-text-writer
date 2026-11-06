@@ -166,6 +166,8 @@ class RunCoordinator:
                 if not readiness['ready']:
                     raise ValueError(readiness['reason'])
             telemetry={'roles':readiness.get('roles',{}),'calls':readiness.get('calls')} if readiness is not None else None
+            if telemetry is not None and readiness.get('evaluator'):
+                telemetry['evaluator']=readiness['evaluator']
             candidate=Run(id=new_id(),story_id=request.story_id,request_id=request_id,request=request,tasks=tasks,impact=impact_data,planned_telemetry=telemetry)
             run,created=self.repo.enqueue_run(candidate)
             if created:

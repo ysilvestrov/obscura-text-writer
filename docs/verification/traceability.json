@@ -2681,8 +2681,10 @@
     {
       "id": "WORKSPACE-TELEMETRY-S01",
       "requirement": "WORKSPACE-TELEMETRY",
-      "scope": "Попередня модельна телеметрія та запуск без загального підтвердження.",
-      "tests": [],
+      "scope": "Телеметрія, чотири модельні режими та окрема згода на пам’ять; browser сценарії названо в процедурі.",
+      "tests": [
+        "tests/web/test_editor_loop_ui.py::test_memory_author_consent_decline_and_request_binding"
+      ],
       "manual": {
         "procedure": "docs/verification/manual.md#workspace-one-click",
         "reason": "Сценарій інтеграції браузера з синтетичним сервером перевіряється окремим Playwright runner."
@@ -2691,7 +2693,7 @@
     {
       "id": "WORKSPACE-TELEMETRY-S02",
       "requirement": "WORKSPACE-TELEMETRY",
-      "scope": "Зупинка при затриманій або втраченій відповіді enqueue.",
+      "scope": "Гонки зупинки, невизначений POST і відновлення; конкретні browser сценарії названо в процедурі.",
       "tests": [],
       "manual": {
         "procedure": "docs/verification/manual.md#workspace-one-click",
