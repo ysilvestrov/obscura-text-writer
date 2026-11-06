@@ -60,6 +60,8 @@ def diagnostic(text,locale='uk'):
         return text
     http=re.fullmatch(r'HTTP (\d{3}): ([\s\S]+) Автоматичного повтору немає\.',text) if len(text)<=6000 else None
     if http:return translate('generation.http_failure',locale,p0=http[1],p1=diagnostic(http[2],locale))
+    retry=re.fullmatch(r'([\s\S]+) Автоматичного повтору немає\.',text) if len(text)<=6000 else None
+    if retry:return translate('generation.no_retry',locale,p0=diagnostic(retry[1],locale))
     exact,patterns=_diagnostic_catalog()
     if text in exact:
         return translate(exact[text],locale)

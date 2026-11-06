@@ -11,7 +11,7 @@ class PlannerProtocolError(ValueError):pass
 def parse_planner_output(text,stage,warnings):
     content=unwrap_model_json(text.strip())
     if content!=text.strip():
-        warnings.append('Знято одну зовнішню Markdown-обгортку JSON планувальника; оригінальну відповідь збережено без змін.')
+        warnings.append('Знято одну зовнішню обгортку JSON планувальника; оригінальну відповідь збережено без змін.')
     def pairs(items):
         result={}
         for key,value in items:

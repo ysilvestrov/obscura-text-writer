@@ -109,3 +109,15 @@ def test_partial_api_reply_preserves_text_usage_and_error(sample_case, tmp_path)
     assert result.metadata["usage"]["total_tokens"] == 30
     assert (tmp_path/result.metadata["run_id"]/"raw_response.txt").read_text(encoding="utf-8") == "Незавершений звіт..."
     assert len(calls) == 1
+
+
+def test_evaluator_fingerprint_requires_protocol3(monkeypatch):
+    import storygen.evaluation.runner as runner
+    original=runner.digest;captured={}
+    def capture(identity):
+        captured.update(identity)
+        return original(identity)
+    monkeypatch.setattr(runner,'digest',capture)
+    current=runner.evaluator_fingerprint(config(),load_rubric())
+    assert captured['protocol_version']==3
+    assert current!=original({**captured,'protocol_version':2})

@@ -3366,7 +3366,7 @@ POST /api/providers/discover SHALL повертати ModelOption з nullable co
 
 Role forms і shared connection widget SHALL показувати ставку/одиниці/caps у списку та під Model ID після явного завантаження моделей. До цього, для довільного ID, Local/Codex без ціни — явна невідомість. UI identity — exact model ID/provider/baseURL; source від іншого provider/URL чи stale async response не підписує іншу модель. Select/reset/UA/EN не переписують token limits або авторські поля; тариф не є гарантією фактичної ціни майбутнього виклику.
 
-Venice gateway SHALL перевіряти known context/output caps каталогу перед accounting/send, зберігаючи online/uncensored/schema policy. OpenRouter перевіряє known context_length/top_provider.max_completion_tokens; відсутній ID/окремий cap у успішному каталозі лишається unknown, без заяви про перевіреність; HTTP/transport failure cloud каталогу завершує спробу до completion POST із safe причиною. Для local нестандартний catalog не стає новою обов’язковою умовою генерації. Порівнюються frozen context_tokens і фактичний max_completion_tokens/max_tokens body; перевищення повертає configuration без POST, без прихованого зменшення/зміни налаштувань чи retry. Серверне вікно входу додатково захищено чинними context/token guards.
+Venice gateway SHALL перевіряти known context/output caps каталогу перед accounting/send, зберігаючи online/uncensored/schema policy. OpenRouter перевіряє known context_length/top_provider.max_completion_tokens; відсутній ID/окремий cap у успішному каталозі лишається unknown, без заяви про перевіреність; HTTP/transport failure cloud каталогу завершує спробу до completion POST із safe причиною. Для local нестандартний catalog не стає новою обов’язковою умовою генерації. До context cap порівнюється сума оцінки frozen input_tokens за фактичним body та вихідного резерву max_completion_tokens/max_tokens; configured context_tokens є верхньою межею ролі, а не обсягом запиту. Сам по собі завеликий configured window не блокує запит, який вміщується в cap моделі; output cap перевіряється окремо; перевищення повертає configuration без POST, без прихованого зменшення/зміни налаштувань чи retry. Серверне вікно входу додатково захищено чинними context/token guards.
 
 #### Scenario: MODEL-METADATA-S01 — Одиниці й авторитет тарифу
 GIVEN каталог або cached official/manual тариф моделі
@@ -3374,7 +3374,7 @@ WHEN автор отримує список моделей
 THEN API SHALL повертати точні USD/1M і request rate з source/часом; чинний cache та expired manual мають визначений пріоритет, malformed/missing ставки і caps лишаються unknown без0/unlimited.
 
 #### Scenario: MODEL-METADATA-S02 — Відмова до POST за known caps
-GIVEN frozen body/context перевищує відомий cap Venice або OpenRouter
+GIVEN сума оцінки frozen input і резерву відповіді або сам вихідний резерв перевищує відомий cap Venice або OpenRouter
 WHEN готується cloud generation
 THEN SHALL повернути safe configuration із допустимим лімітом без POST, без зміни body/settings; успішний каталог без окремих caps зберігає unknown; відмова cloud каталогу не запускає completion, budget guard перед POST лишається чинним.
 
@@ -3383,10 +3383,21 @@ GIVEN завантажений каталог у role/shared connection form
 WHEN автор обирає модель, змінює provider/URL або UA/EN
 THEN ставка/caps SHALL відповідати exact identity, unknown/expired позначено, stale async response не приписує ціну іншій моделі; ліміти/dirty значення не змінюються.
 
+
+
+#### Scenario: MODEL-METADATA-S04 — Задане вікно не є обсягом запиту
+- GIVEN configured context262144, model context cap256000, оцінка входу101778 і резерв8192
+- WHEN виконується preflight
+- THEN SHALL дозволити completion POST без зміни body/settings, бо109970 вкладається в cap
+- AND сума на самій межі дозволена, справжнє перевищення відхиляється; відсутні caps у успішному каталозі лишаються unknown, Venice availability guard незмінний.
+
+
 <a id="generation-diagnostics"></a>
 ### Requirement: GENERATION-DIAGNOSTICS — Безпечна причина провайдерської відмови
 
 Усі етапи OpenAIGenerationGateway SHALL повертати safe failure category/HTTP status/provider code/type/очищене повідомлення через чинний api_failure. Headers, raw SDK exception/body, ключі та відлуння документів не серіалізуються. Missing key має code-owned configuration, timeout/connection/authentication/quota/rate limit/refusal різні; немає автоматичного retry/fallback. Structured error зберігається в attempt.context.generation_failure; чинні classify/publication/rewrite поля/семантики збережені. UA/EN HTTP wrapper локалізує відому вкладену application reason на сервері й клієнті, довільний provider text лишається оригінальним. Успіх без error не підміняється діагностикою.
+
+В GENERATION-DIAGNOSTICS невідомий exception, що не є APIError, SHALL мати нейтральну generation category technical без твердження про доведену відмову провайдера та без raw exception text. Відомі application reasons із no-retry suffix SHALL локалізуватися UA/EN також без HTTP-коду.
 
 #### Scenario: GENERATION-DIAGNOSTICS-S01 — HTTP і транспорт на різних етапах
 GIVEN HTTP429/400/401 або transport timeout/connection

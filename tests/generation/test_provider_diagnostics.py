@@ -24,4 +24,5 @@ def test_memory_provider_failure_is_durable_and_never_publishes(tmp_path):
     assert attempt.context['generation_failure']['http_status']==401
     assert attempt.error.startswith('HTTP 401:')
     assert 'memory' not in repo.get_scene(scene.id).heads
+    assert repo.get_scene(scene.id).heads['prose']==prose.id
     assert Repository(tmp_path).get_attempt(attempt.id).context['generation_failure']==attempt.context['generation_failure']

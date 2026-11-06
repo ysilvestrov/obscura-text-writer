@@ -22,3 +22,6 @@ Under Settings → Models, Get the model list and choose the exact Model ID. The
 
 
 Structured model responses, including checks, may have one paired outer JSON wrapper using backticks or apostrophes. The app removes that wrapper before validation, preserving apostrophes within text and the original raw response. Manual JSON stays strict. Surrounding explanations, incomplete blocks and invalid evidence remain errors; retry explicitly. The changed evaluator protocol requires renewed calibration before automatic qualification.
+
+
+Model capacity checks compare the estimated actual input plus the response reserve. The configured context window is a role ceiling, not the length of every request; setting a larger ceiling does not mean that many tokens are sent.

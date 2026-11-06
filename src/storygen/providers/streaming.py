@@ -76,13 +76,15 @@ class OpenAIGenerationGateway:
             require_accounting(self.settings,self.accounting)
             with build_openai_client(self.settings,self.http_client) as client:
                 body=context.api_request or generation_request(context.stage,context.settings,context.system_text,context.user_text,context.fragments)
+                output_limit=body.get('max_completion_tokens',body.get('max_tokens'))
+                request_context=context.estimated_tokens+(output_limit if type(output_limit) is int and output_limit>0 else context.settings.max_output_tokens)
                 if self.settings.provider=='venice':
-                    validate_model(client,self.settings.model,'response_format' in body,context_tokens=context.settings.context_tokens,max_output_tokens=body.get('max_completion_tokens',body.get('max_tokens')))
+                    validate_model(client,self.settings.model,'response_format' in body,context_tokens=request_context,max_output_tokens=output_limit)
                 elif self.settings.provider=='openrouter':
                     row=next((m.model_dump() for m in client.models.list() if m.id==self.settings.model),None)
                     if row:
                         top=row.get('top_provider');top=top if isinstance(top,dict) else {}
-                        validate_limits(row.get('context_length'),top.get('max_completion_tokens'),context.settings.context_tokens,body.get('max_completion_tokens',body.get('max_tokens')))
+                        validate_limits(row.get('context_length'),top.get('max_completion_tokens'),request_context,output_limit)
                 if cancel.is_set():
                     yield GenerationEvent(type='cancelled',usage=usage)
                     return
@@ -136,7 +138,9 @@ class OpenAIGenerationGateway:
             if not cancel.is_set():
                 import os
                 from ..evaluation.failures import api_failure
-                detail=api_failure(exc,secret=os.environ.get(self.settings.key_env or ''),documents=(context.system_text,context.user_text)).model_dump(mode='json')
+                from openai import APIError
+                detail=(api_failure(exc,secret=os.environ.get(self.settings.key_env or ''),documents=(context.system_text,context.user_text)).model_dump(mode='json')
+                    if isinstance(exc,APIError) else {'category':'technical','http_status':None,'message':'Не вдалося завершити запит; точну причину не встановлено.'})
                 role={'classify':'класифікатора','publication_suggest':'планувальника'}.get(context.stage,'провайдера')
                 detail['message']=detail['message'].replace('оцінювача',role).replace('оцінювачем',{'classify':'класифікатором','publication_suggest':'планувальником'}.get(context.stage,'провайдером')).replace('Оцінювач',{'publication_suggest':'Планувальник','classify':'Класифікатор'}.get(context.stage,'Провайдер'))
                 status=detail.get('http_status')

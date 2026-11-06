@@ -15,7 +15,7 @@ def parse_editor_output(text,warnings=None):
     warnings=warnings if warnings is not None else []
     content=unwrap_model_json(text.strip())
     if content!=text.strip():
-        warnings.append('Знято одну зовнішню Markdown-обгортку JSON редактора; оригінальну відповідь збережено без змін.')
+        warnings.append('Знято одну зовнішню обгортку JSON редактора; оригінальну відповідь збережено без змін.')
     def pairs(items):
         result={}
         for key,value in items:

@@ -3,7 +3,7 @@ import sqlite3
 
 import pytest
 
-from storygen.authoring.imports import SourceFile, import_sources
+from storygen.authoring.imports import SourceFile, import_sources, ImportBatchFailure, ImportBatchConflict
 from storygen.domain import StoryCreate
 from storygen.storage.repository import Repository
 
@@ -45,9 +45,26 @@ def test_counter_metadata_is_derived_atomically_and_legacy_stays_unknown(tmp_pat
 
 def test_failed_publication_never_leaves_counts_or_source_record(tmp_path, monkeypatch):
     repo = Repository(tmp_path); story = repo.create_story(StoryCreate(title='Synthetic'))
-    def fail(*_): raise sqlite3.OperationalError('Synthetic rollback')
+    calls=[]
+    def fail(*_):
+        calls.append('touch')
+        raise sqlite3.OperationalError('Synthetic rollback')
     monkeypatch.setattr(repo, '_touch_story', fail)
-    with pytest.raises(ValueError):
+    with pytest.raises(ImportBatchFailure,match="Імпорт не застосовано"):
         upload(repo, story.id, 'Сцена 1: День\nПодія.', 'source_plan')
+    assert calls==['touch']
     assert repo.list_source_files(story.id) == []
     assert repo.list_scenes(story.id) == []
+
+
+def test_stale_revision_never_publishes_source_or_counts(tmp_path,monkeypatch):
+    repo=Repository(tmp_path);story=repo.create_story(StoryCreate(title='Synthetic'))
+    original=repo.publish_import
+    def stale(story_id,revision,publication):
+        return original(story_id,revision-1,publication)
+    monkeypatch.setattr(repo,'publish_import',stale)
+    with pytest.raises(ImportBatchConflict,match='Матеріали вже змінено'):
+        upload(repo,story.id,'Сцена 1: День\nПодія.','source_plan')
+    assert repo.list_source_files(story.id)==[]
+    assert repo.list_scenes(story.id)==[]
+    assert repo.get_story(story.id).characters_version_id is None

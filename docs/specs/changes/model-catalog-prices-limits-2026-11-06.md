@@ -22,3 +22,29 @@ GET каталогу через чинний явний «Отримати мо�
 
 
 Фінальний спільний gate model/import metadata та global MODEL-JSON: **1244 passed,1 skipped,0 failures/errors**, source_changed_during_run=false, artifacts/verification-smi5njs9/result.json. check_docs.py пройшов. Раніше UI110 browser passed2.7m,8 додаткових metadata/counts/shared passed,6 фінальних pricing/accessibility passed; фінальні screenshots перевірено візуально, detector[]. Без реального inference або зміни production матеріалів.
+
+
+Уточнення06.11 після фактичного запуску: configured context_tokens — верхня межа, а не довжина запиту. До provider context cap порівнюється estimated input_tokens за зафіксованим body + фактичний max_completion_tokens/max_tokens (резерв відповіді); role window не підміняє цей обсяг. Вихідний cap перевіряється окремо. Налаштування/тіло не переписуються. Помилка пояснює перевищення суми оцінки входу й резерву; оцінка може бути conservative UTF-8, не точний tokenizer. Регресія синтетична: input101778 + output8192 при configured262144 і model256000 SHALL пройти до POST; на самій межі256000 також; справжнє перевищення SHALL зупинити POST. Приватні матеріали не копіюються.
+
+Cross-review corrections: no-retry suffix локалізується рекурсивно й без HTTP; невідомий non-API exception має нейтральний generation category technical без довільного exception text; warning зовнішньої обгортки не називає апострофи Markdown.
+
+
+Cross-review: claude/default @ 3e8cec8 (author: codex) — 10 findings: 10 fixed, 0 rejected
+
+Рецензент читав очищений commit3e8cec8, який відповідає codef1a35b9; package0.5.0/81 files integrity підтверджено,629→643 allowlisted files,0 credential matches. Оригінальні .git/config/env/user data/research/raw responses виключено.
+
+| № | Рішення | Перевірена зміна |
+|---|---|---|
+| 1 | fixed | No-retry wrapper рекурсивно локалізується на сервері/JS і без HTTP; timeout/connection UA↔EN tests. |
+| 2 | fixed | Non-API exception має нейтральний technical без raw exception; окрема регресія. |
+| 3 | fixed | Точні незалежні очікування для output/context cap. |
+| 4 | fixed | HTTP400/401/429 ×12 stages ×3 providers; точний текст і рівно один completion POST. |
+| 5 | fixed | Missing caps, точна межа та завелике configured window з fitting request; окремо відсутній OpenRouter alias. Venice missing ID далі блокується чинною uncensored policy. |
+| 6 | fixed | Прямий fingerprint тест protocol3 й відмінність від protocol2, додано до traceability. |
+| 7 | fixed | Усі raw proof bytes порівнюються з точними captured outputs; replay/backup/tamper перевіряються для кожної обгортки. |
+| 8 | fixed | Точний ImportBatchFailure із підтвердженням виклику injected failure; окремий stale revision ImportBatchConflict без sources/scenes/counts. |
+| 9 | fixed | Перевірено незмінний prose head; окремий configured-secret scrub без Bearer/echo та точний echo diagnostic. |
+| 10 | fixed | Warning називає зовнішню JSON-обгортку без неточного Markdown; UA/EN і збережений historical словник. |
+
+
+Фінальний post-review gate: **541 passed,0 failed/errors/skipped**, source_changed_during_run=false, artifacts/verification-qxf5vqkl/result.json. Покрито provider/billing, усі web/API/Node, evaluator, planner/editor/JSON, durable failure, counts/CAS, exact raw proof/replay/backup. Попередній широкий набір1244passed/1skipped збережено окремо. Production code після цього gate не змінюється. check_docs.py перевіряється перед фінальним комітом.

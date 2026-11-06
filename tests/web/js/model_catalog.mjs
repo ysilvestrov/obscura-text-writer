@@ -13,5 +13,8 @@ assert.match(modelMetadataLabel(model),/1,000,000/);
 assert.equal(diagnostic('HTTP 429: Перевищено ліміт частоти запитів провайдера. Автоматичного повтору немає.'),'HTTP 429: Provider request rate limit exceeded. No automatic retry.');
 assert.match(diagnostic('Контекст 262144 перевищує ліміт вибраної моделі 200000 токенів. Змініть налаштування; автоматичного повтору немає.'),/Context 262144 exceeds/);
 
+assert.equal(diagnostic('Перевищено час очікування відповіді провайдера. Автоматичного повтору немає.'),'Provider response timed out. No automatic retry.');
+assert.equal(diagnostic('Не вдалося встановити з’єднання з провайдером. Автоматичного повтору немає.'),'Could not connect to the provider. No automatic retry.');
 setLocale('uk');
+assert.equal(diagnostic('Provider response timed out. No automatic retry.'),'Перевищено час очікування відповіді провайдера. Автоматичного повтору немає.');
 assert.equal(diagnostic('HTTP 429: Provider request rate limit exceeded. No automatic retry.'),'HTTP 429: Перевищено ліміт частоти запитів провайдера. Автоматичного повтору немає.');

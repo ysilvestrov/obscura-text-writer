@@ -2594,7 +2594,9 @@
       "scope": "Точні synthetic/MockTransport server contracts; жодного production inference.",
       "tests": [
         "tests/generation/test_provider_diagnostics.py::test_memory_provider_failure_is_durable_and_never_publishes",
-        "tests/web/test_model_catalog.py::test_server_translates_nested_http_reason"
+        "tests/web/test_model_catalog.py::test_server_translates_nested_http_reason",
+        "tests/web/test_model_catalog.py::test_server_translates_non_http_retry_reason",
+        "tests/providers/test_generation_diagnostics.py::test_unexpected_internal_failure_is_neutral_and_never_echoed"
       ]
     },
     {
@@ -2616,7 +2618,8 @@
       "scope": "Точні synthetic/MockTransport server contracts; жодного production inference.",
       "tests": [
         "tests/storage/test_import_counts.py::test_failed_publication_never_leaves_counts_or_source_record",
-        "tests/storage/test_import_counts.py::test_counter_metadata_is_derived_atomically_and_legacy_stays_unknown"
+        "tests/storage/test_import_counts.py::test_counter_metadata_is_derived_atomically_and_legacy_stays_unknown",
+        "tests/storage/test_import_counts.py::test_stale_revision_never_publishes_source_or_counts"
       ],
       "manual": {
         "procedure": "docs/verification/manual.md#model-import-metadata",
@@ -2646,7 +2649,17 @@
       "requirement": "MODEL-JSON",
       "scope": "Модельна обгортка JSON; строгість, збереження оригіналу та повторна валідація.",
       "tests": [
-        "tests/evaluation/test_runner.py::test_wrapped_evaluator_preserves_raw_and_existing_scoring"
+        "tests/evaluation/test_runner.py::test_wrapped_evaluator_preserves_raw_and_existing_scoring",
+        "tests/evaluation/test_runner.py::test_evaluator_fingerprint_requires_protocol3"
+      ]
+    },
+    {
+      "id": "MODEL-METADATA-S04",
+      "requirement": "MODEL-METADATA",
+      "scope": "Фактична оцінка входу плюс вихідний резерв; configured window не є довжиною запиту.",
+      "tests": [
+        "tests/providers/test_generation_diagnostics.py::test_successful_catalog_allows_unknown_or_fitting_actual_request",
+        "tests/providers/test_generation_diagnostics.py::test_known_limits_block_before_completion_post"
       ]
     }
   ]

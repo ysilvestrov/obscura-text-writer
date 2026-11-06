@@ -1089,3 +1089,15 @@ Import counts — source_files JSON без SQL migration, computed actual scene 
 
 
 Фінальний спільний gate model/import metadata та global MODEL-JSON: **1244 passed,1 skipped,0 failures/errors**, source_changed_during_run=false, artifacts/verification-smi5njs9/result.json. check_docs.py пройшов. Раніше UI110 browser passed2.7m,8 додаткових metadata/counts/shared passed,6 фінальних pricing/accessibility passed; фінальні screenshots перевірено візуально, detector[]. Без реального inference або зміни production матеріалів.
+
+
+## Global JSON і уточнення фактичного контексту06.11
+
+Cross-review: claude/default @ 3e8cec8 (author: codex) — 10 findings: 10 fixed, 0 rejected
+Таблиця рішень — у трьох специфікаціях change. Broad gate1244passed/1skipped перед review. Після review виправлено локалізацію suffix, neutral technical, точність warnings та посилено тести. Новий запит власника підтвердив дефект preflight: configured window помилково порівнювався як обсяг. Виправлено на estimated input + actual output reserve; settings/body незмінні. Новий synthetic RED6 failures/2 pass → GREEN30; подальше посилення tests149passed/3 harness failures через включення memory output у review-only expected; виправлено stage filter, exact raw comparison3passed. Повторна цільова перевірка виконується через verify.py. Production дані не копіюються в tests/review; нових paid calls немає.
+
+
+Post-review verify2rrqjwi1:540passed/1failure — старий worker warning test шукав слово Markdown, яке навмисно прибрано за finding10. Виправлено точні warning/event assertions; production code додатково не змінено. Остаточний цільовий gate повторюється.
+
+
+Фінальний post-review gate: **541 passed,0 failed/errors/skipped**, source_changed_during_run=false, artifacts/verification-qxf5vqkl/result.json. Покрито provider/billing, усі web/API/Node, evaluator, planner/editor/JSON, durable failure, counts/CAS, exact raw proof/replay/backup. Попередній широкий набір1244passed/1skipped збережено окремо. Production code після цього gate не змінюється. check_docs.py перевіряється перед фінальним комітом.
