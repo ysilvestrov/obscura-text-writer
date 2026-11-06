@@ -13,6 +13,7 @@ def test_writing_target_and_profile_are_atomic_and_noop_preserves_style(tmp_path
         assert response.status_code==200,response.text
         saved=response.json()
         assert saved['target_words']==25000 and saved['style_version_id'] is None
+        assert len([v for v in app.state.repo.context_view(id).versions.values() if v.kind=='style'])==0
         assert app.state.repo.get_scene(scene['id']).target_words==1000
         profile={**loaded['profile'],'tone':'Спокійний'}
         conflict=client.put(url,json={'expected_revision':loaded['story']['revision'],'profile':profile,'target_words':30000})
@@ -25,7 +26,8 @@ def test_writing_target_and_profile_are_atomic_and_noop_preserves_style(tmp_path
         again=client.put(url,json={'expected_revision':changed.json()['revision'],'profile':profile})
         assert again.status_code==200 and again.json()['style_version_id']==old_head
         assert again.json()['target_words']==30000
+        assert len([v for v in app.state.repo.context_view(id).versions.values() if v.kind=='style'])==1
         bad=client.put(url,json={'expected_revision':again.json()['revision'],'role':'writer','target_words':20000})
         assert bad.status_code==400
         shared=client.put(url+'/shared-provider',json={'expected_revision':again.json()['revision'],'provider':{'model':'x'},'target_words':20000})
-        assert shared.status_code in {400,422}
+        assert shared.status_code==400

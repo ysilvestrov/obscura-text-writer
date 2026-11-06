@@ -9,3 +9,5 @@ This core release provides APIs; the Writing form field and dated import-log UI 
 Multipart results contain files with imported, failed or not_processed status. A partial success returns200 and partial=true. Do not retry the whole batch automatically; unnumbered scenes would be added again. Initial format/UTF-8 validation rejects the whole batch before publication; a runtime failure stops subsequent files.
 
 Database schema5 preserves previous active sources and exact original bytes. Make a cold backup before upgrade; downgrading requires a matching older data backup.
+
+A failed file reports no created/skipped material or success warnings. Appending a plan preserves current canon and cards citing the previous immutable plan. Scene creation accepts an explicit author_scene_number and rejects a conflicting numbered heading. A heading that cleans down to markup only receives a default title instead of failing the import.

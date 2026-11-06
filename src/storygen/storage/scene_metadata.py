@@ -15,8 +15,12 @@ def apply_description(repo,db,scene,text,*,include_title=True,cards=None):
     previous=(scene.title,scene.character_ids.copy())
     parsed=parse_scene_description(text)
     if include_title:
+        creating=not db.execute('SELECT 1 FROM scenes WHERE id=?',(scene.id,)).fetchone()
         number=explicit_scene_number(text)
-        if number is not None and (number!=scene.author_scene_number or not db.execute('SELECT 1 FROM scenes WHERE id=?',(scene.id,)).fetchone()):
+        if creating and scene.author_scene_number is not None:
+            if number is not None and number!=scene.author_scene_number:raise ValueError('Номер сцени суперечить заголовку плану')
+            number=scene.author_scene_number
+        if number is not None and (number!=scene.author_scene_number or creating):
             for row in db.execute('SELECT payload FROM scenes WHERE story_id=?',(scene.story_id,)):
                 other=Scene.model_validate_json(row[0])
                 if other.id!=scene.id and not other.trashed_at and other.author_scene_number==number:

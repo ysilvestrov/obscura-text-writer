@@ -32,7 +32,7 @@ def split_plan(text):
     sections=[]
     for index,(start,content,heading,number) in enumerate(boundaries):
         title=SCENE_HEADING.fullmatch(content)
-        title=clean_title(title[1] if title else heading[2])
+        title=clean_title(title[1] if title else heading[2]) or f"Сцена {index+1}"
         end=boundaries[index+1][0] if index+1<len(boundaries) else len(text)
         sections.append(PlanSection(title,text[start:end],number))
     return text[:boundaries[0][0]],sections

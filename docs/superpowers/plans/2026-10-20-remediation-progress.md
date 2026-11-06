@@ -1013,3 +1013,9 @@ R-28k поставлено27.10:1293PASS/1SKIP verification-v4p8q2ak/source_chan
 
 
 Фінальний gate ядра06.11.2026: **1356 passed,1 skipped,0 failed/errors**,451.21s, source_changed_during_run=false, artifacts/verification-1bwf62t1/result.json. Незалежне рев’ю завершено, усі суттєві findings виправлені RED→GREEN. [UI-план](2026-11/2026-11-06-additive-imports-ui.md) підготовлено після фактичного ядра; поле «Письмо» й датований журнал ще не реалізовані.
+
+
+06.11.2026: виконано дозволений власником detent0.5.0 cross-review очищеного знімка ядра через Claude.8 findings:6 fixed,2 rejected з локальними доказами; Резервне рев’ю Google/agy не запускалося (тільки локальні help/version). Таблиця рішень і межі матеріалів — у [плані ядра](2026-11/2026-11-05-additive-imports-core.md#дозволений-cross-review06112026). Збережено приватнісні виключення, регресії відтворено RED→GREEN.
+
+
+Фінальна перевірка дозволеного cross-review: 1365 passed,1 skipped,0 failed/errors; 512.80s; source_changed_during_run=false; artifacts/verification-i1djlcvi/result.json. Таблиця8 findings:6 fixed,2 rejected опублікована в PR#6; джерела, секрети й приватні матеріали поза очищеним allowlist не передавалися рецензенту.

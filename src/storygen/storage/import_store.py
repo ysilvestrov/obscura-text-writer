@@ -46,7 +46,8 @@ def publish_import(repo,story_id,expected_revision,publication):
         authored_plans={scene.heads.get('plan') for scene in [Scene.model_validate_json(r[0]) for r in db.execute('SELECT payload FROM scenes WHERE story_id=?',(story_id,))]}
         for kind,id,previous in changes:
             db.execute('INSERT INTO active_sources VALUES(?,?,?) ON CONFLICT(story_id,kind) DO UPDATE SET version_id=excluded.version_id',(story_id,kind,id))
-            if previous:invalidate_in_transaction(repo,db,[previous],exclude=protected,preserve=authored_plans)
+            preserved=authored_plans|{story.canon_version_id,story.characters_version_id} if kind=='source_plan' else authored_plans
+            if previous:invalidate_in_transaction(repo,db,[previous],exclude=protected,preserve=preserved)
         if cards:
             previous=story.characters_version_id
             story.characters_version_id=cards

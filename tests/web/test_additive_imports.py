@@ -24,7 +24,7 @@ def test_mixed_numbered_and_unnumbered_import_preserves_active_plan(tmp_path):
     assert [s.author_scene_number for s in scenes]==[2,3,None]
     assert [s.target_words for s in scenes][1:]==[1000,1000]
     text=repo.read_text(repo.active_source(story.id,'source_plan').id)
-    assert text.startswith('Вступ') and 'Не замінювати' not in text and 'Новий опис' in text
+    assert text=='Вступ\n## Сцена 2. Зустріч\nСтарий опис\n\n## Сцена 3: Зустріч\nНовий опис\n## Інтерлюдія\nТиша'
     active=repo.active_source(story.id,'source_plan').id
     upload(repo,story.id,'Сцена 2: Інакша\nІнший текст')
     assert repo.active_source(story.id,'source_plan').id==active
@@ -65,7 +65,16 @@ def test_multipart_reports_partial_without_retry_and_prevalidates_all(tmp_path,m
         assert response.status_code==200,response.text
         data=response.json()
         assert data['partial'] and [f['status'] for f in data['files']]==['imported','failed','not_processed']
-        assert len(app.state.repo.list_scenes(story['id']))==1
+        scenes=app.state.repo.list_scenes(story['id'])
+        assert len(scenes)==1
+        assert data['created_scene_ids']==[scenes[0].id]
+        assert data['files'][0]['created_scene_ids']==[scenes[0].id]
+        assert data['files'][0]['source_id']==app.state.repo.list_source_files(story['id'])[0]['id']
+        assert data['files'][0]['version_id']==app.state.repo.list_source_files(story['id'])[0]['version_id']
+        assert data['files'][1]['error']
+        assert [f['source_id'] for f in data['files'][1:]]==[None,None]
+        assert [f['version_id'] for f in data['files'][1:]]==[None,None]
+        assert data['files'][2]['error'] is None
 
 
 def test_card_version_citations_remain_editable_and_extendable(tmp_path):

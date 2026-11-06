@@ -138,6 +138,7 @@ def import_sources(repo: Repository,story_id: str,files: list[SourceFile]) -> Im
         except (ValueError,OSError,sqlite3.Error) as error:
             item.status='failed'
             item.created_character_cards=0;item.created_scene_ids=[]
+            item.warnings=[];item.skipped_character_names=[];item.skipped_scene_numbers=[]
             item.error='Матеріали вже змінено; файл не застосовано' if isinstance(error,RevisionConflict) else 'Не вдалося застосувати файл; попередні успішні імпорти збережено'
             result.partial=any(f.status=='imported' for f in result.files)
             if not result.partial:
