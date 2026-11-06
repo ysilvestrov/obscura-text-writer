@@ -24,6 +24,12 @@ test('one saved rewrite, draft-only review, partial apply and cleared notes',asy
   await expect(page.locator('#mode-tabs [data-mode="draft"]')).toHaveAttribute('aria-selected','true');
   const sources=await(await request.get(`/api/scenes/${fixture.scene_id}/comments`)).json();
   expect(sources.comment_set.general).toBe('');
+  const selectAll=review.locator('[data-review-select-all]');
+  await expect(review.locator('input:checked')).toHaveCount(1);
+  await expect(selectAll).toBeDisabled();
+  await selectAll.evaluate(e=>e.onclick());
+  await expect(review.locator('input:checked')).toHaveCount(1);
+  await expect(review.locator('[data-review-accept]')).toBeDisabled();
 });
 
 test('cancel dirty Save keeps notes and makes no rewrite call',async({page,request})=>{
@@ -126,7 +132,11 @@ test('select all invalidates an in-flight subset preview and is blocked during a
   let release;const gate=new Promise(r=>release=r);let requested=false;
   await page.route('**/rewrites/*/selection-preview',async route=>{requested=true;const response=await route.fetch();await gate;await route.fulfill({response});});
   await review.getByRole('button',{name:'Preview selected text',exact:true}).click();
-  await expect.poll(()=>requested).toBe(true);await all.click();release();
+  await expect.poll(()=>requested).toBe(true);await all.click();
+  const late=page.waitForResponse(r=>r.url().endsWith('/selection-preview'));release();
+  await (await late).finished();
+  await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+  await expect(review.locator('.copyedit-selected-text')).toHaveText('Selection changed. Click “Preview selected text”.');
   await expect(review.getByRole('button',{name:'Preview selected text',exact:true})).toBeEnabled();
   await expect(apply).toBeDisabled();
   await page.unroute('**/rewrites/*/selection-preview');

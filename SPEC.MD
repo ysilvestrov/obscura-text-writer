@@ -2887,7 +2887,7 @@ RunRequest mode=impact SHALL містити погоджений impact_plan_fin
 
 ### Requirement: IMPACT-UI — Редактура книги, статуси й контроль автора
 
-Історія report articles SHALL бути одним початково відкритим native details «Останні результати»; open зберігається при locale/refresh, лише history згортається без втрати доказів або поточних авторських рішень.
+Історія report articles SHALL бути одним початково відкритим native details «Останні результати»; open зберігається при locale/refresh, Усі history articles, включно з current verdict та його дією відхилення, згортаються разом; поточний author checkpoint у #review-session і blockers поза історією лишаються видимими. Докази й дії не видаляються.
 
 Панель «Редагування книги» SHALL бути окремим disclosure під назвою твору, без нового кроку pipeline сцени. Вона активується лише за capability review_protocols=[1,2,3] з GET /api/stories/{id}/impact, щоб hot static update не показував нові кнопки старому серверу. GET також повертає pending матеріали, історичні публічні звіти/дельту/докази й scene_status. Поточні preview/start використовують /review protocol3 (REVIEW-WORKSPACE), зі scope поточної сцени та невідомим майбутнім обсягом/вартістю. Legacy POST .../impact/preview та .../impact з request_id/fingerprint/optional budget_limit_usd лишаються сумісними й не переписуються. POST .../impact/{record_id}/reject журналює відхилення лише історичного звіту цього твору.
 

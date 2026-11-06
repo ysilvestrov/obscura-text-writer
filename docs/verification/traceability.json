@@ -2521,7 +2521,7 @@
       "tests": [],
       "manual": {
         "procedure": "docs/verification/manual.md#r23-select-all",
-        "reason": "DOM, UA/EN і мережеві запити перевіряються synthetic Playwright runner."
+        "reason": "check_docs.py tests IDs індексує pytest; реальні автоматизовані Playwright cases перелічено в процедурі з точними файлами/назвами."
       }
     },
     {
@@ -2531,17 +2531,17 @@
       "tests": [],
       "manual": {
         "procedure": "docs/verification/manual.md#collapsible-scenes",
-        "reason": "Native details і layout перевіряються synthetic Playwright runner."
+        "reason": "check_docs.py tests IDs індексує pytest; реальні автоматизовані Playwright cases перелічено в процедурі з точними файлами/назвами."
       }
     },
     {
       "id": "IMPACT-UI-HISTORY",
       "requirement": "IMPACT-UI",
-      "scope": "DOM disclosure, keyboard, dirty text й scene/material на desktop/mobile.",
+      "scope": "tests/web/browser/collapsible-scenes.spec.mjs: latest scene reports collapse and retain state across language and refresh — current/history reports, blockers, порожня історія, keyboard, locale/refresh; не перевірка dirty буфера.",
       "tests": [],
       "manual": {
         "procedure": "docs/verification/manual.md#collapsible-scenes",
-        "reason": "Native details і layout перевіряються synthetic Playwright runner."
+        "reason": "check_docs.py tests IDs індексує pytest; реальні автоматизовані Playwright cases перелічено в процедурі з точними файлами/назвами."
       }
     }
   ]

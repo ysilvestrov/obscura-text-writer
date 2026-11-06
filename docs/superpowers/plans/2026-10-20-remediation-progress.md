@@ -1073,3 +1073,6 @@ RED select-all2 failures → GREEN2 passed; RED collapse4 failures → combined1
 
 
 Фінальний спільний UI gate:104 Playwright desktop/mobile passed,2.6m (artifacts/near-term-controls-browser-final.log);185 web/API/Node passed через verify.py, source_changed_during_run=false (artifacts/verification-yi06cfb8/result.json). check_docs пройшов,6 нейтральних screenshots оглянуто. Попередній full browser102 passed/2 failures був помилкою тестового EN locator після UA-switch при screenshot; виправлено stable data attr із окремою перевіркою тексту.
+
+
+UI controls cross-review7 findings:6 fixed (tests/docs clarification),1 rejected (privacy-filtered artifact omission). Таблиця у двох UI специфікаціях; посилені16 browser tests passed26.8s, production code незмінний після104 browser/185 web gate. Наступні три найближчі задачі мають окремі підготовлені специфікації тарифів/лімітів і persisted import counts; новий inference не запускався.
