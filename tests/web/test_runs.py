@@ -34,6 +34,17 @@ def test_run_preserves_planned_model_metadata_across_settings_changes(tmp_path):
     assert saved.planned_telemetry == {'roles':{'planner':{'provider':'local','model':'planned-model'}},'calls':1}
 
 
+def test_planned_telemetry_includes_evaluator_when_count_includes_it(tmp_path,monkeypatch):
+    app=create_app(AppSettings(data_dir=tmp_path));repo=app.state.repo
+    story=repo.create_story(StoryCreate(title='Приклад'));scene=repo.create_scene(story.id,SceneCreate(title='Сцена',beats='Ранок'))
+    from storygen.generation.worker import RunRequest
+    from storygen.generation import readiness
+    monkeypatch.setattr(readiness,'preview',lambda *_:{'ready':True,'roles':{'writer':{'provider':'local','model':'writer'}},'calls':2,'evaluator':{'provider':'local','model':'judge'}})
+    run=app.state.coordinator.enqueue(RunRequest(story_id=story.id,scene_id=scene.id,mode='scene'),'with-evaluator')
+    assert run.planned_telemetry['evaluator']=={'provider':'local','model':'judge'}
+    assert run.planned_telemetry['calls']==2
+
+
 def test_run_returns_id_without_waiting_for_model(tmp_path):
     entered=threading.Event();release=threading.Event()
     class Gateway:
