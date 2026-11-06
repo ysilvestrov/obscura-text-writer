@@ -1039,3 +1039,10 @@ UI cross-review Claude завершено:5 findings,5 fixed,0 rejected. Пок�
 
 
 UI-пакет збережено в [PR#7](https://github.com/ysilvestrov/obscura-text-writer/pull/7), code55379b5, branch codex/additive-import-ui поверх PR#6. Основна тека на результаті; сторонній untracked research-файл не змінено й не закомічено. Merge не виконано.
+
+
+## 06.11.2026 — Нові UX follow-ups і діагностика останнього запуску
+
+На прохання власника до активного беклогу записано чотири наступні виправлення: обрати всі зміни в comment rewrite; згорнути/розгорнути всі сцени; тариф біля вибору моделі; кількості реально доданих сцен/персонажів у журналі імпортованих матеріалів. Реалізацію не розпочато, чинний SPEC не переписувався під майбутні пропозиції.
+
+Read-only перевірено останній failed memory: sent→unresolved≈0.30с,0 bytes partial, без usage/finish_reason; max_tokens32000 проти поточного Venice maxCompletionTokens24000. Найімовірніша причина — перевищення вихідного ліміту, точна HTTP-причина втрачена generic catch. Додано окремий технічний follow-up preflight+safe diagnostics. [Факти й межі](../../diagnostics/2026-11-06-memory-provider-error.md). Без повторного inference, зміни налаштувань чи передачі приватних матеріалів; залишковий billing unresolved не змінювався.
