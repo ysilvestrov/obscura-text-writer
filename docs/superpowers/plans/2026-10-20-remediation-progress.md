@@ -1101,3 +1101,6 @@ Post-review verify2rrqjwi1:540passed/1failure — старий worker warning te
 
 
 Фінальний post-review gate: **541 passed,0 failed/errors/skipped**, source_changed_during_run=false, artifacts/verification-qxf5vqkl/result.json. Покрито provider/billing, усі web/API/Node, evaluator, planner/editor/JSON, durable failure, counts/CAS, exact raw proof/replay/backup. Попередній широкий набір1244passed/1skipped збережено окремо. Production code після цього gate не змінюється. check_docs.py перевіряється перед фінальним комітом.
+
+
+Завершено: [PR#10](https://github.com/ysilvestrov/obscura-text-writer/pull/10), codef1a35b9 + fixesd621113, branch codex/model-import-metadata поверх PR#9. Основна тека C:\Projects\text-generator містить перевірений результат; після fresh0 active/queued локальний сервер8765 перезапущено з тими самими data/env параметрами, HTTP200 і0 active/queued підтверджено. Автоматичного повтору inference, зміни налаштувань або переписування сирих результатів немає. Сторонній untracked research-файл збережено. Merge не виконувався.
