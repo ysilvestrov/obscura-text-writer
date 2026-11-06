@@ -1027,3 +1027,12 @@ R-28k поставлено27.10:1293PASS/1SKIP verification-v4p8q2ak/source_chan
 
 
 Фінальний UI gate: verify.py tests/web — **185 passed,0 failed/errors/skipped**, source_changed_during_run=false, artifacts/verification-u3crjc8x/result.json. Browser **94 passed**,2.0m; шість screenshots desktop/mobile візуально підтверджені.
+
+
+UI cross-review Claude завершено:5 findings,5 fixed,0 rejected. Показ file.error/CAS UA/EN, правдивий підпис активного плану, посилені assertions конфліктів/очищення/дат/active badge та traceability. Таблиця — у UI-плані; report не комітиться. Дозволений privacy-filtered запуск без приватних матеріалів; Google/agy не запускався. Посилені тести:4 expected RED, після виправлення12 GREEN; фінальні перевірки після останніх змін записуються окремо.
+
+
+Після cross-review повний Playwright: **96 passed**,2.3m, artifacts/ui-browser-final.log. Нова регресія першого відфільтрованого плану й literal file.error без HTML пройшли; оновлені journal screenshots desktop/mobile повторно оглянуто. Фінальний web gate записується через verify.py.
+
+
+Остаточний gate після всіх cross-review виправлень: **185 passed,0 failed/errors/skipped**, source_changed_during_run=false, artifacts/verification-ci5eme_z/result.json; STATUS оновлено verify.py. Код і UA/EN інструкції узгоджено, залишкових findings немає.

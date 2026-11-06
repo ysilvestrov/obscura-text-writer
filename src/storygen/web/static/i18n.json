@@ -1973,7 +1973,7 @@
     "review4.counter_changed": "Кваліфікований локальний лічильник недоступний; потрібен новий попередній перегляд",
     "review4.bounds_help": "Початковий підрахунок може зрости після отримання доказів; межа пошуку однієї сцени — 10000 частин. Верхня оцінка вартості охоплює цю межу, не весь твір і не оновлення пам’яті. Незавершені результати не приймаються.",
     "imports.journal": "Імпортовані матеріали",
-    "imports.combined": "Активний план об’єднує імпортовані секції",
+    "imports.combined": "Активний план зі збережених секцій",
     "imports.empty": "Ще немає імпортованих файлів",
     "imports.plan": "План",
     "imports.time_unknown": "Час невідомий",
@@ -1999,7 +1999,9 @@
     "imports.check_journal": "Перевірте журнал імпорту.",
     "imports.refresh_journal": "Оновити журнал",
     "imports.refresh_failed": "Не вдалося оновити журнал. Результат імпорту збережено на екрані.",
-    "imports.journal_updated": "Журнал оновлено"
+    "imports.journal_updated": "Журнал оновлено",
+    "imports.error_concurrent": "Матеріали вже змінено; файл не застосовано",
+    "imports.error_apply": "Не вдалося застосувати файл; попередні успішні імпорти збережено"
   },
   "en": {
     "ui.save": "Save",
@@ -3975,7 +3977,7 @@
     "review4.counter_changed": "The qualified local token counter is unavailable; prepare a new preview",
     "review4.bounds_help": "Initial call counts may increase after evidence is returned; one-scene search is limited to 10000 parts. The upper cost estimate covers that limit, excluding the rest of the book and memory updates. Incomplete results cannot be accepted.",
     "imports.journal": "Imported materials",
-    "imports.combined": "Combined active plan",
+    "imports.combined": "Active plan from accepted sections",
     "imports.empty": "No imported files yet",
     "imports.plan": "Plan",
     "imports.time_unknown": "Time unknown",
@@ -4001,6 +4003,8 @@
     "imports.check_journal": "Check the import journal.",
     "imports.refresh_journal": "Refresh journal",
     "imports.refresh_failed": "Could not refresh the journal. The import result remains on screen.",
-    "imports.journal_updated": "Journal updated"
+    "imports.journal_updated": "Journal updated",
+    "imports.error_concurrent": "Materials have changed; the file was not applied",
+    "imports.error_apply": "Could not apply the file; previous successful imports were preserved"
   }
 }

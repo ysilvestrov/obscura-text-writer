@@ -19,8 +19,9 @@ test('writing target saves, resets, switches language and detects remote target 
   await target.fill('27000');
   const latest=await(await request.get(`/api/stories/${f.story_id}/settings`)).json();
   await request.put(`/api/stories/${f.story_id}/settings`,{data:{expected_revision:latest.story.revision,target_words:28000}});
-  await page.locator('#settings-save').click();await expect(page.locator('#settings-save-status')).toContainText(/змін|changed/i);
+  await page.locator('#settings-save').click();await expect(page.locator('#settings-save-status')).toHaveText('Ці налаштування вже змінено. Відкиньте правки або звірте їх перед повторним збереженням.');
   await expect(target).toHaveValue('27000');
+  expect((await(await request.get(`/api/stories/${f.story_id}/settings`)).json()).story.target_words).toBe(28000);
 });
 
 
@@ -38,6 +39,7 @@ test('dated import journal, duplicate results and selected material survive addi
   await page.locator('[data-ui-locale="en"]').click();
   await uploadFile(page,'characters','people-a.md','## Анна\nПрацює в бібліотеці.');
   await expect(page.locator('#import-results')).toContainText('New character cards: 1');
+  expect(await page.locator('#import-sources [name=characters]').evaluate(e=>e.files.length)).toBe(0);
   await expect(page.locator('#mode-tabs [data-mode="prose"]')).toHaveAttribute('aria-selected','true');
   await uploadFile(page,'characters','people-b.md','## Анна\nНе замінювати.\n## Марія\nЛюбить читати.');
   await expect(page.locator('#import-results')).toContainText('Skipped characters: Анна');
@@ -48,7 +50,11 @@ test('dated import journal, duplicate results and selected material survive addi
   await page.locator('.workspace-context > summary').click();
   await expect(page.locator('.source-record')).toHaveCount(4);
   await expect(page.locator('.source-record time[datetime]')).toHaveCount(4);
-  await expect(page.locator('#context-content')).toContainText('Combined active plan');
+  await expect(page.locator('#context-content')).toContainText('Active plan from accepted sections');
+  const activeRow=page.locator('.source-record').filter({hasText:'people-b.md'});
+  await expect(activeRow.locator('small')).toHaveText('Active source');
+  await expect(page.locator('.source-record').filter({hasText:'people-a.md'}).locator('small')).toHaveCount(0);
+  await expect(activeRow.locator('time')).toContainText(/(?:GMT|UTC|CET)/);
   await expect(page.locator('#context-content')).toContainText('people-a.md');
   await expect(page.locator('#context-content')).toContainText('plan-3.md');
   await page.locator('[data-ui-locale="uk"]').click();
@@ -71,20 +77,32 @@ test('partial and409 results stay visible, pending blocks repeats and invalid da
   await expect(page.locator('#context-content')).toContainText('Time unknown');
   await expect(page.locator('#context-content img')).toHaveCount(0);
   let release;const gate=new Promise(r=>release=r);let calls=0;
-  const files=[{client_index:0,name:'first.md',kind:'source_plan',status:'imported',created_scene_ids:['s'],created_character_cards:0,skipped_character_names:[],skipped_scene_numbers:[],warnings:[],error:null},{client_index:1,name:'second.md',kind:'source_characters',status:'failed',created_scene_ids:[],created_character_cards:0,skipped_character_names:[],skipped_scene_numbers:[],warnings:[],error:'Safe failure'}];
+  const files=[{client_index:0,name:'first.md',kind:'source_plan',status:'imported',created_scene_ids:['s'],created_character_cards:0,skipped_character_names:[],skipped_scene_numbers:[],warnings:[],error:null},{client_index:1,name:'second.md',kind:'source_characters',status:'failed',created_scene_ids:[],created_character_cards:0,skipped_character_names:[],skipped_scene_numbers:[],warnings:[],error:'Safe failure <img src=x>'}];
   await page.route(`**/api/stories/${f.story_id}/sources`,async route=>{calls++;await gate;await route.fulfill({json:{partial:true,created_scene_ids:['s'],created_character_cards:0,files}})});
   await page.locator('.importer').evaluate(e=>e.open=true);
   await page.locator('#import-sources [name="plan"]').setInputFiles({name:'first.md',mimeType:'text/plain',buffer:Buffer.from('Plan')});
+  await page.locator('#import-sources [name=characters]').setInputFiles({name:'second.md',mimeType:'text/plain',buffer:Buffer.from('Characters')});
   await page.locator('#import-sources button').click();
   await expect(page.locator('#import-sources button')).toBeDisabled();
+  await expect(page.locator('#import-sources [name=plan]')).toBeDisabled();
+  await expect(page.locator('#import-sources [name=characters]')).toBeDisabled();
   await page.locator('#import-sources').evaluate(f=>f.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})));
   release();await expect(page.locator('#import-results')).toContainText('Partially imported');
   expect(calls).toBe(1);
+  await expect(page.locator('#import-results')).toContainText('Saved and processed');
+  await expect(page.locator('#import-results')).toContainText('Not applied');
+  await expect(page.locator('#import-results')).toContainText('Successful files are already applied');
+  await expect(page.locator('#import-results')).toContainText('Safe failure <img src=x>');
+  await expect(page.locator('#import-results img')).toHaveCount(0);
+  expect(await page.locator('#import-sources [name=plan]').evaluate(e=>e.files.length)).toBe(0);
+  expect(await page.locator('#import-sources [name=characters]').evaluate(e=>e.files[0].name)).toBe('second.md');
   await page.unroute(`**/api/stories/${f.story_id}/sources`);
-  await page.route(`**/api/stories/${f.story_id}/sources`,route=>route.fulfill({status:409,json:{partial:false,files:[{...files[1],client_index:0,status:'failed'}]}}));
+  await page.route(`**/api/stories/${f.story_id}/sources`,route=>route.fulfill({status:409,json:{partial:false,files:[{...files[1],client_index:0,status:'failed',error:'Матеріали вже змінено; файл не застосовано'}]}}));
   await uploadFile(page,'plan','retry.md','Plan');
   await expect(page.locator('#import-results')).toContainText('Import not applied');
   await expect(page.locator('#import-results')).toContainText('second.md');
+  await expect(page.locator('#import-results')).toContainText('Materials have changed; the file was not applied');
+  await expect(page.locator('#notice')).toContainText('Materials have changed; the file was not applied');
 });
 
 
@@ -142,4 +160,18 @@ test('lost POST response is unknown and never automatically retries an unnumbere
   await expect(page.locator('.source-record')).toHaveCount(1);
   expect(posts).toBe(1);
   expect((await(await request.get(`/api/stories/${f.story_id}`)).json()).scenes).toHaveLength(2);
+});
+
+
+test('first filtered plan does not claim multiple files were combined',async({page,request})=>{
+  const f=await(await request.post('/test-fixture')).json();
+  const created=await request.post(`/api/stories/${f.story_id}/scenes`,{data:{title:'Сцена 2: Існуюча',beats:'Сцена 2: Існуюча\nНаявний опис.',author_scene_number:2}});
+  expect(created.ok()).toBeTruthy();
+  await page.goto(`/stories/${f.story_id}`);await page.locator('[data-ui-locale="en"]').click();
+  await uploadFile(page,'plan','single-plan.md','Сцена 2: Дубль\nПропустити.\nСцена 3: Нова\nНовий опис.');
+  await page.locator('.workspace-context > summary').click();
+  await expect(page.locator('.source-record')).toHaveCount(1);
+  await expect(page.locator('#context-content')).toContainText('Active plan from accepted sections');
+  await expect(page.locator('#context-content')).not.toContainText('Combined');
+  await expect(page.locator('#import-results')).toContainText('Skipped scene numbers: 2');
 });

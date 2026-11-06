@@ -29,7 +29,7 @@ export function renderImportResults(host,data={},options={}){
       const link=document.createElement('a');link.className='import-character-link';link.href=options.charactersHref;uiText(link,'textContent',()=>t('characters.nav'));item.append(link);
     }
     if(file.skipped_scene_numbers?.length)paragraph(item,()=>t('imports.skipped_scenes',{p0:file.skipped_scene_numbers.join(', ')}));
-    if(file.status==='failed')paragraph(item,()=>t('imports.failed_file'));
+    if(file.status==='failed'){paragraph(item,()=>t('imports.failed_file'));if(typeof file.error==='string')paragraph(item,()=>diagnostic(file.error));}
     if(file.status==='imported'&&!file.created_character_cards&&!file.created_scene_ids?.length&&!file.skipped_character_names?.length&&!file.skipped_scene_numbers?.length)paragraph(item,()=>t('imports.no_changes'));
     for(const warning of file.warnings||[]){
       const mixed=warning.match(/^Ім’я «(.+)» містить латинські й кириличні літери/);

@@ -67,3 +67,24 @@ UI detector виконано один раз; попередження inherited
 
 
 Фінальний UI gate: verify.py tests/web — **185 passed,0 failed/errors/skipped**, source_changed_during_run=false, artifacts/verification-u3crjc8x/result.json. Browser **94 passed**,2.0m; шість screenshots desktop/mobile візуально підтверджені.
+
+
+## Дозволений cross-review 06.11.2026
+
+Пакет detent0.5.0 повторно звірено з npm integrity;81 розпакований файл точно відповідає архіву. Окремий незалежний Git-знімок: base8c872f2, headf4ff075 → filtered9461c41;622 файли allowlist HEAD,0 credential literal findings. Не передавалися original .git, .env/config/credentials, user data/research, progress/STATUS, backups/artifacts та binary images. Claude safe/restricted, тільки Read/Grep/Glob; Google/agy review не запускався. Report не комітиться, таблиця зберігає рішення. Застосовано receiving-code-review: усі твердження перевірено в коді, посилені browser тести дали4 expected failures перед виправленнями,2 conflict тести лишилися зеленими; після виправлень12 additive desktop/mobile passed.
+
+Cross-review: claude/default @ 9461c41 (author: codex) — 5 findings: 5 fixed, 0 rejected
+
+| № | Зауваження | Рішення й доказ |
+|---|---|---|
+|1|Слабке assertion конфлікту target збігалося і з «Без змін».|Fixed: exact conflict text, ввід27000 й GET target28000; два desktop/mobile тести passed.|
+|2|files[].error не показувався,409 мав generic validation message.|Fixed: конкретна причина в per-file блоці й APIError/notice, відомі CAS/runtime причини UA/EN; невідома діагностика textContent. Браузер перевіряє причину409 й literal HTML без img; Node — message/status/data.|
+|3|«Об’єднаний план» неправдивий для першого відфільтрованого файла.|Fixed: нейтральний «Активний план зі збережених секцій» / Active plan from accepted sections. Окрема реальна регресія першого файла з duplicate2/new3.|
+|4|Недостатні pending/partial/clearing assertions.|Fixed: обидва inputs disabled, per-file statuses/no_retry, successful plan очищено, failed characters лишилися; real successful characters очищено.|
+|5|Слабкі timezone/active badge assertions і немає Node зв’язку в traceability.|Fixed: UA Warsaw timezone й EN GMT+1, активний badge лише people-b, видимий time zone; pytest Node runner додано до IMPORT-UI-S01/S02, browser manual coverage збережено.|
+
+
+Після cross-review повний Playwright: **96 passed**,2.3m, artifacts/ui-browser-final.log. Нова регресія першого відфільтрованого плану й literal file.error без HTML пройшли; оновлені journal screenshots desktop/mobile повторно оглянуто. Фінальний web gate записується через verify.py.
+
+
+Остаточний gate після всіх cross-review виправлень: **185 passed,0 failed/errors/skipped**, source_changed_during_run=false, artifacts/verification-ci5eme_z/result.json; STATUS оновлено verify.py. Код і UA/EN інструкції узгоджено, залишкових findings немає.

@@ -2481,7 +2481,9 @@
       "id": "IMPORT-UI-S01",
       "requirement": "IMPORT-UI",
       "scope": "UA/EN журнал та структуровані результати браузерного імпорту.",
-      "tests": [],
+      "tests": [
+        "tests/web/test_import_ui.py::test_import_time_and_api_error_contract"
+      ],
       "manual": {
         "procedure": "docs/verification/manual.md#additive-import-ui",
         "reason": "Playwright перевіряє реальні DOM/мережеві збої на desktop/mobile."
@@ -2491,7 +2493,9 @@
       "id": "IMPORT-UI-S02",
       "requirement": "IMPORT-UI",
       "scope": "UA/EN журнал та структуровані результати браузерного імпорту.",
-      "tests": [],
+      "tests": [
+        "tests/web/test_import_ui.py::test_import_time_and_api_error_contract"
+      ],
       "manual": {
         "procedure": "docs/verification/manual.md#additive-import-ui",
         "reason": "Playwright перевіряє реальні DOM/мережеві збої на desktop/mobile."
