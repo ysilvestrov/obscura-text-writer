@@ -2500,6 +2500,19 @@
         "procedure": "docs/verification/manual.md#additive-import-ui",
         "reason": "Playwright перевіряє реальні DOM/мережеві збої на desktop/mobile."
       }
+    },
+    {
+      "id": "MEMORY-004-S03",
+      "requirement": "MEMORY-004",
+      "tests": [
+        "tests/memory/test_model_json_wrappers.py::test_model_wrappers_preserve_json_content_and_warn",
+        "tests/memory/test_model_json_wrappers.py::test_wrappers_never_repair_invalid_or_ambiguous_payload",
+        "tests/memory/test_model_json_wrappers.py::test_fenced_unknown_evidence_is_still_rejected",
+        "tests/memory/test_model_json_wrappers.py::test_fenced_model_stage_keeps_original_partial",
+        "tests/memory/test_diagnostics.py::test_normalization_warning_survives_run_reload",
+        "tests/memory/test_model_json_wrappers.py::test_unsupported_boundaries_stay_unchanged"
+      ],
+      "scope": "Модельні обгортки, незмінні внутрішні тексти/partial, строгі schema/evidence/manual перевірки та warning після reload; synthetic gateway, без inference."
     }
   ]
 }

@@ -1046,3 +1046,20 @@ UI-пакет збережено в [PR#7](https://github.com/ysilvestrov/obscur
 На прохання власника до активного беклогу записано чотири наступні виправлення: обрати всі зміни в comment rewrite; згорнути/розгорнути всі сцени; тариф біля вибору моделі; кількості реально доданих сцен/персонажів у журналі імпортованих матеріалів. Реалізацію не розпочато, чинний SPEC не переписувався під майбутні пропозиції.
 
 Read-only перевірено останній failed memory: sent→unresolved≈0.30с,0 bytes partial, без usage/finish_reason; max_tokens32000 проти поточного Venice maxCompletionTokens24000. Найімовірніша причина — перевищення вихідного ліміту, точна HTTP-причина втрачена generic catch. Додано окремий технічний follow-up preflight+safe diagnostics. [Факти й межі](../../diagnostics/2026-11-06-memory-provider-error.md). Без повторного inference, зміни налаштувань чи передачі приватних матеріалів; залишковий billing unresolved не змінювався.
+
+
+## 06.11.2026 — Model-only обгортка JSON пам’яті
+
+Прямий запит власника прибирати зовнішні апострофи; read-only підтверджено повний Markdown json fence у збереженій відповіді. [Специфікація виправлення](../../specs/changes/memory-json-wrappers-2026-11-06.md). Base33130e0, branch codex/memory-json-wrappers. Додано зняття однієї повної парної зовнішньої обгортки лише parse_memory_result, без зміни JSON усередині/partial/manual validators. Warning UA/EN через memory_warnings/run.warning; строгі schema/evidence/duplicate key перевірки лишилися. RED12 failures/6 passes → GREEN18 passed; розширений gate498 passed,110.36s, source_changed_during_run=false, artifacts/verification-qyjkzeev/result.json. Немає нового inference або зміни production даних/налаштувань. SPEC MEMORY-004-S03/traceability та UA/EN інструкції оновлено; окремі locale перевірки й cross-review виконуються перед PR.
+
+
+Memory wrappers cross-review Claude:5 findings,5 fixed,0 rejected; таблиця у специфікації зміни. Перенесено wrapper warning після успішного parse, multi-block не нормалізується; tests manual path/boundaries/exact warnings посилено. RED6 failures/23 passes → GREEN40 wrappers+diagnostics passed. Немає нового inference або передачі приватних відповідей.
+
+
+Після review gate:514 passed/1 failed через10с timeout synthetic seven-scene flow на cursor27/28 без error; isolated повтор дав той самий timeout. Контроль з оригінальним parser33130e0 пройшов за10.19с загалом, тобто тест працює біля довільної часової межі. Для перевірки completion/export (не latency SLA) harness wait збільшено до30с; production timeout/worker не змінено. Попередні невдалі звіти збережено: artifacts/verification-48_qgjv3/result.json, artifacts/verification-vwxqc4eh/result.json; контроль artifacts/memory-wrapper-baseline.log. Фінальний весь набір повторюється після цієї test-only поправки.
+
+
+Фінальний gate після всіх review/harness виправлень: **515 passed,0 failed/errors/skipped**, source_changed_during_run=false, artifacts/verification-9k5sjzus/result.json; STATUS оновлено verify.py. check_docs.py пройшов.
+
+
+Завершено: [PR](https://github.com/ysilvestrov/obscura-text-writer/pull/8), code398b8b6, branch codex/memory-json-wrappers поверх UI PR#7. Основна тека містить перевірений код; idle-сервер127.0.0.1:8765 перезапущено з тими самими data/env параметрами, HTTP200 і0 active/queued runs після старту. Без нового inference/зміни налаштувань/переписування production partial. Сторонній untracked research-файл збережено; merge не виконувався.
