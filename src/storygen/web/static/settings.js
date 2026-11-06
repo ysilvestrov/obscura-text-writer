@@ -13,13 +13,13 @@ const providerNames=['provider','base_url','model','timeout','key_env','response
 const roleScope=(data,role)=>({settings:data.roles[role]||null,prompt:data.prompts[role]||'',prepare:role==='planner'?data.prepare_prompt:null,contract:data.prompt_contracts?.[role]||null});
 async function checkScope(role,baseline,shared=false){
  const latest=await api(`/api/stories/${id}/settings`);
- if(settingsSignature(role==='writing'?latest.profile:roleScope(latest,role))!==settingsSignature(baseline))throw new Error(t("m_01f8b6c01617"));
+ if(settingsSignature(role==='writing'?{profile:latest.profile,target_words:latest.story.target_words}:roleScope(latest,role))!==settingsSignature(baseline))throw new Error(t("m_01f8b6c01617"));
  if(shared)for(const other of document.querySelectorAll('form[data-role]'))if(other.dataset.role!==role&&settingsSignature(roleScope(latest,other.dataset.role))!==settingsSignature(other.serverBaseline))throw new Error(t("m_e92bbe8c4cb8"));
  return latest.story.revision;
 }
 async function load(onlyRole=null){
   snapshot=await api(`/api/stories/${id}/settings`);
-  const profileForm=document.querySelector('#profile-form');if(!onlyRole||onlyRole==='writing'){for(const[key,value]of Object.entries(snapshot.profile))profileForm.elements[key].value=value;profileBaseline=structuredClone(snapshot.profile);registerSettingsForm('writing',{form:profileForm,label:live(()=>(t("m_88f778367baf"))),section:'writing',reset:()=>load('writing')})}
+  const profileForm=document.querySelector('#profile-form');if(!onlyRole||onlyRole==='writing'){for(const[key,value]of Object.entries(snapshot.profile))profileForm.elements[key].value=value;profileForm.elements.target_words.value=snapshot.story.target_words;profileBaseline=structuredClone({profile:snapshot.profile,target_words:snapshot.story.target_words});registerSettingsForm('writing',{form:profileForm,label:live(()=>(t("m_88f778367baf"))),section:'writing',reset:()=>load('writing')})}
   const target=document.querySelector('#role-settings');if(!onlyRole)target.replaceChildren();
   for(const[role,name]of labelEntries(names)){
     if(onlyRole&&role!==onlyRole)continue;
@@ -106,8 +106,8 @@ async function load(onlyRole=null){
 document.querySelector('#profile-form button').classList.add('scope-submit');
 document.querySelector('#profile-form').onsubmit=async event=>{
  event.preventDefault();const form=event.target;
- const profile=Object.fromEntries([...form.elements].filter(e=>e.name).map(e=>[e.name,e.value]));profile.previous_tail_chars=Number(profile.previous_tail_chars);
- try{await withSettingsSave('writing',async()=>{const revision=await checkScope('writing',profileBaseline);snapshot.story=await api(`/api/stories/${id}/settings`,json('PUT',{expected_revision:revision,profile}));settingsSaved('writing');await load('writing');notice(msg("m_01e9934fcb2b"))})}catch(e){settingsFormError('writing',e);notice(e.message,'error')}
+ const profile=Object.fromEntries([...form.elements].filter(e=>e.name&&e.name!=='target_words').map(e=>[e.name,e.value]));const target_words=Number(form.elements.target_words.value);profile.previous_tail_chars=Number(profile.previous_tail_chars);
+ try{await withSettingsSave('writing',async()=>{const revision=await checkScope('writing',profileBaseline);snapshot.story=await api(`/api/stories/${id}/settings`,json('PUT',{expected_revision:revision,profile,target_words}));settingsSaved('writing');await load('writing');notice(msg("m_01e9934fcb2b"))})}catch(e){settingsFormError('writing',e);notice(e.message,'error')}
 };
 load().catch(e=>{uiText(document.querySelector('#settings-loading'),"textContent",()=>(diagnostic(e.message)));notice(e.message,'error')});
 

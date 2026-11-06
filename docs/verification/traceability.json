@@ -2466,6 +2466,16 @@
       "tests": [
         "tests/web/test_writing_target_settings.py::test_writing_target_and_profile_are_atomic_and_noop_preserves_style"
       ]
+    },
+    {
+      "id": "WRITING-TARGET-S02",
+      "requirement": "WRITING-TARGET",
+      "scope": "Writing UI target Save/Reset/UA/EN/conflict.",
+      "tests": [],
+      "manual": {
+        "procedure": "docs/verification/manual.md#additive-import-ui",
+        "reason": "Браузерний стан форми перевіряється Playwright desktop/mobile."
+      }
     }
   ]
 }
