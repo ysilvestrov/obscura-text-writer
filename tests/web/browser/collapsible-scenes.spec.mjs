@@ -1,0 +1,50 @@
+import {test,expect} from '../../../frontend/browser-test.mjs';
+
+test('long scene list collapses above imports without losing dirty text or selection',async({page,request})=>{
+  const f=await(await request.post('/test-fixture')).json();
+  const plan=Array.from({length:64},(_,i)=>`Сцена ${i+2}: Прогулянка\nОпис події.\n`).join('\n');
+  const imported=await request.post(`/api/stories/${f.story_id}/sources`,{multipart:{plan:{name:'many-scenes.md',mimeType:'text/plain',buffer:Buffer.from(plan)}}});expect(imported.ok()).toBeTruthy();
+  await page.goto(`/stories/${f.story_id}?scene=${f.scene_id}&material=draft`);
+  await expect(page.locator('#scene-count')).toHaveText('65');
+  const list=page.locator('#scene-list-section');
+  await expect(list).toHaveAttribute('open','');
+  await expect(page.locator('.ProseMirror')).toHaveAttribute('contenteditable','true');
+  await page.locator('.ProseMirror').fill('Незбережений авторський текст.');
+  await list.locator(':scope > summary').click({timeout:3000});
+  await expect(list).not.toHaveAttribute('open','');
+  await expect(page.locator('.importer')).toBeVisible();
+  const bounds=await page.locator('.importer').boundingBox();expect(bounds.y).toBeLessThan(650);
+  await expect(page.locator('#mode-tabs [data-mode=draft]')).toHaveAttribute('aria-selected','true');
+  await expect(page.locator('.ProseMirror')).toHaveText('Незбережений авторський текст.');
+  await page.locator('[data-ui-locale=en]').click();
+  await expect(list).not.toHaveAttribute('open','');
+  await expect(list.locator('summary')).toContainText('SCENES');
+  await page.evaluate(()=>import('/static/editor.js').then(m=>m.refresh()));
+  await expect(list).not.toHaveAttribute('open','');
+  await expect(page.locator('.ProseMirror')).toHaveText('Незбережений авторський текст.');
+  await page.evaluate(()=>scrollTo(0,0));
+  const panel=await page.locator('.scene-panel').boundingBox();
+  await page.screenshot({path:`docs/images/collapsed-scenes-${test.info().project.name}.png`,clip:{x:panel.x,y:panel.y,width:panel.width,height:Math.min(220,panel.height)}});
+  await list.locator(':scope > summary').focus();await page.keyboard.press('Enter');
+  await expect(list).toHaveAttribute('open','');
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBeTruthy();
+});
+
+test('latest scene reports collapse and retain state across language and refresh',async({page,request})=>{
+  const f=await(await request.post('/test-impact')).json();
+  await page.route(`**/api/stories/${f.story_id}/impact`,async route=>{const response=await route.fetch(),body=await response.json();body.reports=['brief','prose'].map(material=>({id:'synthetic-'+material,scene_id:f.scene_id,scene_title:'Сцена: Вечір',material,current:false,verdict:'no_impact',explanation:'Передумови перевірено.',protocol:1,delta:null,findings:[],memory_check_current:false,memory_evidence_status:'valid',memory_needs_update:false}));await route.fulfill({response,json:body});});
+  await page.goto(`/stories/${f.story_id}`);await page.locator('#impact-panel > summary').click();
+  const history=page.locator('#impact-report-list');
+  await expect(history).toHaveAttribute('open','');
+  await expect(history.locator('.impact-report')).not.toHaveCount(0);
+  await history.locator(':scope > summary').click({timeout:3000});
+  await expect(history).not.toHaveAttribute('open','');
+  await page.locator('[data-ui-locale=en]').click();
+  await expect(history).not.toHaveAttribute('open','');
+  await expect(history.locator('summary')).toHaveText('Latest results');
+  await page.evaluate(()=>import('/static/editor.js').then(m=>m.refresh()));
+  await expect(history).not.toHaveAttribute('open','');
+  await page.locator('#impact-panel').screenshot({path:`docs/images/collapsed-reports-${test.info().project.name}.png`});
+  await history.locator(':scope > summary').focus();await page.keyboard.press('Enter');
+  await expect(history).toHaveAttribute('open','');
+});

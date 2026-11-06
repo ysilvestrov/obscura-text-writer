@@ -2523,6 +2523,26 @@
         "procedure": "docs/verification/manual.md#r23-select-all",
         "reason": "DOM, UA/EN і мережеві запити перевіряються synthetic Playwright runner."
       }
+    },
+    {
+      "id": "R20-WORKSPACE-SCENES",
+      "requirement": "R20-WORKSPACE",
+      "scope": "DOM disclosure, keyboard, dirty text й scene/material на desktop/mobile.",
+      "tests": [],
+      "manual": {
+        "procedure": "docs/verification/manual.md#collapsible-scenes",
+        "reason": "Native details і layout перевіряються synthetic Playwright runner."
+      }
+    },
+    {
+      "id": "IMPACT-UI-HISTORY",
+      "requirement": "IMPACT-UI",
+      "scope": "DOM disclosure, keyboard, dirty text й scene/material на desktop/mobile.",
+      "tests": [],
+      "manual": {
+        "procedure": "docs/verification/manual.md#collapsible-scenes",
+        "reason": "Native details і layout перевіряються synthetic Playwright runner."
+      }
     }
   ]
 }

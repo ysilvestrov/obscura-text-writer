@@ -182,3 +182,9 @@ R-22 прокрутка: Playwright `long draft scrolls internally while formatt
 ## Пакетний вибір переписування
 
 Запустити `node frontend/node_modules/@playwright/test/cli.js test --config frontend/playwright.config.mjs rewrite-review --reporter=line`. Новий сценарій select all rewrite changes перевіряє desktop/mobile: початково0, click→усі групи без mutations, UA/EN, preview обов’язковий навіть після повернення до all, apply двох змін/очищення notes. Нейтральні screenshots docs/images/rewrite-select-all-desktop.png і mobile.png оглянути на читабельність/overflow. Наявність процедури не означає виконання.
+
+
+<a id="collapsible-scenes"></a>
+## Згортання списків сцен
+
+Запустити Playwright collapsible-scenes.spec.mjs на synthetic server:65 scenes, dirty draft, selected scene/material, click/Enter, UA/EN/refresh зберігають open; імпорт поза collapsed list. Synthetic latest reports collapse без втрати articles; поточні blockers/checkpoint не ховаються. Оглянути screenshots collapsed-scenes/reports desktop/mobile. Наявність процедури не є фактичним PASS.

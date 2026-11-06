@@ -10,3 +10,6 @@
 
 
 Реалізовано: initial browser RED2 failures (відсутня кнопка) → GREEN2 passed після виправлення тестового підпису preview. Без API/storage змін. Спільний gate/cross-review після наступного малого пакета згортання, review base32a04ad.
+
+
+Фінальний спільний UI gate:104 Playwright desktop/mobile passed,2.6m (artifacts/near-term-controls-browser-final.log);185 web/API/Node passed через verify.py, source_changed_during_run=false (artifacts/verification-yi06cfb8/result.json). check_docs пройшов,6 нейтральних screenshots оглянуто. Попередній full browser102 passed/2 failures був помилкою тестового EN locator після UA-switch при screenshot; виправлено stable data attr із окремою перевіркою тексту.
