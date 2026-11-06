@@ -2672,7 +2672,10 @@
         "tests/generation/test_planner_proposal_objects.py::test_structured_proposal_warning_survives_worker_reload",
         "tests/generation/test_planner_proposal_objects.py::test_mixed_invalid_proposals_do_not_partially_normalize_or_warn",
         "tests/generation/test_planner_proposal_objects.py::test_duplicate_keys_inside_structured_proposals_stay_rejected",
-        "tests/generation/test_planner_proposal_objects.py::test_plain_string_proposals_keep_exact_version_bytes"
+        "tests/generation/test_planner_proposal_objects.py::test_plain_string_proposals_keep_exact_version_bytes",
+        "tests/generation/test_planner_proposal_objects.py::test_invalid_unicode_remains_schema_failure_with_original_partial",
+        "tests/generation/test_planner_proposal_objects.py::test_prepare_does_not_accept_brief_proposal_wire_shape",
+        "tests/generation/test_planner_proposal_objects.py::test_manual_brief_endpoint_rejects_structured_wire_without_creating_version"
       ]
     }
   ]
