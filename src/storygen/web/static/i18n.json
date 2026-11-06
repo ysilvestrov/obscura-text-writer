@@ -2021,7 +2021,8 @@
     "generation.no_retry": "{p0} Автоматичного повтору немає.",
     "generation.technical": "Не вдалося завершити запит; точну причину не встановлено.",
     "model_json.planner_wrapper": "Знято одну зовнішню обгортку JSON планувальника; оригінальну відповідь збережено без змін.",
-    "model_json.editor_wrapper": "Знято одну зовнішню обгортку JSON редактора; оригінальну відповідь збережено без змін."
+    "model_json.editor_wrapper": "Знято одну зовнішню обгортку JSON редактора; оригінальну відповідь збережено без змін.",
+    "planner.structured_proposals": "Планувальник: структуровані proposed_changes перетворено на текст із номерами сцен; пропозиції потребують явного прийняття."
   },
   "en": {
     "ui.save": "Save",
@@ -4045,6 +4046,7 @@
     "generation.no_retry": "{p0} No automatic retry.",
     "generation.technical": "Could not complete the request; the exact cause is unknown.",
     "model_json.planner_wrapper": "Removed one outer planner JSON wrapper; the original response was preserved unchanged.",
-    "model_json.editor_wrapper": "Removed one outer editor JSON wrapper; the original response was preserved unchanged."
+    "model_json.editor_wrapper": "Removed one outer editor JSON wrapper; the original response was preserved unchanged.",
+    "planner.structured_proposals": "Planner: structured proposed_changes were converted to text with scene numbers; proposals require explicit acceptance."
   }
 }

@@ -1104,3 +1104,30 @@ Post-review verify2rrqjwi1:540passed/1failure — старий worker warning te
 
 
 Завершено: [PR#10](https://github.com/ysilvestrov/obscura-text-writer/pull/10), codef1a35b9 + fixesd621113, branch codex/model-import-metadata поверх PR#9. Основна тека C:\Projects\text-generator містить перевірений результат; після fresh0 active/queued локальний сервер8765 перезапущено з тими самими data/env параметрами, HTTP200 і0 active/queued підтверджено. Автоматичного повтору inference, зміни налаштувань або переписування сирих результатів немає. Сторонній untracked research-файл збережено. Merge не виконувався.
+
+
+##06.11 — Текст proposed_changes усередині об’єктів
+
+Base382bd9d, branch codex/planner-proposal-objects. Read-only діагностика: список двох scene_number:int/change:str у prompt_json; Domain WritersBrief очікує list[str]. Власник підтвердив, що текст присутній. Окрема change spec planner-proposal-objects-2026-11-06.md: narrow model-only coercion exact keys/positive strict int/nonblank str, збереження номера й точного change, raw/review/CAS/manual invariants. RED3 failures/13 passes → GREEN41 parser/protocol regressions. Нові reload/strict guards18pass/1 harness error (Repository.list_events замість list_run_events); accessor виправлено без зміни production. Саме збережена відповідь локально проходить новий parser,2 proposals needs_review; production raw/status незмінні, inference не запускався, приватний вміст виключено з документації/тестів/review.
+
+
+Фінальний gate: **654 passed,0 failures/errors/skipped**,148.50с, source_changed_during_run=false; artifacts/verification-iiov2nhk/result.json, STATUS оновлено verify.py. Усі generation/web/integration перевірки виконано. check_docs пройшов. Новий warning на чинній панелі без зміни layout: UA/EN інструкції актуалізовано, screenshots не потребують заміни. Production raw/failed state/settings не переписано; нових inference немає.
+
+
+Cross-review: claude/default @ a8ba12e (author: codex) — 5 findings: 4 fixed, 1 rejected
+
+Очищений review heada8ba12e відповідає code4d55d68, base382bd9d. Перед запуском npm0.5.0/integrity й81 package files звірено;643→645 allowlisted files,0 credentials. Приватний raw/user materials/env/research/original.git виключено. Після review production code незмінний;27 посилених synthetic tests passed.
+
+| № | Рішення | Доказ / зміна |
+|---|---|---|
+| 1 | rejected | Пряме відтворення plain і structured lone-surrogate повертає Pydantic ValidationError/category schema, а не припущений UnicodeEncodeError/publication. Додано4 execute_stage регресії objective/change × string/object: failed/schema, без result/head, original partial незмінний. Production ensure_ascii не змінювався. |
+| 2 | fixed | Точні ValidationError type/loc, точний PlannerProtocolError duplicate_key; кожна invalid shape також виконується через stage і перевіряє failed/schema/no result/no head/raw/one call. |
+| 3 | fixed | Повні очікувані lists, три plain/fenced/apostrophe випадки для worker reload; точний merged run.warning і context_warning event. |
+| 4 | fixed | Прямий manual brief POST400 без створення version/head та prepare parser extra_forbidden; traceability доповнено. |
+| 5 | fixed | Після Repository reopen читається одна saved attempt із needs_review, exact planner_warnings і raw bytes для всіх трьох обгорток. |
+
+
+Post-review gate: **61 passed,0 failures/errors/skipped**, source_changed_during_run=false, artifacts/verification-pzeedox0/result.json. Production parser/catalog код4d55d68 не змінювався після широкого654passed gate; лише посилено tests/traceability/docs. check_docs.py пройшов.
+
+
+Завершено: [PR#11](https://github.com/ysilvestrov/obscura-text-writer/pull/11), code4d55d68/review3b54fc7, branch codex/planner-proposal-objects поверх PR#10. Основна тека містить перевірений результат. Після fresh0 active/queued сервер8765 перезапущено з тими самими data/env; HTTP200 та0 active/queued підтверджено. Не змінювалися налаштування, original partial або статус історичної failed спроби; нового inference/retry немає. Сторонній untracked research-файл збережено, merge не виконувався.

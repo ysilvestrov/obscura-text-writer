@@ -19,10 +19,26 @@ def parse_planner_output(text,stage,warnings):
             result[key]=value
         return result
     def invalid(value):raise PlannerProtocolError('non_finite')
-    try:json.loads(content,object_pairs_hook=pairs,parse_constant=invalid)
+    try:payload=json.loads(content,object_pairs_hook=pairs,parse_constant=invalid)
     except RecursionError as exc:raise PlannerProtocolError('too_deep') from exc
+    normalized=False
+    if stage=='brief' and isinstance(payload,dict) and isinstance(payload.get('proposed_changes'),list):
+        changes=[]
+        for item in payload['proposed_changes']:
+            if (isinstance(item,dict) and set(item)=={'scene_number','change'}
+                and type(item['scene_number']) is int and item['scene_number']>0
+                and isinstance(item['change'],str) and item['change'].strip()):
+                item=f"Сцена {item['scene_number']}: {item['change']}"
+                normalized=True
+            changes.append(item)
+        if normalized:
+            payload['proposed_changes']=changes
+            content=json.dumps(payload,ensure_ascii=False)
     model={'brief':WritersBrief,'prepare':StoryBlueprint}[stage]
-    return model.model_validate_json(content),content
+    result=model.model_validate_json(content)
+    if normalized:
+        warnings.append('Планувальник: структуровані proposed_changes перетворено на текст із номерами сцен; пропозиції потребують явного прийняття.')
+    return result,content
 
 
 FIELDS={'objective','beats','constraints','proposed_changes','canon','characters','scenes','warnings',

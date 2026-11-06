@@ -2661,6 +2661,22 @@
         "tests/providers/test_generation_diagnostics.py::test_successful_catalog_allows_unknown_or_fitting_actual_request",
         "tests/providers/test_generation_diagnostics.py::test_known_limits_block_before_completion_post"
       ]
+    },
+    {
+      "id": "PLANNER-JSON-S03",
+      "requirement": "PLANNER-JSON",
+      "scope": "Обмежена model-only нормалізація scene_number/change, точний текст/raw, strict manual та needs_review.",
+      "tests": [
+        "tests/generation/test_planner_proposal_objects.py::test_structured_model_proposals_preserve_text_number_and_review_gate",
+        "tests/generation/test_planner_proposal_objects.py::test_unknown_model_proposals_remain_strict",
+        "tests/generation/test_planner_proposal_objects.py::test_structured_proposal_warning_survives_worker_reload",
+        "tests/generation/test_planner_proposal_objects.py::test_mixed_invalid_proposals_do_not_partially_normalize_or_warn",
+        "tests/generation/test_planner_proposal_objects.py::test_duplicate_keys_inside_structured_proposals_stay_rejected",
+        "tests/generation/test_planner_proposal_objects.py::test_plain_string_proposals_keep_exact_version_bytes",
+        "tests/generation/test_planner_proposal_objects.py::test_invalid_unicode_remains_schema_failure_with_original_partial",
+        "tests/generation/test_planner_proposal_objects.py::test_prepare_does_not_accept_brief_proposal_wire_shape",
+        "tests/generation/test_planner_proposal_objects.py::test_manual_brief_endpoint_rejects_structured_wire_without_creating_version"
+      ]
     }
   ]
 }
