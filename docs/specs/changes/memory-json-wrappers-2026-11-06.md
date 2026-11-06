@@ -33,3 +33,6 @@ Cross-review: claude/default @ 1dcaa7c (author: codex) — 5 findings: 5 fixed, 
 
 
 Фінальний gate після всіх review/harness виправлень: **515 passed,0 failed/errors/skipped**, source_changed_during_run=false, artifacts/verification-9k5sjzus/result.json; STATUS оновлено verify.py. check_docs.py пройшов.
+
+
+Завершено: [PR](https://github.com/ysilvestrov/obscura-text-writer/pull/8), code398b8b6, branch codex/memory-json-wrappers поверх UI PR#7. Основна тека містить перевірений код; idle-сервер127.0.0.1:8765 перезапущено з тими самими data/env параметрами, HTTP200 і0 active/queued runs після старту. Без нового inference/зміни налаштувань/переписування production partial. Сторонній untracked research-файл збережено; merge не виконувався.
