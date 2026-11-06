@@ -1128,3 +1128,6 @@ Cross-review: claude/default @ a8ba12e (author: codex) — 5 findings: 4 fixed, 
 
 
 Post-review gate: **61 passed,0 failures/errors/skipped**, source_changed_during_run=false, artifacts/verification-pzeedox0/result.json. Production parser/catalog код4d55d68 не змінювався після широкого654passed gate; лише посилено tests/traceability/docs. check_docs.py пройшов.
+
+
+Завершено: [PR#11](https://github.com/ysilvestrov/obscura-text-writer/pull/11), code4d55d68/review3b54fc7, branch codex/planner-proposal-objects поверх PR#10. Основна тека містить перевірений результат. Після fresh0 active/queued сервер8765 перезапущено з тими самими data/env; HTTP200 та0 active/queued підтверджено. Не змінювалися налаштування, original partial або статус історичної failed спроби; нового inference/retry немає. Сторонній untracked research-файл збережено, merge не виконувався.
