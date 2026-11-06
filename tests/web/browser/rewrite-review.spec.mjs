@@ -69,3 +69,43 @@ test('rewrite never substitutes another tab notes for the locally reviewed set',
   await expect(page.locator('#author-general')).toHaveValue('Моя збережена вказівка.');
   expect((await(await request.get(`/api/stories/${fixture.story_id}/runs`)).json()).runs).toHaveLength(0);
 });
+
+
+test('select all rewrite changes is local and still requires matching assembled preview',async({page,request})=>{
+  const f=await(await request.post('/test-fixture')).json();
+  await page.goto(`/stories/${f.story_id}`);await page.locator('#mode-tabs [data-mode="draft"]').click();
+  await page.locator('[data-ui-locale="en"]').click();
+  await page.locator('#author-general').fill('Make both sentences vivid.');
+  page.on('dialog',d=>d.accept());
+  await page.getByRole('button',{name:'Rewrite from comments',exact:true}).click();
+  const review=page.locator('#assisted-review'),all=review.getByRole('button',{name:'Select all changes',exact:true});
+  await expect(review.locator('.copyedit-item')).toHaveCount(2);
+  await expect(review.locator('input:checked')).toHaveCount(0);
+  const before=(await(await request.get(`/api/scenes/${f.scene_id}/comments`)).json());
+  let mutations=0;page.on('request',r=>{if(r.method()==='POST'||r.method()==='PUT'||r.method()==='PATCH')mutations++;});
+  await all.click();
+  await expect(review.locator('input:checked')).toHaveCount(2);
+  await expect(all).toBeDisabled();await expect(review.locator('[data-review-accept]')).toBeDisabled();
+  expect(mutations).toBe(0);
+  const after=(await(await request.get(`/api/scenes/${f.scene_id}/comments`)).json());
+  expect(after).toEqual(before);
+  await page.locator('[data-ui-locale="uk"]').click();
+  await expect(review.getByRole('button',{name:'Обрати всі зміни',exact:true})).toBeDisabled();
+  await expect(review.locator('input:checked')).toHaveCount(2);
+  await review.getByRole('button',{name:'Переглянути вибраний текст',exact:true}).click();
+  await expect(review.locator('[data-review-accept]')).toBeEnabled();
+  await review.locator('input[type=checkbox]').first().uncheck();
+  await expect(review.locator('[data-review-accept]')).toBeDisabled();
+  await review.getByRole('button',{name:'Обрати всі зміни',exact:true}).click();
+  await expect(review.locator('[data-review-accept]')).toBeDisabled();
+  await review.getByRole('button',{name:'Переглянути вибраний текст',exact:true}).click();
+  await page.evaluate(()=>import('/static/api.js').then(m=>m.dismissNotice()));
+  await review.screenshot({path:`docs/images/rewrite-select-all-${test.info().project.name}.png`});
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBeTruthy();
+  await review.locator('[data-review-accept]').click();
+  await expect(page.locator('.ProseMirror')).toHaveAttribute('contenteditable','true');
+  await expect(page.locator('.ProseMirror')).toContainText('сузір’я');
+  await expect(page.locator('.ProseMirror')).toContainText('Вечір був');
+  await expect(page.locator('#author-general')).toHaveValue('');
+  await expect(review.locator('[data-review-select-all]')).toBeDisabled();
+});

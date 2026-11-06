@@ -176,3 +176,9 @@ R-22 прокрутка: Playwright `long draft scrolls internally while formatt
 `node frontend/node_modules/@playwright/test/cli.js test --config frontend/playwright.config.mjs additive-imports --reporter=line` на синтетичному сервері. Desktop/mobile: writing target25000, Save, Reset, UA/EN, remote-target conflict без втрати вводу; журнал назв/дат, нові/дубльовані матеріали, partial/error, pending-submit, збереження selection. Наявність процедури не означає її виконання; фактичний результат записується в журналі й STATUS.
 
 Додатково: confirmed POST + failed GET лишає «Імпорт завершено» й кількості; кнопка повторює тільки GET. POST застосований сервером, але відповідь втрачена: невідомий результат без нульових кількостей, файлові поля очищено, журнал оновлюється без нового POST. Writing409/мережевий збій зберігають ввід і блокують dirty-вихід.
+
+
+<a id="r23-select-all"></a>
+## Пакетний вибір переписування
+
+Запустити `node frontend/node_modules/@playwright/test/cli.js test --config frontend/playwright.config.mjs rewrite-review --reporter=line`. Новий сценарій select all rewrite changes перевіряє desktop/mobile: початково0, click→усі групи без mutations, UA/EN, preview обов’язковий навіть після повернення до all, apply двох змін/очищення notes. Нейтральні screenshots docs/images/rewrite-select-all-desktop.png і mobile.png оглянути на читабельність/overflow. Наявність процедури не означає виконання.

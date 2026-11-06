@@ -2002,7 +2002,8 @@
     "imports.journal_updated": "Журнал оновлено",
     "imports.error_concurrent": "Матеріали вже змінено; файл не застосовано",
     "imports.error_apply": "Не вдалося застосувати файл; попередні успішні імпорти збережено",
-    "memory.json_wrapper_removed": "Пам’ять: прибрано зовнішню обгортку JSON; вміст і докази не змінено."
+    "memory.json_wrapper_removed": "Пам’ять: прибрано зовнішню обгортку JSON; вміст і докази не змінено.",
+    "rewrite.select_all": "Обрати всі зміни"
   },
   "en": {
     "ui.save": "Save",
@@ -4007,6 +4008,7 @@
     "imports.journal_updated": "Journal updated",
     "imports.error_concurrent": "Materials have changed; the file was not applied",
     "imports.error_apply": "Could not apply the file; previous successful imports were preserved",
-    "memory.json_wrapper_removed": "Memory: removed the outer JSON wrapper; content and evidence are unchanged."
+    "memory.json_wrapper_removed": "Memory: removed the outer JSON wrapper; content and evidence are unchanged.",
+    "rewrite.select_all": "Select all changes"
   }
 }

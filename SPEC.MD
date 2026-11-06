@@ -2726,7 +2726,7 @@ THEN head сам по собі не змінює ongoing snapshot, але зов
 <a id="r23-review"></a>
 ### Requirement: R23-REVIEW — Спільний diff і чернетка як ціль прийняття
 
-GET /api/scenes/{scene}/rewrites та /{attempt} SHALL повертати список пропозицій і grouped diff з immutable notes цієї спроби. POST /rewrites/preflight приймає exact source/comment-set/fingerprint, не викликає модель; POST /{attempt}/selection-preview та /{attempt}/apply (також сумісний alias /{attempt}) вимагають selected_indices, expected_revision, expected_comments_revision і proposal_fingerprint. Власник scene/attempt/source перевіряється. RewriteReview SHALL використовувати pure RewriteDiff/sentence_groups/format-group validation; hardcoded copyedit prose publisher не використовується. Початковий вибір порожній, assembled preview підтверджує поточний вибір перед apply. Історія рішень доступна при reopen.
+GET /api/scenes/{scene}/rewrites та /{attempt} SHALL повертати список пропозицій і grouped diff з immutable notes цієї спроби. POST /rewrites/preflight приймає exact source/comment-set/fingerprint, не викликає модель; POST /{attempt}/selection-preview та /{attempt}/apply (також сумісний alias /{attempt}) вимагають selected_indices, expected_revision, expected_comments_revision і proposal_fingerprint. Власник scene/attempt/source перевіряється. RewriteReview SHALL використовувати pure RewriteDiff/sentence_groups/format-group validation; hardcoded copyedit prose publisher не використовується. Початковий вибір порожній, assembled preview підтверджує поточний вибір перед apply. У rewrite review кнопка «Обрати всі зміни» SHALL локально позначати всі цілі sentence/format groups без запиту/публікації, скидаючи старий assembled preview. Вона підкоряється dirty/saving/busy/preview-loading/can_apply guards, прихована без змін і disabled коли все позначено; copyediting adapter незмінний. Історія рішень доступна при reopen.
 
 Кожна source-coordinate зміна SHALL мати inside/outside/cross_boundary й comment_ids. Insertion точно на boundary — cross_boundary; group із різними locations або кількома окремими commented ranges — cross_boundary. Це геометрична позначка, не доказ виконання вказівок. Shared static/change-review.js працює через adapter; copyedits.js зберігає чинний editor API/поведінку, rewrite adapter додає notes revision/location/instruction history. Немає автоматичного classifier/evaluator.
 
@@ -2741,6 +2741,11 @@ THEN початковий вибір порожній, цілі sentence/format 
 GIVEN авторський робочий буфер із вказівками
 WHEN автор скасовує dirty Save або зберігає, викликає fake writer та приймає subset чи відхиляє все
 THEN cancel не створює run, один queued call дає readonly review, прийняття лишає вкладку draft і очищає лише поточні notes, reject-all зберігає source/notes.
+
+#### Scenario: R23-REVIEW-S03 — Обрати всі зміни
+GIVEN поточна пропозиція переписування з порожнім або частковим вибором
+WHEN автор натискає «Обрати всі зміни» і перемикає UA/EN
+THEN усі групи SHALL бути позначені локально без POST/збереження, початковий вибір і тексти незмінні; apply потребує нового assembled preview, зміна subset не обходить fingerprint/CAS; завершена пропозиція не застосовується повторно.
 
 <a id="r23-apply"></a>
 ### Requirement: R23-APPLY — Атомарне рішення автора
