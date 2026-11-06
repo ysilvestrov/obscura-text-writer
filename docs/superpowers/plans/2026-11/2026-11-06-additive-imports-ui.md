@@ -52,7 +52,7 @@ UA/EN, plain-text авторські поля та чинний дизайн з�
 ## Завершення
 
 - [x] Незалежне рев’ю обох задач, суттєві виправлення RED→GREEN; фактичні результати verify.py у STATUS і журналі.
-- [ ] Push/PR поверх перевіреного ядра, основна тека на результаті зі збереженням сторонніх правок. Не merge без дозволу.
+- [x] Push/PR поверх перевіреного ядра, основна тека на результаті зі збереженням сторонніх правок. Не merge без дозволу.
 
 ## Самоперевірка
 
@@ -88,3 +88,6 @@ Cross-review: claude/default @ 9461c41 (author: codex) — 5 findings: 5 fixed, 
 
 
 Остаточний gate після всіх cross-review виправлень: **185 passed,0 failed/errors/skipped**, source_changed_during_run=false, artifacts/verification-ci5eme_z/result.json; STATUS оновлено verify.py. Код і UA/EN інструкції узгоджено, залишкових findings немає.
+
+
+Збережено: [PR#7](https://github.com/ysilvestrov/obscura-text-writer/pull/7), base codex/additive-import-core (PR#6). Перевірений код55379b5 на гілці codex/additive-import-ui відправлено в GitHub; основна C:\Projects\text-generator містить цей результат. Сторонній untracked research-файл збережено, не включено до комітів. Merge не виконувався.

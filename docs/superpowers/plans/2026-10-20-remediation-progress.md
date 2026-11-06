@@ -1036,3 +1036,6 @@ UI cross-review Claude завершено:5 findings,5 fixed,0 rejected. Пок�
 
 
 Остаточний gate після всіх cross-review виправлень: **185 passed,0 failed/errors/skipped**, source_changed_during_run=false, artifacts/verification-ci5eme_z/result.json; STATUS оновлено verify.py. Код і UA/EN інструкції узгоджено, залишкових findings немає.
+
+
+UI-пакет збережено в [PR#7](https://github.com/ysilvestrov/obscura-text-writer/pull/7), code55379b5, branch codex/additive-import-ui поверх PR#6. Основна тека на результаті; сторонній untracked research-файл не змінено й не закомічено. Merge не виконано.
