@@ -2,20 +2,20 @@
 
 **ПЕРЕВІРКА ПРОЙШЛА** — свідчення конкретного запуску, не поточного довільного стану.
 
-- Початок (UTC): 2026-11-07T20:58:49.579629+00:00
-- Завершення (UTC): 2026-11-07T21:07:01.342251+00:00
-- Базовий commit: `a0b107b6c045330ec89c49767d3d4ddefe765744`
-- Незакомічені зміни під час перевірки: `true`
-- SHA-256 вихідного знімка: `b96572cceadfe37479185c7cbfe1bc179736276db7ed9cc779d83d33a04ca722`
+- Початок (UTC): 2026-11-07T21:55:00.238422+00:00
+- Завершення (UTC): 2026-11-07T22:02:35.077720+00:00
+- Базовий commit: `98ff117edfa00754f5b38fb773d7eba3bb20d675`
+- Незакомічені зміни під час перевірки: `false`
+- SHA-256 вихідного знімка: `b61346a2ef3b7eb8b19bd7af6cf220bc4c79e23077bc278e5f0405618d3aa360`
 - Зміна знімка під час прогону: `false`
 - Exit code: `0`
-- Фактичні testcase результати JUnit: passed: 1386 · failed: 0 · errors: 0 · skipped: 1
-- Тривалість: 491.77 с
+- Фактичні testcase результати JUnit: passed: 1415 · failed: 0 · errors: 0 · skipped: 1
+- Тривалість: 454.84 с
 
 Точний argv (JSON, не shell-команда):
 
 ```json
-["C:\\Projects\\text-generator\\.venv\\Scripts\\python.exe", "-m", "pytest", "-q", "--junitxml=C:\\Projects\\text-generator-memwire\\artifacts\\verification-orlcqagd\\junit.xml", "--basetemp=C:\\Projects\\text-generator-memwire\\artifacts\\verification-orlcqagd\\test-tmp"]
+["C:\\Projects\\text-generator\\.venv\\Scripts\\python.exe", "-m", "pytest", "-q", "--junitxml=C:\\Projects\\text-generator-memwire\\artifacts\\verification-qta31l2f\\junit.xml", "--basetemp=C:\\Projects\\text-generator-memwire\\artifacts\\verification-qta31l2f\\test-tmp"]
 ```
 
 Результат стосується лише наведеної команди й вихідного знімка. Якщо в argv зазначено окремі файли або фільтри, це часткова перевірка. Збір (collection) не є виконанням; skipped не зараховано до passed. Відсутній або непридатний XML позначається непідтвердженим. Після зміни вихідних файлів звіт історичний. Власний STATUS і artifacts виключено зі знімка; початкова ревізія може мати dirty=true, оскільки звіт створюється до коміту.
