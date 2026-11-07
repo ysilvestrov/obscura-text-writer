@@ -30,6 +30,9 @@ def test_all_model_json_boundaries_accept_one_wrapper_without_changing_strings(o
 
 @pytest.mark.parametrize('raw', ["'{}", "`{}'", 'Explanation\n```json\n{}\n```', '```json\n{}\n```\n```json\n{}\n```', "''{}''", "'{\"a\":1,\"a\":2}'", "'{\"a\":NaN}'"])
 def test_review_json_keeps_ambiguous_or_invalid_payloads_closed(raw):
+    from storygen.model_json import unwrap_model_json
+    if raw not in ("'{\"a\":1,\"a\":2}'", "'{\"a\":NaN}'"):
+        assert unwrap_model_json(raw)==raw
     with pytest.raises(ValueError):
         decode_response(raw)
 

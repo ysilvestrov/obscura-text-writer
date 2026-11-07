@@ -3,7 +3,7 @@ from fastapi.testclient import TestClient
 from storygen.application.settings import AppSettings
 from storygen.web.app import create_app
 from storygen.authoring.imports import SourceFile,import_sources
-from storygen.domain import StoryCreate
+from storygen.domain import StoryCreate, RevisionConflict
 from storygen.storage.repository import Repository
 from storygen.characters.models import load_characters
 
@@ -129,3 +129,40 @@ def test_unnumbered_future_sections_are_not_global_instructions(tmp_path):
     assert 'FUTURE_SECRET' not in context.user_text
     view=repo.context_view(story.id)
     assert source_preamble(view,view.active_source(story.id,'source_plan'))==view.active_source(story.id,'source_plan').id
+
+@pytest.mark.parametrize('fault', [KeyError, TypeError])
+def test_unexpected_failure_after_first_file_reports_partial(tmp_path, monkeypatch, fault):
+    app=create_app(AppSettings(data_dir=tmp_path))
+    with TestClient(app,base_url='http://127.0.0.1:8765') as client:
+        story=client.post('/api/stories',json={'title':'Synthetic'}).json()
+        original=app.state.repo.publish_import
+        count=0
+        def publish(*args):
+            nonlocal count
+            count+=1
+            if count==2: raise fault('private details')
+            return original(*args)
+        monkeypatch.setattr(app.state.repo,'publish_import',publish)
+        response=client.post(f"/api/stories/{story['id']}/sources",files=[('plan',(name,b'Plan')) for name in ('a.md','b.md','c.md')])
+        assert response.status_code==200
+        data=response.json()
+        assert data['partial'] and [f['status'] for f in data['files']]==['imported','failed','not_processed']
+        assert data['active_sources']==dict(app.state.repo.context_view(story['id']).sources)
+        assert 'private details' not in response.text
+
+@pytest.mark.parametrize('fault,status', [(ValueError,400), (RevisionConflict,409)])
+def test_first_import_failure_reports_current_active_sources(tmp_path,monkeypatch,fault,status):
+    app=create_app(AppSettings(data_dir=tmp_path))
+    with TestClient(app,base_url='http://127.0.0.1:8765') as client:
+        story=client.post('/api/stories',json={'title':'Synthetic'}).json()
+        url=f"/api/stories/{story['id']}/sources"
+        assert client.post(url,files=[('plan',('a.md',b'Plan'))]).status_code==200
+        active=dict(app.state.repo.context_view(story['id']).sources)
+        def fail(*args): raise fault('private details')
+        monkeypatch.setattr(app.state.repo,'publish_import',fail)
+        response=client.post(url,files=[('plan',('b.md',b'Plan'))])
+        assert response.status_code==status
+        data=response.json()
+        assert data['active_sources']==active
+        assert data['warnings'] and data['files'][0]['status']=='failed'
+        assert 'private details' not in response.text

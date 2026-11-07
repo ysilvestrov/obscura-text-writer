@@ -42,7 +42,8 @@ def test_publication_rolls_back_after_first_scene(tmp_path,monkeypatch):
         if count==2:raise ValueError('synthetic fault')
         return original(*args,**kwargs)
     monkeypatch.setattr(scene_metadata,'apply_description',fail)
-    with pytest.raises(ValueError):repo.publish_import(story.id,story.revision,change)
+    with pytest.raises(ValueError,match='synthetic fault'):repo.publish_import(story.id,story.revision,change)
+    assert count==2
     assert repo.list_scenes(story.id)==[]
     assert repo.list_source_files(story.id)==[]
     assert repo.active_source(story.id,'source_plan') is None

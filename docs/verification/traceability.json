@@ -2535,7 +2535,9 @@
         "tests/web/test_additive_imports.py::test_multipart_reports_partial_without_retry_and_prevalidates_all",
         "tests/web/test_cross_review_imports.py::test_failed_character_file_never_claims_published_cards",
         "tests/web/test_cross_review_imports.py::test_first_runtime_conflict_returns_409_per_file_results",
-        "tests/web/test_cross_review_imports.py::test_oversized_uploads_return_413_before_publication"
+        "tests/web/test_cross_review_imports.py::test_oversized_uploads_return_413_before_publication",
+        "tests/web/test_additive_imports.py::test_unexpected_failure_after_first_file_reports_partial",
+        "tests/web/test_additive_imports.py::test_first_import_failure_reports_current_active_sources"
       ]
     },
     {

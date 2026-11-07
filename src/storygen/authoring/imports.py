@@ -1,4 +1,3 @@
-import sqlite3
 import hashlib
 import json
 from pathlib import Path
@@ -135,13 +134,15 @@ def import_sources(repo: Repository,story_id: str,files: list[SourceFile]) -> Im
             if file.kind=='source_characters':_characters(repo,view,story,text,version,item,publication)
             else:proposals=_plan(repo,view,story,text,version,item,publication)
             published=repo.publish_import(story_id,story.revision,publication)
-        except (ValueError,OSError,sqlite3.Error) as error:
+        except Exception as error:
             item.status='failed'
             item.created_character_cards=0;item.created_scene_ids=[]
             item.warnings=[];item.skipped_character_names=[];item.skipped_scene_numbers=[]
             item.error='Матеріали вже змінено; файл не застосовано' if isinstance(error,RevisionConflict) else 'Не вдалося застосувати файл; попередні успішні імпорти збережено'
             result.partial=any(f.status=='imported' for f in result.files)
             if not result.partial:
+                result.warnings=[item.error]
+                result.active_sources=dict(repo.context_view(story_id).sources)
                 raise (ImportBatchConflict(result) if isinstance(error,RevisionConflict) else ImportBatchFailure(result)) from error
             break
         item.status='imported';item.source_id=id;item.version_id=version.id;item.created_scene_ids=published.created_scene_ids
