@@ -51,13 +51,23 @@ def prepare(story_id: str,body: Prepare,request: Request):
     return request.app.state.coordinator.enqueue(RunRequest(story_id=story_id,mode='prepare'),body.request_id)
 
 
+def _public_attempt(attempt):
+    data=attempt.model_dump(exclude={'context'})
+    # Only the app-written memory diagnostics leave the context: labels and codes, never model values.
+    violations=attempt.context.get('memory_violations')
+    if isinstance(violations,dict):data['memory_violations']=violations
+    warnings=attempt.context.get('memory_warnings')
+    if isinstance(warnings,list):data['memory_warnings']=warnings
+    return data
+
+
 @router.get('/api/runs/{id}')
 def get_run(id: str,request: Request):
     worker=request.app.state.coordinator
     run=worker.get_run(id)
     attempts=worker.repo.list_attempts(run.story_id,run.id)
     # Exact manifests are server-side; only public metadata and output appear in the UI.
-    public=[a.model_dump(exclude={'context'}) for a in attempts]
+    public=[_public_attempt(a) for a in attempts]
     partial=worker.repo.files.read_partial(attempts[-1].partial_path) if attempts else ''
     return {'run':run,'attempts':public,'partial':partial}
 

@@ -50,7 +50,7 @@ def memory_view_from_view(view,scene_id):
             source=next((s for s in scenes if s.id==historical.scene_id and historical.story_id==scene.story_id and s.position<=scene.position),None)
         result['rows'].append({'claim_id':event.claim_id,'text':event.text,'category':event.category,
             'category_label':labels[event.category],'source_scene':source.position+1 if source else None,
-            'source_title':source.title if source else 'Попереднє джерело','quote':event.quote,
+            'source_title':source.title if source else 'Попереднє джерело','quote':event.quote,'supporting_quotes':list(event.supporting_quotes),
             'forward':choices.get(event.claim_id,True),'closed':event.operation=='retire'})
     stale=view.get_version(memory_id).stale
     result.update(can_save=not stale,reason='Пам’ять застаріла: спершу оновіть її' if stale else None)
