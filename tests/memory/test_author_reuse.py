@@ -4,6 +4,7 @@ from storygen.domain import StoryCreate, SceneCreate
 from storygen.storage.repository import Repository
 from storygen.memory.models import MemorySnapshot, MemoryEntry
 from storygen.providers.models import RoleSettings, ProviderSettings
+from tests.memory.wire_helpers import v3_response
 from storygen.providers.streaming import GenerationEvent
 from storygen.generation.context import build_context
 from storygen.generation.stages import execute_stage
@@ -59,7 +60,7 @@ def test_approved_update_publishes_and_preserves_provenance_for_next_scene(tmp_p
     assert context.context_warnings
     class Gateway:
         def stream(self,context,cancel):
-            yield GenerationEvent(type='delta',text='{"schema_version":2,"operations":[]}')
+            yield GenerationEvent(type='delta',text=v3_response())
             yield GenerationEvent(type='terminal',finish_reason='stop')
     attempt=execute_stage(repo,scene.id,'memory',context,Gateway(),threading.Event(),lambda text:None)
     assert attempt.state=='completed',attempt.error
@@ -131,7 +132,7 @@ def test_new_inputs_during_generation_keep_result_as_alternative(tmp_path):
         def stream(self,context,cancel):
             replacement=repo.save_version(scene.story_id,first.id,'manual','Прозу знову змінено.',[])
             repo.set_head(first.id,'prose',replacement.id,repo.get_scene(first.id).revision)
-            yield GenerationEvent(type='delta',text='{"schema_version":2,"operations":[]}')
+            yield GenerationEvent(type='delta',text=v3_response())
             yield GenerationEvent(type='terminal',finish_reason='stop')
     attempt=execute_stage(repo,scene.id,'memory',context,Gateway(),threading.Event(),lambda _:None)
     assert attempt.state=='alternative'

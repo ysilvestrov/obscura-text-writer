@@ -151,3 +151,20 @@ def test_imported_pause_without_calibration_cannot_partially_apply(tmp_path):
 @pytest.mark.parametrize('raw',['{"name":"one","name":"two"}', '['*2000])
 def test_malformed_import_is_safe(raw):
     with pytest.raises(ValueError,match='Некоректний профіль'):parse_profile(raw)
+
+
+def test_custom_v2_memory_prompt_keeps_contract_through_profile(tmp_path):
+    from storygen.domain import PromptContract
+    repo,source,_=seeded(tmp_path)
+    v2=PromptContract(stage='memory',mode='evidence_delta',schema_version=2)
+    prompt=repo.save_version(source.id,None,'prompt','Old memory prompt.',[],prompt_contract=v2)
+    roles=repo.read_role_settings(source.id)
+    roles['memory']={**roles['memory'],'prompt_version_id':prompt.id}
+    repo.write_role_settings(source.id,roles,source.revision)
+    source=repo.get_story(source.id)
+    saved=capture_profile(repo,source.id,'Memory v2',source.revision)
+    assert parse_profile(export_profile(repo,saved['id'],1)).roles['memory'].prompt.contract==v2
+    target=repo.create_story(StoryCreate(title='Target'))
+    apply_profile(repo,target.id,saved['id'],1,target.revision)
+    local=repo.read_role_settings(target.id)['memory']['prompt_version_id']
+    assert repo.get_version(local).prompt_contract==v2

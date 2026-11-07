@@ -1,7 +1,7 @@
 import {live,t,msg,labelEntries,getLocale,uiText,uiAttr,uiHTML,uiInsertHTML,diagnostic} from './i18n.js';
 import {api,json,notice} from './api.js';
 import {registerSettingsForm,settingsSaved,withSettingsSave,settingsChanged,settingsRebaseFields,confirmSettingsReplacement,settingsFormError} from './settings-workspace.js';
-import {settingsSignature} from './settings-state.js';
+import {settingsSignature,expectedPromptContract} from './settings-state.js';
 import {mountClassification} from './classification-settings.js';
 import {groupRoleFields} from './settings-role-layout.js';
 import {mountHorizonControls} from './horizon-controls.js';
@@ -56,7 +56,7 @@ async function load(onlyRole=null){
     const assignment=document.createElement('label');const assignInput=document.createElement('input');assignInput.type='checkbox';assignInput.name='confirm_prompt_contract';assignment.append(assignInput,caption("m_90e681732477"));contract.after(assignment);
     const reset=document.createElement('button');reset.type='button';reset.dataset.promptMeta='true';reset.className='secondary';uiText(reset,"textContent",()=>(t("m_630a80f8c628")));assignment.after(reset);reset.onclick=()=>{form.elements.prompt_text.value='';assignInput.checked=false;updateContract();settingsChanged(role)};
     const stage={planner:'brief',writer:'draft',editor:'edit',memory:'memory'}[role];
-    function updateContract(){const mode=role==='editor'?form.elements.edit_mode.value:role==='memory'?form.elements.memory_mode.value:role==='planner'?'brief':'prose';const expected=`${stage}/${mode}/${mode==='evidence_delta'?2:1}`;const stored=snapshot.prompt_contracts?.[role];const saved=config.prompt_version_id?(stored?`${stored.stage}/${stored.mode}/${stored.schema_version}`:t("m_28a26271f7e7")):t("m_fcedf84d6354");uiText(contract,"textContent",()=>(t("m_6b2c1a90724c",{p0:(expected),p1:(saved)})))}
+    function updateContract(){const mode=role==='editor'?form.elements.edit_mode.value:role==='memory'?form.elements.memory_mode.value:role==='planner'?'brief':'prose';const stored=snapshot.prompt_contracts?.[role];const expected=expectedPromptContract(stage,mode,stored,config.prompt_version_id,form.elements.prompt_text.value);const saved=config.prompt_version_id?(stored?`${stored.stage}/${stored.mode}/${stored.schema_version}`:t("m_28a26271f7e7")):t("m_fcedf84d6354");uiText(contract,"textContent",()=>(t("m_6b2c1a90724c",{p0:(expected),p1:(saved)})))}
     for(const field of ['edit_mode','memory_mode'])if(form.elements[field])form.elements[field].onchange=()=>{if(!config.prompt_version_id&&form.elements.prompt_text.value===originalPrompt)form.elements.prompt_text.value='';assignInput.checked=false;updateContract()};
     form.elements.prompt_text.addEventListener('input',updateContract);updateContract();
     if(role==='planner'){const prepareAssignment=document.createElement('label');const input=document.createElement('input');input.type='checkbox';input.name='confirm_prepare_prompt_contract';prepareAssignment.append(input,caption("m_083894cf6717"));form.elements.prepare_prompt_text.parentElement.after(prepareAssignment)}

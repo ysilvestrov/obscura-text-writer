@@ -22,7 +22,7 @@ def forbidden_gateway(*args, **kwargs):
                     if context.settings.provider.model.endswith('fail:'+context.scene_id) and context.scene_id not in _failed_memories:
                         _failed_memories.add(context.scene_id)
                         yield GenerationEvent(type='error',message='Memory checkpoint unavailable');return
-                    raw=dict(schema_version=2,operations=[])
+                    raw={'schema_version':3,'facts':{'add':[]},'timeline':{'add':[]},'character_states':{'add':[],'update':[],'retire':[]},'open_threads':{'add':[],'update':[],'retire':[]}}
                 else:
                     data=json.loads(context.user_text)
                     raw=dict(complete=True,changes=[],questions=[]) if data['phase']=='delta' else dict(complete=True,concerns=[],carry_refs=[])

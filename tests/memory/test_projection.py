@@ -32,3 +32,20 @@ def test_projection_filters_only_scoped_states_and_keeps_closed_thread_history()
     assert 'Пошук ключа' not in selected.text
     assert selected.metrics['omitted_state_count']==1
     assert 'Стан B' in project_memory(memory,[],{'p':1}).text
+
+
+def test_catalog_v3_hides_immutable_ids():
+    from storygen.memory.journal import MemoryJournal, MemoryEvent
+    from storygen.memory.projection import memory_catalog_v3
+    def event(id,category,text,characters=()):
+        return MemoryEvent(event_id='e'+id,claim_id=id,operation='add',category=category,
+            text=text,character_ids=list(characters),source_version_id='p',quote='доказ')
+    journal=MemoryJournal(source_prose_ids=['p'],events=[event('mc_fact','facts','Текст факту'),
+        event('mc_state','character_states','Стан A',['A']),event('mc_thread','open_threads','Лінія')])
+    text=memory_catalog_v3(journal)
+    assert 'mc_fact' not in text and 'mc_state' in text and 'Текст факту' in text and 'доказ' not in text
+    data=json.loads(text)
+    assert data['mutable']==[{'claim_id':'mc_state','category':'character_states','text':'Стан A','character_ids':['A']},
+        {'claim_id':'mc_thread','category':'open_threads','text':'Лінія','character_ids':[]}]
+    assert data['immutable']==[{'category':'facts','text':'Текст факту'}]
+    assert ': ' not in text and ', ' not in text

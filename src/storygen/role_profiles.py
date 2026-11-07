@@ -7,7 +7,7 @@ from pydantic import Field, model_validator
 
 from .domain import DomainModel, PromptContract, RevisionConflict
 from .providers.models import RoleSettings
-from .prompt_contracts import expected_contract, validate_role_prompt
+from .prompt_contracts import compatible_contract, expected_contract, validate_role_prompt
 from .evaluation.story_adapter import EvaluationSettings, validate_evaluation_settings
 
 ROLES=('planner','writer','editor','memory')
@@ -49,7 +49,7 @@ class ProfileDocument(DomainModel):
             settings=role.settings
             if settings.prompt_version_id is not None or settings.prepare_prompt_version_id is not None:
                 raise ValueError('UUID промптів не переноситься між творами')
-            if role.prompt.contract!=expected_contract(STAGES[name],settings):
+            if not compatible_contract(expected_contract(STAGES[name],settings),role.prompt.contract):
                 raise ValueError('Несумісний контракт промпту профілю')
             if name=='planner':
                 if role.prepare_prompt is None or role.prepare_prompt.contract!=expected_contract('prepare',settings):
@@ -101,8 +101,9 @@ def capture_profile(repo,story_id,name,expected_revision,include_evaluator=False
     for name_role in ROLES:
         role=RoleSettings.model_validate(settings[name_role])
         def portable(stage,id):
-            validate_role_prompt(repo,story_id,stage,role)
-            return {'text':repo.read_text(id) if id else None,'contract':expected_contract(stage,role).model_dump()}
+            ref=validate_role_prompt(repo,story_id,stage,role)
+            # A custom memory prompt keeps its stored v2/v3 wire contract when exported.
+            return {'text':repo.read_text(id) if id else None,'contract':(ref.prompt_contract if ref else expected_contract(stage,role)).model_dump()}
         prompt=portable(STAGES[name_role],role.prompt_version_id)
         prepare=portable('prepare',role.prepare_prompt_version_id) if name_role=='planner' else None
         roles[name_role]={'settings':{**role.model_dump(),'prompt_version_id':None,'prepare_prompt_version_id':None},'prompt':prompt,'prepare_prompt':prepare}

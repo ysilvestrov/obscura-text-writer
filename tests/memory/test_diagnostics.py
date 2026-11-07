@@ -5,6 +5,13 @@ from pydantic import ValidationError
 from storygen.memory.journal import MemoryOperations
 
 
+def v2_prompt(repo,story):
+    # These diagnostics are about the v2 protocol: its labels and scope normalization exist only for wire v2.
+    from storygen.domain import PromptContract
+    return repo.save_version(story.id,None,'prompt','Custom memory prompt v2.',[],
+        prompt_contract=PromptContract(stage='memory',mode='evidence_delta',schema_version=2))
+
+
 def test_scope_error_names_operation_without_echoing_payload():
     from storygen.memory.diagnostics import memory_error
     rows=[dict(action='add',category='character_states',text='private text',evidence_id='f000001') for _ in range(8)]
@@ -23,7 +30,7 @@ def test_unknown_error_and_extra_fields_cannot_echo_documents():
     assert 'JSON' in memory_error(json.JSONDecodeError('private text','private document',0))
 
 
-@pytest.mark.parametrize('category,expected_error',[('facts','Невідомий фрагмент'),([], 'category'),({}, 'category')])
+@pytest.mark.parametrize('category,expected_error',[('facts','Невідомий фрагмент'),([], 'Операція 1: Порушено схему'),({}, 'Операція 1: Порушено схему')])
 def test_stage_preserves_partial_and_specific_evidence_failure(tmp_path,category,expected_error):
     from storygen.domain import StoryCreate,SceneCreate
     from storygen.storage.repository import Repository
@@ -35,7 +42,7 @@ def test_stage_preserves_partial_and_specific_evidence_failure(tmp_path,category
     scene=repo.create_scene(story.id,SceneCreate(title='Scene'))
     prose=repo.save_version(story.id,scene.id,'manual','Synthetic prose.',[])
     repo.set_head(scene.id,'prose',prose.id,scene.revision)
-    role=RoleSettings(provider=ProviderSettings(model='fake'),memory_mode='evidence_delta',context_tokens=32768)
+    role=RoleSettings(provider=ProviderSettings(model='fake'),memory_mode='evidence_delta',context_tokens=32768,prompt_version_id=v2_prompt(repo,story).id)
     context=build_context(repo,scene.id,'memory',role)
     raw=json.dumps({'schema_version':2,'operations':[dict(action='add',category=category,text='Claim',evidence_id='f999999')]})
     class Gateway:
@@ -44,7 +51,8 @@ def test_stage_preserves_partial_and_specific_evidence_failure(tmp_path,category
             yield GenerationEvent(type='terminal',finish_reason='stop')
     attempt=execute_stage(repo,scene.id,'memory',context,Gateway(),threading.Event(),lambda _:None)
     assert attempt.state=='failed'
-    assert expected_error in attempt.error
+    assert expected_error in attempt.error and attempt.error.startswith('Помилка пам’яті: 1 порушення')
+    assert attempt.context['memory_violations']['total']==1 and 'Claim' not in json.dumps(attempt.context['memory_violations'])
     assert repo.files.read_partial(attempt.partial_path)==raw
     assert not repo.get_scene(scene.id).heads.get('memory')
 
@@ -83,7 +91,7 @@ def test_normalization_warning_survives_run_reload(tmp_path):
     scene=repo.create_scene(story.id,SceneCreate(title='Scene',character_ids=['A']))
     prose=repo.save_version(story.id,scene.id,'manual','Synthetic evidence.',[])
     repo.set_head(scene.id,'prose',prose.id,scene.revision)
-    role=RoleSettings(provider=ProviderSettings(model='fake'),context_tokens=32768,memory_mode='evidence_delta')
+    role=RoleSettings(provider=ProviderSettings(model='fake'),context_tokens=32768,memory_mode='evidence_delta',prompt_version_id=v2_prompt(repo,story).id)
     save_role_settings(repo,story.id,'memory',role,repo.get_story(story.id).revision)
     raw=json.dumps({'schema_version':2,'operations':[dict(action='add',category='open_threads',text='Question',character_ids=['A'],evidence_id='f000001')]})
     class Gateway:
@@ -101,3 +109,39 @@ def test_normalization_warning_survives_run_reload(tmp_path):
     assert stored.files.read_partial(attempt.partial_path)==raw
     memory=load_memory(stored.read_text(stored.get_scene(scene.id).heads['memory']))
     assert memory.events[0].character_ids==[]
+
+
+def test_stage_records_all_three_violations_with_labels_and_no_texts(tmp_path):
+    from storygen.domain import StoryCreate,SceneCreate
+    from storygen.storage.repository import Repository
+    from storygen.providers.models import RoleSettings,ProviderSettings
+    from storygen.providers.streaming import GenerationEvent
+    from storygen.generation.context import build_context
+    from storygen.generation.stages import execute_stage
+    repo=Repository(tmp_path);story=repo.create_story(StoryCreate(title='Synthetic'))
+    scene=repo.create_scene(story.id,SceneCreate(title='Scene',character_ids=['A']))
+    prose=repo.save_version(story.id,scene.id,'manual','Synthetic prose.',[])
+    repo.set_head(scene.id,'prose',prose.id,scene.revision)
+    # Built-in prompt: wire v3.
+    role=RoleSettings(provider=ProviderSettings(model='fake'),memory_mode='evidence_delta',context_tokens=32768)
+    context=build_context(repo,scene.id,'memory',role)
+    raw=json.dumps({'schema_version':3,
+        'facts':{'add':[{'text':'private fact','evidence_ids':['f999999']}]},
+        'character_states':{'add':[{'text':'private state','evidence_ids':['f000001'],'character_ids':['private-id']}],'update':[],
+            'retire':[{'claim_id':'mc_private','text':'private retire','evidence_ids':['f000001']}]},
+        'open_threads':{'add':[],'update':[],'retire':[]},'timeline':{'add':[]}})
+    class Gateway:
+        def stream(self,*_):
+            yield GenerationEvent(type='delta',text=raw)
+            yield GenerationEvent(type='terminal',finish_reason='stop')
+    attempt=execute_stage(repo,scene.id,'memory',context,Gateway(),threading.Event(),lambda _:None)
+    assert attempt.state=='failed'
+    payload=attempt.context['memory_violations']
+    assert payload['total']==3
+    assert payload['items']==[{'operation':'facts.add[0]','code':'evidence_unknown'},
+        {'operation':'character_states.add[0]','code':'scope_unknown'},
+        {'operation':'character_states.retire[0]','code':'target_unknown'}]
+    assert attempt.error.startswith('Помилка пам’яті: 3 порушення')
+    for label in ('facts.add, елемент 1','character_states.add, елемент 1','character_states.retire, елемент 1'):
+        assert label in attempt.error
+    assert 'private' not in attempt.error and 'private' not in json.dumps(payload)

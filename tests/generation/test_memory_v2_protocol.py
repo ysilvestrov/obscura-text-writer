@@ -28,7 +28,11 @@ def test_v2_stage_sends_catalog_and_publishes_history(tmp_path):
     for scene,text in zip(scenes,texts):
         prose=repo.save_version(story.id,scene.id,'manual',text,[]);ids.append(prose.id)
         repo.set_head(scene.id,'prose',prose.id,scene.revision)
-    role=RoleSettings(provider=ProviderSettings(model='fake'),memory_mode='evidence_delta',context_tokens=32768)
+    from storygen.domain import PromptContract
+    # This test is about the v2 protocol: a custom prompt with the v2 contract keeps the v2 wire.
+    prompt=repo.save_version(story.id,None,'prompt','Власний промпт пам’яті v2.',[],
+        prompt_contract=PromptContract(stage='memory',mode='evidence_delta',schema_version=2))
+    role=RoleSettings(provider=ProviderSettings(model='fake'),memory_mode='evidence_delta',context_tokens=32768,prompt_version_id=prompt.id)
     class Gateway:
         def __init__(self,raw):self.raw=raw
         def stream(self,*_):
@@ -47,3 +51,4 @@ def test_v2_stage_sends_catalog_and_publishes_history(tmp_path):
     assert first.events[0].claim_id in context.user_text
     assert len(second.events)==2 and list(replay_memory(second).values())[0].text=='A за межами бібліотеки'
     assert context.memory_metrics['catalog_chars']>0
+    assert context.fragments['memory_wire_version']=='2' and context.memory_metrics['projection_version']=='memory-catalog-v2'

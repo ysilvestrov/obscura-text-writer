@@ -16,6 +16,16 @@ def memory_catalog(journal: MemoryJournal) -> str:
         for event in replay_memory(journal).values()],ensure_ascii=False,separators=(',',':'))
 
 
+def memory_catalog_v3(journal: MemoryJournal) -> str:
+    # Facts/timeline cannot be updated, so their IDs stay out of the model's reach.
+    mutable,immutable=[],[]
+    for event in replay_memory(journal).values():
+        if event.category in {'character_states','open_threads'}:
+            mutable.append({'claim_id':event.claim_id,'category':event.category,'text':event.text,'character_ids':event.character_ids})
+        else:immutable.append({'category':event.category,'text':event.text})
+    return json.dumps({'mutable':mutable,'immutable':immutable},ensure_ascii=False,separators=(',',':'))
+
+
 def project_memory(journal: MemoryJournal, character_ids: list[str], source_scene_numbers: dict[str,int], *, hidden_claim_ids=()) -> MemoryProjection:
     active=replay_memory(journal)
     labels={'facts':'ФАКТИ','character_states':'ПОТОЧНІ СТАНИ',

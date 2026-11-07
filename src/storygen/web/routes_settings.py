@@ -86,7 +86,7 @@ def configure_prompts(repo,story_id,change,settings):
         if not change.prompt_text.strip() or change.prompt_text==standard:
             settings=settings.model_copy(update={'prompt_version_id':None})
         else:
-            ref=repo.save_version(story_id,None,'prompt',change.prompt_text,[],prompt_contract=expected_contract(stage,settings))
+            ref=repo.save_version(story_id,None,'prompt',change.prompt_text,[],prompt_contract=_custom_contract(repo,story_id,change.role,stage,settings))
             settings=settings.model_copy(update={'prompt_version_id':ref.id})
     if change.confirm_prepare_prompt_contract and change.prepare_prompt_text is None and settings.prepare_prompt_version_id:
         ref=repo.get_version(settings.prepare_prompt_version_id)
@@ -99,6 +99,17 @@ def configure_prompts(repo,story_id,change,settings):
             id=repo.save_version(story_id,None,'prompt',change.prepare_prompt_text,[],prompt_contract=expected_contract('prepare',settings)).id
         settings=settings.model_copy(update={'prepare_prompt_version_id':id})
     return settings
+
+
+def _custom_contract(repo,story_id,role,stage,settings):
+    # A custom memory/evidence_delta/2 prompt keeps /2 on edit and confirm; /3 needs explicit re-assignment.
+    expected=expected_contract(stage,settings)
+    if (expected.stage,expected.mode)!=('memory','evidence_delta'):return expected
+    current=get_role_settings(repo,story_id).get(role)
+    if current is None or not current.prompt_version_id:return expected
+    stored=repo.get_version(current.prompt_version_id).prompt_contract
+    if stored is not None and (stored.stage,stored.mode,stored.schema_version)==('memory','evidence_delta',2):return stored
+    return expected
 
 
 @router.post('/api/providers/discover')

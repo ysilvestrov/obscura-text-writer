@@ -60,3 +60,81 @@ def test_fsck_checks_evidence_without_treating_reorder_as_corruption(tmp_path):
     bad=load_memory(old.model_dump_json()).model_dump();bad['events'][0]['quote']='Відсутній доказ'
     repo.save_version(story.id,scenes[0].id,'memory',json.dumps(bad),ids[:1])
     assert 'invalid_memory' in {issue.code for issue in check_integrity(tmp_path).issues}
+
+
+def _manual_add(old,ids,supporting):
+    from storygen.memory.journal import _add_event
+    value=load_memory(old.model_dump_json());value=value.model_copy(update={'source_prose_ids':ids})
+    event=_add_event('facts','Новий факт',ids[1],'Доказ 1.',0,supporting=supporting)
+    return value.model_copy(update={'events':value.events+[event]})
+
+
+def test_manual_save_keeps_supporting_quotes(tmp_path):
+    from storygen.memory.service import save_scene_memory
+    from storygen.memory.journal import _add_event
+    repo,story,scenes,ids,old=workspace(tmp_path)
+    data=_manual_add(old,ids,('Доказ',))
+    ref=save_scene_memory(repo,scenes[1].id,data.model_dump_json(),1)
+    new=load_memory(repo.read_text(ref.id)).events[-1]
+    assert new.supporting_quotes==['Доказ']
+    assert new.claim_id==_add_event('facts','Новий факт',ids[1],'Доказ 1.',0,supporting=('Доказ',)).claim_id
+
+
+def test_manual_save_rejects_supporting_quote_outside_prose(tmp_path):
+    from storygen.memory.service import save_scene_memory
+    repo,story,scenes,ids,old=workspace(tmp_path)
+    data=_manual_add(old,ids,('Чужа цитата',))
+    with pytest.raises(ValueError,match='Новий запис потребує доказу поточної сцени'):
+        save_scene_memory(repo,scenes[1].id,data.model_dump_json(),1)
+
+
+def test_fsck_reports_bad_supporting_quote(tmp_path):
+    from storygen.storage.integrity import check_integrity
+    repo,story,scenes,ids,old=workspace(tmp_path)
+    bad=json.loads(load_memory(old.model_dump_json()).model_dump_json())
+    bad['events'][0]['supporting_quotes']=['Відсутній доказ']
+    repo.save_version(story.id,scenes[0].id,'memory',json.dumps(bad),ids[:1])
+    assert 'invalid_memory' in {issue.code for issue in check_integrity(tmp_path).issues}
+
+
+MANUAL_PROSE='Перший рядок.\nДругий рядок.\nТретій рядок.'
+
+
+def _manual_previous():
+    from storygen.memory.journal import MemoryJournal,MemoryOperation,MemoryOperations,apply_operations
+    return apply_operations(MemoryJournal(),MemoryOperations(operations=[
+        MemoryOperation(action='add',category='open_threads',text='Лінія А',evidence_id='f000001'),
+        MemoryOperation(action='add',category='open_threads',text='Лінія Б',evidence_id='f000001')]),'p1','Доказ.',[])
+
+
+def test_manual_update_and_retire_keep_supporting_quotes_in_canonical_ids():
+    from storygen.memory.journal import MemoryEvent,change_event_id,normalize_manual_memory
+    previous=_manual_previous();first,second=(e.claim_id for e in previous.events)
+    def change(action,claim,text,supporting):
+        return MemoryEvent(event_id=f'hand-written-{action}',claim_id=claim,operation=action,category='open_threads',text=text,
+            source_version_id='p2',quote='Перший рядок.',supporting_quotes=list(supporting))
+    raw=previous.model_copy(update={'source_prose_ids':['p1','p2'],'events':previous.events+[
+        change('update',first,'Лінія А змінилась',['Другий рядок.']),
+        change('retire',second,'Лінія Б закрита',['Другий рядок.','Третій рядок.'])]}).model_dump_json()
+    journal=normalize_manual_memory(raw,previous,'p2',MANUAL_PROSE,[])
+    update,retire=journal.events[-2:]
+    assert update.supporting_quotes==['Другий рядок.'] and retire.supporting_quotes==['Другий рядок.','Третій рядок.']
+    assert update.event_id==change_event_id('update',first,'Лінія А змінилась','p2','Перший рядок.',['Другий рядок.'])
+    assert retire.event_id==change_event_id('retire',second,'Лінія Б закрита','p2','Перший рядок.',['Другий рядок.','Третій рядок.'])
+    assert update.event_id!=change_event_id('update',first,'Лінія А змінилась','p2','Перший рядок.')
+
+
+def test_manual_duplicate_adds_differing_only_in_supporting_quotes_are_distinct_claims():
+    from storygen.memory.journal import MemoryJournal,_add_event,normalize_manual_memory
+    def add(supporting):
+        return _add_event('facts','Той самий факт','p2','Перший рядок.',0,supporting=supporting)
+    # An author may hand-write any unique IDs; normalization recomputes canonical ones.
+    hand=[event.model_copy(update={'event_id':f'manual-{i}','claim_id':f'manual-claim-{i}'})
+          for i,event in enumerate([add(()),add(('Другий рядок.',)),add(())])]
+    raw=MemoryJournal(source_prose_ids=['p2'],events=hand).model_dump_json()
+    journal=normalize_manual_memory(raw,MemoryJournal(),'p2',MANUAL_PROSE,[])
+    plain,supported,repeat=journal.events
+    # Different supporting quotes make a different key: both are occurrence 0; the exact repeat is occurrence 1.
+    assert plain.claim_id==add(()).claim_id and supported.claim_id==add(('Другий рядок.',)).claim_id
+    assert repeat.claim_id==_add_event('facts','Той самий факт','p2','Перший рядок.',1).claim_id
+    assert len({plain.claim_id,supported.claim_id,repeat.claim_id})==3
