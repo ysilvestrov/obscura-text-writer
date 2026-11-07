@@ -723,6 +723,15 @@
       ]
     },
     {
+      "id": "SCENE-DESCRIPTION-S03",
+      "requirement": "SCENE-DESCRIPTION",
+      "scope": "Пояснення учасників зберігаються в плані та ігноруються при зіставленні.",
+      "tests": [
+        "tests/authoring/test_scene_description.py::test_cast_parenthetical_notes_are_preserved_and_not_part_of_names",
+        "tests/authoring/test_scene_description.py::test_parenthetical_matching_preserves_exact_names_and_ambiguity"
+      ]
+    },
+    {
       "id": "SCENE-CAST-DISPLAY-S01",
       "requirement": "SCENE-CAST-DISPLAY",
       "scope": "Імена після збереження плану. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
