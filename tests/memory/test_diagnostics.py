@@ -23,7 +23,7 @@ def test_unknown_error_and_extra_fields_cannot_echo_documents():
     assert 'JSON' in memory_error(json.JSONDecodeError('private text','private document',0))
 
 
-@pytest.mark.parametrize('category,expected_error',[('facts','Невідомий фрагмент'),([], 'category'),({}, 'category')])
+@pytest.mark.parametrize('category,expected_error',[('facts','Невідомий фрагмент'),([], 'Операція 1: Порушено схему'),({}, 'Операція 1: Порушено схему')])
 def test_stage_preserves_partial_and_specific_evidence_failure(tmp_path,category,expected_error):
     from storygen.domain import StoryCreate,SceneCreate
     from storygen.storage.repository import Repository
@@ -44,7 +44,8 @@ def test_stage_preserves_partial_and_specific_evidence_failure(tmp_path,category
             yield GenerationEvent(type='terminal',finish_reason='stop')
     attempt=execute_stage(repo,scene.id,'memory',context,Gateway(),threading.Event(),lambda _:None)
     assert attempt.state=='failed'
-    assert expected_error in attempt.error
+    assert expected_error in attempt.error and attempt.error.startswith('Помилка пам’яті: 1 порушення')
+    assert attempt.context['memory_violations']['total']==1 and 'Claim' not in json.dumps(attempt.context['memory_violations'])
     assert repo.files.read_partial(attempt.partial_path)==raw
     assert not repo.get_scene(scene.id).heads.get('memory')
 

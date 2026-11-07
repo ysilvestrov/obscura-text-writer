@@ -247,6 +247,9 @@ def parse_memory_result(raw,previous,prose_id,prose,mode,allowed_character_ids,*
                     op['character_ids']=[]
                     if warnings is not None:
                         warnings.append(f'Пам’ять: операція {index+1} ({op["category"]}) — прибрано зайві character_ids; текст і докази не змінено.')
+        from .violations import MemoryViolations,check_v2
+        violations=check_v2(data,previous,{fragment.id for fragment in fragment_text(prose)},allowed_character_ids)
+        if violations:raise MemoryViolations(violations)
         return apply_operations(previous,MemoryOperations.model_validate(data),prose_id,prose,allowed_character_ids)
     return merge_legacy_delta(previous,MemoryDelta.model_validate(data),prose_id,prose)
 

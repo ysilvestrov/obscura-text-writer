@@ -426,6 +426,15 @@
       ]
     },
     {
+      "id": "MEMORY-004-S04",
+      "requirement": "MEMORY-004",
+      "scope": "Кілька незалежних порушень. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/memory/test_violations.py::test_v2_collects_independent_violations",
+        "tests/memory/test_violations.py::test_memory_error_shows_count_and_first_three_without_values"
+      ]
+    },
+    {
       "id": "PROMPT-CONTRACT-S01",
       "requirement": "PROMPT-CONTRACT",
       "scope": "Несумісний або legacy-промпт. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",

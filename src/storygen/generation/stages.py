@@ -325,6 +325,8 @@ def execute_stage(
             attempt.context['classification_failure']={'category':'refusal_unknown' if attempt.context.get('classification_refusal') else 'protocol','message':attempt.error}
         elif stage=='memory':
             from ..memory.diagnostics import memory_error
+            from ..memory.violations import MemoryViolations
+            if isinstance(exc,MemoryViolations):attempt.context['memory_violations']=exc.payload()
             attempt.error='Помилка пам’яті: '+memory_error(exc)+'. Оригінальну відповідь збережено; автоматичного повтору немає.'
         elif stage=='edit':
             from .editor_output import editor_failure

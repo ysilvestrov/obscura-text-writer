@@ -30,6 +30,8 @@ TYPES = {'missing':'Відсутнє обов’язкове поле', 'extra_f
 
 
 def memory_error(exc):
+    from .violations import MemoryViolations
+    if isinstance(exc,MemoryViolations):return exc.message()
     if isinstance(exc,json.JSONDecodeError):
         return f'Некоректний JSON пам’яті: рядок {exc.lineno}, стовпець {exc.colno}'
     if isinstance(exc,ValidationError):
