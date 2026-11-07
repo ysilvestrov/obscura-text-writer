@@ -232,11 +232,20 @@ def merge_legacy_snapshot(previous,snapshot,prose_id,prose):
     return _extend(previous,prose_id,events)
 
 
-def parse_memory_result(raw,previous,prose_id,prose,mode,allowed_character_ids,*,warnings=None):
+def parse_memory_result(raw,previous,prose_id,prose,mode,allowed_character_ids,*,warnings=None,wire_version=2):
     from .models import MemoryDelta
     data=decode_memory(raw)
     if mode=='snapshot':
         return merge_legacy_snapshot(previous,MemorySnapshot.model_validate(data),prose_id,prose)
+    if wire_version==3:
+        from .violations import MemoryViolations
+        from .wire_v3 import MemoryWireV3,check_v3,wire_v3_events
+        violations=check_v3(data,previous,{fragment.id for fragment in fragment_text(prose)},allowed_character_ids)
+        if violations:raise MemoryViolations(violations)
+        return wire_v3_events(MemoryWireV3.model_validate(data),previous,prose_id,prose)
+    if isinstance(data,dict) and data.get('schema_version')==3:
+        from .violations import MemoryViolations,Violation
+        raise MemoryViolations([Violation('$','wire_version')])
     if isinstance(data,dict) and 'schema_version' in data:
         # Model-only wire normalization; manual journals and domain validators stay strict.
         if isinstance(data.get('operations'),list):

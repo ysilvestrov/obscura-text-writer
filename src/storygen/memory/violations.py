@@ -31,6 +31,12 @@ def _label(operation):
     if operation=='$':return 'Відповідь'
     if operation.startswith('operations[') and operation.endswith(']') and operation[11:-1].isdigit():
         return f'Операція {int(operation[11:-1])+1}'
+    head,dot,tail=operation.partition('.')
+    if dot and head in {'facts','character_states','open_threads','timeline'}:
+        action,bracket,index=tail.partition('[')
+        if action in {'add','update','retire'}:
+            if not bracket:return operation
+            if index.endswith(']') and index[:-1].isdigit():return f'{head}.{action}, елемент {int(index[:-1])+1}'
     return operation
 
 

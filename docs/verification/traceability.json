@@ -383,6 +383,22 @@
       ]
     },
     {
+      "id": "MEMORY-002-S02",
+      "requirement": "MEMORY-002",
+      "scope": "Переклад v3 у журнал. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/memory/test_wire_v3.py::test_v3_translates_to_v2_journal_with_stable_ids"
+      ]
+    },
+    {
+      "id": "MEMORY-002-S03",
+      "requirement": "MEMORY-002",
+      "scope": "Кілька доказів. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/memory/test_wire_v3.py::test_v3_multiple_evidence_become_supporting_quotes"
+      ]
+    },
+    {
       "id": "MEMORY-003-S01",
       "requirement": "MEMORY-003",
       "scope": "Змінений стан і закрита лінія. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",

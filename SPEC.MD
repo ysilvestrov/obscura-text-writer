@@ -699,11 +699,36 @@ Update/retire дозволені лише для активних character_stat
 сталими claim ID/category/scope; facts/timeline мають лише add. До 12 операцій
 і до трьох add на категорію; target не змінюється двічі за відповідь.
 
+Wire v3 (`schema_version=3`, модуль `memory/wire_v3.py`) — альтернативний сгрупований
+формат: об’єкти `facts`/`timeline` (лише `add`) і `character_states`/`open_threads`
+(`add`/`update`/`retire`), усі масиви обов’язкові. Кожен елемент має `evidence_ids`
+(1–3 унікальні ID фрагментів); `character_ids` лише в `character_states.add`. Категорію
+й scope update/retire сервер бере з активного claim каталогу, а claim іншої категорії
+дає `target_unknown`. Межі: до трьох add на категорію, до 12 елементів, один target
+не двічі. Переклад у журнал іде в порядку категорій, у групі add → update → retire:
+перший доказ стає `quote`, решта — `supporting_quotes`. Для одного доказу журнал
+побайтово збігається з v2 (ті самі `claim_id`/`event_id`). Відповідь іншої версії
+протоколу дає код `wire_version`; нормалізація scope MEMORY-004 діє лише для v2, а зайве
+`character_ids` у v3 є порушенням схеми. Порожня відповідь v3 валідна й лише фіксує прозу.
+
 <a id="memory-002-s01"></a>
 #### Scenario: MEMORY-002-S01 — Невідомий фрагмент
 - GIVEN доповнення містить ID, якого немає у поточному документі
 - WHEN перевіряється відповідь
 - THEN пам’ять не публікується.
+
+<a id="memory-002-s02"></a>
+#### Scenario: MEMORY-002-S02 — Переклад v3 у журнал
+- GIVEN коректна відповідь wire v3 з одним доказом на елемент
+- WHEN вона перекладається
+- THEN журнал збігається з журналом еквівалентних операцій v2, зі сталими claim/event ID
+- AND категорію й scope update/retire підставляє сервер із каталогу.
+
+<a id="memory-002-s03"></a>
+#### Scenario: MEMORY-002-S03 — Кілька доказів
+- GIVEN елемент v3 має два або три `evidence_ids`
+- WHEN відповідь перекладається
+- THEN перший фрагмент стає `quote`, решта — `supporting_quotes` у порядку переліку.
 
 <a id="memory-003"></a>
 ### Requirement: MEMORY-003 — Історія та сумісність пам’яті
