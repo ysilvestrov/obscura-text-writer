@@ -88,3 +88,11 @@ def test_parse_memory_result_raises_all_violations_without_values():
         parse_memory_result(raw,PREV,'p2','Доказ.','evidence_delta',['A'])
     assert [(v.operation,v.code) for v in caught.value.violations]==[('operations[0]','evidence_unknown'),('$','add_limit')]
     assert 'private' not in str(caught.value) and 'secret' not in str(caught.value)
+
+
+def test_v2_missing_operations_is_empty_list():
+    # Before the violation collector, {"schema_version":2} was accepted as an empty delta.
+    assert codes({'schema_version':2})==[]
+    assert codes({'schema_version':2,'operations':None})==[('$','schema')]
+    journal=parse_memory_result(json.dumps({'schema_version':2}),PREV,'p2','Доказ.','evidence_delta',['A'])
+    assert journal.events==PREV.events and journal.source_prose_ids==['p1','p2']

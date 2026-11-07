@@ -2,7 +2,7 @@
 from collections import Counter
 from typing import Literal
 
-from pydantic import Field, ValidationError
+from pydantic import Field, ValidationError, field_validator
 from ..domain import DomainModel
 from ..evidence import fragment_text
 from .journal import CATEGORIES, MemoryEvent, _add_event, _change_event, _extend, replay_memory
@@ -11,9 +11,17 @@ from .violations import MUTABLE, Violation, pydantic_violations
 ACTIONS=('add','update','retire')
 
 
+def _non_blank(value):
+    # Text stays byte-identical for journal IDs; only a blank claim becomes a labelled schema violation.
+    if not value.strip():raise ValueError('Порожнє твердження пам’яті')
+    return value
+
+
 class WireAdd(DomainModel):
     text: str = Field(min_length=1)
     evidence_ids: list[str]
+
+    _text=field_validator('text')(_non_blank)
 
 
 class WireStateAdd(WireAdd):
@@ -24,6 +32,8 @@ class WireChange(DomainModel):
     claim_id: str
     text: str = Field(min_length=1)
     evidence_ids: list[str]
+
+    _text=field_validator('text')(_non_blank)
 
 
 class AddOnlyGroup(DomainModel):
@@ -65,9 +75,17 @@ def _items(wire,category):
     return [(action,i,item) for action in ACTIONS if hasattr(group,action) for i,item in enumerate(getattr(group,action))]
 
 
+def _other_wire(data):
+    # wire_version only for a recognisable other wire: v2 marker, an operations key or the legacy MemoryDelta
+    # shape (top-level category lists, no groups). Any other non-v3 answer is a plain schema violation.
+    if data.get('schema_version')==2 or 'operations' in data:return True
+    present=[data[c] for c in CATEGORIES if c in data]
+    return 'schema_version' not in data and bool(present) and all(isinstance(v,list) for v in present)
+
+
 def check_v3(data,previous,fragment_ids,allowed_character_ids) -> list[Violation]:
     if not isinstance(data,dict):return [Violation('$','schema')]
-    if data.get('schema_version')!=3 or 'operations' in data:return [Violation('$','wire_version')]
+    if _other_wire(data):return [Violation('$','wire_version')]
     try:wire=MemoryWireV3.model_validate(data)
     except ValidationError as exc:return pydantic_violations(exc,_loc_label)
     result=[];active=replay_memory(previous);allowed=set(allowed_character_ids);total=0;targets=Counter()

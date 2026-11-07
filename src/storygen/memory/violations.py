@@ -73,10 +73,11 @@ def pydantic_violations(exc: ValidationError,label: Callable[[tuple],str]) -> li
 
 def check_v2(data,previous,fragment_ids,allowed_character_ids) -> list[Violation]:
     from .journal import MemoryOperation,replay_memory
-    if (not isinstance(data,dict) or data.get('schema_version')!=2 or not isinstance(data.get('operations'),list)
+    # A missing operations key is an empty delta, as MemoryOperations always accepted it.
+    if (not isinstance(data,dict) or data.get('schema_version')!=2 or not isinstance(data.get('operations',[]),list)
             or set(data)-{'schema_version','operations'}):
         return [Violation('$','schema')]
-    operations=data['operations'];result=[]
+    operations=data.get('operations',[]);result=[]
     active=replay_memory(previous);allowed=set(allowed_character_ids)
     for index,raw in enumerate(operations):
         label=f'operations[{index}]'

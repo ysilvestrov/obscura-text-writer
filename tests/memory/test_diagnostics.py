@@ -109,3 +109,39 @@ def test_normalization_warning_survives_run_reload(tmp_path):
     assert stored.files.read_partial(attempt.partial_path)==raw
     memory=load_memory(stored.read_text(stored.get_scene(scene.id).heads['memory']))
     assert memory.events[0].character_ids==[]
+
+
+def test_stage_records_all_three_violations_with_labels_and_no_texts(tmp_path):
+    from storygen.domain import StoryCreate,SceneCreate
+    from storygen.storage.repository import Repository
+    from storygen.providers.models import RoleSettings,ProviderSettings
+    from storygen.providers.streaming import GenerationEvent
+    from storygen.generation.context import build_context
+    from storygen.generation.stages import execute_stage
+    repo=Repository(tmp_path);story=repo.create_story(StoryCreate(title='Synthetic'))
+    scene=repo.create_scene(story.id,SceneCreate(title='Scene',character_ids=['A']))
+    prose=repo.save_version(story.id,scene.id,'manual','Synthetic prose.',[])
+    repo.set_head(scene.id,'prose',prose.id,scene.revision)
+    # Built-in prompt: wire v3.
+    role=RoleSettings(provider=ProviderSettings(model='fake'),memory_mode='evidence_delta',context_tokens=32768)
+    context=build_context(repo,scene.id,'memory',role)
+    raw=json.dumps({'schema_version':3,
+        'facts':{'add':[{'text':'private fact','evidence_ids':['f999999']}]},
+        'character_states':{'add':[{'text':'private state','evidence_ids':['f000001'],'character_ids':['private-id']}],'update':[],
+            'retire':[{'claim_id':'mc_private','text':'private retire','evidence_ids':['f000001']}]},
+        'open_threads':{'add':[],'update':[],'retire':[]},'timeline':{'add':[]}})
+    class Gateway:
+        def stream(self,*_):
+            yield GenerationEvent(type='delta',text=raw)
+            yield GenerationEvent(type='terminal',finish_reason='stop')
+    attempt=execute_stage(repo,scene.id,'memory',context,Gateway(),threading.Event(),lambda _:None)
+    assert attempt.state=='failed'
+    payload=attempt.context['memory_violations']
+    assert payload['total']==3
+    assert payload['items']==[{'operation':'facts.add[0]','code':'evidence_unknown'},
+        {'operation':'character_states.add[0]','code':'scope_unknown'},
+        {'operation':'character_states.retire[0]','code':'target_unknown'}]
+    assert attempt.error.startswith('Помилка пам’яті: 3 порушення')
+    for label in ('facts.add, елемент 1','character_states.add, елемент 1','character_states.retire, елемент 1'):
+        assert label in attempt.error
+    assert 'private' not in attempt.error and 'private' not in json.dumps(payload)

@@ -387,7 +387,9 @@
       "requirement": "MEMORY-002",
       "scope": "Переклад v3 у журнал. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
       "tests": [
-        "tests/memory/test_wire_v3.py::test_v3_translates_to_v2_journal_with_stable_ids"
+        "tests/memory/test_wire_v3.py::test_v3_translates_to_v2_journal_with_stable_ids",
+        "tests/memory/test_wire_v3.py::test_v3_update_takes_category_and_scope_from_catalog",
+        "tests/memory/test_wire_v3.py::test_builtin_v3_prompt_examples_validate_as_wire_v3"
       ]
     },
     {
@@ -422,7 +424,9 @@
         "tests/memory/test_journal.py::test_old_journal_without_field_loads_unchanged",
         "tests/memory/test_journal.py::test_validate_journal_rejects_supporting_quote_not_in_source",
         "tests/memory/test_manual_journal.py::test_manual_save_rejects_supporting_quote_outside_prose",
-        "tests/memory/test_manual_journal.py::test_fsck_reports_bad_supporting_quote"
+        "tests/memory/test_manual_journal.py::test_fsck_reports_bad_supporting_quote",
+        "tests/memory/test_manual_journal.py::test_manual_update_and_retire_keep_supporting_quotes_in_canonical_ids",
+        "tests/memory/test_manual_journal.py::test_manual_duplicate_adds_differing_only_in_supporting_quotes_are_distinct_claims"
       ]
     },
     {
@@ -447,7 +451,11 @@
       "scope": "Кілька незалежних порушень. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
       "tests": [
         "tests/memory/test_violations.py::test_v2_collects_independent_violations",
-        "tests/memory/test_violations.py::test_memory_error_shows_count_and_first_three_without_values"
+        "tests/memory/test_violations.py::test_memory_error_shows_count_and_first_three_without_values",
+        "tests/memory/test_diagnostics.py::test_stage_records_all_three_violations_with_labels_and_no_texts",
+        "tests/memory/test_wire_v3.py::test_v3_whitespace_only_text_is_labelled_schema",
+        "tests/memory/test_wire_v3.py::test_v3_shaped_answer_without_schema_version_is_schema_not_wire_version",
+        "tests/memory/test_violations.py::test_v2_missing_operations_is_empty_list"
       ]
     },
     {
@@ -464,7 +472,11 @@
       "scope": "Власний промпт пам’яті v2. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
       "tests": [
         "tests/generation/test_prompt_contracts.py::test_custom_v2_memory_prompt_stays_valid_and_selects_v2",
-        "tests/memory/test_wire_v3.py::test_wire_version_mismatch"
+        "tests/memory/test_wire_v3.py::test_wire_version_mismatch",
+        "tests/generation/test_prompt_contracts.py::test_json_schema_mode_uses_wire_v3_schema",
+        "tests/web/test_evidence_settings.py::test_custom_v2_memory_prompt_keeps_v2_contract_on_save",
+        "tests/web/test_evidence_settings.py::test_new_custom_memory_prompt_and_standard_reset_get_v3",
+        "tests/web/test_evidence_settings.py::test_settings_label_agrees_with_stored_contract"
       ]
     },
     {

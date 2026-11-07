@@ -139,3 +139,34 @@ def test_v3_retire_event_id_matches_v2():
     v2=parse_memory_result(json.dumps({'schema_version':2,'operations':[dict(action='retire',category='open_threads',claim_id=THREAD_ID,text='Кін',evidence_id='f000002')]}),
         PREV,'p2',PROSE,'evidence_delta',[])
     assert j==v2 and j.events[-1].event_id==v2.events[-1].event_id
+
+
+def test_v3_whitespace_only_text_is_labelled_schema():
+    assert violations(v3(facts_add=[padd('   ',['f000001'])]))==[('facts.add[0]','schema')]
+    assert violations(v3(states_add=[sadd('\n\t',['f000001'],['c1'])]))==[('character_states.add[0]','schema')]
+    assert violations(v3(threads_update=[chg(THREAD_ID,'  ',['f000001'])]))==[('open_threads.update[0]','schema')]
+    assert violations(v3(states_retire=[chg(STATE_ID,' ',['f000001'])]))==[('character_states.retire[0]','schema')]
+
+
+def test_v3_shaped_answer_without_schema_version_is_schema_not_wire_version():
+    data=json.loads(v3());del data['schema_version']
+    assert violations(json.dumps(data))==[('$','schema')]
+    assert violations(json.dumps({**json.loads(v3()),'schema_version':4}))==[('$','schema')]
+    # Real wire mismatches stay wire_version: v2 marker, an operations key, or the legacy MemoryDelta shape.
+    assert violations(json.dumps({'operations':[]}))==[('$','wire_version')]
+    assert violations(json.dumps({**json.loads(v3()),'operations':[]}))==[('$','wire_version')]
+    assert violations(json.dumps({'facts':[],'timeline':[]}))==[('$','wire_version')]
+
+
+def test_builtin_v3_prompt_examples_validate_as_wire_v3():
+    from pathlib import Path
+    import storygen.generation
+    from storygen.memory.wire_v3 import MemoryWireV3
+    text=(Path(storygen.generation.__file__).parent/'resources'/'memory_delta_uk_v3.txt').read_text(encoding='utf-8')
+    lines=[line for line in text.splitlines() if line.startswith('Приклад:') or line.startswith('{"schema_version":3')]
+    assert len(lines)==2
+    for line in lines:
+        wire=MemoryWireV3.model_validate(json.loads(line.removeprefix('Приклад:').strip()))
+        assert wire.schema_version==3
+    example=MemoryWireV3.model_validate(json.loads(lines[-1].removeprefix('Приклад:').strip()))
+    assert [a.evidence_ids for a in example.facts.add]==[['f000002']]
