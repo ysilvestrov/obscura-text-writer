@@ -28,6 +28,23 @@ def v2_as_v3(data: dict) -> dict:
     return result
 
 
+_FENCE=re.compile(r"^(```|''')[ \t]*(?:json)?[ \t]*\r?\n(.*)\r?\n[ \t]*\1$",re.DOTALL|re.IGNORECASE)
+_FENCE_LINE=re.compile(r"^[ \t]*(```|''')",re.MULTILINE)
+_QUOTES='`'+"'"
+
+
+def strip_wrapper(raw: str) -> tuple[str,bool]:
+    """Strip exactly one complete outer fence/quote pair around a JSON object; anything else stays unchanged."""
+    text=raw.strip();body=None
+    match=_FENCE.match(text)
+    if match and not _FENCE_LINE.search(match[2]):body=match[2]
+    elif len(text)>=2 and text[0] in _QUOTES and text[-1]==text[0] and text[1]!=text[0] and text[1:-1].strip().startswith('{'):
+        body=text[1:-1]
+    if body is None:return raw,False
+    body=body.strip()
+    return (body,True) if body.startswith('{') and body.endswith('}') else (raw,False)
+
+
 def _attempt(raw,previous,prose_id,prose,allowed,wire):
     try:
         parse_memory_result(raw,previous,prose_id,prose,'evidence_delta',allowed,wire_version=wire)
@@ -43,7 +60,8 @@ def replay_response(raw: str, fragments: dict, prose_id: str, prose: str) -> dic
     wire=int(fragments.get('memory_wire_version','2'))
     previous=load_memory(fragments['previous_memory'])
     allowed=json.loads(fragments.get('memory_allowed_character_ids','[]'))
-    out={'wire':wire,'as_is':None,'as_is_codes':[],'as_v3':None,'as_v3_codes':[]}
+    raw,wrapped=strip_wrapper(raw)
+    out={'wire':wire,'wrapped':wrapped,'as_is':None,'as_is_codes':[],'as_v3':None,'as_v3_codes':[]}
     try:data=decode_memory(raw)
     except Exception:
         out['as_is']='json'
@@ -59,17 +77,17 @@ SKIPS=('no_raw','no_prose','no_bounds','bad_context')
 
 
 def summarize(rows: list[dict]) -> dict:
-    wires=Counter();as_is=Counter();as_v3=Counter();is_codes=Counter();v3_codes=Counter();skipped=Counter();fixed=0
+    wires=Counter();as_is=Counter();as_v3=Counter();is_codes=Counter();v3_codes=Counter();skipped=Counter();fixed=0;wrapped=0
     for row in rows:
         if 'skipped' in row:skipped[row['skipped']]+=1;continue
-        wires[str(row['wire'])]+=1;as_is[row['as_is']]+=1;is_codes.update(row['as_is_codes'])
+        wires[str(row['wire'])]+=1;wrapped+=bool(row.get('wrapped'));as_is[row['as_is']]+=1;is_codes.update(row['as_is_codes'])
         if row['as_v3'] is not None:
             as_v3[row['as_v3']]+=1;v3_codes.update(row['as_v3_codes'])
             if row['as_is']!='pass' and row['as_v3']=='pass':fixed+=1
     return {'replayed':sum(wires.values()),'attempts_by_wire':dict(wires),
             'as_is':{k:as_is.get(k,0) for k in ('pass','fail','json')},
             'as_v3':{k:as_v3.get(k,0) for k in ('pass','fail','json')},
-            'as_is_codes':dict(is_codes),'as_v3_codes':dict(v3_codes),'fixed_by_v3':fixed,
+            'as_is_codes':dict(is_codes),'as_v3_codes':dict(v3_codes),'fixed_by_v3':fixed,'wrapped':wrapped,
             'skipped':{k:skipped.get(k,0) for k in SKIPS}}
 
 

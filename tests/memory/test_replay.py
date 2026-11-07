@@ -79,3 +79,21 @@ def test_summarize_and_cli_print_no_texts(tmp_path):
 def test_attempt_without_partial_is_skipped_not_crash(tmp_path):
     db,data=make_db(tmp_path,[(None,dict(frags(),expected_source_prose_ids='["v1"]'))])
     assert summarize(collect(db,data))['skipped']['no_raw']==1
+
+
+def test_fenced_response_is_replayed_and_counted_as_wrapped():
+    fence=chr(96)*3
+    raw=fence+'json'+chr(10)+v2('f000001')+chr(10)+fence
+    r=replay_response(raw,frags(),'v1',PROSE)
+    assert r['as_is']=='pass' and r['as_v3']=='pass' and r['wrapped'] is True
+    assert summarize([r])['wrapped']==1
+    r=replay_response(chr(96)+v2('f000001')+chr(96),frags(),'v1',PROSE)
+    assert r['as_is']=='pass' and r['wrapped'] is True
+
+
+def test_unpaired_or_double_fence_stays_json():
+    fence=chr(96)*3;nl=chr(10)
+    for raw in (fence+'json'+nl+v2('f000001'),fence+'json'+nl+v2('f000001')+nl+fence+nl+fence+nl+'x'+nl+fence,
+                'Ось:'+nl+fence+'json'+nl+v2('f000001')+nl+fence):
+        r=replay_response(raw,frags(),'v1',PROSE)
+        assert r['as_is']=='json' and r['wrapped'] is False
