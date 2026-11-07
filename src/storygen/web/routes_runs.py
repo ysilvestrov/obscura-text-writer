@@ -41,8 +41,9 @@ def story_runs(story_id: str,request: Request):
 
 @router.get('/api/stories/{story_id}/readiness')
 def readiness(story_id: str,request: Request,scene_id: str | None = None,
-              editor_source_head: Literal['draft','prose'] | None = None,editor_source_version_id: str | None = None):
-    return request.app.state.coordinator.readiness(story_id,scene_id,editor_source_head,editor_source_version_id)
+              editor_source_head: Literal['draft','prose'] | None = None,editor_source_version_id: str | None = None,
+              operation: Literal['prepare','brief','draft','edit','memory','scene','remaining','rebuild_memory','edit_loop'] | None = None):
+    return request.app.state.coordinator.readiness(story_id,scene_id,editor_source_head,editor_source_version_id,operation)
 
 
 @router.post('/api/stories/{story_id}/prepare')

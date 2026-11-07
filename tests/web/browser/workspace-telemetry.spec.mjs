@@ -58,3 +58,35 @@ for(const [mode,stage,role] of [['plan','brief','planner'],['brief','draft','wri
     await expect(page.locator('#workspace-primary')).toBeEnabled();await page.locator('#workspace-primary').click();await expect.poll(()=>calls).toBe(1);expect(dialogs).toBe(0);
   });
 }
+
+test('primary readiness requests only its operation and expands on demand',async({page,request})=>{
+  const fixture=await(await request.post('/test-editor-no-changes')).json();
+  const operations=[];
+  page.on('request',req=>{if(req.url().includes('/readiness?'))operations.push(new URL(req.url()).searchParams.get('operation'))});
+  await page.goto(`/stories/${fixture.story_id}?scene=${fixture.scene_id}&material=draft`);
+  await expect(page.locator('#workspace-primary')).toBeEnabled();
+  expect(operations).toContain('edit_loop');
+  expect(operations).not.toContain(null);
+  await page.locator('details.workspace-extra > summary').click();
+  await expect.poll(()=>operations.includes(null)).toBe(true);
+});
+
+test('changing modes while readiness is pending does not overlap or show stale telemetry',async({page,request})=>{
+  const fixture=await(await request.post('/test-editor-no-changes')).json();
+  let release,started;const blocked=new Promise(resolve=>release=resolve),entered=new Promise(resolve=>started=resolve);
+  let inflight=0,peak=0,held=false;
+  await page.route('**/api/stories/*/readiness*',async route=>{
+    inflight++;peak=Math.max(peak,inflight);
+    try{
+      if(!held&&new URL(route.request().url()).searchParams.get('operation')==='edit_loop'){held=true;started();await blocked}
+      const response=await route.fetch();await route.fulfill({response});
+    }finally{inflight--}
+  });
+  await page.goto(`/stories/${fixture.story_id}?scene=${fixture.scene_id}&material=draft`);
+  await entered;
+  await page.locator('[data-mode="plan"]').click();
+  release();
+  await expect(page.locator('#workspace-telemetry')).not.toContainText('synthetic-no-changes');
+  await expect.poll(()=>inflight).toBe(0);
+  expect(peak).toBe(1);
+});

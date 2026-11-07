@@ -175,11 +175,11 @@ class RunCoordinator:
             self.condition.notify_all()
         return run
 
-    def readiness(self,story_id,scene_id=None,editor_source_head=None,editor_source_version_id=None):
+    def readiness(self,story_id,scene_id=None,editor_source_head=None,editor_source_version_id=None,operation=None):
         from .readiness import preview
         self.repo.get_story(story_id)
         operations={}
-        for name in ['prepare',*STAGES,'scene','remaining','rebuild_memory','edit_loop']:
+        for name in ([operation] if operation else ['prepare',*STAGES,'scene','remaining','rebuild_memory','edit_loop']):
             # model_construct permits the unselected-scene state in a read-only preview.
             request=RunRequest.model_construct(
                 story_id=story_id,

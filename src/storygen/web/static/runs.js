@@ -53,17 +53,54 @@ function selectedSource(options={}){
   const head=['draft','prose'].includes(state.mode)?state.mode:null;
   return head&&state.scene?.heads[head]?{editor_source_head:head,editor_source_version_id:state.scene.heads[head]}:{};
 }
+const extraControls=controls.closest?.('details');
+function currentOperation(){return ({plan:'brief',brief:'draft',draft:'edit_loop',prose:'memory'})[state.mode]||'memory'}
+let readinessQueue=Promise.resolve(),refreshTimer=null,refreshing=false,refreshRequested=false;
+function scheduleReadiness(){
+  ++readinessEpoch;readiness=null;state.workspaceReadiness=null;updateControls();document.dispatchEvent(new CustomEvent('workspace-readiness'));
+  refreshRequested=true;
+  clearTimeout(refreshTimer);
+  if(refreshing)return;
+  refreshTimer=setTimeout(async()=>{
+    refreshTimer=null;refreshing=true;refreshRequested=false;
+    try{await loadReadiness({background:true})}
+    finally{refreshing=false;if(refreshRequested)scheduleReadiness()}
+  },50);
+}
 async function loadReadiness(options={}){
+  const previous=readinessQueue;
+  let release;
+  readinessQueue=new Promise(resolve=>{release=resolve});
+  let entered=false;
+  try{
+    if(options.signal){
+      if(options.signal.aborted)throw new DOMException('Cancelled','AbortError');
+      await new Promise((resolve,reject)=>{
+        const abort=()=>reject(new DOMException('Cancelled','AbortError'));
+        options.signal.addEventListener('abort',abort,{once:true});
+        previous.then(()=>{options.signal.removeEventListener('abort',abort);resolve()});
+      });
+    }else await previous;
+    entered=true;
+    if(options.signal?.aborted)throw new DOMException('Cancelled','AbortError');
+    if(options.background)options={...options,operation:extraControls?.open?null:currentOperation()};
+    return await loadReadinessNow(options)
+  }catch(error){if(error.name==='AbortError'&&!entered)scheduleReadiness();throw error}
+  finally{if(entered)release();else previous.then(release)}
+}
+async function loadReadinessNow(options={}){
   const epoch=++readinessEpoch;readiness=null;state.workspaceReadiness=null;updateControls();document.dispatchEvent(new CustomEvent('workspace-readiness'));
   try{
     const query=new URLSearchParams(state.scene?{scene_id:state.scene.id,...selectedSource(options)}:{});
+    if(options.operation)query.set('operation',options.operation);
     const fetchOptions=options.signal?{signal:options.signal}:undefined;
     const [result,runs]=await Promise.all([api(`/api/stories/${state.storyId}/readiness?${query}`,fetchOptions),api(`/api/stories/${state.storyId}/runs`,fetchOptions)]);
     if(epoch===readinessEpoch){readiness=result;historyRuns=runs.runs;state.workspaceReadiness=result;state.workspaceRuns=historyRuns;updateControls();document.dispatchEvent(new CustomEvent('workspace-readiness'))}
-  }catch(error){if(error.name==='AbortError'){if(epoch===readinessEpoch)void loadReadiness();throw error}if(epoch===readinessEpoch){readiness={operations:Object.fromEntries(['prepare','brief','draft','edit','memory','scene','remaining','rebuild_memory','edit_loop'].map(key=>[key,{ready:false,reason:error.message}]))};state.workspaceReadiness=readiness;updateControls();notice(error.message,'error')}}
+  }catch(error){if(error.name==='AbortError'){if(epoch===readinessEpoch)scheduleReadiness();throw error}if(epoch===readinessEpoch){readiness={operations:Object.fromEntries(['prepare','brief','draft','edit','memory','scene','remaining','rebuild_memory','edit_loop'].map(key=>[key,{ready:false,reason:error.message}]))};state.workspaceReadiness=readiness;updateControls();notice(error.message,'error')}}
 }
-for(const event of ['story-refreshed','scene-selected','evaluation-policy-changed'])document.addEventListener(event,()=>{loadReadiness();if(active&&terminal.has(active.state))loadPending()});
-document.addEventListener('editor-state-changed',()=>{updateControls();if(state.mode!==state.workspaceReadinessMode){state.workspaceReadinessMode=state.mode;void loadReadiness()}});
+for(const event of ['story-refreshed','scene-selected','evaluation-policy-changed'])document.addEventListener(event,()=>{scheduleReadiness();if(active&&terminal.has(active.state))loadPending()});
+document.addEventListener('editor-state-changed',()=>{updateControls();if(state.mode!==state.workspaceReadinessMode){state.workspaceReadinessMode=state.mode;scheduleReadiness()}});
+extraControls?.addEventListener('toggle',scheduleReadiness);
 textEditor.onInput(updateControls);
 const elapsed=document.createElement('p');
 function draw(run){active=run;state.workspaceRun=run;document.dispatchEvent(new CustomEvent('workspace-run-state',{detail:run}));status.dataset.kind=run.warning&&run.state!=='failed'?'warning':runKind(run.state);status.setAttribute('role',run.state==='failed'?'alert':'status');status.replaceChildren();const p=document.createElement('p');uiText(p,"textContent",()=>(names[run.state]||run.state));status.append(p);const plan=run.planned_telemetry;if(!plan){const missing=document.createElement('p');missing.className='muted';uiText(missing,'textContent',()=>t('workspace.run_plan_unknown'));status.append(missing)}else{const summary=document.createElement('p');summary.className='muted';uiText(summary,'textContent',()=>t('workspace.run_plan',{p0:[...Object.values(plan.roles||{}),...(plan.evaluator?[plan.evaluator]:[])].map(value=>`${value.provider} / ${value.model}`).join(', ')||t('workspace.unknown'),p1:plan.calls??'—',p2:t(({draft:'m_e9d875d4120b',prose:'m_9c685577453c',plan:'m_3146141c9367',brief:'m_5a2ec5eaf0a1'})[run.request.editor_source_head||({brief:'plan',draft:'brief',memory:'prose'})[run.request.stage]]||'workspace.unknown')}));status.append(summary)}for(const message of [...new Set([run.error,run.warning].filter(Boolean))]){const e=document.createElement('p');uiText(e,"textContent",()=>(diagnostic(message)));status.append(e)}uiText(elapsed,"textContent",()=>(terminal.has(run.state)?'':elapsed.textContent));status.append(elapsed);updateControls();if(terminal.has(run.state))loadPending()}
@@ -93,7 +130,8 @@ async function start(mode,stage,options={}){
   const captured={sceneId:state.scene?.id,epoch:state.bufferEpoch,mode:state.mode};
   if(!state.scene&&mode!=='prepare')throw new Error(t("m_f0f1417db6de"));
   if(state.dirty)throw new Error(t("m_a4c2e86ecc1a"));
-  await loadReadiness(options);
+  clearTimeout(refreshTimer);refreshTimer=null;refreshRequested=false;
+  await loadReadiness({...options,operation:stage||mode});
   if(options.signal?.aborted)throw new DOMException('Cancelled','AbortError');
   assertReadyDispatch(state,captured);
   let operation=readiness?.operations[stage||mode];
@@ -119,7 +157,7 @@ async function start(mode,stage,options={}){
   storage.removeItem(key);await options.onCreated?.(run);if(options.primary)setPendingPrimary(null);await follow(run);return active;
 }
 controls.hidden=false;
-function button(label,fn,operation=null,action=null){const wrapper=document.createElement('span');wrapper.className='run-action';const b=document.createElement('button'),hint=document.createElement('small');hint.id='run-reason-'+actions.length;b.className='secondary';uiText(b,"textContent",()=>(label));const item={button:b,hint,wrapper,operation,action,busy:false};actions.push(item);b.onclick=async()=>{item.busy=true;updateControls();try{await fn()}catch(e){notice(e.message,'error')}finally{item.busy=false;updateControls()}};wrapper.append(b,hint);(document.querySelector('#run-actions')&&['pause','cancel','resume','repeat','accepted'].includes(action)?document.querySelector('#run-actions'):controls).append(wrapper);updateControls();return wrapper}
+function button(label,fn,operation=null,action=null){const wrapper=document.createElement('span');wrapper.className='run-action';const b=document.createElement('button'),hint=document.createElement('small');hint.id='run-reason-'+actions.length;b.className='secondary';uiText(b,"textContent",()=>(label));const item={button:b,hint,wrapper,operation,action,busy:false};actions.push(item);b.onclick=async()=>{item.busy=true;updateControls();try{await fn()}catch(e){notice(e.message,'error')}finally{item.busy=false;updateControls();if(operation)scheduleReadiness()}};wrapper.append(b,hint);(document.querySelector('#run-actions')&&['pause','cancel','resume','repeat','accepted'].includes(action)?document.querySelector('#run-actions'):controls).append(wrapper);updateControls();return wrapper}
 button(liveLabel(()=>(t("m_4c7f8d65f750"))),()=>start('prepare'),'prepare');
 for(const [stage,label] of labelEntries({get brief(){return t("m_27e8e3278f1a")},get draft(){return t("m_a0503ed62ae7")},get edit(){return t("m_c542d0ba7da5")},get memory(){return t("m_05c4218abe15")}})){
   if(stage==='edit'){
@@ -146,14 +184,14 @@ button(liveLabel(()=>(t("m_06461e7a38ad"))),()=>start('rebuild_memory'),'rebuild
 button(liveLabel(()=>(t("m_e3b0d35990c3"))),async()=>{const runs=(await api(`/api/stories/${state.storyId}/runs`)).runs;if(runs.length)await follow(runs.at(-1))},null,'latest');
 button(liveLabel(()=>(t("m_e1cb5a4ec579"))),async()=>{const runs=(await api(`/api/stories/${state.storyId}/runs`)).runs;const run=[...runs].reverse().find(r=>r.request.mode==='prepare'&&r.state==='completed');if(!run)throw new Error(t("m_f23e2e25e089"));const details=await api('/api/runs/'+run.id);const ref=details.attempts.at(-1).result_version_id;const proposal=(await api('/api/versions/'+ref)).text;const editor=document.querySelector('#editor');if(state.dirty)throw new Error(t("m_185b792f5bf8"));loadBuffer(state.scene,'blueprint',proposal);state.dirty=false;uiText(document.querySelector('#current-kind'),"textContent",()=>(t("m_01a4fc472a1d")));document.querySelector('#save-text').disabled=true;updateControls()},null,'proposal');
 button(liveLabel(()=>(t("m_d2193b81e0c3"))),async()=>{if(state.mode!=='blueprint')throw new Error(t("m_01a5baeeaa81"));const proposal=JSON.parse(textEditor.read());if(!confirm(t("m_7f8d04e5c78c")))return;await api(`/api/stories/${state.storyId}/blueprint/apply`,json('POST',{proposal,expected_revision:state.view.story.revision}));state.dirty=false;await refresh();notice(msg("m_646d341468c4"))},null,'apply');
-loadReadiness();
+scheduleReadiness();
 api(`/api/stories/${state.storyId}/runs`).then(result=>{if(result.runs.length)follow(result.runs.at(-1)).catch(e=>notice(e.message,'error'))}).catch(e=>notice(e.message,'error'));
 let reconciling=false;
 state.workspacePending=pendingPrimary();
 setInterval(async()=>{if(!pendingPrimary()||reconciling||primaryPosting)return;reconciling=true;try{await reconcilePrimary()}catch{}finally{reconciling=false}},5000);
 if(pendingPrimary())void reconcilePrimary().catch(()=>{});
 
-registerWorkspaceCommand('run',async options=>{try{return await start(options.mode,options.stage,options)}catch(error){if(error.name!=='AbortError')document.dispatchEvent(new CustomEvent('workspace-operation-error',{detail:{stage:options.mode==='edit_loop'?'edit':options.stage||options.mode,message:error.message}}));throw error}});
+registerWorkspaceCommand('run',async options=>{try{return await start(options.mode,options.stage,options)}catch(error){if(error.name!=='AbortError')document.dispatchEvent(new CustomEvent('workspace-operation-error',{detail:{stage:options.mode==='edit_loop'?'edit':options.stage||options.mode,message:error.message}}));throw error}finally{if(extraControls?.open)scheduleReadiness()}});
 registerWorkspaceCommand('refresh-readiness',loadReadiness);
 registerWorkspaceCommand('cancel-run',async id=>{const run=await api(`/api/runs/${id}/cancel`,json('POST',{}));if(active?.id===id)draw(run);return run});
 registerWorkspaceCommand('cancel-pending',async()=>{const pending=pendingPrimary();if(!pending)return;setPendingPrimary({...pending,cancelled:true});return reconcilePrimary()});
