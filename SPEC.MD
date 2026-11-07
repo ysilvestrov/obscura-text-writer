@@ -2817,7 +2817,7 @@ THEN invalid scene дає перший plan, storage failure не блокує U
 
 Панель над завданням SHALL показувати proposed_changes як textContent й явну кнопку «Прийняти завдання». Вона передає саме displayed saved version ID та expected scene revision до чинного accept-brief; dirty/saving/history/stale/incomplete/active-generation блокує дію. Primary draft action пояснює потребу прийняття, замість пропонувати роботу зі старим head. Після явного прийняття refresh оновлює readiness; модель не викликається, а інші помилки контексту/лімітів лишаються чинними. API/SQL й запропонований раніше gate не змінені.
 
-Чистий відкритий brief SHALL підхоплювати новий candidate при story-refreshed навіть без зміни selected head. Only-if-changed не перезавантажує той самий displayed ID й не змінює bufferEpoch на no-op Save. Guard epoch/dirty/saving/history зберігає нові ручні правки під час fetch. Помилка accept/CAS не замінює текст або selected head сторонньою версією. Усунено дефект: pending нове завдання було в історії, вкладка показувала старий stale head, а звичайний Save не міг розблокувати draft.
+Чистий відкритий brief SHALL підхоплювати новий candidate при story-refreshed навіть без зміни selected head. Only-if-changed не перезавантажує той самий displayed ID й не змінює bufferEpoch на no-op Save. Guard epoch/dirty/saving/history зберігає нові ручні правки під час fetch. Помилка accept/CAS не замінює текст або selected head сторонньою версією. Усунено дефекти: pending завдання показувалося як старий stale head, а після завершення генерації кнопка могла залишатися вимкненою до перемикання вкладки; оновлення readiness повторно обчислює її стан.
 
 #### Scenario: R20-BRIEF-REVIEW-S01 — Перегляд, Save та явне прийняття
 GIVEN stale selected brief і нова fresh пропозиція з proposed_changes
@@ -2828,6 +2828,11 @@ THEN вкладка показує нову пропозицію; Save лиша�
 GIVEN відкритий brief із dirty вводом або новим candidate при refresh
 WHEN відбувається fetch, Save чи accept із застарілою revision
 THEN typing не перезаписується, dirty proposal потребує Save перед accept, новий candidate видно лише в чистому буфері, а CAS-конфлікт зберігає показаний текст.
+
+#### Scenario: R20-BRIEF-REVIEW-S03 — Доступність після завершення генерації
+GIVEN показана придатна пропозиція завдання та активний запуск блокує її прийняття
+WHEN оновлений список запусків більше не містить активного запуску
+THEN кнопка прийняття оновлюється без перемикання вкладок; dirty/saving/stale/incomplete та активна генерація лишаються блокувальними.
 
 ### Requirement: EXPORT-CLEAN — Авторське рішення без службових вставок
 

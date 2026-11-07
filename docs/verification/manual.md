@@ -134,7 +134,7 @@ R-22 прокрутка: Playwright `long draft scrolls internally while formatt
 <a id="r20-brief-review"></a>
 ## R-20: pending завдання в основному workflow
 
-`pnpm --dir frontend exec playwright test brief-proposal.spec.mjs` на синтетичному сервері: stale old head + new proposed brief. Перевірити новий JSON у вкладці й явний список змін/accept; Save не приймає його, accept вибирає exact displayed version й розблоковує draft за придатного контексту. Dirty edit блокує accept до Save, після Save приймається саме нова авторська версія. Конкурентна зміна scene дає помилку без втрати тексту. Story refresh відкритого чистого brief підхоплює нову пропозицію без head change; dirty ввод лишається. Desktop/mobile, без реальних моделей; наявність процедури не є звітом про виконання.
+`pnpm --dir frontend exec playwright test brief-proposal.spec.mjs` на синтетичному сервері: stale old head + new proposed brief. Перевірити новий JSON у вкладці й явний список змін/accept; Save не приймає його, accept вибирає exact displayed version й розблоковує draft за придатного контексту. Dirty edit блокує accept до Save, після Save приймається саме нова авторська версія. Конкурентна зміна scene дає помилку без втрати тексту. Story refresh відкритого чистого brief підхоплює нову пропозицію без head change; dirty ввод лишається. Сценарій `acceptance follows refreshed run state without switching tabs` перевіряє блокування під час роботи та доступність після оновлення стану без переходу між вкладками. Desktop/mobile, без реальних моделей; наявність процедури не є звітом про виконання.
 
 
 <a id="r28-impact"></a>

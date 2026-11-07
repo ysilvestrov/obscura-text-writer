@@ -2,20 +2,20 @@
 
 **ПЕРЕВІРКА ПРОЙШЛА** — свідчення конкретного запуску, не поточного довільного стану.
 
-- Початок (UTC): 2026-11-07T00:13:37.762811+00:00
-- Завершення (UTC): 2026-11-07T00:13:40.709321+00:00
-- Базовий commit: `559724687ac880b94d58f1c7fd9a1a8b03fc199a`
+- Початок (UTC): 2026-11-07T10:16:04.350229+00:00
+- Завершення (UTC): 2026-11-07T10:16:05.221379+00:00
+- Базовий commit: `7d19ad78989a19a2b43029533068fe0d67e362be`
 - Незакомічені зміни під час перевірки: `true`
-- SHA-256 вихідного знімка: `d4e2245ce7dda92f32545e8d61a19b951e37495d9c7d230e449af4491e84f648`
+- SHA-256 вихідного знімка: `7732a6b1ce1eebdda30781e490f8d3f92b6a0dfb310f1561b9ac773fe599ca33`
 - Зміна знімка під час прогону: `false`
 - Exit code: `0`
-- Фактичні testcase результати JUnit: passed: 6 · failed: 0 · errors: 0 · skipped: 0
-- Тривалість: 2.94 с
+- Фактичні testcase результати JUnit: passed: 2 · failed: 0 · errors: 0 · skipped: 0
+- Тривалість: 0.88 с
 
 Точний argv (JSON, не shell-команда):
 
 ```json
-["C:\\Users\\yuriy\\.codex\\worktrees\\workspace-telemetry\\text-generator\\.venv\\Scripts\\python.exe", "-m", "pytest", "tests/web/test_runs.py::test_readiness_filters_operations_without_changing_existing_contract", "tests/web/test_runs.py::test_readiness_and_queue_share_prerequisite_reasons", "tests/web/test_editor_loop_ui.py", "tests/web/test_resumed_events.py", "-q", "--junitxml=C:\\Users\\yuriy\\.codex\\worktrees\\workspace-telemetry\\text-generator\\artifacts\\verification-vkf_8qzh\\junit.xml", "--basetemp=C:\\Users\\yuriy\\.codex\\worktrees\\workspace-telemetry\\text-generator\\artifacts\\verification-vkf_8qzh\\test-tmp"]
+["C:\\Users\\yuriy\\.codex\\worktrees\\workspace-telemetry\\text-generator\\.venv\\Scripts\\python.exe", "-m", "pytest", "tests/web/test_editor_loop_ui.py", "-q", "--junitxml=C:\\Users\\yuriy\\.codex\\worktrees\\workspace-telemetry\\text-generator\\artifacts\\verification-msrf2eb7\\junit.xml", "--basetemp=C:\\Users\\yuriy\\.codex\\worktrees\\workspace-telemetry\\text-generator\\artifacts\\verification-msrf2eb7\\test-tmp"]
 ```
 
 Результат стосується лише наведеної команди й вихідного знімка. Якщо в argv зазначено окремі файли або фільтри, це часткова перевірка. Збір (collection) не є виконанням; skipped не зараховано до passed. Відсутній або непридатний XML позначається непідтвердженим. Після зміни вихідних файлів звіт історичний. Власний STATUS і artifacts виключено зі знімка; початкова ревізія може мати dirty=true, оскільки звіт створюється до коміту.
