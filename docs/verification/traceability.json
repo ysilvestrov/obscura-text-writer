@@ -2734,6 +2734,16 @@
         "procedure": "docs/verification/manual.md#r20-brief-review",
         "reason": "Стан кнопки й browser events перевіряє синтетичний Playwright сценарій."
       }
+    },
+    {
+      "id": "R20-BRIEF-REVIEW-S04",
+      "requirement": "R20-BRIEF-REVIEW",
+      "scope": "Збереження пропозиції перед запуском чернетки.",
+      "tests": [],
+      "manual": {
+        "procedure": "docs/verification/manual.md#r20-brief-review",
+        "reason": "Взаємодію primary action, збереження і запитів перевіряє браузерний Playwright сценарій saving edits to an accepted brief requires acceptance before starting a draft."
+      }
     }
   ]
 }
