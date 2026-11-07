@@ -3,10 +3,10 @@
 Output is counters and violation codes only: never prose, model text, claim or character IDs."""
 import json
 import re
-import sqlite3
 from collections import Counter
 from pathlib import Path
 
+from ..storage.replay_source import ReadonlyAttempts
 from .journal import CATEGORIES, decode_memory, load_memory, parse_memory_result, replay_memory
 from .violations import MemoryViolations
 
@@ -98,15 +98,15 @@ def summarize(rows: list[dict]) -> dict:
             'skipped':{k:skipped.get(k,0) for k in SKIPS}}
 
 
-def _prose(connection,data,prose_id):
-    row=connection.execute('SELECT payload FROM versions WHERE id=?',(prose_id,)).fetchone()
-    if row is None:return None
-    path=data/json.loads(row[0])['relative_path']
+def _prose(source,data,prose_id):
+    payload=source.version_payload(prose_id)
+    if payload is None:return None
+    path=data/json.loads(payload)['relative_path']
     if path.is_dir():path=path/f'{prose_id}.txt'
     return path.read_text(encoding='utf-8')
 
 
-def _row(connection,data,payload):
+def _row(source,data,payload):
     try:
         raw_path=data/payload['partial_path']
         raw=raw_path.read_text(encoding='utf-8') if raw_path.is_file() else ''
@@ -118,7 +118,7 @@ def _row(connection,data,payload):
     try:bounds=json.loads(fragments.get('expected_source_prose_ids') or '[]')
     except Exception:return {'skipped':'bad_context'}
     if not isinstance(bounds,list) or not bounds or not isinstance(bounds[-1],str):return {'skipped':'no_bounds'}
-    try:prose=_prose(connection,data,bounds[-1])
+    try:prose=_prose(source,data,bounds[-1])
     except Exception:prose=None
     if prose is None:return {'skipped':'no_prose'}
     try:return replay_response(raw,fragments,bounds[-1],prose)
@@ -127,9 +127,8 @@ def _row(connection,data,payload):
 
 def collect(db: Path, data: Path, story: str | None = None) -> list[dict]:
     rows=[]
-    connection=sqlite3.connect(Path(db).resolve().as_uri()+'?mode=ro',uri=True)
-    try:
-        for (text,) in connection.execute("SELECT payload FROM stage_attempts WHERE state IN ('completed','failed')").fetchall():
+    with ReadonlyAttempts(db) as source:
+        for text in source.finished_attempt_payloads():
             try:payload=json.loads(text)
             except Exception:continue
             if not isinstance(payload,dict):continue
@@ -137,6 +136,5 @@ def collect(db: Path, data: Path, story: str | None = None) -> list[dict]:
             context=payload.get('context');settings=context.get('settings') if isinstance(context,dict) else None
             if not isinstance(settings,dict):rows.append({'skipped':'bad_context'});continue
             if settings.get('memory_mode')!='evidence_delta':continue
-            rows.append(_row(connection,Path(data),payload))
-    finally:connection.close()
+            rows.append(_row(source,Path(data),payload))
     return rows
