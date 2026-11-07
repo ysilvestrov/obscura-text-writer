@@ -1006,6 +1006,167 @@ R-28k поставлено27.10:1293PASS/1SKIP verification-v4p8q2ak/source_chan
 
 05.11.2026: власник затвердив специфікацію доповнювального імпорту. Підготовлено [план ядра](2026-11/2026-11-05-additive-imports-core.md): розбір номерів, атомарна публікація/активні джерела, імпорт/HTTP, серверний scope письма. План UI оформлюється після наскрізного рев’ю ядра згідно з detent-pr-slicing; код ще не змінено.
 
+
+## 06.11.2026 — Реалізація ядра доповнювального імпорту
+
+Гілка codex/additive-import-core поверх відкритого PR#5 (без злиття). Виконано розбір авторських номерів, SQLite5 з окремими selectors, атомарну публікацію файла, нові картки/сцени зі збереженням дублів, per-file HTTP результати, authoritative prepare та серверне збереження profile+target. UI «Письмо» й журнал ще не змінені — наступний план після рев’ю ядра. Незалежне рев’ю підтвердило регресії інвалідації й преамбули; вони відтворені тестами та виправлені. Спільний parser винесено в pure plan_sections; нейтральна преамбула fixture оформлена текстом. Проміжні перевірки: storage170 passed/1 skipped; authoring/API119 passed; після рев’ю38 регресійних тестів passed. Повний кінцевий результат записується через verify.py. Сторонній research-файл не змінено.
+
+
+Фінальний gate ядра06.11.2026: **1356 passed,1 skipped,0 failed/errors**,451.21s, source_changed_during_run=false, artifacts/verification-1bwf62t1/result.json. Незалежне рев’ю завершено, усі суттєві findings виправлені RED→GREEN. [UI-план](2026-11/2026-11-06-additive-imports-ui.md) підготовлено після фактичного ядра; поле «Письмо» й датований журнал ще не реалізовані.
+
+
+06.11.2026: виконано дозволений власником detent0.5.0 cross-review очищеного знімка ядра через Claude.8 findings:6 fixed,2 rejected з локальними доказами; Резервне рев’ю Google/agy не запускалося (тільки локальні help/version). Таблиця рішень і межі матеріалів — у [плані ядра](2026-11/2026-11-05-additive-imports-core.md#дозволений-cross-review06112026). Збережено приватнісні виключення, регресії відтворено RED→GREEN.
+
+
+Фінальна перевірка дозволеного cross-review: 1365 passed,1 skipped,0 failed/errors; 512.80s; source_changed_during_run=false; artifacts/verification-i1djlcvi/result.json. Таблиця8 findings:6 fixed,2 rejected опублікована в PR#6; джерела, секрети й приватні матеріали поза очищеним allowlist не передавалися рецензенту.
+
+
+## 06.11.2026 — Завершення погодженого UI доповнювального імпорту
+
+За затвердженим UI-планом реалізовано обсяг у «Налаштування → Письмо», Save/Reset/preflight без верхньої межі; журнал назв і локальних дат/часу; per-file partial/error, кількості й дублі; захист pending та збереження scene/material. Незалежний ui_review:2 мережеві findings виправлено RED→GREEN. Повний браузерний набір **94 passed**, desktop/mobile,2.0m, artifacts/ui-browser-suite.log. Шість нейтральних нових screenshots оглянуто: writing target і journal/results desktop/mobile без overflow; жодних приватних матеріалів. UI detector один прогін, inherited Jinja black warnings — false positives. UA/EN інструкції, SPEC/traceability оновлено; check_docs.py пройшов. Фактичний pytest gate — у STATUS через verify.py; зовнішній дозволений cross-review виконується після коміту. Сторонній research-файл не змінено.
+
+
+Фінальний UI gate: verify.py tests/web — **185 passed,0 failed/errors/skipped**, source_changed_during_run=false, artifacts/verification-u3crjc8x/result.json. Browser **94 passed**,2.0m; шість screenshots desktop/mobile візуально підтверджені.
+
+
+UI cross-review Claude завершено:5 findings,5 fixed,0 rejected. Показ file.error/CAS UA/EN, правдивий підпис активного плану, посилені assertions конфліктів/очищення/дат/active badge та traceability. Таблиця — у UI-плані; report не комітиться. Дозволений privacy-filtered запуск без приватних матеріалів; Google/agy не запускався. Посилені тести:4 expected RED, після виправлення12 GREEN; фінальні перевірки після останніх змін записуються окремо.
+
+
+Після cross-review повний Playwright: **96 passed**,2.3m, artifacts/ui-browser-final.log. Нова регресія першого відфільтрованого плану й literal file.error без HTML пройшли; оновлені journal screenshots desktop/mobile повторно оглянуто. Фінальний web gate записується через verify.py.
+
+
+Остаточний gate після всіх cross-review виправлень: **185 passed,0 failed/errors/skipped**, source_changed_during_run=false, artifacts/verification-ci5eme_z/result.json; STATUS оновлено verify.py. Код і UA/EN інструкції узгоджено, залишкових findings немає.
+
+
+UI-пакет збережено в [PR#7](https://github.com/ysilvestrov/obscura-text-writer/pull/7), code55379b5, branch codex/additive-import-ui поверх PR#6. Основна тека на результаті; сторонній untracked research-файл не змінено й не закомічено. Merge не виконано.
+
+
+## 06.11.2026 — Нові UX follow-ups і діагностика останнього запуску
+
+На прохання власника до активного беклогу записано чотири наступні виправлення: обрати всі зміни в comment rewrite; згорнути/розгорнути всі сцени; тариф біля вибору моделі; кількості реально доданих сцен/персонажів у журналі імпортованих матеріалів. Реалізацію не розпочато, чинний SPEC не переписувався під майбутні пропозиції.
+
+Read-only перевірено останній failed memory: sent→unresolved≈0.30с,0 bytes partial, без usage/finish_reason; max_tokens32000 проти поточного Venice maxCompletionTokens24000. Найімовірніша причина — перевищення вихідного ліміту, точна HTTP-причина втрачена generic catch. Додано окремий технічний follow-up preflight+safe diagnostics. [Факти й межі](../../diagnostics/2026-11-06-memory-provider-error.md). Без повторного inference, зміни налаштувань чи передачі приватних матеріалів; залишковий billing unresolved не змінювався.
+
+
+## 06.11.2026 — Model-only обгортка JSON пам’яті
+
+Прямий запит власника прибирати зовнішні апострофи; read-only підтверджено повний Markdown json fence у збереженій відповіді. [Специфікація виправлення](../../specs/changes/memory-json-wrappers-2026-11-06.md). Base33130e0, branch codex/memory-json-wrappers. Додано зняття однієї повної парної зовнішньої обгортки лише parse_memory_result, без зміни JSON усередині/partial/manual validators. Warning UA/EN через memory_warnings/run.warning; строгі schema/evidence/duplicate key перевірки лишилися. RED12 failures/6 passes → GREEN18 passed; розширений gate498 passed,110.36s, source_changed_during_run=false, artifacts/verification-qyjkzeev/result.json. Немає нового inference або зміни production даних/налаштувань. SPEC MEMORY-004-S03/traceability та UA/EN інструкції оновлено; окремі locale перевірки й cross-review виконуються перед PR.
+
+
+Memory wrappers cross-review Claude:5 findings,5 fixed,0 rejected; таблиця у специфікації зміни. Перенесено wrapper warning після успішного parse, multi-block не нормалізується; tests manual path/boundaries/exact warnings посилено. RED6 failures/23 passes → GREEN40 wrappers+diagnostics passed. Немає нового inference або передачі приватних відповідей.
+
+
+Після review gate:514 passed/1 failed через10с timeout synthetic seven-scene flow на cursor27/28 без error; isolated повтор дав той самий timeout. Контроль з оригінальним parser33130e0 пройшов за10.19с загалом, тобто тест працює біля довільної часової межі. Для перевірки completion/export (не latency SLA) harness wait збільшено до30с; production timeout/worker не змінено. Попередні невдалі звіти збережено: artifacts/verification-48_qgjv3/result.json, artifacts/verification-vwxqc4eh/result.json; контроль artifacts/memory-wrapper-baseline.log. Фінальний весь набір повторюється після цієї test-only поправки.
+
+
+Фінальний gate після всіх review/harness виправлень: **515 passed,0 failed/errors/skipped**, source_changed_during_run=false, artifacts/verification-9k5sjzus/result.json; STATUS оновлено verify.py. check_docs.py пройшов.
+
+
+Завершено: [PR](https://github.com/ysilvestrov/obscura-text-writer/pull/8), code398b8b6, branch codex/memory-json-wrappers поверх UI PR#7. Основна тека містить перевірений код; idle-сервер127.0.0.1:8765 перезапущено з тими самими data/env параметрами, HTTP200 і0 active/queued runs після старту. Без нового inference/зміни налаштувань/переписування production partial. Сторонній untracked research-файл збережено; merge не виконувався.
+
+
+## 06.11.2026 — Перші дві найближчі UX задачі
+
+Власник погодив початок найближчих задач. Пакет1 — [select-all](../../specs/changes/rewrite-select-all-2026-11-06.md), code86d81b6: локальне позначення всіх rewrite groups без POST/apply, явний актуальний preview обов’язковий; UA/EN, guards і readonly спільного component збережено. Пакет2 — [згортання](../../specs/changes/collapsible-scene-lists-2026-11-06.md): пряме уточнення обох екранів і60+ сцен, що відсувають імпорт; native details списку з count і sibling importer, disclosure історії reports зі збереженням open при locale/refresh, blockers/checkpoint зовні.
+
+RED select-all2 failures → GREEN2 passed; RED collapse4 failures → combined16 targeted desktop/mobile passed, включно stale subset preview та busy apply. UI detector один прогін: inherited Jinja black color — false positive, нового CSS/palette немає. Візуальний перший пакет виявив screenshot sticky overlay/надто високий sidebar crop; виправлено лише спосіб захоплення, остаточна перевірка й повний browser/web gate тривають. Production дані/налаштування/inference не змінено, сторонній research-файл збережено.
+
+
+Фінальний спільний UI gate:104 Playwright desktop/mobile passed,2.6m (artifacts/near-term-controls-browser-final.log);185 web/API/Node passed через verify.py, source_changed_during_run=false (artifacts/verification-yi06cfb8/result.json). check_docs пройшов,6 нейтральних screenshots оглянуто. Попередній full browser102 passed/2 failures був помилкою тестового EN locator після UA-switch при screenshot; виправлено stable data attr із окремою перевіркою тексту.
+
+
+UI controls cross-review7 findings:6 fixed (tests/docs clarification),1 rejected (privacy-filtered artifact omission). Таблиця у двох UI специфікаціях; посилені16 browser tests passed26.8s, production code незмінний після104 browser/185 web gate. Наступні три найближчі задачі мають окремі підготовлені специфікації тарифів/лімітів і persisted import counts; новий inference не запускався.
+
+
+## 06.11.2026 — Решта найближчих задач: model/import metadata
+
+Перші дві UX задачі збережено в [PR#9](https://github.com/ysilvestrov/obscura-text-writer/pull/9), codefa5eb83; продовжено погоджені3–5 на codex/model-import-metadata. Специфікації: model-catalog-prices-limits-2026-11-06.md та import-journal-counts-2026-11-06.md. Додано ModelOption tariff/max output, cached official/manual binding, unknown/expired labels у roles/shared connection; cloud known caps перед POST, safe HTTP/transport/missing-key failure усіх stages і durable generation_failure. Немає retry/fallback або обрізання body; Успішний OpenRouter каталог без окремих caps лишає unknown; відмова cloud каталогу не допускає completion POST.
+
+Import counts — source_files JSON без SQL migration, computed actual scene IDs/new card IDs у тій самій publication transaction, legacy unknown; journal UA/EN/reload. RED backend18, counts2+1 pass, UI4+2 failures → targeted252 regressions passed; нові25 providers/locale passed, durable memory failure persisted. Full browser110 passed2.7m, додаткові8 pricing/shared/counts passed12.1s. Один detector[], першою visual QA виявлено toast на pricing screenshot, фінальне підтвердження без toast; нових palette/layout refactor немає. Broad gate виконується через verify.py. Без production inference/config/data rewrite.
+
+
+Фінал реалізації model/import metadata: cloud catalog503 не запускає completion (нові tests), transport причини й generation_failure memory durable, source counters actualIDs atomic. Pricing/shared browser confirmation6 passed10.5s; toast прибрано із screenshot, model accessible name не включає ставки, aria-describedby пов’язує metadata. Broad verification починається на стабільному snapshot без паралельного screenshot rewrite.
+
+
+Фінальний спільний gate model/import metadata та global MODEL-JSON: **1244 passed,1 skipped,0 failures/errors**, source_changed_during_run=false, artifacts/verification-smi5njs9/result.json. check_docs.py пройшов. Раніше UI110 browser passed2.7m,8 додаткових metadata/counts/shared passed,6 фінальних pricing/accessibility passed; фінальні screenshots перевірено візуально, detector[]. Без реального inference або зміни production матеріалів.
+
+
+## Global JSON і уточнення фактичного контексту06.11
+
+Cross-review: claude/default @ 3e8cec8 (author: codex) — 10 findings: 10 fixed, 0 rejected
+Таблиця рішень — у трьох специфікаціях change. Broad gate1244passed/1skipped перед review. Після review виправлено локалізацію suffix, neutral technical, точність warnings та посилено тести. Новий запит власника підтвердив дефект preflight: configured window помилково порівнювався як обсяг. Виправлено на estimated input + actual output reserve; settings/body незмінні. Новий synthetic RED6 failures/2 pass → GREEN30; подальше посилення tests149passed/3 harness failures через включення memory output у review-only expected; виправлено stage filter, exact raw comparison3passed. Повторна цільова перевірка виконується через verify.py. Production дані не копіюються в tests/review; нових paid calls немає.
+
+
+Post-review verify2rrqjwi1:540passed/1failure — старий worker warning test шукав слово Markdown, яке навмисно прибрано за finding10. Виправлено точні warning/event assertions; production code додатково не змінено. Остаточний цільовий gate повторюється.
+
+
+Фінальний post-review gate: **541 passed,0 failed/errors/skipped**, source_changed_during_run=false, artifacts/verification-qxf5vqkl/result.json. Покрито provider/billing, усі web/API/Node, evaluator, planner/editor/JSON, durable failure, counts/CAS, exact raw proof/replay/backup. Попередній широкий набір1244passed/1skipped збережено окремо. Production code після цього gate не змінюється. check_docs.py перевіряється перед фінальним комітом.
+
+
+Завершено: [PR#10](https://github.com/ysilvestrov/obscura-text-writer/pull/10), codef1a35b9 + fixesd621113, branch codex/model-import-metadata поверх PR#9. Основна тека C:\Projects\text-generator містить перевірений результат; після fresh0 active/queued локальний сервер8765 перезапущено з тими самими data/env параметрами, HTTP200 і0 active/queued підтверджено. Автоматичного повтору inference, зміни налаштувань або переписування сирих результатів немає. Сторонній untracked research-файл збережено. Merge не виконувався.
+
+
+##06.11 — Текст proposed_changes усередині об’єктів
+
+Base382bd9d, branch codex/planner-proposal-objects. Read-only діагностика: список двох scene_number:int/change:str у prompt_json; Domain WritersBrief очікує list[str]. Власник підтвердив, що текст присутній. Окрема change spec planner-proposal-objects-2026-11-06.md: narrow model-only coercion exact keys/positive strict int/nonblank str, збереження номера й точного change, raw/review/CAS/manual invariants. RED3 failures/13 passes → GREEN41 parser/protocol regressions. Нові reload/strict guards18pass/1 harness error (Repository.list_events замість list_run_events); accessor виправлено без зміни production. Саме збережена відповідь локально проходить новий parser,2 proposals needs_review; production raw/status незмінні, inference не запускався, приватний вміст виключено з документації/тестів/review.
+
+
+Фінальний gate: **654 passed,0 failures/errors/skipped**,148.50с, source_changed_during_run=false; artifacts/verification-iiov2nhk/result.json, STATUS оновлено verify.py. Усі generation/web/integration перевірки виконано. check_docs пройшов. Новий warning на чинній панелі без зміни layout: UA/EN інструкції актуалізовано, screenshots не потребують заміни. Production raw/failed state/settings не переписано; нових inference немає.
+
+
+Cross-review: claude/default @ a8ba12e (author: codex) — 5 findings: 4 fixed, 1 rejected
+
+Очищений review heada8ba12e відповідає code4d55d68, base382bd9d. Перед запуском npm0.5.0/integrity й81 package files звірено;643→645 allowlisted files,0 credentials. Приватний raw/user materials/env/research/original.git виключено. Після review production code незмінний;27 посилених synthetic tests passed.
+
+| № | Рішення | Доказ / зміна |
+|---|---|---|
+| 1 | rejected | Пряме відтворення plain і structured lone-surrogate повертає Pydantic ValidationError/category schema, а не припущений UnicodeEncodeError/publication. Додано4 execute_stage регресії objective/change × string/object: failed/schema, без result/head, original partial незмінний. Production ensure_ascii не змінювався. |
+| 2 | fixed | Точні ValidationError type/loc, точний PlannerProtocolError duplicate_key; кожна invalid shape також виконується через stage і перевіряє failed/schema/no result/no head/raw/one call. |
+| 3 | fixed | Повні очікувані lists, три plain/fenced/apostrophe випадки для worker reload; точний merged run.warning і context_warning event. |
+| 4 | fixed | Прямий manual brief POST400 без створення version/head та prepare parser extra_forbidden; traceability доповнено. |
+| 5 | fixed | Після Repository reopen читається одна saved attempt із needs_review, exact planner_warnings і raw bytes для всіх трьох обгорток. |
+
+
+Post-review gate: **61 passed,0 failures/errors/skipped**, source_changed_during_run=false, artifacts/verification-pzeedox0/result.json. Production parser/catalog код4d55d68 не змінювався після широкого654passed gate; лише посилено tests/traceability/docs. check_docs.py пройшов.
+
+
+Завершено: [PR#11](https://github.com/ysilvestrov/obscura-text-writer/pull/11), code4d55d68/review3b54fc7, branch codex/planner-proposal-objects поверх PR#10. Основна тека містить перевірений результат. Після fresh0 active/queued сервер8765 перезапущено з тими самими data/env; HTTP200 та0 active/queued підтверджено. Не змінювалися налаштування, original partial або статус історичної failed спроби; нового inference/retry немає. Сторонній untracked research-файл збережено, merge не виконувався.
+## 06.11.2026 — Основна дія з телеметрією
+
+Погоджено `docs/specs/changes/editor-one-click-telemetry-2026-11-06.md` та план `2026-11-06-one-click-workspace-core.md`. Основні модельні дії показують планову телеметрію й виконуються одним натисканням; consent застарілої пам’яті збережено. Зупинка використовує browser AbortController для preflight і серверну чергу. Для невизначеного enqueue додано ідемпотентне скасування за request_id із durable cancelled-записом до запізнілого enqueue; без повторного POST. Дані для sidebar — лише план на момент enqueue, не факт про пізнішу спробу. Записи очікування прив’язано до вкладки; активний ID переживає reload.
+
+Незалежний огляд виявив і виправлено: неоднозначний 5xx, втручання іншої вкладки в marker, втрату кнопки stop після reload, нескінченну невизначеність для недоставленого POST і недоступність деталей з клавіатури. Синтетичний Playwright desktop/mobile: 20 passed; API/контролер через verify.py: 8 passed, `artifacts/verification-vbsykj6z/result.json`; черга з коротким тестовим шляхом: 43 passed разом із API/контролером. `check_docs.py` пройшов. Повний набір не підтверджено: довгі шляхи worktree спричинили WinError/FileNotFound, повтор із коротким шляхом зупинився без прогресу після 40%. Production inference не виконувався.
+
+Ruling: замість одного лише read-only пошуку додано серверний fence скасування — відсутність run не доводить, що затриманий enqueue не надійде пізніше; ціна рішення — окремий незворотний скасований запис, який не можна відновити. Стан невизначеного запиту зберігається в sessionStorage вкладки: reload підтримується, повне закриття вкладки не зберігає її локальний намір; стан серверного запуску лишається в історії. Переглянуто нейтральні desktop/mobile знімки; на mobile виправлено обрізання підказки. Detector позначив наявні в app.css відхилення шкали як advisory.
+
+Подальший повний verbose pytest із коротким шляхом пройшов до 44% без помилок, але довго не завершував `test_memory_parts_preserve_historical_journal` і був перерваний; повний зелений набір не стверджується. Після рев’ю додано тест негайного server fence до надходження відповіді POST.
+
+Після виправлення regression harness для consent і таймера SSE повний зріз `tests/web tests/generation` із коротким шляхом: **640 passed, 0 failed** (`artifacts/web-generation.log`). Browser desktop/mobile: **20 passed** (`artifacts/workspace-browser-final.log`), включно з fence, 5xx, двома вкладками, reload і клавіатурою. Інструкції UA/EN оновлено; наявні знімки цих інструкцій відсутні, нові тестові знімки нейтральні й оглянуті.
+
+Cross-review: claude/default @ bd7a429 (author: codex) — 9 findings: 9 fixed, 0 rejected. Власник окремо дозволив доступ Claude/Anthropic і резервного Google до повного відстежуваного знімка, включно з research; фактично відповів Claude. Виправлено втрату Stop під час паралельного reconcile, відновлення readiness після abort, пояснення невідомого стану, позначення legacy-плану, відсутнього оцінювача й помилкового переходу до налаштувань при Stop. Browser тести розширено для гонок, 5xx без Stop, усіх режимів, попереджень, UA/EN, ліміту й точного тексту; traceability явно називає процедури. RED двох гонок і двох діагностик → GREEN; подальші перевірки фіксуються окремо.
+
+07.11: read-only діагностика останньої помилки evidence_id без нової генерації та без передачі тексту рецензентам: модель Venice Gemma 4 повернула для 7 із 10 операцій кілька ID в одному рядку, хоча validator приймає один ID; усі окремі ID існували серед 23 переданих фрагментів, captured source hash збігався. Режим prompt_json без примусової схеми, у реченнях збереженого системного промпту про evidence_id не виявлено явної вимоги рівно одного ID чи заборони списку. Семантичну підтримку тверджень окремо не встановлено; дані та відповідь не змінювалися.
+
+Після cross-review: **641 passed, 0 failed** у `tests/web tests/generation` з коротким шляхом (`artifacts/cross-review-web-generation-short.log`); **38 passed** у браузері desktop/mobile (`artifacts/cross-review-browser.log`). Три попередні FileNotFoundError підтверджено як обмеження довгих шляхів: усі три окремо пройшли на короткому шляху. Повний набір поза цим зрізом не заявляється пройденим.
+
+## 07.11.2026 — Прискорення readiness
+
+За погодженим запитом усувається затримка попередньої перевірки: вибіркова операція API, згортання фонових запитів і повний набір на вимогу. Незалежний серверний preflight та згода для пам’яті зберігаються. Специфікація: `docs/specs/changes/readiness-performance-2026-11-07.md`; план: `docs/superpowers/plans/2026-11-07-readiness-performance.md`. Користувацькі інструкції UA/EN не змінюються: команди та порядок їх використання залишаються тими самими.
+
+## 07.11.2026 — Доступність прийняття завдання
+
+Усунено відсутність повторного обчислення стану кнопки після оновлення списку запусків. Захист для dirty, stale, incomplete та активного запуску збережено; інструкції UA/EN не змінюються, бо порядок дій не змінено. Специфікація: `docs/specs/changes/brief-accept-refresh-2026-11-07.md`.
+
+## 07.11.2026 — Збереження завдання перед чернеткою
+
+Після збереження основна дія повторно перевіряє, чи не з'явилася пропозиція завдання, і не запускає чернетку без її прийняття. Специфікація: `docs/specs/changes/brief-save-before-draft-2026-11-07.md`. Інструкції UA/EN не потребують змін: порядок явного прийняття залишається чинним.
+
+## 07.11.2026 — Пояснення в переліку учасників
+
+Зіставлення карток ігнорує пояснення в дужках, зберігаючи повний текст плану. Специфікація: `docs/specs/changes/scene-cast-annotations-2026-11-07.md`; користувацькі інструкції переглянуто щодо прикладів складу сцени.
+
+Регресійний зріз `tests/authoring/test_scene_description.py tests/authoring/test_character_import.py tests/generation/test_scene_cast_filter.py`: 28 passed на короткому тимчасовому шляху Windows. Перший запуск через `scripts/verify.py` мав 22 FileNotFoundError через довгі шляхи тимчасових файлів; успішний повтор виконано через `subst` без зміни вихідних даних.
+
 ## 07.11.2026 — Специфікація стабільної пам’яті (wire v3)
 
 За запитом власника за бріфом помилок пам’яті оформлено специфікацію `docs/specs/2026-11/memory-wire-v3.md` (статус: чернетка → на затвердження). Проби: офлайн-повтор 114 збережених відповідей (лише лічильники, read-only), перевірка примусу `maxItems`/`enum` у Venice для Gemma 4 і Qwen 3.8 на синтетичному тексті. Код не змінювався; оцінка власника й автора — M. Порядок відносно беклогу R визначає власник.
@@ -1039,3 +1200,12 @@ R-28k поставлено27.10:1293PASS/1SKIP verification-v4p8q2ak/source_chan
 Налаштування: Gemma 4 (`gemma-4-uncensored`), стандартний промпт `memory/evidence_delta/3` (власний промпт v2 вимкнено за рішенням власника), `json_schema` з динамічною схемою, temperature 0,7. 12 сцен (позиції 1, 2, 3, 5, 7, 9, 10, 11, 13, 15, 17, 19): **12/12 валідні з першої спроби**, 0 порушень, 0 попереджень, витрати **$0,011** (бюджет ≈ $0,05). Для сцен, чия попередня пам’ять стала застарілою після публікації, передано авторське підтвердження (fingerprint), як у UI. Огляд семантики сцен 2, 11, 19 підготовлено для власника (поза репозиторієм: приватний текст); у цих сценах 18 записів v3 проти 18 у попередній пам’яті, 21 додатковий доказ (`supporting_quotes`). Рішення про злиття — після огляду власником.
 
 Огляд власника (07.11.2026): середня якість записів у сценах 2, 11, 19 не погіршилася; приймання 2 зараховано для поточної задачі. Стоп-сигнал спеки щодо семантики не спрацював.
+
+
+## 08.11.2026 — Інтеграція стеку в main
+
+Злито локально стек aa8593c з origin/main b5b7555 (merge 8c76fa1), поєднано model-only обгортку з wire v2/v3, збережено специфікації та журнал обох гілок. check_docs пройшов; verify.py на 8c76fa1 у короткому шляху: 1665 passed, 0 failed, 0 errors, 1 skipped. Попередній прогін у довгому шляху зазнав помилок обмеження довжини Windows. На копії робочих даних сервер відповів HTTP 200, побудовано контекст пам’яті v3 і динамічну схему без виклику провайдера. Робочу базу не змінювали. Автоматична перевірка дозволів відхилила запуск зовнішнього npx cross-review; рев’ю та PR ще не завершено.
+
+08.11.2026: cross-review claude/default @ cc943d9: 5 findings, 4 виправлено, 1 відхилено. Виправлено частковий результат при несподіваній помилці й active_sources для першої відмови; посилено rollback та wrapper тести. Canon, залежний від зміненого джерела персонажів, лишається stale: SPEC визначає виняток лише для додавання плану. Цільові перевірки: 26 passed; повний verify — після коміту. Інструкції UA/EN не потребують змін: користувацький процес не змінився, відновлено наявний контракт часткового імпорту.
+
+Фінальний повний verify.py на f4c2d12: 1669 passed, 0 failed, 0 errors, 1 skipped; перевірка виконана у короткому шляху, звіт у docs/STATUS.md.

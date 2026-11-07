@@ -53,3 +53,24 @@ test('new proposal refreshes an open brief without changing the head or overwrit
   await expect(page.locator('#editor')).toHaveValue('Незбережена авторська правка');
   await page.unrouteAll({behavior:'wait'});
 });
+
+test('acceptance follows refreshed run state without switching tabs',async({page,request})=>{
+  const f=await(await request.post('/test-brief-proposal')).json();await page.goto(`/stories/${f.story_id}`);await page.locator('#mode-tabs [data-mode="brief"]').click();
+  const accept=page.locator('#brief-proposal button');await expect(accept).toBeEnabled();
+  await page.evaluate(async()=>{const {state}=await import('/static/editor.js');state.workspaceRuns=[{state:'running'}];document.dispatchEvent(new CustomEvent('workspace-run-state'))});
+  await expect(accept).toBeDisabled();
+  await page.evaluate(async()=>{const {state}=await import('/static/editor.js');state.workspaceRuns=[{state:'needs_review'}];document.dispatchEvent(new CustomEvent('workspace-readiness'))});
+  await expect(accept).toBeEnabled();
+});
+
+test('saving edits to an accepted brief requires acceptance before starting a draft',async({page,request})=>{
+  const f=await(await request.post('/test-brief-proposal')).json();await page.goto(`/stories/${f.story_id}`);await page.locator('#mode-tabs [data-mode="brief"]').click();
+  await page.locator('#brief-proposal button').click();await expect(page.locator('#brief-proposal')).toBeHidden();
+  const accepted=(await(await request.get(`/api/scenes/${f.scene_id}/versions`)).json()).scene.heads.brief;
+  const brief=JSON.parse(await page.locator('#editor').inputValue());brief.objective='Нова авторська правка';await page.locator('#editor').fill(JSON.stringify(brief));
+  let posts=0;await page.route('**/api/runs',async route=>{if(route.request().method()==='POST'){posts++;await route.fulfill({status:400,json:{detail:'Unexpected draft'}})}else await route.continue()});
+  await page.locator('#workspace-primary').click();
+  await expect(page.locator('#brief-proposal')).toBeVisible();await expect(page.locator('#brief-proposal button')).toBeEnabled();
+  await expect(page.locator('#workspace-primary')).toBeDisabled();expect(posts).toBe(0);
+  expect((await(await request.get(`/api/scenes/${f.scene_id}/versions`)).json()).scene.heads.brief).toBe(accepted);
+});

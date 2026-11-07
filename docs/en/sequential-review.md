@@ -38,3 +38,6 @@ Local evidence review requires native JSON schema, disabled thinking and an expl
 Premise-pair counts grow quadratically, but fitting premises are grouped in one request. Initial call counts are estimates because returned evidence may change later packing. One-scene search is limited to10000 parts; splitting preflight is additionally limited to100000 pairs. Paid preview shows a conservative one-scene search cost ceiling for that limit, excluding memory and subsequent scenes. Existing story/session budget checks still apply; search never increases a budget itself.
 
 ![Neutral example of a premise conflict](../images/review-evidence.png)
+
+
+Model-generated memory may arrive inside a complete ```json block or paired outer apostrophes. The server removes that wrapper before JSON validation. Apostrophes inside text/quotes and the original response remain unchanged; successful normalization produces a warning. Schema/evidence checks and manual JSON stay strict. Generation is never retried automatically.

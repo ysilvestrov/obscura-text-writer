@@ -17,7 +17,7 @@ globalThis.confirm=()=>true;
 const originalTimeout=globalThis.setTimeout;globalThis.setTimeout=(...args)=>{const timer=originalTimeout(...args);timer.unref();return timer};
 const scene={id:'c',story_id:'s',position:0,revision:0,title:'Сцена',beats:'План',target_words:400,heads:{},character_ids:[]};
 let serverState=mode==='terminal'?'failed':'running',timer;const sources=[];
-const interval=globalThis.setInterval;globalThis.setInterval=handler=>{timer=handler;return {unref(){}}};
+const interval=globalThis.setInterval;globalThis.setInterval=(handler,delay)=>{if(delay===1000)timer=handler;return {unref(){}}};
 const run=()=>({id:'r',state:serverState,error:mode==='terminal'?'Технічна причина':null,warning:mode==='terminal'?'Попередження контексту':null,created_at:new Date(Date.now()-140000).toISOString(),request:{mode:'stage',stage:'memory'}});
 const response=data=>({ok:true,json:async()=>structuredClone(data)});
 globalThis.fetch=async url=>{

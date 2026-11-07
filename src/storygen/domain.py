@@ -43,6 +43,7 @@ class Story(StoryCreate):
 
 
 class SceneCreate(DomainModel):
+    author_scene_number: int | None = Field(default=None,ge=0)
     title: str = Field(min_length=1,max_length=300)
     beats: str = ""
     position: int | None = Field(default=None,ge=0)

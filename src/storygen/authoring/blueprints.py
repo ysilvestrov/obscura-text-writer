@@ -28,9 +28,16 @@ def save_role_settings(repo,story_id: str,role: str,settings: RoleSettings,expec
     return repo.write_role_settings(story_id,{role:settings.model_dump()},expected_revision)
 
 
-def update_story_profile(repo,story_id: str,profile: StyleProfile,expected_revision: int) -> Story:
-    version=repo.save_version(story_id,None,'style',profile.model_dump_json(),[])
-    return repo.publish_story_material(story_id,'style_version_id',version.id,expected_revision)
+def update_story_profile(repo,story_id: str,profile: StyleProfile | None,expected_revision: int,target_words: int | None=None) -> Story:
+    view=repo.context_view(story_id);story=view.get_story(story_id)
+    if story.revision!=expected_revision:raise RevisionConflict('Налаштування вже змінено')
+    if target_words is not None:
+        Story.model_validate({**story.model_dump(),'target_words':target_words})
+    current=StyleProfile.model_validate_json(view.read_text(story.style_version_id)) if story.style_version_id else StyleProfile()
+    style_id=None
+    if profile is not None and profile!=current:
+        style_id=repo.save_version(story_id,None,'style',profile.model_dump_json(),[]).id
+    return repo.publish_writing_settings(story_id,expected_revision,target_words,style_id)
 
 
 def apply_blueprint(repo,story_id: str,proposal: StoryBlueprint,expected_revision: int) -> Story:
@@ -41,7 +48,7 @@ def apply_blueprint(repo,story_id: str,proposal: StoryBlueprint,expected_revisio
     for card in proposal.characters:
         for source in card.sources:
             ref=repo.get_version(source.version_id)
-            if ref.story_id!=story_id or ref.kind not in {'source_plan','source_characters'} or source.quote not in repo.read_text(ref.id):
+            if ref.story_id!=story_id or ref.kind not in {'source_plan','source_characters','character_cards'} or source.quote not in repo.read_text(ref.id):
                 raise ValueError('Картка персонажа не має підтвердженого джерела')
             source_ids.append(ref.id)
     canon=repo.save_version(story_id,None,'canon',proposal.canon,source_ids)

@@ -47,7 +47,8 @@ def fixture(tmp_path):
 
 
 def wait(worker,id,states):
-    deadline=time.monotonic()+10
+    # 28 persisted stages can exceed 10s on Windows; this tests completion, not latency.
+    deadline=time.monotonic()+30
     while time.monotonic()<deadline:
         run=worker.get_run(id)
         if run.state in states:return run

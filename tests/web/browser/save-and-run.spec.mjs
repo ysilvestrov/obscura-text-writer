@@ -22,7 +22,7 @@ for(const mode of ['brief','draft'])test(`save and run dispatches after editing 
   await expect(page.locator('#save-state')).toContainText(/Незбережені|Unsaved/);
   await page.locator('#workspace-primary').click();
   await expect.poll(()=>dispatches.length).toBe(1);
-  expect(confirmations).toBe(1);
+  expect(confirmations).toBe(0);
   const data=await(await request.get(`/api/scenes/${f.scene_id}/versions`)).json();
   const saved=await(await request.get(`/api/versions/${data.scene.heads[mode]}`)).json();
   if(mode==='brief')expect(JSON.parse(saved.text)).toEqual(JSON.parse(text));else expect(saved.text).toBe(text);

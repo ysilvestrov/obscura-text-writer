@@ -4,6 +4,7 @@ from urllib.parse import urlparse
 from pydantic import Field, model_validator
 
 from ..domain import DomainModel
+from ..billing.models import Tariff
 
 
 class ProviderSettings(DomainModel):
@@ -81,3 +82,5 @@ class ModelOption(DomainModel):
     id: str
     context_tokens: int | None = None
     uncensored: bool | None = None
+    max_output_tokens: int | None = None
+    tariff: Tariff | None = None

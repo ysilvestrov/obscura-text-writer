@@ -134,7 +134,9 @@ R-22 прокрутка: Playwright `long draft scrolls internally while formatt
 <a id="r20-brief-review"></a>
 ## R-20: pending завдання в основному workflow
 
-`pnpm --dir frontend exec playwright test brief-proposal.spec.mjs` на синтетичному сервері: stale old head + new proposed brief. Перевірити новий JSON у вкладці й явний список змін/accept; Save не приймає його, accept вибирає exact displayed version й розблоковує draft за придатного контексту. Dirty edit блокує accept до Save, після Save приймається саме нова авторська версія. Конкурентна зміна scene дає помилку без втрати тексту. Story refresh відкритого чистого brief підхоплює нову пропозицію без head change; dirty ввод лишається. Desktop/mobile, без реальних моделей; наявність процедури не є звітом про виконання.
+`pnpm --dir frontend exec playwright test brief-proposal.spec.mjs` на синтетичному сервері: stale old head + new proposed brief. Перевірити новий JSON у вкладці й явний список змін/accept; Save не приймає його, accept вибирає exact displayed version й розблоковує draft за придатного контексту. Dirty edit блокує accept до Save, після Save приймається саме нова авторська версія. Конкурентна зміна scene дає помилку без втрати тексту. Story refresh відкритого чистого brief підхоплює нову пропозицію без head change; dirty ввод лишається. Сценарій `acceptance follows refreshed run state without switching tabs` перевіряє блокування під час роботи та доступність після оновлення стану без переходу між вкладками. Desktop/mobile, без реальних моделей; наявність процедури не є звітом про виконання.
+
+Сценарій `saving edits to an accepted brief requires acceptance before starting a draft`: прийняти пропозицію, змінити її, натиснути основну дію і перевірити, що нова версія очікує прийняття, попередній head збережено та запит на запуск відсутній.
 
 
 <a id="r28-impact"></a>
@@ -168,3 +170,35 @@ R-22 прокрутка: Playwright `long draft scrolls internally while formatt
 
 Запустити `node frontend/node_modules/@playwright/test/cli.js test --config frontend/playwright.config.mjs characters-page --reporter=line`.
 Перевірки desktop/mobile: перехід і повернення до prose, додавання картки, довгий опис, UA/EN без втрати вводу, preview, save, порожній твір без сцен, відмова від виходу з dirty, CAS409 без втрати правок. Переглянути нейтральні `docs/images/characters-page-desktop.png` і `characters-page-mobile.png`: поля видимі, немає горизонтального переповнення.
+
+
+<a id="additive-import-ui"></a>
+## Інтерфейс письма та доповнювального імпорту
+
+`node frontend/node_modules/@playwright/test/cli.js test --config frontend/playwright.config.mjs additive-imports --reporter=line` на синтетичному сервері. Desktop/mobile: writing target25000, Save, Reset, UA/EN, remote-target conflict без втрати вводу; журнал назв/дат, нові/дубльовані матеріали, partial/error, pending-submit, збереження selection. Наявність процедури не означає її виконання; фактичний результат записується в журналі й STATUS.
+
+Додатково: confirmed POST + failed GET лишає «Імпорт завершено» й кількості; кнопка повторює тільки GET. POST застосований сервером, але відповідь втрачена: невідомий результат без нульових кількостей, файлові поля очищено, журнал оновлюється без нового POST. Writing409/мережевий збій зберігають ввід і блокують dirty-вихід.
+
+
+<a id="r23-select-all"></a>
+## Пакетний вибір переписування
+
+Запустити `node frontend/node_modules/@playwright/test/cli.js test --config frontend/playwright.config.mjs rewrite-review --reporter=line`. Новий сценарій select all rewrite changes перевіряє desktop/mobile: початково0, click→усі групи без mutations, UA/EN, preview обов’язковий навіть після повернення до all, apply двох змін/очищення notes. Нейтральні screenshots docs/images/rewrite-select-all-desktop.png і mobile.png оглянути на читабельність/overflow. Наявність процедури не означає виконання.
+
+
+<a id="collapsible-scenes"></a>
+## Згортання списків сцен
+
+Запустити Playwright collapsible-scenes.spec.mjs на synthetic server:65 scenes, dirty draft, selected scene/material, click/Enter, UA/EN/refresh зберігають open; імпорт поза collapsed list. Synthetic latest reports collapse без втрати articles; поточні blockers/checkpoint не ховаються. Оглянути screenshots collapsed-scenes/reports desktop/mobile. Наявність процедури не є фактичним PASS.
+
+
+<a id="model-import-metadata"></a>
+## Тарифи, ліміти й journal counts
+
+Playwright model-metadata.spec.mjs: selected model shows tariff units/caps/unknown, manual expired+stale discovery, shared classifier same tariff without limit changes; desktop/mobile UA/EN. Additive-imports case journal retains actual import counts after reload and marks old counts unknown: actual1/0/duplicate0, reload, UA/EN, missing fields unknown. Переглянути neutral model-tariff/import-journal-counts desktop/mobile PNG. Mock APIs/synthetic gateway, без key/.env/production/inference. Фактичні pytest результати — verify.py/STATUS, browser runner — окремо в журналі.
+<a id="workspace-one-click"></a>
+## Телеметрія та зупинка основної дії
+
+На синтетичному сервері запустити `node frontend/node_modules/@playwright/test/cli.js test --config frontend/playwright.config.mjs workspace-telemetry.spec.mjs workspace-cancel.spec.mjs save-and-run.spec.mjs`. Перевірити desktop/mobile, передзапускову модель, збереження без загального dialog, затриманий і втрачений POST, серверний cancel і відновлення плану після reload. Тести не виконують реальний inference; наявність процедури не означає її виконання.
+
+WORKSPACE-TELEMETRY-S01: у `workspace-telemetry.spec.mjs` сценарії `plan/brief/draft/prose shows its model and warning before a single-click start`, а також `draft displays editor and planned calls before starting` перевіряють ролі, попередження, UA/EN і зміну ліміту. WORKSPACE-TELEMETRY-S02: у `workspace-cancel.spec.mjs` сценарії `stop during reconciliation is not lost`, `stopping readiness restores controls without a settings error`, `unknown enqueue is not shown as cancelled and Stop fences it` та інші перевіряють конкретні гонки. WORKSPACE-TELEMETRY-S03: `sidebar retains the planned model after reload` і `legacy run with no saved plan is explicitly unknown`. Playwright тести перелічено тут, бо структурна матриця індексує Python testcase, а не browser test names.

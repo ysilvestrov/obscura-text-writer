@@ -5,7 +5,7 @@ class Element{
   constructor(){this.children=[];this.dataset={};this.disabled=false;this.value='';this.checked=false;this.textContent='';}
   append(...items){this.children.push(...items)}
   setAttribute(){} addEventListener(){} replaceChildren(...items){this.children=items}
-  querySelectorAll(){return []}
+  closest(){return null} querySelectorAll(){return []}
 }
 const elements=new Map();
 globalThis.document={querySelector:key=>{if(!elements.has(key))elements.set(key,new Element());return elements.get(key)},querySelectorAll:()=>[],createElement:()=>new Element(),addEventListener(){},dispatchEvent(){}};

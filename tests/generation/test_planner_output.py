@@ -93,6 +93,7 @@ def test_worker_reports_envelope_warning_without_another_call(tmp_path):
         wait_until(lambda:worker.get_run(run.id).state in {'completed','failed'})
         current=worker.get_run(run.id)
     finally:worker.stop()
-    assert current.state=='completed' and 'Markdown' in current.warning
+    expected='Знято одну зовнішню обгортку JSON планувальника; оригінальну відповідь збережено без змін.'
+    assert current.state=='completed' and current.warning==expected
     assert gateway.calls==1
-    assert any(event.type=='context_warning' and 'Markdown' in str(event.data) for event in worker.list_events(run.id))
+    assert [event.data for event in worker.list_events(run.id) if event.type=='context_warning' and event.data.get('warnings')==[expected]]==[{'warnings':[expected],'stage':'brief','scene_id':scene.id}]

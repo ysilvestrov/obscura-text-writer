@@ -35,7 +35,7 @@ def _normalize(view,story,payload):
             for citation in entry.sources:
                 try:source=view.get_version(citation.version_id)
                 except KeyError:raise ValueError('Джерело відомості недоступне або належить іншому твору') from None
-                if source.story_id!=story.id or source.kind not in {'source_characters','source_plan'} or not source.complete:
+                if source.story_id!=story.id or source.kind not in {'source_characters','source_plan','character_cards'} or not source.complete:
                     raise ValueError('Невірне джерело відомості персонажа')
                 if citation.quote not in view.read_text(source.id):raise ValueError('Цитата відомості відсутня у джерелі')
                 refs.append(source.id)
@@ -70,3 +70,9 @@ def save_character_material(repo,story_id,cards,expected_revision):
     version=repo.save_version(story_id,None,'character_cards',json.dumps([c.model_dump() for c in normalized],ensure_ascii=False),refs)
     repo.publish_story_material(story_id,'characters_version_id',version.id,expected_revision)
     return read_character_material(repo,story_id)
+
+
+def prepare_character_material(view,story,cards):
+    """Validate authoring payloads without publishing; CAS belongs to the caller."""
+    normalized,refs=_normalize(view,story,cards)
+    return [card.model_dump() for card in normalized],refs
