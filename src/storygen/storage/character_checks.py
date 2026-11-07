@@ -18,7 +18,7 @@ def check_character_versions(report,root,versions,scenes,stories):
                             report.limitations.append(ref.id+': archived_character_anchor: сцена доступності в кошику; виправте поточні картки перед генерацією.')
                     for citation in entry.sources:
                         source=versions.get(citation.version_id)
-                        if not source or source.story_id!=ref.story_id or source.kind not in {'source_plan','source_characters'} or not source.complete:
+                        if not source or source.story_id!=ref.story_id or source.kind not in {'source_plan','source_characters','character_cards'} or not source.complete:
                             raise ValueError('Невірне джерело картки')
                         if citation.quote not in contained_path(root,source.relative_path).read_bytes().decode('utf-8'):
                             raise ValueError('Цитата відсутня у джерелі')

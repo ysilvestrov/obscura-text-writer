@@ -62,7 +62,10 @@ def test_stream_final_usage_is_one_snapshot(monkeypatch,accounted_call,final_usa
         'choices':[{'index':0,'delta':{},'finish_reason':'stop'}]}]
     payload=''.join('data: '+json.dumps(c)+'\n\n' for c in chunks)+'data: [DONE]\n\n'
     accounting=accounted_call('openrouter','m')
-    with httpx.Client(transport=httpx.MockTransport(lambda r:httpx.Response(200,text=payload,headers={'content-type':'text/event-stream'}))) as client:
+    def handler(request):
+        if request.method=='GET':return httpx.Response(200,json={'data':[{'id':'m','object':'model'}]})
+        return httpx.Response(200,text=payload,headers={'content-type':'text/event-stream'})
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
         events=list(build_generation_gateway(config,client,accounting).stream(ctx,threading.Event()))
     assert events[-1].type=='terminal' and events[0].text=='prose'
     item=accounting.repo.billing('calls',scope=accounting.scope)[0]

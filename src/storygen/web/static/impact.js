@@ -24,11 +24,12 @@ function controls(){contractSelect.disabled=busy||state.saving||active();preview
 function renderReports(){
   if(!cached)return;
   uiText(document.querySelector('#impact-count'),'textContent',()=>t('impact.pending_count',{p0:cached.pending.length}));
+  const historyOpen=reportBox.querySelector('#impact-report-list')?.open??true;
   reportBox.replaceChildren();
   for(const target of cached.pending.filter(target=>target.blockers.length))reportBox.append(node('p',target.scene_title+' · '+t('impact.'+target.material)+' — '+target.blockers.map(diagnostic).join('; '),'muted'));
   const latest=new Map();for(const report of cached.reports)latest.set(report.scene_id+':'+report.material,report);
   if(!latest.size)return;
-  reportBox.append(node('h3',t('impact.history')));
+  const history=node('details');history.id='impact-report-list';history.open=historyOpen;history.append(node('summary',t('impact.history')));reportBox.append(history);
   for(const report of [...latest.values()].reverse()){
     const article=node('article',null,'impact-report');article.dataset.current=String(report.current);article.dataset.verdict=report.verdict;
     article.append(node('h4',report.scene_title+' · '+t('impact.'+report.material)),node('p',report.current?t('impact.'+report.verdict):t('impact.outdated'),'impact-verdict'),node('p',report.explanation));
@@ -46,7 +47,7 @@ function renderReports(){
     const actions=node('div',null,'actions'),open=node('button',t('impact.open'),'secondary');open.type='button';
     open.onclick=async()=>{try{const scene=state.view.scenes.find(s=>s.id===report.scene_id);if(!scene)return;await selectScene(scene);if(state.scene?.id===scene.id&&!state.dirty)await invokeWorkspaceCommand('show',report.material);}catch(error){notice(error.message,'error')}};actions.append(open);
     if(report.current){const reject=node('button',t('impact.reject'),'secondary');reject.type='button';reject.dataset.rejectImpact=report.id;reject.onclick=async()=>{try{await api(`/api/stories/${state.storyId}/impact/${report.id}/reject`,json('POST',{}));await refresh();await load();}catch(error){notice(error.message,'error')}};actions.append(reject);}
-    article.append(actions);reportBox.append(article);
+    article.append(actions);history.append(article);
   }
 }
 async function load(){

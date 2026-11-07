@@ -41,10 +41,11 @@ def test_character_import_creates_proven_cards_and_fills_scene_cast(tmp_path,cha
 def test_existing_cards_never_overwritten_on_reimport(tmp_path):
     repo=Repository(tmp_path);story=repo.create_story(StoryCreate(title='Твір'))
     import_sources(repo,story.id,[SourceFile(name='chars.md',raw=TEXT.encode(),kind='source_characters')])
-    original=repo.get_story(story.id).characters_version_id
+    original=load_characters(repo.read_text(repo.get_story(story.id).characters_version_id))
     result=import_sources(repo,story.id,[SourceFile(name='changed.md',raw='## Інший\nНовий опис.'.encode(),kind='source_characters')])
-    assert repo.get_story(story.id).characters_version_id==original
-    assert result.created_character_cards==0 and any('не перезаписано' in w for w in result.warnings)
+    actual=load_characters(repo.read_text(repo.get_story(story.id).characters_version_id))
+    assert actual[:len(original)]==original
+    assert actual[-1].name=='Інший' and result.created_character_cards==1
 
 
 def test_unstructured_source_kept_with_actionable_warning(tmp_path):

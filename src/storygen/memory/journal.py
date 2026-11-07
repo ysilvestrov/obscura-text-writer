@@ -236,9 +236,21 @@ def merge_legacy_snapshot(previous,snapshot,prose_id,prose):
     return _extend(previous,prose_id,events)
 
 
+def unwrap_model_memory(raw):
+    from ..model_json import unwrap_model_json
+    return unwrap_model_json(raw)
+
+
 def parse_memory_result(raw,previous,prose_id,prose,mode,allowed_character_ids,*,warnings=None,wire_version=2):
+    normalized=unwrap_model_memory(raw)
+    result=_parse_memory_data(decode_memory(normalized),previous,prose_id,prose,mode,allowed_character_ids,warnings,wire_version)
+    if warnings is not None and normalized!=raw:
+        warnings.append('Пам’ять: прибрано зовнішню обгортку JSON; вміст і докази не змінено.')
+    return result
+
+
+def _parse_memory_data(data,previous,prose_id,prose,mode,allowed_character_ids,warnings,wire_version):
     from .models import MemoryDelta
-    data=decode_memory(raw)
     if mode=='snapshot':
         return merge_legacy_snapshot(previous,MemorySnapshot.model_validate(data),prose_id,prose)
     if wire_version==3:

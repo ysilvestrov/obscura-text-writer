@@ -1,4 +1,5 @@
 """Provider-independent proposal contracts and exact narrative source stamps."""
+from .model_json import unwrap_model_json
 import hashlib
 import json
 import re
@@ -55,7 +56,7 @@ def parse_suggestions(text,eligible,warnings=None):
         return result
     def invalid_constant(value):raise ValueError('Нечислова константа JSON')
     try:
-        parsed=PublicationSuggestions.model_validate(json.loads(text,object_pairs_hook=pairs,parse_constant=invalid_constant))
+        parsed=PublicationSuggestions.model_validate(json.loads(unwrap_model_json(text),object_pairs_hook=pairs,parse_constant=invalid_constant))
         values=parsed.model_dump(exclude_none=True)
         normalized=PublicationData(**values)
         result={key:getattr(normalized,key) for key in values if getattr(normalized,key)}

@@ -67,7 +67,8 @@ def preview(repo, request):
         if request.mode=='prepare':
             view=repo.context_view(story.id)
             story=view.get_story(story.id)
-            sources=[s for s in [view.active_source(story.id,'source_plan'),view.active_source(story.id,'source_characters')] if s]
+            from .prepare_sources import prepare_sources
+            sources=prepare_sources(view,story)
             if not sources or not any(repo.read_text(s.id).strip() for s in sources):
                 raise ValueError('Спершу імпортуйте авторський план або описи персонажів')
             if any(s.stale or not s.complete for s in sources):

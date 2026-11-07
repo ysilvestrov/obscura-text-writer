@@ -793,6 +793,15 @@
       ]
     },
     {
+      "id": "SCENE-DESCRIPTION-S03",
+      "requirement": "SCENE-DESCRIPTION",
+      "scope": "Пояснення учасників зберігаються в плані та ігноруються при зіставленні.",
+      "tests": [
+        "tests/authoring/test_scene_description.py::test_cast_parenthetical_notes_are_preserved_and_not_part_of_names",
+        "tests/authoring/test_scene_description.py::test_parenthetical_matching_preserves_exact_names_and_ambiguity"
+      ]
+    },
+    {
       "id": "SCENE-CAST-DISPLAY-S01",
       "requirement": "SCENE-CAST-DISPLAY",
       "scope": "Імена після збереження плану. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
@@ -2480,6 +2489,340 @@
       "tests": [
         "tests/web/test_word_targets.py::test_word_targets_above_recommendation_round_trip"
       ]
+    },
+    {
+      "id": "IMPORT-NUMBER-S01",
+      "requirement": "IMPORT-NUMBER",
+      "scope": "Точні секції, fallback і ручне збереження номерів.",
+      "tests": [
+        "tests/authoring/test_import_sections.py::test_sections_keep_exact_text_and_unnumbered_subheadings",
+        "tests/authoring/test_import_sections.py::test_manual_plan_number_updates_and_conflict_is_atomic",
+        "tests/web/test_cross_review_imports.py::test_explicit_create_number_is_not_silently_dropped"
+      ]
+    },
+    {
+      "id": "IMPORT-PUBLISH-S01",
+      "requirement": "IMPORT-PUBLISH",
+      "scope": "CAS, atomic rollback і migration active source.",
+      "tests": [
+        "tests/storage/test_import_publication.py::test_cas_and_journal_do_not_replace_active_source",
+        "tests/storage/test_import_publication.py::test_publication_rolls_back_after_first_scene",
+        "tests/storage/test_import_publication.py::test_schema4_backfill_preserves_latest_selector_and_explicit_number"
+      ]
+    },
+    {
+      "id": "IMPORT-ADDITIVE-S01",
+      "requirement": "IMPORT-ADDITIVE",
+      "scope": "Нова серверна поведінка; інтерфейсний етап окремо.",
+      "tests": [
+        "tests/web/test_additive_imports.py::test_mixed_numbered_and_unnumbered_import_preserves_active_plan",
+        "tests/web/test_additive_imports.py::test_characters_add_only_new_names_and_keep_exact_existing_payload",
+        "tests/web/test_additive_imports.py::test_appending_plan_keeps_previous_authored_plan_usable",
+        "tests/web/test_additive_imports.py::test_unnumbered_future_sections_are_not_global_instructions",
+        "tests/web/test_additive_imports.py::test_blueprint_citing_current_cards_publishes_fresh_material",
+        "tests/web/test_additive_imports.py::test_card_version_citations_remain_editable_and_extendable",
+        "tests/integration/test_additive_import_flow.py::test_additive_flow_current_cards_prepare_snapshot_and_backup",
+        "tests/web/test_cross_review_imports.py::test_appended_plan_preserves_current_canon_and_cards_citing_old_plan",
+        "tests/web/test_cross_review_imports.py::test_duplicate_numbered_file_does_not_stale_current_heads",
+        "tests/web/test_cross_review_imports.py::test_empty_cleaned_heading_uses_default_title"
+      ]
+    },
+    {
+      "id": "IMPORT-ADDITIVE-S02",
+      "requirement": "IMPORT-ADDITIVE",
+      "scope": "Нова серверна поведінка; інтерфейсний етап окремо.",
+      "tests": [
+        "tests/web/test_additive_imports.py::test_multipart_reports_partial_without_retry_and_prevalidates_all",
+        "tests/web/test_cross_review_imports.py::test_failed_character_file_never_claims_published_cards",
+        "tests/web/test_cross_review_imports.py::test_first_runtime_conflict_returns_409_per_file_results",
+        "tests/web/test_cross_review_imports.py::test_oversized_uploads_return_413_before_publication"
+      ]
+    },
+    {
+      "id": "WRITING-TARGET-S01",
+      "requirement": "WRITING-TARGET",
+      "scope": "Нова серверна поведінка; інтерфейсний етап окремо.",
+      "tests": [
+        "tests/web/test_writing_target_settings.py::test_writing_target_and_profile_are_atomic_and_noop_preserves_style"
+      ]
+    },
+    {
+      "id": "WRITING-TARGET-S02",
+      "requirement": "WRITING-TARGET",
+      "scope": "Writing UI target Save/Reset/UA/EN/conflict.",
+      "tests": [],
+      "manual": {
+        "procedure": "docs/verification/manual.md#additive-import-ui",
+        "reason": "Браузерний стан форми перевіряється Playwright desktop/mobile."
+      }
+    },
+    {
+      "id": "IMPORT-UI-S01",
+      "requirement": "IMPORT-UI",
+      "scope": "UA/EN журнал та структуровані результати браузерного імпорту.",
+      "tests": [
+        "tests/web/test_import_ui.py::test_import_time_and_api_error_contract"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#additive-import-ui",
+        "reason": "Playwright перевіряє реальні DOM/мережеві збої на desktop/mobile."
+      }
+    },
+    {
+      "id": "IMPORT-UI-S02",
+      "requirement": "IMPORT-UI",
+      "scope": "UA/EN журнал та структуровані результати браузерного імпорту.",
+      "tests": [
+        "tests/web/test_import_ui.py::test_import_time_and_api_error_contract"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#additive-import-ui",
+        "reason": "Playwright перевіряє реальні DOM/мережеві збої на desktop/mobile."
+      }
+    },
+    {
+      "id": "MEMORY-004-S03",
+      "requirement": "MEMORY-004",
+      "tests": [
+        "tests/memory/test_model_json_wrappers.py::test_model_wrappers_preserve_json_content_and_warn",
+        "tests/memory/test_model_json_wrappers.py::test_wrappers_never_repair_invalid_or_ambiguous_payload",
+        "tests/memory/test_model_json_wrappers.py::test_fenced_unknown_evidence_is_still_rejected",
+        "tests/memory/test_model_json_wrappers.py::test_fenced_model_stage_keeps_original_partial",
+        "tests/memory/test_diagnostics.py::test_normalization_warning_survives_run_reload",
+        "tests/memory/test_model_json_wrappers.py::test_unsupported_boundaries_stay_unchanged"
+      ],
+      "scope": "Модельні обгортки, незмінні внутрішні тексти/partial, строгі schema/evidence/manual перевірки та warning після reload; synthetic gateway, без inference."
+    },
+    {
+      "id": "R23-REVIEW-S03",
+      "requirement": "R23-REVIEW",
+      "scope": "Локальний select-all та поточний preview/apply у Playwright desktop/mobile, без production inference.",
+      "tests": [],
+      "manual": {
+        "procedure": "docs/verification/manual.md#r23-select-all",
+        "reason": "check_docs.py tests IDs індексує pytest; реальні автоматизовані Playwright cases перелічено в процедурі з точними файлами/назвами."
+      }
+    },
+    {
+      "id": "R20-WORKSPACE-SCENES",
+      "requirement": "R20-WORKSPACE",
+      "scope": "DOM disclosure, keyboard, dirty text й scene/material на desktop/mobile.",
+      "tests": [],
+      "manual": {
+        "procedure": "docs/verification/manual.md#collapsible-scenes",
+        "reason": "check_docs.py tests IDs індексує pytest; реальні автоматизовані Playwright cases перелічено в процедурі з точними файлами/назвами."
+      }
+    },
+    {
+      "id": "IMPACT-UI-HISTORY",
+      "requirement": "IMPACT-UI",
+      "scope": "tests/web/browser/collapsible-scenes.spec.mjs: latest scene reports collapse and retain state across language and refresh — current/history reports, blockers, порожня історія, keyboard, locale/refresh; не перевірка dirty буфера.",
+      "tests": [],
+      "manual": {
+        "procedure": "docs/verification/manual.md#collapsible-scenes",
+        "reason": "check_docs.py tests IDs індексує pytest; реальні автоматизовані Playwright cases перелічено в процедурі з точними файлами/назвами."
+      }
+    },
+    {
+      "id": "MODEL-METADATA-S01",
+      "requirement": "MODEL-METADATA",
+      "scope": "Точні synthetic/MockTransport server contracts; жодного production inference.",
+      "tests": [
+        "tests/providers/test_catalog_metadata.py::test_catalog_exposes_exact_tariff_units_and_limits",
+        "tests/providers/test_catalog_metadata.py::test_manual_tariff_is_displayed_even_if_expired_and_local_is_unknown",
+        "tests/providers/test_catalog_metadata.py::test_invalid_metadata_is_unknown_not_free_or_unlimited",
+        "tests/providers/test_catalog_metadata.py::test_current_cached_official_tariff_matches_billing_snapshot"
+      ]
+    },
+    {
+      "id": "MODEL-METADATA-S02",
+      "requirement": "MODEL-METADATA",
+      "scope": "Точні synthetic/MockTransport server contracts; жодного production inference.",
+      "tests": [
+        "tests/providers/test_generation_diagnostics.py::test_known_limits_block_before_completion_post",
+        "tests/generation/test_editor_loop.py::test_zero_cloud_budget_blocks_loop_model_call",
+        "tests/providers/test_generation_diagnostics.py::test_failed_cloud_catalog_never_starts_completion"
+      ]
+    },
+    {
+      "id": "MODEL-METADATA-S03",
+      "requirement": "MODEL-METADATA",
+      "scope": "Точні synthetic/MockTransport server contracts; жодного production inference.",
+      "tests": [
+        "tests/web/test_model_catalog.py::test_model_catalog_labels_and_safe_http_localization"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#model-import-metadata",
+        "reason": "Playwright DOM scenarios описані точними файлами/назвами; check_docs tests IDs індексує pytest."
+      }
+    },
+    {
+      "id": "GENERATION-DIAGNOSTICS-S01",
+      "requirement": "GENERATION-DIAGNOSTICS",
+      "scope": "Точні synthetic/MockTransport server contracts; жодного production inference.",
+      "tests": [
+        "tests/providers/test_generation_diagnostics.py::test_http_status_is_specific_and_structured_for_all_stages",
+        "tests/providers/test_generation_diagnostics.py::test_provider_echo_and_credentials_never_become_diagnostics",
+        "tests/providers/test_generation_diagnostics.py::test_transport_failures_are_specific_and_never_retried",
+        "tests/providers/test_generation_diagnostics.py::test_missing_provider_key_is_safe_configuration_failure"
+      ]
+    },
+    {
+      "id": "GENERATION-DIAGNOSTICS-S02",
+      "requirement": "GENERATION-DIAGNOSTICS",
+      "scope": "Точні synthetic/MockTransport server contracts; жодного production inference.",
+      "tests": [
+        "tests/generation/test_provider_diagnostics.py::test_memory_provider_failure_is_durable_and_never_publishes",
+        "tests/web/test_model_catalog.py::test_server_translates_nested_http_reason",
+        "tests/web/test_model_catalog.py::test_server_translates_non_http_retry_reason",
+        "tests/providers/test_generation_diagnostics.py::test_unexpected_internal_failure_is_neutral_and_never_echoed"
+      ]
+    },
+    {
+      "id": "IMPORT-COUNTS-S01",
+      "requirement": "IMPORT-COUNTS",
+      "scope": "Точні synthetic/MockTransport server contracts; жодного production inference.",
+      "tests": [
+        "tests/storage/test_import_counts.py::test_counts_persist_new_materials_not_duplicates_or_current_totals",
+        "tests/storage/test_import_counts.py::test_counter_metadata_is_derived_atomically_and_legacy_stays_unknown"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#model-import-metadata",
+        "reason": "Playwright DOM scenarios описані точними файлами/назвами; check_docs tests IDs індексує pytest."
+      }
+    },
+    {
+      "id": "IMPORT-COUNTS-S02",
+      "requirement": "IMPORT-COUNTS",
+      "scope": "Точні synthetic/MockTransport server contracts; жодного production inference.",
+      "tests": [
+        "tests/storage/test_import_counts.py::test_failed_publication_never_leaves_counts_or_source_record",
+        "tests/storage/test_import_counts.py::test_counter_metadata_is_derived_atomically_and_legacy_stays_unknown",
+        "tests/storage/test_import_counts.py::test_stale_revision_never_publishes_source_or_counts"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#model-import-metadata",
+        "reason": "Playwright DOM scenarios описані точними файлами/назвами; check_docs tests IDs індексує pytest."
+      }
+    },
+    {
+      "id": "MODEL-JSON-S01",
+      "requirement": "MODEL-JSON",
+      "scope": "Модельна обгортка JSON; строгість, збереження оригіналу та повторна валідація.",
+      "tests": [
+        "tests/generation/test_model_json_boundaries.py::test_all_model_json_boundaries_accept_one_wrapper_without_changing_strings",
+        "tests/generation/test_model_json_boundaries.py::test_review_json_keeps_ambiguous_or_invalid_payloads_closed",
+        "tests/generation/test_model_json_boundaries.py::test_manual_json_remains_strict"
+      ]
+    },
+    {
+      "id": "MODEL-JSON-S02",
+      "requirement": "MODEL-JSON",
+      "scope": "Модельна обгортка JSON; строгість, збереження оригіналу та повторна валідація.",
+      "tests": [
+        "tests/review/test_contract4_runner.py::test_report4_replay_and_backup_are_exact"
+      ]
+    },
+    {
+      "id": "MODEL-JSON-S03",
+      "requirement": "MODEL-JSON",
+      "scope": "Модельна обгортка JSON; строгість, збереження оригіналу та повторна валідація.",
+      "tests": [
+        "tests/evaluation/test_runner.py::test_wrapped_evaluator_preserves_raw_and_existing_scoring",
+        "tests/evaluation/test_runner.py::test_evaluator_fingerprint_requires_protocol3"
+      ]
+    },
+    {
+      "id": "MODEL-METADATA-S04",
+      "requirement": "MODEL-METADATA",
+      "scope": "Фактична оцінка входу плюс вихідний резерв; configured window не є довжиною запиту.",
+      "tests": [
+        "tests/providers/test_generation_diagnostics.py::test_successful_catalog_allows_unknown_or_fitting_actual_request",
+        "tests/providers/test_generation_diagnostics.py::test_known_limits_block_before_completion_post"
+      ]
+    },
+    {
+      "id": "PLANNER-JSON-S03",
+      "requirement": "PLANNER-JSON",
+      "scope": "Обмежена model-only нормалізація scene_number/change, точний текст/raw, strict manual та needs_review.",
+      "tests": [
+        "tests/generation/test_planner_proposal_objects.py::test_structured_model_proposals_preserve_text_number_and_review_gate",
+        "tests/generation/test_planner_proposal_objects.py::test_unknown_model_proposals_remain_strict",
+        "tests/generation/test_planner_proposal_objects.py::test_structured_proposal_warning_survives_worker_reload",
+        "tests/generation/test_planner_proposal_objects.py::test_mixed_invalid_proposals_do_not_partially_normalize_or_warn",
+        "tests/generation/test_planner_proposal_objects.py::test_duplicate_keys_inside_structured_proposals_stay_rejected",
+        "tests/generation/test_planner_proposal_objects.py::test_plain_string_proposals_keep_exact_version_bytes",
+        "tests/generation/test_planner_proposal_objects.py::test_invalid_unicode_remains_schema_failure_with_original_partial",
+        "tests/generation/test_planner_proposal_objects.py::test_prepare_does_not_accept_brief_proposal_wire_shape",
+        "tests/generation/test_planner_proposal_objects.py::test_manual_brief_endpoint_rejects_structured_wire_without_creating_version"
+      ]
+    },
+    {
+      "id": "WORKSPACE-TELEMETRY-S01",
+      "requirement": "WORKSPACE-TELEMETRY",
+      "scope": "Телеметрія, чотири модельні режими та окрема згода на пам’ять; browser сценарії названо в процедурі.",
+      "tests": [
+        "tests/web/test_editor_loop_ui.py::test_memory_author_consent_decline_and_request_binding"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#workspace-one-click",
+        "reason": "Сценарій інтеграції браузера з синтетичним сервером перевіряється окремим Playwright runner."
+      }
+    },
+    {
+      "id": "WORKSPACE-TELEMETRY-S02",
+      "requirement": "WORKSPACE-TELEMETRY",
+      "scope": "Гонки зупинки, невизначений POST і відновлення; конкретні browser сценарії названо в процедурі.",
+      "tests": [],
+      "manual": {
+        "procedure": "docs/verification/manual.md#workspace-one-click",
+        "reason": "Сценарій інтеграції браузера з синтетичним сервером перевіряється окремим Playwright runner."
+      }
+    },
+    {
+      "id": "WORKSPACE-TELEMETRY-S03",
+      "requirement": "WORKSPACE-TELEMETRY",
+      "scope": "Серверний збережений план і повторне відкриття.",
+      "tests": [
+        "tests/web/test_runs.py::test_run_preserves_planned_model_metadata_across_settings_changes"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#workspace-one-click",
+        "reason": "Сценарій інтеграції браузера з синтетичним сервером перевіряється окремим Playwright runner."
+      }
+    },
+    {
+      "id": "UI-001-S02",
+      "requirement": "UI-001",
+      "scope": "Вибіркова готовність і сумісність повного readiness; повторний серверний preflight.",
+      "tests": [
+        "tests/web/test_runs.py::test_readiness_filters_operations_without_changing_existing_contract",
+        "tests/web/test_runs.py::test_readiness_and_queue_share_prerequisite_reasons"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#workspace-one-click",
+        "reason": "Перемикання панелі та фактичні браузерні запити перевіряються Playwright."
+      }
+    },
+    {
+      "id": "R20-BRIEF-REVIEW-S03",
+      "requirement": "R20-BRIEF-REVIEW",
+      "scope": "Доступність прийняття при оновленні списку запусків.",
+      "tests": [],
+      "manual": {
+        "procedure": "docs/verification/manual.md#r20-brief-review",
+        "reason": "Стан кнопки й browser events перевіряє синтетичний Playwright сценарій."
+      }
+    },
+    {
+      "id": "R20-BRIEF-REVIEW-S04",
+      "requirement": "R20-BRIEF-REVIEW",
+      "scope": "Збереження пропозиції перед запуском чернетки.",
+      "tests": [],
+      "manual": {
+        "procedure": "docs/verification/manual.md#r20-brief-review",
+        "reason": "Взаємодію primary action, збереження і запитів перевіряє браузерний Playwright сценарій saving edits to an accepted brief requires acceptance before starting a draft."
+      }
     }
   ]
 }

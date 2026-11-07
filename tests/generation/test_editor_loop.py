@@ -401,7 +401,11 @@ def test_zero_cloud_budget_blocks_loop_model_call(tmp_path,monkeypatch):
         source='synthetic',kind='manual',expires_at=(datetime.now(timezone.utc)+timedelta(days=1)).isoformat()))
     monkeypatch.setenv('OPENROUTER_API_KEY','synthetic-key')
     requests=[]
-    with httpx.Client(transport=httpx.MockTransport(lambda r:requests.append(r) or httpx.Response(500))) as http:
+    def handler(request):
+        requests.append(request)
+        if request.method=='GET':return httpx.Response(200,json={'data':[{'id':'synthetic','object':'model','context_length':8192}]})
+        return httpx.Response(500)
+    with httpx.Client(transport=httpx.MockTransport(handler)) as http:
         worker.gateway_factory=lambda settings:build_generation_gateway(settings,http_client=http)
         worker._execute(run.id)
     assert worker.get_run(run.id).state=='failed'

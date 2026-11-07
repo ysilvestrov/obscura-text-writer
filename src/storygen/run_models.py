@@ -77,6 +77,8 @@ class Run(DomainModel):
     impact: dict | None = None
     editor_loop: dict | None = None
     editor_loops: dict[str,dict] = Field(default_factory=dict)
+    planned_telemetry: dict | None = None
+    cancelled_before_enqueue: bool = False
     created_at: str = Field(default_factory=now)
 
 

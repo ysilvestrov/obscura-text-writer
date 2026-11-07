@@ -10,6 +10,7 @@ from pydantic import ValidationError
 from .evidence import check_evidence
 from .gateway import CompletionGateway, GatewayFailure
 from .inputs import parse_json
+from ..model_json import unwrap_model_json
 from .models import EvaluationCase, EvaluationOutcome, EvaluatorConfig, JudgeReport, Rubric, ScoringProfile, FailureDetail
 from .failures import refusal_detail, is_text_refusal
 from .prompting import build_request
@@ -33,7 +34,7 @@ def evaluator_fingerprint(config: EvaluatorConfig, rubric: Rubric) -> str:
     from .suites import canonical_suite_hash
     from ..generation.language import language_suite_hash
     identity={"config": identity_config(config), "rubric": rubric.model_dump(), "prompt": resource_text("evaluator_uk_v1.txt"),
-        'protocol_version': 2, 'suite_hash': canonical_suite_hash(), 'language_suite_hash': language_suite_hash()}
+        'protocol_version': 3, 'suite_hash': canonical_suite_hash(), 'language_suite_hash': language_suite_hash()}
     if config.provider=='venice' and config.venice_disable_thinking:
         from ..providers.requests import venice_reasoning
         identity['reasoning_wire_contract']=venice_reasoning(config)
@@ -80,7 +81,7 @@ def evaluate(case: EvaluationCase, rubric: Rubric, profile: ScoringProfile, conf
             if response.finish_reason != "stop" or not raw:
                 raise GatewayFailure("incomplete_response: Оцінювач не повернув повну відповідь", result=response,
                     detail=FailureDetail(category='invalid_response', message='Незавершена відповідь оцінювача: ' + str(response.finish_reason)))
-            payload = parse_json(raw)
+            payload = parse_json(unwrap_model_json(raw))
             if isinstance(payload, dict) and isinstance(payload.get('refusal'), str) and payload['refusal'].strip():
                 detail = refusal_detail(payload['refusal'])
                 raise GatewayFailure(detail.message, result=response, detail=detail)
