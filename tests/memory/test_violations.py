@@ -34,9 +34,7 @@ def test_v2_collects_independent_violations():
         upd(STATE_ID,category='open_threads'),
         upd(STATE_ID)]}
     found=codes(data)
-    assert ('operations[0]','evidence_unknown') in found
-    assert ('operations[4]','target_meta') in found
-    assert ('$','add_limit') in found and ('$','target_twice') in found
+    assert found==[('operations[0]','evidence_unknown'),('operations[4]','target_meta'),('$','add_limit'),('$','target_twice')]
 
 
 def test_v2_missing_evidence_is_schema_for_that_operation():
@@ -57,6 +55,11 @@ def test_v2_scope_and_envelope_and_ops_limit():
     assert ('$','ops_limit') in codes({'schema_version':2,'operations':[add('timeline') for _ in range(13)]})
     assert codes({'schema_version':2,'operations':['text']})==[('operations[0]','schema')]
     assert codes({'schema_version':2,'operations':[add('timeline')]})==[]
+
+
+def test_v2_duplicate_or_blank_character_ids_are_scope_unknown():
+    for chars in (['A','A'],['A',' '],['']):
+        assert codes({'schema_version':2,'operations':[add('character_states',character_ids=chars)]})==[('operations[0]','scope_unknown')]
 
 
 def test_pydantic_violations_label_and_dedupe():

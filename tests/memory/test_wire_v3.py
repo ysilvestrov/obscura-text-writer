@@ -87,7 +87,25 @@ def test_v3_fact_claim_cannot_be_targeted():
 
 def test_v3_schema_does_not_echo_model_keys_and_rejects_extra_character_ids():
     data=json.loads(v3());data['секрет']=1;data['facts']['add']=[{'text':'Ф','evidence_ids':['f000001'],'character_ids':[]}]
-    assert violations(json.dumps(data))==[('facts.add[0]','schema'),('$','schema')]
+    assert violations(json.dumps(data))==[('$','schema')]
+    data=json.loads(v3());data['facts']['add']=[{'text':'Ф','evidence_ids':['f000001'],'character_ids':[]}]
+    assert violations(json.dumps(data))==[('facts.add[0]','schema')]
+
+
+def test_v3_schema_error_does_not_suppress_other_elements():
+    bad=padd('Ф',['f000001']);del bad['evidence_ids']
+    raw=v3(facts_add=[bad],timeline_add=[padd('Т',['f000009'])],states_add=[sadd('С',['f000001'],['zzz'])])
+    assert violations(raw)==[('facts.add[0]','schema'),('character_states.add[0]','scope_unknown'),('timeline.add[0]','evidence_unknown')]
+    blank=padd(' ',['f000001'])
+    raw=v3(facts_add=[blank,padd('Ф2',['f000009'])]+[padd('Ф',['f000001'])]*2,states_update=[chg('mc_x','a',['f000001']),'text'])
+    assert violations(raw)==[('facts.add[0]','schema'),('facts.add[1]','evidence_unknown'),('facts.add','add_limit'),
+        ('character_states.update[0]','target_unknown'),('character_states.update[1]','schema')]
+
+
+def test_v3_duplicate_or_blank_character_ids_are_scope_unknown():
+    for chars in (['c1','c1'],['c1',' '],['']):
+        assert violations(v3(states_add=[sadd('Т',['f000001'],chars)]))==[('character_states.add[0]','scope_unknown')]
+    assert run(v3(states_add=[sadd('Т',['f000001'],['c1','c2'])]),chars=('c1','c2')).events[-1].character_ids==['c1','c2']
 
 
 def test_v3_empty_response_records_prose():

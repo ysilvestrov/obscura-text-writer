@@ -455,7 +455,10 @@
         "tests/memory/test_diagnostics.py::test_stage_records_all_three_violations_with_labels_and_no_texts",
         "tests/memory/test_wire_v3.py::test_v3_whitespace_only_text_is_labelled_schema",
         "tests/memory/test_wire_v3.py::test_v3_shaped_answer_without_schema_version_is_schema_not_wire_version",
-        "tests/memory/test_violations.py::test_v2_missing_operations_is_empty_list"
+        "tests/memory/test_violations.py::test_v2_missing_operations_is_empty_list",
+        "tests/memory/test_violations.py::test_v2_duplicate_or_blank_character_ids_are_scope_unknown",
+        "tests/memory/test_wire_v3.py::test_v3_schema_error_does_not_suppress_other_elements",
+        "tests/memory/test_wire_v3.py::test_v3_duplicate_or_blank_character_ids_are_scope_unknown"
       ]
     },
     {

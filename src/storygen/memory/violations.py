@@ -71,6 +71,12 @@ def pydantic_violations(exc: ValidationError,label: Callable[[tuple],str]) -> li
     return result
 
 
+def scope_unknown(character_ids,allowed) -> bool:
+    # Duplicate or blank IDs fail the journal's scope guard later; surface them here with an operation label.
+    return (len(character_ids)!=len(set(character_ids)) or any(not i.strip() for i in character_ids)
+            or not set(character_ids)<=set(allowed))
+
+
 def check_v2(data,previous,fragment_ids,allowed_character_ids) -> list[Violation]:
     from .journal import MemoryOperation,replay_memory
     # A missing operations key is an empty delta, as MemoryOperations always accepted it.
@@ -86,7 +92,7 @@ def check_v2(data,previous,fragment_ids,allowed_character_ids) -> list[Violation
             result.extend(pydantic_violations(exc,lambda _loc,label=label:label));continue
         if op.evidence_id not in fragment_ids:result.append(Violation(label,'evidence_unknown'))
         if op.action=='add':
-            if not set(op.character_ids)<=allowed:result.append(Violation(label,'scope_unknown'))
+            if scope_unknown(op.character_ids,allowed):result.append(Violation(label,'scope_unknown'))
             continue
         claim=active.get(op.claim_id)
         if claim is None or claim.category not in MUTABLE:result.append(Violation(label,'target_unknown'))

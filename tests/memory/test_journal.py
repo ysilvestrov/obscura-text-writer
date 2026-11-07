@@ -74,10 +74,13 @@ def test_validate_journal_rejects_supporting_quote_not_in_source():
 
 def test_old_journal_without_field_loads_unchanged():
     from storygen.memory.journal import load_memory, _add_event, MemoryJournal
+    # Handwritten pre-change v2 bytes: field order of MemoryJournal/MemoryEvent, no supporting_quotes.
+    literal=('{"schema_version":2,"source_prose_ids":["p1"],"events":[{"event_id":"me_0123456789abcdef01234567",'
+             '"claim_id":"mc_0123456789abcdef01234567","operation":"add","category":"facts","text":"Т",'
+             '"character_ids":[],"source_version_id":"p1","quote":"рядок"}]}')
+    assert load_memory(literal).model_dump_json()==literal
+    assert load_memory(literal).events[0].supporting_quotes==[]
     plain=MemoryJournal(source_prose_ids=['p1'],events=[_add_event('facts','Т','p1','рядок',0)])
-    raw=plain.model_dump_json()
-    assert 'supporting_quotes' not in raw
-    assert load_memory(raw).model_dump_json()==raw
-    assert load_memory(raw).events[0].supporting_quotes==[]
+    assert 'supporting_quotes' not in plain.model_dump_json()
     rich=MemoryJournal(source_prose_ids=['p1'],events=[_add_event('facts','Т','p1','рядок',0,supporting=('інший',))])
     assert load_memory(rich.model_dump_json())==rich and '"supporting_quotes":["інший"]' in rich.model_dump_json()

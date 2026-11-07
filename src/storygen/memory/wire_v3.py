@@ -6,7 +6,7 @@ from pydantic import Field, ValidationError, field_validator
 from ..domain import DomainModel
 from ..evidence import fragment_text
 from .journal import CATEGORIES, MemoryEvent, _add_event, _change_event, _extend, replay_memory
-from .violations import MUTABLE, Violation, pydantic_violations
+from .violations import Violation, scope_unknown
 
 ACTIONS=('add','update','retire')
 
@@ -60,16 +60,6 @@ class MemoryWireV3(DomainModel):
     timeline: AddOnlyGroup
 
 
-def _loc_label(loc):
-    # Only fixed identifiers and indexes: keys supplied by the model never reach the label.
-    if not loc or loc[0] not in CATEGORIES:return '$'
-    label=loc[0]
-    if len(loc)>1 and loc[1] in ACTIONS:
-        label+=f'.{loc[1]}'
-        if len(loc)>2 and isinstance(loc[2],int):label+=f'[{loc[2]}]'
-    return label
-
-
 def _items(wire,category):
     group=getattr(wire,category)
     return [(action,i,item) for action in ACTIONS if hasattr(group,action) for i,item in enumerate(getattr(group,action))]
@@ -83,26 +73,57 @@ def _other_wire(data):
     return 'schema_version' not in data and bool(present) and all(isinstance(v,list) for v in present)
 
 
+GROUP_ACTIONS={'facts':('add',),'character_states':ACTIONS,'open_threads':ACTIONS,'timeline':('add',)}
+
+
+def _element_model(category,action):
+    if action!='add':return WireChange
+    return WireStateAdd if category=='character_states' else WireAdd
+
+
+def _envelope(data):
+    # Shape only: labels are fixed identifiers, never keys supplied by the model.
+    found=[]
+    if type(data.get('schema_version')) is not int or data['schema_version']!=3 or set(data)!={'schema_version',*CATEGORIES}:
+        found.append(Violation('$','schema'))
+    for category in CATEGORIES:
+        group=data.get(category)
+        if group is None and category not in data:continue
+        expected=GROUP_ACTIONS[category]
+        if not isinstance(group,dict):found.append(Violation(category,'schema'));continue
+        for action in ACTIONS:
+            if action in group and (action not in expected or not isinstance(group[action],list)):
+                found.append(Violation(f'{category}.{action}','schema'))
+        if any(action not in group for action in expected) or any(key not in ACTIONS for key in group):
+            found.append(Violation(category,'schema'))
+    return found
+
+
 def check_v3(data,previous,fragment_ids,allowed_character_ids) -> list[Violation]:
     if not isinstance(data,dict):return [Violation('$','schema')]
     if _other_wire(data):return [Violation('$','wire_version')]
-    try:wire=MemoryWireV3.model_validate(data)
-    except ValidationError as exc:return pydantic_violations(exc,_loc_label)
+    envelope=_envelope(data)
+    if envelope:return envelope
     result=[];active=replay_memory(previous);allowed=set(allowed_character_ids);total=0;targets=Counter()
     for category in CATEGORIES:
-        for action,index,item in _items(wire,category):
-            total+=1;label=f'{category}.{action}[{index}]'
-            ids=item.evidence_ids
-            if not 1<=len(ids)<=3 or len(ids)!=len(set(ids)):result.append(Violation(label,'evidence_count'))
-            if any(i not in fragment_ids for i in ids):result.append(Violation(label,'evidence_unknown'))
-            if action=='add':
-                if category=='character_states' and not set(item.character_ids)<=allowed:
-                    result.append(Violation(label,'scope_unknown'))
-                continue
-            targets[item.claim_id]+=1
-            claim=active.get(item.claim_id)
-            if claim is None or claim.category!=category:result.append(Violation(label,'target_unknown'))
-        if len(getattr(wire,category).add)>3:result.append(Violation(f'{category}.add','add_limit'))
+        for action in GROUP_ACTIONS[category]:
+            elements=data[category][action]
+            total+=len(elements)
+            for index,raw in enumerate(elements):
+                label=f'{category}.{action}[{index}]'
+                if action!='add' and isinstance(raw,dict) and isinstance(raw.get('claim_id'),str):targets[raw['claim_id']]+=1
+                try:item=_element_model(category,action).model_validate(raw)
+                except ValidationError:result.append(Violation(label,'schema'));continue
+                ids=item.evidence_ids
+                if not 1<=len(ids)<=3 or len(ids)!=len(set(ids)):result.append(Violation(label,'evidence_count'))
+                if any(i not in fragment_ids for i in ids):result.append(Violation(label,'evidence_unknown'))
+                if action=='add':
+                    if category=='character_states' and scope_unknown(item.character_ids,allowed):
+                        result.append(Violation(label,'scope_unknown'))
+                    continue
+                claim=active.get(item.claim_id)
+                if claim is None or claim.category!=category:result.append(Violation(label,'target_unknown'))
+        if len(data[category]['add'])>3:result.append(Violation(f'{category}.add','add_limit'))
     if total>12:result.append(Violation('$','ops_limit'))
     if any(count>1 for count in targets.values()):result.append(Violation('$','target_twice'))
     return result
