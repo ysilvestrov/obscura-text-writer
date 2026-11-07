@@ -399,6 +399,17 @@
       ]
     },
     {
+      "id": "MEMORY-003-S03",
+      "requirement": "MEMORY-003",
+      "scope": "Додаткові цитати журналу. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/memory/test_journal.py::test_old_journal_without_field_loads_unchanged",
+        "tests/memory/test_journal.py::test_validate_journal_rejects_supporting_quote_not_in_source",
+        "tests/memory/test_manual_journal.py::test_manual_save_rejects_supporting_quote_outside_prose",
+        "tests/memory/test_manual_journal.py::test_fsck_reports_bad_supporting_quote"
+      ]
+    },
+    {
       "id": "MEMORY-004-S01",
       "requirement": "MEMORY-004",
       "scope": "Зайвий scope відкритої лінії. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",

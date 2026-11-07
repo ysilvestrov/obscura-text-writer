@@ -4,7 +4,7 @@ import json
 from collections import Counter
 from typing import Literal
 
-from pydantic import Field, model_validator
+from pydantic import Field, model_serializer, model_validator
 from ..domain import DomainModel
 from .models import MemoryEntry, MemorySnapshot
 from ..evidence import fragment_text
@@ -23,12 +23,19 @@ class MemoryEvent(DomainModel):
     character_ids: list[str] = Field(default_factory=list)
     source_version_id: str = Field(min_length=1)
     quote: str = Field(min_length=1)
+    supporting_quotes: list[str] = Field(default_factory=list, max_length=2)
 
     @model_validator(mode='after')
     def nonblank(self):
-        if not self.text.strip() or not self.quote.strip():
+        if not self.text.strip() or not self.quote.strip() or any(not q.strip() for q in self.supporting_quotes):
             raise ValueError('Порожнє твердження або доказ пам’яті')
         return self
+
+    @model_serializer(mode='wrap')
+    def omit_empty_supporting(self, handler):
+        data=handler(self)
+        if not data.get('supporting_quotes'):data.pop('supporting_quotes',None)
+        return data
 
 
 class MemoryJournal(DomainModel):
@@ -156,11 +163,19 @@ def legacy_view(journal: MemoryJournal) -> MemorySnapshot:
     return result
 
 
-def _add_event(category,text,prose_id,quote,occurrence,characters=()):
-    claim=stable_id('mc_',[category,text,prose_id,quote,occurrence])
+def _add_event(category,text,prose_id,quote,occurrence,characters=(),supporting=()):
+    value=[category,text,prose_id,quote,occurrence]
+    if supporting:value.append(list(supporting))
+    claim=stable_id('mc_',value)
     return MemoryEvent(event_id=stable_id('me_',['add',claim]),claim_id=claim,
         operation='add',category=category,text=text,character_ids=list(characters),
-        source_version_id=prose_id,quote=quote)
+        source_version_id=prose_id,quote=quote,supporting_quotes=list(supporting))
+
+
+def change_event_id(action,claim_id,text,prose_id,quote,supporting=()):
+    value=[action,claim_id,text,prose_id,quote]
+    if supporting:value.append(list(supporting))
+    return stable_id('me_',value)
 
 
 def _extend(previous,prose_id,events):
@@ -184,7 +199,7 @@ def apply_operations(previous,delta,prose_id,prose,allowed_character_ids):
             occurrence=duplicates.get(key,0);duplicates[key]=occurrence+1
             events.append(_add_event(op.category,op.text,prose_id,quote,occurrence,op.character_ids))
         else:
-            events.append(MemoryEvent(event_id=stable_id('me_',[op.action,op.claim_id,op.text,prose_id,quote]),
+            events.append(MemoryEvent(event_id=change_event_id(op.action,op.claim_id,op.text,prose_id,quote),
                 claim_id=op.claim_id,operation=op.action,category=op.category,text=op.text,
                 character_ids=op.character_ids,source_version_id=prose_id,quote=quote))
     return _extend(previous,prose_id,events)
@@ -241,7 +256,7 @@ def validate_memory_journal(journal,source_versions,previous=None):
     if journal.source_prose_ids!=list(source_versions):
         raise ValueError('Пам’ять повинна посилатися на всі поточні джерела прози у порядку сцен')
     for event in journal.events:
-        if event.quote not in source_versions[event.source_version_id]:
+        if any(q not in source_versions[event.source_version_id] for q in [event.quote,*event.supporting_quotes]):
             raise ValueError('Запис пам’яті не має дослівного підтвердження у прозі')
     if previous is not None:
         count=len(previous.events)
@@ -262,18 +277,18 @@ def normalize_manual_memory(raw,previous,prose_id,prose,allowed_character_ids):
         raise ValueError('Пам’ять посилається на інші джерела прози')
     events=[];mapping={};duplicates={}
     for event in journal.events[len(previous.events):]:
-        if event.source_version_id!=prose_id or event.quote not in prose:
+        if event.source_version_id!=prose_id or any(q not in prose for q in [event.quote,*event.supporting_quotes]):
             raise ValueError('Новий запис потребує доказу поточної сцени')
         if event.operation=='add':
             if not set(event.character_ids)<=set(allowed_character_ids):
                 raise ValueError('Невідомий scope персонажа')
-            key=(event.category,event.text,event.quote)
+            key=(event.category,event.text,event.quote,tuple(event.supporting_quotes))
             occurrence=duplicates.get(key,0);duplicates[key]=occurrence+1
-            canonical=_add_event(event.category,event.text,prose_id,event.quote,occurrence,event.character_ids)
+            canonical=_add_event(event.category,event.text,prose_id,event.quote,occurrence,event.character_ids,event.supporting_quotes)
             mapping[event.claim_id]=canonical.claim_id
         else:
             claim=mapping.get(event.claim_id,event.claim_id)
-            canonical=event.model_copy(update={'claim_id':claim,'event_id':stable_id('me_',
-                [event.operation,claim,event.text,prose_id,event.quote])})
+            canonical=event.model_copy(update={'claim_id':claim,'event_id':change_event_id(
+                event.operation,claim,event.text,prose_id,event.quote,event.supporting_quotes)})
         events.append(canonical)
     return _extend(previous,prose_id,events)

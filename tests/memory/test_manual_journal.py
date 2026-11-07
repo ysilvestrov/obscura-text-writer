@@ -60,3 +60,38 @@ def test_fsck_checks_evidence_without_treating_reorder_as_corruption(tmp_path):
     bad=load_memory(old.model_dump_json()).model_dump();bad['events'][0]['quote']='Відсутній доказ'
     repo.save_version(story.id,scenes[0].id,'memory',json.dumps(bad),ids[:1])
     assert 'invalid_memory' in {issue.code for issue in check_integrity(tmp_path).issues}
+
+
+def _manual_add(old,ids,supporting):
+    from storygen.memory.journal import _add_event
+    value=load_memory(old.model_dump_json());value=value.model_copy(update={'source_prose_ids':ids})
+    event=_add_event('facts','Новий факт',ids[1],'Доказ 1.',0,supporting=supporting)
+    return value.model_copy(update={'events':value.events+[event]})
+
+
+def test_manual_save_keeps_supporting_quotes(tmp_path):
+    from storygen.memory.service import save_scene_memory
+    from storygen.memory.journal import _add_event
+    repo,story,scenes,ids,old=workspace(tmp_path)
+    data=_manual_add(old,ids,('Доказ',))
+    ref=save_scene_memory(repo,scenes[1].id,data.model_dump_json(),1)
+    new=load_memory(repo.read_text(ref.id)).events[-1]
+    assert new.supporting_quotes==['Доказ']
+    assert new.claim_id==_add_event('facts','Новий факт',ids[1],'Доказ 1.',0,supporting=('Доказ',)).claim_id
+
+
+def test_manual_save_rejects_supporting_quote_outside_prose(tmp_path):
+    from storygen.memory.service import save_scene_memory
+    repo,story,scenes,ids,old=workspace(tmp_path)
+    data=_manual_add(old,ids,('Чужа цитата',))
+    with pytest.raises(ValueError,match='Новий запис потребує доказу поточної сцени'):
+        save_scene_memory(repo,scenes[1].id,data.model_dump_json(),1)
+
+
+def test_fsck_reports_bad_supporting_quote(tmp_path):
+    from storygen.storage.integrity import check_integrity
+    repo,story,scenes,ids,old=workspace(tmp_path)
+    bad=json.loads(load_memory(old.model_dump_json()).model_dump_json())
+    bad['events'][0]['supporting_quotes']=['Відсутній доказ']
+    repo.save_version(story.id,scenes[0].id,'memory',json.dumps(bad),ids[:1])
+    assert 'invalid_memory' in {issue.code for issue in check_integrity(tmp_path).issues}
