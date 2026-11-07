@@ -1,10 +1,11 @@
+import hashlib
 import json
 import sqlite3
 import subprocess
 import sys
 from pathlib import Path
 
-from storygen.memory.journal import MemoryJournal
+from storygen.memory.journal import MemoryEvent, MemoryJournal
 from storygen.memory.replay import collect, replay_response, summarize, v2_as_v3
 from tests.memory.wire_helpers import v3_response
 
@@ -12,8 +13,8 @@ ROOT=Path(__file__).resolve().parents[2]
 PROSE='Секрет-рядок один.\nСекрет-рядок два.'
 
 
-def frags(wire=None,allowed=()):
-    f={'previous_memory':MemoryJournal().model_dump_json(),'memory_allowed_character_ids':json.dumps(list(allowed))}
+def frags(wire=None,allowed=(),previous=None):
+    f={'previous_memory':(previous or MemoryJournal()).model_dump_json(),'memory_allowed_character_ids':json.dumps(list(allowed))}
     if wire:f['memory_wire_version']=wire
     return f
 
@@ -63,13 +64,18 @@ def make_db(tmp_path,attempts):
 
 
 def test_summarize_and_cli_print_no_texts(tmp_path):
-    good=dict(frags(),expected_source_prose_ids='["v1"]')
+    claim=MemoryEvent(event_id='me_secretevent',claim_id='mc_secretclaim',operation='add',category='character_states',text='СЕКРЕТ-СТАНУ',
+                      character_ids=['c_secret'],source_version_id='v0',quote='СЕКРЕТ-ЦИТАТИ')
+    previous=MemoryJournal(source_prose_ids=['v0'],events=[claim])
+    good=dict(frags(allowed=['c_secret'],previous=previous),expected_source_prose_ids='["v1"]')
     secret=v2('f000001,f000002','СЕКРЕТ-ВІДПОВІДІ')
     db,data=make_db(tmp_path,[(secret,good),(None,good),(secret,frags())])
+    before=hashlib.sha256(db.read_bytes()).hexdigest()
     out=subprocess.run([sys.executable,str(ROOT/'scripts'/'memory_replay.py'),'--db',str(db),'--data',str(data)],
                        cwd=ROOT,capture_output=True,text=True,encoding='utf-8')
     assert out.returncode==0,out.stderr
-    for marker in ('СЕКРЕТ','Секрет','v1','a0','mc_'):assert marker not in out.stdout
+    assert hashlib.sha256(db.read_bytes()).hexdigest()==before
+    for marker in ('СЕКРЕТ','Секрет','v1','a0','mc_','me_','c_secret','secret'):assert marker not in out.stdout
     result=json.loads(out.stdout)
     assert result['replayed']==1 and result['fixed_by_v3']==1
     assert result['as_is']['fail']==1 and result['as_v3']['pass']==1 and result['as_is_codes']=={'evidence_unknown':1}
@@ -97,3 +103,30 @@ def test_unpaired_or_double_fence_stays_json():
                 'Ось:'+nl+fence+'json'+nl+v2('f000001')+nl+fence):
         r=replay_response(raw,frags(),'v1',PROSE)
         assert r['as_is']=='json' and r['wrapped'] is False
+
+
+def test_unmappable_v2_answers_never_pass_as_v3():
+    op={'action':'add','category':'зайва','claim_id':None,'text':'Т','character_ids':[],'evidence_id':'f000001'}
+    rows=[replay_response(json.dumps({'schema_version':2,'operations':[op]}),frags(),'v1',PROSE),
+          replay_response(json.dumps({'schema_version':2}),frags(),'v1',PROSE),
+          replay_response(json.dumps({'schema_version':2,'operations':['x']}),frags(),'v1',PROSE)]
+    for r in rows:assert r['as_v3']=='fail' and r['as_v3_codes']==['unmappable']
+    assert summarize(rows)['fixed_by_v3']==0
+
+
+def test_immutable_category_update_is_schema_violation_in_v3():
+    op={'action':'update','category':'facts','claim_id':'mc_x','text':'Т','character_ids':[],'evidence_id':'f000001'}
+    v3=v2_as_v3({'schema_version':2,'operations':[op]})
+    assert v3['facts']['update']==[{'claim_id':'mc_x','text':'Т','evidence_ids':['f000001']}]
+    r=replay_response(json.dumps({'schema_version':2,'operations':[op]}),frags(),'v1',PROSE)
+    assert r['as_v3']=='fail' and 'schema' in r['as_v3_codes']
+
+
+def test_malformed_payload_shapes_are_bad_context_not_crash(tmp_path):
+    db,data=make_db(tmp_path,[])
+    c=sqlite3.connect(db)
+    for payload in ({'stage':'memory','context':'x'},{'stage':'memory','context':{'settings':{'memory_mode':'evidence_delta'},'fragments':'x'},'partial_path':'p.txt'},[1]):
+        c.execute('INSERT INTO stage_attempts VALUES(?,?,?)',('b','failed',json.dumps(payload)))
+    c.commit();c.close()
+    (data/'p.txt').write_text('{}',encoding='utf-8')
+    assert summarize(collect(db,data))['skipped']['bad_context']==2

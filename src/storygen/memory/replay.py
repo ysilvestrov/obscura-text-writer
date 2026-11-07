@@ -12,11 +12,12 @@ from .violations import MemoryViolations
 
 
 def v2_as_v3(data: dict) -> dict:
-    """Read a flat v2 answer as grouped v3. Update/retire lose category and scope; evidence_id is split into ids."""
+    """Read a flat v2 answer as grouped v3. Update/retire lose category and scope; evidence_id is split into ids.
+    Raises ValueError (no model data in the message) when the answer or an operation cannot be mapped."""
     result={'schema_version':3,**{c:{'add':[]} if c in {'facts','timeline'} else {'add':[],'update':[],'retire':[]} for c in CATEGORIES}}
-    if not isinstance(data,dict) or not isinstance(data.get('operations'),list):return result
+    if not isinstance(data,dict) or not isinstance(data.get('operations'),list):raise ValueError('unmappable')
     for op in data['operations']:
-        if not isinstance(op,dict) or op.get('category') not in CATEGORIES or not isinstance(op.get('action'),str):continue
+        if not isinstance(op,dict) or op.get('category') not in CATEGORIES or not isinstance(op.get('action'),str):raise ValueError('unmappable')
         category=op['category'];action=op['action']
         raw=op.get('evidence_id')
         ids=[part for part in re.split(r'[,;\s]+',raw) if part] if isinstance(raw,str) else []
@@ -69,7 +70,9 @@ def replay_response(raw: str, fragments: dict, prose_id: str, prose: str) -> dic
         return out
     out['as_is'],out['as_is_codes']=_attempt(raw,previous,prose_id,prose,allowed,wire)
     if wire==2:
-        out['as_v3'],out['as_v3_codes']=_attempt(json.dumps(v2_as_v3(data)),previous,prose_id,prose,allowed,3)
+        try:translated=json.dumps(v2_as_v3(data))
+        except ValueError:out['as_v3'],out['as_v3_codes']='fail',['unmappable']
+        else:out['as_v3'],out['as_v3_codes']=_attempt(translated,previous,prose_id,prose,allowed,3)
     return out
 
 
@@ -105,7 +108,9 @@ def _row(connection,data,payload):
         raw=raw_path.read_text(encoding='utf-8') if raw_path.is_file() else ''
     except Exception:raw=''
     if not raw.strip():return {'skipped':'no_raw'}
-    fragments=payload.get('context',{}).get('fragments',{})
+    context=payload.get('context')
+    fragments=context.get('fragments') if isinstance(context,dict) else None
+    if not isinstance(fragments,dict):return {'skipped':'bad_context'}
     try:bounds=json.loads(fragments.get('expected_source_prose_ids') or '[]')
     except Exception:return {'skipped':'bad_context'}
     if not isinstance(bounds,list) or not bounds or not isinstance(bounds[-1],str):return {'skipped':'no_bounds'}
@@ -123,8 +128,11 @@ def collect(db: Path, data: Path, story: str | None = None) -> list[dict]:
         for (text,) in connection.execute("SELECT payload FROM stage_attempts WHERE state IN ('completed','failed')").fetchall():
             try:payload=json.loads(text)
             except Exception:continue
+            if not isinstance(payload,dict):continue
             if payload.get('stage')!='memory' or (story is not None and payload.get('story_id')!=story):continue
-            if payload.get('context',{}).get('settings',{}).get('memory_mode')!='evidence_delta':continue
+            context=payload.get('context');settings=context.get('settings') if isinstance(context,dict) else None
+            if not isinstance(settings,dict):rows.append({'skipped':'bad_context'});continue
+            if settings.get('memory_mode')!='evidence_delta':continue
             rows.append(_row(connection,Path(data),payload))
     finally:connection.close()
     return rows
