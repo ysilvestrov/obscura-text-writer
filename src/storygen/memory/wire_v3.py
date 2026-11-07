@@ -144,3 +144,43 @@ def wire_v3_events(wire: MemoryWireV3,previous,prose_id,prose) -> list[MemoryEve
                 claim=active[item.claim_id]
                 events.append(_change_event(action,item.claim_id,item.text,category,claim.character_ids,prose_id,quote,supporting))
     return _extend(previous,prose_id,events)
+
+
+def schema_bounds(previous,prose,allowed_character_ids) -> dict:
+    # Same captured inputs as check_v3: current prose fragments, replayed journal, scene characters.
+    active=replay_memory(previous)
+    return {'fragment_ids':[f.id for f in fragment_text(prose)],
+        'mutable':{category:[c.claim_id for c in active.values() if c.category==category] for category in ('character_states','open_threads')},
+        'character_ids':list(allowed_character_ids)}
+
+
+def _object(properties):
+    return {'type':'object','properties':properties,'required':list(properties),'additionalProperties':False}
+
+
+def memory_wire_v3_schema(bounds) -> dict:
+    # Only keywords the provider grammar accepts; uniqueness, non-blank text and the 12-op limit stay server-side.
+    fragments=list(bounds['fragment_ids'])
+    # Without fragments no element can carry evidence: forbid elements instead of an (invalid) empty enum.
+    evidence_item={'type':'string','enum':fragments} if fragments else {'type':'string'}
+    evidence={'type':'array','minItems':1,'maxItems':3,'items':evidence_item}
+    text={'type':'string'}
+    def adds(extra=None):
+        props={'text':text,'evidence_ids':evidence,**(extra or {})}
+        return {'type':'array','maxItems':3 if fragments else 0,'items':_object(props)}
+    def changes(category):
+        ids=bounds['mutable'][category]
+        claim={'type':'string','enum':list(ids)} if ids else {'type':'string'}
+        node={'type':'array','items':_object({'claim_id':claim,'text':text,'evidence_ids':evidence})}
+        if not ids or not fragments:node['maxItems']=0
+        return node
+    def mutable(category,extra=None):
+        return _object({'add':adds(extra),'update':changes(category),'retire':changes(category)})
+    characters=bounds['character_ids']
+    chars=({'type':'array','items':{'type':'string','enum':list(characters)}} if characters
+        else {'type':'array','maxItems':0,'items':{'type':'string'}})
+    return _object({'schema_version':{'type':'integer','enum':[3]},
+        'facts':_object({'add':adds()}),
+        'character_states':mutable('character_states',{'character_ids':chars}),
+        'open_threads':mutable('open_threads'),
+        'timeline':_object({'add':adds()})})

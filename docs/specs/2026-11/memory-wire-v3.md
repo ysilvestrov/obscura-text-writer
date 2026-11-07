@@ -113,7 +113,7 @@ qwen-3-8-27b       1 items 3 bad_ids [] usage 109 81
 - Після перекладу виконуються всі чинні перевірки `replay_memory`, CAS і атомарна публікація.
 
 **Динамічна схема** (лише `response_mode=json_schema`, будується на кожен запит із captured даних спроби):
-- `evidence_ids.items.enum` — ID фрагментів поточної прози; `minItems: 1`, `maxItems: 3`, `uniqueItems: true`.
+- `evidence_ids.items.enum` — ID фрагментів поточної прози; `minItems: 1`, `maxItems: 3`. Поправка 07.11: `uniqueItems` не використовується, бо Venice його відхиляє (Qwen — `400 Grammar error: Unimplemented keys: ["uniqueItems"]`, Gemma — `500`). Унікальність доказів перевіряє сервер (`evidence_count`).
 - `claim_id.enum` для `update`/`retire` кожної змінної категорії — активні claim цієї категорії. Якщо їх немає, масив має `maxItems: 0` без `enum`.
 - `character_ids.items.enum` — дозволені персонажі сцени (`memory_allowed_character_ids`). Якщо їх немає, `maxItems: 0`.
 - Схема зберігається в exact request спроби, як і зараз, і входить в оцінку токенів (R-07).
