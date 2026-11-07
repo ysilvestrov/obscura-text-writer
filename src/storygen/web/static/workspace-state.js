@@ -27,6 +27,7 @@ export async function performPrimary({state,save,run,show,accept,next}){
   if(state.dirty)await save();
   if(state.dirty||state.saving||state.scene?.id!==captured.id||state.mode!==captured.mode||state.bufferEpoch!==captured.epoch)
     throw new Error(t("m_99828af8cba1"));
+  if(state.mode==='brief'&&state.pendingBrief)throw new Error(t('brief.accept_first'));
   const action=primaryAction(state);
   if(action.action==='accept'){await accept();return;}
   if(action.action==='next'){await next();return;}
