@@ -160,16 +160,19 @@ def _object(properties):
 
 def memory_wire_v3_schema(bounds) -> dict:
     # Only keywords the provider grammar accepts; uniqueness, non-blank text and the 12-op limit stay server-side.
-    evidence={'type':'array','minItems':1,'maxItems':3,'items':{'type':'string','enum':list(bounds['fragment_ids'])}}
+    fragments=list(bounds['fragment_ids'])
+    # Without fragments no element can carry evidence: forbid elements instead of an (invalid) empty enum.
+    evidence_item={'type':'string','enum':fragments} if fragments else {'type':'string'}
+    evidence={'type':'array','minItems':1,'maxItems':3,'items':evidence_item}
     text={'type':'string'}
     def adds(extra=None):
         props={'text':text,'evidence_ids':evidence,**(extra or {})}
-        return {'type':'array','maxItems':3,'items':_object(props)}
+        return {'type':'array','maxItems':3 if fragments else 0,'items':_object(props)}
     def changes(category):
         ids=bounds['mutable'][category]
         claim={'type':'string','enum':list(ids)} if ids else {'type':'string'}
         node={'type':'array','items':_object({'claim_id':claim,'text':text,'evidence_ids':evidence})}
-        if not ids:node['maxItems']=0
+        if not ids or not fragments:node['maxItems']=0
         return node
     def mutable(category,extra=None):
         return _object({'add':adds(extra),'update':changes(category),'retire':changes(category)})

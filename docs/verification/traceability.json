@@ -406,7 +406,8 @@
       "scope": "Динамічна схема. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
       "tests": [
         "tests/memory/test_wire_v3_schema.py::test_schema_limits_and_enums",
-        "tests/generation/test_prompt_contracts.py::test_json_schema_mode_uses_dynamic_v3_schema"
+        "tests/generation/test_prompt_contracts.py::test_json_schema_mode_uses_dynamic_v3_schema",
+        "tests/generation/test_prompt_contracts.py::test_request_without_bounds_uses_static_v3_schema"
       ]
     },
     {

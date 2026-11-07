@@ -123,7 +123,7 @@ def _row(connection,data,payload):
 
 def collect(db: Path, data: Path, story: str | None = None) -> list[dict]:
     rows=[]
-    connection=sqlite3.connect(f'file:{Path(db).as_posix()}?mode=ro',uri=True)
+    connection=sqlite3.connect(Path(db).resolve().as_uri()+'?mode=ro',uri=True)
     try:
         for (text,) in connection.execute("SELECT payload FROM stage_attempts WHERE state IN ('completed','failed')").fetchall():
             try:payload=json.loads(text)

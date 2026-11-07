@@ -113,3 +113,19 @@ def test_schema_bounds_from_captured_inputs():
         'mutable': {'character_states': [state], 'open_threads': [thread]}, 'character_ids': ['c1']}
     assert fact not in json.dumps(bounds)
     assert schema_bounds(MemoryJournal(), 'Один.', [])['mutable'] == {'character_states': [], 'open_threads': []}
+
+
+def test_schema_without_fragments_forbids_elements_and_has_no_empty_enum():
+    bounds = {'fragment_ids': [], 'mutable': {'character_states': ['mc_s'], 'open_threads': ['mc_t']}, 'character_ids': ['c1']}
+    s = memory_wire_v3_schema(bounds)
+    for node in nodes(s):
+        assert node.get('enum') != []
+        assert set(node) <= ALLOWED
+    groups = s['properties']
+    for group in groups.values():
+        if group['type'] != 'object' or 'add' not in group.get('properties', {}):
+            continue
+        for action in ('add', 'update', 'retire'):
+            if action in group['properties']:
+                assert group['properties'][action]['maxItems'] == 0
+                assert 'enum' not in group['properties'][action]['items']['properties']['evidence_ids']['items']

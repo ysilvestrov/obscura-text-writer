@@ -97,6 +97,21 @@ def test_fenced_response_is_replayed_and_counted_as_wrapped():
     assert r['as_is']=='pass' and r['wrapped'] is True
 
 
+def test_triple_quote_fenced_response_is_counted_as_wrapped():
+    fence=chr(39)*3
+    r=replay_response(fence+chr(10)+v2('f000001')+chr(10)+fence,frags(),'v1',PROSE)
+    assert r['as_is']=='pass' and r['wrapped'] is True
+    assert summarize([r])['wrapped']==1
+
+
+def test_collect_opens_db_with_special_characters_in_path(tmp_path):
+    base=tmp_path/'dir #1 x%20y'
+    base.mkdir()
+    good=dict(frags(),expected_source_prose_ids='["v1"]')
+    db,data=make_db(base,[(v2('f000001'),good)])
+    assert summarize(collect(db,data))['replayed']==1
+
+
 def test_unpaired_or_double_fence_stays_json():
     fence=chr(96)*3;nl=chr(10)
     for raw in (fence+'json'+nl+v2('f000001'),fence+'json'+nl+v2('f000001')+nl+fence+nl+fence+nl+'x'+nl+fence,
