@@ -10,6 +10,7 @@ from storygen.generation.worker import RunCoordinator,RunRequest
 from storygen.generation.context import build_context
 from storygen.generation.stages import execute_stage
 from storygen.memory.journal import load_memory,legacy_view,replay_memory
+from tests.memory.wire_helpers import v3_response
 
 
 @pytest.mark.parametrize('count',[7,15])
@@ -34,15 +35,15 @@ def test_forward_memory_scale_and_cold_restore(tmp_path,count):
                 prior=load_memory(context.fragments['previous_memory'])
                 active=list(replay_memory(prior).values())
                 state=next((e for e in active if e.category=='character_states'),None)
-                ops=[{'action':'update' if state else 'add','category':'character_states','claim_id':state.claim_id if state else None,
-                    'text':f'A у кімнаті {i}','character_ids':['A'],'evidence_id':'f000001'},
-                    {'action':'add','category':'facts','claim_id':None,'text':f'Позначка {i}','character_ids':[],'evidence_id':'f000001'},
-                    {'action':'add','category':'timeline','claim_id':None,'text':f'Перехід {i}','character_ids':[],'evidence_id':'f000001'}]
-                if i==1:ops.append({'action':'add','category':'open_threads','claim_id':None,'text':'Пошук ключа','character_ids':[],'evidence_id':'f000001'})
+                ev=['f000001']
+                groups={'facts_add':[{'text':f'Позначка {i}','evidence_ids':ev}],'timeline_add':[{'text':f'Перехід {i}','evidence_ids':ev}]}
+                if state:groups['character_states_update']=[{'claim_id':state.claim_id,'text':f'A у кімнаті {i}','evidence_ids':ev}]
+                else:groups['character_states_add']=[{'text':f'A у кімнаті {i}','character_ids':['A'],'evidence_ids':ev}]
+                if i==1:groups['open_threads_add']=[{'text':'Пошук ключа','evidence_ids':ev}]
                 if i==3:
                     target=next(e for e in active if e.category=='open_threads')
-                    ops.append({'action':'retire','category':'open_threads','claim_id':target.claim_id,'text':'Пошук ключа завершено','character_ids':[],'evidence_id':'f000001'})
-                raw=json.dumps({'schema_version':2,'operations':ops})
+                    groups['open_threads_retire']=[{'claim_id':target.claim_id,'text':'Пошук ключа завершено','evidence_ids':ev}]
+                raw=v3_response(**groups)
             yield GenerationEvent(type='delta',text=raw)
             yield GenerationEvent(type='terminal',finish_reason='stop')
     worker=RunCoordinator(repo,lambda _:Gateway())
@@ -89,8 +90,8 @@ def test_v2_publication_uses_frozen_evidence_and_scope(tmp_path,change,expected)
             elif change=='prose':
                 new=repo.save_version(story.id,first.id,'manual','Інша проза',[]);repo.set_head(first.id,'prose',new.id,scene.revision)
             else:repo.update_scene_plan(future.id,'Новий майбутній план',0)
-            yield GenerationEvent(type='delta',text=json.dumps({'schema_version':2,'operations':[{
-                'action':'add','category':'character_states','claim_id':None,'text':'A у бібліотеки','character_ids':['A'],'evidence_id':'f000001'}]}))
+            yield GenerationEvent(type='delta',text=v3_response(character_states_add=[
+                {'text':'A у бібліотеки','character_ids':['A'],'evidence_ids':['f000001']}]))
             yield GenerationEvent(type='terminal',finish_reason='stop')
     attempt=execute_stage(repo,first.id,'memory',context,Gateway(),threading.Event(),lambda _:None)
     assert attempt.state==expected,attempt.error

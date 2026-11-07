@@ -3,6 +3,7 @@ import pytest
 from storygen.run_models import RunRequest
 from storygen.providers.streaming import GenerationEvent
 from tests.review.test_runner import fixture
+from tests.memory.wire_helpers import v3_response
 
 
 def run4(root,mode='clean'):
@@ -19,7 +20,7 @@ def run4(root,mode='clean'):
     class Gateway:
         def stream(self,ctx,cancel):
             calls.append(ctx)
-            if ctx.stage=='memory':raw=dict(schema_version=2,operations=[])
+            if ctx.stage=='memory':raw=json.loads(v3_response())
             else:
                 p=json.loads(ctx.user_text)
                 raw=dict(analysis_status='done',reason=None,candidates=[])

@@ -238,7 +238,9 @@ def execute_stage(
             memory_warnings=[]
             attempt.context['memory_warnings']=memory_warnings
             snapshot=parse_memory_result(text,previous,prose_id,sources[prose_id],context.settings.memory_mode,
-                json.loads(context.fragments.get('memory_allowed_character_ids','[]')),warnings=memory_warnings)
+                json.loads(context.fragments.get('memory_allowed_character_ids','[]')),warnings=memory_warnings,
+                # Attempts captured before wire v3 have no key and keep the v2 parser.
+                wire_version=int(context.fragments.get('memory_wire_version','2')))
             validate_memory_journal(snapshot,sources,previous)
             text=snapshot.model_dump_json()
         elif stage=='edit' and context.settings.edit_mode=='prose' and context.fragments.get('edit_loop_run_id'):

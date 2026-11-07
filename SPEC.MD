@@ -692,14 +692,16 @@ UI SHALL показувати select/N для planner/writer/prose-editor, ви�
 <a id="memory-002"></a>
 ### Requirement: MEMORY-002 — Пам’ять через фрагменти
 
-У режимі `evidence_delta` модель SHALL повертати schema_version=2/operations з
+У режимі `evidence_delta` версію відповіді (wire) SHALL визначати контракт промпту
+(PROMPT-CONTRACT): стандартний вбудований промпт і власний `memory/evidence_delta/3` —
+wire v3, власний `memory/evidence_delta/2` — wire v2. Wire v2 — schema_version=2/operations з
 add/update/retire та ID фрагментів поточної прози. Сервер SHALL підставляти
 джерела/цитати, зберігати повний журнал і застосовувати всі операції атомарно.
 Update/retire дозволені лише для активних character_states/open_threads зі
 сталими claim ID/category/scope; facts/timeline мають лише add. До 12 операцій
 і до трьох add на категорію; target не змінюється двічі за відповідь.
 
-Wire v3 (`schema_version=3`, модуль `memory/wire_v3.py`) — альтернативний сгрупований
+Wire v3 (`schema_version=3`, модуль `memory/wire_v3.py`) — стандартний згрупований
 формат: об’єкти `facts`/`timeline` (лише `add`) і `character_states`/`open_threads`
 (`add`/`update`/`retire`), усі масиви обов’язкові. Кожен елемент має `evidence_ids`
 (1–3 унікальні ID фрагментів); `character_ids` лише в `character_states.add`. Категорію
@@ -820,7 +822,7 @@ events попереднього префікса. Ручне збереженн�
 <a id="prompt-contract"></a>
 ### Requirement: PROMPT-CONTRACT — Призначення промптів
 
-Власна prompt-версія SHALL мати незмінний `prompt_contract` зі stage/mode/schema_version. Очікувані контракти: prepare/blueprint/1, brief/brief/1, draft/prose/1, edit/prose/1, edit/patches/1, edit/diff/1, memory/snapshot/1 і memory/evidence_delta/2. Збереження нового тексту призначає його вибраному режиму; старий або несумісний промпт вимагає явного перепризначення новою версією або повернення стандартного. Зміна моделі сама не змінює контракт. Перевірки власності, типу, актуальності й сумісності SHALL виконуватися під час збереження ролі, preflight усіх запланованих етапів і побудови фактичного контексту до API. Metadata не доводить змістовної правильності довільного промпту.
+Власна prompt-версія SHALL мати незмінний `prompt_contract` зі stage/mode/schema_version. Очікувані контракти: prepare/blueprint/1, brief/brief/1, draft/prose/1, edit/prose/1, edit/patches/1, edit/diff/1, memory/snapshot/1 і memory/evidence_delta/3. Для пам’яті `evidence_delta` збережений власний промпт `memory/evidence_delta/2` лишається сумісним без перепризначення: контракт визначає wire відповіді, каталог, JSON-схему й parser (v2 або v3), а стандартний промпт завжди v3. Інших сумісних старших/молодших контрактів немає. Збереження нового тексту призначає його вибраному режиму з поточним очікуваним контрактом; старий або несумісний промпт вимагає явного перепризначення новою версією або повернення стандартного. Зміна моделі сама не змінює контракт. Перевірки власності, типу, актуальності й сумісності SHALL виконуватися під час збереження ролі, preflight усіх запланованих етапів і побудови фактичного контексту до API. Metadata не доводить змістовної правильності довільного промпту.
 
 <a id="prompt-contract-s01"></a>
 #### Scenario: PROMPT-CONTRACT-S01 — Несумісний або legacy-промпт
@@ -828,6 +830,13 @@ events попереднього префікса. Ручне збереженн�
 - WHEN автор запускає workflow
 - THEN виклик блокується до API з очікуваним призначенням і способом виправлення
 - AND явне підтвердження в налаштуваннях створює нову версію, не переписуючи старої.
+
+<a id="prompt-contract-s02"></a>
+#### Scenario: PROMPT-CONTRACT-S02 — Власний промпт пам’яті v2
+- GIVEN для пам’яті `evidence_delta` призначено власний промпт із контрактом `memory/evidence_delta/2`
+- WHEN запускається етап пам’яті
+- THEN контекст містить каталог v2, запит `json_schema` — схему v2 operations, а відповідь розбирає parser v2
+- AND відповідь wire v3 на такий промпт відхиляється кодом `wire_version` без переходу до іншого parser.
 
 <a id="edit-001"></a>
 ### Requirement: EDIT-001 — Обмежена точкова редактура
@@ -1654,6 +1663,17 @@ character_ids сцени, невідомі прив’язки лишаютьс�
 claim незмінний. Порожній набір операцій дозволений і теж фіксує оброблену прозу.
 Каталог моделі містить лише активні ID/category/text/scope; повний previous
 journal, expected source IDs і allowed scope зберігаються у fragments спроби.
+`build_context` визначає wire через `validate_role_prompt` і `memory_wire_version`
+(стандартний промпт — 3, власний — `prompt_contract.schema_version`) та записує
+`fragments['memory_wire_version']` (`'2'`/`'3'`). Для v3 `memory_catalog_v3` дає
+JSON `{"mutable":[claim_id/category/text/character_ids станів і ліній],"immutable":[category/text фактів і хронології]}`
+(`projection_version=memory-catalog-v3`): ID незмінних claims моделі не передаються;
+для v2 лишається `memory_catalog` (`memory-catalog-v2`). `execute_stage` передає wire
+у parser, а `generation_request` у `json_schema` бере статичну схему `MemoryWireV3`
+або `MemoryOperations`. Спроба, контекст якої захоплено до wire v3 (без ключа),
+розбирається як v2. Переносимий профіль ролей зберігає збережений контракт власного
+промпту пам’яті (v2 або v3); імпорт приймає обидва. Вбудований текст v3 — `memory_delta_uk_v3.txt`,
+v2-текст лишається в пакеті без використання як стандартного.
 Нові докази — тільки поточна проза, а не плани/картки. Фрагменти — фізичні
 непорожні рядки f000001 із точними позиціями; чистий алгоритм у `evidence.py`,
 `generation/evidence.py` сумісно re-export. Модель не переписує старі цитати.
@@ -1666,7 +1686,7 @@ journal, expected source IDs і allowed scope зберігаються у fragme
 legacy payload без поля зберігають старий режим. Snapshot позначений застарілим
 і підтримує лише додавання поверх active proof view; сервер відновлює весь
 попередній журнал. Валідний старий MemoryDelta з чотирма масивами теж add-only;
-структурована schema нового режиму описує лише v2 operations. Custom prompts
+структурована schema нового режиму відповідає wire контракту (v3 або v2 operations). Custom prompts
 не переписуються. JSON із дублікатами полів і порожні докази відхиляються.
 
 Ручний memory API використовує `save_scene_memory`: captured префікс, ревізія,

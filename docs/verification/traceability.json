@@ -459,6 +459,15 @@
       ]
     },
     {
+      "id": "PROMPT-CONTRACT-S02",
+      "requirement": "PROMPT-CONTRACT",
+      "scope": "Власний промпт пам’яті v2. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/generation/test_prompt_contracts.py::test_custom_v2_memory_prompt_stays_valid_and_selects_v2",
+        "tests/memory/test_wire_v3.py::test_wire_version_mismatch"
+      ]
+    },
+    {
       "id": "EDIT-001-S01",
       "requirement": "EDIT-001",
       "scope": "Неоднозначний якір. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",

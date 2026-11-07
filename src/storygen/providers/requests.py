@@ -59,6 +59,9 @@ def generation_request(stage, settings, system, user, fragments):
         elif stage=='classify':
             from ..generation.edit_classification import Classification
             model=Classification
+        elif stage == 'memory' and settings.memory_mode == 'evidence_delta' and fragments.get('memory_wire_version') == '3':
+            from ..memory.wire_v3 import MemoryWireV3
+            model = MemoryWireV3
         else:
             model = CopyEdits if stage == 'edit' else MemoryOperations if stage == 'memory' and settings.memory_mode == 'evidence_delta' else {'prepare': StoryBlueprint, 'brief': WritersBrief, 'memory': MemorySnapshot}[stage]
         schema = fragments.get('impact_wire_schema') if stage=='impact_part' else None
