@@ -78,6 +78,7 @@ def execute_stage(
         if accounting.warning:
             attempt.context['accounting_warning']=accounting.warning
     if terminal:
+        if terminal.type=='error' and terminal.failure:attempt.context['generation_failure']=terminal.failure
         attempt.usage=terminal.usage
         attempt.finish_reason=terminal.finish_reason
         if stage=='classify' and terminal.refusal:

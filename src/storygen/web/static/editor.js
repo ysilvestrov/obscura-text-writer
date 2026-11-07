@@ -1,5 +1,7 @@
 import {live,t,msg,labelEntries,getLocale,uiText,uiAttr,uiHTML} from './i18n.js';
 import {api,json,notice} from './api.js';
+import {renderImportJournal} from './import-journal.js';
+import {renderImportResults,showImportPending,showImportRefreshWarning} from './import-results.js';
 import {installSceneTrash} from './trash.js';
 import {createTextEditor} from './text-editor.js';
 import {readWorkspacePosition,rememberWorkspacePosition,resolveWorkspacePosition,updateWorkspaceUrl} from './workspace-position.js';
@@ -83,9 +85,8 @@ export async function refresh(){
     const small=document.createElement('small');uiText(small,"textContent",()=>(!scene.heads.prose&&!scene.heads.draft?(scene.heads.brief?t("m_4b3a60e43929"):t("m_521bdc3a57e0")):state.view.impact_status?.[scene.id]?.prose==='changes_required'?t('impact.changes_required'):state.view.impact_status?.[scene.id]?.prose==='no_impact'?t('impact.current'):scene.needs_review?(state.view.impact_status?.[scene.id]?.prose==='pending'?t('impact.pending'):t("m_f3522e6a9fcc")):scene.heads.prose?t("m_79679b4689c4"):t("m_4de0a8f8a92b")));button.append(small);button.onclick=()=>selectScene(scene);list.append(button);
   }
   if(!state.scene&&state.view.scenes.length)await selectScene(resolveWorkspacePosition(state.view.scenes,initialWorkspacePosition).scene);
-  const context=document.querySelector('#context-content');context.replaceChildren();
-  for(const source of state.view.sources){const p=document.createElement('p');uiText(p,"textContent",()=>(source.kind==='source_plan'?t("m_6ff2130f4d33"):t("m_2ae2907afd60")));context.append(p)}
-  const importer=document.querySelector('.importer');if(importer&&!importer.dataset.userOpened)importer.open=state.view.sources.length===0&&state.view.scenes.length===0;
+  renderImportJournal(document.querySelector('#context-content'),state.view.source_files||[],state.view.active_sources||{});
+  const importer=document.querySelector('.importer');if(importer&&!importer.dataset.userOpened)importer.open=!(state.view.source_files?.length||state.view.sources?.length)&&state.view.scenes.length===0;
   document.dispatchEvent(new CustomEvent('story-refreshed'));
 }
 
@@ -118,19 +119,41 @@ saveButton.onclick=async()=>{
   }catch(error){notice(error.message,'error')}
 };
 
+let importBusy=false;
 document.querySelector('#import-sources').onsubmit=async event=>{
-  event.preventDefault();
+  event.preventDefault();if(importBusy)return;
+  const formElement=event.target,host=document.querySelector('#import-results');
+  const charactersHref=()=>document.querySelector('#workspace-characters')?.href||`/stories/${encodeURIComponent(state.storyId)}/characters`;
+  let previous=[],sent=false;
   try{
     if(state.dirty||state.saving)throw new Error(t("m_a4c2e86ecc1a"));
-    const form=new FormData(event.target);for(const[key,value]of[...form])if(!value.size)form.delete(key);
+    const form=new FormData(formElement);for(const[key,value]of[...form])if(!value.size)form.delete(key);
+    importBusy=true;formElement.setAttribute('aria-busy','true');
+    previous=[...formElement.elements].map(e=>[e,e.disabled]);previous.forEach(([e])=>e.disabled=true);
+    const importer=formElement.closest('details');importer.dataset.userOpened='true';importer.open=true;
+    showImportPending(host);
+    sent=true;
     const result=await api('/api/stories/'+state.storyId+'/sources',{method:'POST',body:form});
-    notice(result.warnings.join(' ')||t("m_45d0aced51ea"));state.scene=null;await refresh();
-  }catch(error){notice(error.message,'error')}
+    if(!Array.isArray(result.files))throw new Error(t('imports.unknown'));
+    renderImportResults(host,result,{charactersHref:charactersHref()});
+    for(const file of result.files||[])if(file.status==='imported'){
+      const input=formElement.elements[file.kind==='source_plan'?'plan':'characters'];if(input)input.value='';
+    }
+    try{await refresh();}catch{showImportRefreshWarning(host,refresh);}
+  }catch(error){
+    const uncertain=sent&&!Array.isArray(error.data?.files)&&(!error.status||error.status>=500);
+    if(uncertain)for(const name of ['plan','characters'])formElement.elements[name].value='';
+    renderImportResults(host,error.data||{},{failed:true,uncertain,onRefresh:refresh,error,charactersHref:charactersHref()});
+    notice(error.message,'error');
+  }finally{
+    previous.forEach(([e,disabled])=>e.disabled=disabled);importBusy=false;formElement.setAttribute('aria-busy','false');importAvailability();
+  }
 };
 document.querySelector('#add-scene').onclick=async()=>{const title=prompt(t("m_dd7bf0189af8"));if(!title)return;try{await api('/api/stories/'+state.storyId+'/scenes',json('POST',{title}));await refresh()}catch(error){notice(error.message,'error')}};
 installSceneTrash(state,refresh,()=>{state.scene=null;state.dirty=false;state.bufferEpoch++;textEditor.write('');textEditor.placeholder(live(()=>placeholders.plan));document.querySelector('#mode-tabs').replaceChildren();document.querySelector('#version-panel').replaceChildren();document.querySelector('#scene-settings')?.remove?.();uiText(document.querySelector('#scene-title'),"textContent",()=>(t("m_f0f1417db6de")));uiText(document.querySelector('#save-state'),"textContent",()=>(''));saveButton.disabled=true;document.dispatchEvent(new CustomEvent('scene-selected'));changed()});
 refresh().catch(error=>notice(error.message,'error'));
 
 const importForm=document.querySelector('#import-sources'),importButton=importForm.querySelector?.('button');
-function importAvailability(){if(importButton){importButton.disabled=!(importForm.elements?.plan?.files?.length||importForm.elements?.characters?.files?.length)||state.saving;uiText(importButton,"title",()=>(importButton.disabled?t("m_4b050af78972"):''))}}
+function importAvailability(){if(importButton){importButton.disabled=!(importForm.elements?.plan?.files?.length||importForm.elements?.characters?.files?.length)||state.saving||state.dirty||importBusy;uiText(importButton,"title",()=>(importButton.disabled?t("m_4b050af78972"):''))}}
+document.querySelector('.importer > summary')?.addEventListener('click',()=>{document.querySelector('.importer').dataset.userOpened='true'});
 importForm.addEventListener('change',importAvailability);document.addEventListener('editor-state-changed',importAvailability);importAvailability();

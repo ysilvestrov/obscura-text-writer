@@ -5,6 +5,7 @@ import {settingsSignature,expectedPromptContract} from './settings-state.js';
 import {mountClassification} from './classification-settings.js';
 import {groupRoleFields} from './settings-role-layout.js';
 import {mountHorizonControls} from './horizon-controls.js';
+import {mountModelCatalog} from './model-catalog.js';
 const root=document.querySelector('[data-story-id]'),id=root.dataset.storyId;
 const names={get planner(){return t("m_38c94c25c4af")},get writer(){return t("m_75515c07207a")},get editor(){return t("m_19e99ed8f039")},get memory(){return t("m_aa1cfb48cc30")}};
 const defaults={provider:{provider:'local',base_url:'http://localhost:1235/v1',model:'',timeout:3600,key_env:'OPENROUTER_API_KEY',include_usage:false,response_mode:'prompt_json'},context_tokens:8192,max_output_tokens:2048,max_input_chars:80000,temperature:0.7,prompt_version_id:null,prepare_prompt_version_id:null};
@@ -13,13 +14,13 @@ const providerNames=['provider','base_url','model','timeout','key_env','response
 const roleScope=(data,role)=>({settings:data.roles[role]||null,prompt:data.prompts[role]||'',prepare:role==='planner'?data.prepare_prompt:null,contract:data.prompt_contracts?.[role]||null});
 async function checkScope(role,baseline,shared=false){
  const latest=await api(`/api/stories/${id}/settings`);
- if(settingsSignature(role==='writing'?latest.profile:roleScope(latest,role))!==settingsSignature(baseline))throw new Error(t("m_01f8b6c01617"));
+ if(settingsSignature(role==='writing'?{profile:latest.profile,target_words:latest.story.target_words}:roleScope(latest,role))!==settingsSignature(baseline))throw new Error(t("m_01f8b6c01617"));
  if(shared)for(const other of document.querySelectorAll('form[data-role]'))if(other.dataset.role!==role&&settingsSignature(roleScope(latest,other.dataset.role))!==settingsSignature(other.serverBaseline))throw new Error(t("m_e92bbe8c4cb8"));
  return latest.story.revision;
 }
 async function load(onlyRole=null){
   snapshot=await api(`/api/stories/${id}/settings`);
-  const profileForm=document.querySelector('#profile-form');if(!onlyRole||onlyRole==='writing'){for(const[key,value]of Object.entries(snapshot.profile))profileForm.elements[key].value=value;profileBaseline=structuredClone(snapshot.profile);registerSettingsForm('writing',{form:profileForm,label:live(()=>(t("m_88f778367baf"))),section:'writing',reset:()=>load('writing')})}
+  const profileForm=document.querySelector('#profile-form');if(!onlyRole||onlyRole==='writing'){for(const[key,value]of Object.entries(snapshot.profile))profileForm.elements[key].value=value;profileForm.elements.target_words.value=snapshot.story.target_words;profileBaseline=structuredClone({profile:snapshot.profile,target_words:snapshot.story.target_words});registerSettingsForm('writing',{form:profileForm,label:live(()=>(t("m_88f778367baf"))),section:'writing',reset:()=>load('writing')})}
   const target=document.querySelector('#role-settings');if(!onlyRole)target.replaceChildren();
   for(const[role,name]of labelEntries(names)){
     if(onlyRole&&role!==onlyRole)continue;
@@ -60,7 +61,7 @@ async function load(onlyRole=null){
     for(const field of ['edit_mode','memory_mode'])if(form.elements[field])form.elements[field].onchange=()=>{if(!config.prompt_version_id&&form.elements.prompt_text.value===originalPrompt)form.elements.prompt_text.value='';assignInput.checked=false;updateContract()};
     form.elements.prompt_text.addEventListener('input',updateContract);updateContract();
     if(role==='planner'){const prepareAssignment=document.createElement('label');const input=document.createElement('input');input.type='checkbox';input.name='confirm_prepare_prompt_contract';prepareAssignment.append(input,caption("m_083894cf6717"));form.elements.prepare_prompt_text.parentElement.after(prepareAssignment)}
-    form.applyProvider=value=>{config.provider=structuredClone(value);for(const key of ['provider','base_url','model','timeout','key_env','response_mode'])form.elements[key].value=value[key];for(const key of ['include_usage','local_disable_thinking','venice_include_system_prompt','venice_disable_thinking'])form.elements[key].checked=value[key]||false;form.elements.venice_reasoning_effort.value=value.venice_reasoning_effort||'';updateEffort();vendorVisibility()};
+    form.applyProvider=value=>{config.provider=structuredClone(value);for(const key of ['provider','base_url','model','timeout','key_env','response_mode'])form.elements[key].value=value[key];for(const key of ['include_usage','local_disable_thinking','venice_include_system_prompt','venice_disable_thinking'])form.elements[key].checked=value[key]||false;form.elements.venice_reasoning_effort.value=value.venice_reasoning_effort||'';updateEffort();vendorVisibility();catalog.clear()};
     if(role==='editor'){
       const updateReview=()=>{const manual=form.elements.edit_mode.value==='diff';form.elements.edit_review.disabled=manual;form.elements.edit_review.closest('label').hidden=form.elements.edit_mode.value!=='patches';if(manual)form.elements.edit_review.value='review'};
       const previous=form.elements.edit_mode.onchange;form.elements.edit_mode.onchange=()=>{previous?.();updateReview()};updateReview();
@@ -68,7 +69,12 @@ async function load(onlyRole=null){
     vendorVisibility();
     form.elements.provider.onchange=()=>{const selected=form.elements.provider.value;form.elements.base_url.value={local:'http://localhost:1235/v1',openrouter:'https://openrouter.ai/api/v1',venice:'https://api.venice.ai/api/v1'}[selected];form.elements.timeout.value=selected==='local'?3600:180;form.elements.key_env.value=selected==='venice'?'VENICE_API_KEY':'OPENROUTER_API_KEY';vendorVisibility()};
     const provider=()=>({...config.provider,provider:form.elements.provider.value,key_env:form.elements.key_env.value||null,local_disable_thinking:form.elements.local_disable_thinking.checked,venice_include_system_prompt:form.elements.venice_include_system_prompt.checked,venice_disable_thinking:form.elements.venice_disable_thinking.checked,venice_reasoning_effort:form.elements.venice_reasoning_effort.value||null,model:form.elements.model.value||'discovery-only',base_url:form.elements.base_url.value,timeout:form.elements.timeout.value===''?null:Number(form.elements.timeout.value),response_mode:form.elements.response_mode.value,include_usage:form.elements.include_usage.checked});
-    form.querySelector('.discover').onclick=async()=>{try{const result=await api('/api/providers/discover',json('POST',provider()));const list=form.querySelector('datalist');list.replaceChildren();for(const model of result.models){const option=document.createElement('option');option.value=model.id;uiText(option,"textContent",()=>(model.context_tokens?t("m_a2f723ad1c22",{p0:(model.context_tokens)}):t("m_d60cd51a7f7b")));list.append(option)}notice(t("m_8d511fd9fc01",{p0:(result.models.length)}))}catch(e){notice(e.message,'error')}};
+    const catalog=mountModelCatalog({list:form.querySelector('datalist'),modelInput:form.elements.model,providerInput:form.elements.provider,baseUrlInput:form.elements.base_url});
+    form.querySelector('.discover').onclick=async()=>{
+      const button=form.querySelector('.discover'),captured=catalog.capture();button.disabled=true;
+      try{const result=await api('/api/providers/discover',json('POST',provider()));if(!catalog.setModels(result.models,captured))throw new Error(t('m_b6361b46aced'));notice(t('m_8d511fd9fc01',{p0:result.models.length}));}
+      catch(e){notice(e.message,'error')}finally{button.disabled=false}
+    };
     form.onsubmit=async event=>{
       event.preventDefault();
       try{
@@ -106,8 +112,8 @@ async function load(onlyRole=null){
 document.querySelector('#profile-form button').classList.add('scope-submit');
 document.querySelector('#profile-form').onsubmit=async event=>{
  event.preventDefault();const form=event.target;
- const profile=Object.fromEntries([...form.elements].filter(e=>e.name).map(e=>[e.name,e.value]));profile.previous_tail_chars=Number(profile.previous_tail_chars);
- try{await withSettingsSave('writing',async()=>{const revision=await checkScope('writing',profileBaseline);snapshot.story=await api(`/api/stories/${id}/settings`,json('PUT',{expected_revision:revision,profile}));settingsSaved('writing');await load('writing');notice(msg("m_01e9934fcb2b"))})}catch(e){settingsFormError('writing',e);notice(e.message,'error')}
+ const profile=Object.fromEntries([...form.elements].filter(e=>e.name&&e.name!=='target_words').map(e=>[e.name,e.value]));const target_words=Number(form.elements.target_words.value);profile.previous_tail_chars=Number(profile.previous_tail_chars);
+ try{await withSettingsSave('writing',async()=>{const revision=await checkScope('writing',profileBaseline);snapshot.story=await api(`/api/stories/${id}/settings`,json('PUT',{expected_revision:revision,profile,target_words}));settingsSaved('writing');await load('writing');notice(msg("m_01e9934fcb2b"))})}catch(e){settingsFormError('writing',e);notice(e.message,'error')}
 };
 load().catch(e=>{uiText(document.querySelector('#settings-loading'),"textContent",()=>(diagnostic(e.message)));notice(e.message,'error')});
 

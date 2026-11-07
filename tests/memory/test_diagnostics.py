@@ -78,7 +78,11 @@ def test_scope_normalization_never_bypasses_evidence_or_character_validation():
         parse_memory_result(json.dumps({'schema_version':2,'operations':[row]}),MemoryJournal(),'p','Evidence.','evidence_delta',['A'])
 
 
-def test_normalization_warning_survives_run_reload(tmp_path):
+@pytest.mark.parametrize('opening,closing,expected_warnings',[
+    ('','',['Пам’ять: операція 1 (open_threads) — прибрано зайві character_ids; текст і докази не змінено.']),
+    ('```json\n','\n```',['Пам’ять: операція 1 (open_threads) — прибрано зайві character_ids; текст і докази не змінено.', 'Пам’ять: прибрано зовнішню обгортку JSON; вміст і докази не змінено.']),
+])
+def test_normalization_warning_survives_run_reload(tmp_path,opening,closing,expected_warnings):
     from storygen.domain import StoryCreate,SceneCreate
     from storygen.storage.repository import Repository
     from storygen.providers.models import RoleSettings,ProviderSettings
@@ -94,6 +98,7 @@ def test_normalization_warning_survives_run_reload(tmp_path):
     role=RoleSettings(provider=ProviderSettings(model='fake'),context_tokens=32768,memory_mode='evidence_delta',prompt_version_id=v2_prompt(repo,story).id)
     save_role_settings(repo,story.id,'memory',role,repo.get_story(story.id).revision)
     raw=json.dumps({'schema_version':2,'operations':[dict(action='add',category='open_threads',text='Question',character_ids=['A'],evidence_id='f000001')]})
+    raw=opening+raw+closing
     class Gateway:
         def stream(self,*_):
             yield GenerationEvent(type='delta',text=raw)
@@ -105,7 +110,8 @@ def test_normalization_warning_survives_run_reload(tmp_path):
     finished=stored.get_run(run.id)
     assert finished.state=='completed' and 'character_ids' in finished.warning
     attempt=stored.list_attempts(story.id,run.id)[0]
-    assert len(attempt.context['memory_warnings'])==1
+    assert attempt.context['memory_warnings']==expected_warnings
+    assert all(warning in finished.warning for warning in expected_warnings)
     assert stored.files.read_partial(attempt.partial_path)==raw
     memory=load_memory(stored.read_text(stored.get_scene(scene.id).heads['memory']))
     assert memory.events[0].character_ids==[]

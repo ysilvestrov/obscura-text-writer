@@ -6,9 +6,10 @@ from pydantic import Field
 
 from ..domain import DomainModel
 from ..generation.context import ContextBundle
-from .client import build_openai_client
+from .client import build_openai_client, ProviderConfigurationError
 from .models import ProviderSettings
 from .venice import validate_model, VeniceModelUnavailable
+from .catalog import ModelLimitsError, validate_limits
 from .requests import generation_request, sdk_arguments, strict_schema
 from .accounting import require_accounting, normalize_usage
 from ..billing.models import BudgetError
@@ -75,8 +76,15 @@ class OpenAIGenerationGateway:
             require_accounting(self.settings,self.accounting)
             with build_openai_client(self.settings,self.http_client) as client:
                 body=context.api_request or generation_request(context.stage,context.settings,context.system_text,context.user_text,context.fragments)
+                output_limit=body.get('max_completion_tokens',body.get('max_tokens'))
+                request_context=context.estimated_tokens+(output_limit if type(output_limit) is int and output_limit>0 else context.settings.max_output_tokens)
                 if self.settings.provider=='venice':
-                    validate_model(client,self.settings.model,'response_format' in body)
+                    validate_model(client,self.settings.model,'response_format' in body,context_tokens=request_context,max_output_tokens=output_limit)
+                elif self.settings.provider=='openrouter':
+                    row=next((m.model_dump() for m in client.models.list() if m.id==self.settings.model),None)
+                    if row:
+                        top=row.get('top_provider');top=top if isinstance(top,dict) else {}
+                        validate_limits(row.get('context_length'),top.get('max_completion_tokens'),request_context,output_limit)
                 if cancel.is_set():
                     yield GenerationEvent(type='cancelled',usage=usage)
                     return
@@ -122,17 +130,22 @@ class OpenAIGenerationGateway:
                 else:
                     yield GenerationEvent(type='error',finish_reason=finish,usage=usage,refusal=refusal,message='Відповідь відхилено моделлю' if refusal else 'Немає повної відповіді з finish_reason=stop')
         except BudgetError as exc:
-            yield GenerationEvent(type='error',usage=usage,message=str(exc),failure={'category':'budget','message':str(exc)} if context.stage in {'classify','publication_suggest'} else {})
-        except VeniceModelUnavailable as exc:
-            yield GenerationEvent(type='error',usage=usage,message=str(exc),failure={'category':'configuration','message':str(exc)} if context.stage in {'classify','publication_suggest'} else {})
+            yield GenerationEvent(type='error',usage=usage,message=str(exc),failure={'category':'budget','message':str(exc)})
+        except (VeniceModelUnavailable,ModelLimitsError,ProviderConfigurationError) as exc:
+            yield GenerationEvent(type='error',usage=usage,message=str(exc),failure={'category':'configuration','message':str(exc)})
         except Exception as exc:
             # SDK errors may contain request bodies, headers or server echoes. Never serialize them.
-            if context.stage in {'classify','publication_suggest'} and not cancel.is_set():
+            if not cancel.is_set():
                 import os
                 from ..evaluation.failures import api_failure
-                detail=api_failure(exc,secret=os.environ.get(self.settings.key_env or ''),documents=(context.system_text,context.user_text)).model_dump(mode='json')
-                role='класифікатора' if context.stage=='classify' else 'планувальника'
-                detail['message']=detail['message'].replace('оцінювача',role).replace('оцінювачем',role).replace('Оцінювач','Планувальник' if context.stage=='publication_suggest' else 'Класифікатор')
+                from openai import APIError
+                detail=(api_failure(exc,secret=os.environ.get(self.settings.key_env or ''),documents=(context.system_text,context.user_text)).model_dump(mode='json')
+                    if isinstance(exc,APIError) else {'category':'technical','http_status':None,'message':'Не вдалося завершити запит; точну причину не встановлено.'})
+                role={'classify':'класифікатора','publication_suggest':'планувальника'}.get(context.stage,'провайдера')
+                detail['message']=detail['message'].replace('оцінювача',role).replace('оцінювачем',{'classify':'класифікатором','publication_suggest':'планувальником'}.get(context.stage,'провайдером')).replace('Оцінювач',{'publication_suggest':'Планувальник','classify':'Класифікатор'}.get(context.stage,'Провайдер'))
+                status=detail.get('http_status')
+                if status is not None:detail['message']=f"HTTP {status}: {detail['message']}"
+                detail['message']+=' Автоматичного повтору немає.'
                 yield GenerationEvent(type='error',finish_reason=finish,usage=usage,message=detail['message'],failure=detail,refusal=detail['category'].startswith('refusal_'))
             else:
                 yield GenerationEvent(type='cancelled' if cancel.is_set() else 'error',finish_reason=finish,usage=usage,message='Запит перервано або провайдер недоступний. Автоматичного повтору немає.')

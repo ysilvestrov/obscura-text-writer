@@ -8,6 +8,43 @@ from storygen.providers.models import RoleSettings, ProviderSettings
 from storygen.providers.streaming import GenerationEvent
 
 
+def test_cancel_request_fences_a_late_enqueue(tmp_path):
+    app=create_app(AppSettings(data_dir=tmp_path)); repo=app.state.repo
+    story=repo.create_story(StoryCreate(title='Приклад')); scene=repo.create_scene(story.id,SceneCreate(title='Сцена',beats='Ранок'))
+    payload={'request_id':'cancel-before-enqueue','request':{'story_id':story.id,'scene_id':scene.id,'mode':'stage','stage':'brief'}}
+    with TestClient(app,base_url='http://127.0.0.1:8765') as client:
+        stopped=client.post('/api/runs/cancel-request',json=payload)
+        assert stopped.status_code==200 and stopped.json()['state']=='cancelled'
+        late=client.post('/api/runs',json=payload)
+        assert late.status_code==200 and late.json()['id']==stopped.json()['id'] and late.json()['state']=='cancelled'
+        assert len(repo.list_runs(story.id))==1
+        assert client.post(f"/api/runs/{late.json()['id']}/resume",json={'repeat_interrupted':True}).status_code==400
+        changed={**payload,'request':{**payload['request'],'stage':'draft'}}
+        assert client.post('/api/runs/cancel-request',json=changed).status_code==409
+
+
+def test_run_preserves_planned_model_metadata_across_settings_changes(tmp_path):
+    app=create_app(AppSettings(data_dir=tmp_path))
+    repo=app.state.repo; story=repo.create_story(StoryCreate(title='Приклад')); scene=repo.create_scene(story.id,SceneCreate(title='Сцена',beats='Ранок'))
+    save_role_settings(repo,story.id,'planner',RoleSettings(provider=ProviderSettings(model='planned-model')),repo.get_story(story.id).revision)
+    from storygen.generation.worker import RunRequest
+    run=app.state.coordinator.enqueue(RunRequest(story_id=story.id,scene_id=scene.id,mode='stage',stage='brief'),'planned-metadata')
+    save_role_settings(repo,story.id,'planner',RoleSettings(provider=ProviderSettings(model='later-model')),repo.get_story(story.id).revision)
+    saved=repo.get_run(run.id)
+    assert saved.planned_telemetry == {'roles':{'planner':{'provider':'local','model':'planned-model'}},'calls':1}
+
+
+def test_planned_telemetry_includes_evaluator_when_count_includes_it(tmp_path,monkeypatch):
+    app=create_app(AppSettings(data_dir=tmp_path));repo=app.state.repo
+    story=repo.create_story(StoryCreate(title='Приклад'));scene=repo.create_scene(story.id,SceneCreate(title='Сцена',beats='Ранок'))
+    from storygen.generation.worker import RunRequest
+    from storygen.generation import readiness
+    monkeypatch.setattr(readiness,'preview',lambda *_:{'ready':True,'roles':{'writer':{'provider':'local','model':'writer'}},'calls':2,'evaluator':{'provider':'local','model':'judge'}})
+    run=app.state.coordinator.enqueue(RunRequest(story_id=story.id,scene_id=scene.id,mode='scene'),'with-evaluator')
+    assert run.planned_telemetry['evaluator']=={'provider':'local','model':'judge'}
+    assert run.planned_telemetry['calls']==2
+
+
 def test_run_returns_id_without_waiting_for_model(tmp_path):
     entered=threading.Event();release=threading.Event()
     class Gateway:
@@ -94,3 +131,25 @@ def test_batched_sse_replay_respects_both_cursors(tmp_path):
     assert replay(2, 1) == first[1:]
     assert replay(1, 2) == first[1:]
     assert replay(0, 3) == []
+
+
+def test_readiness_filters_operations_without_changing_existing_contract(tmp_path, monkeypatch):
+    app=create_app(AppSettings(data_dir=tmp_path));repo=app.state.repo
+    story=repo.create_story(StoryCreate(title='Приклад'));scene=repo.create_scene(story.id,SceneCreate(title='Сцена'))
+    from storygen.generation import readiness
+    seen=[]
+    def probe(repo, request):
+        name=request.stage if request.mode=='stage' else request.mode
+        seen.append(name)
+        return {'ready':True,'name':name}
+    monkeypatch.setattr(readiness,'preview',probe)
+    client=TestClient(app,base_url='http://127.0.0.1:8765')
+    url=f'/api/stories/{story.id}/readiness?scene_id={scene.id}'
+    selected=client.get(url+'&operation=draft')
+    assert selected.status_code==200 and list(selected.json()['operations'])==['draft'] and seen==['draft']
+    seen.clear()
+    full=client.get(url)
+    assert full.status_code==200 and len(full.json()['operations'])==9 and len(seen)==9
+    seen.clear()
+    invalid=client.get(url+'&operation=invalid')
+    assert invalid.status_code==422 and seen==[]

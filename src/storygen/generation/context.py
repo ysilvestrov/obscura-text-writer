@@ -190,8 +190,8 @@ def build_context(repo,scene_id: str,stage: str,settings: RoleSettings,*,editor_
     source_plan=repo.active_source(story.id,'source_plan')
     if source_plan:
         text=repo.read_text(source_plan.id)
-        heading=SCENE_HEADING.search(text)
-        preamble=text[:heading.start()].strip() if heading else ''
+        from ..plan_sections import split_plan
+        preamble=split_plan(text)[0].strip()
         if preamble:
             warnings.append(OTHER_MATERIAL_WARNING)
             refs.append(source_plan.id)

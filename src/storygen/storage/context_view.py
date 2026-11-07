@@ -23,10 +23,9 @@ class ContextView:
         from .review_authority import load as load_authority
         self.review_authority,self.review_authority_operations=load_authority(db,story_id)
         self.token_profiles = [json.loads(r[0]) for r in db.execute("SELECT payload FROM app_settings WHERE key LIKE 'token_profile:%' ORDER BY key")]
-        self.sources = {}
-        for row in db.execute('SELECT payload FROM source_files WHERE story_id=? ORDER BY rowid', (story_id,)):
-            source = json.loads(row[0])
-            self.sources[source['kind']] = source['version_id']
+        self.sources = {row[0]:row[1] for row in db.execute('SELECT kind,version_id FROM active_sources WHERE story_id=?',(story_id,))}
+        from .import_store import source_files
+        self.source_files=source_files(db,story_id)
 
         from ..dependency_models import AcceptanceRecord
         self.acceptances={}

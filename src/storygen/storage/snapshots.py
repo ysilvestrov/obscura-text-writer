@@ -25,7 +25,8 @@ def build_dependency_snapshot(
     def head(item, name):
         select('head', item.id, name, item.heads.get(name))
     if scope == 'prepare':
-        for kind in ['source_plan', 'source_characters']:
+        select('story',story.id,'characters_version_id',story.characters_version_id)
+        for kind in (['source_plan'] if story.characters_version_id else ['source_plan','source_characters']):
             ref = view.active_source(story.id, kind)
             select('source', story.id, kind, ref.id if ref else None)
     elif scope == 'patches':
@@ -280,12 +281,9 @@ def resolve_freshness(view, version_id: str) -> FreshnessResult:
 
 
 def source_preamble(view, ref):
-    from ..scene_description import SCENE_HEADING
-    if not ref:
-        return None
-    text=view.read_text(ref.id)
-    heading=SCENE_HEADING.search(text)
-    return ref.id if heading and text[:heading.start()].strip() else None
+    from ..plan_sections import split_plan
+    if not ref:return None
+    return ref.id if split_plan(view.read_text(ref.id))[0].strip() else None
 
 
 def build_author_baseline(view, scene_id: str) -> DependencySnapshot:

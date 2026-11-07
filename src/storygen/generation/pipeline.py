@@ -23,10 +23,11 @@ def generate_scene(repo,scene_id: str,role_settings: dict,gateway_factory,cancel
 
 
 def prepare_story(repo,story_id: str,planner,gateway,cancel,run_id=None) -> StoryBlueprint:
-    story=repo.get_story(story_id)
-    sources=[s for s in [repo.active_source(story_id,'source_plan'),repo.active_source(story_id,'source_characters')] if s]
-    sections=[f'АВТОРСЬКЕ ДЖЕРЕЛО [version_id={v.id}]\n'+repo.read_text(v.id) for v in sources]
-    context=make_context(repo,story,None,'prepare',planner,sections,[v.id for v in sources])
+    from .prepare_sources import prepare_sources
+    view=repo.context_view(story_id);story=view.get_story(story_id)
+    sources=prepare_sources(view,story)
+    sections=[f'АВТОРСЬКЕ ДЖЕРЕЛО [version_id={v.id}]\n'+view.read_text(v.id) for v in sources]
+    context=make_context(view,story,None,'prepare',planner,sections,[v.id for v in sources])
     attempt=execute_stage(repo,None,'prepare',context,gateway,cancel,lambda text:None,run_id)
     if attempt.state!='completed':
         raise ValueError('Не вдалося підготувати пропозицію структури; сирий результат збережено')

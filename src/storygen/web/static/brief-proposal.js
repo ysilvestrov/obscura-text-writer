@@ -31,6 +31,6 @@ if(host){
     }catch(error){notice(error.message,'error');}
     finally{busy=false;if(state.scene?.id===sceneId&&state.mode==='brief')textEditor.readOnly(readonly);render();}
   };
-  for(const event of ['editor-state-changed','scene-selected','story-refreshed','workspace-run-state'])document.addEventListener(event,render);
+  for(const event of ['editor-state-changed','scene-selected','story-refreshed','workspace-run-state','workspace-readiness'])document.addEventListener(event,render);
   render();
 }
