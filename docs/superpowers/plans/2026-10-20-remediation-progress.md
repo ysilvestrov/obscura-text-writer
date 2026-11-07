@@ -1160,3 +1160,9 @@ Cross-review: claude/default @ bd7a429 (author: codex) — 9 findings: 9 fixed, 
 ## 07.11.2026 — Збереження завдання перед чернеткою
 
 Після збереження основна дія повторно перевіряє, чи не з'явилася пропозиція завдання, і не запускає чернетку без її прийняття. Специфікація: `docs/specs/changes/brief-save-before-draft-2026-11-07.md`. Інструкції UA/EN не потребують змін: порядок явного прийняття залишається чинним.
+
+## 07.11.2026 — Пояснення в переліку учасників
+
+Зіставлення карток ігнорує пояснення в дужках, зберігаючи повний текст плану. Специфікація: `docs/specs/changes/scene-cast-annotations-2026-11-07.md`; користувацькі інструкції переглянуто щодо прикладів складу сцени.
+
+Регресійний зріз `tests/authoring/test_scene_description.py tests/authoring/test_character_import.py tests/generation/test_scene_cast_filter.py`: 28 passed на короткому тимчасовому шляху Windows. Перший запуск через `scripts/verify.py` мав 22 FileNotFoundError через довгі шляхи тимчасових файлів; успішний повтор виконано через `subst` без зміни вихідних даних.

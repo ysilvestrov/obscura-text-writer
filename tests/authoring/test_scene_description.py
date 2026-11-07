@@ -58,6 +58,28 @@ def test_exact_ids_dedup_and_ambiguous_names():
     assert ids==['one'] and len(problems)==2
 
 
+def test_cast_parenthetical_notes_are_preserved_and_not_part_of_names(tmp_path):
+    repo=Repository(tmp_path);story=repo.create_story(StoryCreate(title='Твір'));cards(repo,story)
+    scene=repo.create_scene(story.id,SceneCreate(title='Сцена'))
+    text='Сцена 1: Дзвінок\nПерсонажі: Лєра (за дверима, мовчить), Марія (у кімнаті); Остап (згодом).'
+    saved=repo.update_scene_plan(scene.id,text,scene.revision)
+    assert saved.character_ids==['lera','maria','other']
+    assert saved.beats==text and repo.read_text(saved.heads['plan'])==text
+    from storygen.generation.context import build_context
+    from storygen.providers.models import RoleSettings,ProviderSettings
+    ctx=build_context(repo,scene.id,'brief',RoleSettings(provider=ProviderSettings(model='fake'),context_tokens=32768))
+    assert 'Лєра (за дверима, мовчить)' in ctx.user_text
+
+
+def test_parenthetical_matching_preserves_exact_names_and_ambiguity():
+    from storygen.scene_description import resolve_participants
+    from types import SimpleNamespace
+    values=[SimpleNamespace(id='one',name='Марія'),SimpleNamespace(id='two',name='Марія'),SimpleNamespace(id='three',name='Марія (старша)')]
+    ids,problems=resolve_participants(['Марія (старша)','Марія (за дверима)','Невідомий (поруч)'],values)
+    assert ids==['three']
+    assert len(problems)==2 and 'Неоднозначне' in problems[0] and 'Невідомий' in problems[1]
+
+
 
 def test_create_and_blueprint_use_same_description_parser(tmp_path):
     repo=Repository(tmp_path);story=repo.create_story(StoryCreate(title='Твір'));ref=cards(repo,story)
