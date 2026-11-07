@@ -2711,6 +2711,19 @@
         "procedure": "docs/verification/manual.md#workspace-one-click",
         "reason": "Сценарій інтеграції браузера з синтетичним сервером перевіряється окремим Playwright runner."
       }
+    },
+    {
+      "id": "UI-001-S02",
+      "requirement": "UI-001",
+      "scope": "Вибіркова готовність і сумісність повного readiness; повторний серверний preflight.",
+      "tests": [
+        "tests/web/test_runs.py::test_readiness_filters_operations_without_changing_existing_contract",
+        "tests/web/test_runs.py::test_readiness_and_queue_share_prerequisite_reasons"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#workspace-one-click",
+        "reason": "Перемикання панелі та фактичні браузерні запити перевіряються Playwright."
+      }
     }
   ]
 }

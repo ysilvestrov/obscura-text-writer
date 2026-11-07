@@ -131,3 +131,25 @@ def test_batched_sse_replay_respects_both_cursors(tmp_path):
     assert replay(2, 1) == first[1:]
     assert replay(1, 2) == first[1:]
     assert replay(0, 3) == []
+
+
+def test_readiness_filters_operations_without_changing_existing_contract(tmp_path, monkeypatch):
+    app=create_app(AppSettings(data_dir=tmp_path));repo=app.state.repo
+    story=repo.create_story(StoryCreate(title='Приклад'));scene=repo.create_scene(story.id,SceneCreate(title='Сцена'))
+    from storygen.generation import readiness
+    seen=[]
+    def probe(repo, request):
+        name=request.stage if request.mode=='stage' else request.mode
+        seen.append(name)
+        return {'ready':True,'name':name}
+    monkeypatch.setattr(readiness,'preview',probe)
+    client=TestClient(app,base_url='http://127.0.0.1:8765')
+    url=f'/api/stories/{story.id}/readiness?scene_id={scene.id}'
+    selected=client.get(url+'&operation=draft')
+    assert selected.status_code==200 and list(selected.json()['operations'])==['draft'] and seen==['draft']
+    seen.clear()
+    full=client.get(url)
+    assert full.status_code==200 and len(full.json()['operations'])==9 and len(seen)==9
+    seen.clear()
+    invalid=client.get(url+'&operation=invalid')
+    assert invalid.status_code==422 and seen==[]
