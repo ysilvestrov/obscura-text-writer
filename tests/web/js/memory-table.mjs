@@ -17,7 +17,8 @@ globalThis.confirm=()=>false;
 const state={scene:{id:'s',heads:{memory:'m'},revision:0},mode:'memory',bufferOrigin:'current',bufferEpoch:1,dirty:false,saving:false};
 let release,hold=false,fail=false,sent;
 const response={scene:state.scene,expected_revision:0,fingerprint:'hash',memory_id:'m',can_save:true,
-  rows:[{claim_id:'HIDDEN_ID',text:'Факт <img>',quote:'Доказ',supporting_quotes:['Ще один','Третій'],category:'facts',category_label:'Факт',forward:true,source_scene:1,source_title:'Початок'}]};
+  rows:[{claim_id:'HIDDEN_ID',text:'Факт <img>',quote:'Доказ',supporting_quotes:['Ще один','Третій'],category:'facts',category_label:'Факт',forward:true,source_scene:1,source_title:'Початок'},
+  {claim_id:'NO_SUPPORT',text:'Другий',quote:'Без додаткових',category:'facts',category_label:'Факт',forward:true,source_scene:1,source_title:'Початок'}]};
 const api=async(url,options)=>{
   if(options){sent=options.body;if(hold)await new Promise(resolve=>release=resolve);if(fail)throw Error('Конфлікт');return {...response,rows:[{...response.rows[0],forward:false}]};}
   return response;
@@ -30,6 +31,7 @@ assert.equal(nodes['#editor'].hidden,true);assert.equal(memory.active(),true);
 const proofOf=row=>row.children[1].children[1];
 const paragraphs=proofOf(body.children[0]).children.filter(c=>c.tag==='p').map(c=>String(c.textContent));
 assert.deepEqual(paragraphs,['Доказ','Ще один','Третій'],'Supporting quotes follow the main quote');
+assert.deepEqual(proofOf(body.children[1]).children.filter(c=>c.tag==='p').map(c=>String(c.textContent)),['Без додаткових'],'A row without supporting_quotes renders exactly the main quote');
 
 assert.equal(JSON.stringify(panel).includes('HIDDEN_ID'),false,'Internal claim IDs are not visible DOM text');
 const check=body.children[0].children[0].children[0];

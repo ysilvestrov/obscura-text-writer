@@ -4,12 +4,13 @@ from fastapi.testclient import TestClient
 
 from storygen.application.settings import AppSettings
 from storygen.domain import SceneCreate, StageAttempt, StoryCreate, new_id
+from storygen.memory.violations import MemoryViolations, Violation
 from storygen.run_models import Run, RunRequest
 from storygen.web.app import create_app
 
-PAYLOAD = {'items': [{'operation': 'facts.add, елемент 1', 'code': 'evidence_unknown'},
-                     {'operation': 'Операція 2', 'code': 'add_limit'},
-                     {'operation': 'Відповідь', 'code': 'target_unknown'}], 'total': 3}
+PAYLOAD = MemoryViolations([Violation('facts.add[0]', 'evidence_unknown'),
+                            Violation('operations[1]', 'add_limit'),
+                            Violation('$', 'target_unknown')]).payload()
 
 
 def _run_with_context(repo, context):
@@ -31,6 +32,7 @@ def test_run_details_expose_memory_violations_without_context(tmp_path):
             'fragments': 'СЕКРЕТНИЙ ТЕКСТ', 'memory_violations': PAYLOAD, 'memory_warnings': ['Попередження']})
         attempt = client.get(f'/api/runs/{run_id}').json()['attempts'][-1]
         assert attempt['memory_violations']['total'] == 3
+        assert [i['operation'] for i in attempt['memory_violations']['items']] == ['facts.add[0]', 'operations[1]', '$']
         assert {i['code'] for i in attempt['memory_violations']['items']} == {'evidence_unknown', 'add_limit', 'target_unknown'}
         assert attempt['memory_warnings'] == ['Попередження']
         assert 'context' not in attempt and 'СЕКРЕТНИЙ' not in json.dumps(attempt, ensure_ascii=False)

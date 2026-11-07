@@ -29,7 +29,7 @@ The run status shows the full list of response-format violations (up to 50 items
 - `add_limit` - add limit exceeded: at most three new entries per category.
 - `ops_limit` - operation limit exceeded: at most 12 elements per response.
 - `target_unknown` - unknown target: the entry to update or retire is not an active entry of that category.
-- `target_meta` - the target is a service record that cannot be changed.
+- `target_meta` - (v2 format only) an update or retire changed the claim's category or scope.
 - `target_twice` - the same entry is changed twice in one response.
 - `scope_unknown` - unknown record scope (a character who is not in the scene).
 - `schema` - the response does not match the schema: required keys are missing, extra fields are present, and so on.
@@ -39,4 +39,4 @@ Most often the `json_schema` mode or simply running again helps; if a code keeps
 
 ## Custom memory prompt: v2 and v3
 
-A custom prompt saved with contract `/2` keeps working as format v2 (one quote, `evidence_id`). To move to v3, first rewrite the prompt text so that it asks for the grouped v3 format, then tick **Move the custom prompt to format v3** in the memory role settings and save: the prompt is stored with contract `/3`. Without the rewritten text the model will answer in the old format and the run will fail with `wire_version`. Clearing the custom prompt returns the built-in v3 prompt.
+A custom prompt saved with contract `/2` keeps working as format v2 (one quote, `evidence_id`). The upgrade checkbox appears only when a saved custom `/2` memory prompt is assigned to the memory role in `evidence_delta` mode. To move to v3, first rewrite the prompt text so that it asks for the grouped v3 format, then tick **Move the custom prompt to format v3** in the memory role settings and save: the prompt is stored with contract `/3`. Without the rewritten text the model will answer in the old format and the run will fail with `wire_version`. Clearing the custom prompt returns the built-in v3 prompt.
