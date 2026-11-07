@@ -121,11 +121,13 @@ def test_schema_without_fragments_forbids_elements_and_has_no_empty_enum():
     for node in nodes(s):
         assert node.get('enum') != []
         assert set(node) <= ALLOWED
+    expected = {'facts': ('add',), 'timeline': ('add',), 'character_states': ('add', 'update', 'retire'),
+        'open_threads': ('add', 'update', 'retire')}
     groups = s['properties']
-    for group in groups.values():
-        if group['type'] != 'object' or 'add' not in group.get('properties', {}):
-            continue
-        for action in ('add', 'update', 'retire'):
-            if action in group['properties']:
-                assert group['properties'][action]['maxItems'] == 0
-                assert 'enum' not in group['properties'][action]['items']['properties']['evidence_ids']['items']
+    assert set(groups) == {'schema_version', *expected}
+    for category, actions in expected.items():
+        assert tuple(groups[category]['properties']) == actions
+        for action in actions:
+            node = groups[category]['properties'][action]
+            assert node['maxItems'] == 0
+            assert 'enum' not in node['items']['properties']['evidence_ids']['items']

@@ -7,23 +7,27 @@ import sqlite3
 from collections import Counter
 from pathlib import Path
 
-from .journal import CATEGORIES, decode_memory, load_memory, parse_memory_result
+from .journal import CATEGORIES, decode_memory, load_memory, parse_memory_result, replay_memory
 from .violations import MemoryViolations
 
 
-def v2_as_v3(data: dict) -> dict:
-    """Read a flat v2 answer as grouped v3. Update/retire lose category and scope; evidence_id is split into ids.
+def v2_as_v3(data: dict, categories: dict[str,str] | None = None) -> dict:
+    """Read a flat v2 answer as grouped v3. Update/retire lose scope and take the category of a known claim from
+    the server catalog (claim_id -> category), as v3 does; evidence_id is split into ids.
     Raises ValueError (no model data in the message) when the answer or an operation cannot be mapped."""
     result={'schema_version':3,**{c:{'add':[]} if c in {'facts','timeline'} else {'add':[],'update':[],'retire':[]} for c in CATEGORIES}}
     if not isinstance(data,dict) or not isinstance(data.get('operations'),list):raise ValueError('unmappable')
     for op in data['operations']:
         if not isinstance(op,dict) or op.get('category') not in CATEGORIES or not isinstance(op.get('action'),str):raise ValueError('unmappable')
-        category=op['category'];action=op['action']
+        action=op['action']
+        category=(categories or {}).get(op.get('claim_id'),op['category']) if action!='add' else op['category']
         raw=op.get('evidence_id')
         ids=[part for part in re.split(r'[,;\s]+',raw) if part] if isinstance(raw,str) else []
         item={'text':op.get('text'),'evidence_ids':ids}
         if action=='add':
-            if category=='character_states':item['character_ids']=op.get('character_ids')
+            if category=='character_states':
+                scope=op.get('character_ids')
+                item['character_ids']=[] if scope is None else scope
         else:item={'claim_id':op.get('claim_id'),**item}
         result[category].setdefault(action,[]).append(item)
     return result
@@ -70,7 +74,7 @@ def replay_response(raw: str, fragments: dict, prose_id: str, prose: str) -> dic
         return out
     out['as_is'],out['as_is_codes']=_attempt(raw,previous,prose_id,prose,allowed,wire)
     if wire==2:
-        try:translated=json.dumps(v2_as_v3(data))
+        try:translated=json.dumps(v2_as_v3(data,{id:event.category for id,event in replay_memory(previous).items()}))
         except ValueError:out['as_v3'],out['as_v3_codes']='fail',['unmappable']
         else:out['as_v3'],out['as_v3_codes']=_attempt(translated,previous,prose_id,prose,allowed,3)
     return out

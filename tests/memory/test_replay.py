@@ -145,3 +145,25 @@ def test_malformed_payload_shapes_are_bad_context_not_crash(tmp_path):
     c.commit();c.close()
     (data/'p.txt').write_text('{}',encoding='utf-8')
     assert summarize(collect(db,data))['skipped']['bad_context']==2
+
+
+def _state_journal():
+    claim=MemoryEvent(event_id='me_s',claim_id='mc_s',operation='add',category='character_states',text='Стан',
+                      character_ids=['c1'],source_version_id='v0',quote='Цитата')
+    return MemoryJournal(source_prose_ids=['v0'],events=[claim])
+
+
+def test_v2_as_v3_takes_update_category_from_server_catalog():
+    op={'action':'update','category':'open_threads','claim_id':'mc_s','text':'Н','character_ids':[],'evidence_id':'f000001'}
+    v3=v2_as_v3({'schema_version':2,'operations':[op]},{'mc_s':'character_states'})
+    assert v3['character_states']['update']==[{'claim_id':'mc_s','text':'Н','evidence_ids':['f000001']}]
+    assert v3['open_threads']['update']==[]
+    r=replay_response(json.dumps({'schema_version':2,'operations':[op]}),frags(allowed=['c1'],previous=_state_journal()),'v1',PROSE)
+    assert r['as_v3']=='pass'
+
+
+def test_v2_add_without_character_ids_keeps_v2_default():
+    op={'action':'add','category':'character_states','text':'Стан','evidence_id':'f000001,f000002'}
+    assert v2_as_v3({'schema_version':2,'operations':[op]})['character_states']['add'][0]['character_ids']==[]
+    r=replay_response(json.dumps({'schema_version':2,'operations':[op]}),frags(),'v1',PROSE)
+    assert r['as_is']=='fail' and r['as_v3']=='pass'
