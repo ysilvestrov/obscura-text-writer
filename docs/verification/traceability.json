@@ -444,7 +444,8 @@
       "requirement": "MEMORY-003",
       "scope": "Додаткові докази в перегляді пам’яті. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
       "tests": [
-        "tests/web/test_memory_forwarding_api.py::test_memory_view_rows_carry_supporting_quotes"
+        "tests/web/test_memory_forwarding_api.py::test_memory_view_rows_carry_supporting_quotes",
+        "tests/web/test_memory_table_ui.py::test_memory_table_selection_conflict_and_async_save"
       ]
     },
     {
@@ -482,11 +483,12 @@
     {
       "id": "MEMORY-004-S05",
       "requirement": "MEMORY-004",
-      "scope": "Повний список порушень у деталях спроби (серверна частина; UI — Task 2). Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "scope": "Повний список порушень у деталях спроби (серверна частина й UI). Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
       "tests": [
         "tests/web/test_memory_violations_api.py::test_run_details_expose_memory_violations_without_context",
         "tests/web/test_memory_violations_api.py::test_run_details_without_violations_have_no_key",
-        "tests/web/test_memory_violations_api.py::test_run_details_ignore_wrongly_typed_diagnostics"
+        "tests/web/test_memory_violations_api.py::test_run_details_ignore_wrongly_typed_diagnostics",
+        "tests/web/test_memory_violations_ui.py::test_violation_details_render_labels_codes_and_overflow"
       ]
     },
     {
@@ -519,7 +521,8 @@
         "tests/web/test_evidence_settings.py::test_upgrade_with_standard_or_blank_text_returns_builtin",
         "tests/web/test_evidence_settings.py::test_upgrade_rejected_for_non_memory_role_or_snapshot",
         "tests/web/test_evidence_settings.py::test_v2_prompt_without_upgrade_stays_v2",
-        "tests/web/test_evidence_settings.py::test_contract_follows_incoming_prompt_version_id"
+        "tests/web/test_evidence_settings.py::test_contract_follows_incoming_prompt_version_id",
+        "tests/web/test_evidence_settings.py::test_settings_label_agrees_with_stored_contract"
       ]
     },
     {

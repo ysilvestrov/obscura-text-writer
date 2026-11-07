@@ -11,4 +11,9 @@ assert.equal(expectedPromptContract('memory','evidence_delta',null,false,'Нов
 assert.equal(expectedPromptContract('memory','evidence_delta',v2,false,'Новий'),'memory/evidence_delta/3');
 assert.equal(expectedPromptContract('memory','snapshot',v2,true,'Власний'),'memory/snapshot/1');
 assert.equal(expectedPromptContract('edit','patches',null,false,''),'edit/patches/1');
+// Opt-in upgrade moves a custom /2 prompt to /3 (upgrade_memory_wire); the default keeps /2.
+assert.equal(expectedPromptContract('memory','evidence_delta',v2,true,'текст',true),'memory/evidence_delta/3');
+assert.equal(expectedPromptContract('memory','evidence_delta',v2,true,'текст',false),'memory/evidence_delta/2');
+assert.equal(expectedPromptContract('memory','evidence_delta',v2,true,'текст'),'memory/evidence_delta/2');
+assert.equal(expectedPromptContract('memory','snapshot',v2,true,'текст',true),'memory/snapshot/1');
 console.log('Prompt contract label regressions passed');

@@ -56,7 +56,7 @@ export function installMemoryTable({state,api,json,notice,refresh,loadBuffer}){
         emit();counts(rows.length);controls();
       };
       choice.append(check);content.append(node('p',live(()=>(row.text))));
-      const proof=node('details');proof.append(node('summary',msg("m_a09205d5a71e")),node('p',live(()=>(row.quote))));content.append(proof);
+      const proof=node('details');proof.append(node('summary',msg("m_a09205d5a71e")),node('p',live(()=>(row.quote))));for(const extra of row.supporting_quotes||[])proof.append(node('p',live(()=>(extra))));content.append(proof);
       [choice,content,category,source].forEach((td,i)=>uiAttr(td,'data-label',()=>[msg("m_6cf9b3a4b307"),msg("m_461437b0662b"),msg("m_7f3e53d4d224"),msg("m_aca3cc594690")][i]));
       tr.append(choice,content,category,source);body.append(tr);
     }
