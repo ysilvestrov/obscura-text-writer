@@ -720,7 +720,7 @@ Wire v3 (`schema_version=3`, модуль `memory/wire_v3.py`) — станда�
 персонажі сцени; ті самі captured дані, що й у `check_v3`). Схема обмежує `add` трьома
 елементами, `evidence_ids` — 1–3 ID з `enum` фрагментів, `claim_id` у update/retire —
 `enum` активних claim саме цієї категорії, `character_ids` — `enum` персонажів сцени;
-усі об’єкти закриті (`additionalProperties: false`, усі ключі обов’язкові). Якщо
+`schema_version` — integer з `enum: [3]`; усі об’єкти закриті (`additionalProperties: false`, усі ключі обов’язкові). Якщо
 кандидатів немає, масив має `maxItems: 0` без `enum` (порожній `enum` недопустимий).
 Схема використовує лише `type`, `properties`, `required`, `additionalProperties`,
 `items`, `enum`, `minItems`, `maxItems`: `uniqueItems` Venice відхиляє, `minLength` не
