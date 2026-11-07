@@ -107,3 +107,35 @@ def test_wire_version_mismatch():
 def test_v3_labels_are_humanized():
     with pytest.raises(MemoryViolations) as e:run(v3(facts_add=[padd('Ф',[])]))
     assert 'facts.add, елемент 1' in str(e.value)
+
+
+def test_v3_orders_add_update_retire_within_group():
+    j=run(v3(states_add=[sadd('Новий стан',['f000001'],['c1'])],threads_retire=[chg(THREAD_ID,'Кін',['f000002'])],
+        threads_add=[padd('Нова лінія',['f000003'])],timeline_add=[padd('Подія',['f000004'])],facts_add=[padd('Ф',['f000005'])]))
+    assert [(e.category,e.operation) for e in j.events[len(PREV.events):]]==[
+        ('facts','add'),('character_states','add'),('open_threads','add'),('open_threads','retire'),('timeline','add')]
+    prev=run(v3(threads_add=[padd('Друга лінія',['f000001'])]))
+    second=prev.events[-1].claim_id
+    j2=parse_memory_result(v3(threads_retire=[chg(THREAD_ID,'Кін',['f000002'])],threads_update=[chg(second,'Оновлено',['f000003'])],
+        threads_add=[padd('Третя',['f000004'])]),prev,'p3',PROSE,'evidence_delta',[],wire_version=3)
+    assert [(e.operation,e.text) for e in j2.events[len(prev.events):]]==[('add','Третя'),('update','Оновлено'),('retire','Кін')]
+
+
+def test_v3_duplicate_add_occurrence_depends_on_supporting_evidence():
+    j=run(v3(facts_add=[padd('Ф',['f000001','f000002']),padd('Ф',['f000001','f000003']),padd('Ф',['f000001','f000003'])]))
+    new=j.events[len(PREV.events):]
+    assert len({e.claim_id for e in new})==3
+    one=run(v3(facts_add=[padd('Ф',['f000001']),padd('Ф',['f000001'])])).events[len(PREV.events):]
+    v2=parse_memory_result(json.dumps({'schema_version':2,'operations':[dict(action='add',category='facts',text='Ф',evidence_id='f000001')]*2}),
+        PREV,'p2',PROSE,'evidence_delta',[]).events[len(PREV.events):]
+    assert one==v2 and one[0].claim_id!=one[1].claim_id
+    pair=run(v3(facts_add=[padd('Ф',['f000001','f000002']),padd('Ф',['f000001','f000003'])])).events[len(PREV.events):]
+    solo=run(v3(facts_add=[padd('Ф',['f000001','f000002'])])).events[len(PREV.events):]
+    assert pair[0]==solo[0]
+
+
+def test_v3_retire_event_id_matches_v2():
+    j=run(v3(threads_retire=[chg(THREAD_ID,'Кін',['f000002'])]))
+    v2=parse_memory_result(json.dumps({'schema_version':2,'operations':[dict(action='retire',category='open_threads',claim_id=THREAD_ID,text='Кін',evidence_id='f000002')]}),
+        PREV,'p2',PROSE,'evidence_delta',[])
+    assert j==v2 and j.events[-1].event_id==v2.events[-1].event_id

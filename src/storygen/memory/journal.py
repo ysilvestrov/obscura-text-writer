@@ -178,6 +178,12 @@ def change_event_id(action,claim_id,text,prose_id,quote,supporting=()):
     return stable_id('me_',value)
 
 
+def _change_event(action,claim_id,text,category,character_ids,prose_id,quote,supporting=()):
+    return MemoryEvent(event_id=change_event_id(action,claim_id,text,prose_id,quote,supporting),
+        claim_id=claim_id,operation=action,category=category,text=text,character_ids=list(character_ids),
+        source_version_id=prose_id,quote=quote,supporting_quotes=list(supporting))
+
+
 def _extend(previous,prose_id,events):
     if prose_id in previous.source_prose_ids:
         raise ValueError('Джерело пам’яті вже враховане')
@@ -199,9 +205,7 @@ def apply_operations(previous,delta,prose_id,prose,allowed_character_ids):
             occurrence=duplicates.get(key,0);duplicates[key]=occurrence+1
             events.append(_add_event(op.category,op.text,prose_id,quote,occurrence,op.character_ids))
         else:
-            events.append(MemoryEvent(event_id=change_event_id(op.action,op.claim_id,op.text,prose_id,quote),
-                claim_id=op.claim_id,operation=op.action,category=op.category,text=op.text,
-                character_ids=op.character_ids,source_version_id=prose_id,quote=quote))
+            events.append(_change_event(op.action,op.claim_id,op.text,op.category,op.character_ids,prose_id,quote))
     return _extend(previous,prose_id,events)
 
 

@@ -5,7 +5,7 @@ from typing import Literal
 from pydantic import Field, ValidationError
 from ..domain import DomainModel
 from ..evidence import fragment_text
-from .journal import CATEGORIES, MemoryEvent, _add_event, _extend, change_event_id, replay_memory
+from .journal import CATEGORIES, MemoryEvent, _add_event, _change_event, _extend, replay_memory
 from .violations import MUTABLE, Violation, pydantic_violations
 
 ACTIONS=('add','update','retire')
@@ -103,7 +103,5 @@ def wire_v3_events(wire: MemoryWireV3,previous,prose_id,prose) -> list[MemoryEve
                 events.append(_add_event(category,item.text,prose_id,quote,occurrence,chars,supporting))
             else:
                 claim=active[item.claim_id]
-                events.append(MemoryEvent(event_id=change_event_id(action,item.claim_id,item.text,prose_id,quote,supporting),
-                    claim_id=item.claim_id,operation=action,category=category,text=item.text,
-                    character_ids=list(claim.character_ids),source_version_id=prose_id,quote=quote,supporting_quotes=supporting))
+                events.append(_change_event(action,item.claim_id,item.text,category,claim.character_ids,prose_id,quote,supporting))
     return _extend(previous,prose_id,events)
