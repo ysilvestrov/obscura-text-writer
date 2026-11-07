@@ -713,6 +713,21 @@ Wire v3 (`schema_version=3`, модуль `memory/wire_v3.py`) — станда�
 протоколу дає код `wire_version`; нормалізація scope MEMORY-004 діє лише для v2, а зайве
 `character_ids` у v3 є порушенням схеми. Порожня відповідь v3 валідна й лише фіксує прозу.
 
+Динамічна схема: у режимі `json_schema` для wire v3 запит містить схему, зібрану
+`memory_wire_v3_schema(bounds)` із `fragments['memory_schema_bounds']` (JSON від
+`schema_bounds(previous, prose, allowed_character_ids)` — ID фрагментів поточної прози,
+активні змінні claim за категоріями `character_states`/`open_threads` і дозволені
+персонажі сцени; ті самі captured дані, що й у `check_v3`). Схема обмежує `add` трьома
+елементами, `evidence_ids` — 1–3 ID з `enum` фрагментів, `claim_id` у update/retire —
+`enum` активних claim саме цієї категорії, `character_ids` — `enum` персонажів сцени;
+усі об’єкти закриті (`additionalProperties: false`, усі ключі обов’язкові). Якщо
+кандидатів немає, масив має `maxItems: 0` без `enum` (порожній `enum` недопустимий).
+Схема використовує лише `type`, `properties`, `required`, `additionalProperties`,
+`items`, `enum`, `minItems`, `maxItems`: `uniqueItems` Venice відхиляє, `minLength` не
+вживається. Унікальність доказів, непорожній текст, ліміт 12 елементів і `target_twice`
+перевіряє лише сервер; серверна перевірка відповіді лишається обов’язковою. Спроба без
+`memory_schema_bounds` використовує статичну схему `MemoryWireV3`.
+
 <a id="memory-002-s01"></a>
 #### Scenario: MEMORY-002-S01 — Невідомий фрагмент
 - GIVEN доповнення містить ID, якого немає у поточному документі
@@ -731,6 +746,13 @@ Wire v3 (`schema_version=3`, модуль `memory/wire_v3.py`) — станда�
 - GIVEN елемент v3 має два або три `evidence_ids`
 - WHEN відповідь перекладається
 - THEN перший фрагмент стає `quote`, решта — `supporting_quotes` у порядку переліку.
+
+<a id="memory-002-s04"></a>
+#### Scenario: MEMORY-002-S04 — Динамічна схема
+- GIVEN wire v3 і режим `json_schema`
+- WHEN будується запит
+- THEN схема обмежує add, докази, `claim_id` і scope за captured даними
+- AND спроба без меж використовує статичну схему.
 
 <a id="memory-003"></a>
 ### Requirement: MEMORY-003 — Історія та сумісність пам’яті
@@ -1677,14 +1699,15 @@ claim незмінний. Порожній набір операцій дозв�
 journal, expected source IDs і allowed scope зберігаються у fragments спроби.
 `build_context` визначає wire через `validate_role_prompt` і `memory_wire_version`
 (стандартний промпт — 3, власний — `prompt_contract.schema_version`) та записує
-`fragments['memory_wire_version']` (`'2'`/`'3'`). Для v3 `memory_catalog_v3` дає
+`fragments['memory_wire_version']` (`'2'`/`'3'`); для v3 також `fragments['memory_schema_bounds']`
+(JSON меж динамічної схеми, MEMORY-002). Для v3 `memory_catalog_v3` дає
 JSON із двома списками (`projection_version=memory-catalog-v3`):
 `mutable` — claim_id/category/text/character_ids станів і ліній;
 `immutable` — category/text фактів і хронології.
 ID незмінних claims моделі не передаються;
 для v2 лишається `memory_catalog` (`memory-catalog-v2`). `execute_stage` передає wire
-у parser, а `generation_request` у `json_schema` бере статичну схему `MemoryWireV3`
-або `MemoryOperations`. Спроба, контекст якої захоплено до wire v3 (без ключа),
+у parser, а `generation_request` у `json_schema` бере для v3 динамічну схему з `memory_schema_bounds` (статичну `MemoryWireV3`
+без меж) або `MemoryOperations` для v2. Спроба, контекст якої захоплено до wire v3 (без ключа),
 розбирається як v2. Переносимий профіль ролей зберігає збережений контракт власного
 промпту пам’яті (v2 або v3); імпорт приймає обидва.
 Вбудований текст v3 — `memory_delta_uk_v3.txt`;

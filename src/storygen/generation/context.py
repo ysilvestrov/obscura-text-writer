@@ -157,7 +157,11 @@ def build_context(repo,scene_id: str,stage: str,settings: RoleSettings,*,editor_
             sections=[heading+'\n'+catalog,
                 'ДОЗВОЛЕНІ CHARACTER_IDS ДЛЯ НОВИХ СТАНІВ\n'+json.dumps(scene.character_ids,ensure_ascii=False),
                 f'ПОТОЧНА ПРОЗА [version_id={prose_id}] — НУМЕРОВАНІ ФРАГМЕНТИ\n'+render_fragments(repo.read_text(prose_id))]
-            return make_context(repo,story,scene,stage,settings,sections,refs,{'previous_memory':past.model_dump_json(),'expected_source_prose_ids':json.dumps(expected),'memory_allowed_character_ids':json.dumps(scene.character_ids),'memory_wire_version':str(wire)},accepted_prose_ids=expected,**reuse,
+            bounds={}
+            if wire==3:
+                from ..memory.wire_v3 import schema_bounds
+                bounds={'memory_schema_bounds':json.dumps(schema_bounds(past,repo.read_text(prose_id),scene.character_ids),ensure_ascii=False)}
+            return make_context(repo,story,scene,stage,settings,sections,refs,{'previous_memory':past.model_dump_json(),'expected_source_prose_ids':json.dumps(expected),'memory_allowed_character_ids':json.dumps(scene.character_ids),'memory_wire_version':str(wire),**bounds},accepted_prose_ids=expected,**reuse,
                 memory_metrics={'projection_version':f'memory-catalog-v{wire}','journal_chars':len(past.model_dump_json()),'catalog_chars':len(catalog),'event_count':len(past.events)})
         sections=['ПОПЕРЕДНЯ ПЕРЕВІРЕНА ПАМ’ЯТЬ\n'+legacy_view(past).model_dump_json(),
             'EXPECTED_SOURCE_PROSE_IDS — скопіюй цей список точно у source_prose_ids:\n'+json.dumps(expected)]

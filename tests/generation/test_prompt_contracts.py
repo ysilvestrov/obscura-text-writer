@@ -178,3 +178,30 @@ def test_json_schema_mode_uses_wire_v3_schema():
     for fragments in ({'memory_wire_version': '2'}, {}):
         v2 = generation_request('memory', role, 's', 'u', fragments)['response_format']['json_schema']['schema']
         assert 'operations' in v2['properties']
+
+
+def test_json_schema_mode_uses_dynamic_v3_schema(tmp_path):
+    import json
+    repo, _, scene = memory_prepared(tmp_path)
+    role = memory_role(provider=ProviderSettings(model='fake', response_mode='json_schema'))
+    context = build_context(repo, scene.id, 'memory', role)
+    bounds = json.loads(context.fragments['memory_schema_bounds'])
+    assert bounds == {'fragment_ids': ['f000001'], 'mutable': {'character_states': [], 'open_threads': []}, 'character_ids': ['A']}
+    schema = context.api_request['response_format']['json_schema']['schema']
+    ev = schema['properties']['facts']['properties']['add']['items']['properties']['evidence_ids']
+    assert ev['items']['enum'] == ['f000001']
+
+
+def test_wire_v2_context_has_no_schema_bounds(tmp_path):
+    repo, story, scene = memory_prepared(tmp_path)
+    prompt = custom_memory_prompt(repo, story, 2)
+    context = build_context(repo, scene.id, 'memory', memory_role(prompt_version_id=prompt.id))
+    assert 'memory_schema_bounds' not in context.fragments
+
+
+def test_request_without_bounds_uses_static_v3_schema():
+    from storygen.memory.wire_v3 import MemoryWireV3
+    from storygen.providers.requests import generation_request, strict_schema
+    role = memory_role(provider=ProviderSettings(model='fake', response_mode='json_schema'))
+    schema = generation_request('memory', role, 's', 'u', {'memory_wire_version': '3'})['response_format']['json_schema']['schema']
+    assert schema == strict_schema(MemoryWireV3)

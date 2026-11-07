@@ -65,6 +65,9 @@ def generation_request(stage, settings, system, user, fragments):
         else:
             model = CopyEdits if stage == 'edit' else MemoryOperations if stage == 'memory' and settings.memory_mode == 'evidence_delta' else {'prepare': StoryBlueprint, 'brief': WritersBrief, 'memory': MemorySnapshot}[stage]
         schema = fragments.get('impact_wire_schema') if stage=='impact_part' else None
+        if stage == 'memory' and model.__name__ == 'MemoryWireV3' and fragments.get('memory_schema_bounds'):
+            from ..memory.wire_v3 import memory_wire_v3_schema
+            schema = memory_wire_v3_schema(json.loads(fragments['memory_schema_bounds']))
         schema = schema if schema is not None else strict_schema(model)
         if stage == 'memory' and settings.memory_mode == 'snapshot' and fragments.get('expected_source_prose_ids'):
             allowed = json.loads(fragments['expected_source_prose_ids'])
