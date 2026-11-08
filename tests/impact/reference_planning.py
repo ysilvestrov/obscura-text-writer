@@ -1,4 +1,10 @@
-"""Frozen pre-PERF-001 (2c203e8) review planning on public copying reads, without per-capture reuse; the equivalence reference for tests only."""
+"""Frozen oracle of the 2c203e8 review planning (planning, memory_review, review.capture, scene_status) on public
+copying reads, without per-capture reuse; the equivalence reference for tests only.
+
+Do not update this module to follow later code changes: only imports and the _validated_journal/_capture_memory
+renames differ from 2c203e8. Delete it (and the tests comparing against it) when planning semantics are deliberately
+changed; such a change then needs its own equivalence or behaviour tests.
+"""
 import json
 from storygen.memory.journal import load_memory,validate_memory_journal
 from storygen.storage.snapshots import build_author_baseline

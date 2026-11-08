@@ -18,7 +18,7 @@ def capture_target(view,version_id,*,baseline_override=None,current_sources_only
     if ref.kind not in {'brief','edited','manual'}:raise ValueError('Непридатний матеріал перевірки')
     from ..characters.projection import OTHER_MATERIAL_WARNING
     warnings=set()
-    blockers=[];hashes={};selectors={};changes={};baseline_ids={};visited=set();stack=set();seen_selectors=set()
+    blockers=[];hashes={};selectors={};changes={};baseline_ids={};visited=set();stack=set();seen_selectors=set();seen_live={}
     order=[s.id for s in view.peek_scenes(view.story.id) if s.position<=scene.position]
     text=_raw(view,ref.id)
     root_snapshot=view.acceptances[ref.id].baseline if ref.id in view.acceptances else ref.dependency_snapshot
@@ -109,10 +109,12 @@ def capture_target(view,version_id,*,baseline_override=None,current_sources_only
         if id==ref.id and not snapshot:raise ValueError('Немає відтворюваної історичної бази')
         if snapshot:
             for selector in snapshot.selectors:
-                # An equal selector already passed the checks below and wrote the same change and live selector:
-                # its outcome depends only on the selector's fields and the view, so repeating it changes nothing.
+                # An equal selector (all fields) already passed the checks below and wrote the same change; only its
+                # live value is written again, because `selectors` is keyed by (kind, owner, field) and the last write wins.
                 seen=selector.model_dump_json()
-                if seen in seen_selectors:continue
+                if seen in seen_selectors:
+                    if seen in seen_live:selectors[seen_live[seen][0]]=seen_live[seen][1]
+                    continue
                 seen_selectors.add(seen)
                 # Historical target self selectors are known inputs, not publish targets.
                 current=selector_value(view,selector)
@@ -129,7 +131,8 @@ def capture_target(view,version_id,*,baseline_override=None,current_sources_only
                     old_text=old_text,new_text=new_text,changed=old_text!=new_text or selector.expected!=current)
                 changes[key]=change
                 live=selector.model_copy(update={'expected':current}).model_dump()
-                selectors[fingerprint([selector.kind,selector.owner_id,selector.field])]=live
+                live_key=fingerprint([selector.kind,selector.owner_id,selector.field])
+                selectors[live_key]=live;seen_live[seen]=(live_key,live)
             for source,sha in snapshot.refs.items():
                 if source not in view.versions or view.versions[source].sha256!=sha:raise ValueError('Історичне джерело відсутнє або змінене')
                 # Avoid self-target prose refs used only as publication CAS.
