@@ -25,6 +25,8 @@ def _jaccard(a, b):
 def aggregate(rows: list[dict], selections: list[Selection]) -> dict:
     n = len(rows)
     targets = sum(r['targets'] for r in rows)
+    fitting = [r for r in rows if not r['overflow']]
+    fitting_targets = sum(r['targets'] for r in fitting)
     pairs = [_jaccard(x.atmosphere_ids, y.atmosphere_ids) for x, y in zip(selections, selections[1:])
              if x.atmosphere_ids or y.atmosphere_ids]
     return {
@@ -37,6 +39,7 @@ def aggregate(rows: list[dict], selections: list[Selection]) -> dict:
         'dropped_by_budget': _stats([r['dropped_by_budget'] for r in rows]),
         'target_recall': round(sum(r['targets_hit'] for r in rows) / targets, 3) if targets else None,
         'targets_total': targets,
+        'target_recall_fitting': round(sum(r['targets_hit'] for r in fitting) / fitting_targets, 3) if fitting_targets else None,
         'scenes_with_missed_target': sum(r['targets_hit'] < r['targets'] for r in rows),
         'core_size': _stats([r['core_size'] for r in rows]),
         'atmosphere_mean': round(sum(r['atmosphere_count'] for r in rows) / n, 2) if n else None,

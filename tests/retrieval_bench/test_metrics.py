@@ -68,3 +68,13 @@ def test_jaccard_adjacent():
     assert 0<=agg['atmosphere_jaccard_adjacent']<1 and agg['atmosphere_mean']>0
     same=aggregate([scene_metrics(scenes[0],sels[0])]*2,[sels[0]]*2)
     assert same['atmosphere_jaccard_adjacent']==1
+
+
+def test_recall_fitting_excludes_overflow_scenes():
+    ok=scene(rich_records(),cast=('c2',),targets=('pres1',),id='a')
+    big=[rec(f'core{i}','character_states','Марія '+'дуже '*40,['c1']) for i in range(10)]
+    bad=scene(big+rich_records(),cast=('c2',),targets=('pres1',),id='b')
+    p=Params(memory_budget_tokens=300,measure='conservative',core_mode='upper')
+    sels=[STRATEGIES['structural'](ok,P),STRATEGIES['structural'](bad,p)]
+    agg=aggregate([scene_metrics(ok,sels[0]),scene_metrics(bad,sels[1])],sels)
+    assert agg['target_recall']==0.5 and agg['target_recall_fitting']==1.0

@@ -80,3 +80,10 @@ def test_cli_single_scene_story(tmp_path):
     assert out.returncode==0,out.stderr
     data=json.loads(out.stdout)
     assert data['story']['scene_count']==1 and data['growth']=={}
+
+
+def test_growth_is_not_budget_clipped(synthetic_repo):
+    repo,_,_=synthetic_repo
+    small=json.loads(run_cli(['--data',str(repo.root),'--synthetic','','--context','9000']).stdout)['growth']
+    large=json.loads(run_cli(['--data',str(repo.root),'--synthetic','','--context','1000000']).stdout)['growth']
+    assert small==large

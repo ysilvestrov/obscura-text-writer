@@ -7,8 +7,8 @@ from storygen.memory.reuse import journal_for_read
 
 from .model import Record, SceneInput
 
-NEEDS_CONFIRMATION = 'Спершу оновіть пам’ять попередньої сцени'
 SKIP_CODES = ('skipped_needs_confirmation', 'skipped_no_memory')
+TARGET_CODES = ('targets_hidden', 'targets_absent')
 
 
 def records_from_journal(journal: MemoryJournal, numbers, hidden):
@@ -23,6 +23,13 @@ def records_from_journal(journal: MemoryJournal, numbers, hidden):
                      for e in journal.events
                      if e.claim_id not in hidden and (e.category == 'timeline' or e.category == 'open_threads' and e.operation == 'retire'))
     return records, timeline
+
+
+def scene_targets(own: MemoryJournal, past: MemoryJournal, own_prose_ids) -> frozenset:
+    """Claims this scene's memory updated or retired: new events whose source is this scene's own prose."""
+    known = {e.event_id for e in past.events}
+    return frozenset(e.claim_id for e in own.events
+                     if e.event_id not in known and e.source_version_id in own_prose_ids and e.operation in {'update', 'retire'})
 
 
 def name_stems(name: str) -> tuple[str, ...]:
@@ -59,28 +66,34 @@ def extract_story(repo, story_id: str, protagonist: str | None = None):
     scenes = sorted(repo.list_scenes(story_id), key=lambda s: s.position)
     names = _names(repo, story)
     hero = protagonist or _protagonist(scenes)
-    skipped = dict.fromkeys(SKIP_CODES, 0)
+    skipped = dict.fromkeys(SKIP_CODES + TARGET_CODES, 0)
     numbers_by_scene = {s.id: s.position + 1 for s in scenes}
     result, seen = [], set()
     for scene in scenes:
         cast = tuple(scene.character_ids)
         first = sum(1 for id in cast if id not in seen)
         seen.update(cast)
+        earlier = [s for s in scenes if s.position < scene.position]
+        if earlier and not earlier[-1].heads.get('memory'):
+            skipped['skipped_no_memory'] += 1
+            continue
         try:
             past = journal_for_read(repo, scene.id)
-        except ValueError as error:
-            skipped['skipped_needs_confirmation' if str(error) == NEEDS_CONFIRMATION else 'skipped_no_memory'] += 1
-            continue
-        except Exception:
-            skipped['skipped_no_memory'] += 1
+        except ValueError:
+            # The previous scene has memory, so the product refuses only because it awaits confirmation.
+            skipped['skipped_needs_confirmation'] += 1
             continue
         numbers = {id: numbers_by_scene.get(repo.get_version(id).scene_id) for id in past.source_prose_ids}
         records, timeline = records_from_journal(past, numbers, hidden_before(repo, scene.id))
         targets = frozenset()
         if scene.heads.get('memory'):
-            known = {e.event_id for e in past.events}
             own = load_memory(repo.read_text(scene.heads['memory']))
-            targets = frozenset(e.claim_id for e in own.events if e.event_id not in known and e.operation in {'update', 'retire'})
+            own_prose = {id for id in own.source_prose_ids if repo.get_version(id).scene_id == scene.id}
+            targets = scene_targets(own, past, own_prose)
+            hidden = hidden_before(repo, scene.id)
+            present = {r.claim_id for r in records}
+            for claim in targets - present:
+                skipped['targets_hidden' if claim in hidden else 'targets_absent'] += 1
         result.append(SceneInput(scene.id, scene.position + 1, cast, _text(repo, scene.heads.get('plan')) or scene.beats,
                                  _text(repo, scene.heads.get('prose')), records, timeline, hero, names, targets, first))
     return result, skipped

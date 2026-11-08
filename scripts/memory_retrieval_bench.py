@@ -75,15 +75,15 @@ def evaluate(scenes, others, args, contexts, measures):
     return result
 
 
-def growth(scenes, args, others, context):
+def growth(scenes, args):
     if len({s.number for s in scenes}) < 2:
         return {}
     out = {}
     for key, name, mode in variants():
         points = []
         for scene in scenes:
-            params = Params(budget(context, args, others.get(scene.scene_id), 'conservative'), 'conservative', mode,
-                            core_recent_scenes=args.core_recent)
+            # Unbounded budget: growth measures what each strategy selects, not what one context can hold.
+            params = Params(10 ** 12, 'conservative', mode, core_recent_scenes=args.core_recent)
             points.append((scene.number, STRATEGIES[name](scene, params).chars))
         slope, intercept = fit_linear(points)
         out[key] = {'slope_chars': round(slope, 1), 'intercept_chars': round(intercept, 1),
@@ -135,14 +135,16 @@ def run(args):
                     for s in scenes}
             cases[key] = control_hits(raw, by_id, sels)
     report = {
-        'story': {'scene_count': len(scenes), 'skipped': skipped,
+        'story': {'scene_count': len(scenes),
+                  'skipped': {k: v for k, v in skipped.items() if k.startswith('skipped_')},
+                  'targets_unreachable': {k: v for k, v in skipped.items() if k.startswith('targets_')},
                   'protagonist_id': scenes[0].protagonist if scenes else None,
                   'first_meetings_total': sum(s.first_meetings for s in scenes),
                   'other_context_source': {'attempt': sum(1 for o in others.values() if o),
                                            'share': sum(1 for o in others.values() if not o)}},
         'real': evaluate(scenes, others, args, contexts, MEASURES),
         'memory_stage': memory_stage,
-        'growth': growth(scenes, args, others, biggest),
+        'growth': growth(scenes, args),
         'synthetic': synthetic,
         'control_cases': cases,
         'params': {'context': contexts, 'output_reserve': args.output_reserve, 'other_context': args.other_context,

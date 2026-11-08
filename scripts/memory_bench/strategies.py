@@ -10,6 +10,8 @@ from dataclasses import dataclass
 from typing import Callable, Iterable, Literal
 
 from .extract import name_stems
+from storygen.token_budget.core import canonical
+
 from .model import CHARS_PER_TOKEN, Record, SceneInput, Selection, render, tokens_conservative, tokens_realistic
 
 LAYERS = ('core', 'present', 'general', 'threads', 'facts', 'timeline', 'atmosphere', 'fts')
@@ -43,7 +45,8 @@ def _line_cost(text: str, measure: str) -> float:
     """Upper bound of what one rendered line adds: JSON-escaped newline in the conservative measure."""
     line = '— ' + text
     if measure == 'conservative':
-        return len(line.encode('utf-8')) + 2
+        # canonical() adds 2 quote bytes and escapes '"', '\\' and control chars; the newline separator adds 2 (\\n).
+        return len(canonical(line).encode('utf-8'))
     return (len(line) + 1) / CHARS_PER_TOKEN
 
 
@@ -102,7 +105,8 @@ def _with_overflow(sel: Selection, params: Params) -> Selection:
 
 class _Budget:
     def __init__(self, params: Params):
-        self.params, self.left = params, params.memory_budget_tokens - _base_cost(params.measure)
+        reserve = 1 if params.measure == 'realistic' else 0  # final ceil() may add up to one token
+        self.params, self.left = params, params.memory_budget_tokens - _base_cost(params.measure) - reserve
 
     def take(self, cost: float) -> bool:
         if cost <= self.left:

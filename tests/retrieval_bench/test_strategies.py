@@ -101,3 +101,13 @@ def test_fts_never_adds_timeline_category_records():
     records=rich_records()+[rec('tl1','timeline','Маяк на скелі горів',kind=None)]
     sel=STRATEGIES['structural_fts'](scene(records,plan='маяк на скелі'),params())
     assert 'tl1' not in sel.record_ids
+
+
+@pytest.mark.parametrize('measure',['conservative','realistic'])
+def test_budget_respected_with_json_escaped_quotes(measure):
+    quoted=[rec(f'q{i}','facts','Остап сказав "так" і "ні" \ "може" '*3) for i in range(40)]
+    s=scene(quoted,cast=('c2',))
+    for n in (700,1500,3000):
+        p=params(memory_budget_tokens=n,measure=measure)
+        sel=STRATEGIES['structural'](s,p)
+        assert sel.overflow or measured(sel,p)<=n

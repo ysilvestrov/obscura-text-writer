@@ -56,3 +56,30 @@ def test_records_from_journal_render_parity(synthetic_repo):
 def test_name_stems_inflection_and_apostrophe():
     assert name_stems('Марія')==('марі',) and name_stems('Мар’яна')==name_stems("Мар'яна")
     assert name_stems('Ія')==() and name_stems('Анна Петрівна')==('анна','петрівн')
+
+
+def test_scene_targets_only_from_own_prose():
+    from memory_bench.extract import scene_targets
+    from storygen.memory.journal import MemoryEvent, MemoryJournal
+    ev=lambda n,c,op,src:MemoryEvent(event_id=n,claim_id=c,operation=op,category='open_threads',text='t',source_version_id=src,quote='q')
+    past=MemoryJournal(source_prose_ids=['p1'],events=[ev('e1','a','add','p1'),ev('e2','b','add','p1')])
+    own=MemoryJournal(source_prose_ids=['p1','p2'],events=[ev('e1','a','add','p1'),ev('e2','b','add','p1'),
+        ev('e9','a','update','p1'),ev('e3','b','retire','p2')])
+    assert scene_targets(own,past,{'p2'})=={'b'}
+
+
+def test_extract_skips_scene_whose_previous_has_no_memory(tmp_path):
+    from storygen.domain import SceneCreate, StoryCreate
+    from storygen.generation.dependencies import save_manual_prose
+    from storygen.storage.repository import Repository
+    repo=Repository(tmp_path/'d');story=repo.create_story(StoryCreate(title='Т'))
+    first=repo.create_scene(story.id,SceneCreate(title='1'));repo.create_scene(story.id,SceneCreate(title='2'))
+    save_manual_prose(repo,first.id,'Проза.',first.revision)
+    scenes,skipped=extract_story(repo,story.id)
+    assert len(scenes)==1 and skipped['skipped_no_memory']==1 and skipped['skipped_needs_confirmation']==0
+
+
+def test_extract_counts_hidden_and_absent_targets(synthetic_repo):
+    repo,story_id,_=synthetic_repo
+    _,counts=extract_story(repo,story_id)
+    assert counts['targets_hidden']==0 and counts['targets_absent']==0
