@@ -15,7 +15,7 @@ test('evidence review shows exact quotes, author priority and locale after reloa
   await expect(panel).toContainText('Premise conflict');
   await expect(panel.locator('blockquote')).toHaveCount(2);
   await panel.screenshot({path:`../artifacts/review-evidence/${test.info().project.name}.png`});
-  page.once('dialog',dialog=>dialog.accept());
+  await page.addLocatorHandler(page.locator('.app-dialog'),async dialog=>{await dialog.locator('.app-dialog-actions button').last().click()});
   await panel.locator('[data-priority-choice]').first().click();
   await expect(panel).toContainText('Author priorities changed');
   const policies=await(await request.get(`/api/stories/${f.story_id}/review/priorities/${f.scene_id}`)).json();

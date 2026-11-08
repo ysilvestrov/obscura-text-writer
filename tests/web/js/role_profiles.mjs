@@ -1,3 +1,4 @@
+import {installDialogFixture} from './dialog-fixture.mjs';
 import assert from 'node:assert/strict';
 import {pathToFileURL} from 'node:url';
 import {setImmediate as tick} from 'node:timers/promises';
@@ -28,6 +29,7 @@ let applyRelease=null;
 let revision=4,applied=0,reloaded=0,confirmed=false,lastBody=null;
 const confirmations=[];
 globalThis.confirm=message=>{confirmations.push(message);return confirmed};
+installDialogFixture(globalThis.document);
 globalThis.location={reload:()=>reloaded++};
 globalThis.fetch=async(url,options={})=>{
   const body=options.body?JSON.parse(options.body):null;lastBody=body;

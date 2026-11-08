@@ -1,3 +1,4 @@
+import {confirmDialog,promptDialog} from './dialogs.js';
 import {live,t,msg,labelEntries,getLocale,uiText,uiAttr,uiHTML} from './i18n.js';
 import {api,json,notice} from './api.js';
 import {renderImportJournal} from './import-journal.js';
@@ -92,7 +93,9 @@ export async function refresh(){
 
 export async function selectScene(scene){
   if(state.saving){notice(msg("m_cbac60d6d919"));return}
-  if(state.dirty&&!confirm(t("m_98091834913e")))return;
+  const captured={id:state.scene?.id,epoch:state.bufferEpoch,mode:state.mode};
+  if(state.dirty&&!await confirmDialog(t("m_98091834913e")))return;
+  if(state.saving||state.scene?.id!==captured.id||state.bufferEpoch!==captured.epoch||state.mode!==captured.mode)return;
   loadBuffer(scene,'plan',scene.beats);
   uiText(document.querySelector('#current-kind'),"textContent",()=>(t("m_9ecb77f7d846")));
   uiText(document.querySelector('#scene-title'),"textContent",()=>(displaySceneTitle(scene.title)));
@@ -149,7 +152,7 @@ document.querySelector('#import-sources').onsubmit=async event=>{
     previous.forEach(([e,disabled])=>e.disabled=disabled);importBusy=false;formElement.setAttribute('aria-busy','false');importAvailability();
   }
 };
-document.querySelector('#add-scene').onclick=async()=>{const title=prompt(t("m_dd7bf0189af8"));if(!title)return;try{await api('/api/stories/'+state.storyId+'/scenes',json('POST',{title}));await refresh()}catch(error){notice(error.message,'error')}};
+document.querySelector('#add-scene').onclick=async()=>{const title=await promptDialog(t("m_dd7bf0189af8"));if(!title)return;try{await api('/api/stories/'+state.storyId+'/scenes',json('POST',{title}));await refresh()}catch(error){notice(error.message,'error')}};
 installSceneTrash(state,refresh,()=>{state.scene=null;state.dirty=false;state.bufferEpoch++;textEditor.write('');textEditor.placeholder(live(()=>placeholders.plan));document.querySelector('#mode-tabs').replaceChildren();document.querySelector('#version-panel').replaceChildren();document.querySelector('#scene-settings')?.remove?.();uiText(document.querySelector('#scene-title'),"textContent",()=>(t("m_f0f1417db6de")));uiText(document.querySelector('#save-state'),"textContent",()=>(''));saveButton.disabled=true;document.dispatchEvent(new CustomEvent('scene-selected'));changed()});
 refresh().catch(error=>notice(error.message,'error'));
 

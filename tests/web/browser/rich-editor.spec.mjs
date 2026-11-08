@@ -43,7 +43,7 @@ test('draft/prose visual editing, exact no-op, undo and locale without losing wo
   // Saving marks a baseline without discarding the undo history.
   await page.getByRole('button', {name: 'Undo', exact: true}).click();
   await expect(editor).not.toContainText('Нове');
-  page.once('dialog', dialog => dialog.accept());
+  await page.addLocatorHandler(page.locator('.app-dialog'),async dialog=>{await dialog.locator('.app-dialog-actions button').last().click()});
   await page.locator('#mode-tabs [data-mode="plan"]').click();
   await expect(page.locator('#editor')).toBeVisible();
   await expect(page.locator('.rich-text-surface')).toBeHidden();

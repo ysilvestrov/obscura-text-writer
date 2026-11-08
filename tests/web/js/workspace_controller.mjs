@@ -22,7 +22,7 @@ globalThis.fixture={state,textEditor:{visible(){}},selectScene:async()=>{},refre
     if(name==='run'){runs++;assert.equal(payload.editor_source_version_id,'d');return {id:'run',state:'running'}}
     if(name==='accept-review')accepts++;
   }};
-let code=readFileSync(new URL('workspace-route.js',base),'utf8').replace("'./i18n.js'",JSON.stringify(new URL('i18n.js',base).href)).replace("'./workspace-links.js'",JSON.stringify(new URL('workspace-links.js',base).href));
+let code=readFileSync(new URL('workspace-route.js',base),'utf8').replace("'./dialogs.js'",JSON.stringify(new URL('dialogs.js',base).href)).replace("'./i18n.js'",JSON.stringify(new URL('i18n.js',base).href)).replace("'./workspace-links.js'",JSON.stringify(new URL('workspace-links.js',base).href));
 code=code.replace(/^import .* from '\.\/editor.js';$/m,'const {state,textEditor,selectScene,refresh}=globalThis.fixture;')
   .replace(/^import .* from '\.\/api.js';$/m,'const {api,json,notice}=globalThis.fixture;')
   .replace(/^import .* from '\.\/workspace-commands.js';$/m,'const {invokeWorkspaceCommand}=globalThis.fixture;')

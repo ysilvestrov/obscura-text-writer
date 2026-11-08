@@ -1,3 +1,4 @@
+import {confirmDialog} from './dialogs.js';
 import {live,t,msg,labelEntries,getLocale,uiText,uiAttr,uiHTML,diagnostic} from './i18n.js';
 import {api,json,notice} from './api.js';
 import {returnLink} from './workspace-links.js';
@@ -70,7 +71,9 @@ if(host){
   async function load(force=false){
     if(buffer.saving)return;
     if(buffer.dirty&&!force)return;
-    if(buffer.dirty&&force&&!confirm(t("m_283c542f3d8f")))return;
+    const before=buffer.epoch;
+    if(buffer.dirty&&force&&!await confirmDialog(t("m_283c542f3d8f")))return;
+    if(buffer.saving||buffer.epoch!==before)return;
     const epoch=buffer.epoch,token=buffer.beginLoad();
     try{
       const data=await api(url());

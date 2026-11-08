@@ -1,3 +1,4 @@
+import {confirmDialog} from './dialogs.js';
 import {live,t,msg,labelEntries,getLocale,uiText,uiAttr,uiHTML,diagnostic} from './i18n.js';
 import {api,json,notice} from './api.js';
 import {mountConnection} from './settings-connection.js';
@@ -62,10 +63,10 @@ export async function installEvaluatorSettings(host,storyId){
     form.addEventListener('settings-unlocked',()=>{connection.update();meta()});
     form.querySelector('.raw-apply').onclick=()=>{try{draft.applyRaw();write();uiText(rawError,"textContent",()=>(''));settingsChanged('evaluator')}catch(problem){uiText(rawError,"textContent",()=>(diagnostic(problem.message)))}};
     form.querySelector('.raw-discard').onclick=()=>{draft.discardRaw();write();uiText(rawError,"textContent",()=>(''));settingsChanged('evaluator')};
-    form.querySelector('.candidate').onclick=()=>{if(confirm(t("m_be93656b233e"))){try{draft.makeCandidate();write();settingsChanged('evaluator')}catch(problem){uiText(error,"textContent",()=>(diagnostic(problem.message)))}}};
+    form.querySelector('.candidate').onclick=async()=>{if(await confirmDialog(t("m_be93656b233e"))){try{draft.makeCandidate();write();settingsChanged('evaluator')}catch(problem){uiText(error,"textContent",()=>(diagnostic(problem.message)))}}};
     f.enabled.onchange=async()=>{
       const enabled=f.enabled.checked,policy=enabled?f.policy.value:'off';
-      if(enabled&&!confirm(t("m_5f7d10cf524a",{p0:(saved.config.provider),p1:(saved.config.model||t("m_c2a15f0686c0")),p2:(configured?'':t("m_32ad2eb54918"))}))){f.enabled.checked=saved.policy!=='off';settingsChanged('evaluator');return}
+      if(enabled&&!await confirmDialog(t("m_5f7d10cf524a",{p0:(saved.config.provider),p1:(saved.config.model||t("m_c2a15f0686c0")),p2:(configured?'':t("m_32ad2eb54918"))}))){f.enabled.checked=saved.policy!=='off';settingsChanged('evaluator');return}
       try{
         await withSettingsSave('evaluator',async()=>{
           const result=await draft.savePolicy(policy,value=>api(base+'/policy',json('PUT',{policy:value})));saved=normalizeEvaluator(result);configured=true;block=result.block;

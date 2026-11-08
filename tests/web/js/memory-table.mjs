@@ -2,17 +2,21 @@ import assert from 'node:assert/strict';
 import {pathToFileURL} from 'node:url';
 import {setImmediate as tick} from 'node:timers/promises';
 class Element{
-  constructor(tag=''){this.tag=tag;this.children=[];this.dataset={};this.value='';this.hidden=false;this.disabled=false;}
+  constructor(tag=''){this.tag=tag;this.children=[];this.dataset={};this.value='';this.hidden=false;this.disabled=false;this.listeners={};}
   append(...items){this.children.push(...items);}
   replaceChildren(...items){this.children=items;}
   setAttribute(k,v){this[k]=v;}
-  addEventListener(){}
+  addEventListener(name,fn){this.listeners[name]=fn}
+  showModal(){queueMicrotask(()=>this.children.at(-1).children[0].onclick())}
+  close(){this.listeners.close?.()}
+  remove(){}
+  focus(){}
   set innerHTML(_){throw Error('Untrusted text may not become HTML');}
 }
 const nodes=Object.fromEntries(['memory-view','editor','save-text','save-state'].map(id=>['#'+id,new Element()]));
 const events={};
 globalThis.CustomEvent=class{constructor(type){this.type=type;}};
-globalThis.document={querySelector:id=>nodes[id],createElement:tag=>new Element(tag),addEventListener:(type,fn)=>(events[type]??=[]).push(fn),dispatchEvent:event=>{for(const fn of events[event.type]||[])fn();}};
+globalThis.document={body:new Element('body'),querySelector:id=>nodes[id],createElement:tag=>new Element(tag),addEventListener:(type,fn)=>(events[type]??=[]).push(fn),dispatchEvent:event=>{for(const fn of events[event.type]||[])fn();}};
 globalThis.confirm=()=>false;
 const state={scene:{id:'s',position:0,heads:{memory:'m'},revision:0},view:{scenes:[{id:'s',position:0,title:'Початок'},{id:'s2',position:1,title:'Друга'}]},mode:'memory',bufferOrigin:'current',bufferEpoch:1,dirty:false,saving:false};
 let release,hold=false,fail=false,sent;
@@ -47,7 +51,7 @@ assert.deepEqual(proofOf(body.children[1]).children.filter(c=>c.tag==='p').map(c
 assert.equal(JSON.stringify(panel).includes('HIDDEN_ID'),false,'Internal claim IDs are not visible DOM text');
 const check=body.children[0].children[0].children[0];
 check.checked=false;check.onchange();sceneFilter.value='s2';sceneFilter.onchange();sceneFilter.value='s';sceneFilter.onchange();assert.equal(body.children[0].children[0].children[0].checked,false,'Filtering preserves unsaved choices');assert.equal(state.dirty,true);assert.equal(nodes['#save-text'].disabled,false);
-panel.children[1].children[0].onclick();assert.equal(memory.active(),true,'Dirty switch requires explicit discard');
+await panel.children[1].children[0].onclick();assert.equal(memory.active(),true,'Dirty switch requires explicit discard');
 fail=true;await memory.save();assert.equal(state.dirty,true,'Conflict preserves the selection');
 fail=false;sceneFilter.value='s2';sceneFilter.onchange();hold=true;const saving=memory.save();await tick();assert.equal(state.saving,true);
 assert.equal(body.children[0].children[0].children[0].disabled,true);release();await saving;
@@ -56,7 +60,7 @@ sceneFilter.value='';sceneFilter.onchange();state.bufferEpoch++;document.dispatc
 sceneFilter.value='s2';sceneFilter.onchange();state.view.scenes=[{id:'s',position:1,title:'Початок'},{id:'s2',position:0,title:'Нова назва'}];document.dispatchEvent(new CustomEvent('story-refreshed'));assert.equal(sceneFilter.value,'s2','Reordering preserves selected scene identity');assert.equal(body.children[0].children[1].children[0].textContent,'Інша сцена');assert.equal(sceneFilter.children[2].textContent,'1. Нова назва');
 state.view.scenes=[{id:'s',position:0,title:'Початок'}];document.dispatchEvent(new CustomEvent('story-refreshed'));assert.equal(sceneFilter.value,'s','Deleted selected scene falls back to current');
 state.view.scenes=[{id:'s',position:0,title:'Початок'},{id:'s2',position:1,title:'Друга'}];
-panel.children[1].children[0].onclick();assert.equal(memory.active(),false);
+await panel.children[1].children[0].onclick();assert.equal(memory.active(),false);
 assert.equal(nodes['#save-text'].disabled,false,'Advanced JSON restores the ordinary Save button');
 nodes['#editor'].value='{"author_edit":true}';state.bufferEpoch++;state.dirty=true;
 document.dispatchEvent(new CustomEvent('editor-state-changed'));await tick();

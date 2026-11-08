@@ -1,3 +1,4 @@
+import {confirmDialog} from './dialogs.js';
 import {t,diagnostic} from './i18n.js';
 import {api,json,notice} from './api.js';
 import {state,refresh,selectScene} from './editor.js';
@@ -19,7 +20,7 @@ async function command(action,choices={}){
 }
 async function openScene(){const scene=state.view.scenes.find(s=>s.id===current.scene_id);if(!scene)return;await selectScene(scene);if(state.scene?.id===scene.id&&!state.dirty)await invokeWorkspaceCommand('show',scene.heads.prose?'prose':'brief');}
 async function priority(material,preferred,superseded,revokeId=null){
-  if(!confirm(t(revokeId?'review4.revoke_confirm':'review4.priority_confirm')))return;
+  if(!await confirmDialog(t(revokeId?'review4.revoke_confirm':'review4.priority_confirm')))return;
   await api(`/api/stories/${state.storyId}/review/priorities/${current.scene_id}`,json('POST',{
     material,expected_revision:policies.authority_revisions[material],operation_id:crypto.randomUUID(),
     preferred,superseded,revoke_id:revokeId
@@ -34,7 +35,7 @@ function render(){
   if(session.state==='alternative')host.append(node('p',t('review.changed')));
   const runActions=node('div',null,'actions');host.append(runActions);
   if(['paused','failed','interrupted'].includes(session.state))runActions.append(button('review.retry',async()=>{
-    if(!confirm(t('review.retry_confirm')))return;
+    if(!await confirmDialog(t('review.retry_confirm')))return;
     const run=await api(`/api/runs/${session.id}/resume`,json('POST',{repeat_interrupted:session.state!=='paused'}));
     document.dispatchEvent(new CustomEvent('run-enqueued',{detail:run}));
   }));

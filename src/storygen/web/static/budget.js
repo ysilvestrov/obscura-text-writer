@@ -48,7 +48,7 @@ if(root){
       await api(base+'/prices',json('POST',body));settingsSaved('budget-price');uiText(result,"textContent",()=>(t("m_2c5388568c5b")));
     }))};
     host.querySelector('.load-calls').onclick=e=>perform(e.currentTarget,async()=>{
-      const rows=await api(base+'/calls'),list=host.querySelector('.budget-calls');if(!confirmSettingsReplacement([...settingsDrafts.records.keys()].filter(k=>k.startsWith('reconcile:'))))return;list.replaceChildren();
+      const rows=await api(base+'/calls'),list=host.querySelector('.budget-calls');if(!await confirmSettingsReplacement([...settingsDrafts.records.keys()].filter(k=>k.startsWith('reconcile:'))))return;list.replaceChildren();
       if(!rows.length){const li=document.createElement('li');uiText(li,"textContent",()=>(t("m_1c7467cc1e7d")));list.append(li)}
       for(const call of rows){
         const li=document.createElement('li'),description=document.createElement('p');

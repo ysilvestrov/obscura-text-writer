@@ -1,3 +1,4 @@
+import {installDialogFixture} from './dialog-fixture.mjs';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 const base=new URL('../../../src/storygen/web/static/',import.meta.url);
@@ -13,6 +14,7 @@ globalThis.setInterval=()=>0;
 globalThis.CustomEvent=class{constructor(type,options){this.type=type;this.detail=options?.detail}};
 let accepted=false,prompt='',posts=[];
 globalThis.confirm=text=>{prompt=text;return accepted};
+installDialogFixture(globalThis.document);
 const storage=new Map();globalThis.localStorage={getItem:k=>storage.get(k),setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)};
 const token='a'.repeat(64);
 const state={storyId:'s',scene:{id:'c',heads:{prose:'p'}},mode:'prose',bufferEpoch:1,dirty:false,saving:false,workspaceRuns:[]};
