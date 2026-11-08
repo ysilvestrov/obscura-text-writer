@@ -50,13 +50,13 @@ def identity(provider):
 
 
 def classification_state(repo,attempt,fingerprint):
-    history=[a for a in repo.list_attempts(attempt.story_id) if a.stage=='classify'
+    history=[a for a in repo.list_attempts(attempt.story_id,context_key='classification_proposal_id') if a.stage=='classify'
              and a.context.get('classification_proposal_id')==attempt.id and a.context.get('classification_fingerprint')==fingerprint]
     valid=next((a for a in reversed(history) if a.state=='completed' and a.context.get('classification_result')),None)
     editor=get_role_settings(repo,attempt.story_id).get('editor')
     config=editor.classification if editor else None
     reason=None if config else 'Налаштуйте окремий профіль класифікатора в ролі редактора'
-    if config and any(a.stage=='classify' and a.context.get('classification_refusal') and a.context.get('classification_identity')==identity(config.provider) for a in repo.list_attempts(attempt.story_id)):
+    if config and any(a.stage=='classify' and a.context.get('classification_refusal') and a.context.get('classification_identity')==identity(config.provider) for a in repo.list_attempts(attempt.story_id,context_key='classification_refusal')):
         reason='Цей класифікатор уже відмовився для цього оповідання; оберіть іншу модель'
     active=any(r.request.mode=='classify' and r.request.proposal_attempt_id==attempt.id and r.state in {'queued','running','pause_requested','cancellation_requested'} for r in repo.list_runs(attempt.story_id))
     if active:reason='Класифікація цієї пропозиції вже виконується'
@@ -79,7 +79,7 @@ def build_classification_context(repo,request):
     ensure_selectable(view,attempt,compare_snapshot(view,DependencySnapshot.model_validate(attempt.context['dependency_snapshot'])))
     config=get_role_settings(repo,attempt.story_id)['editor'].classification
     if config is None:raise ValueError('Спершу налаштуйте профіль класифікатора')
-    if any(a.stage=='classify' and a.context.get('classification_refusal') and a.context.get('classification_identity')==identity(config.provider) for a in repo.list_attempts(attempt.story_id)):
+    if any(a.stage=='classify' and a.context.get('classification_refusal') and a.context.get('classification_identity')==identity(config.provider) for a in repo.list_attempts(attempt.story_id,context_key='classification_refusal')):
         raise ValueError('Класифікатор відмовився для цього оповідання; оберіть іншу модель')
     if not proposal.edits:raise ValueError('Немає змін для класифікації')
     role=RoleSettings(**config.model_dump())

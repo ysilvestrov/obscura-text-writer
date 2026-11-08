@@ -10,6 +10,7 @@ class ContextView:
         self.freshness_cache = {}
         self.blob_cache = {}
         self.preamble_cache = {}
+        self.journal_cache = {}
         self.story = repo._active_story(db, story_id)
         self.scenes = {s.id: s for s in [Scene.model_validate_json(r[0]) for r in db.execute(
             'SELECT payload FROM scenes WHERE story_id=? ORDER BY position,id', (story_id,))]}

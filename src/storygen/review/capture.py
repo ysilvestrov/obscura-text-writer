@@ -19,7 +19,7 @@ def capture(view,version_id,mode=None):
     baseline=build_author_baseline(view,scene_id)
     if view.versions[version_id].kind!='brief':
         from ..dependency_models import DependencySelector
-        brief=view.get_scene(scene_id).heads.get('brief')
+        brief=view.peek_scene(scene_id).heads.get('brief')
         baseline.selectors.append(DependencySelector(kind='head',owner_id=scene_id,field='brief',expected=brief))
         if brief:baseline.refs[brief]=view.versions[brief].sha256
     return capture_target(view,version_id,baseline_override=baseline,current_sources_only=True)
@@ -30,10 +30,12 @@ def modes_for(view,targets):return {t.version_id:mode_for(view,t.version_id) for
 
 def plan_review(view):
     targets=[]
-    for scene in view.list_scenes(view.story.id):
+    for scene in view.peek_scenes(view.story.id):
         for material in ['brief','prose']:
             id=scene.heads.get(material)
-            if not id or not (view.get_version(id).stale or material=='prose' and view.effective_scene(scene.id).needs_review):continue
+            if not id:continue
+            view.peek_version(id)  # The same KeyError as get_version for an absent head; no copy.
+            if not (view.is_stale(id) or material=='prose' and view.effective_scene(scene.id).needs_review):continue
             t=capture(view,id)
             if t.text.strip():targets.append(t)
     return ImpactPlan(story_id=view.story.id,targets=targets,fingerprint=fingerprint([t.fingerprint for t in targets]))

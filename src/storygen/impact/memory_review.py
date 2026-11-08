@@ -4,11 +4,20 @@ from ..memory.journal import load_memory,validate_memory_journal
 
 
 def validated_journal(view,id,scene):
+    # One request validates the same journal for many review targets; the view (one SQL snapshot) keeps the first
+    # successful result. Callers only read the journal; the hashes and the prefix list are handed out as new containers.
+    key=(id,scene.id,scene.story_id,scene.position)
+    if key not in view.journal_cache:view.journal_cache[key]=_validated_journal(view,id,scene)
+    journal,hashes,prefix=view.journal_cache[key]
+    return journal,dict(hashes),list(prefix)
+
+
+def _validated_journal(view,id,scene):
     ref=view.versions[id]
     if ref.story_id!=scene.story_id or ref.scene_id!=scene.id or ref.kind!='memory' or not ref.complete:
         raise ValueError('Пам’ять має неправильного власника або незавершене джерело')
     raw=view.read_blob(ref.relative_path,ref.sha256).decode('utf-8');journal=load_memory(raw)
-    prefix=[s for s in view.list_scenes(scene.story_id) if s.position<=scene.position]
+    prefix=[s for s in view.peek_scenes(scene.story_id) if s.position<=scene.position]
     if len(journal.source_prose_ids)!=len(prefix):raise ValueError('Пам’ять не відповідає повному префіксу сцен')
     sources={};hashes={}
     for item,source in zip(prefix,journal.source_prose_ids):
