@@ -105,7 +105,7 @@ def test_fts_never_adds_timeline_category_records():
 
 @pytest.mark.parametrize('measure',['conservative','realistic'])
 def test_budget_respected_with_json_escaped_quotes(measure):
-    quoted=[rec(f'q{i}','facts','Остап сказав "так" і "ні" \ "може" '*3) for i in range(40)]
+    quoted=[rec(f'q{i}','facts','Остап сказав "так" і "ні" \\ "може" '*3) for i in range(40)]
     s=scene(quoted,cast=('c2',))
     for n in (700,1500,3000):
         p=params(memory_budget_tokens=n,measure=measure)
