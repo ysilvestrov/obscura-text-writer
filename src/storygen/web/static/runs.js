@@ -1,5 +1,6 @@
 import {live as liveLabel,t,msg,labelEntries,getLocale,uiText,uiAttr,uiHTML,diagnostic} from './i18n.js';
 import {acceptedContinuation} from './acceptance.js';
+import {violationDetails} from './memory-violations.js';
 import {api,json,notice} from './api.js';
 import {state,refresh,loadBuffer,textEditor} from './editor.js';
 import {registerWorkspaceCommand} from './workspace-commands.js';
@@ -103,7 +104,15 @@ document.addEventListener('editor-state-changed',()=>{updateControls();if(state.
 extraControls?.addEventListener('toggle',scheduleReadiness);
 textEditor.onInput(updateControls);
 const elapsed=document.createElement('p');
-function draw(run){active=run;state.workspaceRun=run;document.dispatchEvent(new CustomEvent('workspace-run-state',{detail:run}));status.dataset.kind=run.warning&&run.state!=='failed'?'warning':runKind(run.state);status.setAttribute('role',run.state==='failed'?'alert':'status');status.replaceChildren();const p=document.createElement('p');uiText(p,"textContent",()=>(names[run.state]||run.state));status.append(p);const plan=run.planned_telemetry;if(!plan){const missing=document.createElement('p');missing.className='muted';uiText(missing,'textContent',()=>t('workspace.run_plan_unknown'));status.append(missing)}else{const summary=document.createElement('p');summary.className='muted';uiText(summary,'textContent',()=>t('workspace.run_plan',{p0:[...Object.values(plan.roles||{}),...(plan.evaluator?[plan.evaluator]:[])].map(value=>`${value.provider} / ${value.model}`).join(', ')||t('workspace.unknown'),p1:plan.calls??'—',p2:t(({draft:'m_e9d875d4120b',prose:'m_9c685577453c',plan:'m_3146141c9367',brief:'m_5a2ec5eaf0a1'})[run.request.editor_source_head||({brief:'plan',draft:'brief',memory:'prose'})[run.request.stage]]||'workspace.unknown')}));status.append(summary)}for(const message of [...new Set([run.error,run.warning].filter(Boolean))]){const e=document.createElement('p');uiText(e,"textContent",()=>(diagnostic(message)));status.append(e)}uiText(elapsed,"textContent",()=>(terminal.has(run.state)?'':elapsed.textContent));status.append(elapsed);updateControls();if(terminal.has(run.state))loadPending()}
+function draw(run){active=run;state.workspaceRun=run;document.dispatchEvent(new CustomEvent('workspace-run-state',{detail:run}));status.dataset.kind=run.warning&&run.state!=='failed'?'warning':runKind(run.state);status.setAttribute('role',run.state==='failed'?'alert':'status');status.replaceChildren();const p=document.createElement('p');uiText(p,"textContent",()=>(names[run.state]||run.state));status.append(p);const plan=run.planned_telemetry;if(!plan){const missing=document.createElement('p');missing.className='muted';uiText(missing,'textContent',()=>t('workspace.run_plan_unknown'));status.append(missing)}else{const summary=document.createElement('p');summary.className='muted';uiText(summary,'textContent',()=>t('workspace.run_plan',{p0:[...Object.values(plan.roles||{}),...(plan.evaluator?[plan.evaluator]:[])].map(value=>`${value.provider} / ${value.model}`).join(', ')||t('workspace.unknown'),p1:plan.calls??'—',p2:t(({draft:'m_e9d875d4120b',prose:'m_9c685577453c',plan:'m_3146141c9367',brief:'m_5a2ec5eaf0a1'})[run.request.editor_source_head||({brief:'plan',draft:'brief',memory:'prose'})[run.request.stage]]||'workspace.unknown')}));status.append(summary)}for(const message of [...new Set([run.error,run.warning].filter(Boolean))]){const e=document.createElement('p');uiText(e,"textContent",()=>(diagnostic(message)));status.append(e)}uiText(elapsed,"textContent",()=>(terminal.has(run.state)?'':elapsed.textContent));status.append(elapsed);updateControls();if(run.state==='failed')showViolations(run);if(terminal.has(run.state))loadPending()}
+async function showViolations(run){
+  try{
+    const details=await api('/api/runs/'+run.id),violations=details.attempts?.at(-1)?.memory_violations;
+    if(active?.id!==run.id||active.state!=='failed')return;
+    status.querySelector('.memory-violations')?.remove();
+    const box=violationDetails(violations,{t,bind:(el,render)=>uiText(el,'textContent',render)});if(box)status.append(box);
+  }catch{/* Діагностика необов’язкова: помилка запиту не заважає стану запуску. */}
+}
 setInterval(()=>{if(active&&!terminal.has(active.state))uiText(elapsed,"textContent",()=>(t("m_61cb5f9a3bb9",{p0:(Math.floor((Date.now()-started)/1000))})))},1000);
 async function follow(run){
   const epoch=++followEpoch;let stateFetch=0;

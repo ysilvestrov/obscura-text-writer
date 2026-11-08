@@ -167,3 +167,24 @@ def test_v2_add_without_character_ids_keeps_v2_default():
     assert v2_as_v3({'schema_version':2,'operations':[op]})['character_states']['add'][0]['character_ids']==[]
     r=replay_response(json.dumps({'schema_version':2,'operations':[op]}),frags(),'v1',PROSE)
     assert r['as_is']=='fail' and r['as_v3']=='pass'
+
+
+def test_story_filter_selects_only_matching_story(tmp_path):
+    good=dict(frags(),expected_source_prose_ids='["v1"]')
+    db,data=make_db(tmp_path,[(v2('f000001'),good),(v2('f000001'),good)])
+    c=sqlite3.connect(db)
+    row=c.execute("SELECT payload FROM stage_attempts WHERE id='a1'").fetchone()[0]
+    payload=json.loads(row);payload['story_id']='ІНШИЙ'
+    c.execute("UPDATE stage_attempts SET payload=? WHERE id='a1'",(json.dumps(payload),));c.commit();c.close()
+    assert summarize(collect(db,data))['replayed']==2
+    assert summarize(collect(db,data,'ІНШИЙ'))['replayed']==1
+    assert summarize(collect(db,data,'немає'))['replayed']==0
+    out=subprocess.run([sys.executable,str(ROOT/'scripts'/'memory_replay.py'),'--db',str(db),'--data',str(data),'--story','ІНШИЙ'],
+                       cwd=ROOT,capture_output=True,text=True,encoding='utf-8')
+    assert out.returncode==0 and json.loads(out.stdout)['replayed']==1
+
+
+def test_cli_unavailable_db_exits_2_with_code_on_stderr(tmp_path):
+    out=subprocess.run([sys.executable,str(ROOT/'scripts'/'memory_replay.py'),'--db',str(tmp_path/'немає.sqlite3'),'--data',str(tmp_path)],
+                       cwd=ROOT,capture_output=True,text=True,encoding='utf-8')
+    assert out.returncode==2 and 'db_unavailable' in out.stderr and out.stdout==''

@@ -20,6 +20,7 @@ class SettingsChange(DomainModel):
     prompt_text: str | None = None
     prepare_prompt_text: str | None = None
     confirm_prompt_contract: bool = False
+    upgrade_memory_wire: bool = False
     confirm_prepare_prompt_contract: bool = False
 
 
@@ -81,6 +82,8 @@ def write_settings(story_id: str,change: SettingsChange,request: Request):
 def configure_prompts(repo,story_id,change,settings):
     if change.role not in {'planner','writer','editor','memory'}:raise ValueError('Невідома роль')
     stage={'planner':'brief','writer':'draft','editor':'edit','memory':'memory'}[change.role]
+    if change.upgrade_memory_wire and (change.role!='memory' or settings.memory_mode!='evidence_delta'):
+        raise ValueError('Перехід на v3 можливий лише для власного промпту пам’яті за доказами')
     if change.confirm_prompt_contract and change.prompt_text is None and settings.prompt_version_id:
         ref=repo.get_version(settings.prompt_version_id)
         if ref.story_id!=story_id or ref.kind!='prompt':raise ValueError('Чужий промпт')
@@ -90,7 +93,7 @@ def configure_prompts(repo,story_id,change,settings):
         if not change.prompt_text.strip() or change.prompt_text==standard:
             settings=settings.model_copy(update={'prompt_version_id':None})
         else:
-            ref=repo.save_version(story_id,None,'prompt',change.prompt_text,[],prompt_contract=_custom_contract(repo,story_id,change.role,stage,settings))
+            ref=repo.save_version(story_id,None,'prompt',change.prompt_text,[],prompt_contract=_custom_contract(repo,story_id,stage,settings,change.upgrade_memory_wire))
             settings=settings.model_copy(update={'prompt_version_id':ref.id})
     if change.confirm_prepare_prompt_contract and change.prepare_prompt_text is None and settings.prepare_prompt_version_id:
         ref=repo.get_version(settings.prepare_prompt_version_id)
@@ -105,13 +108,14 @@ def configure_prompts(repo,story_id,change,settings):
     return settings
 
 
-def _custom_contract(repo,story_id,role,stage,settings):
-    # A custom memory/evidence_delta/2 prompt keeps /2 on edit and confirm; /3 needs explicit re-assignment.
+def _custom_contract(repo,story_id,stage,settings,upgrade=False):
+    # A custom memory/evidence_delta/2 prompt keeps /2 on edit and confirm; /3 needs explicit upgrade_memory_wire.
     expected=expected_contract(stage,settings)
-    if (expected.stage,expected.mode)!=('memory','evidence_delta'):return expected
-    current=get_role_settings(repo,story_id).get(role)
-    if current is None or not current.prompt_version_id:return expected
-    stored=repo.get_version(current.prompt_version_id).prompt_contract
+    ref=repo.get_version(settings.prompt_version_id) if settings.prompt_version_id else None
+    # The incoming reference is validated on every path, including an explicit upgrade.
+    if ref is not None and (ref.story_id!=story_id or ref.kind!='prompt'):raise ValueError('Чужий промпт')
+    if upgrade or ref is None or (expected.stage,expected.mode)!=('memory','evidence_delta'):return expected
+    stored=ref.prompt_contract
     if stored is not None and (stored.stage,stored.mode,stored.schema_version)==('memory','evidence_delta',2):return stored
     return expected
 

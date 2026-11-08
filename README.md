@@ -73,7 +73,7 @@ Copy-Item .env.example .env
 
 Обмеження майбутніх планів у контексті ролі: [горизонт сюжету](docs/story-horizon.md).
 
-Табличний перегляд і відбір пам’яті: [прапорці «Передавати далі»](docs/memory-view.md).
+Табличний перегляд і відбір пам’яті: [інструкція українською](docs/memory-view.md), [English](docs/en/memory-view.md).
 
 Жирний, курсив і збереження джерела: [візуальний редактор](docs/visual-editor.md). Для розробника — [збірка локального JS bundle](docs/frontend-development.md).
 

@@ -23,8 +23,8 @@ export class SettingsDrafts{
   anyDirty(){return [...this.records.keys()].some(k=>this.dirty(k))}
   anyBusy(){return [...this.records.values()].some(r=>r.busy)}
 }
-export function expectedPromptContract(stage,mode,stored,custom,text){
+export function expectedPromptContract(stage,mode,stored,custom,text,upgrade=false){
   // Mirrors the server: a custom memory/evidence_delta/2 prompt keeps /2 on edit and confirm; blank text is the standard v3 prompt.
-  const keepsV2=mode==='evidence_delta'&&!!custom&&stored?.stage==='memory'&&stored?.mode==='evidence_delta'&&stored?.schema_version===2&&String(text||'').trim()!=='';
+  const keepsV2=mode==='evidence_delta'&&!!custom&&stored?.stage==='memory'&&stored?.mode==='evidence_delta'&&stored?.schema_version===2&&String(text||'').trim()!==''&&!upgrade;
   return `${stage}/${mode}/${mode==='evidence_delta'?(keepsV2?2:3):1}`;
 }
