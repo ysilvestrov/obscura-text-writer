@@ -66,4 +66,10 @@ await scenario('two GETs after mutation still coalesce',async()=>{
  const post=api('/s',{method:'POST',body:'{}'});await flush();const b=api('/s'),c=api('/s');await flush();
  assert.equal(calls.filter(x=>!x.options.method).length,1);
  await releaseAll();await Promise.all([post,b,c]);});
+await scenario('fresh GET never joins an older GET and is not sent as a fetch option',async()=>{
+ const a=api('/s');await flush();const b=api('/s',{fresh:true});await flush();
+ assert.equal(calls.length,2);assert.ok(!('fresh' in calls[1].options));
+ const c=api('/s'),d=api('/s',{fresh:true});await flush();
+ assert.equal(calls.length,3,'plain GET joins the earlier fresh request; a second fresh GET is separate');
+ await releaseAll();await Promise.all([a,b,c,d]);});
 console.log('ok');

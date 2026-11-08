@@ -7,6 +7,10 @@ let generation=0;
 async function load(url,options){let response;try{response=await fetch(url,options)}catch(error){return{failed:error}}let data,bad=false;try{data=await response.json()}catch{bad=true}return{ok:response.ok,status:response.status,data,bad}}
 export async function api(url,options){
   options=options||{};
+  // fresh: відповідь на подію сервера; не приєднується до GET, надісланого раніше, і новіші GET можуть приєднатися лише до нього.
+  const fresh=options.fresh===true;
+  if('fresh' in options){const {fresh:_,...rest}=options;options=rest}
+  if(fresh)generation++;
   const readOnly=(options.method===undefined||String(options.method).toUpperCase()==='GET')&&options.body===undefined;
   const shareable=readOnly&&!options.signal;
   let result;

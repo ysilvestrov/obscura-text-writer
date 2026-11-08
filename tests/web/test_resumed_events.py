@@ -24,3 +24,4 @@ def test_short_run_recovered_primary_keeps_controls_and_draws_only_the_full_run(
 def test_short_run_latest_and_proposal_buttons_target_the_right_runs():_runs_follow('latest')
 def test_short_run_keeps_state_when_the_detail_fetch_fails():_runs_follow('failure')
 def test_review_session_picks_the_protocol_3_run_from_the_short_list():_runs_follow('review')
+def test_server_event_refetch_does_not_join_an_older_run_request():_runs_follow('stale')

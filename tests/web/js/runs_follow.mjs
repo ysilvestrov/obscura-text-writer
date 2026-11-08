@@ -24,18 +24,20 @@ const shortRuns=[mk('prep','prepare','completed','2026-01-01T00:00:00+00:00'),mk
 const fullOf=short=>({...short,tasks:short.id==='imp'?[{},{}]:[],...(short.id==='imp'?{impact:{protocol:3,phase:'awaiting_author',scene_cursor:1,order:[]}}:{}),cursor:0,error:short.id==='r'?'Технічна причина':null,warning:null,planned_telemetry:{roles:{writer:{provider:'p',model:'m'}},calls:3},editor_loop:null,editor_loops:{},cancelled_before_enqueue:false});
 if(mode==='review')shortRuns.splice(2,0,{...mk('imp','impact','needs_review','2026-01-02T12:00:00+00:00'),impact:{protocol:3,phase:'awaiting_author'}});
 let release,fail=mode==='failure';const gate=new Promise(resolve=>{release=resolve});
+const stale={on:false,state:'running',calls:0,gates:[]};
 const log=[];
 const response=data=>({ok:true,json:async()=>structuredClone(data)});
 globalThis.fetch=async url=>{
  log.push(url);
  const detail=url.match(/^\/api\/runs\/([a-z]+)$/);
+ if(detail&&stale.on){const snapshot=stale.state,run=shortRuns.find(r=>r.id===detail[1]);stale.calls++;await new Promise(r=>stale.gates.push(r));return response({run:{...fullOf(run),state:snapshot},attempts:[{result_version_id:'v1',created_at:run.created_at}],partial:''})}
  if(detail){await gate;if(fail)return {ok:false,status:500,json:async()=>({detail:'boom'})};const run=shortRuns.find(r=>r.id===detail[1]);return response({run:fullOf(run),attempts:[{result_version_id:'v1',created_at:run.created_at}],partial:''})}
  if(url==='/api/versions/v1')return response({text:'x'});
  if(url.endsWith('/runs'))return response({runs:shortRuns});
  if(url.includes('readiness'))return response({operations:{},ready:true,roles:{},calls:1});
  return response({story:{id:'s',revision:0},scenes:[scene],sources:[]});
 };
-globalThis.EventSource=class{constructor(){this.closed=false}close(){this.closed=true}};
+globalThis.EventSource=class{constructor(){this.closed=false;globalThis.EventSource.last=this}close(){this.closed=true}};
 if(mode==='review'){release();const host=element('#review-session');await import(pathToFileURL(root+'/src/storygen/web/static/review-session.js'));for(let i=0;i<8;i++)await new Promise(setImmediate);assert.ok(log.includes('/api/stories/s/review/imp'),'protocol-3 session chosen from the short list');assert.ok(log.includes('/api/runs/imp'),'full session run fetched');assert.ok(host.children.some(c=>/2/.test(c.textContent||'')||c.children?.length),'session rendered from the full run without error');console.log('review session loads on the short list');process.exit(0)}
 if(mode==='recover'){store.set('storygen.tab','t1');store.set('storygen.primary.pending.s.t1',JSON.stringify({requestId:'q-r',request:{story_id:'s',mode:'stage'}}))}
 await import(pathToFileURL(root+'/src/storygen/web/static/runs.js'));
@@ -47,7 +49,20 @@ const byLabel=key=>{const b=created.find(e=>e.onclick&&e.textContent===t(key));a
 const detailCalls=()=>log.filter(u=>/^\/api\/runs\/[a-z]+$/.test(u));
 await tick();
 const cancel=byLabel('m_8b4c2025378a'),pause=byLabel('m_03498e395a43');
-if(mode==='latest'){
+if(mode==='stale'){
+  release();await tick();
+  const source=globalThis.EventSource.last;assert.ok(source,'follow opened the event stream');
+  stale.on=true;log.length=0;
+  const push=(seq)=>source.onmessage({data:JSON.stringify({seq,type:'state',data:{}})});
+  // Подія 1: сервер уже cancelling; запит A залишається в польоті.
+  stale.state='cancelling';push(1);await tick();
+  // Подія 2: сервер уже cancelled; запит B не може приєднатися до A, бо A знято до цієї події.
+  stale.state='cancelled';push(2);await tick();
+  assert.equal(stale.calls,2,'the terminal event sends its own GET instead of joining the older one');
+  while(stale.gates.length)stale.gates.shift()();await tick();
+  assert.equal(state.workspaceRun.state,'cancelled','terminal state is drawn');
+  assert.equal(source.closed,true,'terminal state closes the stream');
+}else if(mode==='latest'){
   assert.deepEqual(detailCalls(),['/api/runs/r'],'open-story follow targets the last run');
   release();await tick();log.length=0;
   byLabel('m_e3b0d35990c3').onclick();await tick();
