@@ -427,10 +427,21 @@ class Repository:
         with self.db.connection() as db:
             return self._get(db,'stage_attempts',id,StageAttempt)
 
-    def list_attempts(self,story_id: str,run_id: str | None = None) -> list[StageAttempt]:
+    ATTEMPT_CONTEXT_KEYS=frozenset({'copyedit_proposal','rewrite_proposal'})
+
+    def list_attempts(self,story_id: str,run_id: str | None = None,*,scene_id: str | None = None,context_key: str | None = None) -> list[StageAttempt]:
+        if context_key is not None and context_key not in self.ATTEMPT_CONTEXT_KEYS:
+            raise ValueError('Невідомий ключ контексту спроби')
+        sql='SELECT payload FROM stage_attempts WHERE story_id=?'
+        params: list = [story_id]
+        if run_id is not None:
+            sql+=' AND run_id=?';params.append(run_id)
+        if scene_id is not None:
+            sql+=' AND scene_id=?';params.append(scene_id)
+        if context_key is not None:
+            sql+=" AND json_extract(payload,'$.context.'||?) IS NOT NULL";params.append(context_key)
         with self.db.connection() as db:
-            attempts=[StageAttempt.model_validate_json(row[0]) for row in db.execute('SELECT payload FROM stage_attempts WHERE story_id=? ORDER BY rowid',(story_id,))]
-        return [a for a in attempts if run_id is None or a.run_id==run_id]
+            return [StageAttempt.model_validate_json(row[0]) for row in db.execute(sql+' ORDER BY rowid',params)]
 
     def commit_stage_result(self,attempt_id: str,result_ref: VersionRef,expected_revision: int | None) -> StageAttempt:
         self.read_text(result_ref.id)

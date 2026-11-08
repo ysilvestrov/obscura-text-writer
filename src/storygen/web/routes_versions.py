@@ -85,8 +85,8 @@ def apply_copyedit_selection(scene_id: str,attempt_id: str,body: CopyeditSelecti
 def list_copyedit_proposals(scene_id: str,request: Request):
     repo=request.app.state.repo
     scene=repo.get_scene(scene_id)
-    return {'attempts':[{'id':a.id,'created_at':a.created_at,'state':a.state} for a in repo.list_attempts(scene.story_id)
-                        if a.scene_id==scene_id and a.context.get('copyedit_proposal') and a.state in {'completed','needs_review','alternative'}]}
+    return {'attempts':[{'id':a.id,'created_at':a.created_at,'state':a.state} for a in repo.list_attempts(scene.story_id,scene_id=scene_id,context_key='copyedit_proposal')
+                        if a.context.get('copyedit_proposal') and a.state in {'completed','needs_review','alternative'}]}
 
 
 class Rebuild(DomainModel):

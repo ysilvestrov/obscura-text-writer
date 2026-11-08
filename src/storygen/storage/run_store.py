@@ -9,8 +9,11 @@ def get_run(repo, id):
 
 def list_runs(repo, story_id=None):
     with repo.db.connection() as db:
-        runs = [Run.model_validate_json(row[0]) for row in db.execute('SELECT payload FROM runs ORDER BY rowid')]
-        return [r for r in runs if story_id is None or r.story_id == story_id]
+        if story_id is None:
+            rows = db.execute('SELECT payload FROM runs ORDER BY rowid')
+        else:
+            rows = db.execute('SELECT payload FROM runs WHERE story_id=? ORDER BY rowid', (story_id,))
+        return [Run.model_validate_json(row[0]) for row in rows]
 
 
 def save_run(repo, run):

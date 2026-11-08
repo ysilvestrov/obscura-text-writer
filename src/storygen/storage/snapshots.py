@@ -112,25 +112,27 @@ def selector_value(view, selector: DependencySelector):
         'canon_version_id',
         'characters_version_id'
     }:
-        return getattr(view.get_story(owner), field)
+        return getattr(view.peek_story(owner), field)
     if kind=='story' and owner==view.story.id and field=='scene_count':
-        return len(view.list_scenes(owner))
+        return len(view.peek_scenes(owner))
     if kind == 'scene' and field in {'title', 'target_words', 'character_ids', 'beats'}:
-        return getattr(view.get_scene(owner), field)
+        value = getattr(view.peek_scene(owner), field)
+        # A new list: DependencyChange.current must never alias the view's scene.
+        return list(value) if isinstance(value, list) else value
     if kind == 'head' and field in {'plan', 'brief', 'draft', 'prose', 'memory'}:
-        return view.get_scene(owner).heads.get(field)
+        return view.peek_scene(owner).heads.get(field)
     if kind == 'source' and owner == view.story.id and field in {'source_plan', 'source_characters', 'source_preamble'}:
         ref = view.active_source(owner, 'source_plan' if field=='source_preamble' else field)
         return source_preamble(view,ref) if field=='source_preamble' else ref.id if ref else None
     if kind == 'order':
-        scenes = view.list_scenes(view.story.id)
+        scenes = view.peek_scenes(view.story.id)
         if field == 'all' and owner == view.story.id:
             return [s.id for s in scenes]
         if field == 'prefix':
-            scene = view.get_scene(owner)
+            scene = view.peek_scene(owner)
             return [s.id for s in scenes if s.position <= scene.position]
         if field=='narrative_window':
-            scene=view.get_scene(owner)
+            scene=view.peek_scene(owner)
             future=[s for s in scenes if s.position>=scene.position][:selector.future_count+1]
             return [s.id for s in scenes if s.position<scene.position]+[s.id for s in future]
     raise ValueError('Невідомий селектор залежностей')
@@ -152,7 +154,9 @@ def compare_snapshot(view, snapshot: DependencySnapshot | dict) -> list[Dependen
             changes.append(DependencyChange(selector=selector, expected=selector.expected, reason='selector_unavailable'))
     for id, sha in snapshot.refs.items():
         try:
-            ref = view.get_version(id)
+            ref = view.peek_version(id)
+            # Evaluated here, as get_version did, so freshness_cache holds id before the cycle check below.
+            stale = view.is_stale(id)
             view.read_blob(ref.relative_path, sha)
             if ref.sha256 != sha or not ref.complete:
                 raise ValueError('Пошкоджене джерело')
@@ -171,7 +175,7 @@ def compare_snapshot(view, snapshot: DependencySnapshot | dict) -> list[Dependen
                     and ref.story_id==view.story.id and any(s.kind=='scene' and s.owner_id==ref.scene_id and s.field=='title' for s in snapshot.selectors))
             if snapshot.scope=='author_rewrite' and id==snapshot.frozen_author_source_id and not frozen:
                 raise ValueError('Невідповідне історичне джерело')
-            if snapshot.scope!='author_text' and not frozen and ref.stale and id not in snapshot.accepted_stale_prose_ids and not approved_memory:
+            if snapshot.scope!='author_text' and not frozen and stale and id not in snapshot.accepted_stale_prose_ids and not approved_memory:
                 changes.append(DependencyChange(version_id=id,reason='source_stale'))
         except (KeyError, ValueError, OSError):
             changes.append(DependencyChange(version_id=id, expected=sha, reason='source_unavailable'))
@@ -223,8 +227,13 @@ def build_evaluation_snapshot(view, scene_id, case, mode):
 
 
 def resolve_freshness(view, version_id: str) -> FreshnessResult:
+    return freshness(view, version_id).model_copy(deep=True)
+
+
+def freshness(view, version_id: str) -> FreshnessResult:
+    """Внутрішнє читання без копії: спільний об'єкт freshness_cache; не змінювати результат."""
     if version_id in view.freshness_cache:
-        return view.freshness_cache[version_id].model_copy(deep=True)
+        return view.freshness_cache[version_id]
     if version_id in view.resolving:
         return FreshnessResult(stale=True, reasons=[DependencyChange(version_id=version_id, reason='dependency_cycle')])
     ref = view.versions.get(version_id)
@@ -275,7 +284,7 @@ def resolve_freshness(view, version_id: str) -> FreshnessResult:
             baseline_id=acceptance.id if acceptance else ref.id if baseline else None
         )
         view.freshness_cache[version_id] = result
-        return result.model_copy(deep=True)
+        return result
     finally:
         view.resolving.remove(version_id)
 
@@ -283,7 +292,10 @@ def resolve_freshness(view, version_id: str) -> FreshnessResult:
 def source_preamble(view, ref):
     from ..plan_sections import split_plan
     if not ref:return None
-    return ref.id if split_plan(view.read_text(ref.id))[0].strip() else None
+    key=(ref.id,ref.sha256)
+    if key not in view.preamble_cache:
+        view.preamble_cache[key]=ref.id if split_plan(view.read_text(ref.id))[0].strip() else None
+    return view.preamble_cache[key]
 
 
 def build_author_baseline(view, scene_id: str) -> DependencySnapshot:
