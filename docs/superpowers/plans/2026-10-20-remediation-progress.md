@@ -1290,3 +1290,5 @@ Cross-review claude/default @ a85d9d3: 8 зауважень, 7 виправле�
 Перевірка: verify.py на 2e7e6a1 — 1710 passed, 0 failed, 0 errors, 1 skipped; браузерні сценарії desktop/mobile — 14 passed.
 
 Cross-review claude/default @ 8bd9dfb: виправлено втрату прив’язки до прийнятої версії при вводі під час Save; браузерний RED відтворив проблему, GREEN пройшов desktop/mobile. Посилено API та браузерні перевірки й уточнено опис перехопленого запуску. Попередній браузерний прогін: `playwright test --config frontend/playwright.local-brief.mjs tests/web/browser/brief-proposal.spec.mjs --max-failures=1`, 14 passed на коді 2e7e6a1; конфігурація використовувала встановлений Chrome, синтетичні дані, desktop/mobile.
+
+Фінальний verify.py на c183aa7: 1711 passed, 0 failed, 0 errors, 1 skipped. Браузерні сценарії desktop/mobile: 16 passed.
