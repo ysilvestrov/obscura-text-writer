@@ -7,7 +7,7 @@ from .models import ImpactPlan,ImpactTarget,SourceChange,fingerprint,TEXT_STAMP_
 
 def _raw(view,id):
     ref=view.versions[id]
-    view.get_scene(ref.scene_id) if ref.scene_id else None
+    view.peek_scene(ref.scene_id) if ref.scene_id else None
     if ref.story_id!=view.story.id or not ref.complete:raise ValueError('Неповне або стороннє джерело')
     return view.read_blob(ref.relative_path,ref.sha256).decode('utf-8')
 
@@ -18,8 +18,8 @@ def capture_target(view,version_id,*,baseline_override=None,current_sources_only
     if ref.kind not in {'brief','edited','manual'}:raise ValueError('Непридатний матеріал перевірки')
     from ..characters.projection import OTHER_MATERIAL_WARNING
     warnings=set()
-    blockers=[];hashes={};selectors={};changes={};baseline_ids={};visited=set();stack=set()
-    order=[s.id for s in view.list_scenes(view.story.id) if s.position<=scene.position]
+    blockers=[];hashes={};selectors={};changes={};baseline_ids={};visited=set();stack=set();seen_selectors=set();seen_live={}
+    order=[s.id for s in view.peek_scenes(view.story.id) if s.position<=scene.position]
     text=_raw(view,ref.id)
     root_snapshot=view.acceptances[ref.id].baseline if ref.id in view.acceptances else ref.dependency_snapshot
     if baseline_override is not None:root_snapshot=baseline_override
@@ -37,10 +37,16 @@ def capture_target(view,version_id,*,baseline_override=None,current_sources_only
     old_cast=historic.get('character_ids',scene.character_ids)
     from ..memory.forwarding import hidden_before
     old_hidden=historic.get('memory_projection_policy',sorted(hidden_before(view,scene.id)))
+    read_cache={}
     def read(id,old=False):
+        # One capture reaches the same input through many selectors. The text and the side effects (hashes, warnings,
+        # baseline_ids) depend only on (id, old) within this capture, so the first successful read is reused.
+        if (id,old) not in read_cache:read_cache[id,old]=read_uncached(id,old)
+        return read_cache[id,old]
+    def read_uncached(id,old):
         value=view.versions[id]
         if value.scene_id:
-            owner=view.get_scene(value.scene_id)
+            owner=view.peek_scene(value.scene_id)
             if value.kind in {'edited','manual','memory'} and owner.position>scene.position:
                 raise ValueError('Майбутня проза або пам’ять не дозволені')
         raw=_raw(view,id);hashes[id]=value.sha256
@@ -57,10 +63,9 @@ def capture_target(view,version_id,*,baseline_override=None,current_sources_only
         if value.kind=='character_cards':
             from ..characters.models import load_characters
             from ..characters.projection import project_characters
-            projected_scenes=view.list_scenes(view.story.id)
-            if old:
-                for item in projected_scenes:
-                    if item.id==scene.id:item.character_ids=old_cast
+            # Read-only projection over shared view models; the old cast goes into a separate copy of the target scene.
+            projected_scenes=view.peek_scenes(view.story.id)
+            if old:projected_scenes=[item.model_copy(update={'character_ids':old_cast}) if item.id==scene.id else item for item in projected_scenes]
             projection=project_characters(load_characters(raw),projected_scenes,scene.id)
             warnings.update(projection.warnings)
             return projection.text
@@ -74,7 +79,7 @@ def capture_target(view,version_id,*,baseline_override=None,current_sources_only
             from .memory_review import validated_journal
             from ..memory.projection import project_memory
             from ..memory.forwarding import hidden_before
-            owner=view.get_scene(value.scene_id)
+            owner=view.peek_scene(value.scene_id)
             if owner.position>=scene.position:raise ValueError('Пам’ять передумов має належати попередній сцені')
             journal,proof_hashes,prefix=validated_journal(view,id,owner)
             hashes.update(proof_hashes)
@@ -104,12 +109,19 @@ def capture_target(view,version_id,*,baseline_override=None,current_sources_only
         if id==ref.id and not snapshot:raise ValueError('Немає відтворюваної історичної бази')
         if snapshot:
             for selector in snapshot.selectors:
+                # An equal selector (all fields) already passed the checks below and wrote the same change; only its
+                # live value is written again, because `selectors` is keyed by (kind, owner, field) and the last write wins.
+                seen=selector.model_dump_json()
+                if seen in seen_selectors:
+                    if seen in seen_live:selectors[seen_live[seen][0]]=seen_live[seen][1]
+                    continue
+                seen_selectors.add(seen)
                 # Historical target self selectors are known inputs, not publish targets.
                 current=selector_value(view,selector)
                 if selector.kind=='source' and selector.field=='source_characters' and current!=selector.expected and not view.story.characters_version_id:
                     raise ValueError('Змінені описи персонажів без часових карток потребують ручного перегляду')
                 if selector.kind=='order' and current!=selector.expected:raise ValueError('Зміна порядку сцен потребує ручного перегляду')
-                if selector.kind=='head' and selector.field=='prose' and view.get_scene(selector.owner_id).position>=scene.position:
+                if selector.kind=='head' and selector.field=='prose' and view.peek_scene(selector.owner_id).position>=scene.position:
                     if selector.owner_id==scene.id:continue
                     raise ValueError('Невідповідна майбутня проза')
                 old_text,old_ref=document(selector.expected,selector,True);new_text,new_ref=document(current,selector)
@@ -119,7 +131,8 @@ def capture_target(view,version_id,*,baseline_override=None,current_sources_only
                     old_text=old_text,new_text=new_text,changed=old_text!=new_text or selector.expected!=current)
                 changes[key]=change
                 live=selector.model_copy(update={'expected':current}).model_dump()
-                selectors[fingerprint([selector.kind,selector.owner_id,selector.field])]=live
+                live_key=fingerprint([selector.kind,selector.owner_id,selector.field])
+                selectors[live_key]=live;seen_live[seen]=(live_key,live)
             for source,sha in snapshot.refs.items():
                 if source not in view.versions or view.versions[source].sha256!=sha:raise ValueError('Історичне джерело відсутнє або змінене')
                 # Avoid self-target prose refs used only as publication CAS.
@@ -141,10 +154,12 @@ def capture_target(view,version_id,*,baseline_override=None,current_sources_only
 
 def plan_impact(view):
     targets=[]
-    for scene in view.list_scenes(view.story.id):
+    for scene in view.peek_scenes(view.story.id):
         for material in ['brief','prose']:
             id=scene.heads.get(material)
-            if not id or not (view.get_version(id).stale or material=='prose' and view.effective_scene(scene.id).needs_review):continue
+            if not id:continue
+            view.peek_version(id)  # The same KeyError as get_version for an absent head; no copy.
+            if not (view.is_stale(id) or material=='prose' and view.effective_scene(scene.id).needs_review):continue
             target=capture_target(view,id)
             if target.text.strip():targets.append(target)
     return ImpactPlan(story_id=view.story.id,targets=targets,fingerprint=fingerprint([t.fingerprint for t in targets]))

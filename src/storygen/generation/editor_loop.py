@@ -40,19 +40,24 @@ def recoverable_failed_pass(repo,run):
     return None
 
 
-def source(repo,scene_id,prefer_draft=False,*,source_head=None,version_id=None):
-    scene=repo.get_scene(scene_id)
+def source(repo,scene_id,prefer_draft=False,*,source_head=None,version_id=None,stored=False):
+    # stored=True: a shared ContextView reproduces Repository.get_version/read_text (edit_loop readiness) through
+    # the stored-version accessors. Without it a view keeps its own reads (recomputed stale), as scene statistics expect.
+    if stored:
+        get_version,read_text,scene=repo.get_stored_version,repo.read_stored_text,repo.effective_scene(scene_id)
+    else:
+        get_version,read_text,scene=repo.get_version,repo.read_text,repo.get_scene(scene_id)
     if bool(source_head) != bool(version_id) or source_head not in {None,'draft','prose'}:
         raise ValueError('Невідповідне явне джерело редактури')
     if source_head and scene.heads.get(source_head) != version_id:
         raise ValueError('Вибрана голова джерела редактури змінилася; відкрийте актуальний текст')
     id=version_id if source_head else scene.heads.get('draft') if prefer_draft else scene.heads.get('prose') or scene.heads.get('draft')
     if not id:raise ValueError('Спершу створіть прозу або чернетку')
-    ref=repo.get_version(id)
+    ref=get_version(id)
     allowed={'draft':{'draft'},'prose':{'manual','edited'}}
     if ref.story_id!=scene.story_id or ref.scene_id!=scene.id or source_head and ref.kind not in allowed[source_head]:
         raise ValueError('Джерело редактури не належить вибраному матеріалу сцени')
-    if ref.stale or not ref.complete or not repo.read_text(id).strip():
+    if ref.stale or not ref.complete or not read_text(id).strip():
         raise ValueError('Вибрана проза або чернетка потребує оновлення')
     return scene,ref
 
@@ -96,7 +101,9 @@ def check_base(repo,run):
         raise ValueError('Джерело або сцена змінилися під час редактури; збережені проходи не застосовано')
 
 
-def readiness(repo,request,run=None):
+def readiness(repo,request,run=None,view=None):
+    # A shared view serves the scene and version reads; role settings and billing stay on the repository.
+    reader=view if view is not None else repo
     result=dict(ready=False,reason=None,roles={},calls=request.edit_pass_limit,evaluator=None,warnings=[])
     try:
         if run and progress(run):
@@ -114,12 +121,12 @@ def readiness(repo,request,run=None):
             version_id=progress(run)['current_version_id']
             result['calls']=max(0,request.edit_pass_limit-len(model_attempts(repo,run)))
         else:
-            scene,ref=source(repo,scene_id(run) if run else request.scene_id,prefer_draft=bool(run and pipeline(run)),
-                source_head=request.editor_source_head,version_id=request.editor_source_version_id);version_id=ref.id
+            scene,ref=source(reader,scene_id(run) if run else request.scene_id,prefer_draft=bool(run and pipeline(run)),
+                source_head=request.editor_source_head,version_id=request.editor_source_version_id,stored=view is not None);version_id=ref.id
             if scene.story_id!=request.story_id:raise ValueError('Сцена належить іншому твору')
             result['editor_source_version_id']=ref.id
             result['warnings'].append('Джерело: чернетка.' if ref.id==scene.heads.get('draft') else 'Джерело: поточна проза.')
-        context(repo,scene_id(run) if run else request.scene_id,settings,version_id)
+        context(reader,scene_id(run) if run else request.scene_id,settings,version_id)
         if settings.provider.provider in {'venice','openrouter'} and repo.billing('summary',scope='story:'+request.story_id)['limit_nanos'] is None:
             raise ValueError('Спершу задайте явний ліміт бюджету в налаштуваннях')
         result['ready']=True

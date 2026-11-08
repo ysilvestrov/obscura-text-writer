@@ -4,14 +4,18 @@ from ..storage.impact_validity import current_record
 
 def scene_status(view):
     rows={}
-    for scene in view.list_scenes(view.story.id):
+    # Read-only: shared view models (peek_*) and the recomputed stale flag; get_version would deep-copy each head.
+    def stale(id):
+        view.peek_version(id)
+        return view.is_stale(id)
+    for scene in view.peek_scenes(view.story.id):
         values={}
         for material in ['brief','prose']:
             id=scene.heads.get(material)
             record=current_record(view,id) if id else None
-            values[material]=(record.verdict.verdict if record else 'pending' if id and (view.get_version(id).stale or material=='prose' and view.effective_scene(scene.id).needs_review) else 'current' if id else 'missing')
+            values[material]=(record.verdict.verdict if record else 'pending' if id and (stale(id) or material=='prose' and view.effective_scene(scene.id).needs_review) else 'current' if id else 'missing')
         id=scene.heads.get('memory')
-        values['memory']='missing' if not id else 'needs_update' if view.get_version(id).stale else 'current'
+        values['memory']='missing' if not id else 'needs_update' if stale(id) else 'current'
         rows[scene.id]=values
     return rows
 

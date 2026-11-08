@@ -253,3 +253,92 @@ def test_second_request_sees_change_made_between_requests(tmp_path):
     current = repo.get_scene(scene.id)
     repo.update_scene_plan(scene.id, 'План', current.revision)
     assert 'brief' in ready(request()) and 'brief' not in ready(first)
+
+
+def test_readiness_without_operation_does_not_mutate_shared_view(tmp_path, monkeypatch):
+    from storygen.generation.worker import RunCoordinator
+    repo, story, scenes = seeded(tmp_path)
+    _configure(repo, story.id)
+    seen = []
+    original = type(repo).context_view
+
+    def capture(self, story_id):
+        view = original(self, story_id)
+        seen.append((view, _dumps(view)))
+        return view
+
+    monkeypatch.setattr(type(repo), 'context_view', capture)
+    result = RunCoordinator(repo).readiness(story.id, scenes[0].id)['operations']
+    assert len(seen) == 1
+    view, before = seen[0]
+    assert _dumps(view) == before
+    assert any(item['ready'] for item in result.values())
+
+
+def test_memory_approval_probe_does_not_mutate_shared_view(tmp_path, monkeypatch):
+    from storygen.authoring.blueprints import save_role_settings
+    from storygen.generation.worker import RunCoordinator
+    from storygen.providers.models import ProviderSettings, RoleSettings
+    from tests.memory.test_author_reuse import workspace
+    repo, first, second, old, new, memory, role = workspace(tmp_path, True)
+    for name in ['planner', 'writer', 'editor']:
+        save_role_settings(repo, first.story_id, name, RoleSettings(provider=ProviderSettings(model=name)), repo.get_story(first.story_id).revision)
+    save_role_settings(repo, first.story_id, 'memory', role, repo.get_story(first.story_id).revision)
+    seen = []
+    original = type(repo).context_view
+
+    def capture(self, story_id):
+        view = original(self, story_id)
+        seen.append((view, _dumps(view)))
+        return view
+
+    monkeypatch.setattr(type(repo), 'context_view', capture)
+    result = RunCoordinator(repo).readiness(first.story_id, second.id)['operations']
+    assert result['memory'].get('can_confirm') is True
+    assert len(seen) == 1
+    view, before = seen[0]
+    assert _dumps(view) == before
+
+
+def test_scene_reads_on_a_view_equal_fresh_reads_and_leave_the_view_unchanged(tmp_path):
+    """get_scene/list_versions with a captured view answer as the per-call snapshot does, incl. a stale chain,
+    a trashed scene and include_trashed, and mutating their results does not touch the view."""
+    from tests.memory.test_forwarding import apply
+    from storygen.memory.forwarding import memory_view
+    repo, story, scenes = seeded(tmp_path)
+    claim = memory_view(repo, scenes[1].id)['rows'][0]['claim_id']
+    apply(repo, scenes[1], {claim: False})
+    trashed = repo.create_scene(story.id, SceneCreate(title='Кошик'))
+    repo.set_scene_trashed(story.id, trashed.id, trashed.revision, restore=False)
+    view = repo.scene_view(scenes[0].id)
+    before = _dumps(view)
+    assert any(v.stale for v in repo.list_versions(story.id))
+    for scene in [*scenes, trashed]:
+        assert repo.get_scene(scene.id, include_trashed=True, view=view) == repo.get_scene(scene.id, include_trashed=True)
+        if scene.id == trashed.id:
+            with pytest.raises(KeyError):
+                repo.get_scene(scene.id, view=view)
+            with pytest.raises(KeyError):
+                repo.list_versions(story.id, scene.id, view=view)
+            continue
+        assert repo.get_scene(scene.id, view=view) == repo.get_scene(scene.id)
+        for kind in [None, 'manual', 'memory']:
+            assert repo.list_versions(story.id, scene.id, kind, view=view) == repo.list_versions(story.id, scene.id, kind)
+        repo.get_scene(scene.id, view=view).heads.clear()
+        for ref in repo.list_versions(story.id, scene.id, view=view):
+            ref.input_refs.append('x')
+    assert repo.list_versions(story.id, view=view) == repo.list_versions(story.id)
+    assert view.list_acceptances(story.id) == repo.list_acceptances(story.id)
+    with pytest.raises(KeyError):
+        repo.get_scene('missing', view=view)
+    with pytest.raises(KeyError):
+        repo.scene_view(trashed.id)
+    assert _dumps(view) == before
+
+
+def test_list_versions_rejects_a_view_of_another_story(tmp_path):
+    from storygen.domain import StoryCreate
+    repo, story, scenes = seeded(tmp_path)
+    other = repo.create_story(StoryCreate(title='Інший'))
+    with pytest.raises(ValueError):
+        repo.list_versions(other.id, view=repo.context_view(story.id))

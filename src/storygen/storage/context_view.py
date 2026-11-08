@@ -10,6 +10,7 @@ class ContextView:
         self.freshness_cache = {}
         self.blob_cache = {}
         self.preamble_cache = {}
+        self.journal_cache = {}
         self.story = repo._active_story(db, story_id)
         self.scenes = {s.id: s for s in [Scene.model_validate_json(r[0]) for r in db.execute(
             'SELECT payload FROM scenes WHERE story_id=? ORDER BY position,id', (story_id,))]}
@@ -30,6 +31,7 @@ class ContextView:
 
         from ..dependency_models import AcceptanceRecord
         self.acceptances={}
+        self.acceptance_records=[]
         for key,payload in db.execute("SELECT key,payload FROM app_settings WHERE key LIKE ? ORDER BY rowid",('acceptance:'+story_id+':%',)):
             record=AcceptanceRecord.model_validate_json(payload)
             if record.story_id!=story_id or key!='acceptance:'+story_id+':'+record.id:
@@ -38,6 +40,12 @@ class ContextView:
             if not ref or ref.scene_id!=record.scene_id or ref.kind not in {'draft','edited','manual'} or record.baseline.scope!='author_text':
                 raise ValueError('Невідповідна версія журналу прийняття')
             self.acceptances[record.version_id]=record
+            self.acceptance_records.append(record)
+
+    def list_acceptances(self, story_id):
+        """Як Repository.list_acceptances(story_id): усі записи прийняття твору в порядку запису, копіями."""
+        self.peek_story(story_id)
+        return [r.model_copy(deep=True) for r in self.acceptance_records]
 
     def token_records(self, kind):
         if kind != 'profile': raise ValueError('Спостереження недоступні в context view')
@@ -70,6 +78,7 @@ class ContextView:
         return ref
 
     def is_stale(self, id):
+        """Перерахована актуальність версії. Не перевіряє кошик і існування сцени/твору: викликач перевіряє сам (peek_version/get_version)."""
         from . import snapshots
         return snapshots.freshness(self, id).stale
 
@@ -86,6 +95,19 @@ class ContextView:
         result=self.peek_version(id).model_copy(deep=True)
         result.stale=self.is_stale(id)
         return result
+
+    def get_stored_version(self, id):
+        """Як Repository.get_version: версія без записів прийняття, рецензії чи пріоритетів лишається зі збереженим stale."""
+        ref=self.peek_version(id)
+        self.peek_story(ref.story_id)
+        legacy=(ref.dependency_snapshot is None and ref.manual_projection_policy is None and ref.id not in self.acceptances
+                and not any(r.target.version_id==ref.id for r in self.review_acceptances)
+                and not any(scope[0]==ref.scene_id for scope in self.review_authority))
+        return ref.model_copy(deep=True) if legacy else self.get_version(id)
+
+    def read_stored_text(self, id):
+        ref=self.get_stored_version(id)
+        return self.files.read(ref.relative_path,ref.sha256).decode('utf-8')
 
     def effective_scene(self, id):
         scene=self.get_scene(id)

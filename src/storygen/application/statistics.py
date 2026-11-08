@@ -36,8 +36,8 @@ def scene_statistics(repo,scene_id,stage,editor_source_head=None,editor_source_v
     from ..authoring.blueprints import get_role_settings
     from ..generation.context import build_context,ContextOverflow
     from ..generation.editor_loop import context as edit_context
-    owner=repo.get_scene(scene_id);roles=get_role_settings(repo,owner.story_id)
-    view=repo.context_view(owner.story_id);scene=view.effective_scene(scene_id)
+    # One SQL snapshot per request: the scene and all material reads come from one view.
+    view=repo.scene_view(scene_id);scene=repo.get_scene(scene_id,view=view);roles=get_role_settings(repo,scene.story_id)
     materials={}
     for kind in ['plan','brief','draft','prose']:
         id=scene.heads.get(kind)
@@ -67,7 +67,8 @@ def scene_statistics(repo,scene_id,stage,editor_source_head=None,editor_source_v
         except ContextOverflow as exc:
             context.update(available=True,within_limits=False,reason=str(exc),**(exc.breakdown or {}))
         except ValueError as exc:context['reason']=str(exc)
-    last=next((a for a in reversed(repo.list_attempts(scene.story_id)) if a.scene_id==scene.id and a.stage==stage and a.context.get('api_request') and a.usage),None)
+    # The SQL scene filter returns the same attempts as filtering the story list by a.scene_id (tests/storage/test_attempt_filters.py).
+    last=next((a for a in reversed(repo.list_attempts(scene.story_id,scene_id=scene.id)) if a.scene_id==scene.id and a.stage==stage and a.context.get('api_request') and a.usage),None)
     usage={'created_at':last.created_at,'model':last.context['api_request'].get('model'),'state':last.state,'usage':last.usage} if last else None
     return {'scene_id':scene.id,'scene_revision':scene.revision,'target_words':scene.target_words,
         'materials':materials,'memory':{'previous':prior,'through_scene':current},'stage':stage,'context':context,'last_usage':usage}

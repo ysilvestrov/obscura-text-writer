@@ -26,7 +26,7 @@ async function reconcilePrimary(){
 async function reconcilePrimaryOnce(){
   const pending=pendingPrimary();if(!pending)return null;
   if(pending.cancelled){const run=await api('/api/runs/cancel-request',json('POST',{request_id:pending.requestId,request:pending.request}));if(pending.storageKey)sessionStorage.removeItem(pending.storageKey);setPendingPrimary(null);await follow(run);return run}
-  const runs=(await api(`/api/stories/${state.storyId}/runs`)).runs;
+  const runs=(await api(`/api/stories/${state.storyId}/runs`,{fresh:true})).runs;
   const latest=pendingPrimary();
   if(!latest||latest.requestId!==pending.requestId)return null;
   if(latest.cancelled){const run=await api('/api/runs/cancel-request',json('POST',{request_id:latest.requestId,request:latest.request}));if(latest.storageKey)sessionStorage.removeItem(latest.storageKey);setPendingPrimary(null);await follow(run);return run}
@@ -106,6 +106,8 @@ extraControls?.addEventListener('toggle',scheduleReadiness);
 textEditor.onInput(updateControls);
 const elapsed=document.createElement('p');
 function draw(run){active=run;state.workspaceRun=run;document.dispatchEvent(new CustomEvent('workspace-run-state',{detail:run}));status.dataset.kind=run.warning&&run.state!=='failed'?'warning':runKind(run.state);status.setAttribute('role',run.state==='failed'?'alert':'status');status.replaceChildren();const p=document.createElement('p');uiText(p,"textContent",()=>(names[run.state]||run.state));status.append(p);const plan=run.planned_telemetry;if(!plan){const missing=document.createElement('p');missing.className='muted';uiText(missing,'textContent',()=>t('workspace.run_plan_unknown'));status.append(missing)}else{const summary=document.createElement('p');summary.className='muted';uiText(summary,'textContent',()=>t('workspace.run_plan',{p0:[...Object.values(plan.roles||{}),...(plan.evaluator?[plan.evaluator]:[])].map(value=>`${value.provider} / ${value.model}`).join(', ')||t('workspace.unknown'),p1:plan.calls??'—',p2:t(({draft:'m_e9d875d4120b',prose:'m_9c685577453c',plan:'m_3146141c9367',brief:'m_5a2ec5eaf0a1'})[run.request.editor_source_head||({brief:'plan',draft:'brief',memory:'prose'})[run.request.stage]]||'workspace.unknown')}));status.append(summary)}for(const message of [...new Set([run.error,run.warning].filter(Boolean))]){const e=document.createElement('p');uiText(e,"textContent",()=>(diagnostic(message)));status.append(e)}uiText(elapsed,"textContent",()=>(terminal.has(run.state)?'':elapsed.textContent));status.append(elapsed);updateControls();if(run.state==='failed')showViolations(run);if(terminal.has(run.state))loadPending()}
+// Короткий запуск зі списку: лише стан для кнопок зупинки/паузи; план, помилка й слухачі `workspace-run-state` чекають повного запуску.
+function drawPending(run){active=run;state.workspaceRun=run;status.dataset.kind=runKind(run.state);status.setAttribute('role','status');status.replaceChildren();const p=document.createElement('p');uiText(p,"textContent",()=>(names[run.state]||run.state));status.append(p);updateControls();document.dispatchEvent(new CustomEvent('workspace-run-pending',{detail:run}))}
 async function showViolations(run){
   try{
     const details=await api('/api/runs/'+run.id),violations=details.attempts?.at(-1)?.memory_violations;
@@ -117,7 +119,8 @@ async function showViolations(run){
 setInterval(()=>{if(active&&!terminal.has(active.state))uiText(elapsed,"textContent",()=>(t("m_61cb5f9a3bb9",{p0:(Math.floor((Date.now()-started)/1000))})))},1000);
 async function follow(run){
   const epoch=++followEpoch;let stateFetch=0;
-  source?.close();last=0;started=Date.parse(run.created_at);draw(run);live.hidden=false;
+  source?.close();last=0;started=Date.parse(run.created_at);live.hidden=false;
+  if('planned_telemetry' in run)draw(run);else drawPending(run);
   const saved=await api('/api/runs/'+run.id);if(epoch!==followEpoch)return;draw(saved.run);uiText(live,"textContent",()=>(saved.partial));
   const attempt=saved.attempts?.at(-1);if(attempt?.created_at)started=Date.parse(attempt.created_at);
   if(terminal.has(saved.run.state)){await refresh();return}
@@ -128,9 +131,9 @@ async function follow(run){
   source.onmessage=async message=>{try{if(epoch!==followEpoch)return;const event=JSON.parse(message.data);last=event.seq;
     if(event.type==='stage_started'){if(event.created_at)started=Date.parse(event.created_at);uiText(live,"textContent",()=>(''));const p=document.createElement('p');uiText(p,"textContent",()=>((event.data.edit_loop_pass?t("m_9a029cc4638c",{p0:(event.data.edit_loop_pass),p1:(event.data.edit_loop_limit)}):'')+`${event.data.stage} · ${event.data.model} · ${event.data.provider}`));status.append(p)}
     if(event.type==='delta')live.textContent+=event.data.text;
-    if(event.type==='stage_finished'){const p=document.createElement('p');uiText(p,"textContent",()=>(Object.keys(event.data.usage||{}).length?t("m_15e66c683330")+JSON.stringify(event.data.usage):t("m_59303d743463")));status.append(p);await refresh()}
+    if(event.type==='stage_finished'){const p=document.createElement('p');uiText(p,"textContent",()=>(Object.keys(event.data.usage||{}).length?t("m_15e66c683330")+JSON.stringify(event.data.usage):t("m_59303d743463")));status.append(p);await refresh({fresh:true})}
     if(event.type==='evaluation_warning'||event.type==='evaluation_skipped'){notice(event.data.failure?.message||event.data.reason||event.data.reasons?.join('; ')||t("m_8c627045acd1"),'warning');document.dispatchEvent(new CustomEvent('evaluation-policy-changed'))}
-    if(event.type==='state'||event.type==='context_warning'){const stamp=++stateFetch,current=await api('/api/runs/'+run.id);if(epoch!==followEpoch||stamp!==stateFetch)return;draw(current.run);if(terminal.has(current.run.state)){uiText(live,"textContent",()=>(current.partial));reader.close();followEpoch++;notice(names[current.run.state]+(current.run.error||current.run.warning?': '+(current.run.error||current.run.warning):''),current.run.warning&&current.run.state!=='failed'?'warning':runKind(current.run.state));await refresh()}}
+    if(event.type==='state'||event.type==='context_warning'){const stamp=++stateFetch,current=await api('/api/runs/'+run.id,{fresh:true});if(epoch!==followEpoch||stamp!==stateFetch)return;draw(current.run);if(terminal.has(current.run.state)){uiText(live,"textContent",()=>(current.partial));reader.close();followEpoch++;notice(names[current.run.state]+(current.run.error||current.run.warning?': '+(current.run.error||current.run.warning):''),current.run.warning&&current.run.state!=='failed'?'warning':runKind(current.run.state));await refresh({fresh:true})}}
     }catch(error){notice(error.message,'error')}
   };
   source.onerror=()=>{if(epoch===followEpoch&&active&&!terminal.has(active.state))notice(msg("m_0907c7c982d4"),'warning')};

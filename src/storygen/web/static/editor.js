@@ -72,8 +72,8 @@ export async function saveBuffer(send){
   }
 }
 
-export async function refresh(){
-  state.view=await api('/api/stories/'+state.storyId);
+export async function refresh(options){
+  state.view=await api('/api/stories/'+state.storyId,options?.fresh===true?{fresh:true}:undefined);
   // The loaded buffer keeps its own revision until text and revision are explicitly reloaded together.
   const latest=state.view.scenes.find(s=>s.id===state.scene?.id);
   if(state.scene)uiText(document.querySelector('#scene-title'),"textContent",()=>(displaySceneTitle(state.scene.title)));

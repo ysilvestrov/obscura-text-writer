@@ -82,6 +82,13 @@ class Run(DomainModel):
     created_at: str = Field(default_factory=now)
 
 
+def run_summary(run: Run) -> dict:
+    """Коротка форма запуску для списку `/api/stories/{id}/runs`; повний запуск лише в `/api/runs/{id}`."""
+    impact = {key: run.impact[key] for key in ('protocol', 'phase') if key in run.impact} if run.impact else None
+    return {'id': run.id, 'story_id': run.story_id, 'request_id': run.request_id, 'state': run.state,
+            'created_at': run.created_at, 'request': run.request.model_dump(mode='json'), 'impact': impact}
+
+
 class RunEvent(DomainModel):
     run_id: str
     seq: int

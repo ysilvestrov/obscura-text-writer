@@ -661,7 +661,16 @@
         "tests/storage/test_context_view_readonly.py::test_peek_path_matches_copying_path",
         "tests/storage/test_attempt_filters.py::test_sql_filters_match_python_filters",
         "tests/storage/test_attempt_filters.py::test_falsy_proposals_are_removed_by_route_filters_as_before",
-        "tests/storage/test_workspace_bench.py::test_synthetic_story_reaches_full_readiness_path"
+        "tests/storage/test_workspace_bench.py::test_synthetic_story_reaches_full_readiness_path",
+        "tests/impact/test_planning_readonly.py::test_plan_matches_frozen_copying_path",
+        "tests/impact/test_planning_readonly.py::test_overview_matches_frozen_copying_path",
+        "tests/impact/test_planning_readonly.py::test_overview_report_rows_match_frozen_copying_path",
+        "tests/impact/test_planning_readonly.py::test_repeated_selector_keeps_last_write_of_live_selector",
+        "tests/impact/test_planning_readonly.py::test_repeated_selector_across_snapshots_keeps_last_write",
+        "tests/impact/test_planning_readonly.py::test_planning_deep_copies_do_not_grow_with_reads",
+        "tests/generation/test_classification_state_sql.py::test_preview_and_readiness_match_unfiltered_scan",
+        "tests/generation/test_classification_state_sql.py::test_classification_reads_attempts_through_sql_filter",
+        "tests/generation/test_classification_state_sql.py::test_classification_keys_filter_like_python"
       ]
     },
     {
@@ -670,18 +679,34 @@
       "scope": "Внутрішнє читання не змінює знімок. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
       "tests": [
         "tests/storage/test_context_view_readonly.py::test_readiness_and_status_do_not_mutate_view_models",
-        "tests/storage/test_context_view_readonly.py::test_second_request_sees_change_made_between_requests"
+        "tests/storage/test_context_view_readonly.py::test_second_request_sees_change_made_between_requests",
+        "tests/impact/test_planning_readonly.py::test_planning_does_not_mutate_view"
       ]
     },
     {
       "id": "PERF-001-S03",
       "requirement": "PERF-001",
-      "scope": "Межі часу типових дій. Процедура не доводить досягнення цілей ≤ 1 с / ≤ 3 с: вони перевіряються наскрізно в браузері після периферійного плану.",
+      "scope": "Межі часу типових дій. Процедуру виконано 08.11.2026 у браузері: цілі ≤ 1 с / ≤ 3 с НЕ досягнуто (відкриття твору, максимум вибору сцени на 68 сценах, розгортання всіх операцій readiness на пізній сцені 300); результат PASS не оголошується, виміри — у SPEC.MD (PERF-001, «Відомі обмеження») і журналі виконання.",
       "tests": [],
       "manual": {
         "procedure": "docs/verification/manual.md#workspace-speed",
-        "reason": "Час відповіді залежить від машини й навантаження; межі потребують вимірювання в браузері на копії робочих даних і синтетичному творі."
+        "reason": "Час відповіді залежить від машини й навантаження; межі потребують вимірювання в браузері на копії робочих даних і синтетичному творі. Виконано 08.11.2026, цілі не досягнуто; повторне виконання потрібне після наступного пакета оптимізацій."
       }
+    },
+    {
+      "id": "PERF-001-S04",
+      "requirement": "PERF-001",
+      "scope": "Короткий список запусків. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/web/test_runs_short_form.py::test_story_runs_returns_short_form",
+        "tests/web/test_runs_short_form.py::test_run_detail_stays_full",
+        "tests/web/test_runs_short_form.py::test_run_summary_is_a_subset_of_the_full_run",
+        "tests/web/test_resumed_events.py::test_short_run_open_story_keeps_controls_and_draws_only_the_full_run",
+        "tests/web/test_resumed_events.py::test_short_run_recovered_primary_keeps_controls_and_draws_only_the_full_run",
+        "tests/web/test_resumed_events.py::test_short_run_latest_and_proposal_buttons_target_the_right_runs",
+        "tests/web/test_resumed_events.py::test_short_run_keeps_state_when_the_detail_fetch_fails",
+        "tests/web/test_resumed_events.py::test_review_session_picks_the_protocol_3_run_from_the_short_list"
+      ]
     },
     {
       "id": "EVAL-001-S01",
@@ -2867,6 +2892,18 @@
       "manual": {
         "procedure": "docs/verification/manual.md#workspace-one-click",
         "reason": "Перемикання панелі та фактичні браузерні запити перевіряються Playwright."
+      }
+    },
+    {
+      "id": "UI-001-S03",
+      "requirement": "UI-001",
+      "scope": "Згортання однакових одночасних GET у api(): один fetch, власні копії даних, без згортання POST і запитів із сигналом.",
+      "tests": [
+        "tests/web/test_api_coalesce.py::test_identical_concurrent_gets_share_one_fetch"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#workspace-one-click",
+        "reason": "Фактичні браузерні запити робочого простору перевіряються Playwright."
       }
     },
     {

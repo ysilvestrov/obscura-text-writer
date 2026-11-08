@@ -18,7 +18,7 @@ def test_bench_digest_is_stable_and_synthetic_story_has_requested_size(tmp_path)
     first, second = measure(repo, story_id), measure(repo, story_id)
     assert first['digest'] == second['digest'] and len(first['digest']) == 64
     assert len(OPERATIONS) == 9 and first['scenes'] == 5
-    expected = {f'readiness:{n}' for n in OPERATIONS} | {'story_view', 'list_attempts', 'list_runs', 'scene_select'}
+    expected = {f'readiness:{n}' for n in OPERATIONS} | {'readiness:all', 'story_view', 'list_attempts', 'list_runs', 'scene_select'}
     assert set(first['timings']) == expected
     assert 'readiness:brief' in expected and 'readiness:edit_loop' in expected
 
@@ -87,3 +87,75 @@ def test_reused_workdir_must_hold_requested_completed_workload(tmp_path):
     repo.create_story(StoryCreate(title=SYNTHETIC_TITLE))
     with pytest.raises(ValueError, match='synthetic_ambiguous'):
         run(synthetic=2, workdir=tmp_path / 'i')
+
+
+def test_scene_select_requests_the_editor_urls_and_enters_the_digest(tmp_path, monkeypatch):
+    from storygen.storage.repository import Repository as Repo
+    repo = Repository(tmp_path)
+    story_id = build_story(repo, 3, shallow_copies=True)
+    first = measure(repo, story_id)
+    assert set(first['scene_select_requests']) == {'readiness', 'runs', 'versions', 'statistics', 'comments',
+                                                   'copyedits', 'rewrites', 'evaluator'}
+    assert repo.list_runs(story_id) == [] and not (tmp_path / 'worker.lock').exists()
+    original = Repo.get_comment_state
+    monkeypatch.setattr(Repo, 'get_comment_state', lambda self, scene_id: {**original(self, scene_id), 'changed': 1})
+    changed = measure(repo, story_id)
+    assert changed['digest'] != first['digest'] and changed['digest_core'] == first['digest_core']
+
+
+def test_run_refuses_a_data_dir_without_database_and_creates_nothing(tmp_path):
+    from storygen.application.workspace_bench import run
+    empty = tmp_path / 'empty'
+    empty.mkdir()
+    with pytest.raises(ValueError, match='not_a_data_copy'):
+        run(data=empty)
+    assert list(empty.iterdir()) == []
+    with pytest.raises(ValueError, match='not_a_data_copy'):
+        run(data=tmp_path / 'absent')
+    assert not (tmp_path / 'absent').exists()
+
+
+def test_run_refuses_the_working_data_dir(tmp_path, monkeypatch):
+    """<repo root>/data, and the main checkout's data when the code runs from a git worktree, are refused
+    before a Repository is opened, even when they hold a database."""
+    from storygen.application import workspace_bench
+    opened = []
+    monkeypatch.setattr(workspace_bench, 'Repository', lambda *a, **k: opened.append(a) or pytest.fail('opened'))
+    main, worktree = tmp_path / 'main', tmp_path / 'wt'
+    for root in [main, worktree]:
+        (root / 'data').mkdir(parents=True)
+        (root / 'data' / 'storygen.sqlite3').write_bytes(b'')
+    (main / '.git' / 'worktrees' / 'wt').mkdir(parents=True)
+    (worktree / '.git').write_text(f'gitdir: {main / ".git" / "worktrees" / "wt"}\n', encoding='utf-8')
+    monkeypatch.setattr(workspace_bench, 'REPO_ROOT', worktree)
+    for data in [worktree / 'data', main / 'data', main / 'data' / '..' / 'data']:
+        with pytest.raises(ValueError, match='live_data'):
+            workspace_bench.run(data=data, story='x')
+    with pytest.raises(ValueError, match='live_data'):
+        workspace_bench.run(synthetic=3, workdir=main / 'data')
+    monkeypatch.setattr(workspace_bench, 'REPO_ROOT', main)
+    with pytest.raises(ValueError, match='live_data'):
+        workspace_bench.run(data=main / 'data', story='x')
+    assert opened == []
+
+
+def test_failing_scene_select_endpoint_is_a_clear_error_with_exit_code_2(tmp_path, monkeypatch, capsys):
+    import importlib.util
+    from pathlib import Path
+    from storygen.storage.repository import Repository as Repo
+    from storygen.application.workspace_bench import run
+    run(synthetic=3, workdir=tmp_path / 'w')
+
+    def broken(self, scene_id):
+        raise RuntimeError('boom')
+    monkeypatch.setattr(Repo, 'get_comment_state', broken)
+    with pytest.raises(ValueError, match='scene_select_failed: comments returned HTTP 500'):
+        run(synthetic=3, workdir=tmp_path / 'w')
+    path = Path(__file__).resolve().parents[2] / 'scripts' / 'workspace_bench.py'
+    spec = importlib.util.spec_from_file_location('workspace_bench_script', path)
+    script = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(script)
+    capsys.readouterr()
+    assert script.main(['--synthetic', '3', '--workdir', str(tmp_path / 'w')]) == 2
+    out = capsys.readouterr()
+    assert 'scene_select_failed: comments' in out.err and 'Traceback' not in out.err and out.out == ''

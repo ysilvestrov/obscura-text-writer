@@ -179,6 +179,7 @@ class RunCoordinator:
         from .readiness import preview
         self.repo.get_story(story_id)
         operations={}
+        view=None
         for name in ([operation] if operation else ['prepare',*STAGES,'scene','remaining','rebuild_memory','edit_loop']):
             # model_construct permits the unselected-scene state in a read-only preview.
             request=RunRequest.model_construct(
@@ -190,7 +191,9 @@ class RunCoordinator:
                 editor_source_head=editor_source_head if name=='edit_loop' else None,
                 editor_source_version_id=editor_source_version_id if name=='edit_loop' else None
             )
-            operations[name]=preview(self.repo,request)
+            # One captured view serves every operation of this request.
+            if view is None:view=self.repo.context_view(story_id)
+            operations[name]=preview(self.repo,request,view)
         return {'operations':operations}
 
     def run_readiness(self,id):
