@@ -49,7 +49,7 @@ export async function saveBuffer(send){
   const material=textEditor.snapshot();
   const authoring=state.mode==='draft'&&state.bufferOrigin!=='history'?authorComments:null;
   const authoringFields=authoring?.capture();
-  const snapshot={scene:state.scene,mode:state.mode,text:material.source,content_format:material.content_format,authoringFields};
+  const snapshot={scene:state.scene,mode:state.mode,text:material.source,content_format:material.content_format,source_version_id:material.version_id,authoringFields};
   authoring?.lock(true);
   state.saving=true;saveButton.disabled=true;changed();
   try{

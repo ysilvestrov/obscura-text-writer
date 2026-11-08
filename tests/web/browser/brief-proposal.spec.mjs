@@ -63,14 +63,25 @@ test('acceptance follows refreshed run state without switching tabs',async({page
   await expect(accept).toBeEnabled();
 });
 
-test('saving edits to an accepted brief requires acceptance before starting a draft',async({page,request})=>{
+test('editing an accepted brief keeps acceptance when starting a draft',async({page,request})=>{
   const f=await(await request.post('/test-brief-proposal')).json();await page.goto(`/stories/${f.story_id}`);await page.locator('#mode-tabs [data-mode="brief"]').click();
   await page.locator('#brief-proposal button').click();await expect(page.locator('#brief-proposal')).toBeHidden();
   const accepted=(await(await request.get(`/api/scenes/${f.scene_id}/versions`)).json()).scene.heads.brief;
   const brief=JSON.parse(await page.locator('#editor').inputValue());brief.objective='Нова авторська правка';await page.locator('#editor').fill(JSON.stringify(brief));
   let posts=0;await page.route('**/api/runs',async route=>{if(route.request().method()==='POST'){posts++;await route.fulfill({status:400,json:{detail:'Unexpected draft'}})}else await route.continue()});
   await page.locator('#workspace-primary').click();
-  await expect(page.locator('#brief-proposal')).toBeVisible();await expect(page.locator('#brief-proposal button')).toBeEnabled();
-  await expect(page.locator('#workspace-primary')).toBeDisabled();expect(posts).toBe(0);
-  expect((await(await request.get(`/api/scenes/${f.scene_id}/versions`)).json()).scene.heads.brief).toBe(accepted);
+  await expect.poll(()=>posts).toBe(1);await expect(page.locator('#brief-proposal')).toBeHidden();
+  const data=(await(await request.get(`/api/scenes/${f.scene_id}/versions`)).json());
+  expect(data.scene.heads.brief).not.toBe(accepted);
+  const saved=(await(await request.get(`/api/versions/${data.scene.heads.brief}`)).json());expect(JSON.parse(saved.text).objective).toBe('Нова авторська правка');
+});
+
+
+test('manual save of an accepted brief keeps acceptance',async({page,request})=>{
+  const f=await(await request.post('/test-brief-proposal')).json();await page.goto(`/stories/${f.story_id}`);await page.locator('#mode-tabs [data-mode="brief"]').click();
+  await page.locator('#brief-proposal button').click();await expect(page.locator('#brief-proposal')).toBeHidden();
+  const before=(await(await request.get(`/api/scenes/${f.scene_id}/versions`)).json()).scene.heads.brief;
+  const brief=JSON.parse(await page.locator('#editor').inputValue());brief.objective='Власне уточнення';await page.locator('#editor').fill(JSON.stringify(brief));await page.locator('#save-text').click();
+  await expect(page.locator('#save-state')).toHaveText(/Збережено|Saved/);await expect(page.locator('#brief-proposal')).toBeHidden();
+  expect((await(await request.get(`/api/scenes/${f.scene_id}/versions`)).json()).scene.heads.brief).not.toBe(before);
 });

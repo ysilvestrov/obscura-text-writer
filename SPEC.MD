@@ -2542,9 +2542,9 @@ UI порушень пам’яті: `memory-violations.js` (`violationDetails(v
 
 - GIVEN згенерований brief і приховані записи пам’яті попередніх сцен
 - WHEN автор змінює JSON у вкладці «Завдання» й зберігає з правильною scene revision
-- THEN створюється нова актуальна авторська brief-версія з поточним manual_projection_policy, не старим модельним snapshot; без proposed_changes вона стає head, з ними — чекає явного accept-brief. Конфлікт409 не замінює head і лишає текст в історії; попередні stale версії не приймаються автоматично.
+- THEN створюється нова актуальна авторська brief-версія з поточним manual_projection_policy, не старим модельним snapshot; без proposed_changes вона стає head; з ними правка поточного прийнятого head зберігає прийняття, а неприйнята пропозиція чекає явного accept-brief. Конфлікт409 не замінює head і лишає текст в історії; попередні stale версії не приймаються автоматично.
 
-Техніка доповнення: POST /api/scenes/{id}/brief фіксує effective scene, story, plan/previous prose-memory/source refs і sorted hidden_before в одному ContextView. `save_version` лишає input_refs і додає той самий manual_projection_policy, що й draft/prose; set_head перевіряє його заново при публікації. Native WritersBrief schema/proposed_changes gate/legacy raw stale/CAS не змінені. Попередній баг: поле для manual brief не задавалося, тому нова правка хибно вважалася створеною за policy[]. Схема SQL/конфігурація/генерація не змінюються; старі version payload не backfill-яться.
+Техніка доповнення: POST /api/scenes/{id}/brief фіксує effective scene, story, plan/previous prose-memory/source refs і sorted hidden_before в одному ContextView. `save_version` лишає input_refs і додає той самий manual_projection_policy, що й draft/prose; set_head перевіряє його заново при публікації. Native WritersBrief schema, legacy raw stale і CAS не змінені; proposed_changes нової неприйнятої пропозиції залишаються за явним gate. Попередній баг: поле для manual brief не задавалося, тому нова правка хибно вважалася створеною за policy[]. Схема SQL/конфігурація/генерація не змінюються; старі version payload не backfill-яться.
 
 
 ### Requirement: PLANNER-JSON — Обгортка JSON та конкретні помилки планувальника
@@ -3021,12 +3021,12 @@ THEN invalid scene дає перший plan, storage failure не блокує U
 
 Чистий відкритий brief SHALL підхоплювати новий candidate при story-refreshed навіть без зміни selected head. Only-if-changed не перезавантажує той самий displayed ID й не змінює bufferEpoch на no-op Save. Guard epoch/dirty/saving/history зберігає нові ручні правки під час fetch. Помилка accept/CAS не замінює текст або selected head сторонньою версією. Усунено дефекти: pending завдання показувалося як старий stale head, а після завершення генерації кнопка могла залишатися вимкненою до перемикання вкладки; оновлення readiness повторно обчислює її стан.
 
-Після автоматичного збереження перед primary draft action SHALL повторно перевірятися наявність пропозиції, що очікує прийняття. Якщо збереження створило таку версію, запуск чернетки припиняється до явного прийняття; усунено відхилення, за якого запит починався з попереднім head.
+Після автоматичного збереження перед primary draft action SHALL повторно перевірятися наявність пропозиції, що очікує прийняття. Правка поточного прийнятого завдання зберігає дозвіл; правка неприйнятої пропозиції потребує явного прийняття, а запуск не використовує попередній head.
 
 #### Scenario: R20-BRIEF-REVIEW-S01 — Перегляд, Save та явне прийняття
 GIVEN stale selected brief і нова fresh пропозиція з proposed_changes
 WHEN відкрито brief, виконано Save або явне прийняття показаного saved ID
-THEN вкладка показує нову пропозицію; Save лишає старий head, accept вибирає перевірену версію та оновлює draft readiness.
+THEN вкладка показує нову пропозицію; Save неприйнятої пропозиції лишає старий head, accept вибирає перевірену версію та оновлює draft readiness.
 
 #### Scenario: R20-BRIEF-REVIEW-S02 — Ручні правки й конкурентне оновлення
 GIVEN відкритий brief із dirty вводом або новим candidate при refresh
@@ -3040,8 +3040,11 @@ THEN кнопка прийняття оновлюється без переми�
 
 #### Scenario: R20-BRIEF-REVIEW-S04 — Збереження перед запуском чернетки
 GIVEN прийняте завдання з proposed_changes змінено автором
-WHEN primary action зберігає його як нову пропозицію
-THEN запит на генерацію не надсилається, збережена версія очікує явного прийняття, а попередній head не змінюється.
+WHEN автор зберігає його або primary action зберігає перед чернеткою
+THEN нова версія успадковує прийняття і стає head без повторного підтвердження
+AND редагування неприйнятої пропозиції лишається за окремим прийняттям; застаріла revision не замінює head.
+
+POST /api/scenes/{id}/brief приймає необов’язковий `source_brief_id`: редактор передає ID версії буфера; тільки збіг із чинним selected brief head дозволяє зберегти прийняття авторської правки з proposed_changes. Scene revision і set_head CAS обов’язкові; відсутній або інший ID лишає пропозицію на ручне прийняття. Схема БД і наявні версії не змінюються. Усунуто відхилення, коли правка вже прийнятого завдання повторно вимагала прийняття.
 
 ### Requirement: EXPORT-CLEAN — Авторське рішення без службових вставок
 

@@ -2882,11 +2882,14 @@
     {
       "id": "R20-BRIEF-REVIEW-S04",
       "requirement": "R20-BRIEF-REVIEW",
-      "scope": "Збереження пропозиції перед запуском чернетки.",
-      "tests": [],
+      "scope": "Правка прийнятого завдання зберігає прийняття; неприйняті пропозиції та CAS залишаються захищені.",
+      "tests": [
+        "tests/web/test_manual_brief.py::test_edit_brief_preserves_only_selected_head_acceptance",
+        "tests/web/test_manual_brief.py::test_stale_accepted_source_cannot_replace_new_head"
+      ],
       "manual": {
         "procedure": "docs/verification/manual.md#r20-brief-review",
-        "reason": "Взаємодію primary action, збереження і запитів перевіряє браузерний Playwright сценарій saving edits to an accepted brief requires acceptance before starting a draft."
+        "reason": "Браузерний сценарій додатково перевіряє ручне збереження й primary action."
       }
     },
     {
