@@ -1233,3 +1233,5 @@ Cross-review claude/default @ 1c44455: 7 зауважень; виправлен�
 ## 08.11.2026 — Діалоги застосунку
 
 За запитом власника підготовлено спільні діалоги підтвердження і введення замість браузерних confirm/prompt; beforeunload лишається браузерним. Специфікація `docs/specs/changes/2026-11-08-app-dialogs.md`; оновлено SPEC та UA/EN інструкції. Вебтести: 215 passed; підсумок повного набору записує verify.py.
+
+Повний verify.py на 4c6564d: 1686 passed, 0 failed, 0 errors, 1 skipped; браузерні тести Chrome desktop/mobile: 46 passed.
