@@ -84,6 +84,26 @@ def test_source_preamble_parses_plan_once_per_view(tmp_path, monkeypatch):
     assert len(calls) == 1
 
 
+def test_source_preamble_cache_misses_on_different_sha256(tmp_path, monkeypatch):
+    repo = Repository(tmp_path)
+    story = repo.create_story(StoryCreate(title='Вступ'))
+    import_sources(repo, story.id, [SourceFile(name='p.md', raw='Вступ\n## Сцена 1: Початок\nТекст'.encode(), kind='source_plan')])
+    view = repo.context_view(story.id)
+    ref = view.active_source(story.id, 'source_plan')
+    import storygen.plan_sections as plan_sections
+    from storygen.storage.snapshots import source_preamble
+    original = plan_sections.split_plan
+    calls = []
+    monkeypatch.setattr(plan_sections, 'split_plan', lambda text: calls.append(1) or original(text))
+    assert source_preamble(view, ref) == ref.id
+    assert source_preamble(view, ref) == ref.id
+    assert len(calls) == 1
+    other = ref.model_copy(update={'sha256': 'f' * 64})
+    assert source_preamble(view, other) == ref.id
+    assert len(calls) == 2
+    assert set(view.preamble_cache) == {(ref.id, ref.sha256), (ref.id, 'f' * 64)}
+
+
 # ---- Task 2: all operations of one request share one view -------------------------------------------
 import pytest
 

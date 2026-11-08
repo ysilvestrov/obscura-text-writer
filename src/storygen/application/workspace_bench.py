@@ -36,6 +36,7 @@ BENCH_ROLE = dict(provider=dict(provider='local', model='bench-local'), context_
 
 @contextlib.contextmanager
 def _shallow_model_copy(enabled):
+    """Only for CLI synthetic-story building (build_story); forbidden in the server: it drops deep copies of every model."""
     original = BaseModel.model_copy
     if enabled:
         BaseModel.model_copy = lambda self, *, update=None, deep=False: original(self, update=update, deep=False)

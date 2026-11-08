@@ -77,6 +77,7 @@ class ContextView:
         return ref
 
     def is_stale(self, id):
+        """Перерахована актуальність версії. Не перевіряє кошик і існування сцени/твору: викликач перевіряє сам (peek_version/get_version)."""
         from . import snapshots
         return snapshots.freshness(self, id).stale
 
