@@ -23,7 +23,9 @@ def preview(repo, request):
         from .edit_classification import readiness
         return readiness(repo,request)
     story=repo.get_story(request.story_id)
-    scenes=repo.list_scenes(story.id)
+    # One captured view serves the whole check; preview never reads needs_review.
+    view=repo.context_view(story.id) if request.mode!='prepare' else None
+    scenes=view.list_scenes(story.id) if view is not None else repo.list_scenes(story.id)
     scene=next((s for s in scenes if s.id==request.scene_id),None)
     stages=[request.stage] if request.mode=='stage' else ['prepare'] if request.mode=='prepare' else ['memory'] if request.mode=='rebuild_memory' else list(STAGES)
     settings=get_role_settings(repo,story.id)
@@ -89,17 +91,16 @@ def preview(repo, request):
             # Later tasks may consume outputs that this run has not generated yet.
             from ..memory.reuse import MemoryApprovalRequired
             try:
-                context=build_context(repo,scene.id,stages[0],settings[STAGE_ROLES[stages[0]]],memory_approval=request.memory_approval)
+                context=build_context(repo,scene.id,stages[0],settings[STAGE_ROLES[stages[0]]],memory_approval=request.memory_approval,view=view)
             except MemoryApprovalRequired as approval:
                 if request.mode!='stage' or request.stage!='memory':raise
                 # Probe all remaining limits before offering consent; never enqueue this probe.
-                context=build_context(repo,scene.id,'memory',settings['memory'],memory_approval=approval.review['fingerprint'])
+                context=build_context(repo,scene.id,'memory',settings['memory'],memory_approval=approval.review['fingerprint'],view=view)
                 result['memory_review']=approval.review
             result['warnings']=context.context_warnings.copy()
             literary=any(stage in {'brief','draft'} or stage=='edit' and settings['editor'].edit_mode=='prose' for stage in stages)
             if literary:
                 from ..characters.context import character_material
-                view=repo.context_view(story.id)
                 for target in targets:
                     _,warnings,_=character_material(view,view.get_story(story.id),view.get_scene(target.id))
                     result['warnings'].extend(warnings)

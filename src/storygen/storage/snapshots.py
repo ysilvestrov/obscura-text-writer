@@ -292,7 +292,10 @@ def freshness(view, version_id: str) -> FreshnessResult:
 def source_preamble(view, ref):
     from ..plan_sections import split_plan
     if not ref:return None
-    return ref.id if split_plan(view.read_text(ref.id))[0].strip() else None
+    key=(ref.id,ref.sha256)
+    if key not in view.preamble_cache:
+        view.preamble_cache[key]=ref.id if split_plan(view.read_text(ref.id))[0].strip() else None
+    return view.preamble_cache[key]
 
 
 def build_author_baseline(view, scene_id: str) -> DependencySnapshot:

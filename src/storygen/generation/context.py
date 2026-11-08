@@ -115,15 +115,19 @@ def make_context(repo,story,scene,stage,settings,sections,refs,fragments=None,ac
     return ContextBundle(context_breakdown=breakdown,api_request=api_request,token_estimate=prediction,estimate_method=prediction['method'],dependency_snapshot=snapshot,target_cas=target,story_id=story.id,scene_id=scene.id if scene else None,stage=stage,scene_revision=scene.revision if scene else None,story_revision=story.revision,settings=settings,system_text=system,user_text=user,input_refs=list(dict.fromkeys(refs)),accepted_stale_prose_ids=accepted_stale,fingerprint=fingerprint,estimated_tokens=estimate,fragments=fragments or {},memory_metrics=memory_metrics or {},context_warnings=list(dict.fromkeys(warnings)))
 
 
-def build_context(repo,scene_id: str,stage: str,settings: RoleSettings,*,editor_source_id: str | None=None,memory_approval: str | None=None) -> ContextBundle:
+def build_context(repo,scene_id: str,stage: str,settings: RoleSettings,*,editor_source_id: str | None=None,memory_approval: str | None=None,view=None) -> ContextBundle:
     if memory_approval is not None and stage!='memory':
         raise ValueError('Підтвердження пам’яті дозволено лише для її оновлення')
     if stage not in {'brief','draft','edit','memory','rewrite'}:
         raise ValueError('Невідомий етап сцени')
-    scene=repo.get_scene(scene_id)
-    if hasattr(repo, 'context_view'):
-        repo=repo.context_view(scene.story_id)
+    if view is not None:
+        repo=view
         scene=repo.get_scene(scene_id)
+    else:
+        scene=repo.get_scene(scene_id)
+        if hasattr(repo, 'context_view'):
+            repo=repo.context_view(scene.story_id)
+            scene=repo.get_scene(scene_id)
     story=repo.get_story(scene.story_id)
     from ..characters.context import validate_scene_participants
     validate_scene_participants(repo,story,scene)
