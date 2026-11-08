@@ -252,7 +252,30 @@ class Repository:
         with self.db.connection() as db:
             return self._get(db,"stories",id,Story) if include_trashed else self._active_story(db,id)
 
-    def get_scene(self,id: str,include_trashed: bool=False) -> Scene:
+    def scene_view(self,scene_id: str):
+        """One SQL snapshot for a scene request: the story view of an active scene (KeyError as get_scene)."""
+        from .context_view import ContextView
+        with self.db.connection() as db:
+            db.execute('BEGIN')
+            scene=self._active_scene(db,scene_id)
+            return ContextView(self,db,scene.story_id)
+
+    def active_scene_story_id(self,scene_id: str) -> str:
+        """Story id of an active scene of an active story; KeyError like get_scene, without building a view."""
+        with self.db.connection() as db:
+            return self._active_scene(db,scene_id).story_id
+
+    def get_scene(self,id: str,include_trashed: bool=False,*,view=None) -> Scene:
+        if view is not None:
+            # The view captured an active story; its scene rows give the same result as a fresh snapshot.
+            scene=view.scenes.get(id)
+            if scene is None:
+                raise KeyError("Матеріал не знайдено")
+            if include_trashed:
+                return scene.model_copy(deep=True)
+            if scene.trashed_at:
+                raise KeyError("Сцена у кошику")
+            return view.effective_scene(id)
         with self.db.connection() as db:
             db.execute('BEGIN')
             if include_trashed:
@@ -307,8 +330,11 @@ class Repository:
         view=self.context_view(story_id)
         return view.get_story(story_id), [(view.effective_scene(s.id),view.get_version(s.heads['prose']) if s.heads.get('prose') else None) for s in view.list_scenes(story_id)]
 
-    def list_versions(self,story_id: str,scene_id: str | None = None,kind: str | None = None) -> list[VersionRef]:
-        view=self.context_view(story_id)
+    def list_versions(self,story_id: str,scene_id: str | None = None,kind: str | None = None,*,view=None) -> list[VersionRef]:
+        if view is None:
+            view=self.context_view(story_id)
+        elif view.story.id!=story_id:
+            raise ValueError('Знімок належить іншому твору')
         if scene_id:view.get_scene(scene_id)
         active_ids={s.id for s in view.list_scenes(story_id)}
         return [view.get_version(v.id) for v in view.versions.values() if (v.scene_id is None or v.scene_id in active_ids) and (scene_id is None or v.scene_id==scene_id) and (kind is None or v.kind==kind)]

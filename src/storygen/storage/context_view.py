@@ -30,6 +30,7 @@ class ContextView:
 
         from ..dependency_models import AcceptanceRecord
         self.acceptances={}
+        self.acceptance_records=[]
         for key,payload in db.execute("SELECT key,payload FROM app_settings WHERE key LIKE ? ORDER BY rowid",('acceptance:'+story_id+':%',)):
             record=AcceptanceRecord.model_validate_json(payload)
             if record.story_id!=story_id or key!='acceptance:'+story_id+':'+record.id:
@@ -38,6 +39,12 @@ class ContextView:
             if not ref or ref.scene_id!=record.scene_id or ref.kind not in {'draft','edited','manual'} or record.baseline.scope!='author_text':
                 raise ValueError('Невідповідна версія журналу прийняття')
             self.acceptances[record.version_id]=record
+            self.acceptance_records.append(record)
+
+    def list_acceptances(self, story_id):
+        """Як Repository.list_acceptances(story_id): усі записи прийняття твору в порядку запису, копіями."""
+        self.peek_story(story_id)
+        return [r.model_copy(deep=True) for r in self.acceptance_records]
 
     def token_records(self, kind):
         if kind != 'profile': raise ValueError('Спостереження недоступні в context view')

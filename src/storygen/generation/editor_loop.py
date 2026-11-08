@@ -40,10 +40,13 @@ def recoverable_failed_pass(repo,run):
     return None
 
 
-def source(repo,scene_id,prefer_draft=False,*,source_head=None,version_id=None):
-    # A shared ContextView reproduces Repository.get_version/read_text through the stored-version accessors.
-    get_version=getattr(repo,'get_stored_version',repo.get_version);read_text=getattr(repo,'read_stored_text',repo.read_text)
-    scene=repo.get_scene(scene_id) if not hasattr(repo,'effective_scene') else repo.effective_scene(scene_id)
+def source(repo,scene_id,prefer_draft=False,*,source_head=None,version_id=None,stored=False):
+    # stored=True: a shared ContextView reproduces Repository.get_version/read_text (edit_loop readiness) through
+    # the stored-version accessors. Without it a view keeps its own reads (recomputed stale), as scene statistics expect.
+    if stored:
+        get_version,read_text,scene=repo.get_stored_version,repo.read_stored_text,repo.effective_scene(scene_id)
+    else:
+        get_version,read_text,scene=repo.get_version,repo.read_text,repo.get_scene(scene_id)
     if bool(source_head) != bool(version_id) or source_head not in {None,'draft','prose'}:
         raise ValueError('Невідповідне явне джерело редактури')
     if source_head and scene.heads.get(source_head) != version_id:
@@ -119,7 +122,7 @@ def readiness(repo,request,run=None,view=None):
             result['calls']=max(0,request.edit_pass_limit-len(model_attempts(repo,run)))
         else:
             scene,ref=source(reader,scene_id(run) if run else request.scene_id,prefer_draft=bool(run and pipeline(run)),
-                source_head=request.editor_source_head,version_id=request.editor_source_version_id);version_id=ref.id
+                source_head=request.editor_source_head,version_id=request.editor_source_version_id,stored=view is not None);version_id=ref.id
             if scene.story_id!=request.story_id:raise ValueError('Сцена належить іншому твору')
             result['editor_source_version_id']=ref.id
             result['warnings'].append('Джерело: чернетка.' if ref.id==scene.heads.get('draft') else 'Джерело: поточна проза.')

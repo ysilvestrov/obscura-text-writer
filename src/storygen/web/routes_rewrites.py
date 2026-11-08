@@ -24,8 +24,9 @@ def preflight(scene_id:str,body:RewriteSource,request:Request):
 
 @router.get('/api/scenes/{scene_id}/rewrites')
 def list_rewrites(scene_id:str,request:Request):
-    repo=request.app.state.repo;scene=repo.get_scene(scene_id)
-    return {'attempts':[dict(id=a.id,created_at=a.created_at,state=a.state) for a in repo.list_attempts(scene.story_id,scene_id=scene_id,context_key='rewrite_proposal') if a.context.get('rewrite_proposal')]}
+    # Only the scene's story and its active state are needed: no context view for an attempt list.
+    repo=request.app.state.repo;story_id=repo.active_scene_story_id(scene_id)
+    return {'attempts':[dict(id=a.id,created_at=a.created_at,state=a.state) for a in repo.list_attempts(story_id,scene_id=scene_id,context_key='rewrite_proposal') if a.context.get('rewrite_proposal')]}
 
 @router.get('/api/scenes/{scene_id}/rewrites/{attempt_id}')
 def preview(scene_id:str,attempt_id:str,request:Request):

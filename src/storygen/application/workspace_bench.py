@@ -1,8 +1,9 @@
 """Workspace response benchmark: synthetic story, timings and a content digest.
 
 Only the public Repository API, readiness.preview and impact.presentation.scene_status
-are used. The digest covers outputs only (never timings), so a before/after comparison
-proves that a speed change did not change results.
+are used; scene selection goes through the web app (fastapi TestClient) on the URLs the
+editor requests. The digest covers outputs only (never timings), so a before/after
+comparison proves that a speed change did not change results.
 """
 import contextlib
 import hashlib
@@ -22,6 +23,8 @@ from ..providers.models import RoleSettings
 from ..run_models import RunRequest
 from ..storage.repository import Repository
 
+# Package location: src/storygen/application/workspace_bench.py -> repository root.
+REPO_ROOT = Path(__file__).resolve().parents[3]
 OPERATIONS = ('prepare', *STAGES, 'scene', 'remaining', 'rebuild_memory', 'edit_loop')
 SYNTHETIC_TITLE = 'Synthetic workspace bench'
 BENCH_ROLES = ('planner', 'writer', 'editor', 'memory')
@@ -150,29 +153,94 @@ def measure(repo: Repository, story_id: str) -> dict:
     runs = _timed(timings, 'list_runs', lambda: repo.list_runs(story_id))
     outputs['run_ids'] = [r.id for r in runs]
 
-    def select():
-        # Scene selection in the UI: the repository calls behind versions, copyedits, rewrites,
-        # readiness?operation=brief, runs, run detail and the story view.
-        scene = repo.get_scene(middle)
-        repo.list_versions(scene.story_id, middle)
-        repo.list_acceptances(scene.story_id)
-        _scene_attempts(repo, story_id, middle)
-        preview(repo, _request(story_id, middle, 'brief'))
-        listed = repo.list_runs(story_id)
-        if listed:
-            repo.get_run(listed[-1].id)
-            repo.list_attempts(story_id, listed[-1].id)
-        _story_view(repo, story_id)
-    _timed(timings, 'scene_select', select)
-    canonical = json.dumps(outputs, sort_keys=True, ensure_ascii=False, default=_default)
+    selection = _scene_select(repo, story_id, middle)
+    # Server time of the selection requests only; building the app and the client is not part of a click.
+    timings['scene_select'] = sum(seconds for _, seconds in selection.values())
+    outputs['scene_select'] = {label: response for label, (response, _) in selection.items()}
     return {'story': story_id[:8], 'scenes': len(scenes),
             'timings': {k: round(v, 6) for k, v in timings.items()},
-            'digest': hashlib.sha256(canonical.encode('utf-8')).hexdigest()}
+            'scene_select_requests': {label: round(seconds, 6) for label, (_, seconds) in selection.items()},
+            'digest': _digest(outputs),
+            # Outputs without scene selection: comparable with digests taken before scene_select used the web app.
+            'digest_core': _digest({k: v for k, v in outputs.items() if k != 'scene_select'})}
+
+
+def _digest(outputs):
+    canonical = json.dumps(outputs, sort_keys=True, ensure_ascii=False, default=_default)
+    return hashlib.sha256(canonical.encode('utf-8')).hexdigest()
+
+
+def _scene_select(repo, story_id, scene_id):
+    """The GET requests the editor sends after a scene is selected (scene-selected listeners), through the app.
+
+    readiness?operation=brief and /runs (runs.js, plan mode), versions (versions.js), statistics (scene-statistics.js),
+    comments (author-comments.js), copyedit and rewrite lists (change-review.js), evaluator (evaluation.js), and the
+    review session reads (review-session.js) when the story has one. The TestClient is not entered as a context
+    manager, so the app lifespan (worker start) never runs and nothing is enqueued.
+    Returns {label: ((status, json), seconds)}; labels carry no ids.
+    """
+    from fastapi.testclient import TestClient
+    from ..application.settings import AppSettings
+    from ..web.app import create_app
+    app = create_app(AppSettings(data_dir=repo.root, env_file=repo.root / '.workspace-bench-no.env'))
+    client = TestClient(app, base_url='http://127.0.0.1:8765')
+    result = {}
+
+    def get(label, url):
+        start = time.perf_counter()
+        response = client.get(url)
+        result[label] = ((response.status_code, response.json()), time.perf_counter() - start)
+        return response.json() if response.status_code == 200 else None
+    try:
+        get('readiness', f'/api/stories/{story_id}/readiness?scene_id={scene_id}&operation=brief')
+        runs = get('runs', f'/api/stories/{story_id}/runs')
+        get('versions', f'/api/scenes/{scene_id}/versions')
+        get('statistics', f'/api/scenes/{scene_id}/statistics?stage=draft')
+        get('comments', f'/api/scenes/{scene_id}/comments')
+        get('copyedits', f'/api/scenes/{scene_id}/copyedits')
+        get('rewrites', f'/api/scenes/{scene_id}/rewrites')
+        get('evaluator', f'/api/stories/{story_id}/evaluator')
+        sessions = [r for r in (runs or {}).get('runs', []) if (r.get('impact') or {}).get('protocol') == 3]
+        active = {'queued', 'running', 'paused', 'needs_review', 'pause_requested', 'cancellation_requested'}
+        listed = next((r for r in reversed(sessions) if r['state'] in active), sessions[-1] if sessions else None)
+        if listed:
+            get('review:run', f'/api/runs/{listed["id"]}')
+            report = get('review:session', f'/api/stories/{story_id}/review/{listed["id"]}')
+            if report and (report.get('report') or {}).get('schema_version') == 4:
+                get('review:priorities', f'/api/stories/{story_id}/review/priorities/{report["scene_id"]}')
+    finally:
+        client.close()
+    return result
+
+
+def _live_data_dirs():
+    """The working data directories: <repo root>/data and, from a git worktree, the main checkout's data."""
+    dirs = {(REPO_ROOT / 'data').resolve()}
+    marker = REPO_ROOT / '.git'
+    if marker.is_file():
+        text = marker.read_text(encoding='utf-8', errors='replace').strip()
+        if text.startswith('gitdir:'):
+            gitdir = Path(text[len('gitdir:'):].strip())
+            gitdir = gitdir if gitdir.is_absolute() else REPO_ROOT / gitdir
+            # <main>/.git/worktrees/<name> -> <main>/data
+            if gitdir.parent.name == 'worktrees':
+                dirs.add((gitdir.parent.parent.parent / 'data').resolve())
+    return dirs
+
+
+def _check_data_dir(path, require_database):
+    """Refuse the working database and (for --data) a directory that holds no storygen.sqlite3, before any open."""
+    resolved = Path(path).resolve()
+    if resolved in _live_data_dirs():
+        raise ValueError('live_data: refusing to benchmark the working data directory; use a copy')
+    if require_database and not (resolved / 'storygen.sqlite3').is_file():
+        raise ValueError('not_a_data_copy: --data holds no storygen.sqlite3')
+    return resolved
 
 
 def run(data=None, story=None, synthetic=None, workdir=None) -> dict:
     """Open a data directory (or a synthetic workdir, reused only when it holds the same completed workload) and measure."""
-    repo = Repository(Path(workdir if synthetic else data))
+    repo = Repository(_check_data_dir(workdir, False) if synthetic else _check_data_dir(data, True))
     if synthetic:
         existing = [s for s in repo.list_stories() if s.title == SYNTHETIC_TITLE]
         if len(existing) > 1:
