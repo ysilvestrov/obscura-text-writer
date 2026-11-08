@@ -41,18 +41,20 @@ def recoverable_failed_pass(repo,run):
 
 
 def source(repo,scene_id,prefer_draft=False,*,source_head=None,version_id=None):
-    scene=repo.get_scene(scene_id)
+    # A shared ContextView reproduces Repository.get_version/read_text through the stored-version accessors.
+    get_version=getattr(repo,'get_stored_version',repo.get_version);read_text=getattr(repo,'read_stored_text',repo.read_text)
+    scene=repo.get_scene(scene_id) if not hasattr(repo,'effective_scene') else repo.effective_scene(scene_id)
     if bool(source_head) != bool(version_id) or source_head not in {None,'draft','prose'}:
         raise ValueError('Невідповідне явне джерело редактури')
     if source_head and scene.heads.get(source_head) != version_id:
         raise ValueError('Вибрана голова джерела редактури змінилася; відкрийте актуальний текст')
     id=version_id if source_head else scene.heads.get('draft') if prefer_draft else scene.heads.get('prose') or scene.heads.get('draft')
     if not id:raise ValueError('Спершу створіть прозу або чернетку')
-    ref=repo.get_version(id)
+    ref=get_version(id)
     allowed={'draft':{'draft'},'prose':{'manual','edited'}}
     if ref.story_id!=scene.story_id or ref.scene_id!=scene.id or source_head and ref.kind not in allowed[source_head]:
         raise ValueError('Джерело редактури не належить вибраному матеріалу сцени')
-    if ref.stale or not ref.complete or not repo.read_text(id).strip():
+    if ref.stale or not ref.complete or not read_text(id).strip():
         raise ValueError('Вибрана проза або чернетка потребує оновлення')
     return scene,ref
 

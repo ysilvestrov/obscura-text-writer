@@ -178,7 +178,6 @@ def test_rebuild_memory_does_not_snapshot_per_scene(tmp_path, monkeypatch):
     repo, story, scenes = seeded(tmp_path, scenes=6)
     for scene in scenes:
         _finish_prose(repo, scene.id)
-    prose_ids = {repo.get_scene(s.id).heads['prose'] for s in scenes}
     spy = []
     original = Repository.get_version
 
@@ -189,7 +188,7 @@ def test_rebuild_memory_does_not_snapshot_per_scene(tmp_path, monkeypatch):
     monkeypatch.setattr(Repository, 'get_version', counting)
     result = preview(repo, _rebuild_request(story.id, scenes[0].id))
     assert result['calls'] == 6
-    assert not prose_ids & set(spy)
+    assert spy == []
 
 
 def test_peek_version_matches_get_version_for_rebuild_memory_checks(tmp_path):
@@ -215,3 +214,49 @@ def test_view_read_text_matches_repo_read_text(tmp_path):
         view.read_text('missing')
     with pytest.raises(KeyError):
         repo.read_text('missing')
+
+
+# ---- edit_loop readiness on a shared view equals the repository (view-less) path ----------------------
+def _edit_loop_request(story_id, scene_id, version_id):
+    return RunRequest.model_construct(story_id=story_id, scene_id=scene_id, mode='edit_loop', stage=None, edit_workflow='single',
+                                      edit_pass_limit=5, memory_approval=None, editor_source_head='draft', editor_source_version_id=version_id)
+
+
+def _assert_edit_loop_matches_repository_path(repo, story_id, request):
+    from storygen.generation import editor_loop
+    old = editor_loop.readiness(repo, request)
+    assert preview(repo, request, repo.context_view(story_id)) == old
+    assert RunCoordinator(repo).readiness(story_id, request.scene_id, editor_source_head='draft',
+                                          editor_source_version_id=request.editor_source_version_id, operation='edit_loop')['operations']['edit_loop'] == old
+    return old
+
+
+def test_edit_loop_legacy_draft_with_hidden_memory_forwarding_matches_repository_path(tmp_path):
+    from tests.memory.test_forwarding import seeded as memory_seeded, apply, memory_view
+    repo, story, scenes = memory_seeded(tmp_path)
+    save_role_settings(repo, story.id, 'editor', RoleSettings(provider=ProviderSettings(model='editor')), repo.get_story(story.id).revision)
+    draft = repo.save_version(story.id, scenes[2].id, 'draft', 'Легасі чернетка.', [])
+    repo.set_head(scenes[2].id, 'draft', draft.id, repo.get_scene(scenes[2].id).revision)
+    claim = memory_view(repo, scenes[1].id)['rows'][0]['claim_id']
+    apply(repo, scenes[1], {claim: False})
+    old = _assert_edit_loop_matches_repository_path(repo, story.id, _edit_loop_request(story.id, scenes[2].id, draft.id))
+    assert old['ready'] is False and old['reason']
+
+
+def test_edit_loop_legacy_draft_with_corrupted_blob_matches_repository_path(tmp_path):
+    repo, story, scenes = seeded(tmp_path)
+    save_role_settings(repo, story.id, 'editor', RoleSettings(provider=ProviderSettings(model='editor')), repo.get_story(story.id).revision)
+    draft = repo.save_version(story.id, scenes[0].id, 'draft', 'Легасі чернетка.', [])
+    repo.set_head(scenes[0].id, 'draft', draft.id, repo.get_scene(scenes[0].id).revision)
+    (repo.root / draft.relative_path).write_bytes(b'broken')
+    old = _assert_edit_loop_matches_repository_path(repo, story.id, _edit_loop_request(story.id, scenes[0].id, draft.id))
+    assert old['ready'] is False and old['reason']
+
+
+def test_edit_loop_ready_legacy_draft_matches_repository_path(tmp_path):
+    repo, story, scenes = seeded(tmp_path)
+    save_role_settings(repo, story.id, 'editor', RoleSettings(provider=ProviderSettings(model='editor')), repo.get_story(story.id).revision)
+    draft = repo.save_version(story.id, scenes[0].id, 'draft', 'Легасі чернетка.', [])
+    repo.set_head(scenes[0].id, 'draft', draft.id, repo.get_scene(scenes[0].id).revision)
+    old = _assert_edit_loop_matches_repository_path(repo, story.id, _edit_loop_request(story.id, scenes[0].id, draft.id))
+    assert old['editor_source_version_id'] == draft.id

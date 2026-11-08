@@ -273,3 +273,28 @@ def test_readiness_without_operation_does_not_mutate_shared_view(tmp_path, monke
     view, before = seen[0]
     assert _dumps(view) == before
     assert any(item['ready'] for item in result.values())
+
+
+def test_memory_approval_probe_does_not_mutate_shared_view(tmp_path, monkeypatch):
+    from storygen.authoring.blueprints import save_role_settings
+    from storygen.generation.worker import RunCoordinator
+    from storygen.providers.models import ProviderSettings, RoleSettings
+    from tests.memory.test_author_reuse import workspace
+    repo, first, second, old, new, memory, role = workspace(tmp_path, True)
+    for name in ['planner', 'writer', 'editor']:
+        save_role_settings(repo, first.story_id, name, RoleSettings(provider=ProviderSettings(model=name)), repo.get_story(first.story_id).revision)
+    save_role_settings(repo, first.story_id, 'memory', role, repo.get_story(first.story_id).revision)
+    seen = []
+    original = type(repo).context_view
+
+    def capture(self, story_id):
+        view = original(self, story_id)
+        seen.append((view, _dumps(view)))
+        return view
+
+    monkeypatch.setattr(type(repo), 'context_view', capture)
+    result = RunCoordinator(repo).readiness(first.story_id, second.id)['operations']
+    assert result['memory'].get('can_confirm') is True
+    assert len(seen) == 1
+    view, before = seen[0]
+    assert _dumps(view) == before

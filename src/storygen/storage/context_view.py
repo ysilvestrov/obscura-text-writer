@@ -87,6 +87,19 @@ class ContextView:
         result.stale=self.is_stale(id)
         return result
 
+    def get_stored_version(self, id):
+        """Як Repository.get_version: версія без записів прийняття, рецензії чи пріоритетів лишається зі збереженим stale."""
+        ref=self.peek_version(id)
+        self.peek_story(ref.story_id)
+        legacy=(ref.dependency_snapshot is None and ref.manual_projection_policy is None and ref.id not in self.acceptances
+                and not any(r.target.version_id==ref.id for r in self.review_acceptances)
+                and not any(scope[0]==ref.scene_id for scope in self.review_authority))
+        return ref.model_copy(deep=True) if legacy else self.get_version(id)
+
+    def read_stored_text(self, id):
+        ref=self.get_stored_version(id)
+        return self.files.read(ref.relative_path,ref.sha256).decode('utf-8')
+
     def effective_scene(self, id):
         scene=self.get_scene(id)
         prose=self.versions.get(scene.heads.get('prose'))

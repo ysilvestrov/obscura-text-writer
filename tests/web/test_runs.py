@@ -137,8 +137,9 @@ def test_readiness_filters_operations_without_changing_existing_contract(tmp_pat
     app=create_app(AppSettings(data_dir=tmp_path));repo=app.state.repo
     story=repo.create_story(StoryCreate(title='Приклад'));scene=repo.create_scene(story.id,SceneCreate(title='Сцена'))
     from storygen.generation import readiness
-    seen=[]
-    def probe(repo, request):
+    seen=[];views=[]
+    def probe(repo, request, view=None):
+        views.append(view)
         name=request.stage if request.mode=='stage' else request.mode
         seen.append(name)
         return {'ready':True,'name':name}
@@ -150,6 +151,7 @@ def test_readiness_filters_operations_without_changing_existing_contract(tmp_pat
     seen.clear()
     full=client.get(url)
     assert full.status_code==200 and len(full.json()['operations'])==9 and len(seen)==9
+    assert views[-9:][0] is not None and all(v is views[-9] for v in views[-9:])
     seen.clear()
     invalid=client.get(url+'&operation=invalid')
     assert invalid.status_code==422 and seen==[]
