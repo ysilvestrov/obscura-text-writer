@@ -119,9 +119,45 @@ def _outputs(repo, story_id):
     return json.dumps(outputs, sort_keys=True, ensure_ascii=False, default=_default)
 
 
+def _accepted_stale_prose(repo, story, scene, prose):
+    """Make `prose` stale, accept it, then add a second prose whose snapshot refs form a cycle."""
+    other = repo.save_version(story.id, scene.id, 'draft', 'B', [])
+    repo.set_head(scene.id, 'draft', other.id, repo.get_scene(scene.id).revision)
+    assert repo.get_version(prose.id).stale
+    preview = repo.preview_acceptance(scene.id, prose.id)
+    repo.accept_version(scene.id, prose.id, preview.expected_revision, preview.preview_fingerprint)
+    assert not repo.get_version(prose.id).stale
+    cyclic = repo.save_version(story.id, scene.id, 'edited', 'Цикл', [other.id],
+                               dependency_snapshot=repo.get_version(prose.id).dependency_snapshot)
+    with repo.db.connection() as db:
+        raw = json.loads(db.execute('SELECT payload FROM versions WHERE id=?', (cyclic.id,)).fetchone()[0])
+        raw['dependency_snapshot']['refs'] = {cyclic.id: cyclic.sha256}
+        db.execute('UPDATE versions SET payload=? WHERE id=?', (json.dumps(raw), cyclic.id))
+    assert repo.context_view(story.id).is_stale(cyclic.id)
+
+
 def test_peek_path_matches_copying_path(tmp_path, monkeypatch):
-    stories = [seeded(tmp_path / 'a')[:2], setup(tmp_path / 'b')[:2]]
-    repo, story = stories[0]
+    """Guards peek path vs public copying path within one view.
+
+    The same ContextView logic is run once with shared peek_* models and freshness results and once with
+    deep copies of every peek_* result and of snapshots.freshness. Equal outputs prove the result does not
+    depend on object sharing. It does not by itself prove equivalence with the pre-change code or with
+    correct data: that comes from the workspace_bench digest and the existing freshness, forwarding,
+    acceptance and impact suites. The fixtures cover a trashed scene, stale prose, an accepted version,
+    a snapshot cycle, a saved forwarding choice and a no_impact review overlay.
+    """
+    from tests.impact.test_storage import assessed
+    from tests.memory.test_forwarding import apply
+    from storygen.memory.forwarding import memory_view
+    repo, story, scenes = seeded(tmp_path / 'a')
+    claim = memory_view(repo, scenes[1].id)['rows'][0]['claim_id']
+    apply(repo, scenes[1], {claim: False})
+    repo2, story2, scene2, _, _ = setup(tmp_path / 'b')
+    _accepted_stale_prose(repo2, story2, scene2, next(v for v in repo2.list_versions(story2.id) if v.kind == 'edited'))
+    repo3, story3, _, _, ref3, record3 = assessed(tmp_path / 'c')
+    repo3.impact('save_report', record=record3)
+    assert not repo3.get_version(ref3.id).stale
+    stories = [(repo, story), (repo2, story2), (repo3, story3)]
     hidden = repo.get_scene(repo.context_view(story.id).list_scenes(story.id)[0].id)
     # A trashed scene and a stale prose keep the comparison on non-trivial branches.
     extra = repo.create_scene(story.id, SceneCreate(title='Кошик'))
@@ -139,3 +175,26 @@ def test_peek_path_matches_copying_path(tmp_path, monkeypatch):
     monkeypatch.setattr(snapshots, 'freshness', lambda view, id: original_freshness(view, id).model_copy(deep=True))
     copied = [_outputs(r, s.id) for r, s in stories]
     assert peeked == copied
+
+
+def test_second_request_sees_change_made_between_requests(tmp_path):
+    """No state crosses requests: each readiness call and ContextView is built fresh from the database."""
+    from storygen.application.workspace_bench import OPERATIONS, _default, _request
+    from storygen.generation.readiness import preview
+    repo, story, scene, draft, prose = setup(tmp_path)
+
+    def request():
+        view = repo.context_view(story.id)
+        return (resolve_freshness(view, prose.id).stale,
+                json.dumps(scene_status(view), default=_default, sort_keys=True),
+                [json.dumps(preview(repo, _request(story.id, scene.id, name)), default=_default, sort_keys=True)
+                 for name in OPERATIONS])
+    first = request()
+    assert first == request()
+    other = repo.save_version(story.id, scene.id, 'draft', 'B', [])
+    repo.set_head(scene.id, 'draft', other.id, repo.get_scene(scene.id).revision)
+    second = request()
+    assert first[0] is False and second[0] is True
+    assert second[1] != first[1]
+    repo.set_head(scene.id, 'draft', draft.id, repo.get_scene(scene.id).revision)
+    assert request() == first

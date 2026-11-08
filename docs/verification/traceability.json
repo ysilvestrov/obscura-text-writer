@@ -667,7 +667,8 @@
       "requirement": "PERF-001",
       "scope": "Внутрішнє читання не змінює знімок. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
       "tests": [
-        "tests/storage/test_context_view_readonly.py::test_readiness_and_status_do_not_mutate_view_models"
+        "tests/storage/test_context_view_readonly.py::test_readiness_and_status_do_not_mutate_view_models",
+        "tests/storage/test_context_view_readonly.py::test_second_request_sees_change_made_between_requests"
       ]
     },
     {
