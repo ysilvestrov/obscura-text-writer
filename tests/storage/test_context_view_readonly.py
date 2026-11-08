@@ -17,6 +17,30 @@ def _dumps(view):
             {k: v.model_dump() for k, v in view.versions.items()})
 
 
+CONTEXT_STAGES = ('brief', 'draft', 'edit', 'memory')
+
+
+def _configure(repo, story_id):
+    """Save local bench roles, so readiness passes the role check and reaches build_context."""
+    from storygen.application.workspace_bench import configure_roles
+    configure_roles(repo, story_id)
+
+
+def _contexts(repo, story_id, scene_id, view):
+    """Build every stage context for one scene from one captured view, as readiness does."""
+    from storygen.authoring.blueprints import get_role_settings
+    from storygen.generation.context import build_context
+    from storygen.generation.pipeline import STAGE_ROLES
+    roles = get_role_settings(repo, story_id)
+    built = {}
+    for stage in CONTEXT_STAGES:
+        try:
+            built[stage] = build_context(repo, scene_id, stage, roles[STAGE_ROLES[stage]], view=view)
+        except (ValueError, KeyError) as exc:
+            built[stage] = f'{type(exc).__name__}: {exc}'
+    return built
+
+
 def _prose_snapshots(view):
     return [v.dependency_snapshot for v in view.versions.values() if v.kind in {'edited', 'manual'} and v.dependency_snapshot]
 
@@ -49,9 +73,17 @@ def test_peek_methods_raise_like_public_ones_for_trashed_scene(tmp_path):
 
 
 def test_readiness_and_status_do_not_mutate_view_models(tmp_path):
+    from storygen.characters.context import character_material
     repo, story, scenes = seeded(tmp_path)
+    _configure(repo, story.id)
     view = repo.context_view(story.id)
     before = _dumps(view)
+    # Readiness work on the captured view: every stage context and the character material.
+    built = [_contexts(repo, story.id, s.id, view) for s in view.list_scenes(story.id)]
+    assert sum(not isinstance(c, str) for item in built for c in item.values()) >= len(scenes)
+    for s in view.list_scenes(story.id):
+        character_material(view, view.get_story(story.id), view.get_scene(s.id))
+    assert _dumps(view) == before
     scene_status(view)
     [view.effective_scene(s.id) for s in view.list_scenes(story.id)]
     changes = [c for snapshot in _prose_snapshots(view) for c in compare_snapshot(view, snapshot)]
@@ -109,6 +141,10 @@ def _outputs(repo, story_id):
     for scene in scenes:
         for name in OPERATIONS:
             outputs[f'{scene.id}:{name}'] = preview(repo, _request(story_id, scene.id, name))
+        # build_context(view=...) output itself (prompt texts, refs, snapshot), not only readiness flags.
+        view = repo.context_view(story_id)
+        for stage, built in _contexts(repo, story_id, scene.id, view).items():
+            outputs[f'{scene.id}:context:{stage}'] = built
     view = repo.context_view(story_id)
     outputs['status'] = scene_status(view)
     outputs['effective'] = [view.effective_scene(s.id) for s in view.list_scenes(story_id)]
@@ -158,12 +194,20 @@ def test_peek_path_matches_copying_path(tmp_path, monkeypatch):
     repo3.impact('save_report', record=record3)
     assert not repo3.get_version(ref3.id).stale
     stories = [(repo, story), (repo2, story2), (repo3, story3)]
+    for r, s in stories:
+        _configure(r, s.id)
     hidden = repo.get_scene(repo.context_view(story.id).list_scenes(story.id)[0].id)
     # A trashed scene and a stale prose keep the comparison on non-trivial branches.
     extra = repo.create_scene(story.id, SceneCreate(title='Кошик'))
     repo.set_scene_trashed(story.id, extra.id, extra.revision, restore=False)
     repo.update_scene_metadata(hidden.id, {'title': 'Змінена', 'character_ids': ['a']}, hidden.revision)
     peeked = [_outputs(r, s.id) for r, s in stories]
+    # Each story reaches the full readiness path: ready results and real contexts, no role errors.
+    for text in peeked:
+        decoded = json.loads(text)
+        assert 'Роль не налаштовано' not in text
+        assert any(isinstance(v, dict) and v.get('ready') is True for v in decoded.values())
+        assert any(isinstance(v, dict) and v.get('fingerprint') for k, v in decoded.items() if ':context:' in k)
 
     def copying(name):
         original = getattr(ContextView, name)
@@ -182,6 +226,7 @@ def test_second_request_sees_change_made_between_requests(tmp_path):
     from storygen.application.workspace_bench import OPERATIONS, _default, _request
     from storygen.generation.readiness import preview
     repo, story, scene, draft, prose = setup(tmp_path)
+    _configure(repo, story.id)
 
     def request():
         view = repo.context_view(story.id)
@@ -189,12 +234,22 @@ def test_second_request_sees_change_made_between_requests(tmp_path):
                 json.dumps(scene_status(view), default=_default, sort_keys=True),
                 [json.dumps(preview(repo, _request(story.id, scene.id, name)), default=_default, sort_keys=True)
                  for name in OPERATIONS])
+    def ready(result):
+        return {name for name, text in zip(OPERATIONS, result[2]) if json.loads(text)['ready']}
     first = request()
     assert first == request()
+    # memory and rebuild_memory pass the role check and build_context; brief waits for a scene plan.
+    assert ready(first) == {'memory', 'rebuild_memory'}
     other = repo.save_version(story.id, scene.id, 'draft', 'B', [])
     repo.set_head(scene.id, 'draft', other.id, repo.get_scene(scene.id).revision)
     second = request()
     assert first[0] is False and second[0] is True
     assert second[1] != first[1]
+    # The stale prose is seen by the second readiness request too (edit_loop reason changes).
+    assert second[2] != first[2]
     repo.set_head(scene.id, 'draft', draft.id, repo.get_scene(scene.id).revision)
     assert request() == first
+    # A plan saved between requests makes brief ready: build_context runs on a fresh view.
+    current = repo.get_scene(scene.id)
+    repo.update_scene_plan(scene.id, 'План', current.revision)
+    assert 'brief' in ready(request()) and 'brief' not in ready(first)

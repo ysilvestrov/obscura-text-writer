@@ -12,16 +12,23 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
+from ..authoring.blueprints import get_role_settings, save_role_settings
 from ..domain import SceneCreate, StoryCreate
 from ..generation.dependencies import save_manual_prose
 from ..generation.pipeline import STAGES
 from ..impact.presentation import scene_status
 from ..memory.service import save_scene_memory
+from ..providers.models import RoleSettings
 from ..run_models import RunRequest
 from ..storage.repository import Repository
 
 OPERATIONS = ('prepare', *STAGES, 'scene', 'remaining', 'rebuild_memory', 'edit_loop')
 SYNTHETIC_TITLE = 'Synthetic workspace bench'
+BENCH_ROLES = ('planner', 'writer', 'editor', 'memory')
+# Local provider with builtin prompts: readiness stays offline and needs no budget limit. The window is
+# wide enough for a 300-scene memory and plan, so preview reaches build_context and returns ready=True.
+BENCH_ROLE = dict(provider=dict(provider='local', model='bench-local'), context_tokens=262144,
+                  max_output_tokens=4096, max_input_chars=2_000_000)
 
 
 @contextlib.contextmanager
@@ -46,6 +53,13 @@ def build_story(repo: Repository, scenes: int, shallow_copies: bool = False) -> 
         return _build_story(repo, scenes)
 
 
+def configure_roles(repo: Repository, story_id: str) -> None:
+    """Save the bench roles (planner, writer, editor, memory) so readiness checks the full path."""
+    role = RoleSettings.model_validate(BENCH_ROLE)
+    for name in BENCH_ROLES:
+        save_role_settings(repo, story_id, name, role, repo.get_story(story_id).revision)
+
+
 def _build_story(repo, scenes):
     story = repo.create_story(StoryCreate(title=SYNTHETIC_TITLE))
     sources, facts = [], []
@@ -59,7 +73,20 @@ def _build_story(repo, scenes):
         sources.append(scene.heads['prose'])
         facts.append(dict(text=text, source_version_id=sources[-1], quote=text))
         save_scene_memory(repo, scene.id, json.dumps(dict(source_prose_ids=list(sources), facts=list(facts))), scene.revision)
+    # Roles are saved last, so their presence marks a completed build (see _check_synthetic).
+    configure_roles(repo, story.id)
     return story.id
+
+
+def _check_synthetic(repo, story_id, scenes):
+    """Refuse to measure a reused synthetic story that is not the requested, completed workload."""
+    found = len(repo.context_view(story_id).list_scenes(story_id))
+    if found != scenes:
+        raise ValueError(f'synthetic_mismatch: workdir story has {found} scenes, requested {scenes}; use a new --workdir')
+    roles = get_role_settings(repo, story_id)
+    if any(name not in roles for name in BENCH_ROLES):
+        raise ValueError('synthetic_incomplete: workdir story has no bench roles (interrupted or old build); '
+                         'use a new --workdir')
 
 
 def _request(story_id, scene_id, name):
@@ -137,11 +164,17 @@ def measure(repo: Repository, story_id: str) -> dict:
 
 
 def run(data=None, story=None, synthetic=None, workdir=None) -> dict:
-    """Open a data directory (or a synthetic workdir, reused when it already holds the story) and measure."""
+    """Open a data directory (or a synthetic workdir, reused only when it holds the same completed workload) and measure."""
     repo = Repository(Path(workdir if synthetic else data))
     if synthetic:
         existing = [s for s in repo.list_stories() if s.title == SYNTHETIC_TITLE]
-        story_id = existing[0].id if existing else build_story(repo, synthetic, shallow_copies=True)
+        if len(existing) > 1:
+            raise ValueError('synthetic_ambiguous: workdir holds several synthetic stories; use a new --workdir')
+        if existing:
+            story_id = existing[0].id
+            _check_synthetic(repo, story_id, synthetic)
+        else:
+            story_id = build_story(repo, synthetic, shallow_copies=True)
     else:
         chosen = [s for s in repo.list_stories() if story is None or s.id.startswith(story)]
         if not chosen:

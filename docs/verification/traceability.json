@@ -659,7 +659,9 @@
       "scope": "Еквівалентність швидкого шляху. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
       "tests": [
         "tests/storage/test_context_view_readonly.py::test_peek_path_matches_copying_path",
-        "tests/storage/test_attempt_filters.py::test_sql_filters_match_python_filters"
+        "tests/storage/test_attempt_filters.py::test_sql_filters_match_python_filters",
+        "tests/storage/test_attempt_filters.py::test_falsy_proposals_are_removed_by_route_filters_as_before",
+        "tests/storage/test_workspace_bench.py::test_synthetic_story_reaches_full_readiness_path"
       ]
     },
     {

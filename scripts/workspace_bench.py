@@ -21,7 +21,7 @@ def main(argv=None):
     if bool(args.synthetic)==bool(args.data) or (args.synthetic and not args.workdir):
         parser.error('use --data <dir> or --synthetic <N> --workdir <dir>')
     try:result=run(args.data,args.story,args.synthetic,args.workdir)
-    except LookupError as error:
+    except (LookupError,ValueError) as error:
         print(str(error),file=sys.stderr);return 2
     print(json.dumps(result,sort_keys=True,indent=None if args.json else 2))
     return 0

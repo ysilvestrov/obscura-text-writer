@@ -27,7 +27,7 @@ def _seed(repo):
     n = 0
     for story, scenes, runs in stories:
         for scene, run_id, ce, rw, state in itertools.product(
-                scenes, [None, runs[0].id, runs[1].id], VARIANTS, VARIANTS, STATES[:3]):
+                scenes, [None, runs[0].id, runs[1].id], VARIANTS, VARIANTS, STATES):
             ctx = {}
             if ce != 'missing':
                 ctx['copyedit_proposal'] = ce
@@ -74,6 +74,10 @@ def test_falsy_proposals_are_removed_by_route_filters_as_before(tmp_path):
                           and a.state in {'completed', 'needs_review', 'alternative'}]
                 old_rw = [a.id for a in full if a.scene_id == scene.id and a.context.get('rewrite_proposal')]
                 assert old_ce and old_rw
+                # Failed attempts with a non-empty proposal exist for this scene and the copyedit route drops them.
+                failed = [a.id for a in full if a.scene_id == scene.id and a.state == 'failed'
+                          and a.context.get('copyedit_proposal')]
+                assert failed and not set(failed) & set(old_ce)
                 r = client.get(f'/api/scenes/{scene.id}/copyedits')
                 assert r.status_code == 200
                 assert [a['id'] for a in r.json()['attempts']] == old_ce

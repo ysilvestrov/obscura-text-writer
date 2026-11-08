@@ -52,3 +52,38 @@ def test_shallow_copy_build_matches_normal_build_and_restores_model_copy(tmp_pat
             assert BaseModel.model_copy is not original
             raise RuntimeError
     assert BaseModel.model_copy is original
+
+
+def test_synthetic_story_reaches_full_readiness_path(tmp_path):
+    """The synthetic build saves roles, so readiness passes the role check and builds context."""
+    from storygen.application.workspace_bench import BENCH_ROLES, _request
+    from storygen.authoring.blueprints import get_role_settings
+    from storygen.generation.readiness import preview
+    repo = Repository(tmp_path)
+    story_id = build_story(repo, 5, shallow_copies=True)
+    assert set(BENCH_ROLES) <= set(get_role_settings(repo, story_id))
+    middle = repo.context_view(story_id).list_scenes(story_id)[2].id
+    for name in ['brief', 'scene', 'memory', 'rebuild_memory', 'remaining']:
+        result = preview(repo, _request(story_id, middle, name))
+        assert result['ready'] is True, name
+        assert result['roles']
+
+
+def test_reused_workdir_must_hold_requested_completed_workload(tmp_path):
+    from storygen.application.workspace_bench import SYNTHETIC_TITLE, run
+    from storygen.domain import SceneCreate, StoryCreate
+    first = run(synthetic=3, workdir=tmp_path / 'w')
+    assert first['scenes'] == 3
+    assert run(synthetic=3, workdir=tmp_path / 'w')['digest'] == first['digest']
+    with pytest.raises(ValueError, match='synthetic_mismatch'):
+        run(synthetic=5, workdir=tmp_path / 'w')
+    # An interrupted (or older) build has scenes but no bench roles.
+    repo = Repository(tmp_path / 'i')
+    story = repo.create_story(StoryCreate(title=SYNTHETIC_TITLE))
+    for i in range(2):
+        repo.create_scene(story.id, SceneCreate(title=f'Scene {i + 1}', beats='b'))
+    with pytest.raises(ValueError, match='synthetic_incomplete'):
+        run(synthetic=2, workdir=tmp_path / 'i')
+    repo.create_story(StoryCreate(title=SYNTHETIC_TITLE))
+    with pytest.raises(ValueError, match='synthetic_ambiguous'):
+        run(synthetic=2, workdir=tmp_path / 'i')
