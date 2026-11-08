@@ -12,7 +12,7 @@ const blocked=()=>busy||state.dirty||state.saving||(state.workspaceRuns||[]).som
   const live=r.id===state.workspaceRun?.id?state.workspaceRun:r.id===session?.id?session:r;
   return ['queued','running','pause_requested','cancellation_requested'].includes(live.state);
 });
-function button(label,fn,primary=false){const b=node('button',t(label),primary?'':'secondary');b.type='button';b.disabled=blocked();b.onclick=async()=>{if(blocked())return;busy=true;render();try{await fn();}catch(e){notice(e.message,'error');}finally{busy=false;await load();}};return b;}
+function button(label,fn,primary=false){const b=node('button',t(label),primary?'':'secondary');b.type='button';b.disabled=blocked();b.onclick=async()=>{if(blocked())return;const hadFocus=document.activeElement===b;busy=true;render();if(hadFocus){host.tabIndex=-1;host.focus()}try{await fn();}catch(e){notice(e.message,'error');}finally{busy=false;await load();}};return b;}
 async function command(action,choices={}){
   const result=await api(`/api/stories/${state.storyId}/review/${session.id}/${action}`,json('POST',{operation_id:crypto.randomUUID(),fingerprint:current.fingerprint,choices}));
   await refresh();
@@ -20,9 +20,11 @@ async function command(action,choices={}){
 }
 async function openScene(){const scene=state.view.scenes.find(s=>s.id===current.scene_id);if(!scene)return;await selectScene(scene);if(state.scene?.id===scene.id&&!state.dirty)await invokeWorkspaceCommand('show',scene.heads.prose?'prose':'brief');}
 async function priority(material,preferred,superseded,revokeId=null){
+  const sceneId=current?.scene_id,revision=policies?.authority_revisions[material],fingerprint=current?.fingerprint;
   if(!await confirmDialog(t(revokeId?'review4.revoke_confirm':'review4.priority_confirm')))return;
-  await api(`/api/stories/${state.storyId}/review/priorities/${current.scene_id}`,json('POST',{
-    material,expected_revision:policies.authority_revisions[material],operation_id:crypto.randomUUID(),
+  if(current?.scene_id!==sceneId||current?.fingerprint!==fingerprint||policies?.authority_revisions[material]!==revision||state.dirty||state.saving)return;
+  await api(`/api/stories/${state.storyId}/review/priorities/${sceneId}`,json('POST',{
+    material,expected_revision:revision,operation_id:crypto.randomUUID(),
     preferred,superseded,revoke_id:revokeId
   }));
   await refresh();
@@ -35,8 +37,10 @@ function render(){
   if(session.state==='alternative')host.append(node('p',t('review.changed')));
   const runActions=node('div',null,'actions');host.append(runActions);
   if(['paused','failed','interrupted'].includes(session.state))runActions.append(button('review.retry',async()=>{
+    const runId=session.id,runState=session.state;
     if(!await confirmDialog(t('review.retry_confirm')))return;
-    const run=await api(`/api/runs/${session.id}/resume`,json('POST',{repeat_interrupted:session.state!=='paused'}));
+    if(session?.id!==runId||session?.state!==runState||state.dirty||state.saving)return;
+    const run=await api(`/api/runs/${runId}/resume`,json('POST',{repeat_interrupted:runState!=='paused'}));
     document.dispatchEvent(new CustomEvent('run-enqueued',{detail:run}));
   }));
   if(['queued','running','paused','needs_review','interrupted','alternative'].includes(session.state)){

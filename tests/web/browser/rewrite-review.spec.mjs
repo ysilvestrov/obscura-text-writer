@@ -37,8 +37,9 @@ test('cancel dirty Save keeps notes and makes no rewrite call',async({page,reque
   await page.goto(`/stories/${fixture.story_id}`);await page.locator('#mode-tabs [data-mode="draft"]').click();
   await expect(page.locator('#author-general')).toBeEnabled();
   await page.locator('#author-general').fill('Моя вказівка.');
-  await page.addLocatorHandler(page.locator('.app-dialog'),async dialog=>{await dialog.locator('.app-dialog-actions button').first().click()});
   await page.getByRole('button',{name:/Переписати за коментарями|Rewrite from comments/,exact:true}).click();
+  const dialog=page.locator('.app-dialog');await expect(dialog).toBeVisible();
+  await dialog.locator('.app-dialog-actions button').first().click();await expect(dialog).toHaveCount(0);
   await expect(page.locator('#author-general')).toHaveValue('Моя вказівка.');
   const runs=await(await request.get(`/api/stories/${fixture.story_id}/runs`)).json();
   expect(runs.runs).toHaveLength(0);

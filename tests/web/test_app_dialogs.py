@@ -14,7 +14,6 @@ def test_app_uses_no_native_confirm_or_prompt():
     root=Path(__file__).resolve().parents[2]/'src/storygen/web/static'
     matches=[]
     for path in root.glob('*.js'):
-        if path.name=='rich-editor-engine.js': continue
-        if re.search(r'(?<![\w.])(?:window\.)?(?:confirm|prompt)\s*\(',path.read_text(encoding='utf-8')):
+        if re.search(r'(?<![\w.])(?:(?:window|globalThis|self)\s*\.\s*)?(?:confirm|prompt)\s*\(',path.read_text(encoding='utf-8')):
             matches.append(path.name)
     assert not matches, matches
