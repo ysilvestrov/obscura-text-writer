@@ -183,14 +183,23 @@ def _scene_select(repo, story_id, scene_id):
     from ..application.settings import AppSettings
     from ..web.app import create_app
     app = create_app(AppSettings(data_dir=repo.root, env_file=repo.root / '.workspace-bench-no.env'))
-    client = TestClient(app, base_url='http://127.0.0.1:8765')
+    # Server exceptions become 500 responses, so one failing endpoint is reported by label, not as a traceback.
+    client = TestClient(app, base_url='http://127.0.0.1:8765', raise_server_exceptions=False)
     result = {}
 
     def get(label, url):
         start = time.perf_counter()
         response = client.get(url)
-        result[label] = ((response.status_code, response.json()), time.perf_counter() - start)
-        return response.json() if response.status_code == 200 else None
+        seconds = time.perf_counter() - start
+        try:
+            body = response.json()
+        except ValueError:
+            body = None
+        if response.status_code >= 500 or body is None:
+            # Only the label and status: response bodies may quote story text.
+            raise ValueError(f'scene_select_failed: {label} returned HTTP {response.status_code}')
+        result[label] = ((response.status_code, body), seconds)
+        return body if response.status_code == 200 else None
     try:
         get('readiness', f'/api/stories/{story_id}/readiness?scene_id={scene_id}&operation=brief')
         runs = get('runs', f'/api/stories/{story_id}/runs')

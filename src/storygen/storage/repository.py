@@ -266,6 +266,11 @@ class Repository:
             return self._active_scene(db,scene_id).story_id
 
     def get_scene(self,id: str,include_trashed: bool=False,*,view=None) -> Scene:
+        """Scene by id; trashed scene or story -> KeyError unless include_trashed.
+
+        With view: reads the view's rows. A scene of another story than the view's raises KeyError, also with
+        include_trashed (the view-less path returns it). Callers pass the view of the scene's own story
+        (scene_view(scene_id))."""
         if view is not None:
             # The view captured an active story; its scene rows give the same result as a fresh snapshot.
             scene=view.scenes.get(id)

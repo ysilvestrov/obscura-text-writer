@@ -117,3 +117,21 @@ def test_edit_statistics_for_legacy_draft_keep_view_freshness(tmp_path):
     assert data['context']['available'] is False
     assert data['context']['reason'] == 'Вибрана проза або чернетка потребує оновлення'
     assert data['materials']['draft']['stale'] is True
+
+
+def test_proposal_lists_survive_a_corrupt_acceptance_journal(tmp_path):
+    """Recorded deviation (SPEC PERF-001): copyedit and rewrite lists need no context view, so they still answer
+    on a story whose view cannot be built; view-based endpoints keep failing there."""
+    repo, story, scene_ids, trashed_id, draft_id = _fixture(tmp_path)
+    with repo.db.connection() as db:
+        db.execute('INSERT INTO app_settings VALUES(?,?)', (f'acceptance:{story.id}:broken', '{"id": "x"}'))
+    with pytest.raises(ValueError):
+        repo.context_view(story.id)
+    client = TestClient(create_app(AppSettings(data_dir=tmp_path, env_file=tmp_path / 'none.env')),
+                        base_url='http://127.0.0.1:8765', raise_server_exceptions=False)
+    copyedits = client.get(f'/api/scenes/{scene_ids[2]}/copyedits')
+    rewrites = client.get(f'/api/scenes/{scene_ids[2]}/rewrites')
+    assert copyedits.status_code == 200 and [a['id'] for a in copyedits.json()['attempts']] == ['a0cc']
+    assert rewrites.status_code == 200 and [a['id'] for a in rewrites.json()['attempts']] == ['a0rn']
+    assert client.get(f'/api/scenes/{trashed_id}/copyedits').status_code == 404
+    assert client.get(f'/api/scenes/{scene_ids[2]}/versions').status_code != 200

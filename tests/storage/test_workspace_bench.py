@@ -137,3 +137,25 @@ def test_run_refuses_the_working_data_dir(tmp_path, monkeypatch):
     with pytest.raises(ValueError, match='live_data'):
         workspace_bench.run(data=main / 'data', story='x')
     assert opened == []
+
+
+def test_failing_scene_select_endpoint_is_a_clear_error_with_exit_code_2(tmp_path, monkeypatch, capsys):
+    import importlib.util
+    from pathlib import Path
+    from storygen.storage.repository import Repository as Repo
+    from storygen.application.workspace_bench import run
+    run(synthetic=3, workdir=tmp_path / 'w')
+
+    def broken(self, scene_id):
+        raise RuntimeError('boom')
+    monkeypatch.setattr(Repo, 'get_comment_state', broken)
+    with pytest.raises(ValueError, match='scene_select_failed: comments returned HTTP 500'):
+        run(synthetic=3, workdir=tmp_path / 'w')
+    path = Path(__file__).resolve().parents[2] / 'scripts' / 'workspace_bench.py'
+    spec = importlib.util.spec_from_file_location('workspace_bench_script', path)
+    script = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(script)
+    capsys.readouterr()
+    assert script.main(['--synthetic', '3', '--workdir', str(tmp_path / 'w')]) == 2
+    out = capsys.readouterr()
+    assert 'scene_select_failed: comments' in out.err and 'Traceback' not in out.err and out.out == ''
