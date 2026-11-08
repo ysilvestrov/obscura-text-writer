@@ -55,3 +55,16 @@ def test_structural_stays_in_budget_on_long_synthetic_while_full_does_not():
     for s in scenes:
         sel=STRATEGIES['structural_fts'](s,p)
         assert sel.overflow or sel.tokens_conservative<=20000
+
+
+def test_measure_rates_update_recency():
+    old=scene([rec('s','character_states','Марія сидить',['c1'],scene=1)],number=20,targets=('s',))
+    new=scene([rec('t','character_states','Марія стоїть',['c1'],scene=18)],number=19,id='s19',targets=('t',))
+    assert measure_rates([new,old]).update_recent_share==0.5
+
+
+def test_generate_follows_update_recency():
+    from dataclasses import replace
+    recent=replace(R,update_recent_share=0.9)
+    scenes=generate(recent,300)
+    assert measure_rates(scenes).update_recent_share==pytest.approx(0.9,abs=0.1)

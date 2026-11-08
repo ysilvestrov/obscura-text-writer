@@ -201,7 +201,9 @@ def structural_fts(scene: SceneInput, params: Params) -> Selection:
     chosen, timeline, summary, layers, overflow, dropped, budget = _structural(scene, params, 'structural_fts')
     if not overflow:
         taken = {r.claim_id for r in chosen}
-        for r in fts_rank([r for r in scene.records if r.claim_id not in taken], scene.plan_text):
+        # Timeline-category claims are rendered by the timeline layer, never as records.
+        pool = [r for r in scene.records if r.claim_id not in taken and r.category != 'timeline']
+        for r in fts_rank(pool, scene.plan_text):
             if budget.take(_line_cost(r.text, params.measure)):
                 chosen.append(r)
                 layers['fts'] = layers.get('fts', 0) + 1

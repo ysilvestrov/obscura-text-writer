@@ -95,3 +95,9 @@ def test_full_a_saves_chars_on_long_timeline():
     s=scene(timeline=timeline,number=100)
     full=STRATEGIES['full'](s,params());a=STRATEGIES['full_a'](s,params(timeline_window=20))
     assert a.chars<full.chars and a.layers['timeline']==20
+
+
+def test_fts_never_adds_timeline_category_records():
+    records=rich_records()+[rec('tl1','timeline','Маяк на скелі горів',kind=None)]
+    sel=STRATEGIES['structural_fts'](scene(records,plan='маяк на скелі'),params())
+    assert 'tl1' not in sel.record_ids

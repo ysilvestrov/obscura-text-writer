@@ -10,6 +10,7 @@ from .strategies import mentions
 
 CATS = ('facts', 'character_states', 'open_threads')
 MUTABLE = ('character_states', 'open_threads')
+RECENT_SCENES = 10
 _CONSONANTS = 'бвгджзклмнпрстф'
 _FILLER = ('слово', 'річ', 'день', 'море', 'дім', 'шлях', 'вечір', 'тінь', 'світло', 'двері')
 
@@ -26,6 +27,7 @@ class Rates:
     hero_state_share: float = 0.0
     other_state_share: float = 0.0
     mention_share: float = 0.0
+    update_recent_share: float = 0.0
 
 
 def _mean(values):
@@ -39,11 +41,13 @@ def measure_rates(scenes: list[SceneInput]) -> Rates:
     n = last.number
     by_cat = {c: [r for r in last.records if r.category == c] for c in CATS}
     updates = {c: 0 for c in MUTABLE}
+    ages = []
     for s in scenes:
-        category = {r.claim_id: r.category for r in s.records}
+        known = {r.claim_id: r for r in s.records}
         for claim in s.targets:
-            if category.get(claim) in updates:
-                updates[category[claim]] += 1
+            if claim in known and known[claim].category in updates:
+                updates[known[claim].category] += 1
+                ages.append(s.number - (known[claim].last_changed_scene or 0))
     states = by_cat['character_states']
     linkable = by_cat['facts'] + by_cat['open_threads']
     stems = tuple(st for name in last.names.values() for st in name_stems(name))
@@ -58,7 +62,8 @@ def measure_rates(scenes: list[SceneInput]) -> Rates:
         first_meetings_per_scene=_mean([s.first_meetings for s in scenes]),
         hero_state_share=_mean([1.0 if last.protagonist in r.character_ids else 0.0 for r in states]),
         other_state_share=_mean([1.0 if r.character_ids and last.protagonist not in r.character_ids else 0.0 for r in states]),
-        mention_share=_mean([1.0 if mentions(r, stems) else 0.0 for r in linkable]))
+        mention_share=_mean([1.0 if mentions(r, stems) else 0.0 for r in linkable]),
+        update_recent_share=_mean([1.0 if age <= RECENT_SCENES else 0.0 for age in ages]))
 
 
 def _name(i: int) -> str:
@@ -100,8 +105,12 @@ def generate(rates: Rates, scene_count: int, seed: int = 0, sample_every: int = 
         cast += picked
         targets = []
         for category in MUTABLE:
-            pool = [r.claim_id for r in active.values() if r.category == category]
-            targets += rng.sample(pool, min(len(pool), _count(rng, rates.updates_per_scene.get(category, 0.0))))
+            pool = [r for r in active.values() if r.category == category]
+            for _ in range(min(len(pool), _count(rng, rates.updates_per_scene.get(category, 0.0)))):
+                recent = [r for r in pool if i - r.last_changed_scene <= RECENT_SCENES]
+                pick = rng.choice(recent if recent and rng.random() < rates.update_recent_share else pool)
+                pool.remove(pick)
+                targets.append(pick.claim_id)
         if (i - 1) % sample_every == 0 or i == scene_count:
             plan = ' '.join(names[c] for c in cast) + ' план сцени'
             prose = ' '.join([names[c] for c in cast] + [' '.join(active[t].text.split()[:3]) for t in targets])
