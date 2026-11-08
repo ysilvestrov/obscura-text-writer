@@ -32,8 +32,10 @@ def test_run_details_expose_memory_violations_without_context(tmp_path):
             'fragments': 'СЕКРЕТНИЙ ТЕКСТ', 'memory_violations': PAYLOAD, 'memory_warnings': ['Попередження']})
         attempt = client.get(f'/api/runs/{run_id}').json()['attempts'][-1]
         assert attempt['memory_violations']['total'] == 3
-        assert [i['operation'] for i in attempt['memory_violations']['items']] == ['facts.add[0]', 'operations[1]', '$']
-        assert {i['code'] for i in attempt['memory_violations']['items']} == {'evidence_unknown', 'add_limit', 'target_unknown'}
+        assert attempt['memory_violations']['items'] == [
+            {'operation': 'facts.add[0]', 'code': 'evidence_unknown'},
+            {'operation': 'operations[1]', 'code': 'add_limit'},
+            {'operation': '$', 'code': 'target_unknown'}]
         assert attempt['memory_warnings'] == ['Попередження']
         assert 'context' not in attempt and 'СЕКРЕТНИЙ' not in json.dumps(attempt, ensure_ascii=False)
 

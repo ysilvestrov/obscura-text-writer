@@ -29,3 +29,14 @@ const big=violationDetails({items:many,total:57},{t}),rows=big.children.find(c=>
 assert.equal(rows.length,51);assert.equal(rows.at(-1).textContent,'ще 7');
 assert.equal(violationDetails({items:many,total:50},{t}).children.find(c=>c.tag==='ul').children.length,50);
 console.log('memory violations details passed');
+// A UA/EN switch re-renders bound labels (runs.js binds them through uiText).
+{
+  let locale='uk';const renders=[];
+  const tl=(key,params={})=>((locale==='uk'?dict:{...dict,...en,'memory.violations.title':'Violations ({p0})','memory.violations.more':'{p0} more','memory.violation.add_limit':'too many adds'})[key]??key).replace(/{(p\d+)}/g,(w,n)=>params[n]??w);
+  const bind=(el,render)=>{renders.push([el,render]);el.textContent=render()};
+  const live=violationDetails({items:[{operation:'operations[0]',code:'add_limit'}],total:2},{t:tl,bind});
+  const texts=()=>[live.children.find(c=>c.tag==='summary').textContent,...live.children.find(c=>c.tag==='ul').children.map(li=>li.textContent)];
+  assert.deepEqual(texts(),['Порушення (2)','Операція 1 · забагато додавань','ще 1']);
+  locale='en';for(const [el,render] of renders)el.textContent=render();
+  assert.deepEqual(texts(),['Violations (2)','Operation 1 · too many adds','1 more']);
+}

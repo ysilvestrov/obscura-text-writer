@@ -110,7 +110,7 @@ async function showViolations(run){
     const details=await api('/api/runs/'+run.id),violations=details.attempts?.at(-1)?.memory_violations;
     if(active?.id!==run.id||active.state!=='failed')return;
     status.querySelector('.memory-violations')?.remove();
-    const box=violationDetails(violations,{t});if(box)status.append(box);
+    const box=violationDetails(violations,{t,bind:(el,render)=>uiText(el,'textContent',render)});if(box)status.append(box);
   }catch{/* Діагностика необов’язкова: помилка запиту не заважає стану запуску. */}
 }
 setInterval(()=>{if(active&&!terminal.has(active.state))uiText(elapsed,"textContent",()=>(t("m_61cb5f9a3bb9",{p0:(Math.floor((Date.now()-started)/1000))})))},1000);

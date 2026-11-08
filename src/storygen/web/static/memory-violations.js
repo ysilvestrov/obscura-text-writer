@@ -8,17 +8,18 @@ export function operationLabel(path,t){
   if(m)return t('memory.violation.path.element',{p0:m[1],p1:Number(m[2])+1});
   return raw;
 }
-export function violationDetails(violations,{t}){
+export function violationDetails(violations,{t,bind}){
+  // bind(element, render) keeps the text current after a UA/EN switch (runs.js passes uiText); without it the text is set once.
   const items=Array.isArray(violations?.items)?violations.items:[];
   if(!items.length)return null;
-  const node=(tag,text)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;return n};
+  const node=(tag,render)=>{const n=document.createElement(tag);if(render)bind?bind(n,render):n.textContent=render();return n};
   const total=Number.isFinite(violations.total)?violations.total:items.length;
   const box=node('details'),list=node('ul');box.className='memory-violations';
-  box.append(node('summary',t('memory.violations.title',{p0:total})),list);
+  box.append(node('summary',()=>t('memory.violations.title',{p0:total})),list);
   for(const item of items){
-    const key=`memory.violation.${item.code}`,label=t(key),code=label===key?String(item.code):label;
-    list.append(node('li',`${operationLabel(item.operation,t)} · ${code}`));
+    const key=`memory.violation.${item.code}`;
+    list.append(node('li',()=>{const label=t(key);return `${operationLabel(item.operation,t)} · ${label===key?String(item.code):label}`}));
   }
-  if(total>items.length)list.append(node('li',t('memory.violations.more',{p0:total-items.length})));
+  if(total>items.length)list.append(node('li',()=>t('memory.violations.more',{p0:total-items.length})));
   return box;
 }

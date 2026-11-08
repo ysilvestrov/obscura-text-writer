@@ -111,10 +111,10 @@ def configure_prompts(repo,story_id,change,settings):
 def _custom_contract(repo,story_id,stage,settings,upgrade=False):
     # A custom memory/evidence_delta/2 prompt keeps /2 on edit and confirm; /3 needs explicit upgrade_memory_wire.
     expected=expected_contract(stage,settings)
-    if upgrade or (expected.stage,expected.mode)!=('memory','evidence_delta'):return expected
-    if not settings.prompt_version_id:return expected
-    ref=repo.get_version(settings.prompt_version_id)
-    if ref.story_id!=story_id or ref.kind!='prompt':raise ValueError('Чужий промпт')
+    ref=repo.get_version(settings.prompt_version_id) if settings.prompt_version_id else None
+    # The incoming reference is validated on every path, including an explicit upgrade.
+    if ref is not None and (ref.story_id!=story_id or ref.kind!='prompt'):raise ValueError('Чужий промпт')
+    if upgrade or ref is None or (expected.stage,expected.mode)!=('memory','evidence_delta'):return expected
     stored=ref.prompt_contract
     if stored is not None and (stored.stage,stored.mode,stored.schema_version)==('memory','evidence_delta',2):return stored
     return expected

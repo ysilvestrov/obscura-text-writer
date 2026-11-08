@@ -173,9 +173,10 @@ def test_edit_with_other_story_v2_prompt_id_is_rejected(tmp_path):
         other = client.post('/api/stories', json={'title': 'Чужа'}).json()
         foreign = repo.save_version(other['id'], None, 'prompt', 'Чужий v2.', [],
                                     prompt_contract=PromptContract(stage='memory', mode='evidence_delta', schema_version=2))
-        response = _put(client, story_id, role='memory', settings={**settings, 'prompt_version_id': foreign.id},
-                        prompt_text='Правка.')
-        assert response.status_code == 400, response.text
-        assert _saved_contract(client, story_id)['schema_version'] == 2
+        for extra in ({}, {'upgrade_memory_wire': True}):
+            response = _put(client, story_id, role='memory', settings={**settings, 'prompt_version_id': foreign.id},
+                            prompt_text='Правка.', **extra)
+            assert response.status_code == 400, response.text
+            assert _saved_contract(client, story_id)['schema_version'] == 2
     finally:
         client.__exit__(None, None, None)
