@@ -7,7 +7,7 @@ test('one saved rewrite, draft-only review, partial apply and cleared notes',asy
   await expect(page.locator('#author-general')).toBeEnabled();
   await expect(page.getByRole('button',{name:/Переписати за коментарями|Rewrite from comments/,exact:true})).toBeDisabled();
   await page.locator('#author-general').fill('Скоротити й зробити виразнішим.');
-  const seen=[];page.on('dialog',async dialog=>{seen.push(dialog.message());await dialog.accept();});
+  const seen=[];await page.addLocatorHandler(page.locator('.app-dialog'),async dialog=>{seen.push(await dialog.locator('.app-dialog-message').innerText());await dialog.locator('.app-dialog-actions button').last().click();});
   await page.getByRole('button',{name:/Переписати за коментарями|Rewrite from comments/,exact:true}).click();
   const review=page.locator('#assisted-review');
   await expect(review.locator('.copyedit-item')).toHaveCount(2);
@@ -37,8 +37,9 @@ test('cancel dirty Save keeps notes and makes no rewrite call',async({page,reque
   await page.goto(`/stories/${fixture.story_id}`);await page.locator('#mode-tabs [data-mode="draft"]').click();
   await expect(page.locator('#author-general')).toBeEnabled();
   await page.locator('#author-general').fill('Моя вказівка.');
-  page.once('dialog',dialog=>dialog.dismiss());
   await page.getByRole('button',{name:/Переписати за коментарями|Rewrite from comments/,exact:true}).click();
+  const dialog=page.locator('.app-dialog');await expect(dialog).toBeVisible();
+  await dialog.locator('.app-dialog-actions button').first().click();await expect(dialog).toHaveCount(0);
   await expect(page.locator('#author-general')).toHaveValue('Моя вказівка.');
   const runs=await(await request.get(`/api/stories/${fixture.story_id}/runs`)).json();
   expect(runs.runs).toHaveLength(0);
@@ -49,7 +50,7 @@ test('reject all preserves comments and creates no duplicate draft',async({page,
   const fixture=await(await request.post('/test-fixture')).json();
   await page.goto(`/stories/${fixture.story_id}`);await page.locator('#mode-tabs [data-mode="draft"]').click();
   await expect(page.locator('#author-general')).toBeEnabled();await page.locator('#author-general').fill('Моя вказівка.');
-  page.on('dialog',dialog=>dialog.accept());
+  await page.addLocatorHandler(page.locator('.app-dialog'),async dialog=>{await dialog.locator('.app-dialog-actions button').last().click()});
   await page.getByRole('button',{name:/Переписати за коментарями|Rewrite from comments/,exact:true}).click();
   const review=page.locator('#assisted-review');await expect(review.locator('.copyedit-item')).toHaveCount(2);
   const before=await(await request.get(`/api/scenes/${fixture.scene_id}/comments`)).json();
@@ -69,7 +70,7 @@ test('rewrite never substitutes another tab notes for the locally reviewed set',
   const before=await(await request.get(`/api/scenes/${fixture.scene_id}/comments`)).json();
   const source=await(await request.get(`/api/versions/${before.source_version_id}`)).json();
   const other=await request.post(`/api/scenes/${fixture.scene_id}/draft`,{data:{text:source.text,content_format:source.version.content_format,expected_revision:before.scene.revision,expected_source_version_id:source.version.id,expected_comments_revision:before.expected_comments_revision,comment_set:{general:'Інша вкладка.',comments:[]}}});expect(other.ok()).toBeTruthy();
-  page.on('dialog',dialog=>dialog.accept());
+  await page.addLocatorHandler(page.locator('.app-dialog'),async dialog=>{await dialog.locator('.app-dialog-actions button').last().click()});
   await page.getByRole('button',{name:/Переписати за коментарями|Rewrite from comments/,exact:true}).click();
   await expect(page.locator('#notice')).toContainText(/Коментарі змінено|Comments changed/);
   await expect(page.locator('#author-general')).toHaveValue('Моя збережена вказівка.');
@@ -82,7 +83,7 @@ test('select all rewrite changes is local and still requires matching assembled 
   await page.goto(`/stories/${f.story_id}`);await page.locator('#mode-tabs [data-mode="draft"]').click();
   await page.locator('[data-ui-locale="en"]').click();
   await page.locator('#author-general').fill('Make both sentences vivid.');
-  page.on('dialog',d=>d.accept());
+  await page.addLocatorHandler(page.locator('.app-dialog'),async dialog=>{await dialog.locator('.app-dialog-actions button').last().click()});
   await page.getByRole('button',{name:'Rewrite from comments',exact:true}).click();
   const review=page.locator('#assisted-review'),all=review.locator('[data-review-select-all]');
   await expect(review.locator('.copyedit-item')).toHaveCount(2);
@@ -124,7 +125,7 @@ test('select all invalidates an in-flight subset preview and is blocked during a
   await page.goto(`/stories/${f.story_id}?scene=${f.scene_id}&material=draft`);
   await expect(page.locator('#author-general')).toBeEnabled();
   await page.locator('#author-general').fill('Update both sentences.');
-  await page.locator('[data-ui-locale=en]').click();page.on('dialog',d=>d.accept());
+  await page.locator('[data-ui-locale=en]').click();await page.addLocatorHandler(page.locator('.app-dialog'),async dialog=>{await dialog.locator('.app-dialog-actions button').last().click()});
   await page.getByRole('button',{name:'Rewrite from comments',exact:true}).click();
   const review=page.locator('#assisted-review'),all=review.locator('[data-review-select-all]'),apply=review.locator('[data-review-accept]');
   await expect(review.locator('.copyedit-item')).toHaveCount(2);

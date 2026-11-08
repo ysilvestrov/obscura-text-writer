@@ -1,3 +1,4 @@
+import {confirmDialog} from './dialogs.js';
 import {live as liveLabel,t,msg,labelEntries,getLocale,uiText,uiAttr,uiHTML,diagnostic} from './i18n.js';
 import {acceptedContinuation} from './acceptance.js';
 import {violationDetails} from './memory-violations.js';
@@ -149,7 +150,9 @@ async function start(mode,stage,options={}){
   if(usesEditorLoop)operation=editorLoopOperation(operation,passLimit);
   const reason=operationReason(state,operation);
   if(reason)throw new Error(reason);
-  if((!options.primary||operation.memory_review)&&!confirm(confirmationText(operation)))return;
+  if((!options.primary||operation.memory_review)&&!await confirmDialog(confirmationText(operation)))return;
+  if(options.signal?.aborted)throw new DOMException('Cancelled','AbortError');
+  assertReadyDispatch(state,captured);
   const request={story_id:state.storyId,scene_id:mode==='prepare'?null:state.scene.id,mode,stage:stage||null,pause_after:document.querySelector('#pause-each').checked?['brief','draft','edit','memory']:[]};
   if(mode==='stage'&&stage==='memory'&&operation.memory_review)request.memory_approval=operation.memory_review.fingerprint;
   if(usesEditorLoop){request.edit_pass_limit=passLimit;request.edit_workflow='loop'}
@@ -166,7 +169,7 @@ async function start(mode,stage,options={}){
   storage.removeItem(key);await options.onCreated?.(run);if(options.primary)setPendingPrimary(null);await follow(run);return active;
 }
 controls.hidden=false;
-function button(label,fn,operation=null,action=null){const wrapper=document.createElement('span');wrapper.className='run-action';const b=document.createElement('button'),hint=document.createElement('small');hint.id='run-reason-'+actions.length;b.className='secondary';uiText(b,"textContent",()=>(label));const item={button:b,hint,wrapper,operation,action,busy:false};actions.push(item);b.onclick=async()=>{item.busy=true;updateControls();try{await fn()}catch(e){notice(e.message,'error')}finally{item.busy=false;updateControls();if(operation)scheduleReadiness()}};wrapper.append(b,hint);(document.querySelector('#run-actions')&&['pause','cancel','resume','repeat','accepted'].includes(action)?document.querySelector('#run-actions'):controls).append(wrapper);updateControls();return wrapper}
+function button(label,fn,operation=null,action=null){const wrapper=document.createElement('span');wrapper.className='run-action';const b=document.createElement('button'),hint=document.createElement('small');hint.id='run-reason-'+actions.length;b.className='secondary';uiText(b,"textContent",()=>(label));const item={button:b,hint,wrapper,operation,action,busy:false};actions.push(item);b.onclick=async()=>{const hadFocus=document.activeElement===b;item.busy=true;updateControls();if(hadFocus){wrapper.tabIndex=-1;wrapper.focus()}try{await fn()}catch(e){notice(e.message,'error')}finally{item.busy=false;updateControls();if(operation)scheduleReadiness()}};wrapper.append(b,hint);(document.querySelector('#run-actions')&&['pause','cancel','resume','repeat','accepted'].includes(action)?document.querySelector('#run-actions'):controls).append(wrapper);updateControls();return wrapper}
 button(liveLabel(()=>(t("m_4c7f8d65f750"))),()=>start('prepare'),'prepare');
 for(const [stage,label] of labelEntries({get brief(){return t("m_27e8e3278f1a")},get draft(){return t("m_a0503ed62ae7")},get edit(){return t("m_c542d0ba7da5")},get memory(){return t("m_05c4218abe15")}})){
   if(stage==='edit'){
@@ -179,12 +182,13 @@ button(liveLabel(()=>(t("m_3f2da413a47a"))),()=>start('scene'),'scene');button(l
 const pauseLabel=document.createElement('label');uiHTML(pauseLabel,"<input id=\"pause-each\" type=\"checkbox\"> <span data-i18n=\"m_991c0d0700bb\">Пауза після кожного етапу</span>",{});controls.append(pauseLabel);
 button(liveLabel(()=>(t("m_03498e395a43"))),async()=>{if(active)draw(await api(`/api/runs/${active.id}/pause`,json('POST',{})))},null,'pause');
 button(liveLabel(()=>(t("m_8b4c2025378a"))),async()=>{if(active)draw(await api(`/api/runs/${active.id}/cancel`,json('POST',{})))},null,'cancel');
-async function resumeRun(repeat){if(!active)return;await loadPending();const reason=operationReason(state,pendingReadiness);if(reason)throw new Error(reason);if(!confirm((repeat?t("m_f126caaa8d97"):'')+confirmationText(pendingReadiness)))return;await follow(await api(`/api/runs/${active.id}/resume`,json('POST',{repeat_interrupted:repeat})))}
+async function resumeRun(repeat){if(!active)return;const runId=active.id,captured={sceneId:state.scene?.id,epoch:state.bufferEpoch,mode:state.mode};await loadPending();const reason=operationReason(state,pendingReadiness);if(reason)throw new Error(reason);const shown=confirmationText(pendingReadiness);if(!await confirmDialog((repeat?t("m_f126caaa8d97"):'')+shown))return;if(active?.id!==runId||state.scene?.id!==captured.sceneId||state.bufferEpoch!==captured.epoch||state.mode!==captured.mode||state.dirty||state.saving)return;await loadPending();if(active?.id!==runId||operationReason(state,pendingReadiness)||confirmationText(pendingReadiness)!==shown)return;await follow(await api(`/api/runs/${runId}/resume`,json('POST',{repeat_interrupted:repeat})))}
 button(liveLabel(()=>(t("m_387c0a3209b9"))),async()=>{
   await loadPending();
   const reason=operationReason(state,{ready:!!continuation,reason:t("m_46e01b57161e")});if(reason)throw new Error(reason);
-  const runId=active.id,body=continuation;
-  if(!confirm(t("m_371741f40974")))return;
+  const runId=active.id,body=continuation,sceneId=state.scene?.id,epoch=state.bufferEpoch,mode=state.mode;
+  if(!await confirmDialog(t("m_371741f40974")))return;
+  if(active?.id!==runId||continuation!==body||state.scene?.id!==sceneId||state.bufferEpoch!==epoch||state.mode!==mode||state.dirty||state.saving)return;
   await follow(await api(`/api/runs/${runId}/continue-after-acceptance`,json('POST',body)));
 },null,'accepted');
 button(liveLabel(()=>(t("m_a50d268827d2"))),()=>resumeRun(false),null,'resume');
@@ -192,7 +196,7 @@ button(liveLabel(()=>(t("m_7a9c5a57576c"))),()=>resumeRun(true),null,'repeat');
 button(liveLabel(()=>(t("m_06461e7a38ad"))),()=>start('rebuild_memory'),'rebuild_memory');
 button(liveLabel(()=>(t("m_e3b0d35990c3"))),async()=>{const runs=(await api(`/api/stories/${state.storyId}/runs`)).runs;if(runs.length)await follow(runs.at(-1))},null,'latest');
 button(liveLabel(()=>(t("m_e1cb5a4ec579"))),async()=>{const runs=(await api(`/api/stories/${state.storyId}/runs`)).runs;const run=[...runs].reverse().find(r=>r.request.mode==='prepare'&&r.state==='completed');if(!run)throw new Error(t("m_f23e2e25e089"));const details=await api('/api/runs/'+run.id);const ref=details.attempts.at(-1).result_version_id;const proposal=(await api('/api/versions/'+ref)).text;const editor=document.querySelector('#editor');if(state.dirty)throw new Error(t("m_185b792f5bf8"));loadBuffer(state.scene,'blueprint',proposal);state.dirty=false;uiText(document.querySelector('#current-kind'),"textContent",()=>(t("m_01a4fc472a1d")));document.querySelector('#save-text').disabled=true;updateControls()},null,'proposal');
-button(liveLabel(()=>(t("m_d2193b81e0c3"))),async()=>{if(state.mode!=='blueprint')throw new Error(t("m_01a5baeeaa81"));const proposal=JSON.parse(textEditor.read());if(!confirm(t("m_7f8d04e5c78c")))return;await api(`/api/stories/${state.storyId}/blueprint/apply`,json('POST',{proposal,expected_revision:state.view.story.revision}));state.dirty=false;await refresh();notice(msg("m_646d341468c4"))},null,'apply');
+button(liveLabel(()=>(t("m_d2193b81e0c3"))),async()=>{if(state.mode!=='blueprint')throw new Error(t("m_01a5baeeaa81"));const proposal=JSON.parse(textEditor.read()),revision=state.view.story.revision,sceneId=state.scene?.id,epoch=state.bufferEpoch,mode=state.mode;if(!await confirmDialog(t("m_7f8d04e5c78c")))return;if(state.saving||state.dirty||state.view.story.revision!==revision||state.scene?.id!==sceneId||state.bufferEpoch!==epoch||state.mode!==mode)return;await api(`/api/stories/${state.storyId}/blueprint/apply`,json('POST',{proposal,expected_revision:revision}));if(state.scene?.id===sceneId&&state.bufferEpoch===epoch&&state.mode===mode)state.dirty=false;await refresh();notice(msg("m_646d341468c4"))},null,'apply');
 scheduleReadiness();
 api(`/api/stories/${state.storyId}/runs`).then(result=>{if(result.runs.length)follow(result.runs.at(-1)).catch(e=>notice(e.message,'error'))}).catch(e=>notice(e.message,'error'));
 let reconciling=false;

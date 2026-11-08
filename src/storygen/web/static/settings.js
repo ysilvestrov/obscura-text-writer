@@ -93,7 +93,7 @@ async function load(onlyRole=null){
         if(role==='planner'&&form.elements.prepare_prompt_text.value!==originalPrepare)body.prepare_prompt_text=form.elements.prepare_prompt_text.value;
         const shared=form.elements.shared_provider.checked;
         const others=[...target.querySelectorAll('form[data-role]')].filter(other=>other!==form);
-        if(shared&&!confirmSettingsReplacement(others.map(other=>other.dataset.role),providerNames))return;
+        if(shared&&!await confirmSettingsReplacement(others.map(other=>other.dataset.role),providerNames))return;
         await withSettingsSave(role,async()=>{
           body.expected_revision=await checkScope(role,form.serverBaseline,shared);
           if(shared){body.provider=provider();snapshot.story=await api(`/api/stories/${id}/settings/shared-provider`,json('PUT',body));for(const other of others){other.applyProvider(body.provider);settingsRebaseFields(other.dataset.role,providerNames)}}

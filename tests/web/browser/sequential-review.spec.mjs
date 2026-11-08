@@ -47,7 +47,7 @@ test('memory failure preserves acceptance and reload needs an explicit retry',as
   const before=await(await request.get(url)).json();
   await page.reload();await expect(page.locator('#review-session')).toContainText('Memory checkpoint unavailable');
   expect((await(await request.get(url)).json()).attempts).toHaveLength(before.attempts.length);
-  page.once('dialog',dialog=>dialog.accept());
+  await page.addLocatorHandler(page.locator('.app-dialog'),async dialog=>{await dialog.locator('.app-dialog-actions button').last().click()});
   await page.locator('#review-session').getByRole('button',{name:/Відновити перегляд|Resume review/}).click();
   await expect(page.locator('#review-session')).toContainText(/Перегляд завершено|Review complete/);
   const after=await(await request.get(url)).json();

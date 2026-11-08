@@ -1,3 +1,4 @@
+import {confirmDialog} from './dialogs.js';
 import {t,msg,labelEntries,getLocale,uiText,uiAttr,uiHTML,diagnostic} from './i18n.js';
 import {state,textEditor,selectScene,refresh} from './editor.js';
 import {api,json,notice} from './api.js';
@@ -110,7 +111,7 @@ document.querySelector('#workspace-use-draft').onclick=async()=>{
   if(state.dirty||state.saving||busy||isActive())return;
   const scene=state.scene,id=scene?.heads.draft,epoch=state.bufferEpoch;
   if(!id){notice(msg("m_a5921f6925b0"),'warning');return}
-  if(!confirm(t("m_05e4fd1b757f")))return;
+  if(!await confirmDialog(t("m_05e4fd1b757f")))return;
   busy=true;render();
   try{const source=await api('/api/versions/'+id);
     if(state.scene?.id!==scene.id||state.bufferEpoch!==epoch||state.dirty)throw new Error(t("m_7d8d43f3fed7"));

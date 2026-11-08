@@ -1,3 +1,4 @@
+import {confirmDialog} from './dialogs.js';
 import {t,uiText,diagnostic} from './i18n.js';
 import {api,json,notice} from './api.js';
 import {state,refresh,selectScene} from './editor.js';
@@ -57,7 +58,7 @@ async function load(){
 }
 previewButton.onclick=async()=>{
   if(busy)return;
-  if(state.dirty){if(!confirm(t('impact.save_first')))return;try{await invokeWorkspaceCommand('save');}catch(error){notice(error.message,'error');return;}if(state.dirty||state.saving)return;}
+  if(state.dirty){if(!await confirmDialog(t('impact.save_first')))return;try{await invokeWorkspaceCommand('save');}catch(error){notice(error.message,'error');return;}if(state.dirty||state.saving)return;}
   const link=document.querySelector('#impact-settings');link.hidden=false;link.href=settingsLink(state.storyId,state.scene?.id,state.mode,'planner')||`/stories/${state.storyId}/settings?role=planner#role-planner`;
   busy=true;preview=null;controls();
   const controller=new AbortController();previewController=controller;

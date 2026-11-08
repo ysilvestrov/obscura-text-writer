@@ -2055,7 +2055,11 @@
     "memory.prompt.upgrade_v3": "Перевести власний промпт на формат v3",
     "memory.prompt.upgrade_v3_help": "Текст промпту має вимагати групований формат відповіді v3; без цього прапорця власний промпт лишається на формат v2.",
     "memory.scene_filter": "Сцена-джерело",
-    "memory.all_scenes": "Усі сцени"
+    "memory.all_scenes": "Усі сцени",
+    "dialog.input_title": "Введіть назву",
+    "dialog.confirm_title": "Підтвердження",
+    "dialog.cancel": "Скасувати",
+    "dialog.confirm": "Підтвердити"
   },
   "en": {
     "ui.save": "Save",
@@ -4113,6 +4117,10 @@
     "memory.prompt.upgrade_v3": "Move the custom prompt to format v3",
     "memory.prompt.upgrade_v3_help": "The prompt text must require the grouped v3 response format; without this checkbox the custom prompt stays on format v2.",
     "memory.scene_filter": "Source scene",
-    "memory.all_scenes": "All scenes"
+    "memory.all_scenes": "All scenes",
+    "dialog.input_title": "Enter a name",
+    "dialog.confirm_title": "Confirmation",
+    "dialog.cancel": "Cancel",
+    "dialog.confirm": "Confirm"
   }
 }

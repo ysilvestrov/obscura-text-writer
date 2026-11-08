@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 const events=[];
-globalThis.document={querySelector:()=>null,dispatchEvent:e=>events.push(e.type)};
+class DialogNode {constructor(){this.children=[];this.listeners={}} append(...items){this.children.push(...items)} setAttribute(){} addEventListener(k,f){this.listeners[k]=f} showModal(){queueMicrotask(()=>this.children.at(-1).children[0].onclick())} close(){this.listeners.close?.()} remove(){} focus(){}}
+globalThis.document={body:new DialogNode(),createElement:()=>new DialogNode(),querySelector:()=>null,dispatchEvent:e=>events.push(e.type)};
 globalThis.CustomEvent=class extends Event{constructor(type,options){super(type);this.detail=options?.detail}};
 globalThis.confirm=()=>false;
 const {registerSettingsForm,settingsChanged,withSettingsSave,settingsSaved,settingsDrafts,confirmSettingsReplacement,settingsRebaseFields,resetSettingsForm}=await import('../../../src/storygen/web/static/settings-workspace.js');
@@ -13,8 +14,8 @@ const save=withSettingsSave('editor',async()=>{await gate;settingsSaved('editor'
 assert.ok([...writer.elements,...editor.elements].every(e=>e.disabled));
 await assert.rejects(()=>withSettingsSave('writer',async()=>{}),/Дочекайтеся/);release();await save;
 assert.ok([...writer.elements,...editor.elements].every(e=>!e.disabled));assert.equal(writer.elements[1].value,'pending');assert.equal(settingsDrafts.dirty('writer'),true);
-assert.equal(confirmSettingsReplacement(['writer'],['model']),true,'unrelated dirty prompt does not block shared provider');
-writer.elements[0].value='pending-model';settingsChanged('writer');assert.equal(confirmSettingsReplacement(['writer'],['model']),false);
+assert.equal(await confirmSettingsReplacement(['writer'],['model']),true,'unrelated dirty prompt does not block shared provider');
+writer.elements[0].value='pending-model';settingsChanged('writer');assert.equal(await confirmSettingsReplacement(['writer'],['model']),false);
 writer.elements[0].value='shared';settingsRebaseFields('writer',['model']);assert.equal(writer.elements[1].value,'pending');assert.equal(settingsDrafts.dirty('writer'),true);
 await assert.rejects(()=>withSettingsSave('writer',async()=>{throw Error('network')}));assert.equal(settingsDrafts.get('writer').error,'network');assert.equal(settingsDrafts.anyBusy(),false);assert.ok(writer.elements.every(e=>!e.disabled));
 const evaluator=form({enabled:'',evaluator_json:'{}'});evaluator.elements[0].type='checkbox';evaluator.elements[0].checked=true;evaluator.elements[1].dataset.derived='true';

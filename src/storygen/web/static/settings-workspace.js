@@ -1,3 +1,4 @@
+import {confirmDialog} from './dialogs.js';
 import {t,msg,labelEntries,getLocale,uiText,uiAttr,uiHTML,diagnostic} from './i18n.js';
 import {SettingsDrafts,settingsRoute} from './settings-state.js';
 
@@ -25,10 +26,10 @@ export function registerSettingsForm(key,{form,label,section,reset=null}){
 }
 export function settingsSaved(key){sync(key);settingsDrafts.saved(key);draw();document.dispatchEvent(new CustomEvent('settings-saved',{detail:{key}}))}
 export function settingsRebaseFields(key,names){sync(key);const value=settingsDrafts.get(key)?.current;if(value)settingsDrafts.rebase(key,Object.fromEntries(names.filter(n=>Object.hasOwn(value,n)).map(n=>[n,value[n]])));draw()}
-export function confirmSettingsReplacement(keys,names=null){
+export async function confirmSettingsReplacement(keys,names=null){
   keys.forEach(sync);
   const affected=keys.filter(k=>names?settingsDrafts.changedFields(k,names):settingsDrafts.dirty(k));
-  return !affected.length||confirm(t("m_4a83b83f52ac")+affected.map(k=>forms.get(k)?.label||k).join(', ')+t("m_24e0783e85ed"));
+  return !affected.length||await confirmDialog(t("m_4a83b83f52ac")+affected.map(k=>forms.get(k)?.label||k).join(', ')+t("m_24e0783e85ed"));
 }
 export async function withSettingsSave(key,work){
   if(settingsDrafts.anyBusy())throw new Error(t("m_cbac60d6d919"));
@@ -70,7 +71,7 @@ if(root){
   root.querySelector('#settings-section-mobile').onchange=event=>{route.section=event.target.value;draw()};
   root.querySelector('#settings-save').onclick=()=>forms.get(selectedKey())?.form.requestSubmit();
   root.querySelector('#settings-reset').onclick=async()=>{
-    const key=selectedKey(),entry=forms.get(key);if(!entry||settingsDrafts.anyBusy()||!confirm(t("m_6fd8e12ff721")+entry.label+'?'))return;
+    const key=selectedKey(),entry=forms.get(key);if(!entry||settingsDrafts.anyBusy()||!await confirmDialog(t("m_6fd8e12ff721")+entry.label+'?'))return;
     try{await resetSettingsForm(key)}catch(error){settingsDrafts.setError(key,error.message);draw()}
   };
   document.addEventListener('settings-show-role',event=>showSettingsRole(event.detail));

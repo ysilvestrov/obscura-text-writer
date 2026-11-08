@@ -1,3 +1,4 @@
+import {confirmDialog} from './dialogs.js';
 import {createTextEditor} from './text-editor.js';
 import {live,t,msg,labelEntries,getLocale,uiText,uiAttr,uiHTML,diagnostic} from './i18n.js';
 export function installMemoryTable({state,api,json,notice,refresh,loadBuffer}){
@@ -101,15 +102,19 @@ export function installMemoryTable({state,api,json,notice,refresh,loadBuffer}){
     const editingSameJson=advanced&&state.scene.id===loadedSceneId&&state.scene.heads.memory===loadedMemoryId;
     if(currentKey()!==key&&!editingSameJson)void load();
   }
-  toggle.onclick=()=>{
+  toggle.onclick=async()=>{
     if(state.saving||loading)return;
-    if(state.dirty&&!confirm(t("m_d02463e81890")))return;
+    const before=currentKey();
+    if(state.dirty&&!await confirmDialog(t("m_d02463e81890")))return;
+    if(state.saving||loading||currentKey()!==before||state.mode!=='memory')return;
     if(state.dirty){pending={};editor.write(rawText,{material:'memory'});state.dirty=false;}
     advanced=!advanced;emit();draw();
   };
   reload.onclick=async()=>{
     if(state.saving||loading)return;
-    if(state.dirty&&!confirm(t("m_4a84469cb5d2")))return;
+    const before=currentKey();
+    if(state.dirty&&!await confirmDialog(t("m_4a84469cb5d2")))return;
+    if(state.saving||loading||currentKey()!==before||state.mode!=='memory')return;
     const captured=currentKey();loading=true;controls();
     try{
       const latest=await api(`/api/scenes/${state.scene.id}/memory-view`);

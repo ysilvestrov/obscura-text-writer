@@ -13,7 +13,7 @@ test('writing target saves, resets, switches language and detects remote target 
   await expect(target).toHaveValue('25000');
   await page.locator('#settings-save').click();await expect(page.locator('#settings-save')).toBeDisabled();
   await expect.poll(async()=>(await(await request.get(`/api/stories/${f.story_id}/settings`)).json()).story.target_words).toBe(25000);
-  await target.fill('26000');page.once('dialog',d=>d.accept());await page.locator('#settings-reset').click();await expect(target).toHaveValue('25000');
+  await target.fill('26000');await page.addLocatorHandler(page.locator('.app-dialog'),async dialog=>{await dialog.locator('.app-dialog-actions button').last().click()});await page.locator('#settings-reset').click();await expect(target).toHaveValue('25000');
   await page.evaluate(()=>import('/static/api.js').then(m=>m.dismissNotice()));
   await page.screenshot({path:`docs/images/writing-target-${test.info().project.name}.png`,fullPage:true});
   await target.fill('27000');
