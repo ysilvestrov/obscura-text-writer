@@ -14,7 +14,19 @@ export function installMemoryTable({state,api,json,notice,refresh,loadBuffer}){
   const search=node('input');search.type='search';uiText(search,"placeholder",()=>(t("m_7d6c01cf20e1")));uiAttr(search,'aria-label',()=>(t("m_7d6c01cf20e1")));
   const filter=node('select');uiAttr(filter,'aria-label',()=>(t("m_ed9073f821ed")));
   for(const [value,label] of [['',msg("m_2471988b961a")],['facts',msg("m_d7faf80a1479")],['character_states',msg("m_eda54a73a727")],['open_threads',msg("m_2d082c022b82")],['timeline',msg("m_208c38963ff5")]]){const o=node('option',live(()=>(label)));o.value=value;filter.append(o);}
-  tools.append(search,filter);
+  const sceneFilter=node('select');uiAttr(sceneFilter,'aria-label',()=>t('memory.scene_filter'));
+  let filterSceneId=null;
+  function sceneOptions(){
+    const previous=sceneFilter.value,same=filterSceneId===state.scene.id;
+    sceneFilter.replaceChildren();
+    const all=node('option',msg('memory.all_scenes'));all.value='';sceneFilter.append(all);
+    for(const scene of state.view?.scenes||[state.scene]){
+      const option=node('option',live(()=>`${scene.position+1}. ${scene.title}`));option.value=String(scene.position+1);sceneFilter.append(option);
+    }
+    sceneFilter.value=same?previous:String(state.scene.position+1);
+    filterSceneId=state.scene.id;
+  }
+  tools.append(search,filter,sceneFilter);
   const wrap=node('div');wrap.className='memory-table-wrap';
   const table=node('table');table.className='memory-table';
   const caption=node('caption',msg("m_80a7d9ba02de"));const head=node('thead'),header=node('tr');
@@ -41,7 +53,7 @@ export function installMemoryTable({state,api,json,notice,refresh,loadBuffer}){
   }
   function draw(){
     body.replaceChildren();if(!data){controls();return;}
-    const rows=data.rows.filter(row=>(!filter.value||row.category===filter.value)&&`${row.text} ${row.source_title}`.toLocaleLowerCase('uk').includes(search.value.toLocaleLowerCase('uk')));
+    const rows=data.rows.filter(row=>(!filter.value||row.category===filter.value)&&(!sceneFilter.value||String(row.source_scene)===sceneFilter.value)&&`${row.text} ${row.source_title}`.toLocaleLowerCase('uk').includes(search.value.toLocaleLowerCase('uk')));
     counts(rows.length);
     if(!rows.length&&data.rows.length){const tr=node('tr'),td=node('td',msg("m_2d74a1418749"));td.colSpan=4;tr.append(td);body.append(tr);}
     for(const row of rows){
@@ -63,6 +75,7 @@ export function installMemoryTable({state,api,json,notice,refresh,loadBuffer}){
     controls();
   }
   async function load(){
+    sceneOptions();
     const captured=currentKey();key=captured;loadedSceneId=state.scene.id;loadedMemoryId=state.scene.heads.memory;data=null;pending={};advanced=false;rawText=editor.read();loading=true;uiText(info,"textContent",()=>(t("m_1f3975528ccd")));draw();
     try{
       const result=await api(`/api/scenes/${state.scene.id}/memory-view`);
@@ -97,7 +110,7 @@ export function installMemoryTable({state,api,json,notice,refresh,loadBuffer}){
     }catch(error){notice(error.message,'error');}
     finally{loading=false;controls();}
   };
-  search.oninput=filter.onchange=draw;
+  search.oninput=filter.onchange=sceneFilter.onchange=draw;
   document.addEventListener('editor-state-changed',update);document.addEventListener('story-refreshed',update);
   return {active,save:async()=>{
     if(state.saving||loading||!state.dirty||!data?.can_save)return;
