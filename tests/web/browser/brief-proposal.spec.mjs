@@ -83,5 +83,23 @@ test('manual save of an accepted brief keeps acceptance',async({page,request})=>
   const before=(await(await request.get(`/api/scenes/${f.scene_id}/versions`)).json()).scene.heads.brief;
   const brief=JSON.parse(await page.locator('#editor').inputValue());brief.objective='Власне уточнення';await page.locator('#editor').fill(JSON.stringify(brief));await page.locator('#save-text').click();
   await expect(page.locator('#save-state')).toHaveText(/Збережено|Saved/);await expect(page.locator('#brief-proposal')).toBeHidden();
-  expect((await(await request.get(`/api/scenes/${f.scene_id}/versions`)).json()).scene.heads.brief).not.toBe(before);
+  const head=(await(await request.get(`/api/scenes/${f.scene_id}/versions`)).json()).scene.heads.brief;expect(head).not.toBe(before);
+  const saved=(await(await request.get(`/api/versions/${head}`)).json());expect(JSON.parse(saved.text).objective).toBe('Власне уточнення');
 });
+
+test('typing during accepted brief save keeps acceptance on the next save',async({page,request})=>{
+  const f=await(await request.post('/test-brief-proposal')).json();await page.goto(`/stories/${f.story_id}`);await page.locator('#mode-tabs [data-mode="brief"]').click();
+  await page.locator('#brief-proposal button').click();await expect(page.locator('#brief-proposal')).toBeHidden();
+  const editor=page.locator('#editor'),brief=JSON.parse(await editor.inputValue());brief.objective='Перша правка';await editor.fill(JSON.stringify(brief));
+  let release,started;const waiting=new Promise(resolve=>started=resolve),gate=new Promise(resolve=>release=resolve);
+  await page.route(`**/api/scenes/${f.scene_id}/brief`,async route=>{const response=await route.fetch();started();await gate;await route.fulfill({response})},{times:1});
+  await page.locator('#save-text').click();await waiting;
+  brief.objective='Правка під час збереження';await editor.fill(JSON.stringify(brief));release();
+  await expect(page.locator('#save-state')).toContainText(/Незбережені|[Uu]nsaved/);
+  await expect(page.locator('#brief-proposal')).toBeHidden();
+  await page.locator('#save-text').click();await expect(page.locator('#save-state')).toHaveText(/Збережено|Saved/);
+  await expect(page.locator('#brief-proposal')).toBeHidden();
+  const versions=await(await request.get(`/api/scenes/${f.scene_id}/versions`)).json();const saved=await(await request.get(`/api/versions/${versions.scene.heads.brief}`)).json();
+  expect(JSON.parse(saved.text).objective).toBe('Правка під час збереження');
+});
+

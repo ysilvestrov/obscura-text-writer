@@ -136,7 +136,7 @@ R-22 прокрутка: Playwright `long draft scrolls internally while formatt
 
 `pnpm --dir frontend exec playwright test brief-proposal.spec.mjs` на синтетичному сервері: stale old head + new proposed brief. Перевірити новий JSON у вкладці й явний список змін/accept; Save не приймає його, accept вибирає exact displayed version й розблоковує draft за придатного контексту. Dirty edit блокує accept до Save, після Save приймається саме нова авторська версія. Конкурентна зміна scene дає помилку без втрати тексту. Story refresh відкритого чистого brief підхоплює нову пропозицію без head change; dirty ввод лишається. Сценарій `acceptance follows refreshed run state without switching tabs` перевіряє блокування під час роботи та доступність після оновлення стану без переходу між вкладками. Desktop/mobile, без реальних моделей; наявність процедури не є звітом про виконання.
 
-Сценарії `editing an accepted brief keeps acceptance when starting a draft` і `manual save of an accepted brief keeps acceptance`: прийняти пропозицію, змінити її, перевірити ручний Save та основну дію; нова версія лишається прийнятою, а основна дія надсилає запит із нею. Окремо перевірити, що правка неприйнятої пропозиції все ще потребує явного прийняття.
+Сценарії `editing an accepted brief keeps acceptance when starting a draft` і `manual save of an accepted brief keeps acceptance`: прийняти пропозицію, змінити її, перевірити ручний Save та основну дію; нова версія лишається прийнятою, а основна дія після збереження надсилає запит на запуск; тест перехоплює цей запит без виклику моделі. Окремо перевірити, що правка неприйнятої пропозиції все ще потребує явного прийняття.
 
 
 <a id="r28-impact"></a>
