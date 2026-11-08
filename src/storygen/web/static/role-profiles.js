@@ -1,3 +1,4 @@
+import {confirmDialog} from './dialogs.js';
 import {live,t,msg,labelEntries,getLocale,uiText,uiAttr,uiHTML} from './i18n.js';
 import {hasUnsavedSettings,allowSettingsNavigation,registerSettingsForm,settingsSaved,withSettingsSave,settingsBusy} from './settings-workspace.js';
 import {api,json,notice} from './api.js';
@@ -53,14 +54,14 @@ previewButton.onclick=()=>action(async()=>{
 applyButton.onclick=()=>action(()=>withSettingsSave('profiles',async()=>{
   if(!preview)return;
   const warning=hasUnsavedSettings()?t("m_1b71a8026745"):t("m_ddc1ef1e58c7");
-  if(!confirm(warning+t("m_3ac2c4d48372",{p0:(preview.name),p1:(preview.version)})))return;
+  if(!await confirmDialog(warning+t("m_3ac2c4d48372",{p0:(preview.name),p1:(preview.version)})))return;
   await api(`/api/stories/${storyId}/role-profiles/apply`,json('POST',{profile_id:preview.id,version:preview.version,expected_revision:preview.expected_revision}));
   allowSettingsNavigation();location.reload();
 }));
 
 exportButton.onclick=()=>{const item=selected();if(item)location.href=`/api/role-profiles/${encodeURIComponent(item.id)}/versions/${item.version}/export`};
 form.onsubmit=event=>{event.preventDefault();action(()=>withSettingsSave('profiles',async()=>{
-  if(hasUnsavedSettings(['profiles'])&&!confirm(t("m_d2cbce67c72d")))return;
+  if(hasUnsavedSettings(['profiles'])&&!await confirmDialog(t("m_d2cbce67c72d")))return;
   const body={name:form.elements.name.value,include_evaluator:form.elements.include_evaluator.checked,expected_revision:await revision()};
   if(form.elements.new_version.checked){const item=selected();if(!item)throw new Error(t("m_a7068ca31456"));body.profile_id=item.id;body.expected_version=item.version}
   const saved=await api(`/api/stories/${storyId}/role-profiles/capture`,json('POST',body));await load(saved);settingsSaved('profiles');notice(msg("m_ff6b04a6519d"));

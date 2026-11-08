@@ -58,3 +58,5 @@ English: Add general and/or nonoverlapping range comments, resolve pending ancho
 Нейтральний приклад перегляду: [знімок](images/r23-rewrite-review.png).
 
 Якщо інша вкладка змінила вказівки, переписування зупиниться з конфліктом: збережіть свій ввід окремо й явно оновіть чернетку/нотатки. English: if another tab changed instructions, rewriting stops with a conflict; preserve your working input separately and explicitly reload the draft/notes.
+
+Підтвердження збереження правок і запуску переписування відкриваються у вікні застосунку. «Скасувати» або Escape залишає поточні правки без запуску; при закритті вкладки попередження про незбережене показує браузер.

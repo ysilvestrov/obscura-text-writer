@@ -1,3 +1,4 @@
+import {confirmDialog} from './dialogs.js';
 import {t,uiText,diagnostic} from './i18n.js';
 import {state,textEditor,getAuthorComments,saveCurrentMaterial,loadBuffer,refresh} from './editor.js';
 import {api,json,notice} from './api.js';
@@ -41,7 +42,7 @@ if(host&&reviewHost){
     if(busy||state.saving||!active())return;
     const captured={sceneId:state.scene.id,epoch:state.bufferEpoch};
     try{
-      if(state.dirty){if(!confirm(t('rewrite.save_confirm')))return;await saveCurrentMaterial();}
+      if(state.dirty){if(!await confirmDialog(t('rewrite.save_confirm')))return;if(state.scene?.id!==captured.sceneId||state.bufferEpoch!==captured.epoch||state.saving||!active())return;await saveCurrentMaterial();}
       assertCaptured(captured);
       // Capture also blocks an unfinished popover before any network preflight.
       const local=getAuthorComments().capture();
@@ -52,7 +53,7 @@ if(host&&reviewHost){
       const inputs={source_version_id:notes.source_version_id,comment_set_id:notes.comment_set.id,comment_fingerprint:notes.comment_fingerprint};
       const preflight=await api(`/api/scenes/${captured.sceneId}/rewrites/preflight`,json('POST',inputs));assertCaptured(captured);
       if(!preflight.ready)throw new Error(diagnostic(preflight.reason));
-      if(!confirm(confirmationText(preflight)))return;
+      if(!await confirmDialog(confirmationText(preflight)))return;
       assertCaptured(captured);
       const run=await api('/api/runs',json('POST',{request_id:crypto.randomUUID(),request:{story_id:state.storyId,scene_id:captured.sceneId,mode:'rewrite',...inputs}}));
       document.dispatchEvent(new CustomEvent('run-enqueued',{detail:run}));

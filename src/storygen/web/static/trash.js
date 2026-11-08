@@ -1,3 +1,4 @@
+import {confirmDialog} from './dialogs.js';
 import {createTextEditor} from './text-editor.js';
 import {live,t,msg,labelEntries,getLocale,uiText,uiAttr,uiHTML,diagnostic} from './i18n.js';
 import {api,json,notice} from './api.js';
@@ -8,7 +9,9 @@ export function installSceneTrash(state,refresh,clear){
   const trash=action(live(()=>(t("m_225f1a7f10a9"))),async()=>{
     if(state.dirty||state.saving){notice(msg("m_a4c2e86ecc1a"),'error');return}
     if(!state.scene){notice(msg("m_f0f1417db6de"),'error');return}
-    if(!confirm(t("m_5853565cd7c6")))return;
+    const sceneId=state.scene.id,revision=state.scene.revision;
+    if(!await confirmDialog(t("m_5853565cd7c6")))return;
+    if(state.dirty||state.saving||state.scene?.id!==sceneId||state.scene.revision!==revision)return;
     trash.disabled=true;state.saving=true;
     const editor=createTextEditor(document.querySelector("#editor")),readOnly=editor.isReadOnly();editor.readOnly(true);
     document.dispatchEvent(new CustomEvent("editor-state-changed"));
@@ -53,7 +56,7 @@ export function installLibraryTrash(){
       const pending=runs.filter(run=>!closed.has(run.state));
       if(pending.some(run=>!stopped.has(run.state)))throw new Error(t("m_6be0942b3149"));
       const message=pending.length?t("m_3c7a4d78d4f4",{p0:(pending.length)}):t("m_b1e87fa38fde");
-      if(!confirm(message))return;
+      if(!await confirmDialog(message))return;
       for(const run of pending){
         const result=await api('/api/runs/'+run.id+'/cancel',json('POST',{}));
         if(!closed.has(result.state))throw new Error(t("m_6fd8fbdc1385"));

@@ -1,3 +1,4 @@
+import {confirmDialog} from './dialogs.js';
 import {live,t,msg,labelEntries,getLocale,uiText,uiAttr,uiHTML,diagnostic} from './i18n.js';
 import {api,json,notice} from './api.js';
 
@@ -171,9 +172,11 @@ document.querySelector('#publication-cover-form').onsubmit=async event=>{
   finally{busy=false;renderPeople();state();}
 };
 document.querySelector('#publication-cover-remove').onclick=()=>{if(!busy){coverId=null;changed();renderCover();}};
-document.querySelector('#publication-reload').onclick=()=>{
+document.querySelector('#publication-reload').onclick=async()=>{
   if(busy)return;
-  if((dirty||libraryDirty())&&!confirm(t("m_365ad153ac12")))return;
+  const before=edits;
+  if((dirty||libraryDirty())&&!await confirmDialog(t("m_365ad153ac12")))return;
+  if(busy||edits!==before)return;
   // Explicit discard also clears drafts in the shared dictionary.
   document.querySelector('#publication-signatures').replaceChildren();void load();
 };
