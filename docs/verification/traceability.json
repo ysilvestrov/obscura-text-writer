@@ -654,6 +654,33 @@
       ]
     },
     {
+      "id": "PERF-001-S01",
+      "requirement": "PERF-001",
+      "scope": "Еквівалентність швидкого шляху. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/storage/test_context_view_readonly.py::test_peek_path_matches_copying_path",
+        "tests/storage/test_attempt_filters.py::test_sql_filters_match_python_filters"
+      ]
+    },
+    {
+      "id": "PERF-001-S02",
+      "requirement": "PERF-001",
+      "scope": "Внутрішнє читання не змінює знімок. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/storage/test_context_view_readonly.py::test_readiness_and_status_do_not_mutate_view_models"
+      ]
+    },
+    {
+      "id": "PERF-001-S03",
+      "requirement": "PERF-001",
+      "scope": "Межі часу типових дій. Процедура не доводить досягнення цілей ≤ 1 с / ≤ 3 с: вони перевіряються наскрізно в браузері після периферійного плану.",
+      "tests": [],
+      "manual": {
+        "procedure": "docs/verification/manual.md#workspace-speed",
+        "reason": "Час відповіді залежить від машини й навантаження; межі потребують вимірювання в браузері на копії робочих даних і синтетичному творі."
+      }
+    },
+    {
       "id": "EVAL-001-S01",
       "requirement": "EVAL-001",
       "scope": "Непідтверджена цитата. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
