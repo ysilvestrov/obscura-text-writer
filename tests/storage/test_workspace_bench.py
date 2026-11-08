@@ -18,7 +18,7 @@ def test_bench_digest_is_stable_and_synthetic_story_has_requested_size(tmp_path)
     first, second = measure(repo, story_id), measure(repo, story_id)
     assert first['digest'] == second['digest'] and len(first['digest']) == 64
     assert len(OPERATIONS) == 9 and first['scenes'] == 5
-    expected = {f'readiness:{n}' for n in OPERATIONS} | {'story_view', 'list_attempts', 'list_runs', 'scene_select'}
+    expected = {f'readiness:{n}' for n in OPERATIONS} | {'readiness:all', 'story_view', 'list_attempts', 'list_runs', 'scene_select'}
     assert set(first['timings']) == expected
     assert 'readiness:brief' in expected and 'readiness:edit_loop' in expected
 

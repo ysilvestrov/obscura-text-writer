@@ -253,3 +253,23 @@ def test_second_request_sees_change_made_between_requests(tmp_path):
     current = repo.get_scene(scene.id)
     repo.update_scene_plan(scene.id, 'План', current.revision)
     assert 'brief' in ready(request()) and 'brief' not in ready(first)
+
+
+def test_readiness_without_operation_does_not_mutate_shared_view(tmp_path, monkeypatch):
+    from storygen.generation.worker import RunCoordinator
+    repo, story, scenes = seeded(tmp_path)
+    _configure(repo, story.id)
+    seen = []
+    original = type(repo).context_view
+
+    def capture(self, story_id):
+        view = original(self, story_id)
+        seen.append((view, _dumps(view)))
+        return view
+
+    monkeypatch.setattr(type(repo), 'context_view', capture)
+    result = RunCoordinator(repo).readiness(story.id, scenes[0].id)['operations']
+    assert len(seen) == 1
+    view, before = seen[0]
+    assert _dumps(view) == before
+    assert any(item['ready'] for item in result.values())

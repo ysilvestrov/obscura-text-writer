@@ -6,7 +6,7 @@ from .pipeline import STAGES, STAGE_ROLES
 from .prompts import validate_role_prompt
 
 
-def preview(repo, request):
+def preview(repo, request, view=None):
     if request.mode=='impact':
         from .impact_context import readiness
         return readiness(repo,request)
@@ -18,13 +18,14 @@ def preview(repo, request):
         return readiness(repo,request)
     if request.mode=='edit_loop':
         from .editor_loop import readiness
-        return readiness(repo,request)
+        return readiness(repo,request,view=view)
     if request.mode=='classify':
         from .edit_classification import readiness
         return readiness(repo,request)
     story=repo.get_story(request.story_id)
     # One captured view serves the whole check; preview never reads needs_review.
-    view=repo.context_view(story.id) if request.mode!='prepare' else None
+    # A caller-supplied view (all operations of one request) replaces the per-operation capture.
+    if view is None and request.mode!='prepare':view=repo.context_view(story.id)
     scenes=view.list_scenes(story.id) if view is not None else repo.list_scenes(story.id)
     scene=next((s for s in scenes if s.id==request.scene_id),None)
     stages=[request.stage] if request.mode=='stage' else ['prepare'] if request.mode=='prepare' else ['memory'] if request.mode=='rebuild_memory' else list(STAGES)
@@ -67,7 +68,7 @@ def preview(repo, request):
                     result['evaluator']=evaluation.config.model_dump(include={'provider','model'})
                     result['calls']+=len(targets)
         if request.mode=='prepare':
-            view=repo.context_view(story.id)
+            if view is None:view=repo.context_view(story.id)
             story=view.get_story(story.id)
             from .prepare_sources import prepare_sources
             sources=prepare_sources(view,story)
@@ -80,12 +81,12 @@ def preview(repo, request):
             if stages[0]=='brief':
                 for target in targets:
                     plan_id=target.heads.get('plan')
-                    plan=repo.read_text(plan_id) if plan_id else target.beats
+                    plan=view.read_text(plan_id) if plan_id else target.beats
                     if not plan.strip():
                         raise ValueError(f'Спершу додайте план сцени {target.position+1}')
             if request.mode=='rebuild_memory':
                 for target in targets:
-                    prose=repo.get_version(target.heads['prose']) if target.heads.get('prose') else None
+                    prose=view.peek_version(target.heads['prose']) if target.heads.get('prose') else None
                     if not prose or not prose.complete or prose.kind not in {'edited','manual'}:
                         raise ValueError(f'Спершу виберіть завершену прозу сцени {target.position+1}')
             # Later tasks may consume outputs that this run has not generated yet.

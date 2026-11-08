@@ -138,6 +138,13 @@ def measure(repo: Repository, story_id: str) -> dict:
     for name in OPERATIONS:
         outputs['readiness:' + name] = _timed(timings, 'readiness:' + name,
                                               lambda name=name: preview(repo, _request(story_id, middle, name)))
+
+    def readiness_all():
+        # Mirrors RunCoordinator.readiness without `operation`: one view for every operation.
+        # Timed only; the result stays out of the digest, which fixes the measured operations.
+        view = repo.context_view(story_id)
+        return [preview(repo, _request(story_id, middle, name), view) for name in OPERATIONS]
+    _timed(timings, 'readiness:all', readiness_all)
     outputs['story_view'] = _timed(timings, 'story_view', lambda: _story_view(repo, story_id))
     outputs['attempts'] = _timed(timings, 'list_attempts', lambda: _scene_attempts(repo, story_id, middle))
     runs = _timed(timings, 'list_runs', lambda: repo.list_runs(story_id))
