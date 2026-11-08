@@ -102,4 +102,3 @@ test('typing during accepted brief save keeps acceptance on the next save',async
   const versions=await(await request.get(`/api/scenes/${f.scene_id}/versions`)).json();const saved=await(await request.get(`/api/versions/${versions.scene.heads.brief}`)).json();
   expect(JSON.parse(saved.text).objective).toBe('Правка під час збереження');
 });
-

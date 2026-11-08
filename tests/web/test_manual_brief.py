@@ -81,4 +81,3 @@ def test_edit_accepted_brief_without_proposals_still_publishes(tmp_path):
         response=client.post(f'/api/scenes/{scene.id}/brief',json={'text':json.dumps({**brief,'objective':'Змінено'}),'expected_revision':scene.revision,'source_brief_id':first.id})
         assert response.status_code==200 and response.json()['needs_review'] is False
         assert repo.get_scene(scene.id).heads['brief']==response.json()['version']['id']
-
