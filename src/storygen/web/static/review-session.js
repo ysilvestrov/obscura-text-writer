@@ -125,7 +125,8 @@ export async function load(){
   try{
     const data=await api(`/api/stories/${state.storyId}/runs`);
     const sessions=data.runs.filter(r=>r.impact?.protocol===3);
-    const run=[...sessions].reverse().find(r=>['queued','running','paused','needs_review','pause_requested','cancellation_requested'].includes(r.state))||sessions.at(-1);
+    const listed=[...sessions].reverse().find(r=>['queued','running','paused','needs_review','pause_requested','cancellation_requested'].includes(r.state))||sessions.at(-1);
+    const run=listed?(await api(`/api/runs/${listed.id}`)).run:null;
     const p=run?await api(`/api/stories/${state.storyId}/review/${run.id}`):null;
     const policy=p?.report?.schema_version===4?await api(`/api/stories/${state.storyId}/review/priorities/${p.scene_id}`):null;
     if(ticket!==epoch)return;session=run;current=p;policies=policy;render();

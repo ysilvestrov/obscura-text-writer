@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {pathToFileURL} from 'node:url';
 const mode=process.argv[2],root=process.argv[3];
-const listeners=new Map(),elements=new Map(),pendingEvents=[];
+const created=[],listeners=new Map(),elements=new Map(),pendingEvents=[];
 class Element{
   value='';textContent='';disabled=false;hidden=false;dataset={storyId:'s'};children=[];handlers={};classList={toggle(){}};
   setAttribute(name,value){this[name]=value}
@@ -11,33 +11,68 @@ class Element{
   append(...items){this.children.push(...items)}
 }
 function element(id){if(!elements.has(id))elements.set(id,new Element());return elements.get(id)}
-globalThis.document={querySelector:element,querySelectorAll:()=>[],createElement:()=>new Element(),addEventListener(name,handler){if(!listeners.has(name))listeners.set(name,[]);listeners.get(name).push(handler)},dispatchEvent(event){for(const handler of listeners.get(event.type)||[]){const result=handler(event);if(result?.then)pendingEvents.push(result)}}};
+globalThis.document={querySelector:element,querySelectorAll:()=>[],createElement:()=>{const e=new Element();created.push(e);return e},addEventListener(name,handler){if(!listeners.has(name))listeners.set(name,[]);listeners.get(name).push(handler)},dispatchEvent(event){for(const handler of listeners.get(event.type)||[]){const result=handler(event);if(result?.then)pendingEvents.push(result)}}};
 globalThis.CustomEvent=class {constructor(type){this.type=type}};
 globalThis.confirm=()=>true;
 const originalTimeout=globalThis.setTimeout;globalThis.setTimeout=(...args)=>{const timer=originalTimeout(...args);timer.unref();return timer};
-const interval=globalThis.setInterval;globalThis.setInterval=()=>({unref(){}});
+globalThis.setInterval=()=>({unref(){}});
+const store=new Map();
+globalThis.sessionStorage={getItem:k=>store.has(k)?store.get(k):null,setItem:(k,v)=>store.set(k,String(v)),removeItem:k=>store.delete(k)};
 const scene={id:'c',story_id:'s',position:0,revision:0,title:'Сцена',beats:'План',target_words:400,heads:{},character_ids:[]};
-const request={story_id:'s',mode:'prepare'};
-const shortRun={id:'r',story_id:'s',request_id:'q',state:'failed',created_at:new Date().toISOString(),request,impact:null};
-const fullRun={...shortRun,tasks:[],cursor:0,error:'Технічна причина',warning:null,planned_telemetry:{roles:{writer:{provider:'p',model:'m'}},calls:3},editor_loop:null,editor_loops:{},cancelled_before_enqueue:false};
-let release,detailRequests=0;const gate=new Promise(resolve=>{release=resolve});
+const mk=(id,reqMode,state,created_at)=>({id,story_id:'s',request_id:'q-'+id,state,created_at,request:{story_id:'s',mode:reqMode},impact:null});
+const shortRuns=[mk('prep','prepare','completed','2026-01-01T00:00:00+00:00'),mk('drf','stage','completed','2026-01-02T00:00:00+00:00'),mk('r','stage','running','2026-01-03T00:00:00+00:00')];
+const fullOf=short=>({...short,tasks:short.id==='imp'?[{},{}]:[],...(short.id==='imp'?{impact:{protocol:3,phase:'awaiting_author',scene_cursor:1,order:[]}}:{}),cursor:0,error:short.id==='r'?'Технічна причина':null,warning:null,planned_telemetry:{roles:{writer:{provider:'p',model:'m'}},calls:3},editor_loop:null,editor_loops:{},cancelled_before_enqueue:false});
+if(mode==='review')shortRuns.splice(2,0,{...mk('imp','impact','needs_review','2026-01-02T12:00:00+00:00'),impact:{protocol:3,phase:'awaiting_author'}});
+let release,fail=mode==='failure';const gate=new Promise(resolve=>{release=resolve});
+const log=[];
 const response=data=>({ok:true,json:async()=>structuredClone(data)});
 globalThis.fetch=async url=>{
- if(url==='/api/runs/r'){detailRequests++;await gate;return response({run:fullRun,attempts:[],partial:''})}
- if(url.endsWith('/runs'))return response({runs:[shortRun]});
+ log.push(url);
+ const detail=url.match(/^\/api\/runs\/([a-z]+)$/);
+ if(detail){await gate;if(fail)return {ok:false,status:500,json:async()=>({detail:'boom'})};const run=shortRuns.find(r=>r.id===detail[1]);return response({run:fullOf(run),attempts:[{result_version_id:'v1',created_at:run.created_at}],partial:''})}
+ if(url==='/api/versions/v1')return response({text:'x'});
+ if(url.endsWith('/runs'))return response({runs:shortRuns});
  if(url.includes('readiness'))return response({operations:{},ready:true,roles:{},calls:1});
  return response({story:{id:'s',revision:0},scenes:[scene],sources:[]});
 };
 globalThis.EventSource=class{constructor(){this.closed=false}close(){this.closed=true}};
+if(mode==='review'){release();const host=element('#review-session');await import(pathToFileURL(root+'/src/storygen/web/static/review-session.js'));for(let i=0;i<8;i++)await new Promise(setImmediate);assert.ok(log.includes('/api/stories/s/review/imp'),'protocol-3 session chosen from the short list');assert.ok(log.includes('/api/runs/imp'),'full session run fetched');assert.ok(host.children.some(c=>/2/.test(c.textContent||'')||c.children?.length),'session rendered from the full run without error');console.log('review session loads on the short list');process.exit(0)}
+if(mode==='recover'){store.set('storygen.tab','t1');store.set('storygen.primary.pending.s.t1',JSON.stringify({requestId:'q-r',request:{story_id:'s',mode:'stage'}}))}
 await import(pathToFileURL(root+'/src/storygen/web/static/runs.js'));
 const {state}=await import(pathToFileURL(root+'/src/storygen/web/static/editor.js'));
+const {t}=await import(pathToFileURL(root+'/src/storygen/web/static/i18n.js'));
+const tick=async()=>{for(let i=0;i<8;i++)await new Promise(setImmediate)};
 const text=()=>element('#run-status').children.map(e=>e.textContent).join('|');
-for(let i=0;i<5;i++)await new Promise(setImmediate);
-assert.equal(detailRequests,1,'open-story follow must fetch the full run');
-assert.equal(state.workspaceRun,undefined,'short run must not be drawn before /api/runs/{id} answers');
-assert.ok(!text().includes('план'),'no "plan unknown" placeholder from a short run');
-release();
-for(let i=0;i<5;i++)await new Promise(setImmediate);
-assert.equal(state.workspaceRun.id,'r');assert.ok(state.workspaceRun.planned_telemetry);
-assert.ok(text().includes('Технічна причина'),'error from the full run is shown');
-console.log('follow draws only the full run');process.exit(0);
+const byLabel=key=>{const b=created.find(e=>e.onclick&&e.textContent===t(key));assert.ok(b,'button '+key);return b};
+const detailCalls=()=>log.filter(u=>/^\/api\/runs\/[a-z]+$/.test(u));
+await tick();
+const cancel=byLabel('m_8b4c2025378a'),pause=byLabel('m_03498e395a43');
+if(mode==='latest'){
+  assert.deepEqual(detailCalls(),['/api/runs/r'],'open-story follow targets the last run');
+  release();await tick();log.length=0;
+  byLabel('m_e3b0d35990c3').onclick();await tick();
+  assert.deepEqual(detailCalls(),['/api/runs/r'],'latest button follows the last short run');
+  assert.equal(state.workspaceRun.planned_telemetry.calls,3);
+  log.length=0;
+  byLabel('m_e1cb5a4ec579').onclick();await tick();
+  assert.deepEqual(detailCalls(),['/api/runs/prep'],'proposal opens the last completed prepare, not the last run');
+  assert.ok(log.includes('/api/versions/v1'));
+}else{
+  assert.ok(detailCalls().includes('/api/runs/r'),'follow must fetch the full run');
+  // Before the detail answers: short run only drives state/controls, no misleading plan or error text.
+  assert.equal(state.workspaceRun.id,'r');assert.equal(state.workspaceRun.state,'running');
+  assert.ok(!('planned_telemetry' in state.workspaceRun));
+  assert.equal(cancel.disabled,false,'cancel stays enabled while the full run loads');
+  assert.equal(pause.disabled,false,'pause stays enabled while the full run loads');
+  assert.ok(!text().includes('план'),'no plan-unknown placeholder from a short run');
+  assert.ok(!text().includes('Технічна причина'));
+  release();await tick();
+  if(fail){
+    assert.equal(state.workspaceRun.state,'running','short state stays after a failed detail fetch');
+    assert.equal(cancel.disabled,false);
+  }else{
+    assert.ok(state.workspaceRun.planned_telemetry);
+    assert.ok(text().includes('Технічна причина'),'error from the full run is shown');
+  }
+}
+console.log('follow regressions passed ('+mode+')');

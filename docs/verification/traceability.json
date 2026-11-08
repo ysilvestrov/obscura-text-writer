@@ -691,8 +691,11 @@
         "tests/web/test_runs_short_form.py::test_story_runs_returns_short_form",
         "tests/web/test_runs_short_form.py::test_run_detail_stays_full",
         "tests/web/test_runs_short_form.py::test_run_summary_is_a_subset_of_the_full_run",
-        "tests/web/test_resumed_events.py::test_follow_draws_only_the_full_run_for_short_list_items",
-        "tests/web/test_editor_loop_ui.py::test_loop_limit_and_confirmation_only_name_editor"
+        "tests/web/test_resumed_events.py::test_short_run_open_story_keeps_controls_and_draws_only_the_full_run",
+        "tests/web/test_resumed_events.py::test_short_run_recovered_primary_keeps_controls_and_draws_only_the_full_run",
+        "tests/web/test_resumed_events.py::test_short_run_latest_and_proposal_buttons_target_the_right_runs",
+        "tests/web/test_resumed_events.py::test_short_run_keeps_state_when_the_detail_fetch_fails",
+        "tests/web/test_resumed_events.py::test_review_session_picks_the_protocol_3_run_from_the_short_list"
       ]
     },
     {

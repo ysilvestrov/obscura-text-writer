@@ -106,6 +106,8 @@ extraControls?.addEventListener('toggle',scheduleReadiness);
 textEditor.onInput(updateControls);
 const elapsed=document.createElement('p');
 function draw(run){active=run;state.workspaceRun=run;document.dispatchEvent(new CustomEvent('workspace-run-state',{detail:run}));status.dataset.kind=run.warning&&run.state!=='failed'?'warning':runKind(run.state);status.setAttribute('role',run.state==='failed'?'alert':'status');status.replaceChildren();const p=document.createElement('p');uiText(p,"textContent",()=>(names[run.state]||run.state));status.append(p);const plan=run.planned_telemetry;if(!plan){const missing=document.createElement('p');missing.className='muted';uiText(missing,'textContent',()=>t('workspace.run_plan_unknown'));status.append(missing)}else{const summary=document.createElement('p');summary.className='muted';uiText(summary,'textContent',()=>t('workspace.run_plan',{p0:[...Object.values(plan.roles||{}),...(plan.evaluator?[plan.evaluator]:[])].map(value=>`${value.provider} / ${value.model}`).join(', ')||t('workspace.unknown'),p1:plan.calls??'—',p2:t(({draft:'m_e9d875d4120b',prose:'m_9c685577453c',plan:'m_3146141c9367',brief:'m_5a2ec5eaf0a1'})[run.request.editor_source_head||({brief:'plan',draft:'brief',memory:'prose'})[run.request.stage]]||'workspace.unknown')}));status.append(summary)}for(const message of [...new Set([run.error,run.warning].filter(Boolean))]){const e=document.createElement('p');uiText(e,"textContent",()=>(diagnostic(message)));status.append(e)}uiText(elapsed,"textContent",()=>(terminal.has(run.state)?'':elapsed.textContent));status.append(elapsed);updateControls();if(run.state==='failed')showViolations(run);if(terminal.has(run.state))loadPending()}
+// Короткий запуск зі списку: лише стан для кнопок зупинки/паузи; план, помилка й слухачі `workspace-run-state` чекають повного запуску.
+function drawPending(run){active=run;state.workspaceRun=run;status.dataset.kind=runKind(run.state);status.setAttribute('role','status');status.replaceChildren();const p=document.createElement('p');uiText(p,"textContent",()=>(names[run.state]||run.state));status.append(p);updateControls();document.dispatchEvent(new CustomEvent('workspace-run-pending',{detail:run}))}
 async function showViolations(run){
   try{
     const details=await api('/api/runs/'+run.id),violations=details.attempts?.at(-1)?.memory_violations;
@@ -118,6 +120,7 @@ setInterval(()=>{if(active&&!terminal.has(active.state))uiText(elapsed,"textCont
 async function follow(run){
   const epoch=++followEpoch;let stateFetch=0;
   source?.close();last=0;started=Date.parse(run.created_at);live.hidden=false;
+  if('planned_telemetry' in run)draw(run);else drawPending(run);
   const saved=await api('/api/runs/'+run.id);if(epoch!==followEpoch)return;draw(saved.run);uiText(live,"textContent",()=>(saved.partial));
   const attempt=saved.attempts?.at(-1);if(attempt?.created_at)started=Date.parse(attempt.created_at);
   if(terminal.has(saved.run.state)){await refresh();return}
