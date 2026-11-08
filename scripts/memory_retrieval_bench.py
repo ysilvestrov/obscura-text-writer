@@ -13,7 +13,7 @@ sys.path.insert(0, str(ROOT / 'scripts'))
 
 from memory_bench.extract import extract_story  # noqa: E402
 from memory_bench.metrics import aggregate, control_hits, scene_metrics  # noqa: E402
-from memory_bench.model import CHARS_PER_TOKEN  # noqa: E402
+from memory_bench.model import DEFAULT_TOKENIZER, FERTILITY, realistic_ratio, set_tokenizer  # noqa: E402
 from memory_bench.strategies import STRATEGIES, Params, catalog_full, catalog_narrow  # noqa: E402
 from memory_bench.synthetic import fit_linear, generate, measure_rates  # noqa: E402
 
@@ -43,7 +43,7 @@ def other_context(repo, story_id, scene_id):
             parts = [p for p in breakdown['parts'] if p.get('kind') != 'memory']
             conservative = sum(p.get('request_bytes') or 0 for p in parts) + 256
             realistic = sum(p['characters'] if p.get('characters') is not None else p.get('request_bytes') or 0
-                            for p in parts) / CHARS_PER_TOKEN
+                            for p in parts) / realistic_ratio()
             return {'conservative': conservative, 'realistic': int(realistic)}
     return None
 
@@ -149,7 +149,7 @@ def run(args):
         'control_cases': cases,
         'params': {'context': contexts, 'output_reserve': args.output_reserve, 'other_context': args.other_context,
                    'memory_share': args.memory_share, 'core_recent': args.core_recent, 'seed': args.seed,
-                   'chars_per_token': CHARS_PER_TOKEN, 'synthetic': _ints(args.synthetic)},
+                   'tokenizer': args.tokenizer, 'chars_per_token': round(realistic_ratio(), 3), 'synthetic': _ints(args.synthetic)},
     }
     return report, None
 
@@ -167,7 +167,10 @@ def main(argv=None):
     parser.add_argument('--synthetic', default='300,3000')
     parser.add_argument('--control-cases')
     parser.add_argument('--seed', type=int, default=0)
+    parser.add_argument('--tokenizer', choices=sorted(FERTILITY), default=DEFAULT_TOKENIZER,
+                        help='realistic measure: Ukrainian fertility of this tokenizer family (ukrqualbench)')
     args = parser.parse_args(argv)
+    set_tokenizer(args.tokenizer)
     report, error = run(args)
     if error:
         print(error, file=sys.stderr)

@@ -82,6 +82,13 @@ def test_cli_single_scene_story(tmp_path):
     assert data['story']['scene_count']==1 and data['growth']=={}
 
 
+def test_cli_tokenizer_flag(synthetic_repo):
+    repo,_,_=synthetic_repo
+    data=json.loads(run_cli(['--data',str(repo.root),'--synthetic','','--tokenizer','claude']).stdout)
+    assert data['params']['tokenizer']=='claude' and data['params']['chars_per_token']==round(238096/35122/2.96,3)
+    assert run_cli(['--data',str(repo.root),'--tokenizer','nope']).returncode==2
+
+
 def test_growth_is_not_budget_clipped(synthetic_repo):
     repo,_,_=synthetic_repo
     small=json.loads(run_cli(['--data',str(repo.root),'--synthetic','','--context','9000']).stdout)['growth']

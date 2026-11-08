@@ -8,10 +8,29 @@ from typing import Literal, Mapping, Sequence
 from storygen.memory.journal import CATEGORIES
 from storygen.token_budget.core import canonical
 
-# Realistic ratio from docs/research/2026-10-26-local-token-counting.md: one real request measured 13 590 tokens
-# for a 62 710-byte conservative estimate (~4.6 UTF-8 bytes per token). Mostly Cyrillic text is ~2 bytes per char,
-# so ~2.3 chars per token; ASCII JSON overhead only raises it, so 2.3 is the conservative edge.
-CHARS_PER_TOKEN = 2.3
+# Ukrainian tokenizer fertility (tokens per word) from ukrqualbench (https://github.com/grayodesa/ukrqualbench),
+# measured on the UA-GEC 2.1.3 gec-only test target side: 238 096 characters, 35 122 words.
+UA_CHARS_PER_WORD = 238096 / 35122
+FERTILITY = {'qwen3': 3.38, 'claude': 2.96, 'deepseek': 2.94, 'gpt': 2.38, 'gemma': 2.26, 'lapa': 1.53}
+DEFAULT_TOKENIZER = 'qwen3'  # the project's local models are Qwen; also the most pessimistic ratio
+
+
+def chars_per_token(tokenizer: str) -> float:
+    return UA_CHARS_PER_WORD / FERTILITY[tokenizer]
+
+
+_ratio = chars_per_token(DEFAULT_TOKENIZER)
+
+
+def set_tokenizer(tokenizer: str) -> float:
+    """Select the realistic chars-per-token ratio for this process (CLI flag); returns it."""
+    global _ratio
+    _ratio = chars_per_token(tokenizer)
+    return _ratio
+
+
+def realistic_ratio() -> float:
+    return _ratio
 
 LABELS = {'facts': 'ФАКТИ', 'character_states': 'ПОТОЧНІ СТАНИ', 'open_threads': 'ВІДКРИТІ ЛІНІЇ', 'timeline': 'ХРОНОЛОГІЯ'}
 
@@ -75,4 +94,4 @@ def tokens_conservative(text: str) -> int:
 
 
 def tokens_realistic(text: str) -> int:
-    return math.ceil(len(text) / CHARS_PER_TOKEN)
+    return math.ceil(len(text) / _ratio)

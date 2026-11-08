@@ -1,6 +1,9 @@
 import math
 
-from memory_bench.model import CHARS_PER_TOKEN, Record, render, tokens_conservative, tokens_realistic
+import pytest
+
+from memory_bench import model
+from memory_bench.model import Record, chars_per_token, render, tokens_conservative, tokens_realistic
 from storygen.memory.projection import project_memory
 from storygen.token_budget.core import canonical
 from tests.retrieval_bench.conftest import NUMBERS
@@ -28,8 +31,14 @@ def test_tokens_conservative_matches_core_fallback():
     assert tokens_conservative('Марія')==len(canonical('Марія').encode('utf-8'))+256
 
 
-def test_tokens_realistic_is_ceil():
-    assert tokens_realistic('a'*10)==math.ceil(10/CHARS_PER_TOKEN)
+def test_tokens_realistic_uses_ukrqualbench_fertility():
+    assert chars_per_token('qwen3')==pytest.approx(238096/35122/3.38)
+    assert tokens_realistic('a'*100)==math.ceil(100/chars_per_token('qwen3'))
+    try:
+        model.set_tokenizer('claude')
+        assert tokens_realistic('a'*100)==math.ceil(100/(238096/35122/2.96))
+    finally:
+        model.set_tokenizer(model.DEFAULT_TOKENIZER)
 
 
 def test_render_summary_placeholder_length():

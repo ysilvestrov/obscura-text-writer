@@ -12,7 +12,7 @@ from typing import Callable, Iterable, Literal
 from .extract import name_stems
 from storygen.token_budget.core import canonical
 
-from .model import CHARS_PER_TOKEN, Record, SceneInput, Selection, render, tokens_conservative, tokens_realistic
+from .model import Record, realistic_ratio, SceneInput, Selection, render, tokens_conservative, tokens_realistic
 
 LAYERS = ('core', 'present', 'general', 'threads', 'facts', 'timeline', 'atmosphere', 'fts')
 
@@ -47,12 +47,12 @@ def _line_cost(text: str, measure: str) -> float:
     if measure == 'conservative':
         # canonical() adds 2 quote bytes and escapes '"', '\\' and control chars; the newline separator adds 2 (\\n).
         return len(canonical(line).encode('utf-8'))
-    return (len(line) + 1) / CHARS_PER_TOKEN
+    return (len(line) + 1) / realistic_ratio()
 
 
 def _base_cost(measure: str) -> float:
     empty = render([], [])
-    return tokens_conservative(empty) if measure == 'conservative' else len(empty) / CHARS_PER_TOKEN
+    return tokens_conservative(empty) if measure == 'conservative' else len(empty) / realistic_ratio()
 
 
 def _selection(name, records, timeline, summary_chars, layers, overflow, dropped, atmosphere=()):
