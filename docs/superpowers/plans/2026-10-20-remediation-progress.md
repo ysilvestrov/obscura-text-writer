@@ -1255,6 +1255,6 @@ Cross-review claude/default @ 1c44455: 7 зауважень; виправлен�
 
 Фінальне рев'ю гілки: додано в `test_peek_path_matches_copying_path` прийняту версію, цикл, вибір пересилання й overlay рев'ю no_impact із docstring про межі доказу, а також тест `test_second_request_sees_change_made_between_requests` (S02).
 
-Інструкції UA/EN не потребують змін:
+Інструкції UA/EN не потребують змін: видимої поведінки не змінено, результати й дозволи ті самі.
 
-Повний verify.py на фінальному коміті ядра (до коміту, dirty): 1700 passed, 0 failed, 0 errors, 1 skipped; звіт у `docs/STATUS.md`.
+Повний verify.py на коміті виправлень 79f2552 (чисте дерево): 1701 passed, 0 failed, 0 errors, 1 skipped; звіт у `docs/STATUS.md`.
