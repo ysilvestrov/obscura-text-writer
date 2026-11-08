@@ -2,6 +2,7 @@
 
 full / all_active / full_a — baselines and approach A; structural — approach B; structural_fts — approach C."""
 import hashlib
+import json
 import math
 import re
 import sqlite3
@@ -51,11 +52,11 @@ def _base_cost(measure: str) -> float:
     return tokens_conservative(empty) if measure == 'conservative' else len(empty) / CHARS_PER_TOKEN
 
 
-def _selection(name, records, timeline, summary_chars, layers, overflow, dropped):
+def _selection(name, records, timeline, summary_chars, layers, overflow, dropped, atmosphere=()):
     text = render(records, timeline, summary_chars)
     ids = tuple(r.claim_id for r in records) + tuple(r.claim_id for r in timeline)
     return Selection(name, ids, {k: layers.get(k, 0) for k in LAYERS}, len(text), tokens_conservative(text),
-                     tokens_realistic(text), overflow, dropped)
+                     tokens_realistic(text), overflow, dropped, tuple(atmosphere))
 
 
 def _over(selection: Selection, params: Params) -> bool:
@@ -168,6 +169,7 @@ def _structural(scene: SceneInput, params: Params, name: str):
         if cost <= quota and budget.take(cost):
             quota -= cost
             chosen.append(r)
+            layers.setdefault('_atmosphere_ids', []).append(r.claim_id)
             layers['atmosphere'] = layers.get('atmosphere', 0) + 1
         else:
             dropped += 1
@@ -176,7 +178,7 @@ def _structural(scene: SceneInput, params: Params, name: str):
 
 def structural(scene: SceneInput, params: Params) -> Selection:
     chosen, timeline, summary, layers, overflow, dropped, _ = _structural(scene, params, 'structural')
-    return _selection('structural', chosen, timeline, summary, layers, overflow, dropped)
+    return _selection('structural', chosen, timeline, summary, layers, overflow, dropped, layers.get('_atmosphere_ids', ()))
 
 
 def fts_rank(candidates: list[Record], query_text: str) -> list[Record]:
@@ -203,7 +205,36 @@ def structural_fts(scene: SceneInput, params: Params) -> Selection:
             if budget.take(_line_cost(r.text, params.measure)):
                 chosen.append(r)
                 layers['fts'] = layers.get('fts', 0) + 1
-    return _selection('structural_fts', chosen, timeline, summary, layers, overflow, dropped)
+    return _selection('structural_fts', chosen, timeline, summary, layers, overflow, dropped, layers.get('_atmosphere_ids', ()))
+
+
+MUTABLE = {'character_states', 'open_threads'}
+
+
+def _catalog(name, mutable, immutable):
+    text = json.dumps({'mutable': [{'claim_id': r.claim_id, 'category': r.category, 'text': r.text,
+                                    'character_ids': list(r.character_ids)} for r in mutable],
+                       'immutable': [{'category': r.category, 'text': r.text} for r in immutable]},
+                      ensure_ascii=False, separators=(',', ':'))
+    return Selection(name, tuple(r.claim_id for r in mutable), {k: 0 for k in LAYERS}, len(text),
+                     tokens_conservative(text), tokens_realistic(text), False, 0)
+
+
+def catalog_full(scene: SceneInput) -> Selection:
+    """Same layout as storygen.memory.projection.memory_catalog_v3 over the scene's active records."""
+    return _catalog('catalog_full', [r for r in scene.records if r.category in MUTABLE],
+                    [r for r in scene.records if r.category not in MUTABLE])
+
+
+def catalog_narrow(scene: SceneInput, params: Params, fts_top: int = 20) -> Selection:
+    """Mutable records of core (upper), present, general and linked threads, plus FTS top-k over the scene's prose;
+    immutable records only where structural would pick them (to avoid repeats)."""
+    upper = Params(**{**params.__dict__, 'core_mode': 'upper'})
+    core, present, general, threads, facts, _ = _layers(scene, upper)
+    mutable = core + present + general + threads
+    taken = {r.claim_id for r in mutable}
+    extra = fts_rank([r for r in scene.records if r.category in MUTABLE and r.claim_id not in taken], scene.prose_text)
+    return _catalog('catalog_narrow', mutable + extra[:fts_top], facts)
 
 
 STRATEGIES: dict[str, Callable[[SceneInput, Params], Selection]] = {
