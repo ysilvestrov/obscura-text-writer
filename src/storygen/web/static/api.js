@@ -3,12 +3,17 @@ export class APIError extends Error{
   constructor(message,status,data){super(message);this.name='APIError';this.status=status;this.data=data;}
 }
 const inflight=new Map();
-async function load(url,options){const response=await fetch(url,options);let data,bad=false;try{data=await response.json()}catch{bad=true}return{ok:response.ok,status:response.status,data,bad}}
-export async function api(url,options={}){
-  const shareable=(options.method===undefined||String(options.method).toUpperCase()==='GET')&&options.body===undefined&&!options.signal;
+let generation=0;
+async function load(url,options){let response;try{response=await fetch(url,options)}catch(error){return{failed:error}}let data,bad=false;try{data=await response.json()}catch{bad=true}return{ok:response.ok,status:response.status,data,bad}}
+export async function api(url,options){
+  options=options||{};
+  const readOnly=(options.method===undefined||String(options.method).toUpperCase()==='GET')&&options.body===undefined;
+  const shareable=readOnly&&!options.signal;
   let result;
-  if(shareable){let pending=inflight.get(url);if(!pending){pending=load(url,options).finally(()=>{inflight.delete(url)});inflight.set(url,pending)}result=await pending}
+  if(shareable){const key=generation+' '+url;let pending=inflight.get(key);if(!pending){pending=load(url,options).finally(()=>{if(inflight.get(key)===pending)inflight.delete(key)});inflight.set(key,pending)}result=await pending}
+  else if(!readOnly){generation++;try{result=await load(url,options)}finally{generation++}}
   else result=await load(url,options);
+  if(result.failed){if(!shareable)throw result.failed;const error=new Error(result.failed?.message);error.name=result.failed?.name||'Error';throw error}
   const data=result.bad?{get detail(){return t("m_acea534098cb")}}:shareable?structuredClone(result.data):result.data;
   if(!result.ok){const fileError=Array.isArray(data?.files)?data.files.find(file=>file.status==='failed'&&typeof file.error==='string')?.error:null;throw new APIError(typeof data?.detail==='string'?(data.detail_original??data.detail):fileError||t("m_d135f0690e85"),result.status,data);}
   return data}
