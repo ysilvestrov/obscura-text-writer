@@ -276,7 +276,10 @@ def test_edit_loop_legacy_draft_with_corrupted_blob_matches_repository_path(tmp_
 def test_edit_loop_ready_legacy_draft_matches_repository_path(tmp_path):
     repo, story, scenes = seeded(tmp_path)
     save_role_settings(repo, story.id, 'editor', RoleSettings(provider=ProviderSettings(model='editor')), repo.get_story(story.id).revision)
+    brief = repo.save_version(story.id, scenes[0].id, 'brief', '{"objective": "Мета", "beats": ["Крок"]}', [])
+    repo.set_head(scenes[0].id, 'brief', brief.id, repo.get_scene(scenes[0].id).revision)
     draft = repo.save_version(story.id, scenes[0].id, 'draft', 'Легасі чернетка.', [])
     repo.set_head(scenes[0].id, 'draft', draft.id, repo.get_scene(scenes[0].id).revision)
     old = _assert_edit_loop_matches_repository_path(repo, story.id, _edit_loop_request(story.id, scenes[0].id, draft.id))
+    assert old['ready'] is True and old['reason'] is None
     assert old['editor_source_version_id'] == draft.id

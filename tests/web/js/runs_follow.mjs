@@ -38,7 +38,13 @@ globalThis.fetch=async url=>{
  return response({story:{id:'s',revision:0},scenes:[scene],sources:[]});
 };
 globalThis.EventSource=class{constructor(){this.closed=false;globalThis.EventSource.last=this}close(){this.closed=true}};
-if(mode==='review'){release();const host=element('#review-session');await import(pathToFileURL(root+'/src/storygen/web/static/review-session.js'));for(let i=0;i<8;i++)await new Promise(setImmediate);assert.ok(log.includes('/api/stories/s/review/imp'),'protocol-3 session chosen from the short list');assert.ok(log.includes('/api/runs/imp'),'full session run fetched');assert.ok(host.children.some(c=>/2/.test(c.textContent||'')||c.children?.length),'session rendered from the full run without error');console.log('review session loads on the short list');process.exit(0)}
+if(mode==='review'){release();const host=element('#review-session');await import(pathToFileURL(root+'/src/storygen/web/static/review-session.js'));for(let i=0;i<8;i++)await new Promise(setImmediate);assert.ok(log.includes('/api/stories/s/review/imp'),'protocol-3 session chosen from the short list');assert.ok(log.includes('/api/runs/imp'),'full session run fetched');const {t:tr}=await import(pathToFileURL(root+'/src/storygen/web/static/i18n.js'));
+const texts=host.children.map(c=>c.textContent);
+assert.equal(texts[0],tr('review.title'),'session heading rendered');
+assert.equal(texts[1],tr('review.scene_progress',{p0:2,p1:2}),'progress from session.tasks and impact.scene_cursor');
+const actions=host.children.find(c=>c.className==='actions');assert.ok(actions,'actions container rendered');
+assert.deepEqual(actions.children.map(c=>c.textContent),[tr('review.cancel')],'needs_review session offers exactly Cancel');
+assert.equal(host.hidden,false,'session host is visible');console.log('review session loads on the short list');process.exit(0)}
 if(mode==='recover'){store.set('storygen.tab','t1');store.set('storygen.primary.pending.s.t1',JSON.stringify({requestId:'q-r',request:{story_id:'s',mode:'stage'}}))}
 await import(pathToFileURL(root+'/src/storygen/web/static/runs.js'));
 const {state}=await import(pathToFileURL(root+'/src/storygen/web/static/editor.js'));
