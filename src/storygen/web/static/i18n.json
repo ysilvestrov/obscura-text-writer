@@ -2053,7 +2053,9 @@
     "memory.mode.evidence_delta_v3": "Операції пам’яті v3 за доказами",
     "memory.mode.schema_hint": "Для моделей, що підтримують схему, оберіть режим відповіді json_schema — він унеможливлює більшість помилок формату.",
     "memory.prompt.upgrade_v3": "Перевести власний промпт на формат v3",
-    "memory.prompt.upgrade_v3_help": "Текст промпту має вимагати групований формат відповіді v3; без цього прапорця власний промпт лишається на формат v2."
+    "memory.prompt.upgrade_v3_help": "Текст промпту має вимагати групований формат відповіді v3; без цього прапорця власний промпт лишається на формат v2.",
+    "memory.scene_filter": "Сцена-джерело",
+    "memory.all_scenes": "Усі сцени"
   },
   "en": {
     "ui.save": "Save",
@@ -4109,6 +4111,8 @@
     "memory.mode.evidence_delta_v3": "Evidence-based memory operations v3",
     "memory.mode.schema_hint": "For models that support schemas, choose the json_schema response mode — it rules out most format errors.",
     "memory.prompt.upgrade_v3": "Move the custom prompt to format v3",
-    "memory.prompt.upgrade_v3_help": "The prompt text must require the grouped v3 response format; without this checkbox the custom prompt stays on format v2."
+    "memory.prompt.upgrade_v3_help": "The prompt text must require the grouped v3 response format; without this checkbox the custom prompt stays on format v2.",
+    "memory.scene_filter": "Source scene",
+    "memory.all_scenes": "All scenes"
   }
 }

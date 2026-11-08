@@ -14,7 +14,25 @@ export function installMemoryTable({state,api,json,notice,refresh,loadBuffer}){
   const search=node('input');search.type='search';uiText(search,"placeholder",()=>(t("m_7d6c01cf20e1")));uiAttr(search,'aria-label',()=>(t("m_7d6c01cf20e1")));
   const filter=node('select');uiAttr(filter,'aria-label',()=>(t("m_ed9073f821ed")));
   for(const [value,label] of [['',msg("m_2471988b961a")],['facts',msg("m_d7faf80a1479")],['character_states',msg("m_eda54a73a727")],['open_threads',msg("m_2d082c022b82")],['timeline',msg("m_208c38963ff5")]]){const o=node('option',live(()=>(label)));o.value=value;filter.append(o);}
-  tools.append(search,filter);
+  const sceneFilter=node('select');uiAttr(sceneFilter,'aria-label',()=>t('memory.scene_filter'));
+  let filterSceneId=null,sceneListKey='';
+  const scenes=()=>state.view?.scenes||[state.scene];
+  function sceneOptions(){
+    const list=scenes(),previous=sceneFilter.value,same=filterSceneId===state.scene.id;
+    sceneFilter.replaceChildren();
+    const all=node('option',msg('memory.all_scenes'));all.value='';sceneFilter.append(all);
+    for(const scene of list){
+      const option=node('option',live(()=>`${scene.position+1}. ${scene.title}`));option.value=scene.id;sceneFilter.append(option);
+    }
+    sceneFilter.value=same&&(previous===''||list.some(scene=>scene.id===previous))?previous:state.scene.id;
+    filterSceneId=state.scene.id;
+    sceneListKey=JSON.stringify(list.map(scene=>[scene.id,scene.position,scene.title]));
+  }
+  function addSceneIds(result,list){
+    const byPosition=new Map(list.map(scene=>[scene.position+1,scene.id]));
+    return {...result,rows:result.rows.map(row=>({...row,source_scene_id:byPosition.get(row.source_scene)||null}))};
+  }
+  tools.append(search,filter,sceneFilter);
   const wrap=node('div');wrap.className='memory-table-wrap';
   const table=node('table');table.className='memory-table';
   const caption=node('caption',msg("m_80a7d9ba02de"));const head=node('thead'),header=node('tr');
@@ -41,7 +59,7 @@ export function installMemoryTable({state,api,json,notice,refresh,loadBuffer}){
   }
   function draw(){
     body.replaceChildren();if(!data){controls();return;}
-    const rows=data.rows.filter(row=>(!filter.value||row.category===filter.value)&&`${row.text} ${row.source_title}`.toLocaleLowerCase('uk').includes(search.value.toLocaleLowerCase('uk')));
+    const rows=data.rows.filter(row=>(!filter.value||row.category===filter.value)&&(!sceneFilter.value||row.source_scene_id===sceneFilter.value)&&`${row.text} ${row.source_title}`.toLocaleLowerCase('uk').includes(search.value.toLocaleLowerCase('uk')));
     counts(rows.length);
     if(!rows.length&&data.rows.length){const tr=node('tr'),td=node('td',msg("m_2d74a1418749"));td.colSpan=4;tr.append(td);body.append(tr);}
     for(const row of rows){
@@ -63,12 +81,14 @@ export function installMemoryTable({state,api,json,notice,refresh,loadBuffer}){
     controls();
   }
   async function load(){
+    sceneOptions();
+    const sceneSnapshot=scenes().map(scene=>({...scene}));
     const captured=currentKey();key=captured;loadedSceneId=state.scene.id;loadedMemoryId=state.scene.heads.memory;data=null;pending={};advanced=false;rawText=editor.read();loading=true;uiText(info,"textContent",()=>(t("m_1f3975528ccd")));draw();
     try{
       const result=await api(`/api/scenes/${state.scene.id}/memory-view`);
       if(currentKey()!==captured||state.mode!=='memory')return;
-      data=result;
-      if(result.memory_id!==(state.scene.heads.memory||null))data={...result,can_save:false,reason:t("m_df25fc889f42")};
+      data=addSceneIds(result,sceneSnapshot);
+      if(result.memory_id!==(state.scene.heads.memory||null))data={...data,can_save:false,reason:t("m_df25fc889f42")};
       else if(!state.dirty)state.scene=result.scene;
       draw();
     }catch(error){if(currentKey()===captured)uiText(info,"textContent",()=>(diagnostic(error.message)));}
@@ -76,6 +96,7 @@ export function installMemoryTable({state,api,json,notice,refresh,loadBuffer}){
   }
   function update(){
     if(state.mode!=='memory'||state.bufferOrigin==='history'){advanced=false;key=null;controls();return;}
+    if(JSON.stringify(scenes().map(scene=>[scene.id,scene.position,scene.title]))!==sceneListKey){sceneOptions();draw();}
     controls();
     const editingSameJson=advanced&&state.scene.id===loadedSceneId&&state.scene.heads.memory===loadedMemoryId;
     if(currentKey()!==key&&!editingSameJson)void load();
@@ -97,14 +118,14 @@ export function installMemoryTable({state,api,json,notice,refresh,loadBuffer}){
     }catch(error){notice(error.message,'error');}
     finally{loading=false;controls();}
   };
-  search.oninput=filter.onchange=draw;
+  search.oninput=filter.onchange=sceneFilter.onchange=draw;
   document.addEventListener('editor-state-changed',update);document.addEventListener('story-refreshed',update);
   return {active,save:async()=>{
     if(state.saving||loading||!state.dirty||!data?.can_save)return;
     const captured=currentKey(),snapshot=data,choices={...pending};state.saving=true;emit();draw();
     try{
       const result=await api(`/api/scenes/${snapshot.scene.id}/memory-view`,json('PUT',{expected_revision:snapshot.expected_revision,fingerprint:snapshot.fingerprint,choices}));
-      if(currentKey()===captured){data=result;state.scene=result.scene;pending={};state.dirty=false;uiText(document.querySelector('#save-state'),"textContent",()=>(t("m_922c2ebbfd84")));}
+      if(currentKey()===captured){data=addSceneIds(result,scenes());state.scene=result.scene;pending={};state.dirty=false;uiText(document.querySelector('#save-state'),"textContent",()=>(t("m_922c2ebbfd84")));}
       await refresh();notice(msg("m_3fae998ee80e"));
     }catch(error){notice(error.message,'error');}
     finally{state.saving=false;emit();draw();}
