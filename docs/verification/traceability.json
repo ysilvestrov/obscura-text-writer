@@ -2885,6 +2885,18 @@
       }
     },
     {
+      "id": "UI-001-S03",
+      "requirement": "UI-001",
+      "scope": "Згортання однакових одночасних GET у api(): один fetch, власні копії даних, без згортання POST і запитів із сигналом.",
+      "tests": [
+        "tests/web/test_api_coalesce.py::test_identical_concurrent_gets_share_one_fetch"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#workspace-one-click",
+        "reason": "Фактичні браузерні запити робочого простору перевіряються Playwright."
+      }
+    },
+    {
       "id": "R20-BRIEF-REVIEW-S03",
       "requirement": "R20-BRIEF-REVIEW",
       "scope": "Доступність прийняття при оновленні списку запусків.",

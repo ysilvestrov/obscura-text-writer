@@ -2,7 +2,16 @@ import {t,msg,labelEntries,getLocale,uiText,uiAttr,uiHTML,diagnostic} from './i1
 export class APIError extends Error{
   constructor(message,status,data){super(message);this.name='APIError';this.status=status;this.data=data;}
 }
-export async function api(url,options={}){const response=await fetch(url,options);let data;try{data=await response.json()}catch{data={get detail(){return t("m_acea534098cb")}}}if(!response.ok){const fileError=Array.isArray(data?.files)?data.files.find(file=>file.status==='failed'&&typeof file.error==='string')?.error:null;throw new APIError(typeof data?.detail==='string'?(data.detail_original??data.detail):fileError||t("m_d135f0690e85"),response.status,data);}return data}
+const inflight=new Map();
+async function load(url,options){const response=await fetch(url,options);let data,bad=false;try{data=await response.json()}catch{bad=true}return{ok:response.ok,status:response.status,data,bad}}
+export async function api(url,options={}){
+  const shareable=(options.method===undefined||String(options.method).toUpperCase()==='GET')&&options.body===undefined&&!options.signal;
+  let result;
+  if(shareable){let pending=inflight.get(url);if(!pending){pending=load(url,options).finally(()=>{inflight.delete(url)});inflight.set(url,pending)}result=await pending}
+  else result=await load(url,options);
+  const data=result.bad?{get detail(){return t("m_acea534098cb")}}:shareable?structuredClone(result.data):result.data;
+  if(!result.ok){const fileError=Array.isArray(data?.files)?data.files.find(file=>file.status==='failed'&&typeof file.error==='string')?.error:null;throw new APIError(typeof data?.detail==='string'?(data.detail_original??data.detail):fileError||t("m_d135f0690e85"),result.status,data);}
+  return data}
 export function json(method,body){return{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}}
 export function dismissNotice(){const box=document.querySelector('#notice');if(!box)return;clearTimeout(box.timer);box.hidden=true;}
 export function notice(text,kind='success'){const box=document.querySelector('#notice');const message=box.querySelector?.('.notice-message');if(message)uiText(message,"textContent",()=>(diagnostic(text)));else uiText(box,"textContent",()=>(diagnostic(text)));box.dataset.kind=kind;box.setAttribute('role',kind==='error'?'alert':'status');box.hidden=false;clearTimeout(box.timer);box.timer=setTimeout(dismissNotice,kind==='error'?12000:7000)}
