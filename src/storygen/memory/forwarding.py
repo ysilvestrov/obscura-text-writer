@@ -13,8 +13,8 @@ class ForwardingChange(DomainModel):
 
 
 def choices_at(view,scene_id,*,inclusive=False):
-    scene=view.get_scene(scene_id);choices={}
-    for item in view.list_scenes(scene.story_id):
+    scene=view.peek_scene(scene_id);choices={}
+    for item in view.peek_scenes(scene.story_id):
         if item.position<scene.position or inclusive and item.id==scene_id:
             choices.update(item.memory_forwarding)
     return choices

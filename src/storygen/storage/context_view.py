@@ -43,37 +43,56 @@ class ContextView:
         import copy
         return copy.deepcopy(self.token_profiles)
 
-    def get_story(self, id):
+    def peek_story(self, id):
+        """Внутрішнє читання без копії; не змінювати результат."""
         if id != self.story.id or self.story.trashed_at:
             raise KeyError('Твір недоступний у знімку')
-        return self.story.model_copy(deep=True)
+        return self.story
 
-    def get_scene(self, id):
+    def peek_scene(self, id):
+        """Внутрішнє читання без копії; не змінювати результат."""
         scene = self.scenes[id]
         if scene.trashed_at:
             raise KeyError('Сцена в кошику')
-        return scene.model_copy(deep=True)
+        return scene
 
-    def list_scenes(self, story_id):
-        self.get_story(story_id)
-        return [s.model_copy(deep=True) for s in self.scenes.values() if not s.trashed_at]
+    def peek_scenes(self, story_id):
+        """Внутрішнє читання без копії; не змінювати результат."""
+        self.peek_story(story_id)
+        return [s for s in self.scenes.values() if not s.trashed_at]
 
-    def get_version(self, id):
+    def peek_version(self, id):
+        """Внутрішнє читання без копії; не змінювати результат. Поле stale не перераховане: див. is_stale."""
         ref = self.versions[id]
         if ref.scene_id:
-            self.get_scene(ref.scene_id)
-        from .snapshots import resolve_freshness
-        result=ref.model_copy(deep=True)
-        result.stale=resolve_freshness(self,id).stale
+            self.peek_scene(ref.scene_id)
+        return ref
+
+    def is_stale(self, id):
+        from . import snapshots
+        return snapshots.freshness(self, id).stale
+
+    def get_story(self, id):
+        return self.peek_story(id).model_copy(deep=True)
+
+    def get_scene(self, id):
+        return self.peek_scene(id).model_copy(deep=True)
+
+    def list_scenes(self, story_id):
+        return [s.model_copy(deep=True) for s in self.peek_scenes(story_id)]
+
+    def get_version(self, id):
+        result=self.peek_version(id).model_copy(deep=True)
+        result.stale=self.is_stale(id)
         return result
 
     def effective_scene(self, id):
         scene=self.get_scene(id)
         prose=self.versions.get(scene.heads.get('prose'))
         if prose and (prose.dependency_snapshot is not None or prose.id in self.acceptances or any(scope[0]==id for scope in self.review_authority) or any(r.target.version_id==prose.id for r in self.impact_records.values()) or any(r.target.version_id==prose.id for r in self.review_acceptances)):
-            scene.needs_review=self.get_version(prose.id).stale
+            scene.needs_review=self.is_stale(prose.id)
         elif prose and prose.manual_projection_policy is not None:
-            scene.needs_review=scene.needs_review or self.get_version(prose.id).stale
+            scene.needs_review=scene.needs_review or self.is_stale(prose.id)
         return scene
 
     def active_source(self, story_id, kind):

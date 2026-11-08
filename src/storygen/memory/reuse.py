@@ -22,13 +22,15 @@ def _candidate(view,scene_id):
     journal=load_memory(view.read_text(memory_id))
     if len(journal.source_prose_ids)!=len(previous):
         raise ValueError('Попередня пам’ять не відповідає порядку попередніх сцен')
+    # Only kind/scene_id/story_id/complete/sha256 are read below; a Repository (execute_stage) has no peek_version.
+    peek=getattr(view,'peek_version',view.get_version)
     sources={};current=[];changed_text=changed_versions=0
     for item,old_id in zip(previous,journal.source_prose_ids):
-        try:old=view.get_version(old_id)
+        try:old=peek(old_id)
         except KeyError:raise ValueError('Попередня пам’ять містить невідоме або стороннє джерело') from None
         current_id=item.heads.get('prose')
         if not current_id:raise ValueError('Потрібні актуальна проза й пам’ять попередніх сцен')
-        selected=view.get_version(current_id)
+        selected=peek(current_id)
         for source in [old,selected]:
             if source.story_id!=scene.story_id or source.scene_id!=item.id or source.kind not in {'manual','edited'} or not source.complete:
                 raise ValueError('Попередня пам’ять містить джерело іншої або майбутньої сцени')
@@ -44,7 +46,7 @@ def _candidate(view,scene_id):
     baseline={'scene_id':scene.id,'revision':scene.revision,'heads':scene.heads,'characters':scene.character_ids,
               'prefix':[(s.id,s.heads.get('prose')) for s in previous],
               'memory_id':ref.id,'memory_sha256':ref.sha256,'stale':ref.stale,
-              'source_hashes':[(id,view.get_version(id).sha256) for id in sources]}
+              'source_hashes':[(id,peek(id).sha256) for id in sources]}
     fingerprint=hashlib.sha256(json.dumps(baseline,sort_keys=True,ensure_ascii=False).encode()).hexdigest()
     review={'fingerprint':fingerprint,'scene_id':scene.id,'memory_id':ref.id,'memory_scene_number':previous[-1].position+1,
             'source_prose_ids':journal.source_prose_ids,'current_source_prose_ids':current,
