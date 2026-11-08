@@ -3,7 +3,7 @@ import math
 from memory_bench.model import CHARS_PER_TOKEN, Record, render, tokens_conservative, tokens_realistic
 from storygen.memory.projection import project_memory
 from storygen.token_budget.core import canonical
-from tests.memory_bench.conftest import NUMBERS
+from tests.retrieval_bench.conftest import NUMBERS
 
 
 def manual_records():
@@ -33,4 +33,5 @@ def test_tokens_realistic_is_ceil():
 
 
 def test_render_summary_placeholder_length():
-    assert len(render([],[],summary_chars=600))-len(render([],[]))>=600
+    _,timeline=manual_records()
+    assert len(render([],timeline,summary_chars=600))-len(render([],timeline))==600+3
