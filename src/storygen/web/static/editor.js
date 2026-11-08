@@ -49,7 +49,7 @@ export async function saveBuffer(send){
   const material=textEditor.snapshot();
   const authoring=state.mode==='draft'&&state.bufferOrigin!=='history'?authorComments:null;
   const authoringFields=authoring?.capture();
-  const snapshot={scene:state.scene,mode:state.mode,text:material.source,content_format:material.content_format,authoringFields};
+  const snapshot={scene:state.scene,mode:state.mode,text:material.source,content_format:material.content_format,source_version_id:material.version_id,authoringFields};
   authoring?.lock(true);
   state.saving=true;saveButton.disabled=true;changed();
   try{
@@ -58,7 +58,9 @@ export async function saveBuffer(send){
       state.scene=result.scene||result;
       const current=textEditor.snapshot();
       state.dirty=current.source!==snapshot.text||current.content_format!==snapshot.content_format;
-      if(!state.dirty)textEditor.markSaved({...material,version_id:result.version?.id,source_ref:result.version});
+      const savedAcceptedBrief=snapshot.mode==='brief'&&!result.needs_review&&result.version?.id&&
+        result.scene?.heads?.brief===result.version.id&&textEditor.identity().version_id===snapshot.source_version_id;
+      if(!state.dirty||savedAcceptedBrief)textEditor.markSaved({...material,version_id:result.version?.id,source_ref:result.version});
       authoring?.saved(result);
       state.dirty=state.dirty||!!authoring?.isDirty();
       uiText(document.querySelector('#save-state'),"textContent",()=>(state.dirty?t("m_5da9339e255c"):t("m_7f00ac2a170a")));

@@ -22,6 +22,10 @@ class ProseChange(DomainModel):
     text: str
 
 
+class BriefChange(ProseChange):
+    source_brief_id: str | None = None
+
+
 class AuthorTextChange(ProseChange):
     content_format: Literal['plain','markdown'] | None = None
 
@@ -145,7 +149,7 @@ def manual_draft(scene_id: str,body: DraftChange,request: Request):
 
 
 @router.post('/api/scenes/{scene_id}/brief')
-def manual_brief(scene_id: str,body: ProseChange,request: Request):
+def manual_brief(scene_id: str,body: BriefChange,request: Request):
     repo=request.app.state.repo
     unchanged=repo.unchanged_scene_text(scene_id,'brief',body.text,body.expected_revision)
     if unchanged:
@@ -168,9 +172,11 @@ def manual_brief(scene_id: str,body: ProseChange,request: Request):
     ref=repo.save_version(scene.story_id,scene_id,'brief',brief.model_dump_json(),list(dict.fromkeys(inputs)),manual_projection_policy=policy)
     if scene.revision!=body.expected_revision:
         raise RevisionConflict('Сцену вже змінено; ваша версія завдання збережена в історії')
-    if not brief.proposed_changes:
+    accepted_source=body.source_brief_id is not None and body.source_brief_id==scene.heads.get('brief')
+    needs_review=bool(brief.proposed_changes) and not accepted_source
+    if not needs_review:
         scene=repo.set_head(scene_id,'brief',ref.id,body.expected_revision)
-    return {'version':ref,'scene':scene,'needs_review':bool(brief.proposed_changes)}
+    return {'version':ref,'scene':scene,'needs_review':needs_review}
 
 
 @router.post('/api/scenes/{scene_id}/select-version')

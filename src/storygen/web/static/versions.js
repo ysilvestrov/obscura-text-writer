@@ -52,7 +52,7 @@ document.querySelector('#mode-tabs').addEventListener('keydown',async event=>{
 registerWorkspaceCommand('save-material',async()=>{
   if(memoryTable.active()){await memoryTable.save();if(state.dirty)throw new Error(t("m_e4eb188e3a6b"));return;}
   if(!['draft','prose','memory','brief'].includes(state.mode))throw new Error(t("m_9910fb588c99"));
-  return saveBuffer(snapshot=>api(`/api/scenes/${snapshot.scene.id}/${snapshot.mode}`,json('POST',{text:snapshot.text,expected_revision:snapshot.scene.revision,...(['draft','prose'].includes(snapshot.mode)&&snapshot.content_format==='markdown'?{content_format:snapshot.content_format}:{}),...(snapshot.authoringFields||{})})));
+  return saveBuffer(snapshot=>api(`/api/scenes/${snapshot.scene.id}/${snapshot.mode}`,json('POST',{text:snapshot.text,expected_revision:snapshot.scene.revision,...(snapshot.mode==='brief'?{source_brief_id:snapshot.source_version_id||null}:{}),...(['draft','prose'].includes(snapshot.mode)&&snapshot.content_format==='markdown'?{content_format:snapshot.content_format}:{}),...(snapshot.authoringFields||{})})));
 });
 async function render(){
   if(!state.scene)return;
@@ -101,6 +101,6 @@ document.addEventListener('story-refreshed',async()=>{
 document.addEventListener('save-prose',async()=>{try{
   if(memoryTable.active()){await memoryTable.save();return;}
   if(!['draft','prose','memory','brief'].includes(state.mode))throw new Error(t("m_f89ef6f89e8a"));
-  const result=await saveBuffer(snapshot=>api(`/api/scenes/${snapshot.scene.id}/${snapshot.mode==='prose'?'prose':snapshot.mode}`,json('POST',{text:snapshot.text,expected_revision:snapshot.scene.revision,...(['draft','prose'].includes(snapshot.mode)&&snapshot.content_format==='markdown'?{content_format:snapshot.content_format}:{}),...(snapshot.authoringFields||{})})));
+  const result=await saveBuffer(snapshot=>api(`/api/scenes/${snapshot.scene.id}/${snapshot.mode==='prose'?'prose':snapshot.mode}`,json('POST',{text:snapshot.text,expected_revision:snapshot.scene.revision,...(snapshot.mode==='brief'?{source_brief_id:snapshot.source_version_id||null}:{}),...(['draft','prose'].includes(snapshot.mode)&&snapshot.content_format==='markdown'?{content_format:snapshot.content_format}:{}),...(snapshot.authoringFields||{})})));
   if(result)notice(result.needs_review?t("m_bb5c7d2fc991"):t("m_47d7dedd8913"));
 }catch(e){notice(e.message,'error')}});

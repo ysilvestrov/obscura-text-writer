@@ -41,3 +41,43 @@ def test_edit_generated_brief_after_forwarding_can_save_with_cas_and_review(tmp_
         assert repo.get_scene(target.id).heads['brief']==ref.id
         apply(repo,repo.get_scene(scenes[1].id),{claim:True})
         assert repo.get_version(ref.id).stale
+
+@pytest.mark.parametrize('source_kind,needs_review,head_is_saved',[('accepted',False,True),('candidate',True,False),('legacy',True,False),('wrong',True,False)])
+def test_edit_brief_preserves_only_selected_head_acceptance(tmp_path,source_kind,needs_review,head_is_saved):
+    repo,story,scenes=seeded(tmp_path)
+    scene=repo.get_scene(scenes[2].id)
+    accepted={'objective':'Прийнята мета','beats':['Подія'],'constraints':[],'proposed_changes':['Уточнити план']}
+    selected=repo.save_version(story.id,scene.id,'brief',json.dumps(accepted),[])
+    scene=repo.set_head(scene.id,'brief',selected.id,scene.revision)
+    candidate=repo.save_version(story.id,scene.id,'brief',json.dumps({**accepted,'objective':'Нова пропозиція'}),[])
+    body={'text':json.dumps({**accepted,'objective':'Авторська правка'}),'expected_revision':scene.revision}
+    if source_kind!='legacy':body['source_brief_id']={'accepted':selected.id,'candidate':candidate.id,'wrong':'not-a-version'}[source_kind]
+    with TestClient(create_app(AppSettings(data_dir=tmp_path)),base_url='http://127.0.0.1:8765') as client:
+        result=client.post(f'/api/scenes/{scene.id}/brief',json=body)
+        assert result.status_code==200,result.text
+        saved=result.json();head=repo.get_scene(scene.id).heads['brief']
+        assert saved['needs_review'] is needs_review
+        assert (head==saved['version']['id']) is head_is_saved
+        assert repo.get_version(saved['version']['id']).scene_id==scene.id
+
+def test_stale_accepted_source_cannot_replace_new_head(tmp_path):
+    repo,story,scenes=seeded(tmp_path);scene=repo.get_scene(scenes[2].id)
+    brief={'objective':'Прийняте','beats':['Подія'],'constraints':[],'proposed_changes':['Пропозиція']}
+    first=repo.save_version(story.id,scene.id,'brief',json.dumps(brief),[]);scene=repo.set_head(scene.id,'brief',first.id,scene.revision)
+    revision=scene.revision
+    newer=repo.save_version(story.id,scene.id,'brief',json.dumps({**brief,'objective':'Інша вкладка'}),[]);repo.set_head(scene.id,'brief',newer.id,revision)
+    with TestClient(create_app(AppSettings(data_dir=tmp_path)),base_url='http://127.0.0.1:8765') as client:
+        response=client.post(f'/api/scenes/{scene.id}/brief',json={'text':json.dumps({**brief,'objective':'Моя правка'}),'expected_revision':revision,'source_brief_id':first.id})
+        assert response.status_code==409
+        assert repo.get_scene(scene.id).heads['brief']==newer.id
+        assert any(json.loads(repo.read_text(ref.id)).get('objective')=='Моя правка' for ref in repo.list_versions(story.id,scene.id) if ref.kind=='brief')
+
+
+def test_edit_accepted_brief_without_proposals_still_publishes(tmp_path):
+    repo,story,scenes=seeded(tmp_path);scene=repo.get_scene(scenes[2].id)
+    brief={'objective':'Мета','beats':['Подія'],'constraints':[],'proposed_changes':[]}
+    first=repo.save_version(story.id,scene.id,'brief',json.dumps(brief),[]);scene=repo.set_head(scene.id,'brief',first.id,scene.revision)
+    with TestClient(create_app(AppSettings(data_dir=tmp_path)),base_url='http://127.0.0.1:8765') as client:
+        response=client.post(f'/api/scenes/{scene.id}/brief',json={'text':json.dumps({**brief,'objective':'Змінено'}),'expected_revision':scene.revision,'source_brief_id':first.id})
+        assert response.status_code==200 and response.json()['needs_review'] is False
+        assert repo.get_scene(scene.id).heads['brief']==response.json()['version']['id']
