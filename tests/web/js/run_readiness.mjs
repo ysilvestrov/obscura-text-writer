@@ -34,3 +34,12 @@ for(const limit of [0,11,2.5,NaN])assert.throws(()=>editorLoopOperation(loop,lim
 const remaining=editorLoopOperation({ready:true,calls:16,edit_loop_scenes:2,edit_pass_limit:5,roles:{editor:{provider:'local',model:'editor'}}},1);
 assert.equal(remaining.calls,8);
 assert.match(confirmationText(remaining),/для кожної сцени/);
+{
+  const short=(mode,state)=>({id:mode+state,story_id:'s',request_id:'q',state,created_at:'2026-01-01T00:00:00+00:00',request:{story_id:'s',mode},impact:null});
+  const history=[short('prepare','completed'),short('scene','completed')];
+  assert.equal(materialReason('proposal',{},history),'');
+  assert.equal(materialReason('latest',{},history),'');
+  assert.ok(materialReason('proposal',{},[short('prepare','failed'),short('scene','completed')]));
+  const sessions=[{...short('impact','needs_review'),impact:{protocol:3,phase:'awaiting_author'}},short('scene','completed')].filter(r=>r.impact?.protocol===3);
+  assert.equal(sessions.length,1);
+}

@@ -6,6 +6,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import StreamingResponse
 
 from ..domain import DomainModel
+from ..run_models import run_summary
 from ..generation.worker import RunRequest, TERMINAL
 
 router=APIRouter()
@@ -36,7 +37,7 @@ def cancel_request(body: Enqueue,request: Request):
 
 @router.get('/api/stories/{story_id}/runs')
 def story_runs(story_id: str,request: Request):
-    return {'runs':request.app.state.coordinator.list_runs(story_id)}
+    return {'runs':[run_summary(run) for run in request.app.state.coordinator.list_runs(story_id)]}
 
 
 @router.get('/api/stories/{story_id}/readiness')

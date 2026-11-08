@@ -117,7 +117,7 @@ async function showViolations(run){
 setInterval(()=>{if(active&&!terminal.has(active.state))uiText(elapsed,"textContent",()=>(t("m_61cb5f9a3bb9",{p0:(Math.floor((Date.now()-started)/1000))})))},1000);
 async function follow(run){
   const epoch=++followEpoch;let stateFetch=0;
-  source?.close();last=0;started=Date.parse(run.created_at);draw(run);live.hidden=false;
+  source?.close();last=0;started=Date.parse(run.created_at);live.hidden=false;
   const saved=await api('/api/runs/'+run.id);if(epoch!==followEpoch)return;draw(saved.run);uiText(live,"textContent",()=>(saved.partial));
   const attempt=saved.attempts?.at(-1);if(attempt?.created_at)started=Date.parse(attempt.created_at);
   if(terminal.has(saved.run.state)){await refresh();return}

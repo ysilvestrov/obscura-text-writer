@@ -684,6 +684,18 @@
       }
     },
     {
+      "id": "PERF-001-S04",
+      "requirement": "PERF-001",
+      "scope": "Короткий список запусків. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/web/test_runs_short_form.py::test_story_runs_returns_short_form",
+        "tests/web/test_runs_short_form.py::test_run_detail_stays_full",
+        "tests/web/test_runs_short_form.py::test_run_summary_is_a_subset_of_the_full_run",
+        "tests/web/test_resumed_events.py::test_follow_draws_only_the_full_run_for_short_list_items",
+        "tests/web/test_editor_loop_ui.py::test_loop_limit_and_confirmation_only_name_editor"
+      ]
+    },
+    {
       "id": "EVAL-001-S01",
       "requirement": "EVAL-001",
       "scope": "Непідтверджена цитата. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
