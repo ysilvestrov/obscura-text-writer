@@ -81,11 +81,11 @@ def _story_view(repo, story_id):
 
 
 def _scene_attempts(repo, story_id, scene_id):
-    # Same filters as routes_versions.list_copyedit_proposals and routes_rewrites.list_rewrites.
-    attempts = repo.list_attempts(story_id)
-    copyedits = [a.id for a in attempts if a.scene_id == scene_id and a.context.get('copyedit_proposal')
-                 and a.state in {'completed', 'needs_review', 'alternative'}]
-    rewrites = [a.id for a in attempts if a.scene_id == scene_id and a.context.get('rewrite_proposal')]
+    # Same calls and filters as routes_versions.list_copyedit_proposals and routes_rewrites.list_rewrites.
+    copyedits = [a.id for a in repo.list_attempts(story_id, scene_id=scene_id, context_key='copyedit_proposal')
+                 if a.context.get('copyedit_proposal') and a.state in {'completed', 'needs_review', 'alternative'}]
+    rewrites = [a.id for a in repo.list_attempts(story_id, scene_id=scene_id, context_key='rewrite_proposal')
+                if a.context.get('rewrite_proposal')]
     return copyedits, rewrites
 
 
