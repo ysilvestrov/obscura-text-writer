@@ -207,3 +207,23 @@ def test_remaining_run_readiness_checks_every_target_scene(tmp_path):
     result=preview(repo,RunRequest(story_id=story.id,scene_id=scenes[0].id,mode='remaining'))
     assert not result['ready']
     assert 'персонаж «Борис» молодший за 18' in result['reason']
+
+
+
+def test_more_than_five_failing_participants_adds_rest_hint(tmp_path):
+    from storygen.web.localization import diagnostic
+    cast=('X1','X2','X3','X4','X5','X6','X7')
+    repo,story,scenes=make_story(tmp_path,R(1,0,0),cast=cast,cards=ADULTS)
+    with pytest.raises(ValueError) as error:
+        build_context(repo,scenes[0].id,'brief',settings())
+    message=str(error.value)
+    assert message.count('персонаж «')==5 and 'X6' not in message
+    assert 'персонаж «X5» не має вказаного віку; і ще 2. Допишіть у картку' in message
+    english=diagnostic(message,'en')
+    assert 'character “X5” has no age specified; and 2 more. Add an “Age: …” line' in english
+    assert 'персонаж' not in english and 'і ще' not in english
+    # Exactly five failing participants carry no hint.
+    repo,story,scenes=make_story(tmp_path/'five',R(1,0,0),cast=cast[:5],cards=ADULTS)
+    with pytest.raises(ValueError) as error:
+        build_context(repo,scenes[0].id,'brief',settings())
+    assert 'і ще' not in str(error.value)

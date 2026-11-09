@@ -3059,7 +3059,8 @@
         "tests/generation/test_content_rating_context.py::test_empty_cast_and_missing_cards_block",
         "tests/generation/test_content_rating_context.py::test_minor_blocks_memory_stage_too",
         "tests/generation/test_content_rating_context.py::test_guard_message_has_english_translation",
-        "tests/generation/test_content_rating_context.py::test_remaining_run_readiness_checks_every_target_scene"
+        "tests/generation/test_content_rating_context.py::test_remaining_run_readiness_checks_every_target_scene",
+        "tests/generation/test_content_rating_context.py::test_more_than_five_failing_participants_adds_rest_hint"
       ]
     },
     {

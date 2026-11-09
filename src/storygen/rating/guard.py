@@ -13,6 +13,7 @@ PARTICIPANTS=('Генерацію заблоковано: сцена має ре
     '(число від 18 або «дорослий»), приберіть персонажа зі складу сцени або позначте сцену рейтингом «сексуальний зміст 0».')
 MINOR='персонаж «{name}» молодший за 18'
 UNKNOWN='персонаж «{name}» не має вказаного віку'
+MORE='і ще {k}'
 
 
 def enforce_rating(view,story,scene,stage: str) -> None:
@@ -27,4 +28,7 @@ def enforce_rating(view,story,scene,stage: str) -> None:
     names={card.id:card.name for card in cards}
     ages=scene_ages(cards,view.list_scenes(story.id),scene.id)
     items=[(MINOR if verdict=='minor' else UNKNOWN).format(name=names.get(id,id)) for id,verdict in ages.items() if verdict!='adult']
-    if items:raise ValueError(PARTICIPANTS.format(n=n,items='; '.join(items[:MAX_LISTED])))
+    if not items:return
+    listed=items[:MAX_LISTED]
+    if len(items)>MAX_LISTED:listed.append(MORE.format(k=len(items)-MAX_LISTED))
+    raise ValueError(PARTICIPANTS.format(n=n,items='; '.join(listed)))

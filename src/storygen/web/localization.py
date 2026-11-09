@@ -55,7 +55,16 @@ def _diagnostic_catalog():
 
 
 # Catalog parameters that hold a "; "-joined list of other catalog diagnostics.
-_LIST_PARAMS={'rating.guard.participants':('p1','; (?=персонаж «)')}
+_LIST_PARAMS={'rating.guard.participants':('p1',r'; (?=персонаж «|і ще \d+$)')}
+# Short list items below the generic pattern length threshold.
+_LIST_ITEMS={'rating.guard.more':re.compile(r'і ще (\d+)')}
+
+
+def _list_item(item,locale):
+    for key,pattern in _LIST_ITEMS.items():
+        match=pattern.fullmatch(item)
+        if match:return translate(key,locale,p0=match[1])
+    return diagnostic(item,locale)
 
 
 def diagnostic(text,locale='uk'):
@@ -77,7 +86,7 @@ def diagnostic(text,locale='uk'):
                 if key in _LIST_PARAMS:
                     # Application-built list of diagnostics; character names inside stay untranslated.
                     param,separator=_LIST_PARAMS[key]
-                    params[param]='; '.join(diagnostic(item,locale) for item in re.split(separator,params[param]))
+                    params[param]='; '.join(_list_item(item,locale) for item in re.split(separator,params[param]))
                 return translate(key,locale,**params)
     for prefix,translated in [('Некоректні дані: ','Invalid data: '),('Помилка редактора: ','Editor error: '),('Помилка планувальника: ','Planner error: ')]:
         if text.startswith(prefix):
