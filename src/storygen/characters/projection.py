@@ -14,6 +14,14 @@ class CharacterProjection:
     excluded_count: int
 
 
+def entry_available(entry,active_scenes,scene):
+    if entry.availability!='from_scene':return True
+    anchor=active_scenes.get(entry.available_from_scene_id)
+    if anchor is None or anchor.story_id!=scene.story_id:
+        raise ValueError('Сцена доступності відомості персонажа недоступна або належить іншому твору')
+    return anchor.position<=scene.position
+
+
 def project_characters(cards,scenes,scene_id):
     active={scene.id:scene for scene in scenes if not scene.trashed_at}
     scene=active.get(scene_id)
@@ -25,12 +33,8 @@ def project_characters(cards,scenes,scene_id):
         if card.id not in scene.character_ids:continue
         groups={key:[] for key in labels}
         for entry in card.entries:
-            if entry.availability=='from_scene':
-                anchor=active.get(entry.available_from_scene_id)
-                if anchor is None or anchor.story_id!=scene.story_id:
-                    raise ValueError('Сцена доступності відомості персонажа недоступна або належить іншому твору')
-                if anchor.position>scene.position:
-                    excluded+=1;continue
+            if not entry_available(entry,active,scene):
+                excluded+=1;continue
             if entry.availability=='unclassified' and TEMPORAL_WARNING not in warnings:
                 warnings.append(TEMPORAL_WARNING)
             groups[entry.availability].append('— '+entry.text)
