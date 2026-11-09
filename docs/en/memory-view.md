@@ -44,7 +44,7 @@ Row actions:
 
 **Apply** and **Cancel** change only the panel's draft; nothing is sent to the server. **Confirm** without edits only marks the current memory as confirmed: it does not change the journal and does not make the memory of later scenes outdated. **Confirm with edits (N)** creates a new memory version with your edits and confirms it at once; the memory of later scenes then becomes outdated under the usual rules.
 
-An unsaved core draft is protected like unsaved text: **Refresh table**, choosing another scene or material, or closing the page asks first whether to discard it. If the scene memory has changed in the meantime (for example in another tab), the panel reloads and the draft is discarded with a notice. If a confirmation fails because of such a change, the panel shows the reason and reloads; check the state and repeat if needed.
+An unsaved core draft is protected like unsaved text: **Refresh table**, choosing another scene or material, or closing the page asks first whether to discard it. The question names the **Protagonist core and threads** panel: **Save** and **Save selection and…** save only the table checkboxes, and core edits reach memory only through **Confirm with edits**. If the scene memory has changed in the meantime (for example in another tab), the panel reloads and the draft is discarded with a notice. If a confirmation fails because of such a change, the panel shows the reason and reloads; check the state and repeat if needed.
 
 Edits on an outdated scene memory (one not built from the current memory of the previous scene) are rejected: regenerate this scene's memory first. Confirming it without edits still works.
 

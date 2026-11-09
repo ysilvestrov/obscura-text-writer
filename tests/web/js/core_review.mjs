@@ -115,6 +115,15 @@ assert.equal(confirmLabel(),catalog.uk.m_6842aa7e5803,'Discard clears the draft'
   assert.equal(await confirmUnsaved(guarded,async()=>{asked++;return false;},'?'),true,'Nothing unsaved: no question');assert.equal(asked,2);
   assert.equal(await confirmUnsaved({dirty:false},async()=>false,'?'),true,'Works before the panel is installed');
 }
+// The question names the core panel when only its draft is unsaved, and adds it when the text is unsaved too.
+{
+  const asked=[];const ask=async text=>{asked.push(text);return false;};
+  const core={dirty:()=>true,discard:()=>{}};
+  await confirmUnsaved({dirty:false,coreReview:core},ask,'?');
+  await confirmUnsaved({dirty:true,coreReview:core},ask,'?');
+  await confirmUnsaved({dirty:true,coreReview:{dirty:()=>false}},ask,'?');
+  assert.deepEqual(asked,[catalog.uk['memory.core_draft_unsaved'],'?\n'+catalog.uk['memory.core_draft_unsaved'],'?']);
+}
 // Refreshing the table while the confirmation is still in flight must not leave Confirm disabled for good.
 {
   let release,calls=0;
