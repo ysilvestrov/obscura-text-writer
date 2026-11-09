@@ -18,6 +18,14 @@ export function coreReviewModel(review,edits=[]){
   return {groups:[{kind:'changed',rows:changed},{kind:'quiet',rows:quiet}],canKeep,dirty:edits.length>0};
 }
 
+// Navigation guard shared with the workspace: unsaved table edits or a core review draft need the same confirmation.
+export async function confirmUnsaved(state,ask,message){
+  const core=!!state.coreReview?.dirty();
+  if((state.dirty||core)&&!await ask(message))return false;
+  if(core)state.coreReview.discard();
+  return true;
+}
+
 export function installCoreReview({container,api,json,notice,refresh}){
   const node=(tag,render,className)=>{const n=document.createElement(tag);if(render)uiText(n,'textContent',render);if(className)n.className=className;return n;};
   const plain=(tag,text,className)=>{const n=document.createElement(tag);n.textContent=text;if(className)n.className=className;return n;};
@@ -105,7 +113,7 @@ export function installCoreReview({container,api,json,notice,refresh}){
     fieldset.append(legend,list);
     const hint=node('p',()=>t("m_78a08c916f39"),'core-review-hint'),error=node('p',null,'core-review-error');error.setAttribute('role','alert');
     const buttons=node('div',null,'actions');
-    const current={id,row,form,scene,search,list,hint,error,fragments:[],quote:null,requests:0};
+    const current={id,row,form,value,initial:value.value,scene,search,list,hint,error,fragments:[],quote:null,requests:0};
     const apply=action(()=>t("m_387b53c52751"),()=>{
       const text=value.value.trim();
       if(!text){uiText(error,'textContent',()=>t("m_b75b76095819"));return;}
@@ -146,7 +154,7 @@ export function installCoreReview({container,api,json,notice,refresh}){
     }catch(error){
       notice(error.message,'error');
       // A conflict means the memory head moved (or the edits were saved but not confirmed): show the current state.
-      if(error.status===409&&mine===token){busy=false;await load(sceneId);try{await refresh?.();}catch{}}
+      if(error.status===409&&mine===token){busy=false;edits=[];quoteScenes=new Map();entry=null;await load(sceneId);try{await refresh?.();}catch{}}
     }finally{if(mine===token&&busy){busy=false;render();}}
   }
 
@@ -183,17 +191,26 @@ export function installCoreReview({container,api,json,notice,refresh}){
     }
   }
 
+  const dirty=()=>edits.length>0||!!(entry&&(entry.quote!==null||entry.value.value.trim()!==String(entry.initial).trim()));
+  function discard(){edits=[];quoteScenes=new Map();entry=null;render();}
+
   async function load(id){
-    const mine=++token;sceneId=id;review=null;edits=[];quoteScenes=new Map();entry=null;scenes=null;busy=false;
-    message=node('p',()=>t("m_6c90869b1735"),'core-review-state');render();
+    // A reload of the same scene keeps the draft while the memory head it was made for is still current.
+    const mine=++token,same=id===sceneId&&!!review,previous=same?review.memory_version_id:undefined;
+    sceneId=id;scenes=null;
+    if(!same){review=null;edits=[];quoteScenes=new Map();entry=null;busy=false;message=node('p',()=>t("m_6c90869b1735"),'core-review-state');render();}
     try{
       const result=await api(`/api/scenes/${id}/core-review`);
       if(mine!==token)return;
+      if(same&&result.memory_version_id!==previous){
+        if(dirty())notice(msg("m_7016d90fae72"),'error');
+        edits=[];quoteScenes=new Map();entry=null;
+      }
       review=result;message=null;render();
     }catch(error){
       if(mine!==token)return;
       message=node('p',()=>diagnostic(error.message),'core-review-error');render();
     }
   }
-  return {load};
+  return {load,dirty,discard};
 }

@@ -2138,7 +2138,8 @@
     "m_02d42f8c1439": "Підтвердити з правками ({p0})",
     "m_87fd861aed45": "Ядро підтверджено",
     "m_6c90869b1735": "Завантаження ядра…",
-    "m_d657ca4e0613": "без цитати"
+    "m_d657ca4e0613": "без цитати",
+    "m_7016d90fae72": "Панель ядра оновлено: пам’ять сцени змінилась, незбережені правки ядра відкинуто."
   },
   "en": {
     "ui.save": "Save",
@@ -4279,6 +4280,7 @@
     "m_02d42f8c1439": "Confirm with edits ({p0})",
     "m_87fd861aed45": "Core confirmed",
     "m_6c90869b1735": "Loading the core…",
-    "m_d657ca4e0613": "no quote"
+    "m_d657ca4e0613": "no quote",
+    "m_7016d90fae72": "The core panel was refreshed: the scene memory changed and unsaved core edits were discarded."
   }
 }

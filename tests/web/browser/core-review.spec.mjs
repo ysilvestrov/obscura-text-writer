@@ -100,6 +100,27 @@ test('write in without a quote is unknown to the reader; cancel keeps the draft'
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBeTruthy();
 });
 
+test('refreshing the table asks before dropping a core draft',async({page,request})=>{
+  const {panel}=await open(page,request);
+  const clothing=row(panel,'Анна · одяг');
+  await clothing.getByRole('button',{name:'Вписати…'}).click();
+  await clothing.locator('.core-review-entry').getByLabel('Значення').fill('Шарф');
+  await clothing.getByRole('button',{name:'Застосувати'}).click();
+  await expect(clothing.locator('.core-review-draft')).toContainText('Шарф');
+  await page.locator('#memory-view').getByRole('button',{name:'Оновити таблицю'}).click();
+  const dialog=page.locator('.app-dialog');
+  await expect(dialog).toBeVisible();
+  await dialog.locator('.app-dialog-actions button').first().click();
+  await expect(dialog).toHaveCount(0);
+  await expect(row(panel,'Анна · одяг').locator('.core-review-draft')).toContainText('Шарф');
+  await expect(panel.getByRole('button',{name:'Підтвердити з правками (1)'})).toBeVisible();
+  await page.locator('#memory-view').getByRole('button',{name:'Оновити таблицю'}).click();
+  await dialog.locator('.app-dialog-actions button').last().click();
+  await expect(dialog).toHaveCount(0);
+  await expect(panel.locator('.core-review-draft')).toHaveCount(0);
+  await expect(panel.getByRole('button',{name:'Підтвердити',exact:true})).toBeVisible();
+});
+
 test('a conflict shows the server message and reloads the panel',async({page,request})=>{
   const {fixture,panel}=await open(page,request);
   const current=await(await request.get(`/api/scenes/${fixture.scene_id}/core-review`)).json();

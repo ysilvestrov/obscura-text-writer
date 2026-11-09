@@ -5,6 +5,7 @@ import {api,json,notice} from './api.js';
 import {state,textEditor,refresh,saveBuffer,loadBuffer} from './editor.js';
 import {renderLanguageWarnings} from './copyedits.js';
 import {installMemoryTable} from './memory-table.js';
+import {confirmUnsaved} from './core-review.js';
 import {registerWorkspaceCommand} from './workspace-commands.js';
 import {loadBriefMaterial} from './brief-material.js';
 import {activateStageTab,revealStageTab,setStageTabStops} from './workspace-tabs.js';
@@ -26,7 +27,7 @@ globalThis.addEventListener?.('resize',()=>{const active=document.querySelector(
 async function show(mode,onlyIfChanged=false){
   if(state.saving)throw new Error(t("m_cbac60d6d919"));
   const before={id:state.scene?.id,epoch:state.bufferEpoch,mode:state.mode};
-  if(state.dirty&&!await confirmDialog(t("m_768dad0572f4")))return;
+  if(!await confirmUnsaved(state,confirmDialog,t("m_768dad0572f4")))return;
   if(state.saving||state.scene?.id!==before.id||state.bufferEpoch!==before.epoch||state.mode!==before.mode)return;
   let scene=state.view.scenes.find(s=>s.id===state.scene.id)||state.scene;
   const epoch=state.bufferEpoch;
@@ -72,7 +73,7 @@ async function render(){
   function updateHistory(){const ref=versions.find(v=>v.id===list.value);for(const [b,kind]of historyActions){let reason=kind==='review-acceptance'?acceptanceReason(state,ref):!ref?t("m_718d25e12548"):state.saving?t("m_1322882bbef7"):kind==='select'&&(ref.stale||!ref.complete||!['edited','manual'].includes(ref.kind))?t("m_63721412ce4c"):kind==='accept'&&(ref.stale||!ref.complete||ref.kind!=='brief')?t("m_90486d14b4ce"):kind==='accept-draft'&&(ref.stale||!ref.complete||ref.kind!=='draft')?t("m_38422659d255"):kind==='language'&&(!['draft','edited','manual'].includes(ref.kind)||state.dirty)?t("m_a2fd74d27993"):kind==='compare'&&!state.scene?.heads.draft?t("m_446a5894c84d"):(['select','accept','accept-draft'].includes(kind)&&state.dirty)?t("m_185b792f5bf8"):'';b.disabled=!!reason;uiText(b,"title",()=>(diagnostic(reason)))}}
   list.onchange=updateHistory;updateHistoryControls=updateHistory;
   function action(label,handler,kind='view'){const b=document.createElement('button');b.className='secondary';uiText(b,"textContent",()=>(label));b.onclick=()=>handler().catch(e=>notice(e.message,'error'));historyActions.push([b,kind]);panel.append(b)}
-  action(live(()=>(t("m_08ba5037418f"))),async()=>{if(state.saving)throw new Error(t("m_1322882bbef7"));const epoch=state.bufferEpoch,sceneId=state.scene?.id,previousMode=state.mode;if(state.dirty&&!await confirmDialog(t("m_1ab822828660")))return;if(state.saving||epoch!==state.bufferEpoch||sceneId!==state.scene?.id||previousMode!==state.mode)return;const v=await api('/api/versions/'+list.value);if(epoch!==state.bufferEpoch)return;const mode=v.version.kind==='memory'?'memory':v.version.kind==='brief'?'brief':v.version.kind==='scene_plan'?'plan':v.version.kind==='draft'?'draft':['edited','manual'].includes(v.version.kind)?'prose':'history';loadBuffer(state.scene,mode,v.text,'history',v.version);uiText(document.querySelector('#current-kind'),"textContent",()=>(t("m_19f94fbf1144")+v.version.kind))});
+  action(live(()=>(t("m_08ba5037418f"))),async()=>{if(state.saving)throw new Error(t("m_1322882bbef7"));const epoch=state.bufferEpoch,sceneId=state.scene?.id,previousMode=state.mode;if(!await confirmUnsaved(state,confirmDialog,t("m_1ab822828660")))return;if(state.saving||epoch!==state.bufferEpoch||sceneId!==state.scene?.id||previousMode!==state.mode)return;const v=await api('/api/versions/'+list.value);if(epoch!==state.bufferEpoch)return;const mode=v.version.kind==='memory'?'memory':v.version.kind==='brief'?'brief':v.version.kind==='scene_plan'?'plan':v.version.kind==='draft'?'draft':['edited','manual'].includes(v.version.kind)?'prose':'history';loadBuffer(state.scene,mode,v.text,'history',v.version);uiText(document.querySelector('#current-kind'),"textContent",()=>(t("m_19f94fbf1144")+v.version.kind))});
   const languageResult=document.createElement('section');languageResult.className='language-warnings';
   action(live(()=>(t("m_1ccbf3066eb3"))),async()=>{const ref=versions.find(v=>v.id===list.value);if(!ref||!['draft','edited','manual'].includes(ref.kind))throw new Error(t("m_83a9f717472d"));const id=ref.id;const result=await api(`/api/versions/${id}/language-warnings`);if(list.value!==id||!panel.contains(languageResult))return;renderLanguageWarnings(languageResult,result)},'language');
   panel.append(languageResult);

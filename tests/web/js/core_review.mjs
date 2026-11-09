@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {setImmediate as tick} from 'node:timers/promises';
 const root=new URL('../../../src/storygen/web/static/',import.meta.url);
-const {coreReviewModel,installCoreReview}=await import(new URL('core-review.js',root));
+const {coreReviewModel,installCoreReview,confirmUnsaved}=await import(new URL('core-review.js',root));
 const catalog=JSON.parse(readFileSync(new URL('i18n.json',root),'utf8'));
 
 const slot=(name,status,extra={})=>({character_id:'A',name:'Анна',slot:name,label:name,before:null,after:null,status,reason:null,reader_unknown:false,...extra});
@@ -57,17 +57,17 @@ const text=node=>all(node).map(n=>String(n.textContent)).join(' ');
 const button=(node,label)=>all(node).find(n=>n.tag==='button'&&String(n.textContent)===label);
 const prefix=[{scene_id:'s1',scene_number:1,title:'Ранок',version_id:'p1'},{scene_id:'s2',scene_number:2,title:'Гість',version_id:'p2'}];
 const fragments={s1:[{version_id:'p1',scene_id:'s1',scene_number:1,fragment_id:'f000001',text:'Анна в халаті.'}],s2:[]};
-let posted=null,queries=[];
+let posted=null,queries=[],head='m2';const notices=[];
 const api=async(url,options)=>{
   if(options){posted=JSON.parse(options.body);return {...review(false),revision:4,memory_version_id:'m3',confirmation:{by:'author',confirmed_at:'2026-11-09T10:00:00Z'}};}
-  if(url.endsWith('/core-review'))return review(true);
+  if(url.endsWith('/core-review'))return {...review(true),memory_version_id:head};
   if(url.endsWith('/core-review/scenes'))return prefix;
   const params=new URL(url,'http://x').searchParams;queries.push([params.get('scene_id'),params.get('q')]);
   return fragments[params.get('scene_id')].filter(f=>f.text.includes(params.get('q')||''));
 };
 let refreshed=0;
 const container=new Element('section');
-const panel=installCoreReview({container,api,json:(method,body)=>({method,body:JSON.stringify(body)}),notice:()=>{},refresh:async()=>{refreshed++;}});
+const panel=installCoreReview({container,api,json:(method,body)=>({method,body:JSON.stringify(body)}),notice:(text,kind)=>notices.push([String(text),kind]),refresh:async()=>{refreshed++;}});
 await panel.load('s2');
 const confirmLabel=()=>String(all(container).find(n=>n.tag==='button'&&n.className.includes('core-review-confirm')).textContent);
 assert.equal(confirmLabel(),catalog.uk.m_6842aa7e5803);
@@ -87,7 +87,32 @@ button(form,catalog.uk.m_387b53c52751).onclick();
 assert.equal(confirmLabel(),catalog.uk.m_02d42f8c1439.replace('{p0}','1'),'Apply adds the entry to the draft');
 assert.ok(text(container).includes('Халат під пальтом'));
 assert.equal(posted,null,'Apply sends nothing to the server');
+assert.equal(panel.dirty(),true,'An applied entry is an unsaved draft');
+await panel.load('s2');
+assert.equal(confirmLabel(),catalog.uk.m_02d42f8c1439.replace('{p0}','1'),'Reloading the same memory head keeps the draft');
+assert.equal(notices.length,0);
 await button(container,confirmLabel()).onclick();
 assert.deepEqual(posted,{expected_revision:3,memory_version_id:'m2',edits:[{kind:'slot',character_id:'A',slot:'clothing',action:'set',text:'Халат під пальтом',quote:'Анна в халаті.',evidence_version_id:'p1'}]});
 assert.equal(refreshed,1);assert.equal(confirmLabel(),catalog.uk.m_6842aa7e5803,'The draft is cleared after saving');
+assert.equal(panel.dirty(),false);
+// A typed value in an open entry counts as unsaved; a head change drops the draft with a notice.
+head='m3';await panel.load('s2');notices.length=0;
+form=await openEntry();
+assert.equal(panel.dirty(),false,'An untouched entry is not a draft');
+all(form).find(n=>n.tag==='textarea').value='Шарф';
+assert.equal(panel.dirty(),true,'A typed value in the entry is unsaved');
+head='m9';await panel.load('s2');
+assert.equal(panel.dirty(),false);assert.equal(all(container).some(n=>n.className==='core-review-entry'),false);
+assert.deepEqual(notices,[[catalog.uk.m_7016d90fae72,'error']],'A changed memory head discards the draft with a notice');
+form=await openEntry();all(form).find(n=>n.tag==='textarea').value='Шарф';button(form,catalog.uk.m_387b53c52751).onclick();
+assert.equal(panel.dirty(),true);panel.discard();assert.equal(panel.dirty(),false);
+assert.equal(confirmLabel(),catalog.uk.m_6842aa7e5803,'Discard clears the draft');
+// The shared navigation guard asks for a core draft too; cancelling keeps it, confirming discards it.
+{
+  let draft=true,asked=0;const guarded={dirty:false,coreReview:{dirty:()=>draft,discard:()=>{draft=false;}}};
+  assert.equal(await confirmUnsaved(guarded,async()=>{asked++;return false;},'?'),false);assert.equal(draft,true);
+  assert.equal(await confirmUnsaved(guarded,async()=>{asked++;return true;},'?'),true);assert.equal(draft,false);
+  assert.equal(await confirmUnsaved(guarded,async()=>{asked++;return false;},'?'),true,'Nothing unsaved: no question');assert.equal(asked,2);
+  assert.equal(await confirmUnsaved({dirty:false},async()=>false,'?'),true,'Works before the panel is installed');
+}
 console.log('core review grouping, keep availability, draft entry, labels and confirm passed');

@@ -1,6 +1,6 @@
 import {confirmDialog} from './dialogs.js';
 import {createTextEditor} from './text-editor.js';
-import {installCoreReview} from './core-review.js';
+import {installCoreReview,confirmUnsaved} from './core-review.js';
 import {live,t,msg,labelEntries,getLocale,uiText,uiAttr,uiHTML,diagnostic} from './i18n.js';
 export function installMemoryTable({state,api,json,notice,refresh,loadBuffer}){
   const panel=document.querySelector('#memory-view');
@@ -53,6 +53,7 @@ export function installMemoryTable({state,api,json,notice,refresh,loadBuffer}){
     if(state.scene?.id===sceneId&&!state.dirty)loadBuffer(latest,'memory',text);
   }
   const coreReview=installCoreReview({container:reviewBox,api,json,notice,refresh:reloadAfterReview});
+  state.coreReview={dirty:coreReview.dirty,discard:coreReview.discard};
   let key=null,data=null,pending={},advanced=false,loading=false,rawText='',loadedSceneId=null,loadedMemoryId=null;
   const currentKey=()=>`${state.scene?.id}:${state.scene?.heads.memory||''}:${state.bufferEpoch}`;
   const emit=()=>document.dispatchEvent(new CustomEvent('editor-state-changed'));
@@ -127,7 +128,7 @@ export function installMemoryTable({state,api,json,notice,refresh,loadBuffer}){
   reload.onclick=async()=>{
     if(state.saving||loading)return;
     const before=currentKey();
-    if(state.dirty&&!await confirmDialog(t("m_4a84469cb5d2")))return;
+    if(!await confirmUnsaved(state,confirmDialog,t("m_4a84469cb5d2")))return;
     if(state.saving||loading||currentKey()!==before||state.mode!=='memory')return;
     const captured=currentKey();loading=true;controls();
     try{
