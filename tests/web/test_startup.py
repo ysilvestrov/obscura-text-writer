@@ -36,4 +36,4 @@ def test_ctrl_c_stops_the_server_quietly(tmp_path,monkeypatch,capsys):
     import uvicorn
     monkeypatch.setattr(uvicorn.Server,'run',lambda self,*a,**k:(_ for _ in ()).throw(KeyboardInterrupt()))
     assert main(['--data-dir',str(tmp_path/'data'),'--env-file',str(tmp_path/'.env')])==0
-    assert 'Traceback' not in capsys.readouterr().err
+    assert capsys.readouterr().err==''
