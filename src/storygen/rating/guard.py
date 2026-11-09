@@ -1,5 +1,5 @@
 """Minors safeguard checked before every generation request; raises author-facing ValueError."""
-from ..characters.age import scene_ages
+from ..characters.age import later_age_scenes, scene_ages
 from ..characters.models import load_characters
 from .levels import effective_rating
 
@@ -13,6 +13,7 @@ PARTICIPANTS=('Генерацію заблоковано: сцена має ре
     '(число від 18 або «дорослий»), приберіть персонажа зі складу сцени або позначте сцену рейтингом «сексуальний зміст 0».')
 MINOR='персонаж «{name}» молодший за 18'
 UNKNOWN='персонаж «{name}» не має вказаного віку'
+LATER='вік персонажа «{name}» указано лише у відомості, доступній від сцени {number} «{title}» (перевірте «Першу сцену доступності»)'
 MORE='і ще {k}'
 
 
@@ -26,8 +27,14 @@ def enforce_rating(view,story,scene,stage: str) -> None:
     if story.characters_version_id is None:raise ValueError(NO_CARDS.format(n=n))
     cards=load_characters(view.read_text(story.characters_version_id))
     names={card.id:card.name for card in cards}
-    ages=scene_ages(cards,view.list_scenes(story.id),scene.id)
-    items=[(MINOR if verdict=='minor' else UNKNOWN).format(name=names.get(id,id)) for id,verdict in ages.items() if verdict!='adult']
+    scenes=view.list_scenes(story.id)
+    ages=scene_ages(cards,scenes,scene.id);later=later_age_scenes(cards,scenes,scene.id)
+    def item(id,verdict):
+        if verdict=='minor':return MINOR.format(name=names.get(id,id))
+        # Scene numbers are 1-based in the interface (position + 1).
+        if id in later:return LATER.format(name=names.get(id,id),number=later[id].position+1,title=later[id].title)
+        return UNKNOWN.format(name=names.get(id,id))
+    items=[item(id,verdict) for id,verdict in ages.items() if verdict!='adult']
     if not items:return
     listed=items[:MAX_LISTED]
     if len(items)>MAX_LISTED:listed.append(MORE.format(k=len(items)-MAX_LISTED))

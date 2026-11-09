@@ -55,7 +55,7 @@ def _diagnostic_catalog():
 
 
 # Catalog parameters that hold a "; "-joined list of other catalog diagnostics.
-_LIST_PARAMS={'rating.guard.participants':('p1',r'; (?=персонаж «|і ще \d+$)')}
+_LIST_PARAMS={'rating.guard.participants':('p1',r'; (?=персонаж «|вік персонажа «|і ще \d+$)')}
 # Short list items below the generic pattern length threshold.
 _LIST_ITEMS={'rating.guard.more':re.compile(r'і ще (\d+)')}
 

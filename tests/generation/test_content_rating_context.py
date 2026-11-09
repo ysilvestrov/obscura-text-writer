@@ -227,3 +227,23 @@ def test_more_than_five_failing_participants_adds_rest_hint(tmp_path):
     with pytest.raises(ValueError) as error:
         build_context(repo,scenes[0].id,'brief',settings())
     assert 'і ще' not in str(error.value)
+
+
+def test_age_only_in_later_entry_names_the_scene(tmp_path):
+    from storygen.web.localization import diagnostic
+    cards=[{'schema_version':2,'id':'A','name':'Анна','entries':[
+        {'id':'A0','text':'Вік: 25','availability':'from_scene','available_from_scene_id':None,'origin':'author','sources':[]}]},
+        card('B','Борис','Професія: лікар')]
+    repo,story,scenes=make_story(tmp_path,R(1,0,0),cast=('A','B'),cards=None,count=2)
+    cards[0]['entries'][0]['available_from_scene_id']=scenes[1].id
+    ref=repo.save_version(story.id,None,'character_cards',json.dumps(cards,ensure_ascii=False),[])
+    repo.publish_story_material(story.id,'characters_version_id',ref.id,repo.get_story(story.id).revision)
+    with pytest.raises(ValueError) as error:
+        build_context(repo,scenes[0].id,'brief',settings())
+    message=str(error.value)
+    assert ('а вік персонажа «Анна» указано лише у відомості, доступній від сцени 2 «Сцена 2» '
+        '(перевірте «Першу сцену доступності»); персонаж «Борис» не має вказаного віку.') in message
+    english=diagnostic(message,'en')
+    assert ('the age of character “Анна” is set only in an entry available from scene 2 “Сцена 2” '
+        '(check “First available scene”); character “Борис” has no age specified.') in english
+    assert 'персонаж' not in english

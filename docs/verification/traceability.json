@@ -3396,7 +3396,7 @@
     {
       "id": "RATING-002-S01",
       "requirement": "RATING-002",
-      "scope": "Блокування неповнолітнього, без віку, порожнього складу, без карток; етап memory; англійський переклад. Правдивість даних не доводиться.",
+      "scope": "Блокування неповнолітнього, без віку, порожнього складу, без карток; вік лише з пізнішої сцени названо сценою; етап memory; англійський переклад. Правдивість даних не доводиться.",
       "tests": [
         "tests/generation/test_content_rating_context.py::test_minor_blocks_sexual_scene",
         "tests/generation/test_content_rating_context.py::test_participant_without_card_uses_id_and_list_is_capped",
@@ -3404,7 +3404,9 @@
         "tests/generation/test_content_rating_context.py::test_minor_blocks_memory_stage_too",
         "tests/generation/test_content_rating_context.py::test_guard_message_has_english_translation",
         "tests/generation/test_content_rating_context.py::test_remaining_run_readiness_checks_every_target_scene",
-        "tests/generation/test_content_rating_context.py::test_more_than_five_failing_participants_adds_rest_hint"
+        "tests/generation/test_content_rating_context.py::test_more_than_five_failing_participants_adds_rest_hint",
+        "tests/generation/test_content_rating_context.py::test_age_only_in_later_entry_names_the_scene",
+        "tests/characters/test_character_age.py::test_age_only_in_later_entry_names_that_scene"
       ]
     },
     {
