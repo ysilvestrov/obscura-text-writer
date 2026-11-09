@@ -138,6 +138,16 @@ def main():
             save_role_settings(repo,fixture['story_id'],'editor',RoleSettings(provider=ProviderSettings(model='synthetic-no-changes'),edit_mode='patches'),repo.get_story(fixture['story_id']).revision)
             return fixture
 
+        @app.post('/test-unrated')
+        def unrated_story():
+            # Unrated like a story created through the application; used by the rating settings spec.
+            story = repo.create_story(StoryCreate(title='Без рейтингу'))
+            scene = repo.create_scene(story.id, SceneCreate(title='Сцена', beats='Сцена 1: Сцена\nДії: Лєра дивиться на зорі.'))
+            from storygen.authoring.blueprints import save_role_settings
+            from storygen.providers.models import RoleSettings,ProviderSettings
+            save_role_settings(repo,story.id,'planner',RoleSettings(provider=ProviderSettings(model='synthetic')),repo.get_story(story.id).revision)
+            return {'story_id': story.id, 'scene_id': scene.id}
+
         @app.post('/test-editor-slow')
         def editor_slow():
             from storygen.authoring.blueprints import save_role_settings
