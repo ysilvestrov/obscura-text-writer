@@ -44,3 +44,33 @@ def test_scenes_route(tmp_path):
         response = http.get(f'/api/scenes/{s2.id}/core-review/scenes')
         assert response.status_code == 200
         assert [(s['scene_id'], s['scene_number'], s['title']) for s in response.json()] == [(s1.id, 1, 'С1'), (s2.id, 2, 'С2')]
+
+
+def test_post_core_review_route(tmp_path):
+    from tests.memory.test_core_review import manual_scene
+    repo, story, scene, claims = manual_scene(tmp_path)
+    url = f'/api/scenes/{scene.id}/core-review'
+    base = {'expected_revision': scene.revision, 'memory_version_id': scene.heads['memory']}
+    keep = {'kind': 'slot', 'character_id': 'A', 'slot': 'carried', 'action': 'keep'}
+    with client(tmp_path) as http:
+        rejected = http.post(url, json={**base, 'edits': [keep]})
+        assert rejected.status_code == 422
+        assert rejected.json()['detail'] == 'Лишити попереднє недоступне: у цієї версії немає відповіді моделі'
+        english = http.post(url, json={**base, 'edits': [keep]}, headers={'accept-language': 'en'})
+        assert english.status_code == 422 and english.json()['detail'] == 'Keep previous is unavailable: this version has no model answer'
+        quote = {'kind': 'slot', 'character_id': 'A', 'slot': 'body', 'action': 'set', 'text': 'Втомлена', 'quote': 'Немає такого.'}
+        assert http.post(url, json={**base, 'edits': [quote]}).json()['detail'] == 'Цитату не знайдено в прозі цієї або попередніх сцен'
+        # A set without a value is a malformed body.
+        assert http.post(url, json={**base, 'edits': [{**quote, 'text': None, 'quote': None}]}).status_code == 422
+        stale = http.post(url, json={**base, 'expected_revision': scene.revision - 1})
+        assert stale.status_code == 409
+        confirmed = http.post(url, json=base)
+        assert confirmed.status_code == 200 and confirmed.json()['confirmation']['by'] == 'author'
+        assert confirmed.json()['memory_version_id'] == scene.heads['memory']
+        edited = http.post(url, json={**base, 'edits': [{**quote, 'quote': None}]})
+        assert edited.status_code == 200
+        body = edited.json()
+        assert body['memory_version_id'] != scene.heads['memory'] and body['confirmation'] is not None
+        assert body['revision'] == repo.get_scene(scene.id).revision
+        # The reviewed head is no longer current: a second post on it is a conflict.
+        assert http.post(url, json={**base, 'expected_revision': body['revision']}).status_code == 409

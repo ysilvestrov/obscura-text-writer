@@ -1,14 +1,20 @@
-"""Read-only author review of a scene's memory head: core slots and threads "was -> now", prefix quote lookup.
+"""Author review of a scene's memory head: core slots and threads "was -> now", prefix quote lookup, confirmation and edits.
 
 Responses carry the author's own memory and prose text for their UI; never log them."""
+import copy
 import json
+from typing import Annotated, Literal
+
+from pydantic import Field, model_validator
+
+from ..domain import DomainModel, RevisionConflict
 
 from ..evidence import fragment_text
 from .core import SLOTS, tracked_characters
-from .journal import MemoryJournal, decode_memory, load_memory, replay_memory
+from .journal import MemoryJournal, _add_event, _change_event, decode_memory, load_memory, replay_memory
 from .replay import strip_wrapper
 from .story_time import day_change
-from .wire_v4 import MemoryWireV4
+from .wire_v4 import MemoryWireV4, wire_v4_events
 
 
 def captured_wire(repo, memory_version_id: str) -> tuple[dict, dict] | None:
@@ -134,3 +140,149 @@ def prefix_fragments(repo, scene_id: str, query: str = '', source_scene_id: str 
                 'fragment_id':fragment.id,'text':fragment.text})
             if len(found)>=limit:return found
     return found
+
+
+KEEP_UNAVAILABLE='Лишити попереднє недоступне: у цієї версії немає відповіді моделі'
+QUOTE_OUTSIDE_PREFIX='Цитату не знайдено в прозі цієї або попередніх сцен'
+HEAD_CHANGED='Пам’ять сцени вже змінилась. Оновіть панель; правки не збережено.'
+HEAD_OUTDATED='Пам’ять сцени не відповідає поточній прозі або попереднім сценам; спершу оновіть її'
+UNKNOWN_TARGET='Правка вказує на невідомий слот або лінію пам’яті'
+
+
+class _Edit(DomainModel):
+    text: str | None = None
+    quote: str | None = None
+    evidence_version_id: str | None = None
+
+    @model_validator(mode='after')
+    def filled(self):
+        if self.action=='keep':
+            if self.text is not None or self.quote is not None or self.evidence_version_id is not None:
+                raise ValueError('«Лишити попереднє» не має значення чи цитати')
+            return self
+        if self.text is None or not self.text.strip():raise ValueError('Порожнє значення правки')
+        if self.quote is not None and not self.quote.strip():raise ValueError('Порожня цитата правки')
+        if self.evidence_version_id is not None and self.quote is None:raise ValueError('Версія доказу без цитати')
+        return self
+
+
+class SlotEdit(_Edit):
+    kind: Literal['slot']
+    character_id: str = Field(min_length=1)
+    slot: str = Field(min_length=1)
+    action: Literal['keep','set']
+
+
+class ThreadEdit(_Edit):
+    kind: Literal['thread']
+    claim_id: str = Field(min_length=1)
+    action: Literal['keep','close']
+
+
+CoreEdit=Annotated[SlotEdit | ThreadEdit, Field(discriminator='kind')]
+
+
+def _target(edit):
+    return ('slot',edit.character_id,edit.slot) if edit.kind=='slot' else ('thread',edit.claim_id)
+
+
+class CoreReviewBody(DomainModel):
+    expected_revision: int
+    memory_version_id: str = Field(min_length=1)
+    edits: list[CoreEdit] = Field(default_factory=list)
+
+    @model_validator(mode='after')
+    def one_edit_per_target(self):
+        targets=[_target(e) for e in self.edits]
+        if len(targets)!=len(set(targets)):raise ValueError('Один слот або лінію можна правити лише раз')
+        return self
+
+
+def _neutral_wire(wire,bounds,edits):
+    """Copy of the captured answer where every edited slot or thread keeps its previous state; author events follow."""
+    data=copy.deepcopy(wire)
+    for edit in edits:
+        # A target outside the captured decisions (a thread opened in this scene) has nothing to keep; an author
+        # entry on it is checked against the rebuilt journal.
+        if edit.kind=='slot':
+            decided=edit.slot in bounds['tracked'].get(edit.character_id,())
+            if decided:data['core'][edit.character_id][edit.slot]={'status':'unchanged','text':'','evidence_ids':[],'reason':''}
+        else:
+            decided=edit.claim_id in bounds['threads']
+            if decided:data['threads'][edit.claim_id]={'status':'open','resolution':'','evidence_ids':[]}
+        if not decided and edit.action=='keep':raise ValueError(UNKNOWN_TARGET)
+    return MemoryWireV4.model_validate(data)
+
+
+def _evidence(edit,ctx,allowed):
+    """(quote, evidence_version_id) of an author entry; the quote must be verbatim in the chosen prefix prose."""
+    if edit.quote is None:return None,None
+    version_id=edit.evidence_version_id or ctx.prose_id
+    if version_id not in allowed or edit.quote not in ctx.sources[version_id]:raise ValueError(QUOTE_OUTSIDE_PREFIX)
+    return edit.quote,(None if version_id==ctx.prose_id else version_id)
+
+
+def _author_events(base,edits,ctx,allowed):
+    active=replay_memory(base);claims={e.claim_id for e in base.events};events=[]
+    slots={(c.character_ids[0],c.slot):c for c in active.values() if c.slot}
+    prose_id=ctx.prose_id
+    def add(category,text,quote,characters=(),**extra):
+        occurrence=0
+        while True:
+            event=_add_event(category,text,prose_id,quote,occurrence,characters,source_kind='author',**extra)
+            if event.claim_id not in claims:break
+            occurrence+=1
+        claims.add(event.claim_id);events.append(event)
+    for edit in edits:
+        if edit.action=='keep':continue
+        quote,evidence=_evidence(edit,ctx,allowed)
+        if edit.kind=='slot':
+            # I2: a slot belongs to one tracked character only.
+            if edit.character_id not in ctx.tracked or edit.slot not in {s.name for s in SLOTS}:raise ValueError(UNKNOWN_TARGET)
+            claim=slots.get((edit.character_id,edit.slot))
+            if claim is None:
+                if edit.character_id not in ctx.scene.character_ids:raise ValueError('Невідомий scope персонажа')
+                add('character_states',edit.text,quote,[edit.character_id],slot=edit.slot,evidence_version_id=evidence)
+            elif (claim.text,claim.quote,claim.source_kind,claim.evidence_version_id)!=(edit.text,quote,'author',evidence):
+                events.append(_change_event('update',claim.claim_id,edit.text,claim.category,claim.character_ids,prose_id,quote,
+                    slot=claim.slot,source_kind='author',evidence_version_id=evidence))
+        else:
+            claim=active.get(edit.claim_id)
+            if claim is None or claim.category!='open_threads':raise ValueError(UNKNOWN_TARGET)
+            # The retire carries the resolution text; with a quote the resolution is also a fact (I3), linked for I5.
+            events.append(_change_event('retire',claim.claim_id,edit.text,claim.category,[],prose_id,quote,
+                source_kind='author',evidence_version_id=evidence))
+            if quote is not None:add('facts',edit.text,quote,evidence_version_id=evidence,resolves_claim_id=claim.claim_id)
+    return events
+
+
+def apply_core_review(repo, scene_id: str, body: CoreReviewBody, locale: str = 'uk') -> dict:
+    """Confirm the memory head, or rebuild it with the author's edits, publish and confirm the new version."""
+    from .service import manual_memory_context, publish_memory_journal
+    if not body.edits:
+        # confirm_memory is itself the CAS on revision and head (MEMORY-CONFIRM-S02).
+        repo.confirm_memory(scene_id,body.memory_version_id,body.expected_revision)
+        return core_review(repo,scene_id,locale)
+    scene=repo.get_scene(scene_id)
+    if scene.revision!=body.expected_revision or scene.heads.get('memory')!=body.memory_version_id:raise RevisionConflict(HEAD_CHANGED)
+    ctx=manual_memory_context(repo,scene_id,body.expected_revision)
+    if ctx.scene.heads.get('memory')!=body.memory_version_id:raise RevisionConflict(HEAD_CHANGED)
+    head=load_memory(ctx.view.read_text(body.memory_version_id))
+    previous=ctx.previous
+    if head.source_prose_ids!=previous.source_prose_ids+[ctx.prose_id] or head.events[:len(previous.events)]!=previous.events:
+        raise ValueError(HEAD_OUTDATED)
+    captured=captured_wire(repo,body.memory_version_id)
+    if captured:
+        wire,bounds=captured
+        base=wire_v4_events(_neutral_wire(wire,bounds,body.edits),previous,ctx.prose_id,ctx.sources[ctx.prose_id],bounds)
+    else:
+        if any(e.action=='keep' for e in body.edits):raise ValueError(KEEP_UNAVAILABLE)
+        base=head
+    # A quote may come only from the selected prose of this scene or an earlier one that the journal is built on.
+    allowed={s.heads['prose'] for s in _prefix(ctx.view,scene_id)}&set(ctx.sources)
+    events=_author_events(base,body.edits,ctx,allowed)
+    journal=MemoryJournal(schema_version=3,source_prose_ids=base.source_prose_ids,events=[*base.events,*events])
+    version,published=publish_memory_journal(repo,scene_id,journal,body.expected_revision,ctx)
+    # Publishing bumps the scene revision; the confirmation CAS uses the revision set_head returned.
+    repo.confirm_memory(scene_id,version.id,published.revision)
+    return core_review(repo,scene_id,locale)

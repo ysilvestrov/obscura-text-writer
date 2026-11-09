@@ -250,6 +250,24 @@ def core_review_view(scene_id: str,request: Request):
     return core_review(request.app.state.repo,scene_id,request_locale(request))
 
 
+from ..memory.core_review import CoreReviewBody
+
+
+@router.post('/api/scenes/{scene_id}/core-review')
+def core_review_apply(scene_id: str,body: CoreReviewBody,request: Request):
+    from fastapi.responses import JSONResponse
+    from ..memory.core_review import apply_core_review
+    from .localization import diagnostic, request_locale
+    locale=request_locale(request)
+    try:
+        return apply_core_review(request.app.state.repo,scene_id,body,locale)
+    except RevisionConflict:
+        raise
+    except ValueError as error:
+        # An edit the author must change (keep without a model answer, quote outside the prefix), not malformed data.
+        return JSONResponse({'detail':diagnostic(str(error),locale),'detail_original':str(error)},status_code=422)
+
+
 @router.get('/api/scenes/{scene_id}/core-review/scenes')
 def core_review_scenes(scene_id: str,request: Request):
     from ..memory.core_review import prefix_scenes

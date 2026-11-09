@@ -44,12 +44,15 @@ def memory_before(repo,scene_id: str) -> MemorySnapshot:
     return legacy_view(journal_before(repo,scene_id))
 
 
-def save_scene_memory(repo,scene_id,text,expected_revision):
-    unchanged=repo.unchanged_scene_text(scene_id,'memory',text,expected_revision)
-    if unchanged:return unchanged[1]
+class ManualMemoryContext:
+    """Inputs of a manual memory save read from one context view: the scene, the journal it extends and the prose sources."""
+    def __init__(self,view,scene,previous,provenance,accepted_memory_ids,prose_id,sources,tracked):
+        self.view=view;self.scene=scene;self.previous=previous;self.provenance=provenance
+        self.accepted_memory_ids=accepted_memory_ids;self.prose_id=prose_id;self.sources=sources;self.tracked=tracked
+
+
+def manual_memory_context(repo,scene_id,expected_revision) -> ManualMemoryContext:
     from ..domain import RevisionConflict
-    from ..providers.models import RoleSettings, ProviderSettings
-    from ..storage.snapshots import build_dependency_snapshot
     scene=repo.get_scene(scene_id)
     view=repo.context_view(scene.story_id)
     scene=view.get_scene(scene_id)
@@ -66,17 +69,36 @@ def save_scene_memory(repo,scene_id,text,expected_revision):
     from ..storage.snapshots import core_cards
     from .core import tracked_characters
     tracked=tracked_characters(core_cards(view,view.get_story(scene.story_id)),view.list_scenes(scene.story_id))
-    journal=normalize_manual_memory(text,previous,prose_id,sources[prose_id],scene.character_ids,tracked=tracked)
-    validate_memory_journal(journal,sources,previous)
-    refs=list(sources)
+    return ManualMemoryContext(view,scene,previous,provenance,accepted_memory_ids,prose_id,sources,tracked)
+
+
+def publish_memory_journal(repo,scene_id,journal,expected_revision,context=None):
+    """Validate, snapshot, save and publish a scene journal; returns (version, scene after set_head)."""
+    from ..providers.models import RoleSettings, ProviderSettings
+    from ..storage.snapshots import build_dependency_snapshot
+    ctx=context or manual_memory_context(repo,scene_id,expected_revision)
+    view,scene=ctx.view,ctx.scene
+    validate_memory_journal(journal,ctx.sources,ctx.previous)
+    refs=list(ctx.sources)
     earlier=[s for s in view.list_scenes(scene.story_id) if s.position<scene.position]
     if earlier:refs.append(earlier[-1].heads['memory'])
     snapshot=build_dependency_snapshot(view,scene_id,'memory',RoleSettings(provider=ProviderSettings(model='manual-memory')),refs)
-    snapshot.memory_provenance=provenance
-    snapshot.accepted_stale_memory_ids=accepted_memory_ids
+    snapshot.memory_provenance=ctx.provenance
+    snapshot.accepted_stale_memory_ids=ctx.accepted_memory_ids
     version=repo.save_version(scene.story_id,scene_id,'memory',journal.model_dump_json(),refs,dependency_snapshot=snapshot)
-    repo.set_head(scene_id,'memory',version.id,expected_revision)
-    return version
+    return version,repo.set_head(scene_id,'memory',version.id,expected_revision)
+
+
+def save_memory_journal(repo,scene_id,journal,expected_revision,context=None):
+    return publish_memory_journal(repo,scene_id,journal,expected_revision,context)[0]
+
+
+def save_scene_memory(repo,scene_id,text,expected_revision):
+    unchanged=repo.unchanged_scene_text(scene_id,'memory',text,expected_revision)
+    if unchanged:return unchanged[1]
+    ctx=manual_memory_context(repo,scene_id,expected_revision)
+    journal=normalize_manual_memory(text,ctx.previous,ctx.prose_id,ctx.sources[ctx.prose_id],ctx.scene.character_ids,tracked=ctx.tracked)
+    return save_memory_journal(repo,scene_id,journal,expected_revision,ctx)
 
 
 def rebuild_memory(repo,from_scene_id: str,gateway_factory,cancel,on_event,settings=None,run_id=None):

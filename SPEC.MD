@@ -3234,7 +3234,29 @@ API-помилки, сформовані web app exception handlers, SHALL зб�
 - WHEN автор відкриває GET core-review
 - THEN `has_wire=true`, одяг має «було/стало» і статус `changed`, «при собі» — `unknown` з `reason` моделі й `after=null`, лінія — `closed` з розв’язкою; без читабельної відповіді моделі `has_wire=false`, `reason=null`, а статус виводиться з diff.
 
-Техніка: `domain.MemoryConfirmation`, `VersionRef.memory_confirmation=None` (старі payload сумісні, SQL-міграції немає); жоден селектор чи хеш у storage/snapshots.py, generation/dependencies.py, memory/reuse.py не серіалізує весь VersionRef. Diff і пошук фрагментів — `memory/core_review.py` (`captured_wire(repo, memory_version_id)`, `core_review`, `prefix_scenes`, `prefix_fragments`), маршрути в `web/routes_versions.py`; «було» береться з префікса журналу голови, а не з поточної пам’яті попередньої сцени, тож diff лишається узгодженим і для застарілої голови. Відомих відхилень немає.
+`POST /api/scenes/{id}/core-review` SHALL приймати `{expected_revision, memory_version_id, edits[]}`. Правка — `{kind:'slot', character_id, slot, action:'keep'|'set', text, quote, evidence_version_id}` або `{kind:'thread', claim_id, action:'keep'|'close', text, quote, evidence_version_id}`; `set` і `close` вимагають непорожнього `text`, `keep` не має значення чи цитати, `evidence_version_id` без `quote` і дві правки одного слота чи лінії відхиляються як некоректне тіло (422). Ревізія сцени й голова memory перевіряються до будь-якого запису: інша голова або ревізія → RevisionConflict (409), нічого не збережено. Без правок ставиться підтвердження поточної голови (S02). З правками сервер будує новий журнал сцени:
+- голова має відповідати поточній прозі й журналу попередньої сцени (джерела `previous+[prose]`, події попередніх сцен без змін), інакше 422;
+- якщо голову створила читабельна wire v4 (`has_wire`), базою є переклад зафіксованої відповіді моделі (`wire_v4_events` над зафіксованими `memory_schema_bounds`), де кожен відредагований слот замінено на `unchanged`, а лінію на `open`; «Лишити попереднє» на цьому й закінчується;
+- без wire базою є журнал голови, а `keep` → 422 «Лишити попереднє недоступне: у цієї версії немає відповіді моделі»;
+- поверх бази додаються події `source_kind='author'` з `source_version_id` прози поточної сцени: `set` слота — `update` чинного запису слота (той самий `claim_id`; ідентичне значення не дає події) або `add` зі `slot` для відстежуваного персонажа зі складу сцени; `close` лінії — `retire` лінії з текстом-розв’язкою, а з цитатою ще й `facts` `add` з розв’язкою і `resolves_claim_id` лінії (І3, І5); без цитати факт-розв’язка не створюється (виняток І4);
+- цитата дослівно перевіряється проти `evidence_version_id or` прози поточної сцени; `evidence_version_id` SHALL бути вибраною прозою активної сцени префікса, на якій побудовано журнал; проза поточної сцени зберігається як `evidence_version_id=null`; інакше 422 «Цитату не знайдено в прозі цієї або попередніх сцен»; запис без цитати — «читачеві невідомо» (`quote=null`);
+- ліміти MEMORY-002 на кількість `add` до правок автора не застосовуються, а `validate_memory_journal` і replay (І1–І4) перевіряють результат;
+- журнал зберігається шляхом ручного збереження (`save_memory_journal`: та сама перевірка, знімок залежностей і публікація, що й у `save_scene_memory`), після чого нова голова підтверджується з ревізією, яку повернула публікація. Пам’ять наступної сцени стає stale звичайним механізмом голів memory. Відповідь — новий `core_review`. Помилки домену → 422 з локалізованим `detail` (UA/EN).
+
+<a id="memory-confirm-s04"></a>
+#### Scenario: MEMORY-CONFIRM-S04 — Лишити попереднє перебудовує з відповіді моделі
+- GIVEN голову memory сцени 2 створила wire v4, де «при собі» `unknown`
+- WHEN автор надсилає POST core-review з `keep` для «при собі»
+- THEN нова голова має чинний попередній запис «при собі» без атмосферного запису й retire цього слота, решта рішень моделі (зокрема закрита лінія з фактом-розв’язкою) збережена, а нова голова підтверджена.
+
+<a id="memory-confirm-s05"></a>
+#### Scenario: MEMORY-CONFIRM-S05 — Без відповіді моделі лише записи автора
+- GIVEN голова memory сцени створена вручну (немає captured wire v4)
+- WHEN автор надсилає `keep` для слота або лінії
+- THEN відповідь 422 «Лишити попереднє недоступне: у цієї версії немає відповіді моделі», нова версія не створена
+- AND `set` у тій самій ситуації додає подію `author` поверх незміненого журналу голови.
+
+Техніка: `domain.MemoryConfirmation`, `VersionRef.memory_confirmation=None` (старі payload сумісні, SQL-міграції немає); жоден селектор чи хеш у storage/snapshots.py, generation/dependencies.py, memory/reuse.py не серіалізує весь VersionRef. Diff і пошук фрагментів — `memory/core_review.py` (`captured_wire(repo, memory_version_id)`, `core_review`, `prefix_scenes`, `prefix_fragments`), маршрути в `web/routes_versions.py`; «було» береться з префікса журналу голови, а не з поточної пам’яті попередньої сцени, тож diff лишається узгодженим і для застарілої голови. Правки — `apply_core_review` і моделі `CoreReviewBody`/`SlotEdit`/`ThreadEdit` у тому самому модулі; `memory/service.py` має `manual_memory_context` (ревізія, `memory_for_manual_edit`, вибрана проза, джерела, відстежувані персонажі), `publish_memory_journal` (повертає версію й сцену після `set_head`) і `save_memory_journal`; `save_scene_memory` лише нормалізує текст і викликає `save_memory_journal`, поведінка ручного збереження не змінилась. Відомих відхилень немає.
 
 <a id="r22-source"></a>
 ### Requirement: R22-SOURCE — Ядро Markdown і точні координати

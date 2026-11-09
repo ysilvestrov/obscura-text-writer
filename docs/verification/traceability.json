@@ -2031,6 +2031,24 @@
       ]
     },
     {
+      "id": "MEMORY-CONFIRM-S04",
+      "requirement": "MEMORY-CONFIRM",
+      "scope": "Перебудова журналу з captured wire v4: keep слота й лінії, записи автора, підтвердження нової голови.",
+      "tests": [
+        "tests/memory/test_core_review_apply.py::test_keep_unknown_restores_slot",
+        "tests/memory/test_core_review_apply.py::test_keep_closed_thread_stays_open"
+      ]
+    },
+    {
+      "id": "MEMORY-CONFIRM-S05",
+      "requirement": "MEMORY-CONFIRM",
+      "scope": "Без captured wire keep відхиляється 422, set додає подію author поверх журналу голови.",
+      "tests": [
+        "tests/memory/test_core_review_apply.py::test_keep_rejected_without_wire",
+        "tests/web/test_core_review_api.py::test_post_core_review_route"
+      ]
+    },
+    {
       "id": "R22-SOURCE-S01",
       "requirement": "R22-SOURCE",
       "scope": "Byte-exact no-op; точні lexical/Unicode/source ranges; редагування без втрати решти документа.",
