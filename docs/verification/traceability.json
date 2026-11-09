@@ -1126,6 +1126,14 @@
       ]
     },
     {
+      "id": "DOCS-STATUS-S03",
+      "requirement": "DOCS-STATUS",
+      "scope": "Підпроцеси перевіряють свій checkout. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/test_subprocess_isolation.py::test_child_python_imports_this_checkout_src"
+      ]
+    },
+    {
       "id": "EDIT-LOOP-STOP-S01",
       "requirement": "EDIT-LOOP-STOP",
       "scope": "Ліміт/цикл і відсутність зайвого виклику.",

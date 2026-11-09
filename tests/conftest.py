@@ -1,9 +1,16 @@
+import os
 import socket
 import threading
+from pathlib import Path
 
 import pytest
 
 from storygen.evaluation.models import EvaluationCase, JudgeReport, ScoringProfile
+
+# The shared .venv may hold an editable install pointing at another worktree. pytest's `pythonpath`
+# only affects this process, so child Python processes get this checkout's src first explicitly.
+_SRC=str(Path(__file__).resolve().parents[1]/'src')
+os.environ['PYTHONPATH']=os.pathsep.join([_SRC,*[p for p in os.environ.get('PYTHONPATH','').split(os.pathsep) if p and p!=_SRC]])
 
 
 @pytest.fixture(autouse=True)
