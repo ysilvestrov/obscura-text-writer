@@ -209,7 +209,7 @@ Georgia з резервним Times New Roman використовується �
 
 Toolbar має SVG-коментар між I та undo, disabled без придатного виділення. Акцентний фон і підкреслення позначають коментар; pending додатково має хвилясте підкреслення й текстове попередження. General textarea під editor, компактний список pending, popover у top layer з Escape/Cancel та видимим focus. Чинна триколонкова структура незмінна. Popover обмежений visual viewport; target42px на mobile. Нейтральний screenshot: docs/images/r23-comment-popover.png.
 
-Під notes — одна другорядна кнопка переписування; grouped review лишається у draft і використовує той самий shared renderer, що редактор. Геометричний підпис не покладається лише на колір. Історичні інструкції доступні в details; немає п’ятої ролі або нової колонки.
+Під notes — одна основна кнопка переписування з моделлю та кількістю викликів; grouped review лишається у draft і використовує той самий shared renderer, що редактор. Геометричний підпис не покладається лише на колір. Історичні інструкції доступні в details; немає п’ятої ролі або нової колонки.
 
 R-22 scroll fix: text area54vh/54dvh з overflow-y:auto та stable scrollbar gutter; toolbar поза scroll area. Довжина тексту не змінює висоту editor surface.
 

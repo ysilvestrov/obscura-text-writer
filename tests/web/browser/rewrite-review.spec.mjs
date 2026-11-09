@@ -7,11 +7,17 @@ test('one saved rewrite, draft-only review, partial apply and cleared notes',asy
   await expect(page.locator('#author-general')).toBeEnabled();
   await expect(page.getByRole('button',{name:/Переписати за коментарями|Rewrite from comments/,exact:true})).toBeDisabled();
   await page.locator('#author-general').fill('Скоротити й зробити виразнішим.');
-  const seen=[];await page.addLocatorHandler(page.locator('.app-dialog'),async dialog=>{seen.push(await dialog.locator('.app-dialog-message').innerText());await dialog.locator('.app-dialog-actions button').last().click();});
+  let dialogs=0;await page.addLocatorHandler(page.locator('.app-dialog'),async dialog=>{dialogs++;await dialog.locator('.app-dialog-actions button').last().click();});
+  const button=page.getByRole('button',{name:/Переписати за коментарями|Rewrite from comments/,exact:true});
+  await expect(button).not.toHaveClass(/secondary/);
+  const settings=await(await request.get(`/api/stories/${fixture.story_id}/settings`)).json();
+  const writer=settings.roles.writer.provider;
+  await expect(page.locator('.rewrite-telemetry')).toHaveText(new RegExp(`${writer.provider} / ${writer.model} · (до 1 викл\\.|up to 1 calls)`));
+  await button.focus();await expect(page.locator('#rewrite-telemetry-details')).toBeVisible();
   await page.getByRole('button',{name:/Переписати за коментарями|Rewrite from comments/,exact:true}).click();
   const review=page.locator('#assisted-review');
   await expect(review.locator('.copyedit-item')).toHaveCount(2);
-  expect(seen.length).toBe(2);
+  expect(dialogs).toBe(0);
   await review.screenshot({path:`../artifacts/r23-ui/${test.info().project.name}-rewrite.png`});
   await expect(page.locator('.ProseMirror')).toHaveAttribute('contenteditable','false');
   await expect(review.locator('input[type=checkbox]:checked')).toHaveCount(0);
@@ -32,17 +38,42 @@ test('one saved rewrite, draft-only review, partial apply and cleared notes',asy
   await expect(review.locator('[data-review-accept]')).toBeDisabled();
 });
 
-test('cancel dirty Save keeps notes and makes no rewrite call',async({page,request})=>{
+test('failed save keeps notes and makes no rewrite call',async({page,request})=>{
   const fixture=await(await request.post('/test-fixture')).json();
   await page.goto(`/stories/${fixture.story_id}`);await page.locator('#mode-tabs [data-mode="draft"]').click();
   await expect(page.locator('#author-general')).toBeEnabled();
   await page.locator('#author-general').fill('Моя вказівка.');
+  let preflights=0,runPosts=0;page.on('request',r=>{if(r.method()==='POST'&&r.url().includes('/rewrites/preflight'))preflights++;if(r.method()==='POST'&&r.url().endsWith('/api/runs'))runPosts++});
+  await page.route(`**/api/scenes/${fixture.scene_id}/draft`,route=>route.fulfill({status:409,contentType:'application/json',body:JSON.stringify({detail:'Save conflict'})}));
   await page.getByRole('button',{name:/Переписати за коментарями|Rewrite from comments/,exact:true}).click();
-  const dialog=page.locator('.app-dialog');await expect(dialog).toBeVisible();
-  await dialog.locator('.app-dialog-actions button').first().click();await expect(dialog).toHaveCount(0);
+  await expect(page.locator('#notice')).toContainText('Save conflict');
   await expect(page.locator('#author-general')).toHaveValue('Моя вказівка.');
   const runs=await(await request.get(`/api/stories/${fixture.story_id}/runs`)).json();
-  expect(runs.runs).toHaveLength(0);
+  expect(runs.runs).toHaveLength(0);expect(preflights).toBe(0);expect(runPosts).toBe(0);
+  await expect(page.locator('#save-state')).toHaveText(/Незбережено|Unsaved/);
+});
+
+
+test('failed preflight keeps saved notes and starts no run',async({page,request})=>{
+  const fixture=await(await request.post('/test-fixture')).json();
+  await page.goto(`/stories/${fixture.story_id}`);await page.locator('#mode-tabs [data-mode="draft"]').click();
+  await page.locator('#author-general').fill('Моя вказівка.');
+  await page.route('**/rewrites/preflight',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({ready:false,reason:'Preflight failed'})}));
+  let runPosts=0;page.on('request',r=>{if(r.method()==='POST'&&r.url().endsWith('/api/runs'))runPosts++});
+  await page.getByRole('button',{name:/Переписати за коментарями|Rewrite from comments/,exact:true}).click();
+  await expect(page.locator('#notice')).toContainText('Preflight failed');
+  await expect(page.locator('#author-general')).toHaveValue('Моя вказівка.');expect(runPosts).toBe(0);
+});
+
+
+test('preflight warnings remain visible without a dialog',async({page,request})=>{
+  const fixture=await(await request.post('/test-fixture')).json();
+  await page.goto(`/stories/${fixture.story_id}`);await page.locator('#mode-tabs [data-mode="draft"]').click();
+  await page.locator('#author-general').fill('Моя вказівка.');
+  await page.route('**/rewrites/preflight',async route=>{const response=await route.fetch();const data=await response.json();data.warnings=['Synthetic warning'];await route.fulfill({response,json:data})});
+  await page.getByRole('button',{name:/Переписати за коментарями|Rewrite from comments/,exact:true}).click();
+  await expect(page.locator('#rewrite-warnings')).toContainText('Synthetic warning');
+  await expect(page.locator('.app-dialog')).toHaveCount(0);
 });
 
 
@@ -147,4 +178,19 @@ test('select all invalidates an in-flight subset preview and is blocked during a
   await apply.click();await expect(all).toBeDisabled();
   await expect(review.locator('input[type=checkbox]').first()).toBeDisabled();
   finish();await expect(page.locator('.ProseMirror')).toHaveAttribute('contenteditable','true');
+});
+
+
+test('repeated activation during save queues only one rewrite',async({page,request})=>{
+  const fixture=await(await request.post('/test-fixture')).json();
+  await page.goto(`/stories/${fixture.story_id}`);await page.locator('#mode-tabs [data-mode="draft"]').click();
+  await page.locator('#author-general').fill('Одна вказівка.');
+  let release;const gate=new Promise(resolve=>release=resolve);let saves=0,runs=0;
+  await page.route(`**/api/scenes/${fixture.scene_id}/draft`,async route=>{saves++;await gate;await route.continue()});
+  page.on('request',r=>{if(r.method()==='POST'&&r.url().endsWith('/api/runs'))runs++});
+  const button=page.getByRole('button',{name:/Переписати за коментарями|Rewrite from comments/,exact:true});
+  await button.click();await expect.poll(()=>saves).toBe(1);await expect(button).toBeDisabled();
+  await button.evaluate(e=>e.onclick());release();
+  await expect(page.locator('#assisted-review .copyedit-item')).toHaveCount(2);
+  expect(saves).toBe(1);expect(runs).toBe(1);
 });

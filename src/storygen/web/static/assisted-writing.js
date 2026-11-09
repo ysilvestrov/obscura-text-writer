@@ -1,20 +1,29 @@
-import {confirmDialog} from './dialogs.js';
 import {t,uiText,diagnostic} from './i18n.js';
 import {state,textEditor,getAuthorComments,saveCurrentMaterial,loadBuffer,refresh} from './editor.js';
 import {api,json,notice} from './api.js';
-import {confirmationText} from './run-readiness.js';
 import {mountChangeReview} from './change-review.js';
 
 const host=document.querySelector('#assisted-writing'),reviewHost=document.querySelector('#assisted-review');
 if(host&&reviewHost){
-  const button=document.createElement('button');button.type='button';button.className='secondary';uiText(button,'textContent',()=>t('rewrite.start'));
-  const hint=document.createElement('p');hint.className='muted';uiText(hint,'textContent',()=>t('rewrite.hint'));host.append(button,hint);
+  const button=document.createElement('button');button.type='button';uiText(button,'textContent',()=>t('rewrite.start'));
+  const wrap=document.createElement('span');wrap.className='workspace-primary-wrap';
+  const telemetry=document.createElement('small');telemetry.className='rewrite-telemetry';telemetry.tabIndex=0;
+  const details=document.createElement('div');details.id='rewrite-telemetry-details';details.className='workspace-telemetry-details';details.setAttribute('role','tooltip');
+  const hint=document.createElement('p');hint.className='muted';uiText(hint,'textContent',()=>t('rewrite.hint'));
+  const warning=document.createElement('p');warning.id='rewrite-warnings';warning.className='muted';warning.setAttribute('role','status');
+  button.setAttribute('aria-describedby','rewrite-telemetry-details rewrite-warnings');wrap.append(button,telemetry,details);host.append(wrap,hint,warning);
   const noteHistory=document.createElement('details'),noteTitle=document.createElement('summary'),noteText=document.createElement('pre');
   uiText(noteTitle,'textContent',()=>t('rewrite.instructions'));noteHistory.append(noteTitle,noteText);reviewHost.append(noteHistory);
-  let busy=false,current=null;
+  let busy=false,current=null,writer=null,rewriteWarnings=[],settingsEpoch=0;
+  async function loadWriter(){const epoch=++settingsEpoch;writer=null;sync();try{const settings=await api(`/api/stories/${state.storyId}/settings`);if(epoch===settingsEpoch)writer=settings.roles?.writer?.provider||null;}catch{}if(epoch===settingsEpoch)sync();}
   const active=()=>state.mode==='draft'&&state.bufferOrigin!=='history'&&!!state.scene;
   function sync(){
     host.hidden=reviewHost.hidden=!active();
+    const warnings=rewriteWarnings;
+    warning.hidden=!warnings.length;uiText(warning,'textContent',()=>warnings.length?t('workspace.warnings',{p0:warnings.map(diagnostic).join('; ')}):'');
+    const model=writer?.provider&&writer?.model?`${writer.provider} / ${writer.model}`:'';
+    uiText(telemetry,'textContent',()=>model?t('workspace.telemetry',{p0:model,p1:1})+(warnings.length?' ⚠':''):t('workspace.telemetry_unknown'));
+    uiText(details,'textContent',()=>[t('workspace.model',{p0:model||t('workspace.unknown')}),t('rewrite.hint'),...(warnings.length?[t('workspace.warnings',{p0:warnings.map(diagnostic).join('; ')})]:[])].join('\n'));
     const pending=active()&&!state.dirty&&!!current?.can_apply&&!!current?.has_changes&&!current?.decisions?.length;
     getAuthorComments()?.lock(busy||pending);
     let inputReady=false;
@@ -41,27 +50,29 @@ if(host&&reviewHost){
   button.onclick=async()=>{
     if(busy||state.saving||!active())return;
     const captured={sceneId:state.scene.id,epoch:state.bufferEpoch};
+    rewriteWarnings=[];busy=true;sync();
     try{
-      if(state.dirty){if(!await confirmDialog(t('rewrite.save_confirm')))return;if(state.scene?.id!==captured.sceneId||state.bufferEpoch!==captured.epoch||state.saving||!active())return;await saveCurrentMaterial();}
+      if(state.dirty)await saveCurrentMaterial();
       assertCaptured(captured);
       // Capture also blocks an unfinished popover before any network preflight.
       const local=getAuthorComments().capture();
-      busy=true;sync();
       const notes=await api(`/api/scenes/${captured.sceneId}/comments`);assertCaptured(captured);
       if(notes.expected_comments_revision!==local.expected_comments_revision||notes.source_version_id!==local.expected_source_version_id)throw new Error(t('rewrite.diagnostic.2'));
       if(!notes.comment_set||!notes.comment_fingerprint||notes.source_version_id!==textEditor.identity().version_id)throw new Error(t('rewrite.save_first'));
       const inputs={source_version_id:notes.source_version_id,comment_set_id:notes.comment_set.id,comment_fingerprint:notes.comment_fingerprint};
       const preflight=await api(`/api/scenes/${captured.sceneId}/rewrites/preflight`,json('POST',inputs));assertCaptured(captured);
       if(!preflight.ready)throw new Error(diagnostic(preflight.reason));
-      if(!await confirmDialog(confirmationText(preflight)))return;
+      writer=preflight.roles?.writer||writer;rewriteWarnings=preflight.warnings||[];sync();
       assertCaptured(captured);
       const run=await api('/api/runs',json('POST',{request_id:crypto.randomUUID(),request:{story_id:state.storyId,scene_id:captured.sceneId,mode:'rewrite',...inputs}}));
       document.dispatchEvent(new CustomEvent('run-enqueued',{detail:run}));
     }catch(error){notice(error.message,'error');}
     finally{busy=false;sync();}
   };
-  for(const event of ['scene-selected','story-refreshed'])document.addEventListener(event,()=>{current=null;sync();void component.reload();});
+  for(const event of ['scene-selected','story-refreshed'])document.addEventListener(event,()=>{current=null;if(event==='scene-selected')rewriteWarnings=[];sync();void component.reload();});
   document.addEventListener('editor-state-changed',()=>{sync();component.updateAvailability();});
   document.addEventListener('workspace-run-state',sync);
-  sync();void component.reload();
+  document.addEventListener('workspace-readiness',sync);
+  document.addEventListener('story-refreshed',()=>void loadWriter());
+  sync();void loadWriter();void component.reload();
 }
