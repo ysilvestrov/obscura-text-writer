@@ -1096,6 +1096,7 @@
         "tests/characters/test_acquaintance_markers.py::test_unknown_known_name_warns_without_blocking",
         "tests/characters/test_acquaintance_markers.py::test_ambiguous_known_name_names_card_and_name_once",
         "tests/characters/test_acquaintance_markers.py::test_parenthetical_and_spelling_variants_of_a_bad_name",
+        "tests/characters/test_acquaintance_markers.py::test_dash_or_blank_placeholder_is_not_a_name",
         "tests/characters/test_acquaintance_history.py::test_pre_story_tag_wins_with_none"
       ]
     },

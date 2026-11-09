@@ -28,7 +28,9 @@ def is_protagonist_line(line):
 
 def known_names_line(line):
     match=KNOWN.match(plain_line(line))
-    return split_participants(match.group(1)) if match else None
+    if not match:return None
+    # A placeholder such as «—», «-» or «…» means "nobody": only entries with a letter or digit are names.
+    return [name for name in split_participants(match.group(1)) if any(char.isalnum() for char in name)]
 
 
 def protagonist(cards,scenes):
@@ -46,7 +48,7 @@ def pre_story_known(cards,scenes,scene_id,hero_id):
     known=set();warnings=[];reported=set()
     for card in cards:
         for entry in card.entries:
-            marked=[names for names in map(known_names_line,entry.text.splitlines()) if names is not None]
+            marked=[names for names in map(known_names_line,entry.text.splitlines()) if names]
             if not marked or not entry_available(entry,active,scene):continue
             for names in marked:
                 ids,_=resolve_participants(names,cards)
