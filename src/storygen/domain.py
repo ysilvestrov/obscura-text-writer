@@ -87,6 +87,19 @@ class MemoryConfirmation(DomainModel):
     by: Literal['author'] = 'author'
 
 
+class BriefLink(DomainModel):
+    """Author's word that the prose rests on this brief, with who was introduced in the scene (#44)."""
+    brief_version_id: str = Field(min_length=1)
+    introduced: list[str] = Field(default_factory=list,max_length=1000)
+    confirmed_at: str
+    by: Literal['author'] = 'author'
+
+
+class AuthorLineage(DomainModel):
+    """Same-scene version a manual save was made from; metadata only, never a dependency (#44)."""
+    parent_version_id: str = Field(min_length=1)
+
+
 class VersionRef(DomainModel):
     id: str
     story_id: str
@@ -104,6 +117,8 @@ class VersionRef(DomainModel):
     prompt_contract: PromptContract | None = None
     input_refs: list[str] = Field(default_factory=list)
     memory_confirmation: MemoryConfirmation | None = None
+    brief_link: BriefLink | None = None
+    author_lineage: AuthorLineage | None = None
     created_at: str = Field(default_factory=now)
 
     @model_validator(mode='after')
