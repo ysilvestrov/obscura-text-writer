@@ -430,6 +430,39 @@
       ]
     },
     {
+      "id": "MEMORY-002-S05",
+      "requirement": "MEMORY-002",
+      "scope": "Обов’язкові рішення v4. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/memory/test_wire_v4.py::test_missing_slot_or_thread_key_is_schema_violation",
+        "tests/memory/test_wire_v4_schema.py::test_schema_requires_every_slot_and_thread"
+      ]
+    },
+    {
+      "id": "MEMORY-002-S06",
+      "requirement": "MEMORY-002",
+      "scope": "Заміщення слота. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/memory/test_wire_v4.py::test_changed_into_occupied_slot_updates_same_claim"
+      ]
+    },
+    {
+      "id": "MEMORY-002-S07",
+      "requirement": "MEMORY-002",
+      "scope": "Закриття лінії з розв’язкою. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/memory/test_wire_v4.py::test_closed_thread_retires_and_adds_resolution_fact"
+      ]
+    },
+    {
+      "id": "MEMORY-002-S08",
+      "requirement": "MEMORY-002",
+      "scope": "Повна правильна відповідь не впирається в ліміт. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/memory/test_wire_v4.py::test_thirteen_closed_threads_are_valid"
+      ]
+    },
+    {
       "id": "MEMORY-003-S01",
       "requirement": "MEMORY-003",
       "scope": "Змінений стан і закрита лінія. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",

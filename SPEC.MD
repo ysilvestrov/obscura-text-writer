@@ -772,6 +772,79 @@ Wire v3 (`schema_version=3`, модуль `memory/wire_v3.py`) — станда�
 - THEN схема обмежує add, докази, `claim_id` і scope за captured даними
 - AND спроба без меж використовує статичну схему.
 
+Wire v4 (`schema_version=4`, модуль `memory/wire_v4.py`) — v3 плюс дві обов’язкові секції
+рішень. Поки що модуль не підключено до конвеєра: стандартний промпт і `parse_memory_result`
+лишаються на v3, перемикання контракту на `memory/evidence_delta/4` — окрема зміна.
+- `core`: ключі — відстежувані персонажі у складі сцени (`bounds.tracked`), значення — об’єкт
+  з усіма слотами реєстру. Рішення слота — закритий об’єкт `{status, text, evidence_ids,
+  reason}` з усіма ключами: `unchanged` (решта порожні), `changed` (непорожній `text`, 1–3
+  докази), `unknown` (непорожній `reason` — пояснення моделі, не цитата; у журнал не
+  потрапляє), `introduced` (1–3 докази, `text` порожній) — лише для слота з
+  `bounds.unestablished`, інакше `target_unknown`. Відсутній персонаж має порожній `core`.
+- `threads`: ключі — `claim_id` усіх активних `open_threads` (`bounds.threads`), значення
+  `{status, resolution, evidence_ids}`: `open` (решта порожні) або `closed` (непорожній
+  `resolution`, 1–3 докази).
+- `character_states` має `add`/`update`/`retire`, але update/retire дозволені лише для
+  claim без `slot` (інакше `target_unknown`); `open_threads` має лише `add`.
+
+Пропущений ключ слота чи лінії дає `schema` з міткою `core.<персонаж>.<слот>` /
+`threads.<claim_id>`; зайвий ключ — `schema` на рівні об’єкта (`core`, `core.<персонаж>`,
+`threads`) без значень моделі в мітці. Непорожнє невживане поле — `schema`; докази
+перевіряються як у v3 (`evidence_count`, `evidence_unknown`). Ліміти: до трьох `add` на
+категорію (`add_limit`) і до 12 `add` сумарно (`ops_limit`); рішення `core` і `threads`
+та update/retire станів до лімітів не входять, тож повністю правильна відповідь допустима.
+Відповідь v3, v2 або legacy дає `wire_version`.
+
+Межі `schema_bounds_v4(previous, prose, allowed_character_ids, tracked, day_change)`:
+`fragment_ids`, `mutable.character_states` (claim без слота), `threads` (порядок replay),
+`character_ids`, `tracked` (`{персонаж: слоти}` лише для персонажів сцени), `unestablished`
+(слоти, чинне значення яких — запис автора без цитати), `day_change` (`{персонаж: bool}`,
+обчислений MEMORY-003 для кожного відстежуваного персонажа) і `slot_registry`.
+`memory_wire_v4_schema(bounds)` будує закриту схему з тими самими ключовими словами, що й v3:
+усі слоти й лінії в `required`, `evidence_ids` рішень `minItems: 0`, `maxItems: 3` (0 без
+фрагментів, тоді статуси з доказами зникають з `enum`), `introduced` в `enum` лише для
+`unestablished`.
+
+Переклад (`wire_v4_events`, журнал завжди `schema_version=3`) детермінований: `core` за
+порядком `tracked` і реєстру, далі `threads` за порядком меж, далі категорії як у v3. Перший
+доказ — `quote`, решта — `supporting_quotes`; дублікати `add` рахуються одним лічильником.
+- `changed` у порожній слот — `add` зі `slot`; у зайнятий — `update` того самого claim.
+- `unknown` у зайнятому слоті — `retire` запису слота і `add` атмосферного стану без `slot`
+  з тим самим текстом; обидві події мають `source_version_id` поточної прози, а `quote`,
+  `supporting_quotes` і `evidence_version_id` (= `evidence_version_id` або
+  `source_version_id` вихідного запису) — від вихідного запису. Для запису автора без
+  цитати обидві події — `source_kind='author'` без цитати. У порожньому слоті подій немає.
+- `introduced` — `update` запису слота з тим самим текстом, `source_kind='prose'` і цитатою
+  поточної прози.
+- `closed` — `retire` лінії з текстом розв’язки і `facts` `add` з тим самим текстом і
+  доказом та `resolves_claim_id` лінії.
+
+<a id="memory-002-s05"></a>
+#### Scenario: MEMORY-002-S05 — Обов’язкові рішення v4
+- GIVEN межі v4 з відстежуваним персонажем у складі сцени й активними лініями
+- WHEN відповідь пропускає слот або `claim_id` лінії
+- THEN перевірка дає `schema` з міткою `core.<персонаж>.<слот>` або `threads.<claim_id>`
+- AND пам’ять не публікується.
+
+<a id="memory-002-s06"></a>
+#### Scenario: MEMORY-002-S06 — Заміщення слота
+- GIVEN слот персонажа має чинний запис
+- WHEN рішення слота `changed`
+- THEN журнал отримує `update` того самого `claim_id` зі збереженим `slot` і цитатою поточної прози.
+
+<a id="memory-002-s07"></a>
+#### Scenario: MEMORY-002-S07 — Закриття лінії з розв’язкою
+- GIVEN активна лінія
+- WHEN рішення лінії `closed` з розв’язкою й доказами
+- THEN журнал отримує `retire` лінії з текстом розв’язки
+- AND `facts` `add` з тим самим текстом і доказами та `resolves_claim_id` лінії.
+
+<a id="memory-002-s08"></a>
+#### Scenario: MEMORY-002-S08 — Повна правильна відповідь не впирається в ліміт
+- GIVEN 13 активних ліній, усі справді закриті прозою
+- WHEN відповідь містить 13 рішень `closed` з доказами
+- THEN перевірка не дає `ops_limit` чи `add_limit`, а переклад закриває всі лінії.
+
 <a id="memory-003"></a>
 ### Requirement: MEMORY-003 — Історія та сумісність пам’яті
 
