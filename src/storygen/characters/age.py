@@ -15,9 +15,10 @@ def worst(verdicts)->AgeVerdict:
 
 
 def parse_age_value(value: str) -> AgeVerdict:
+    value=value.strip(' \t\r\n*_')  # markdown emphasis around the value
     numbers=[int(item) for item in re.findall(r'\d+',value)]
     if numbers:return 'adult' if min(numbers)>=18 else 'minor'
-    word=value.strip().lower().rstrip('.').strip()
+    word=value.lower().rstrip('.').strip()
     return 'adult' if word in ADULT_WORDS else 'unknown'
 
 

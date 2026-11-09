@@ -7,7 +7,9 @@ from storygen.domain import Scene
     ('27.','adult'),('17','minor'),('на вигляд 16, насправді 300','minor'),('18-20','adult'),
     ('Дорослий.','adult'),(' доросла ','adult'),('adult','adult'),
     ('ще не дорослий','unknown'),('not an adult','unknown'),('майже доросла','unknown'),
-    ('','unknown'),('невідомо','unknown')])
+    ('','unknown'),('невідомо','unknown'),
+    ('** Дорослий','adult'),('_доросла_','adult'),('**34**','adult'),('** 15','minor'),
+    ('_ще не дорослий_','unknown'),('**','unknown')])
 def test_parse_age_value(value,expected):
     from storygen.characters.age import parse_age_value
     assert parse_age_value(value)==expected
@@ -16,6 +18,7 @@ def test_parse_age_value(value,expected):
 @pytest.mark.parametrize('text,expected',[
     ('Вік:\nЗріст: 160 см.','unknown'),('Зовнішність: висока.\nВік: 34.','adult'),
     ('- **Вік:** 15','minor'),('Чоловік: Петро',None),('Age: 40','adult'),
+    ('- **Вік:** Дорослий','adult'),('Вік: _доросла_','adult'),('Вік: **34**','adult'),
     ('Вік: 30\nВік: 16','minor'),('Вік: 30\nВік: невідомо','unknown'),('Без віку',None)])
 def test_entry_age(text,expected):
     from storygen.characters.age import entry_age
