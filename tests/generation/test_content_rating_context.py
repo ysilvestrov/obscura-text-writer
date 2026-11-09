@@ -191,3 +191,19 @@ def test_trashed_anchor_age_blocks_patch_and_diff_edit(tmp_path,mode):
     repo.set_scene_trashed(story.id,scenes[1].id,repo.get_scene(scenes[1].id).revision,False)
     with pytest.raises(ValueError,match='персонаж «Анна» не має вказаного віку'):
         build_context(repo,scenes[0].id,'edit',settings(edit_mode=mode))
+
+
+def test_remaining_run_readiness_checks_every_target_scene(tmp_path):
+    from storygen.authoring.blueprints import save_role_settings
+    from storygen.generation.readiness import preview
+    from storygen.generation.worker import RunRequest
+    cards=[card('A','Анна','Вік: 30'),card('B','Борис','Вік: 15')]
+    # Scene 1 (sexual 0) may include the minor; scene 2 (sexual 1) may not.
+    repo,story,scenes=make_story(tmp_path,R(0,0,0),cast=('A','B'),cards=cards,count=2,scene_ratings={1:R(1,0,0)})
+    for role in ['planner','writer','editor','memory']:
+        save_role_settings(repo,story.id,role,settings(),repo.get_story(story.id).revision)
+    single=preview(repo,RunRequest(story_id=story.id,scene_id=scenes[0].id,mode='scene'))
+    assert single['ready'],single['reason']
+    result=preview(repo,RunRequest(story_id=story.id,scene_id=scenes[0].id,mode='remaining'))
+    assert not result['ready']
+    assert 'персонаж «Борис» молодший за 18' in result['reason']
