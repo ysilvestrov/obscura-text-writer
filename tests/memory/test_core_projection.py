@@ -187,3 +187,62 @@ def test_policy_without_resolution_facts_equals_hidden_before(tmp_path):
     apply(repo,scenes[1],{claim:False})
     view=repo.context_view(story.id)
     assert projection_policy(view,scenes[2].id)==sorted(hidden_before(view,scenes[2].id))==[claim]
+
+
+def test_core_header_without_card_name_uses_neutral_label():
+    for names in (None,{},{'h':''}):
+        text=project_memory(core_journal(),[],{'p1':1},tracked=['h'],names=names).text
+        assert text.startswith('ЯДРО СТАНУ — протагоніст\n') and 'ЯДРО СТАНУ — h' not in text
+
+
+def test_hidden_slot_stays_hidden_after_unknown():
+    from tests.memory.test_wire_v4 import CLOTH,answer,core,dec,new,run
+    j=run(answer(core(clothing=dec('unknown',reason='Новий день'))))
+    retire,atmosphere=new(j)
+    # The atmosphere state continues the retired slot claim and inherits its hidden mark (I5).
+    assert atmosphere.resolves_claim_id==CLOTH.claim_id and retire.resolves_claim_id is None
+    assert effective_hidden(j,{CLOTH.claim_id})=={CLOTH.claim_id,atmosphere.claim_id}
+    hidden=project_memory(j,['h'],{'p1':1,'p2':2},hidden_claim_ids={CLOTH.claim_id},tracked=['h'],names={'h':'Ганна'}).text
+    assert 'Халат' not in hidden
+    # Without a hidden mark the link changes nothing: the value is an ordinary current state, not a closure.
+    shown=project_memory(j,['h'],{'p1':1,'p2':2},tracked=['h'],names={'h':'Ганна'}).text
+    assert '— Халат' in shown.split('ПОТОЧНІ СТАНИ\n')[1].split('\n\n')[0] and shown.split('ХРОНОЛОГІЯ\n')[1]=='Немає.'
+    enabled=project_memory(j,['h'],{'p1':1,'p2':2},hidden_claim_ids={CLOTH.claim_id},forwarded_claim_ids={atmosphere.claim_id},
+        tracked=['h'],names={'h':'Ганна'}).text
+    assert '— Халат' in enabled
+    def rows(first,second):
+        scenes=[scene(memory_forwarding=first),scene(id='s2',position=1,title='Сцена 2',memory_forwarding=second,heads={'memory':'m2','prose':'p2'})]
+        view=View(j,scenes,{'m2':version('s2'),'p1':version('s1'),'p2':version('s2')})
+        return {row['claim_id']:row['forward'] for row in memory_view_from_view(view,'s2')['rows']}
+    assert rows({CLOTH.claim_id:False},{})[atmosphere.claim_id] is False
+    assert rows({CLOTH.claim_id:False},{atmosphere.claim_id:True})[atmosphere.claim_id] is True
+    assert rows({},{})[atmosphere.claim_id] is True
+
+
+def test_policy_includes_atmosphere_of_hidden_slot(tmp_path):
+    from storygen.domain import StoryCreate,SceneCreate
+    from storygen.storage.repository import Repository
+    from storygen.memory.journal import _add_event,_change_event
+    from storygen.memory.forwarding import projection_policy
+    repo=Repository(tmp_path);story=repo.create_story(StoryCreate(title='Слоти'))
+    scenes=[repo.create_scene(story.id,SceneCreate(title=str(i),beats='Далі',character_ids=['A'])) for i in range(3)]
+    text='Ганна в закривавленій сорочці.'
+    def publish(scene,events,sources):
+        prose=repo.save_version(story.id,scene.id,'manual',text,[],manual_projection_policy=projection_policy(repo.context_view(story.id),scene.id))
+        repo.set_head(scene.id,'prose',prose.id,repo.get_scene(scene.id).revision)
+        built=events(prose.id);sources=sources+[prose.id]
+        memory=repo.save_version(story.id,scene.id,'memory',MemoryJournal(schema_version=3,source_prose_ids=sources,events=built).model_dump_json(),sources)
+        repo.set_head(scene.id,'memory',memory.id,repo.get_scene(scene.id).revision)
+        return built,sources
+    (cloth,),sources=publish(scenes[0],lambda p:[_add_event('character_states','Закривавлена сорочка',p,text,0,['A'],slot='clothing')],[])
+    # The author hides the slot value at the first boundary; on the next day the model answers unknown.
+    choose(repo,repo.get_scene(scenes[0].id),{cloth.claim_id:False})
+    def unknown(p):
+        return [cloth,_change_event('retire',cloth.claim_id,cloth.text,'character_states',['A'],p,text,slot='clothing',evidence_version_id=cloth.source_version_id),
+            _add_event('character_states',cloth.text,p,text,0,['A'],evidence_version_id=cloth.source_version_id,resolves_claim_id=cloth.claim_id)]
+    events,_=publish(scenes[1],unknown,sources)
+    atmosphere=events[-1].claim_id
+    assert projection_policy(repo.context_view(story.id),scenes[2].id)==sorted({cloth.claim_id,atmosphere})
+    assert not next(r for r in memory_view_from_view(repo.context_view(story.id),scenes[1].id)['rows'] if r['claim_id']==atmosphere)['forward']
+    choose(repo,repo.get_scene(scenes[1].id),{atmosphere:True})
+    assert projection_policy(repo.context_view(story.id),scenes[2].id)==[cloth.claim_id]

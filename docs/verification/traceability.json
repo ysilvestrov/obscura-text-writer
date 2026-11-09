@@ -439,7 +439,8 @@
       "tests": [
         "tests/memory/test_wire_v3_schema.py::test_schema_limits_and_enums",
         "tests/generation/test_prompt_contracts.py::test_json_schema_mode_uses_dynamic_v4_schema",
-        "tests/generation/test_prompt_contracts.py::test_request_without_bounds_uses_static_v3_schema"
+        "tests/generation/test_prompt_contracts.py::test_request_without_bounds_uses_static_v3_schema",
+        "tests/memory/test_wire_v4_schema.py::test_schema_size_does_not_grow_fragment_enums_with_threads"
       ]
     },
     {
@@ -558,7 +559,8 @@
       "tests": [
         "tests/memory/test_story_time.py::test_day_change_skips_scenes_without_character",
         "tests/memory/test_story_time.py::test_day_change_same_form_only",
-        "tests/memory/test_story_time.py::test_scene_start_date_and_day_forms"
+        "tests/memory/test_story_time.py::test_scene_start_date_and_day_forms",
+        "tests/memory/test_story_time.py::test_date_keys_are_canonical"
       ]
     },
     {
@@ -568,7 +570,9 @@
       "tests": [
         "tests/storage/test_memory_core_selectors.py::test_tracked_change_makes_memory_stale",
         "tests/storage/test_memory_core_selectors.py::test_day_key_change_makes_memory_stale",
-        "tests/storage/test_memory_core_selectors.py::test_beats_wording_change_keeps_memory_fresh"
+        "tests/storage/test_memory_core_selectors.py::test_beats_wording_change_keeps_memory_fresh",
+        "tests/storage/test_memory_core_selectors.py::test_comparison_scene_day_key_change_makes_memory_stale",
+        "tests/storage/test_memory_core_selectors.py::test_equivalent_date_spelling_keeps_memory_fresh"
       ]
     },
     {
@@ -1572,6 +1576,15 @@
         "tests/memory/test_core_projection.py::test_v4_closure_rendered_only_as_fact",
         "tests/memory/test_core_projection.py::test_legacy_closure_stays_in_timeline",
         "tests/memory/test_core_projection.py::test_enabling_hidden_thread_resolution_stales_dependents",
+        "tests/memory/test_core_projection.py::test_policy_without_resolution_facts_equals_hidden_before"
+      ]
+    },
+    {
+      "id": "MEMORY-FORWARD-S05",
+      "requirement": "MEMORY-FORWARD",
+      "scope": "Прихований слот після unknown: атмосферний стан успадковує позначку; перевірка зазначеного сценарію, не глобальне вилучення фактів з авторських джерел.",
+      "tests": [
+        "tests/memory/test_core_projection.py::test_hidden_slot_stays_hidden_after_unknown",
         "tests/memory/test_core_projection.py::test_policy_without_resolution_facts_equals_hidden_before"
       ]
     },

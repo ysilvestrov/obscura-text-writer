@@ -64,7 +64,8 @@ def project_memory(journal: MemoryJournal, character_ids: list[str], source_scen
             if event is None or event.claim_id in hidden:continue
             lines.append(f'{slot.label_uk}: {event.text}'+(READER_UNKNOWN if event.source_kind=='author' and event.quote is None else ''))
         if lines:
-            sections.append(f'ЯДРО СТАНУ — {(names or {}).get(cid,cid)}\n'+'\n'.join(lines));core_lines+=len(lines)
+            # Without a card name the technical ID never reaches the literary section; tracked is the protagonist.
+            sections.append(f'ЯДРО СТАНУ — {(names or {}).get(cid) or "протагоніст"}\n'+'\n'.join(lines));core_lines+=len(lines)
     # A v4 closure is shown only as its resolution fact; a legacy retire without one stays in the timeline.
     resolved={e.resolves_claim_id for e in journal.events if e.resolves_claim_id}
     for category in CATEGORIES:

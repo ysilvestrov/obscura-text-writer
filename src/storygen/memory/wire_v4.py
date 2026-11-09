@@ -6,10 +6,10 @@ from pydantic import ValidationError
 from ..domain import DomainModel
 from ..evidence import fragment_text
 from .core import SLOT_REGISTRY_VERSION, SLOTS
-from .journal import CATEGORIES, MemoryJournal, _add_event, _change_event, _extend, replay_memory
+from .journal import CATEGORIES, MemoryJournal, _add_event, _change_event, _extend, duplicate_key, replay_memory
 from .violations import Violation, scope_unknown
-from .wire_v3 import (ACTIONS, AddOnlyGroup, StateGroup, _adds, _changes, _element_model, _envelope, _evidence_item,
-    _object, _other_wire, _scope)
+from .wire_v3 import (ACTIONS, AddOnlyGroup, StateGroup, _adds, _changes, _element_model, _envelope, _object, _other_wire,
+    _scope)
 
 
 class CoreDecision(DomainModel):
@@ -139,7 +139,7 @@ def wire_v4_events(wire: MemoryWireV4,previous,prose_id,prose,bounds) -> MemoryJ
     slots={(c.character_ids[0],c.slot):c for c in active.values() if c.slot}
     def evidence(ids):return frag[ids[0]],[frag[i] for i in ids[1:]]
     def add(category,text,quote,supporting=(),chars=(),**extra):
-        key=(category,text,quote,tuple(supporting),tuple(sorted(extra.items())))
+        key=duplicate_key(category,text,quote,supporting,**extra)
         occurrence=duplicates.get(key,0);duplicates[key]=occurrence+1
         events.append(_add_event(category,text,prose_id,quote,occurrence,chars,supporting,**extra))
     def change(action,claim,text,quote,supporting=(),**extra):
@@ -154,11 +154,12 @@ def wire_v4_events(wire: MemoryWireV4,previous,prose_id,prose,bounds) -> MemoryJ
             elif decision.status=='introduced':
                 change('update',claim,claim.text,*evidence(decision.evidence_ids))
             elif decision.status=='unknown' and claim:
-                # The value leaves the slot as atmosphere, keeping the original proof (or the author's unquoted word).
+                # The value leaves the slot as atmosphere, keeping the original proof (or the author's unquoted word);
+                # resolves_claim_id links it to the retired slot claim so it inherits that claim's hidden mark (I5).
                 if claim.quote is None:quote,supporting,extra=None,[],{'source_kind':'author'}
                 else:quote,supporting,extra=claim.quote,claim.supporting_quotes,{'evidence_version_id':claim.evidence_version_id or claim.source_version_id}
                 change('retire',claim,claim.text,quote,supporting,**extra)
-                add('character_states',claim.text,quote,supporting,[cid],**extra)
+                add('character_states',claim.text,quote,supporting,[cid],resolves_claim_id=claim.claim_id,**extra)
     for claim_id in bounds['threads']:
         decision=wire.threads[claim_id]
         if decision.status=='closed':
@@ -178,7 +179,9 @@ def wire_v4_events(wire: MemoryWireV4,previous,prose_id,prose,bounds) -> MemoryJ
 def memory_wire_v4_schema(bounds) -> dict:
     # Same keyword set as v3; required text, unused-empty fields, evidence uniqueness and limits stay server-side.
     fragments=list(bounds['fragment_ids'])
-    evidence={'type':'array','minItems':0,'maxItems':3 if fragments else 0,'items':_evidence_item(fragments)}
+    # Core and thread decisions repeat per slot and per thread, so their evidence items carry no fragment enum
+    # (it would grow the schema with the catalog); unknown IDs are still rejected by check_v4 as evidence_unknown.
+    evidence={'type':'array','minItems':0,'maxItems':3 if fragments else 0,'items':{'type':'string'}}
     text={'type':'string'}
     def status(names):
         # Without fragments evidence-bearing statuses cannot be satisfied, so they leave the enum.

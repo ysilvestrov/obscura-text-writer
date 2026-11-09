@@ -205,6 +205,12 @@ def _extras(quote,slot,source_kind,evidence_version_id,resolves_claim_id):
     return extras
 
 
+def duplicate_key(category,text,quote,supporting=(),*,slot=None,source_kind='prose',evidence_version_id=None,resolves_claim_id=None):
+    # Occurrence counter key of identical adds; shared by the wire v4 translator and manual normalization so re-save keeps IDs.
+    extras=_extras(quote,slot,source_kind,evidence_version_id,resolves_claim_id)
+    return (category,text,quote,tuple(supporting),tuple(sorted(extras.items())))
+
+
 def _add_event(category,text,prose_id,quote,occurrence,characters=(),supporting=(),*,slot=None,source_kind='prose',evidence_version_id=None,resolves_claim_id=None):
     value=[category,text,prose_id,quote,occurrence]
     if supporting:value.append(list(supporting))
@@ -379,7 +385,8 @@ def normalize_manual_memory(raw,previous,prose_id,prose,allowed_character_ids):
         if event.operation=='add':
             if not set(event.character_ids)<=set(allowed_character_ids):
                 raise ValueError('Невідомий scope персонажа')
-            key=(event.category,event.text,event.quote,tuple(event.supporting_quotes))
+            key=duplicate_key(event.category,event.text,event.quote,event.supporting_quotes,slot=event.slot,source_kind=event.source_kind,
+                evidence_version_id=event.evidence_version_id,resolves_claim_id=event.resolves_claim_id)
             occurrence=duplicates.get(key,0);duplicates[key]=occurrence+1
             canonical=_add_event(event.category,event.text,prose_id,event.quote,occurrence,event.character_ids,event.supporting_quotes,
                 slot=event.slot,source_kind=event.source_kind,evidence_version_id=event.evidence_version_id,resolves_claim_id=event.resolves_claim_id)

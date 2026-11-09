@@ -66,5 +66,6 @@ def test_writer_context_shows_protagonist_core_first(tmp_path):
     repo.set_head(first.id,'memory',memory.id,repo.get_scene(first.id).revision)
     context=build_context(repo,second.id,'brief',RoleSettings(provider=ProviderSettings(model='test')))
     section=context.user_text.split('ЗДІЙСНЕНІ ПОДІЇ — ПЕРЕВІРЕНА ПАМ’ЯТЬ\n')[1]
-    assert section.startswith('ЯДРО СТАНУ — A\nодяг: Синій халат\n\nФАКТИ\n— Анна вдома')
+    # No character cards: the fallback protagonist has no name, so the header never shows the raw ID.
+    assert section.startswith('ЯДРО СТАНУ — протагоніст\nодяг: Синій халат\n\nФАКТИ\n— Анна вдома')
     assert context.memory_metrics['projection_version']=='memory-uk-v3' and context.memory_metrics['core_line_count']==1

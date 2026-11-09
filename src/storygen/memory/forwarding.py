@@ -29,9 +29,13 @@ def forwarded_before(view,scene_id):
 
 
 def effective_hidden(journal,hidden_claim_ids,*,forwarded=()):
-    # I5: a resolution fact inherits the hidden mark of the thread it closes unless the author chose for the fact itself.
+    # I5: a claim that continues a retired one (resolves_claim_id: a thread's resolution fact, or the atmosphere state
+    # of a slot value marked unknown) inherits its hidden mark unless the author chose for the new claim itself.
+    # Links point back in journal order, so one ordered pass also follows chains.
     hidden=set(hidden_claim_ids)
-    return hidden|{e.claim_id for e in journal.events if e.resolves_claim_id in hidden and e.claim_id not in forwarded}
+    for e in journal.events:
+        if e.resolves_claim_id in hidden and e.claim_id not in forwarded:hidden.add(e.claim_id)
+    return hidden
 
 
 def projection_policy(view,scene_id):

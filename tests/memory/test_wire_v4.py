@@ -146,6 +146,7 @@ def test_non_empty_unused_fields_are_schema_violation():
     assert bad(answer(core(clothing=dec('changed','П',[]))))==[('core.h.clothing','evidence_count')]
     assert bad(answer(core(clothing=dec('changed','П',['f000009']))))==[('core.h.clothing','evidence_unknown')]
     assert bad(answer(threads_=threads(**{T1.claim_id:tdec('closed','Р',['f000001','f000001'])})))==[(f'threads.{T1.claim_id}','evidence_count')]
+    assert bad(answer(threads_=threads(**{T1.claim_id:tdec('closed','Р',['f000099'])})))==[(f'threads.{T1.claim_id}','evidence_unknown')]
 
 
 def test_thirteen_closed_threads_are_valid():

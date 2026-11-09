@@ -13,6 +13,24 @@ BARE={**EMPTY,'threads':[],'tracked':{},'unestablished':{}}
 def slot(schema,name,cid='h'):return schema['properties']['core']['properties'][cid]['properties'][name]
 
 
+def th_evidence(schema,claim_id):return schema['properties']['threads']['properties'][claim_id]['properties']['evidence_ids']
+
+
+def fragment_enums(schema,fragments):
+    return sum(1 for node in nodes(schema) if node.get('enum')==fragments)
+
+
+def test_schema_size_does_not_grow_fragment_enums_with_threads():
+    import json
+    fragments=[f'f{i:06d}' for i in range(1,121)]
+    def schema(count):
+        return memory_wire_v4_schema({**BOUNDS,'fragment_ids':fragments,'threads':[f'mc_t{i}' for i in range(count)]})
+    one,many=schema(1),schema(46)
+    # Only the group adds/changes carry the fragment enum (as in v3): their count is fixed by the groups, not the catalog.
+    assert fragment_enums(one,fragments)==fragment_enums(many,fragments)==6
+    assert len(json.dumps(many))<40000
+
+
 def test_schema_uses_only_allowed_keywords():
     for bounds in (BOUNDS,EMPTY,BARE):
         for node in nodes(memory_wire_v4_schema(bounds)):
@@ -27,8 +45,10 @@ def test_schema_requires_every_slot_and_thread():
     person=s['properties']['core']['properties']['h']
     assert person['required']==[x.name for x in SLOTS] and person['additionalProperties'] is False
     assert slot(s,'body')['required']==['status','text','evidence_ids','reason']
-    assert slot(s,'body')['properties']['evidence_ids']=={'type':'array','minItems':0,'maxItems':3,
-        'items':{'type':'string','enum':['f000001','f000002']}}
+    # Decisions take plain strings; check_v4 rejects unknown fragment IDs (evidence_unknown).
+    assert slot(s,'body')['properties']['evidence_ids']=={'type':'array','minItems':0,'maxItems':3,'items':{'type':'string'}}
+    assert th_evidence(s,'mc_t1')=={'type':'array','minItems':0,'maxItems':3,'items':{'type':'string'}}
+    assert s['properties']['facts']['properties']['add']['items']['properties']['evidence_ids']['items']=={'type':'string','enum':['f000001','f000002']}
     th=s['properties']['threads']
     assert th['required']==['mc_t1','mc_t2'] and th['additionalProperties'] is False
     assert th['properties']['mc_t1']['required']==['status','resolution','evidence_ids']
