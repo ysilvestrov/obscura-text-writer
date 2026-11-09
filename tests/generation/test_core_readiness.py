@@ -46,3 +46,31 @@ def test_unconfirmed_count_ignores_scenes_without_core(tmp_path):
     repo.set_head(s1.id, 'memory', memory.id, repo.get_scene(s1.id).revision)
     operations = RunCoordinator(repo).readiness(story.id, s1.id)['operations']
     assert operations['remaining']['unconfirmed_core_scenes'] == 1
+
+
+def test_unconfirmed_count_parses_each_journal_once_per_request(tmp_path, monkeypatch):
+    from storygen.generation import readiness as journal_module
+    repo, story, s1, s2 = core_story(tmp_path)
+    calls = []
+    real = journal_module.load_memory
+    monkeypatch.setattr(journal_module, 'load_memory', lambda raw: calls.append(raw) or real(raw))
+    operations = RunCoordinator(repo).readiness(story.id, s1.id)['operations']
+    assert operations['scene']['unconfirmed_core_scenes'] == operations['remaining']['unconfirmed_core_scenes'] == 2
+    assert len(calls) == 2  # two unconfirmed journals, parsed once for both previews
+
+
+def test_unconfirmed_count_skips_parsing_journal_without_slot_events(tmp_path, monkeypatch):
+    from storygen.generation import readiness as journal_module
+    repo, story, s1, s2 = core_story(tmp_path)
+    p1, p2 = s1.heads['prose'], s2.heads['prose']
+    for scene, prose in ((s1, p1), (s2, p2)):
+        plain = MemoryJournal(schema_version=3, source_prose_ids=[prose],
+            events=[_add_event('facts', 'Будинок старий', prose, 'Анна в халаті.', 0)])
+        memory = repo.save_version(story.id, scene.id, 'memory', plain.model_dump_json(), [prose])
+        repo.set_head(scene.id, 'memory', memory.id, repo.get_scene(scene.id).revision)
+    calls = []
+    real = journal_module.load_memory
+    monkeypatch.setattr(journal_module, 'load_memory', lambda raw: calls.append(raw) or real(raw))
+    operations = RunCoordinator(repo).readiness(story.id, s1.id)['operations']
+    assert operations['scene']['unconfirmed_core_scenes'] == 0
+    assert calls == []
