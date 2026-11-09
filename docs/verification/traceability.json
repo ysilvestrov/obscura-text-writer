@@ -976,6 +976,7 @@
         "tests/characters/test_acquaintance_markers.py::test_protagonist_line_variants",
         "tests/characters/test_acquaintance_markers.py::test_mid_line_italic_label_and_protagonist_colon",
         "tests/generation/test_acquaintance_context.py::test_broken_anchor_does_not_block_scene_without_hero",
+        "tests/generation/test_acquaintance_context.py::test_hero_only_cast_ignores_broken_anchor",
         "tests/characters/test_acquaintance_markers.py::test_protagonist_marker_beats_first_cast_and_warns_on_duplicates",
         "tests/characters/test_acquaintance_markers.py::test_protagonist_defaults_to_first_of_earliest_nonempty_cast",
         "tests/characters/test_acquaintance_markers.py::test_protagonist_marker_ignores_availability",

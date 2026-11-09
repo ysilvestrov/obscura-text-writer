@@ -133,7 +133,7 @@ def test_brief_stage_records_planner_warning(tmp_path,introduced,warned):
             yield GenerationEvent(type='terminal',finish_reason='stop')
     attempt=execute_stage(repo,scene.id,'brief',ctx,Gateway(),threading.Event(),lambda _:None)
     warnings=attempt.context['planner_warnings']
-    assert any('introduced містить ID поза складом' in w for w in warnings)==warned
+    assert warnings==(['Планувальник: introduced містить ID поза складом сцени або головного героя; їх не враховано.'] if warned else [])
 
 
 def broken_anchor_story(tmp_path,casts):
@@ -152,6 +152,13 @@ def test_broken_anchor_does_not_block_scene_without_hero(tmp_path):
     with pytest.raises(ValueError):context(repo,story,with_hero,'brief')
 
 
+def test_hero_only_cast_ignores_broken_anchor(tmp_path):
+    repo,story,(scene,)=broken_anchor_story(tmp_path,[['A']])
+    view=repo.context_view(story.id)
+    assert acquaintance_material(view,view.get_story(story.id),view.get_scene(scene.id),'brief')==('',[])
+    assert 'ЗНАЙОМСТВА ГОЛОВНОГО ГЕРОЯ' not in context(repo,story,scene,'brief').user_text
+
+
 def test_planner_warning_survives_broken_anchor(tmp_path):
     import threading
     from storygen.generation.stages import execute_stage
@@ -165,4 +172,4 @@ def test_planner_warning_survives_broken_anchor(tmp_path):
             yield GenerationEvent(type='terminal',finish_reason='stop')
     attempt=execute_stage(repo,scene.id,'brief',ctx,Gateway(),threading.Event(),lambda _:None)
     assert attempt.state=='completed'
-    assert attempt.context['planner_warnings']
+    assert attempt.context['planner_warnings']==['Планувальник: introduced містить ID поза складом сцени або головного героя; їх не враховано.']

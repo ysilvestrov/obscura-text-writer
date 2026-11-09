@@ -124,9 +124,9 @@ def acquaintance_material(view,story,scene,stage):
     cards=load_characters(view.read_text(story.characters_version_id))
     hero,warnings=protagonist(cards,view.list_scenes(story.id)) if cards else (None,[])
     if hero is None or hero not in scene.character_ids:return '',warnings
-    result=acquaintances(view,story,scene)
     others=[cid for cid in scene.character_ids if cid!=hero]
-    if not others:return '',result.warnings
+    if not others:return '',warnings
+    result=acquaintances(view,story,scene)
     names={card.id:card.name for card in load_characters(view.read_text(story.characters_version_id))}
     def name(cid):return names.get(cid,cid)
     known=[cid for cid in others if cid in result.known]
