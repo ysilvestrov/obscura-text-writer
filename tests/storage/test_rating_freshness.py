@@ -142,6 +142,20 @@ def test_author_text_never_stale_from_rating(tmp_path):
     assert not fresh(repo, story_id, manual.id).stale
 
 
+def test_author_accepted_model_text_survives_later_lowering(tmp_path):
+    repo, story_id, scene_id, draft = setup(tmp_path)
+    set_story(repo, story_id, R(2, 2, 2))
+    version = save(repo, story_id, scene_id, 'draft', draft.id)
+    set_story(repo, story_id, R(1, 1, 1))
+    assert fresh(repo, story_id, version.id).stale
+    preview = repo.preview_acceptance(scene_id, version.id)
+    repo.accept_version(scene_id, version.id, preview.expected_revision, preview.preview_fingerprint)
+    assert not fresh(repo, story_id, version.id).stale
+    set_story(repo, story_id, R(0, 0, 0))
+    set_scene(repo, scene_id, R(0, 0, 0))
+    assert not fresh(repo, story_id, version.id).stale
+
+
 def test_unrated_snapshot_uses_initial_rating(tmp_path):
     repo, story_id, scene_id, draft = setup(tmp_path)
     version = save(repo, story_id, scene_id, 'draft', draft.id)
