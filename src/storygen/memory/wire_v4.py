@@ -64,12 +64,10 @@ def _decision(model,raw,label,fragment_ids):
     try:item=model.model_validate(raw)
     except ValidationError:return None,[Violation(label,'schema')]
     found=[];used=USED[item.status]
-    for field in model.model_fields:
-        if field=='status':continue
-        value=getattr(item,field)
-        if field not in used:
-            if value:found.append(Violation(label,'schema'))
-        elif field!='evidence_ids' and not value.strip():found.append(Violation(label,'schema'))
+    # A field the status does not use is ignored, not rejected: a strict schema makes models fill every key
+    # (e.g. a reason for a change), and applying the decision never reads unused fields.
+    for field in used:
+        if field!='evidence_ids' and not getattr(item,field).strip():found.append(Violation(label,'schema'))
     found=found[:1]
     if 'evidence_ids' in used:
         ids=item.evidence_ids
@@ -182,7 +180,7 @@ def wire_v4_events(wire: MemoryWireV4,previous,prose_id,prose,bounds) -> MemoryJ
 
 
 def memory_wire_v4_schema(bounds) -> dict:
-    # Same keyword set as v3; required text, unused-empty fields, evidence uniqueness and limits stay server-side.
+    # Same keyword set as v3; required text (unused fields are ignored), evidence uniqueness and limits stay server-side.
     fragments=list(bounds['fragment_ids'])
     # Core and thread decisions repeat per slot and per thread, so their evidence items carry no fragment enum
     # (it would grow the schema with the catalog); unknown IDs are still rejected by check_v4 as evidence_unknown.

@@ -790,12 +790,17 @@ Wire v4 (`schema_version=4`, модуль `memory/wire_v4.py`) — v3 плюс �
 рішень; це wire усіх нових викликів (стандартний промпт `memory_delta_uk_v4.txt`).
 - `core`: ключі — відстежувані персонажі у складі сцени (`bounds.tracked`), значення — об’єкт
   з усіма слотами реєстру. Рішення слота — закритий об’єкт `{status, text, evidence_ids,
-  reason}` з усіма ключами: `unchanged` (решта порожні), `changed` (непорожній `text`, 1–3
+  reason}` з усіма ключами: `unchanged` (решта ігноруються), `changed` (непорожній `text`, 1–3
   докази), `unknown` (непорожній `reason` — пояснення моделі, не цитата; у журнал не
   потрапляє), `introduced` (1–3 докази, `text` порожній) — лише для слота з
   `bounds.unestablished`, інакше `target_unknown`. Відсутній персонаж має порожній `core`.
+  Поле, яке статус не використовує (наприклад, `reason` у `changed` чи `text` в `unknown`),
+  сервер ігнорує, а не відхиляє: строга схема змушує модель заповнити всі ключі, і застосування
+  рішення таких полів не читає. Обов’язкові для статусу поля й докази перевіряються як раніше.
+  Усунене відхилення: заповнене невикористане поле давало `schema` і відкидало всю відповідь
+  (09.11.2026: 4 з 6 спроб v4, зокрема пояснення в `reason` для `changed`).
 - `threads`: ключі — `claim_id` усіх активних `open_threads` (`bounds.threads`), значення
-  `{status, resolution, evidence_ids}`: `open` (решта порожні) або `closed` (непорожній
+  `{status, resolution, evidence_ids}`: `open` (решта ігноруються) або `closed` (непорожній
   `resolution`, 1–3 докази).
 - `character_states` має `add`/`update`/`retire`, але update/retire дозволені лише для
   claim з `bounds.mutable.character_states`: станів без `slot` і записів слотів персонажа,
