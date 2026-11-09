@@ -97,3 +97,16 @@ def test_worker_reports_envelope_warning_without_another_call(tmp_path):
     assert current.state=='completed' and current.warning==expected
     assert gateway.calls==1
     assert [event.data for event in worker.list_events(run.id) if event.type=='context_warning' and event.data.get('warnings')==[expected]]==[{'warnings':[expected],'stage':'brief','scene_id':scene.id}]
+
+
+def test_introduced_field_optional_and_distinguishes_null_from_empty():
+    assert WritersBrief.model_validate_json('{"objective":"o","beats":["b"]}').introduced is None
+    assert WritersBrief.model_validate_json('{"objective":"o","beats":["b"],"introduced":[]}').introduced==[]
+    assert WritersBrief.model_validate_json('{"objective":"o","beats":["b"],"introduced":["B","C","B"]}').introduced==['B','C']
+
+
+def test_introduced_wrong_type_reports_field():
+    from storygen.generation.planner_output import parse_planner_output,planner_failure
+    with pytest.raises(Exception) as caught:
+        parse_planner_output('{"objective":"o","beats":["b"],"introduced":"A"}','brief',[])
+    assert planner_failure(caught.value)['message'].startswith('introduced')

@@ -41,7 +41,7 @@ def parse_planner_output(text,stage,warnings):
     return result,content
 
 
-FIELDS={'objective','beats','constraints','proposed_changes','canon','characters','scenes','warnings',
+FIELDS={'objective','beats','constraints','proposed_changes','introduced','canon','characters','scenes','warnings',
         'id','name','description','sources','version_id','quote','title','position','target_words','character_ids'}
 TYPES={'json_invalid':'Некоректний JSON','missing':'Відсутнє обов’язкове поле','extra_forbidden':'Зайве поле у JSON','list_type':'Потрібен список',
        'model_type':'Потрібен JSON-об’єкт','string_type':'Потрібен текст','too_short':'Замало елементів',
