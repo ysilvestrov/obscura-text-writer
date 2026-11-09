@@ -21,7 +21,9 @@ export function coreReviewModel(review,edits=[]){
 // Navigation guard shared with the workspace: unsaved table edits or a core review draft need the same confirmation.
 export async function confirmUnsaved(state,ask,message){
   const core=!!state.coreReview?.dirty();
-  if((state.dirty||core)&&!await ask(message))return false;
+  // Name the core panel: its draft is easy to forget once the text or the memory selection is saved.
+  const question=core?(state.dirty?message+'\n':'')+t('memory.core_draft_unsaved'):message;
+  if((state.dirty||core)&&!await ask(question))return false;
   if(core)state.coreReview.discard();
   return true;
 }
