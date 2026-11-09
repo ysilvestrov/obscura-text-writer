@@ -6,6 +6,12 @@ from .levels import AXES, effective_rating, higher_axes
 INSTRUCTION_STAGES=frozenset({'brief','draft','edit','rewrite'})
 LABELS={'sexual':'Сексуальний зміст','violence':'Насильство','themes':'Жорсткі теми'}
 AXIS_NAMES={'sexual':'сексуальний зміст','violence':'насильство','themes':'жорсткі теми'}
+# Axis scope, worded as in the approved UI help tips: the model must tell violence (what is shown) from hard themes (what the story deals with).
+DEFINITIONS={
+    'sexual':'еротика та інтимні сцени',
+    'violence':'фізична шкода, яку показано в тексті: бійки, поранення, вбивства, катування',
+    'themes':'важкі теми, про які йдеться в тексті, навіть без фізичного насильства: самогубство й самоушкодження, залежності, психологічне насильство й цькування, дискримінація, тяжка втрата',
+}
 DESCRIPTIONS={
     'sexual':('без сексуального змісту; романтика без еротичних подробиць','дорослий сексуальний зміст без графічних подробиць','відвертий сексуальний зміст допустимий'),
     'violence':('без детального насильства й крові','насильство без графічних подробиць','графічне насильство допустиме'),
@@ -18,7 +24,7 @@ HIGHER_RULE='Не переказуй і не згадуй їхніх подро�
 
 
 def rating_block(rating: ContentRating) -> str:
-    lines=[f'{LABELS[a]}: рівень {getattr(rating,a)} — {DESCRIPTIONS[a][getattr(rating,a)]}.' for a in AXES]
+    lines=[f'{LABELS[a]} ({DEFINITIONS[a]}): рівень {getattr(rating,a)} — {DESCRIPTIONS[a][getattr(rating,a)]}.' for a in AXES]
     return '\n'.join([HEADING,*lines,FOOTER])
 
 

@@ -16,7 +16,7 @@ What each axis covers:
 - **Violence**: physical harm shown in the text (fights, wounds, killings, torture).
 - **Hard themes**: heavy subjects the text deals with, even without physical violence (suicide and self-harm, addiction, psychological abuse and bullying, discrimination, grievous loss).
 
-In short: "violence" is what is shown happening to bodies, "hard themes" is what the story is about. Next to each axis name in the rating forms there is a **?** button: hover over it or move to it with Tab to see an explanation of the axis and its levels.
+In short: "violence" is what is shown happening to bodies, "hard themes" is what the story is about. Next to each axis name in the rating forms there is a **?** button: hover over it or move to it with Tab to see an explanation of the axis and its levels. The model receives the same axis definitions in its request.
 
 The rating enters the requests to the model as a limit at the stages that write the scene (task/brief, draft, edit, rewrite): the model must stay within the levels of the scene. Memory and plan preparation get no rating instruction (the age safeguard still applies to memory). The rating also drives the safeguard on character age and the age label of exports.
 
