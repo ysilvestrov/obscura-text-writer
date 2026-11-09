@@ -146,6 +146,22 @@ def selector_value(view, selector: DependencySelector):
     raise ValueError('Невідомий селектор залежностей')
 
 
+def rating_fallback(view, snapshot: DependencySnapshot) -> tuple[bool, DependencySelector | None]:
+    """Whether the snapshot's rating input comes from the story's initial rating, and that baseline selector.
+
+    Old snapshots predate the rating, and a recorded None means the story was not rated yet: either way the story's
+    first rating is their baseline, so setting it stales nothing. (True, None) means the snapshot's own rating
+    selectors are dropped and no baseline exists yet (story not rated, or no owner to attach it to).
+    """
+    rating=[s for s in snapshot.selectors if s.field=='content_rating']
+    if snapshot.scope not in RATING_SCOPES or any(s.expected is not None for s in rating):return False,None
+    initial=view.peek_story(view.story.id).initial_content_rating
+    owner_field=('head','draft') if snapshot.scope=='patches' else ('scene','title')
+    owner=rating[0].owner_id if rating else next((s.owner_id for s in snapshot.selectors if (s.kind,s.field)==owner_field),None)
+    if not owner or initial is None:return True,None
+    return True,DependencySelector(kind='scene',owner_id=owner,field='content_rating',expected=to_wire(initial))
+
+
 def compare_snapshot(view, snapshot: DependencySnapshot | dict) -> list[DependencyChange]:
     snapshot = DependencySnapshot.model_validate(snapshot)
     changes = []
@@ -153,16 +169,9 @@ def compare_snapshot(view, snapshot: DependencySnapshot | dict) -> list[Dependen
     if snapshot.scope in {'brief','draft','prose_edit','author_text','author_rewrite'} and not any(s.field=='memory_projection_policy' for s in selectors):
         owner=next((s.owner_id for s in selectors if s.kind=='scene' and s.field=='title'),None)
         if owner:selectors.append(DependencySelector(kind='scene',owner_id=owner,field='memory_projection_policy',expected=[]))
-    rating=[s for s in selectors if s.field=='content_rating']
-    if snapshot.scope in RATING_SCOPES and all(s.expected is None for s in rating):
-        # Old snapshots predate the rating, and a recorded None means the story was not rated yet: either way the
-        # story's first rating is their baseline, so setting it stales nothing.
-        selectors=[s for s in selectors if s.field!='content_rating']
-        initial=view.peek_story(view.story.id).initial_content_rating
-        owner_field=('head','draft') if snapshot.scope=='patches' else ('scene','title')
-        owner=rating[0].owner_id if rating else next((s.owner_id for s in selectors if (s.kind,s.field)==owner_field),None)
-        if owner and initial is not None:
-            selectors.append(DependencySelector(kind='scene',owner_id=owner,field='content_rating',expected=to_wire(initial)))
+    replace,fallback=rating_fallback(view,snapshot)
+    if replace:
+        selectors=[s for s in selectors if s.field!='content_rating']+([fallback] if fallback else [])
     for selector in selectors:
         try:
             current = selector_value(view, selector)

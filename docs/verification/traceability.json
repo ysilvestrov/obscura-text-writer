@@ -3034,6 +3034,7 @@
       "requirement": "RATING-001",
       "scope": "Пониження → застаріле, підвищення → свіже, старі знімки проти initial_content_rating, author_text і прийнятий автором модельний текст не застарівають, інвалідація залежних матеріалів.",
       "tests": [
+        "tests/storage/test_rating_freshness.py::test_impact_capture_uses_initial_rating_for_unrated_snapshots",
         "tests/storage/test_rating_freshness.py::test_rating_selector_recorded_for_generation_scopes",
         "tests/storage/test_rating_freshness.py::test_rating_selector_records_story_rating_without_override",
         "tests/storage/test_rating_freshness.py::test_lowering_makes_stale_raising_keeps_fresh",
