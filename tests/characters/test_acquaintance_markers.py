@@ -31,6 +31,9 @@ def test_dash_or_blank_placeholder_is_not_a_name():
     assert known_names_line('Знайомий з: Анна, —, ')==['Анна']
     cards=[card('A','Анна','x'),card('B','Злодії','Знайомі з: —')]
     assert pre_story_known(cards,[scene('1',1)],'1','A')==(set(),[])
+    # A placeholder-only line names nobody, so its entry's availability is never checked (a broken anchor must not abort).
+    cards.append(card('C','Варта','Знайомі з: —',availability='from_scene',anchor='gone'))
+    assert pre_story_known(cards,[scene('1',1)],'1','A')==(set(),[])
 
 
 def test_protagonist_marker_beats_first_cast_and_warns_on_duplicates():

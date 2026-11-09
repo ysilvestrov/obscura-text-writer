@@ -48,7 +48,7 @@ def pre_story_known(cards,scenes,scene_id,hero_id):
     known=set();warnings=[];reported=set()
     for card in cards:
         for entry in card.entries:
-            marked=[names for names in map(known_names_line,entry.text.splitlines()) if names is not None]
+            marked=[names for names in map(known_names_line,entry.text.splitlines()) if names]
             if not marked or not entry_available(entry,active,scene):continue
             for names in marked:
                 ids,_=resolve_participants(names,cards)
