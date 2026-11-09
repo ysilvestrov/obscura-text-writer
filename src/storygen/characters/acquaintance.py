@@ -10,7 +10,7 @@ KNOWN=re.compile(r'(?i)^(?:знайомий|знайома|знайомі|зна
 
 
 def plain_line(line):
-    return re.sub(r'^[\s\-*—–]+','',line.replace('**','').replace('__','').strip()).strip()
+    return re.sub(r'^[\s\-*—–]+','',line.replace('**','').replace('__','').strip()).rstrip('* ').strip()
 
 
 def is_protagonist_line(line):
@@ -37,10 +37,9 @@ def pre_story_known(cards,scenes,scene_id,hero_id):
     known=set();bad=False
     for card in cards:
         for entry in card.entries:
-            if not entry_available(entry,active,scene):continue
-            for line in entry.text.splitlines():
-                names=known_names_line(line)
-                if names is None:continue
+            marked=[names for names in map(known_names_line,entry.text.splitlines()) if names is not None]
+            if not marked or not entry_available(entry,active,scene):continue
+            for names in marked:
                 ids,problems=resolve_participants(names,cards)
                 bad=bad or bool(problems)
                 if card.id==hero_id:known.update(ids)

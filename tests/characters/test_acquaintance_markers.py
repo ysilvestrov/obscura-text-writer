@@ -63,5 +63,17 @@ def test_unknown_known_name_warns_without_blocking():
 
 
 def test_bad_anchor_raises():
-    cards=[card('A','Анна','x',availability='from_scene',anchor='gone')]
+    cards=[card('A','Анна','Знайомий з: Богдан',availability='from_scene',anchor='gone')]
     with pytest.raises(ValueError):pre_story_known(cards,[scene('1',1)],'1','A')
+
+
+def test_italic_markers_recognised():
+    assert is_protagonist_line('*Протагоніст*')
+    assert is_protagonist_line('*Головна героїня.*')
+    assert known_names_line('*Знайомий з: Анна*')==['Анна']
+
+
+def test_unrelated_card_with_bad_anchor_does_not_abort():
+    cards=[card('A','Анна','x'),card('B','Богдан','Знайомий з: Анна'),
+        card('C','Віра','без позначок',availability='from_scene',anchor='gone')]
+    assert pre_story_known(cards,[scene('1',1)],'1','A')==({'B'},[])
