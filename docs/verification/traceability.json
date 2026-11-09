@@ -922,6 +922,66 @@
       ]
     },
     {
+      "id": "PLANNER-ACQUAINTANCE-S01",
+      "requirement": "PLANNER-ACQUAINTANCE",
+      "scope": "Перша поява без позначки та вміст блоку за етапами. Знайомства головного героя. Перевірка зазначеного сценарію; не є доказом літературної якості чи фактичного представлення в прозі.",
+      "tests": [
+        "tests/generation/test_acquaintance_context.py::test_block_present_for_writing_stages",
+        "tests/generation/test_acquaintance_context.py::test_block_absent_for_edit_and_memory",
+        "tests/generation/test_acquaintance_context.py::test_brief_block_lists_unintroduced_with_ids_and_field_instruction",
+        "tests/generation/test_acquaintance_context.py::test_other_stages_have_no_ids_and_no_field"
+      ]
+    },
+    {
+      "id": "PLANNER-ACQUAINTANCE-S02",
+      "requirement": "PLANNER-ACQUAINTANCE",
+      "scope": "Позначка «Знайомий з:», симетрія й часова доступність. Знайомства головного героя. Перевірка зазначеного сценарію; не є доказом літературної якості чи фактичного представлення в прозі.",
+      "tests": [
+        "tests/characters/test_acquaintance_markers.py::test_known_names_line_parses_and_ignores_other_lines",
+        "tests/characters/test_acquaintance_markers.py::test_pre_story_known_is_symmetric_and_respects_availability",
+        "tests/characters/test_acquaintance_markers.py::test_unknown_known_name_warns_without_blocking",
+        "tests/characters/test_acquaintance_history.py::test_pre_story_tag_wins_with_none"
+      ]
+    },
+    {
+      "id": "PLANNER-ACQUAINTANCE-S03",
+      "requirement": "PLANNER-ACQUAINTANCE",
+      "scope": "Родовід прози проти новішої голови brief; застарілий brief не блокує. Знайомства головного героя. Перевірка зазначеного сценарію; не є доказом літературної якості чи фактичного представлення в прозі.",
+      "tests": [
+        "tests/characters/test_acquaintance_history.py::test_lineage_brief_wins_over_newer_head",
+        "tests/characters/test_acquaintance_history.py::test_reorder_changes_scene_numbers",
+        "tests/generation/test_acquaintance_context.py::test_stale_lineage_brief_does_not_block_next_scene"
+      ]
+    },
+    {
+      "id": "PLANNER-ACQUAINTANCE-S04",
+      "requirement": "PLANNER-ACQUAINTANCE",
+      "scope": "Запасне правило, явне «нікого», ID поза складом, поле introduced. Знайомства головного героя. Перевірка зазначеного сценарію; не є доказом літературної якості чи фактичного представлення в прозі.",
+      "tests": [
+        "tests/characters/test_acquaintance_history.py::test_fallback_for_prose_without_brief_and_legacy_brief",
+        "tests/characters/test_acquaintance_history.py::test_explicit_empty_introduced_keeps_unknown",
+        "tests/characters/test_acquaintance_history.py::test_ids_outside_cast_and_hero_ignored",
+        "tests/characters/test_acquaintance_history.py::test_hero_absent_from_past_scene_adds_nothing",
+        "tests/generation/test_acquaintance_context.py::test_brief_stage_records_planner_warning",
+        "tests/generation/test_planner_output.py::test_introduced_field_optional_and_distinguishes_null_from_empty",
+        "tests/generation/test_planner_output.py::test_introduced_wrong_type_reports_field"
+      ]
+    },
+    {
+      "id": "PLANNER-ACQUAINTANCE-S05",
+      "requirement": "PLANNER-ACQUAINTANCE",
+      "scope": "Визначення протагоніста та розпізнавання позначок. Знайомства головного героя. Перевірка зазначеного сценарію; не є доказом літературної якості чи фактичного представлення в прозі.",
+      "tests": [
+        "tests/characters/test_acquaintance_markers.py::test_protagonist_line_variants",
+        "tests/characters/test_acquaintance_markers.py::test_protagonist_marker_beats_first_cast_and_warns_on_duplicates",
+        "tests/characters/test_acquaintance_markers.py::test_protagonist_defaults_to_first_of_earliest_nonempty_cast",
+        "tests/characters/test_acquaintance_markers.py::test_protagonist_marker_ignores_availability",
+        "tests/characters/test_acquaintance_markers.py::test_italic_markers_recognised",
+        "tests/characters/test_acquaintance_markers.py::test_unrelated_card_with_bad_anchor_does_not_abort",
+        "tests/characters/test_acquaintance_history.py::test_no_cards_returns_empty"
+      ]
+    },
+    {
       "id": "MAINT-001-S01",
       "requirement": "MAINT-001",
       "scope": "Некоректна або стара база. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
