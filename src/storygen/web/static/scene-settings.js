@@ -13,7 +13,9 @@ function draw(){
   const names=cast.character_ids.map(id=>state.view?.character_names?.[id]).filter(name=>typeof name==='string');
   const missing=cast.character_ids.length-names.length;
   uiText(form.querySelector('#scene-cast'),"textContent",()=>(cast.character_ids.length?[names.join(', '),missing?t("m_3da57d38ee30",{p0:(missing)}):''].filter(Boolean).join(' · '):t("m_c47bda0ce0de")));
-  form.onsubmit=async event=>{event.preventDefault();try{if(state.dirty)throw new Error(t("m_7b803d601f5d"));state.scene=await api(`/api/scenes/${state.scene.id}`,json('PATCH',{story_id:state.storyId,expected_revision:state.scene.revision,title:form.elements.title.value,target_words:Number(form.elements.target_words.value)}));await refresh();notice(msg("m_3912c755e566"))}catch(e){notice(e.message,'error')}};
+  form.onsubmit=async event=>{event.preventDefault();try{if(state.dirty)throw new Error(t("m_7b803d601f5d"));const scene=state.scene;const saved=await api(`/api/scenes/${scene.id}`,json('PATCH',{story_id:state.storyId,expected_revision:scene.revision,title:form.elements.title.value,target_words:Number(form.elements.target_words.value)}));
+    // A slow response must not switch the selection back if the author has moved to another scene meanwhile.
+    if(state.scene?.id===scene.id)state.scene=saved;await refresh();notice(msg("m_3912c755e566"))}catch(e){notice(e.message,'error')}};
   for(const [offset,label]of[[-1,msg("m_fbece07fa4b9")],[1,msg("m_64e67f3cc069")]]){const b=document.createElement('button');b.type='button';b.className='secondary';uiText(b,"textContent",()=>(label));b.onclick=async()=>{try{if(state.dirty)throw new Error(t("m_7b803d601f5d"));const ids=state.view.scenes.map(s=>s.id),index=ids.indexOf(state.scene.id),next=index+offset;if(next<0||next>=ids.length)return;[ids[index],ids[next]]=[ids[next],ids[index]];await api(`/api/stories/${state.storyId}/scene-order`,json('PUT',{scene_ids:ids,expected_revision:state.view.story.revision}));await refresh();notice(msg("m_fdf76ffdf76d"))}catch(e){notice(e.message,'error')}};form.append(b)}
   target.after(form);
   drawRating(form);
