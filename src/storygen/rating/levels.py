@@ -1,3 +1,4 @@
+from collections.abc import Iterable
 from ..domain import ContentRating, Scene, Story
 
 AXES=('sexual','violence','themes')
@@ -5,6 +6,15 @@ AXES=('sexual','violence','themes')
 
 def effective_rating(story: Story,scene: Scene) -> ContentRating | None:
     return scene.content_rating or story.content_rating
+
+
+AGE_LABELS={0:'0+',1:'16+',2:'18+'}
+
+
+def age_label(story: Story,scenes: Iterable[Scene]) -> str | None:
+    if story.content_rating is None:return None
+    ratings=[story.content_rating,*(effective_rating(story,s) for s in scenes)]
+    return AGE_LABELS[max(getattr(r,a) for r in ratings for a in AXES)]
 
 
 def is_lower(current: ContentRating | None,expected: ContentRating | None) -> bool:

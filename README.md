@@ -82,3 +82,5 @@ Copy-Item .env.example .env
 Перевірка наслідків змін після написання: [редагування книги й перевірка впливу / Book revision impact review](docs/impact-review.md). Двофазний planner-аналіз, окремі висновки для завдання/прози та пам’яті, явний бюджет і збережені докази.
 
 Інтерфейс персонажів: [інструкція українською](docs/prototype-runbook.md#часова-доступність-персонажів-r-06), [English](docs/en/characters.md).
+
+Віковий рейтинг, запобіжник щодо віку персонажів і позначка в експорті: [інструкція українською](docs/content-rating.md), [English](docs/en/content-rating.md).

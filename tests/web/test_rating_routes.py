@@ -64,3 +64,23 @@ def test_rating_conflict_returns_409(tmp_path):
     client, repo, story, scene = make(tmp_path)
     assert client.put(f"/api/stories/{story.id}/content-rating", json={"content_rating": R, "expected_revision": story.revision + 5}).status_code == 409
     assert client.put(f"/api/scenes/{scene.id}/content-rating", json={"story_id": story.id, "content_rating": R, "expected_revision": scene.revision + 5}).status_code == 409
+
+
+def test_story_view_reports_effective_ratings(tmp_path):
+    client, repo, story, scene = make(tmp_path)
+    other = repo.create_scene(story.id, SceneCreate(title="Друга"))
+    assert client.put(f"/api/stories/{story.id}/content-rating", json={"content_rating": {"sexual": 1, "violence": 0, "themes": 0}, "expected_revision": repo.get_story(story.id).revision}).status_code == 200
+    own = {"sexual": 0, "violence": 2, "themes": 0}
+    put = client.put(f"/api/scenes/{scene.id}/content-rating", json={"story_id": story.id, "content_rating": own, "expected_revision": scene.revision})
+    assert put.status_code == 200, put.text
+    view = client.get(f"/api/stories/{story.id}").json()
+    assert view["scene_ratings"][scene.id] == {"effective": own, "source": "scene"}
+    assert view["scene_ratings"][other.id] == {"effective": {"sexual": 1, "violence": 0, "themes": 0}, "source": "story"}
+    stale = client.put(f"/api/scenes/{scene.id}/content-rating", json={"story_id": story.id, "content_rating": None, "expected_revision": scene.revision})
+    assert stale.status_code == 409
+
+
+def test_story_view_unrated_story_has_no_effective_rating(tmp_path):
+    client, repo, story, scene = make(tmp_path)
+    view = client.get(f"/api/stories/{story.id}").json()
+    assert view["scene_ratings"] == {scene.id: {"effective": None, "source": None}}

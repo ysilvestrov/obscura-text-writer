@@ -46,7 +46,7 @@ Regardless of the law of the user's country, the Application must not be used to
 
 5.2. The user bears responsibility for the content of the texts they create, for their distribution and for compliance with the law.
 
-5.3. The Application includes technical safeguards (for example scene content ratings and character checks). They help users comply with these Terms but do not guarantee legal compliance and do not shift responsibility to the project author.
+5.3. The Application includes technical safeguards: story and scene age ratings and a check of the characters’ stated age before generating scenes with sexual content. They help users comply with these Terms but do not guarantee legal compliance and do not shift responsibility to the project author.
 
 5.4. The Application is provided "as is", without warranty, as set out in the [MIT License](../../LICENSE) and applicable law.
 
@@ -68,4 +68,4 @@ Reports of violations and questions about these Terms: [CONTACT TO BE DEFINED].
 
 - Review with a lawyer: choice of governing law and jurisdiction; relation to Article 301(1) and Article 301-1 of the Criminal Code of Ukraine; scope of Directive 2011/93/EU regarding textual depictions and fictional characters; whether a separate DSA/GDPR clause is needed for the project website.
 - Define the consent mechanism in ready-made builds: a first-run or installer screen confirming age and acceptance of the Terms; the accepted Terms revision is stored locally.
-- Clause 5.3 refers to safeguards not yet in the code (see the [brainstorm note](../research/2026-11-08-distribution-and-content-rating-brainstorm.md), section 4). Until they are implemented, the clause must be reworded or not published.
+- Clause 5.3: the safeguards are implemented (#28). Generation does not start without a story rating; a scene with sexual content is not generated unless every participant’s card states an age of 18 or more. The age comes from the author’s record and is not verified, so false data bypasses the safeguard. Review with a lawyer whether the wording of 5.3 is sufficient.

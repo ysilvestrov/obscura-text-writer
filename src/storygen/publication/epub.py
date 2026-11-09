@@ -44,6 +44,7 @@ def render(book):
         if getattr(card,field):add(metadata,'dc:'+tag,getattr(card,field))
     if card.isbn:add(metadata,'dc:identifier','urn:isbn:'+card.isbn)
     if card.source_language:add(metadata,'meta',card.source_language,property='obscura:source-language')
+    if book.age_rating:add(metadata,'meta',book.age_rating,property='obscura:age-rating')
     for kind,values in [('fb2-genre',card.genres),('keyword',card.keywords)]:
         for index,value in enumerate(values,1):
             id=f'{kind}-{index}';add(metadata,'dc:subject',value,id=id)

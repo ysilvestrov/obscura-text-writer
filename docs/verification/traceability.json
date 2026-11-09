@@ -3062,6 +3062,29 @@
       ]
     },
     {
+      "id": "RATING-001-S04",
+      "requirement": "RATING-001",
+      "scope": "Позначка за найвищим рівнем у FB2/EPUB, відсутність позначки без рейтингу, попередження в manifest не робить експорт неповним.",
+      "tests": [
+        "tests/storage/test_content_rating.py::test_age_label_takes_highest_level_over_story_and_scenes",
+        "tests/authoring/test_ebook_exports.py::test_scene_override_raises_export_label",
+        "tests/authoring/test_ebook_exports.py::test_unrated_story_exports_without_label_and_stays_complete"
+      ]
+    },
+    {
+      "id": "RATING-001-S05",
+      "requirement": "RATING-001",
+      "scope": "scene_ratings у GET /api/stories/{id}, запис і скидання перевизначення сцени, конфлікт ревізії. Форму в параметрах сцени перевіряє Playwright-spec tests/web/browser/scene-rating.spec.mjs (чотири сценарії: перевизначення з поверненням до рейтингу твору; твір без рейтингу; запізніла відповідь збереження не повертає вибір на попередню сцену; форма зникає без вибраної сцени); структурна матриця індексує лише pytest, тож фактичний запуск spec фіксується окремо.",
+      "tests": [
+        "tests/web/test_rating_routes.py::test_put_scene_rating_and_reset",
+        "tests/web/test_rating_routes.py::test_scene_rating_wrong_story_rejected",
+        "tests/web/test_rating_routes.py::test_rating_conflict_returns_409",
+        "tests/web/test_rating_routes.py::test_story_view_reports_effective_ratings",
+        "tests/web/test_rating_routes.py::test_story_view_unrated_story_has_no_effective_rating",
+        "tests/storage/test_content_rating.py::test_scene_override_and_reset"
+      ]
+    },
+    {
       "id": "RATING-002-S01",
       "requirement": "RATING-002",
       "scope": "Блокування неповнолітнього, без віку, порожнього складу, без карток; етап memory; англійський переклад. Правдивість даних не доводиться.",

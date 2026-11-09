@@ -4,7 +4,7 @@ import json
 import re
 from pathlib import Path
 from typing import Literal
-from ..publication.book import capture,EXPORTER
+from ..publication.book import capture,EXPORTER,RATING_UNSET_EXPORT
 from ..storage.files import StorageCorruption
 from ..markdown_document import to_plain_text,escape_plain_markdown
 
@@ -31,7 +31,8 @@ def export_story(repo,story_id: str,format: Literal['md','txt','fb2','epub','pdf
     relative=f'stories/{story_id}/exports/{name}'
     manifest={'schema_version':2,'export_id':book.export_id,'edition_id':book.edition_id,
         'story_id':story_id,'revision':book.snapshot.story.revision,'created_at':book.created_at,
-        'format':format,'complete':not book.warnings,'warnings':list(book.warnings),
+        'format':format,'complete':not book.warnings,'age_rating':book.age_rating,
+        'warnings':list(book.warnings)+([RATING_UNSET_EXPORT] if book.age_rating is None else []),
         'scenes':[c.entry for c in book.chapters],'word_count':sum(c.entry['word_count'] for c in book.chapters),
         'metadata':book.snapshot.publication.model_dump(mode='json'),'exporter':EXPORTER,
         'validation':{'fb2':'bundled XSD','epub':'local structure','md':'plain text','txt':'plain text','pdf':'Platypus layout + font coverage'}[format],

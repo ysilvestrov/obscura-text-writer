@@ -5,7 +5,7 @@ import zipfile
 from xml.etree import ElementTree as ET
 import pytest
 from PIL import Image
-from storygen.domain import StoryCreate,SceneCreate
+from storygen.domain import ContentRating,StoryCreate,SceneCreate
 from storygen.publication_models import PublicationData
 from storygen.storage.repository import Repository
 from storygen.generation.dependencies import save_manual_prose
@@ -36,12 +36,45 @@ def seeded(root,count=7,cover=True):
     return repo,story
 
 
+def age_rating_of(path,format):
+    if format=='fb2':
+        e=ET.fromstring(path.read_bytes()).find('f:description/f:custom-info[@info-type="age-rating"]',FB)
+        return None if e is None else e.text
+    with zipfile.ZipFile(path) as z:
+        opf=ET.fromstring(z.read('EPUB/package.opf'))
+    e=opf.find('.//{http://www.idpf.org/2007/opf}meta[@property="obscura:age-rating"]')
+    return None if e is None else e.text
+
+
+@pytest.mark.parametrize('format',['fb2','epub'])
+def test_scene_override_raises_export_label(tmp_path,format):
+    repo,story=seeded(tmp_path,count=2,cover=False)
+    scene=repo.list_scenes(story.id)[1]
+    repo.update_scene_rating(scene.id,ContentRating(sexual=2,violence=0,themes=0),scene.revision)
+    path=export_story(repo,story.id,format)
+    assert age_rating_of(path,format)=='18+'
+    manifest=json.loads(path.with_suffix('.manifest.json').read_text(encoding='utf-8'))
+    assert manifest['age_rating']=='18+' and manifest['complete']
+
+
+@pytest.mark.parametrize('format',['fb2','epub'])
+@pytest.mark.unrated_stories
+def test_unrated_story_exports_without_label_and_stays_complete(tmp_path,format):
+    repo,story=seeded(tmp_path,count=1,cover=False)
+    path=export_story(repo,story.id,format)
+    assert age_rating_of(path,format) is None
+    manifest=json.loads(path.with_suffix('.manifest.json').read_text(encoding='utf-8'))
+    assert manifest['complete'] and manifest['age_rating'] is None
+    assert manifest['warnings']==['Віковий рейтинг твору не задано; позначку не додано']
+
+
 @pytest.mark.parametrize('format',['fb2','epub'])
 def test_seven_scene_ebooks_metadata_plaintext_and_manifest(tmp_path,format):
     repo,story=seeded(tmp_path)
     path=export_story(repo,story.id,format)
     manifest=json.loads(path.with_suffix('.manifest.json').read_text(encoding='utf-8'))
     assert manifest['schema_version']==2 and manifest['complete']
+    assert age_rating_of(path,format)=='0+'
     assert manifest['output_sha256']==hashlib.sha256(path.read_bytes()).hexdigest()
     assert manifest['metadata']['effective_title']=='Публічна назва'
     assert len(manifest['scenes'])==7
