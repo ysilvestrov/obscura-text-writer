@@ -2,7 +2,7 @@ import hashlib
 import json
 from pathlib import Path
 
-from ..domain import RevisionConflict, Scene, SceneCreate, Story, StoryCreate, VersionRef, StageAttempt, new_id
+from ..domain import MemoryConfirmation, RevisionConflict, now, Scene, SceneCreate, Story, StoryCreate, VersionRef, StageAttempt, new_id
 from .database import Database
 from .files import FileStore
 from . import review_authority
@@ -455,6 +455,21 @@ class Repository:
                 self._save_scene(db,scene)
             self._touch_story(db,scene.story_id)
         return scene
+
+    def confirm_memory(self,scene_id: str,version_id: str,expected_revision: int) -> VersionRef:
+        """Author confirmation of the scene's current memory head: metadata only, no file/sha/revision change."""
+        conflict='Пам’ять сцени вже змінилась. Оновіть панель; підтвердження не збережено.'
+        with self.db.connection() as db:
+            db.execute('BEGIN IMMEDIATE')
+            scene=self._active_scene(db,scene_id)
+            if scene.revision!=expected_revision or scene.heads.get('memory')!=version_id:
+                raise RevisionConflict(conflict)
+            ref=self._get(db,'versions',version_id,VersionRef)
+            if ref.kind!='memory' or ref.scene_id!=scene_id:
+                raise RevisionConflict(conflict)
+            ref.memory_confirmation=MemoryConfirmation(confirmed_at=now())
+            db.execute('UPDATE versions SET payload=? WHERE id=?',(ref.model_dump_json(),version_id))
+            return ref
 
     def save_attempt(self,attempt: StageAttempt) -> StageAttempt:
         with self.db.connection() as db:

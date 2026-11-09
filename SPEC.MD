@@ -3210,6 +3210,24 @@ API-помилки, сформовані web app exception handlers, SHALL зб�
 Доповнення MEMORY-REUSE: ручне редагування чинного нового журналу може використати підтвердження його власного snapshot за точного збігу попереднього memory ref, історичних/обраних джерел і актуальних залежностей. Це не дозвіл на новий модельний виклик; stale поточний журнал такого допуску не має. Read-only fsck визнає лише точні пари історичне/обране джерело з memory_provenance та чинний scene_order; сам факт непорожньої provenance не дозволяє довільних джерел.
 
 
+### Requirement: MEMORY-CONFIRM — Авторське підтвердження ядра пам’яті
+
+Версія memory SHALL мати необов’язкове персистентне поле `memory_confirmation{confirmed_at, by:'author'}`. Підтвердження ставить лише `Repository.confirm_memory(scene_id, version_id, expected_revision)` під `BEGIN IMMEDIATE`, коли сцена активна, `scene.revision==expected_revision` і `scene.heads['memory']==version_id`; інакше RevisionConflict. Поле є метаданими JSON-рядка `versions`: файл журналу, `sha256` і ревізія сцени не змінюються; нова голова memory SHALL починатися непідтвердженою. Поле SHALL не входити в DependencySnapshot, порівняння залежностей, fingerprint MEMORY-REUSE і хеші.
+
+<a id="memory-confirm-s01"></a>
+#### Scenario: MEMORY-CONFIRM-S01 — Підтвердження не робить застарілою наступну сцену
+- GIVEN пам’ять сцени 2 побудована з пам’яті сцени 1 і є свіжою
+- WHEN автор підтверджує поточну голову memory сцени 1
+- THEN пам’ять сцени 2 лишається свіжою, compare_snapshot не дає причин, а fingerprint MEMORY-REUSE не змінюється.
+
+<a id="memory-confirm-s02"></a>
+#### Scenario: MEMORY-CONFIRM-S02 — Конфлікт голови
+- GIVEN голова memory сцени змінилась або ревізія сцени застаріла
+- WHEN автор підтверджує колишню голову чи зі старою ревізією
+- THEN повертається RevisionConflict «Пам’ять сцени вже змінилась. Оновіть панель; підтвердження не збережено.», а поле підтвердження не з’являється.
+
+Техніка: `domain.MemoryConfirmation`, `VersionRef.memory_confirmation=None` (старі payload сумісні, SQL-міграції немає); жоден селектор чи хеш у storage/snapshots.py, generation/dependencies.py, memory/reuse.py не серіалізує весь VersionRef. Відомих відхилень немає.
+
 <a id="r22-source"></a>
 ### Requirement: R22-SOURCE — Ядро Markdown і точні координати
 

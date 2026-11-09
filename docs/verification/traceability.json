@@ -2006,6 +2006,22 @@
       ]
     },
     {
+      "id": "MEMORY-CONFIRM-S01",
+      "requirement": "MEMORY-CONFIRM",
+      "scope": "Метадані підтвердження поза залежностями, хешами й fingerprint MEMORY-REUSE.",
+      "tests": [
+        "tests/storage/test_memory_confirmation.py::test_confirmation_does_not_stale_next_scene"
+      ]
+    },
+    {
+      "id": "MEMORY-CONFIRM-S02",
+      "requirement": "MEMORY-CONFIRM",
+      "scope": "CAS підтвердження за головою memory і ревізією сцени.",
+      "tests": [
+        "tests/storage/test_memory_confirmation.py::test_post_conflict_when_head_changed"
+      ]
+    },
+    {
       "id": "R22-SOURCE-S01",
       "requirement": "R22-SOURCE",
       "scope": "Byte-exact no-op; точні lexical/Unicode/source ranges; редагування без втрати решти документа.",
