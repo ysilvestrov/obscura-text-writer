@@ -107,7 +107,13 @@ def test_confirmation_not_in_reuse_fingerprint()           # MEMORY-REUSE finger
   - `before` і `after` — активні значення слотів у `journal_before` і в журналі голови.
   - `status` береться з wire-рішення, коли `has_wire`. Інакше він виводиться з diff: значення змінилось → `changed`, значення зникло → `unknown`, подія `author` → `author`.
   - Порядок: персонажі за `tracked`, слоти за реєстром, лінії за порядком появи в `journal_before`. Лінії, додані в цій сцені, йдуть у кінці зі статусом `open`.
-- Produces: `prefix_fragments(view, scene_id, query: str, limit=20) -> list[dict]`. Шукає без урахування регістру серед `fragment_text` вибраної прози сцен з позицією ≤ поточної. Повертає `[{'version_id','scene_number','fragment_id','text'}]`.
+- Produces: `prefix_scenes(view, scene_id) -> list[dict]`, тобто `[{'scene_id','scene_number','title','version_id'}]` для активних сцен з позицією ≤ поточної, що мають вибрану прозу.
+- Produces: `prefix_fragments(view, scene_id, query: str = '', source_scene_id: str | None = None, limit=50) -> list[dict]`. Працює серед `fragment_text` вибраної прози сцен з позицією ≤ поточної:
+  - з `source_scene_id` — лише ця сцена, і вона має бути з префікса, інакше 422;
+  - з непорожнім `query` — пошук без урахування регістру;
+  - без `query` і без сцени — 422.
+
+  Повертає `[{'version_id','scene_id','scene_number','fragment_id','text'}]`. GET `/api/scenes/{scene_id}/core-review/fragments?scene_id=&q=` і GET `/api/scenes/{scene_id}/core-review/scenes`.
 
 - [ ] **Крок 1: тести, що падають**
 
@@ -116,8 +122,9 @@ def test_core_review_changed_unknown_closed()            # фікстура з v
 def test_core_review_first_scene_and_legacy_journal()    # перша сцена / голова v2 -> slots == [], threads з журналу, без помилки
 def test_core_review_without_wire()                       # голова з ручного збереження -> has_wire False, reason None, status з diff
 def test_reader_unknown_flag()                            # запис автора без цитати -> reader_unknown True
-def test_prefix_fragments_only_up_to_scene()              # фрагмент із пізнішої сцени не повертається
-# API: test_get_core_review_route (200, ключі), test_fragments_route_requires_query (422 для порожнього q)
+def test_prefix_fragments_only_up_to_scene()              # фрагмент із пізнішої сцени не повертається; source_scene_id пізнішої сцени -> 422
+def test_prefix_fragments_by_scene()                      # source_scene_id без q -> усі фрагменти цієї сцени в порядку тексту
+# API: test_get_core_review_route (200, ключі), test_fragments_route_requires_query_or_scene (422 без q і scene_id), test_scenes_route
 ```
 
 - [ ] **Крок 2:** `pytest tests/memory/test_core_review.py tests/web/test_core_review_api.py -q`. Очікується: FAIL.
@@ -180,7 +187,13 @@ def test_manual_save_unchanged()                       # чинні тести �
 - Produces: `export function coreReviewModel(review, edits) -> {groups:[{kind:'changed'|'quiet', rows}], canKeep:boolean, dirty:boolean}`. Це чиста функція для unit-тесту: рядки `unchanged`/`open` → `quiet` (згорнута група), інші → `changed`.
 - Produces: `export function installCoreReview({container, api, json, notice, refresh}) -> {load(sceneId)}`. Панель:
   - заголовок і стан підтвердження;
-  - дії рядка «Прийняти», «Лишити попереднє» (вимкнено, коли `!has_wire`) і «Вписати…» (поле значення плюс пошук цитати через `/core-review/fragments`);
+  - дії рядка «Прийняти», «Лишити попереднє» (вимкнено, коли `!has_wire`) і «Вписати…»;
+  - **«Вписати…» відкриває панель запису** (рішення власника 09.11.2026):
+    - поле значення (для лінії — текст розв'язки);
+    - вибір сцени з `/core-review/scenes`, де типово стоїть поточна;
+    - список фрагментів вибраної сцени з `/core-review/fragments?scene_id=` і поле пошуку, що звужує список;
+    - вибір одного фрагмента як цитати або «Без цитати». Типово цитата порожня, і тоді запис стає «читачеві невідомо», про що панель пише;
+    - кнопки «Застосувати» і «Скасувати». «Застосувати» додає правку в чернетку панелі (`set` або `close` з `quote` та `evidence_version_id` вибраної сцени), а не шле запит на сервер;
   - кнопка «Підтвердити» шле POST без правок або з правками;
   - 409 показує повідомлення сервера й перезавантажує панель;
   - для першої сцени чи старого журналу — текст «Ядро ще не заповнене».
@@ -196,6 +209,7 @@ def test_manual_save_unchanged()                       # чинні тести �
     - зміни розгорнуті, «без змін» згорнуті;
     - «Підтвердити» без правок показує «Підтверджено»;
     - «Лишити попереднє» на `unknown` + «Підтвердити» створює нову версію, і рядок стає `unchanged`;
+    - «Вписати…»: вибір попередньої сцени й фрагмента + «Застосувати» + «Підтвердити» → рядок показує нове значення без «читачеві невідомо»; той самий шлях з «Без цитати» → позначка «читачеві невідомо»; «Скасувати» не змінює чернетку;
     - на mobile немає горизонтального прокручування;
     - знімки `docs/images/core-review-desktop.png` і `-mobile.png` з нейтральною фікстурою.
 - [ ] **Крок 2:** `node tests/web/js/core_review.mjs`. Очікується: FAIL.
