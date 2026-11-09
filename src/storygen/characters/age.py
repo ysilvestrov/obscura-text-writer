@@ -23,6 +23,7 @@ def parse_age_value(value: str) -> AgeVerdict:
 
 
 def entry_age(text: str) -> AgeVerdict | None:
+    text=text.replace('\r\n','\n').replace('\r','\n')  # MULTILINE $ only matches before \n
     verdicts=[parse_age_value(match.group(2)) for match in AGE_LINE.finditer(text)]
     return worst(verdicts) if verdicts else None
 
