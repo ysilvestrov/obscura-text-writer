@@ -83,3 +83,10 @@ def test_mid_line_italic_label_and_protagonist_colon():
     assert known_names_line('*Знайомий з:* Анна')==['Анна']
     assert known_names_line('*Знайомий з:* *Анна*, Богдан')==['Анна','Богдан']
     assert is_protagonist_line('*Протагоніст*:')
+
+
+def test_role_line_from_template_marks_protagonist():
+    for line in ['Роль у творі: Головна героїня.','Роль у творі: головний герой, детектив','**Роль:** Протагоніст (оповідач)','Роль у творі: Протагоністка; дочка капітана']:
+        assert is_protagonist_line(line),line
+    for line in ['Роль у творі: союзниця головної героїні','Роль у творі: [Головна героїня, союзниця, опонентка тощо.]','Роль у творі: опонентка']:
+        assert not is_protagonist_line(line),line

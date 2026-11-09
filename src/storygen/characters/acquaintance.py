@@ -9,6 +9,7 @@ from ..generation.models import WritersBrief
 BAD_NAME_WARNING='Позначка «Знайомий з:» містить невідоме або неоднозначне ім’я; перевірте картки.'
 DUPLICATE_PROTAGONIST_WARNING='Позначку протагоніста мають кілька карток; використано першу за порядком.'
 PROTAGONIST=re.compile(r'(?i)^(?:протагоніст(?:ка)?|головний\s+герой|головна\s+героїня)$')
+ROLE=re.compile(r'(?i)^роль(?:\s+у\s+творі)?\s*:\s*(.*)$')
 KNOWN=re.compile(r'(?i)^(?:знайомий|знайома|знайомі|знайм)\s+з\s*:\s*(.*)$')
 
 
@@ -17,7 +18,11 @@ def plain_line(line):
 
 
 def is_protagonist_line(line):
-    return bool(PROTAGONIST.match(plain_line(line).rstrip('.:!;, ').strip()))
+    text=plain_line(line)
+    role=ROLE.match(text)
+    if role:  # template form «Роль у творі: Головна героїня, …»: the first listed role decides
+        text=re.split(r'[,;.(—–]',role.group(1),maxsplit=1)[0]
+    return bool(PROTAGONIST.match(text.rstrip('.:!;, ').strip()))
 
 
 def known_names_line(line):
