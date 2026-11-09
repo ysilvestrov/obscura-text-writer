@@ -38,6 +38,7 @@ def build_dependency_snapshot(
     elif scope == 'memory':
         if settings.memory_mode=='evidence_delta':
             select('scene',scene.id,'character_ids',scene.character_ids)
+            memory_core_selectors(view,story,scene,scenes,select)
         prefix = [s for s in scenes if s.position <= scene.position]
         order = [s.id for s in prefix]
         select('order', scene.id, 'prefix', order)
@@ -108,8 +109,31 @@ def build_dependency_snapshot(
     )
 
 
+def core_cards(view,story):
+    from ..characters.models import load_characters
+    if not story.characters_version_id:return []
+    ref=view.peek_version(story.characters_version_id)  # no deep copy: planning counts them
+    return load_characters(view.read_blob(ref.relative_path,ref.sha256).decode('utf-8'))
+
+
+def memory_core_selectors(view,story,scene,scenes,select):
+    from ..memory.core import tracked_characters
+    from ..memory.story_time import comparison_scene,day_key
+    tracked=tracked_characters(core_cards(view,story),scenes)
+    select('story',story.id,'tracked_characters',tracked)
+    owners=[scene]+[item for item in (comparison_scene(scenes,scene,hero) for hero in tracked) if item]
+    for item in dict((item.id,item) for item in owners).values():
+        select('scene',item.id,'memory_day_key',day_key(item))
+
+
 def selector_value(view, selector: DependencySelector):
     kind, owner, field = selector.kind, selector.owner_id, selector.field
+    if kind=='scene' and field=='memory_day_key':
+        from ..memory.story_time import day_key
+        return day_key(view.peek_scene(owner))
+    if kind=='story' and owner==view.story.id and field=='tracked_characters':
+        from ..memory.core import tracked_characters
+        return tracked_characters(core_cards(view,view.peek_story(owner)),view.peek_scenes(owner))
     if kind=='scene' and field=='memory_projection_policy':
         from ..memory.forwarding import hidden_before
         return sorted(hidden_before(view,owner))

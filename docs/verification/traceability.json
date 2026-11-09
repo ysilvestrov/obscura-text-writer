@@ -485,6 +485,26 @@
       ]
     },
     {
+      "id": "MEMORY-003-S06",
+      "requirement": "MEMORY-003",
+      "scope": "Перехід дня з рядка Початок; проміжна сцена без героя. Перевірка зазначеного сценарію.",
+      "tests": [
+        "tests/memory/test_story_time.py::test_day_change_skips_scenes_without_character",
+        "tests/memory/test_story_time.py::test_day_change_same_form_only",
+        "tests/memory/test_story_time.py::test_scene_start_date_and_day_forms"
+      ]
+    },
+    {
+      "id": "MEMORY-003-S07",
+      "requirement": "MEMORY-003",
+      "scope": "Зміна протагоніста й дня робить пам’ять застарілою; зміна формулювання beats не робить. Перевірка зазначеного сценарію.",
+      "tests": [
+        "tests/storage/test_memory_core_selectors.py::test_tracked_change_makes_memory_stale",
+        "tests/storage/test_memory_core_selectors.py::test_day_key_change_makes_memory_stale",
+        "tests/storage/test_memory_core_selectors.py::test_beats_wording_change_keeps_memory_fresh"
+      ]
+    },
+    {
       "id": "MEMORY-004-S01",
       "requirement": "MEMORY-004",
       "scope": "Зайвий scope відкритої лінії. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
