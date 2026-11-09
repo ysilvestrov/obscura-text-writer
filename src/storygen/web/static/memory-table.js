@@ -1,5 +1,6 @@
 import {confirmDialog} from './dialogs.js';
 import {createTextEditor} from './text-editor.js';
+import {installCoreReview} from './core-review.js';
 import {live,t,msg,labelEntries,getLocale,uiText,uiAttr,uiHTML,diagnostic} from './i18n.js';
 export function installMemoryTable({state,api,json,notice,refresh,loadBuffer}){
   const panel=document.querySelector('#memory-view');
@@ -39,7 +40,19 @@ export function installMemoryTable({state,api,json,notice,refresh,loadBuffer}){
   const caption=node('caption',msg("m_80a7d9ba02de"));const head=node('thead'),header=node('tr');
   for(const title of [msg("m_6cf9b3a4b307"),msg("m_461437b0662b"),msg("m_7f3e53d4d224"),msg("m_aca3cc594690")]){const th=node('th',live(()=>(title)));th.scope='col';header.append(th);}
   head.append(header);const body=node('tbody');table.append(caption,head,body);wrap.append(table);
-  panel.append(help,actions,info,tools,wrap);
+  const reviewBox=node('section');
+  panel.append(help,actions,info,reviewBox,tools,wrap);
+  async function reloadAfterReview(){
+    // A confirmation with edits publishes a new memory head; reload the clean table buffer to show it.
+    const sceneId=state.scene?.id;
+    await refresh();
+    if(state.scene?.id!==sceneId||state.mode!=='memory'||state.dirty||state.saving)return;
+    const latest=state.view?.scenes?.find(scene=>scene.id===sceneId);
+    if(!latest||(latest.heads.memory===state.scene.heads.memory&&latest.revision===state.scene.revision))return;
+    const text=latest.heads.memory?(await api(`/api/versions/${latest.heads.memory}`)).text:'';
+    if(state.scene?.id===sceneId&&!state.dirty)loadBuffer(latest,'memory',text);
+  }
+  const coreReview=installCoreReview({container:reviewBox,api,json,notice,refresh:reloadAfterReview});
   let key=null,data=null,pending={},advanced=false,loading=false,rawText='',loadedSceneId=null,loadedMemoryId=null;
   const currentKey=()=>`${state.scene?.id}:${state.scene?.heads.memory||''}:${state.bufferEpoch}`;
   const emit=()=>document.dispatchEvent(new CustomEvent('editor-state-changed'));
@@ -52,7 +65,7 @@ export function installMemoryTable({state,api,json,notice,refresh,loadBuffer}){
   function controls(){
     const visible=state.mode==='memory'&&state.bufferOrigin!=='history';panel.hidden=!visible;
     state.memoryTableActive=visible&&!advanced;editor.visible(!(visible&&!advanced));
-    tools.hidden=advanced;wrap.hidden=advanced;
+    tools.hidden=advanced;wrap.hidden=advanced;reviewBox.hidden=advanced;
     uiText(toggle,"textContent",()=>(advanced?t("m_7a516601ed73"):t("m_41ebabe287dc")));
     toggle.disabled=state.saving||loading;reload.disabled=state.saving||loading;
     if(visible&&!advanced)saveButton.disabled=loading||state.saving||!data?.can_save||!state.dirty;
@@ -75,7 +88,7 @@ export function installMemoryTable({state,api,json,notice,refresh,loadBuffer}){
         emit();counts(rows.length);controls();
       };
       choice.append(check);content.append(node('p',live(()=>(row.text))));
-      const proof=node('details');proof.append(node('summary',msg("m_a09205d5a71e")),node('p',live(()=>(row.quote))));for(const extra of Array.isArray(row.supporting_quotes)?row.supporting_quotes:[])proof.append(node('p',live(()=>(extra))));content.append(proof);
+      const proof=node('details');proof.append(node('summary',msg("m_a09205d5a71e")),node('p',live(()=>(row.quote||t("m_d657ca4e0613")))));for(const extra of Array.isArray(row.supporting_quotes)?row.supporting_quotes:[])proof.append(node('p',live(()=>(extra))));content.append(proof);
       [choice,content,category,source].forEach((td,i)=>uiAttr(td,'data-label',()=>[msg("m_6cf9b3a4b307"),msg("m_461437b0662b"),msg("m_7f3e53d4d224"),msg("m_aca3cc594690")][i]));
       tr.append(choice,content,category,source);body.append(tr);
     }
@@ -85,6 +98,7 @@ export function installMemoryTable({state,api,json,notice,refresh,loadBuffer}){
     sceneOptions();
     const sceneSnapshot=scenes().map(scene=>({...scene}));
     const captured=currentKey();key=captured;loadedSceneId=state.scene.id;loadedMemoryId=state.scene.heads.memory;data=null;pending={};advanced=false;rawText=editor.read();loading=true;uiText(info,"textContent",()=>(t("m_1f3975528ccd")));draw();
+    void coreReview.load(state.scene.id);
     try{
       const result=await api(`/api/scenes/${state.scene.id}/memory-view`);
       if(currentKey()!==captured||state.mode!=='memory')return;

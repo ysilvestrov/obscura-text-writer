@@ -32,14 +32,14 @@ const api=async(url,options)=>{
 const {installMemoryTable}=await import(pathToFileURL(process.argv[2]+'/src/storygen/web/static/memory-table.js'));
 const memory=installMemoryTable({state,api,json:(method,body)=>({method,body}),notice:()=>{},refresh:async()=>{},loadBuffer:()=>{}});
 document.dispatchEvent(new CustomEvent('editor-state-changed'));await tick();
-const panel=nodes['#memory-view'],body=panel.children[4].children[0].children[2];
+const panel=nodes['#memory-view'],body=panel.children[5].children[0].children[2];
 assert.equal(nodes['#editor'].hidden,true);assert.equal(memory.active(),true);
-const sceneFilter=panel.children[3].children[2];
+const sceneFilter=panel.children[4].children[2];
 assert.equal(sceneFilter.value,'s','Current scene is selected by default');
 assert.deepEqual(body.children.map(row=>row.children[1].children[0].textContent),['Факт <img>','Другий']);
 sceneFilter.value='s2';sceneFilter.onchange();assert.equal(body.children.length,1);assert.equal(body.children[0].children[1].children[0].textContent,'Інша сцена');
 sceneFilter.value='';sceneFilter.onchange();assert.equal(body.children.length,4,'All includes entries with unknown sources');
-const search=panel.children[3].children[0],category=panel.children[3].children[1];
+const search=panel.children[4].children[0],category=panel.children[4].children[1];
 category.value='timeline';category.onchange();assert.equal(body.children.length,1);assert.equal(body.children[0].children[1].children[0].textContent,'Інша сцена');
 search.value='Немає';search.oninput();assert.equal(body.children.length,1);assert.equal(body.children[0].children.length,1,'Filters combine and show empty state');
 search.value='';category.value='';sceneFilter.value='s';sceneFilter.onchange();

@@ -78,6 +78,47 @@ def forbidden_gateway(*args, **kwargs):
     return Fake()
 
 
+CORE_PROSE1='Анна в халаті.\nУ кишені ключ.\nХто стукав у двері?'
+CORE_PROSE2='Анна вдягла пальто.\nСтукав сусід.'
+
+
+def core_review_fixture(repo,story):
+    """Two scenes; scene 2 memory comes from a captured v4 answer: clothing changed, carried unknown, thread closed."""
+    import threading
+    from storygen.domain import SceneCreate
+    from storygen.generation.context import build_context
+    from storygen.generation.stages import execute_stage
+    from storygen.memory.journal import MemoryJournal,_add_event
+    from storygen.providers.models import ProviderSettings,RoleSettings
+    from storygen.providers.streaming import GenerationEvent
+    from tests.memory.wire_helpers import core_unchanged,v4_response
+    from tests.storage.test_memory_core_selectors import cards
+    repo.publish_story_material(story.id,'characters_version_id',cards(repo,story.id,'A'),repo.get_story(story.id).revision)
+    s1,s2=(repo.create_scene(story.id,SceneCreate(title=title,beats='Анна.',character_ids=['A'])) for title in ('Ранок','Гість'))
+    p1=repo.save_version(story.id,s1.id,'manual',CORE_PROSE1,[])
+    repo.set_head(s1.id,'prose',p1.id,repo.get_scene(s1.id).revision)
+    thread=_add_event('open_threads','Хто стукав?',p1.id,'Хто стукав у двері?',0)
+    journal=MemoryJournal(schema_version=3,source_prose_ids=[p1.id],events=[
+        _add_event('character_states','Халат',p1.id,'Анна в халаті.',0,['A'],slot='clothing'),
+        _add_event('character_states','Ключ',p1.id,'У кишені ключ.',0,['A'],slot='carried'),thread])
+    memory=repo.save_version(story.id,s1.id,'memory',journal.model_dump_json(),[p1.id])
+    repo.set_head(s1.id,'memory',memory.id,repo.get_scene(s1.id).revision)
+    p2=repo.save_version(story.id,s2.id,'manual',CORE_PROSE2,[])
+    repo.set_head(s2.id,'prose',p2.id,repo.get_scene(s2.id).revision)
+    core=core_unchanged('A')
+    core['A']['clothing']={'status':'changed','text':'Пальто','evidence_ids':['f000001'],'reason':''}
+    core['A']['carried']={'status':'unknown','text':'','evidence_ids':[],'reason':'Ключ більше не згадано'}
+    raw=v4_response(core,{thread.claim_id:{'status':'closed','resolution':'Стукав сусід','evidence_ids':['f000002']}})
+    class Gateway:
+        def stream(self,*_):
+            yield GenerationEvent(type='delta',text=raw)
+            yield GenerationEvent(type='terminal',finish_reason='stop')
+    role=RoleSettings(provider=ProviderSettings(model='synthetic'),memory_mode='evidence_delta',context_tokens=32768)
+    attempt=execute_stage(repo,s2.id,'memory',build_context(repo,s2.id,'memory',role),Gateway(),threading.Event(),lambda _:None)
+    assert attempt.state=='completed',attempt.error
+    return {'story_id':story.id,'scene_id':s2.id,'first_scene_id':s1.id}
+
+
 def main():
     with TemporaryDirectory(prefix='obscura-browser-') as directory:
         root = Path(directory)
@@ -139,6 +180,10 @@ def main():
             fixture=make_fixture()
             save_role_settings(repo,fixture['story_id'],'editor',RoleSettings(provider=ProviderSettings(model='synthetic-no-changes'),edit_mode='patches'),repo.get_story(fixture['story_id']).revision)
             return fixture
+
+        @app.post('/test-core-review')
+        def core_review_scene():
+            return core_review_fixture(repo,rated_story('Ключ і пальто'))
 
         @app.post('/test-unrated')
         def unrated_story():
