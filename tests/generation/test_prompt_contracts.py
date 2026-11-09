@@ -46,7 +46,10 @@ def test_explicit_legacy_assignment_creates_new_immutable_prompt(tmp_path):
     assert repo.get_version(prompt.id).prompt_contract is None
     assert repo.read_text(assigned.prompt_version_id) == 'Власна редактура.'
     context = build_context(repo, scene.id, 'edit', assigned)
-    assert context.system_text == 'Власна редактура.'
+    # The author's prompt is used verbatim; only the scene rating block follows it.
+    custom, rating = context.system_text.split('\n\n', 1)
+    assert custom == 'Власна редактура.'
+    assert rating.startswith('ВІКОВИЙ РЕЙТИНГ СЦЕНИ')
 
 
 def test_future_editor_prompt_blocks_run_preflight(tmp_path):

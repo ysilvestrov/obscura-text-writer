@@ -31,8 +31,16 @@ class StoryCreate(DomainModel):
     target_words: int = Field(default=7000,ge=5000)
 
 
+class ContentRating(DomainModel):
+    sexual: Literal[0,1,2]
+    violence: Literal[0,1,2]
+    themes: Literal[0,1,2]
+
+
 class Story(StoryCreate):
     trashed_at: str | None = None
+    content_rating: ContentRating | None = None
+    initial_content_rating: ContentRating | None = None
     id: str
     revision: int = 0
     config_revision: int = 0
@@ -62,6 +70,7 @@ class Scene(SceneCreate):
     heads: dict[str,str] = Field(default_factory=dict)
     head_revisions: dict[str,int] = Field(default_factory=dict)
     needs_review: bool = False
+    content_rating: ContentRating | None = None
 
 
 VersionKind = Literal["source_plan","source_characters","character_cards","scene_plan","canon","style","prompt","brief","draft","edited","manual","memory","evaluation"]

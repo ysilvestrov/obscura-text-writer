@@ -1,7 +1,8 @@
 """Read-only old/current narrative inputs with exact provenance and temporal projection."""
 import json
 from ..dependency_models import DependencySelector
-from ..storage.snapshots import selector_value
+from ..storage.snapshots import rating_fallback,selector_value
+from ..rating.levels import from_wire,is_lower
 from .models import ImpactPlan,ImpactTarget,SourceChange,fingerprint,TEXT_STAMP_EXCLUDE
 
 
@@ -108,7 +109,13 @@ def capture_target(view,version_id,*,baseline_override=None,current_sources_only
         snapshot=root_snapshot if id==ref.id else view.acceptances[id].baseline if id in view.acceptances else value.dependency_snapshot
         if id==ref.id and not snapshot:raise ValueError('Немає відтворюваної історичної бази')
         if snapshot:
-            for selector in snapshot.selectors:
+            snapshot_selectors=list(snapshot.selectors)
+            replace,fallback=rating_fallback(view,snapshot)
+            if replace and fallback and is_lower(from_wire(selector_value(view,fallback)),from_wire(fallback.expected)):
+                # A snapshot without its own rating is judged against the story's initial rating, as freshness does.
+                # The baseline joins the capture only when lowered, so fingerprints of unaffected captures stay put.
+                snapshot_selectors=[s for s in snapshot_selectors if s.field!='content_rating']+[fallback]
+            for selector in snapshot_selectors:
                 # An equal selector (all fields) already passed the checks below and wrote the same change; only its
                 # live value is written again, because `selectors` is keyed by (kind, owner, field) and the last write wins.
                 seen=selector.model_dump_json()
@@ -118,6 +125,9 @@ def capture_target(view,version_id,*,baseline_override=None,current_sources_only
                 seen_selectors.add(seen)
                 # Historical target self selectors are known inputs, not publish targets.
                 current=selector_value(view,selector)
+                if selector.field=='content_rating' and not is_lower(from_wire(current),from_wire(selector.expected)):
+                    # A raised rating is not a changed input: it neither stales the material nor alters the capture.
+                    current=selector.expected
                 if selector.kind=='source' and selector.field=='source_characters' and current!=selector.expected and not view.story.characters_version_id:
                     raise ValueError('Змінені описи персонажів без часових карток потребують ручного перегляду')
                 if selector.kind=='order' and current!=selector.expected:raise ValueError('Зміна порядку сцен потребує ручного перегляду')

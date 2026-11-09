@@ -3,6 +3,7 @@ from importlib.resources import files
 from fastapi.testclient import TestClient
 from storygen.application.settings import AppSettings
 from storygen.authoring.imports import SourceFile,import_sources
+from storygen.characters.age import entry_age
 from storygen.characters.models import load_characters
 from storygen.domain import StoryCreate
 from storygen.web.app import create_app
@@ -53,3 +54,21 @@ def test_characters_template_marks_protagonist_and_explains_acquaintances(tmp_pa
     assert not any(known_names_line(line) is not None for entry in cards[1].entries for line in entry.text.splitlines())
     assert '- Рядок «Знайомий з:» перелічує імена тих, кого персонаж знає ще до першої сцени; знайомство взаємне.' in text
     assert '- Головного героя позначте в його картці рядком «Роль у творі: Головна героїня»' in text
+
+
+def test_character_template_age_line_matches_the_minors_guard(tmp_path):
+    raw=files('storygen.web').joinpath('static','templates','characters.md').read_text('utf8')
+    placeholder='Вік: [Число років на початку історії або «дорослий».]'
+    assert raw.count(placeholder)==2
+    app=create_app(AppSettings(data_dir=tmp_path))
+    repo=app.state.repo
+    verdicts=[]
+    for value in (None,'34','дорослий','16'):
+        text=raw if value is None else raw.replace(placeholder,'Вік: '+value)
+        story=repo.create_story(StoryCreate(title='Вік '+str(value)))
+        import_sources(repo,story.id,[SourceFile(name='characters.md',kind='source_characters',raw=text.encode('utf8'))])
+        cards=load_characters(repo.read_text(repo.get_story(story.id).characters_version_id))
+        verdicts.append([entry_age(c.entries[0].text) for c in cards])
+    assert verdicts==[['unknown','unknown'],['adult','adult'],['adult','adult'],['minor','minor']]
+    plan=files('storygen.web').joinpath('static','templates','story-plan.md').read_text('utf8')
+    assert 'рейтинг' in plan and 'налаштуваннях твору' in plan

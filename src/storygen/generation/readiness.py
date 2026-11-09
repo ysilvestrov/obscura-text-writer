@@ -89,6 +89,11 @@ def preview(repo, request, view=None):
                     prose=view.peek_version(target.heads['prose']) if target.heads.get('prose') else None
                     if not prose or not prose.complete or prose.kind not in {'edited','manual'}:
                         raise ValueError(f'Спершу виберіть завершену прозу сцени {target.position+1}')
+            # Every target scene passes the rating guard before the run starts, not only the first.
+            from ..rating.guard import enforce_rating
+            rated_story=view.get_story(story.id)
+            for target in targets:
+                for stage in stages:enforce_rating(view,rated_story,target,stage)
             # Later tasks may consume outputs that this run has not generated yet.
             from ..memory.reuse import MemoryApprovalRequired
             try:

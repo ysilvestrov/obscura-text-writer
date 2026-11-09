@@ -27,6 +27,33 @@ def no_network(monkeypatch):
     monkeypatch.setattr(socket.socket,"connect_ex",guard(socket.socket.connect_ex))
 
 
+def pytest_configure(config):
+    config.addinivalue_line("markers","unrated_stories: нові твори в тесті створюються без вікового рейтингу (як у застосунку)")
+
+
+@pytest.fixture(autouse=True)
+def rated_stories_by_default(request,monkeypatch):
+    """Generation is blocked for unrated stories, so test stories start rated R(0,0,0).
+
+    The application itself creates stories unrated; tests of that behaviour opt out with
+    ``@pytest.mark.unrated_stories``. The guard is never weakened.
+    """
+    if request.node.get_closest_marker("unrated_stories"):
+        return
+    from storygen.domain import ContentRating
+    from storygen.storage.repository import Repository
+    original=Repository.create_story
+    def create_story(self,data):
+        story=original(self,data)
+        if story.content_rating is None:
+            rating=ContentRating(sexual=0,violence=0,themes=0)
+            story=story.model_copy(update={"content_rating":rating,"initial_content_rating":rating})
+            with self.db.connection() as db:
+                db.execute("UPDATE stories SET payload=? WHERE id=?",(story.model_dump_json(),story.id))
+        return story
+    monkeypatch.setattr(Repository,"create_story",create_story)
+
+
 @pytest.fixture
 def sample_case():
     return EvaluationCase(id="sample", mode="scene", documents=[
