@@ -24,17 +24,19 @@ def save_manual_prose(repo,scene_id: str,text: str,expected_revision: int,conten
     return ref
 
 
-def save_manual_draft(repo,scene_id: str,text: str,expected_revision: int,content_format=None) -> VersionRef:
+def save_manual_draft(repo,scene_id: str,text: str,expected_revision: int,content_format=None,*,author_lineage=None,ghost_rewrite=None) -> VersionRef:
+    """`author_lineage` overrides the previous draft head as the parent; a Ghost Mode save always creates a version (#55)."""
     if not text.strip():
         raise ValueError('Чернетка не може бути порожньою')
-    unchanged=repo.unchanged_scene_text(scene_id,'draft',text,expected_revision,content_format)
-    if unchanged:return unchanged[1]
+    if ghost_rewrite is None:
+        unchanged=repo.unchanged_scene_text(scene_id,'draft',text,expected_revision,content_format)
+        if unchanged:return unchanged[1]
     scene=repo.get_scene(scene_id)
     content_format=_author_format(repo,scene,'draft',content_format)
     from ..memory.forwarding import projection_policy
     policy=projection_policy(repo.context_view(scene.story_id),scene.id)
     snapshot=_manual_snapshot(repo,scene,'draft')
-    ref=repo.save_version(scene.story_id,scene.id,'draft',text,list(snapshot.refs),dependency_snapshot=snapshot,manual_projection_policy=policy,content_format=content_format,author_lineage=_lineage(scene,'draft'))
+    ref=repo.save_version(scene.story_id,scene.id,'draft',text,list(snapshot.refs),dependency_snapshot=snapshot,manual_projection_policy=policy,content_format=content_format,author_lineage=author_lineage or _lineage(scene,'draft'),ghost_rewrite=ghost_rewrite)
     repo.set_head(scene.id,'draft',ref.id,expected_revision)
     return ref
 

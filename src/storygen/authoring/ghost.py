@@ -94,3 +94,22 @@ def overlap_4gram(author: str, draft: str) -> float | None:
     known = {tuple(theirs[i:i + 4]) for i in range(len(theirs) - 3)}
     windows = [tuple(mine[i:i + 4]) for i in range(len(mine) - 3)]
     return round(sum(window in known for window in windows) / len(windows), 4)
+
+
+def save_ghost_rewrite(repo, scene_id: str, *, source_draft_id: str, text: str, content_format, expected_revision: int, client_stats: dict):
+    """Save the author's rewrite as a manual draft whose author_lineage is the AI draft (#55); the AI draft is untouched."""
+    from ..domain import AuthorLineage, GhostRewriteStats
+    from ..generation.dependencies import save_manual_draft
+    source = repo.get_version(source_draft_id)
+    if source.scene_id != scene_id or source.kind != 'draft' or not source.complete:
+        raise ValueError('Переписати по пам’яті можна лише повну чернетку цієї сцени')
+    original = repo.read_text(source_draft_id)
+    blocks = sum(block.kind == 'text' for block in ghost_blocks(original))
+    skipped = client_stats['blocks_skipped']
+    if skipped > blocks:
+        raise ValueError('Пропущених блоків більше, ніж блоків у чернетці')
+    stats = GhostRewriteStats(source_draft_id=source_draft_id, blocks=blocks, blocks_written=blocks - skipped, blocks_skipped=skipped,
+        peeks=client_stats['peeks'], peek_ms=client_stats['peek_ms'], pastes_blocked=client_stats['pastes_blocked'],
+        overlap_4gram=overlap_4gram(text, original), min_block_chars=GHOST_MIN_BLOCK_CHARS)
+    return save_manual_draft(repo, scene_id, text, expected_revision, content_format or source.content_format,
+        author_lineage=AuthorLineage(parent_version_id=source_draft_id), ghost_rewrite=stats)
