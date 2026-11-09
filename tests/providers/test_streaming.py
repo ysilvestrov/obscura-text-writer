@@ -159,3 +159,47 @@ def test_output_length_limit_has_actionable_error_without_retry():
   events=list(build_generation_gateway(ctx.settings.provider,http_client=http).stream(ctx,threading.Event()))
  assert len(calls)==1 and events[-1].type=='error'
  assert 'ліміт' in events[-1].message.lower() and str(ctx.settings.max_output_tokens) in events[-1].message
+
+
+def structured_context():
+    ctx=context();ctx.stage='brief'
+    ctx.api_request={'model':'test','messages':[{'role':'system','content':'s'},{'role':'user','content':'u'}],'max_tokens':8192,'stream':True,
+        'response_format':{'type':'json_schema','json_schema':{'name':'brief','strict':True,'schema':{'type':'object'}}}}
+    return ctx
+
+
+@pytest.mark.req('PIPE-006')
+def test_structured_whitespace_runaway_stops_stream_early():
+    from storygen.providers.streaming import WHITESPACE_RUNAWAY_LIMIT
+    sent=[chunk({'content':'{"objective":"Мета","proposed_changes":[]'})]+[chunk({'content':'  \n'}) for _ in range(WHITESPACE_RUNAWAY_LIMIT)]+[chunk({'content':'}'}),chunk(finish='length')]
+    read=[]
+    def handler(request):
+        def body():
+            for c in sent:
+                read.append(c);yield ('data: '+json.dumps(c,ensure_ascii=False)+'\n\n').encode()
+            yield b'data: [DONE]\n\n'
+        return httpx.Response(200,headers={'content-type':'text/event-stream'},content=body())
+    with httpx.Client(transport=httpx.MockTransport(handler)) as http:
+        events=list(build_generation_gateway(context().settings.provider,http_client=http).stream(structured_context(),threading.Event()))
+    result=events[-1]
+    assert result.type=='error' and result.failure['category']=='degenerate_output'
+    assert result.finish_reason is None and 'пробіл' in result.message and 'Автоматичного повтору немає' in result.message
+    assert ''.join(e.text for e in events if e.type=='delta').startswith('{"objective"')
+    assert len(read)<len(sent)
+
+
+def test_whitespace_inside_prose_or_short_runs_is_not_runaway():
+    from storygen.providers.streaming import WHITESPACE_RUNAWAY_LIMIT
+    prose=[chunk({'content':'Абзац.'}),chunk({'content':'\n'*(WHITESPACE_RUNAWAY_LIMIT+10)}),chunk({'content':'Далі.'}),chunk(finish='stop')]
+    with httpx.Client(transport=httpx.MockTransport(lambda r:stream_response(prose))) as http:
+        assert list(build_generation_gateway(context().settings.provider,http_client=http).stream(context(),threading.Event()))[-1].type=='terminal'
+    pretty=[chunk({'content':'{\n'+' '*(WHITESPACE_RUNAWAY_LIMIT-1)+'"a":1'}),chunk({'content':' '*(WHITESPACE_RUNAWAY_LIMIT-1)+'}'}),chunk(finish='stop')]
+    with httpx.Client(transport=httpx.MockTransport(lambda r:stream_response(pretty))) as http:
+        assert list(build_generation_gateway(context().settings.provider,http_client=http).stream(structured_context(),threading.Event()))[-1].type=='terminal'
+
+
+def test_runaway_diagnostic_is_localized():
+    from storygen.providers.streaming import whitespace_runaway_message
+    from storygen.web.localization import diagnostic
+    translated=diagnostic(whitespace_runaway_message(),'en')
+    assert translated!=whitespace_runaway_message() and 'whitespace' in translated.lower()

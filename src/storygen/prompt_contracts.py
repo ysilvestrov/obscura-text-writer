@@ -10,6 +10,13 @@ escape/entity фрагменти поза потрібними правками;
 посилаються на raw Markdown, без видалення його маркерів перед цитуванням.'''
 
 
+BRIEF_INTRODUCED_CONTRACT = '''ФОРМА ВІДПОВІДІ ЗАВДАННЯ — ОБОВ’ЯЗКОВІ ПОЛЯ
+Поверни JSON з усіма полями в такому порядку:
+{"objective":"...","beats":["..."],"constraints":["..."],"proposed_changes":[],"introduced":[]}
+Поле introduced — ID персонажів зі складу сцени, яких головний герой уперше зустрічає й яких
+представлено в цій сцені; якщо нікого — []. Не пропускай поле й закрий об’єкт після нього.'''
+
+
 def expected_contract(stage, settings) -> PromptContract:
     mode = {'prepare': 'blueprint', 'brief': 'brief', 'draft': 'prose',
             'edit': settings.edit_mode, 'memory': settings.memory_mode}.get(stage)

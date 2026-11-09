@@ -76,6 +76,10 @@ def make_context(repo,story,scene,stage,settings,sections,refs,fragments=None,ac
     if ref:
         system=repo.read_text(ref.id)
         refs.append(ref.id)
+        if stage=='brief':
+            # The WritersBrief wire (strict schema) requires `introduced`; custom prompts may predate it.
+            from ..prompt_contracts import BRIEF_INTRODUCED_CONTRACT
+            system+='\n\n'+BRIEF_INTRODUCED_CONTRACT
     else:
         if stage=='rewrite':
             from importlib.resources import files
