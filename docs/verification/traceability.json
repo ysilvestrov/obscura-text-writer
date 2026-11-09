@@ -3001,6 +3001,89 @@
         "tests/web/test_app_dialogs.py::test_app_dialogs",
         "tests/web/test_app_dialogs.py::test_app_uses_no_native_confirm_or_prompt"
       ]
+    },
+    {
+      "id": "RATING-001-S01",
+      "requirement": "RATING-001",
+      "scope": "Рейтинг твору не задано: блок усіх етапів, включно з підготовкою; API задання рейтингу, ревізія, initial_content_rating. Не доводить поведінки моделі.",
+      "tests": [
+        "tests/generation/test_content_rating_context.py::test_unrated_story_blocks_all_stages",
+        "tests/storage/test_content_rating.py::test_old_payload_reads_unrated",
+        "tests/storage/test_content_rating.py::test_first_story_rating_sets_initial_once",
+        "tests/storage/test_content_rating.py::test_revision_conflict_and_reset_forbidden",
+        "tests/web/test_rating_routes.py::test_put_story_rating_roundtrip",
+        "tests/web/test_rating_routes.py::test_put_story_rating_null_rejected",
+        "tests/web/test_rating_routes.py::test_rating_conflict_returns_409"
+      ]
+    },
+    {
+      "id": "RATING-001-S02",
+      "requirement": "RATING-001",
+      "scope": "Розділи рейтингу й вищих сцен у system_text; user_text diff не змінюється; відбиток змінюється. Доводить лише передачу інструкції, не відповідність тексту моделі.",
+      "tests": [
+        "tests/generation/test_content_rating_context.py::test_adult_cast_builds_with_rating_block",
+        "tests/generation/test_content_rating_context.py::test_higher_rated_scenes_listed",
+        "tests/generation/test_content_rating_context.py::test_higher_scenes_block_groups_by_axes",
+        "tests/generation/test_content_rating_context.py::test_diff_edit_user_text_untouched",
+        "tests/generation/test_content_rating_context.py::test_rating_change_changes_fingerprint",
+        "tests/generation/test_prompt_contracts.py::test_explicit_legacy_assignment_creates_new_immutable_prompt"
+      ]
+    },
+    {
+      "id": "RATING-001-S03",
+      "requirement": "RATING-001",
+      "scope": "Пониження → застаріле, підвищення → свіже, старі знімки проти initial_content_rating, author_text не застаріває, інвалідація залежних матеріалів.",
+      "tests": [
+        "tests/storage/test_rating_freshness.py::test_rating_selector_recorded_for_generation_scopes",
+        "tests/storage/test_rating_freshness.py::test_rating_selector_records_story_rating_without_override",
+        "tests/storage/test_rating_freshness.py::test_lowering_makes_stale_raising_keeps_fresh",
+        "tests/storage/test_rating_freshness.py::test_old_snapshot_uses_initial_rating",
+        "tests/storage/test_rating_freshness.py::test_old_patches_snapshot_uses_initial_rating",
+        "tests/storage/test_rating_freshness.py::test_author_text_never_stale_from_rating",
+        "tests/storage/test_rating_freshness.py::test_unrated_snapshot_uses_initial_rating",
+        "tests/storage/test_rating_freshness.py::test_story_lowering_below_scene_override_keeps_scene_fresh",
+        "tests/storage/test_rating_freshness.py::test_impact_capture_ignores_rating_raise",
+        "tests/storage/test_rating_freshness.py::test_impact_preview_tolerates_rating_selector",
+        "tests/storage/test_content_rating.py::test_story_lowering_invalidates_only_inheriting_scenes",
+        "tests/storage/test_content_rating.py::test_raising_and_first_set_invalidate_nothing",
+        "tests/storage/test_content_rating.py::test_scene_override_and_reset"
+      ]
+    },
+    {
+      "id": "RATING-002-S01",
+      "requirement": "RATING-002",
+      "scope": "Блокування неповнолітнього, без віку, порожнього складу, без карток; етап memory; англійський переклад. Правдивість даних не доводиться.",
+      "tests": [
+        "tests/generation/test_content_rating_context.py::test_minor_blocks_sexual_scene",
+        "tests/generation/test_content_rating_context.py::test_participant_without_card_uses_id_and_list_is_capped",
+        "tests/generation/test_content_rating_context.py::test_empty_cast_and_missing_cards_block",
+        "tests/generation/test_content_rating_context.py::test_minor_blocks_memory_stage_too",
+        "tests/generation/test_content_rating_context.py::test_guard_message_has_english_translation"
+      ]
+    },
+    {
+      "id": "RATING-002-S02",
+      "requirement": "RATING-002",
+      "scope": "Чисті правила розбору віку: заперечення, порожній рядок, найменше число, найпізніша відомість, пріоритет вердиктів.",
+      "tests": [
+        "tests/characters/test_character_age.py::test_parse_age_value",
+        "tests/characters/test_character_age.py::test_entry_age",
+        "tests/characters/test_character_age.py::test_no_age_line_is_unknown",
+        "tests/characters/test_character_age.py::test_from_scene_overrides_timeless_after_anchor",
+        "tests/characters/test_character_age.py::test_worst_verdict_among_timeless",
+        "tests/characters/test_character_age.py::test_missing_card_is_unknown_and_each_participant_reported",
+        "tests/characters/test_character_age.py::test_later_anchor_ignored_and_bad_anchor_skipped",
+        "tests/characters/test_character_age.py::test_latest_anchor_group_wins_and_trashed_anchor_skipped",
+        "tests/characters/test_character_age.py::test_other_story_anchor_skipped"
+      ]
+    },
+    {
+      "id": "RATING-002-S03",
+      "requirement": "RATING-002",
+      "scope": "Сцена із сексуальним змістом 0 і неповнолітнім учасником дозволена.",
+      "tests": [
+        "tests/generation/test_content_rating_context.py::test_child_allowed_when_scene_sexual_zero"
+      ]
     }
   ]
 }
