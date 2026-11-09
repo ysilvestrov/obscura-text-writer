@@ -1,4 +1,4 @@
-from pydantic import Field
+from pydantic import Field, field_validator
 
 from ..domain import DomainModel, SceneCreate
 
@@ -37,3 +37,9 @@ class WritersBrief(DomainModel):
     beats: list[str] = Field(min_length=1)
     constraints: list[str] = Field(default_factory=list)
     proposed_changes: list[str] = Field(default_factory=list)
+    introduced: list[str] | None = None
+
+    @field_validator('introduced')
+    @classmethod
+    def unique_introduced(cls,value):
+        return None if value is None else list(dict.fromkeys(value))

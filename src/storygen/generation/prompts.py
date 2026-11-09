@@ -15,4 +15,5 @@ def default_prompt(stage: str) -> str:
     name={'draft':'writer','edit':'editor'}.get(stage,stage)
     if name not in {'prepare','brief','writer','editor','memory','memory_delta','copyeditor','rewrite_editor'}:
         raise ValueError('Невідомий етап')
-    return files('storygen.generation').joinpath('resources',name+'_uk_v1.txt').read_text(encoding='utf-8')
+    version='v2' if name=='brief' else 'v1'
+    return files('storygen.generation').joinpath('resources',f'{name}_uk_{version}.txt').read_text(encoding='utf-8')

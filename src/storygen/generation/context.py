@@ -192,6 +192,10 @@ def build_context(repo,scene_id: str,stage: str,settings: RoleSettings,*,editor_
     character_text,character_warnings,character_refs=character_material(repo,story,scene)
     if character_text:sections.append(character_text)
     warnings.extend(character_warnings);refs.extend(character_refs)
+    from ..characters.acquaintance import acquaintance_material
+    acquaintance_text,acquaintance_warnings=acquaintance_material(repo,story,scene,stage)
+    if acquaintance_text:sections.append(acquaintance_text)
+    warnings.extend(acquaintance_warnings)
     source_plan=repo.active_source(story.id,'source_plan')
     if source_plan:
         text=repo.read_text(source_plan.id)
