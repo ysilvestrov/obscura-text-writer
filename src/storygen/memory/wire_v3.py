@@ -142,7 +142,7 @@ def wire_v3_events(wire: MemoryWireV3,previous,prose_id,prose) -> list[MemoryEve
                 events.append(_add_event(category,item.text,prose_id,quote,occurrence,chars,supporting))
             else:
                 claim=active[item.claim_id]
-                events.append(_change_event(action,item.claim_id,item.text,category,claim.character_ids,prose_id,quote,supporting))
+                events.append(_change_event(action,item.claim_id,item.text,category,claim.character_ids,prose_id,quote,supporting,slot=claim.slot))
     return _extend(previous,prose_id,events)
 
 

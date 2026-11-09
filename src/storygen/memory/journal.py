@@ -189,8 +189,9 @@ def load_memory(raw: str) -> MemoryJournal:
 def legacy_view(journal: MemoryJournal) -> MemorySnapshot:
     result=MemorySnapshot(source_prose_ids=journal.source_prose_ids.copy())
     for event in replay_memory(journal).values():
+        if event.quote is None:continue  # author record without a quote has no legacy form
         getattr(result,event.category).append(MemoryEntry(text=event.text,
-            source_version_id=event.source_version_id,quote=event.quote))
+            source_version_id=event.evidence_version_id or event.source_version_id,quote=event.quote))
     return result
 
 
@@ -248,7 +249,7 @@ def _extend(previous,prose_id,events,schema_version=None):
 def apply_operations(previous,delta,prose_id,prose,allowed_character_ids):
     delta=MemoryOperations.model_validate(delta)
     fragments={fragment.id:fragment.text for fragment in fragment_text(prose)}
-    events=[];duplicates={}
+    events=[];duplicates={};active=replay_memory(previous)
     for op in delta.operations:
         quote=fragments.get(op.evidence_id)
         if quote is None:raise ValueError('Невідомий фрагмент підтвердження пам’яті')
@@ -259,7 +260,8 @@ def apply_operations(previous,delta,prose_id,prose,allowed_character_ids):
             occurrence=duplicates.get(key,0);duplicates[key]=occurrence+1
             events.append(_add_event(op.category,op.text,prose_id,quote,occurrence,op.character_ids))
         else:
-            events.append(_change_event(op.action,op.claim_id,op.text,op.category,op.character_ids,prose_id,quote))
+            events.append(_change_event(op.action,op.claim_id,op.text,op.category,op.character_ids,prose_id,quote,
+                slot=getattr(active.get(op.claim_id),'slot',None)))
     return _extend(previous,prose_id,events)
 
 

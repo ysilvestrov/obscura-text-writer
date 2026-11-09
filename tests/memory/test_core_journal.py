@@ -137,3 +137,33 @@ def test_tracked_characters_uses_protagonist():
     assert [s.name for s in SLOTS]==['clothing','carried','location','body','company']
     assert slot_def('location').expires_on_day_change is False and SLOT_REGISTRY_VERSION=='core-slots-v1'
     with pytest.raises(KeyError):slot_def('hat')
+
+
+def test_legacy_view_projects_evidence_version_and_omits_quoteless_author():
+    from storygen.memory.journal import legacy_view
+    from storygen.memory.service import validate_memory
+    sources={'p1':'Перша сцена.','p2':'Друга сцена.'}
+    earlier=_add_event('facts','З минулого','p2','Перша сцена.',0,source_kind='author',evidence_version_id='p1')
+    secret=_add_event('facts','Таємниця','p2',None,0,source_kind='author')
+    plain=_add_event('facts','Звичайний','p2','Друга сцена.',0)
+    view=legacy_view(v3(['p1','p2'],[earlier,secret,plain]))
+    assert [(e.text,e.source_version_id,e.quote) for e in view.facts]==[
+        ('З минулого','p1','Перша сцена.'),('Звичайний','p2','Друга сцена.')]
+    assert validate_memory(view,sources)
+
+
+def test_model_updates_keep_slot_of_claim():
+    from storygen.memory.journal import apply_operations,MemoryOperations,MemoryOperation
+    from storygen.memory.wire_v3 import MemoryWireV3,wire_v3_events
+    prose='Вона вдягла пальто.\nІ пішла.'
+    a=state('Халат',quote='Вона вдягла пальто.')
+    prev=v3(['p1'],[a])
+    ops=MemoryOperations(operations=[MemoryOperation(action='update',category='character_states',claim_id=a.claim_id,
+        text='Пальто',character_ids=['h'],evidence_id='f000001')])
+    j=apply_operations(prev,ops,'p2',prose,['h'])
+    assert j.events[-1].slot=='clothing' and j.schema_version==3
+    wire=MemoryWireV3.model_validate({'schema_version':3,'facts':{'add':[]},
+        'character_states':{'add':[],'update':[{'claim_id':a.claim_id,'text':'Пальто','evidence_ids':['f000001']}],'retire':[]},
+        'open_threads':{'add':[],'update':[],'retire':[]},'timeline':{'add':[]}})
+    j=wire_v3_events(wire,prev,'p2',prose)
+    assert j.events[-1].slot=='clothing' and J.replay_memory(j)[a.claim_id].text=='Пальто'

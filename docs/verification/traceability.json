@@ -479,7 +479,9 @@
         "tests/memory/test_core_journal.py::test_update_cannot_change_slot",
         "tests/memory/test_core_journal.py::test_evidence_version_quote_checked_against_that_prose",
         "tests/memory/test_core_journal.py::test_extend_promotes_schema_version",
-        "tests/memory/test_core_journal.py::test_tracked_characters_uses_protagonist"
+        "tests/memory/test_core_journal.py::test_tracked_characters_uses_protagonist",
+        "tests/memory/test_core_journal.py::test_legacy_view_projects_evidence_version_and_omits_quoteless_author",
+        "tests/memory/test_core_journal.py::test_model_updates_keep_slot_of_claim"
       ]
     },
     {
