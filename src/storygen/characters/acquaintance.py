@@ -28,7 +28,9 @@ def is_protagonist_line(line):
 
 def known_names_line(line):
     match=KNOWN.match(plain_line(line))
-    return split_participants(match.group(1)) if match else None
+    if not match:return None
+    # A placeholder such as «—», «-» or «…» means "nobody": only entries with a letter or digit are names.
+    return [name for name in split_participants(match.group(1)) if any(char.isalnum() for char in name)]
 
 
 def protagonist(cards,scenes):
