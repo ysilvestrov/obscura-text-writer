@@ -252,6 +252,33 @@ pre { white-space: pre-wrap; overflow-wrap: anywhere; font: 14px/1.7 var(--font-
 .memory-table input[type="checkbox"] { width: 1.25rem; height: 1.25rem; }
 .memory-table details { color: var(--text-secondary); }
 .memory-table summary { cursor: pointer; }
+.core-review { margin-block: 16px; padding-block: 8px; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); min-width: 0; overflow-wrap: anywhere; }
+.core-review h3 { margin-block: 8px; font-size: 1rem; }
+.core-review h4 { margin-block: 12px 4px; font-size: .9375rem; }
+.core-review-state { color: var(--text-secondary); margin-block: 4px 8px; }
+.core-review-state[data-confirmed="true"] { color: var(--success); }
+.core-review-quiet > summary { cursor: pointer; color: var(--accent-text); padding-block: 8px; }
+.core-review-row { padding-block: 12px; border-bottom: 1px solid var(--border-color); min-width: 0; }
+.core-review-row p { margin: 4px 0; white-space: pre-wrap; }
+.core-review-row-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
+.core-review-status, .core-review-reader-unknown { font-size: .875rem; color: var(--text-secondary); }
+.core-review-reader-unknown { font-style: italic; }
+.core-review-reason { color: var(--text-secondary); }
+.core-review-draft { color: var(--accent-text); }
+.core-review-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.core-review-actions button { white-space: normal; }
+.core-review-entry { display: grid; gap: 12px; margin-top: 12px; padding: 12px; border: 1px solid var(--border-color); min-width: 0; }
+.core-review-entry label { display: grid; gap: 4px; min-width: 0; }
+.core-review-entry textarea, .core-review-entry select, .core-review-entry input[type="search"] { width: 100%; min-width: 0; box-sizing: border-box; }
+.core-review-entry fieldset { margin: 0; padding: 8px; border: 1px solid var(--border-color); min-width: 0; }
+.core-review-fragments { display: grid; gap: 4px; max-height: 16rem; overflow-y: auto; }
+.core-review-entry label.core-review-fragment { display: flex; align-items: flex-start; gap: 8px; }
+.core-review-fragment input { flex: none; margin-top: 4px; }
+.core-review-fragment span { min-width: 0; white-space: pre-wrap; }
+.core-review-hint { color: var(--text-secondary); margin: 0; }
+.core-review-error { color: var(--error); margin: 0; }
+.core-review-error:empty { display: none; }
+.core-review-entry .actions { display: flex; flex-wrap: wrap; gap: 8px; }
 @media (max-width: 700px) {
   .memory-filters { flex-direction: column; }
   .memory-table, .memory-table tbody { display: block; }

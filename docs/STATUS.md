@@ -2,20 +2,20 @@
 
 **ПЕРЕВІРКА ПРОЙШЛА** — свідчення конкретного запуску, не поточного довільного стану.
 
-- Початок (UTC): 2026-11-09T15:04:26.141817+00:00
-- Завершення (UTC): 2026-11-09T15:13:09.113877+00:00
-- Базовий commit: `741a52dfe04322e64ff58cc3e75cb943c871ec89`
+- Початок (UTC): 2026-11-09T18:47:54.992085+00:00
+- Завершення (UTC): 2026-11-09T18:57:01.166689+00:00
+- Базовий commit: `9b0359326b4347d73c195a241f65719b36bde112`
 - Незакомічені зміни під час перевірки: `false`
-- SHA-256 вихідного знімка: `a4acfe9d5e32030936d8807a09e5ee013cdff459bc942d8696b2e826290f620f`
+- SHA-256 вихідного знімка: `2f4938a6222282bbd52611c0e8f80ba6db8c010642bd94549c84a2c133b38c8e`
 - Зміна знімка під час прогону: `false`
 - Exit code: `0`
-- Фактичні testcase результати JUnit: passed: 2055 · failed: 0 · errors: 0 · skipped: 1
-- Тривалість: 522.97 с
+- Фактичні testcase результати JUnit: passed: 2093 · failed: 0 · errors: 0 · skipped: 1
+- Тривалість: 546.17 с
 
 Точний argv (JSON, не shell-команда):
 
 ```json
-["C:\\Projects\\text-generator\\.venv\\Scripts\\python.exe", "-m", "pytest", "-q", "--junitxml=C:\\wpc\\artifacts\\verification-lxy61fvm\\junit.xml", "--basetemp=C:\\wpc\\artifacts\\verification-lxy61fvm\\test-tmp"]
+["C:\\wpc\\.venv\\Scripts\\python.exe", "-m", "pytest", "-q", "--junitxml=C:\\wpc\\artifacts\\verification-a22zo74m\\junit.xml", "--basetemp=C:\\wpc\\artifacts\\verification-a22zo74m\\test-tmp"]
 ```
 
 Результат стосується лише наведеної команди й вихідного знімка. Якщо в argv зазначено окремі файли або фільтри, це часткова перевірка. Збір (collection) не є виконанням; skipped не зараховано до passed. Відсутній або непридатний XML позначається непідтвердженим. Після зміни вихідних файлів звіт історичний. Власний STATUS і artifacts виключено зі знімка; початкова ревізія може мати dirty=true, оскільки звіт створюється до коміту.

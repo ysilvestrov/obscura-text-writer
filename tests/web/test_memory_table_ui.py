@@ -10,3 +10,11 @@ def test_memory_table_selection_conflict_and_async_save():
     root=Path(__file__).resolve().parents[2]
     result=subprocess.run([node,str(root/'tests/web/js/memory-table.mjs'),str(root)],capture_output=True,encoding='utf-8',errors='replace',timeout=15)
     assert result.returncode==0,result.stderr
+
+
+def test_core_review_panel_model_and_draft():
+    node=shutil.which('node')
+    if not node:pytest.skip('Node потрібен для перевірки ES module')
+    root=Path(__file__).resolve().parents[2]
+    result=subprocess.run([node,str(root/'tests/web/js/core_review.mjs')],capture_output=True,encoding='utf-8',errors='replace',timeout=15)
+    assert result.returncode==0,result.stderr

@@ -192,6 +192,11 @@ R-22 прокрутка: Playwright `long draft scrolls internally while formatt
 Запустити Playwright collapsible-scenes.spec.mjs на synthetic server:65 scenes, dirty draft, selected scene/material, click/Enter, UA/EN/refresh зберігають open; імпорт поза collapsed list. Synthetic latest reports collapse без втрати articles; поточні blockers/checkpoint не ховаються. Оглянути screenshots collapsed-scenes/reports desktop/mobile. Наявність процедури не є фактичним PASS.
 
 
+<a id="core-review"></a>
+## Панель підтвердження ядра
+
+З кореня робочої копії з `PYTHONPATH=<робоча копія>/src` запустити `frontend/node_modules/.bin/playwright test -c frontend/playwright.config.mjs core-review` (не `npx playwright`, який ставить іншу версію). Synthetic server, нейтральні сцени «Ранок»/«Гість», без provider calls. Cases `core-review.spec.mjs` для desktop і mobile: `changes are expanded, unchanged rows collapsed, confirm without edits` (знімки `docs/images/core-review-{desktop,mobile}.png`, без горизонтального прокручування); `keep previous on an unknown slot creates a version where the slot is unchanged` (після цього без wire «Лишити попереднє» вимкнене, «Вписати…» для закритої лінії відсутнє); `write in with a quote from an earlier scene` (пошук звужує фрагменти); `write in without a quote is unknown to the reader; cancel keeps the draft`; `refreshing the table asks before dropping a core draft`; `a conflict shows the server message and reloads the panel`. Переглянути обидва знімки на нейтральність. Наявність процедури не є фактичним PASS; результат запуску записується в журналі виконання.
+
 <a id="model-import-metadata"></a>
 ## Тарифи, ліміти й journal counts
 

@@ -82,6 +82,11 @@ class PromptContract(DomainModel):
     schema_version: Literal[1, 2, 3, 4]
 
 
+class MemoryConfirmation(DomainModel):
+    confirmed_at: str
+    by: Literal['author'] = 'author'
+
+
 class VersionRef(DomainModel):
     id: str
     story_id: str
@@ -98,6 +103,7 @@ class VersionRef(DomainModel):
     dependency_snapshot: DependencySnapshot | None = None
     prompt_contract: PromptContract | None = None
     input_refs: list[str] = Field(default_factory=list)
+    memory_confirmation: MemoryConfirmation | None = None
     created_at: str = Field(default_factory=now)
 
     @model_validator(mode='after')

@@ -26,9 +26,12 @@ def memory_catalog_v3(journal: MemoryJournal) -> str:
     return json.dumps({'mutable':mutable,'immutable':immutable},ensure_ascii=False,separators=(',',':'))
 
 
-def memory_catalog_v4(journal: MemoryJournal, tracked: list[str], names: dict[str,str]) -> str:
+def memory_catalog_v4(journal: MemoryJournal, tracked: list[str], names: dict[str,str], *, all_tracked: list[str] | None = None) -> str:
     # Core shows every registry slot of the tracked characters (empty ones as null); threads are decided by claim_id.
+    # tracked is the cast's share of all_tracked (default: the same list); slots of a character outside all_tracked
+    # (former protagonist) are listed as ordinary mutable states, as schema_bounds_v4 does.
     from .core import SLOTS
+    every=set(tracked if all_tracked is None else all_tracked)
     active=replay_memory(journal).values()
     slots={(e.character_ids[0],e.slot):e for e in active if e.slot}
     def value(event):
@@ -37,7 +40,7 @@ def memory_catalog_v4(journal: MemoryJournal, tracked: list[str], names: dict[st
     core={cid:{s.name:value(slots.get((cid,s.name))) for s in SLOTS} for cid in tracked}
     threads=[{'claim_id':e.claim_id,'text':e.text} for e in active if e.category=='open_threads']
     mutable=[{'claim_id':e.claim_id,'category':e.category,'text':e.text,'character_ids':e.character_ids}
-        for e in active if e.category=='character_states' and not e.slot]
+        for e in active if e.category=='character_states' and (not e.slot or e.character_ids[0] not in every)]
     immutable=[{'category':e.category,'text':e.text} for e in active if e.category in {'facts','timeline'}]
     return json.dumps({'names':{cid:names.get(cid,cid) for cid in tracked},'core':core,'threads':threads,
         'mutable':mutable,'immutable':immutable},ensure_ascii=False,separators=(',',':'))

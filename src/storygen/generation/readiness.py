@@ -1,9 +1,36 @@
 """Read-only run preflight shared by the queue and workspace controls."""
 
+import re
+
 from ..authoring.blueprints import get_role_settings
+from ..memory.journal import load_memory
 from .context import build_context, make_context
 from .pipeline import STAGES, STAGE_ROLES
 from .prompts import validate_role_prompt
+
+
+_SLOT_EVENT=re.compile(r'"slot"\s*:\s*"')
+
+
+def unconfirmed_core_scenes(view, scenes) -> int:
+    """Active scenes whose memory head has a core (a slot event) the author has not confirmed (MEMORY-CONFIRM).
+
+    Counted once per captured view; a head is parsed only when its raw text can contain a set slot."""
+    cached=getattr(view,'_unconfirmed_core_scenes',None)
+    if cached is not None:return cached
+    count=0
+    for scene in scenes:
+        memory_id=scene.heads.get('memory')
+        if not memory_id:continue
+        try:
+            if view.peek_version(memory_id).memory_confirmation is not None:continue
+            raw=view.read_text(memory_id)
+            if not _SLOT_EVENT.search(raw):continue
+            journal=load_memory(raw)
+        except (ValueError,KeyError,OSError):continue
+        if any(event.slot for event in journal.events):count+=1
+    view._unconfirmed_core_scenes=count
+    return count
 
 
 def preview(repo, request, view=None):
@@ -32,6 +59,8 @@ def preview(repo, request, view=None):
     settings=get_role_settings(repo,story.id)
     roles={name:settings[name].provider.model_dump(include={'provider','model'}) for stage in stages if (name:=STAGE_ROLES[stage]) in settings}
     result={'ready':False,'reason':None,'roles':roles,'calls':len(stages),'evaluator':None,'warnings':[]}
+    # Information only: auto mode never waits for confirmation, so the count changes neither ready nor reason.
+    if request.mode in {'scene','remaining'}:result['unconfirmed_core_scenes']=unconfirmed_core_scenes(view,scenes)
     try:
         if request.mode!='prepare' and scene is None:
             raise ValueError('Оберіть сцену')

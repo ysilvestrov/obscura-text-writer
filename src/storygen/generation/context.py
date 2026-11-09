@@ -169,12 +169,13 @@ def build_context(repo,scene_id: str,stage: str,settings: RoleSettings,*,editor_
         # Only v4 prompts pass preflight; /2 and /3 contracts are rejected before any request.
         wire=memory_wire_version(validate_role_prompt(repo,story.id,'memory',settings))
         cards=load_characters(repo.read_text(story.characters_version_id)) if story.characters_version_id else []
-        tracked=[cid for cid in tracked_characters(cards,scenes) if cid in scene.character_ids]
+        everyone=tracked_characters(cards,scenes)
+        tracked=[cid for cid in everyone if cid in scene.character_ids]
         changed={cid:day_change(scenes,scene,cid) for cid in tracked}
-        catalog=memory_catalog_v4(past,tracked,{card.id:card.name for card in cards})
+        catalog=memory_catalog_v4(past,tracked,{card.id:card.name for card in cards},all_tracked=everyone)
         parts=json.loads(catalog)
         prose_text=repo.read_text(prose_id)
-        bounds=schema_bounds_v4(past,prose_text,scene.character_ids,tracked,changed)
+        bounds=schema_bounds_v4(past,prose_text,scene.character_ids,everyone,changed)
         dump=lambda value:json.dumps(value,ensure_ascii=False,separators=(',',':'))
         sections=['ЯДРО СТАНУ ВІДСТЕЖУВАНИХ ПЕРСОНАЖІВ — УСІ СЛОТИ ОБОВ’ЯЗКОВІ\n'+dump({'names':parts['names'],'core':parts['core']}),
             'АКТИВНІ ЛІНІЇ — ДЛЯ КОЖНОЇ ОБОВ’ЯЗКОВЕ open/closed\n'+dump(parts['threads']),

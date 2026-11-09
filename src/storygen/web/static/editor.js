@@ -5,6 +5,7 @@ import {renderImportJournal} from './import-journal.js';
 import {renderImportResults,showImportPending,showImportRefreshWarning} from './import-results.js';
 import {installSceneTrash} from './trash.js';
 import {createTextEditor} from './text-editor.js';
+import {confirmUnsaved} from './core-review.js';
 import {readWorkspacePosition,rememberWorkspacePosition,resolveWorkspacePosition,updateWorkspaceUrl} from './workspace-position.js';
 import {registerWorkspaceCommand,invokeWorkspaceCommand} from './workspace-commands.js';
 
@@ -96,7 +97,7 @@ export async function refresh(options){
 export async function selectScene(scene){
   if(state.saving){notice(msg("m_cbac60d6d919"));return}
   const captured={id:state.scene?.id,epoch:state.bufferEpoch,mode:state.mode};
-  if(state.dirty&&!await confirmDialog(t("m_98091834913e")))return;
+  if(!await confirmUnsaved(state,confirmDialog,t("m_98091834913e")))return;
   if(state.saving||state.scene?.id!==captured.id||state.bufferEpoch!==captured.epoch||state.mode!==captured.mode)return;
   loadBuffer(scene,'plan',scene.beats);
   uiText(document.querySelector('#current-kind'),"textContent",()=>(t("m_9ecb77f7d846")));
@@ -107,7 +108,7 @@ export async function selectScene(scene){
 }
 
 textEditor.onInput(()=>{state.dirty=textEditor.isDirty()||!!authorComments?.isDirty();state.bufferEpoch++;uiText(document.querySelector('#save-state'),"textContent",()=>(state.dirty?t("m_ee929a68273c"):t("m_4fc1598084c2")));changed()});
-globalThis.addEventListener?.('beforeunload',event=>{if(state.dirty||state.saving){event.preventDefault();event.returnValue=''}});
+globalThis.addEventListener?.('beforeunload',event=>{if(state.dirty||state.saving||state.coreReview?.dirty()){event.preventDefault();event.returnValue=''}});
 
 export async function saveCurrentMaterial(){
   if(state.bufferOrigin==='history'||['history','blueprint','review'].includes(state.mode))throw new Error(t("m_b51f0fcfbfe2"));

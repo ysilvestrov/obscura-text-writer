@@ -1,7 +1,7 @@
 import difflib
 from typing import Literal
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Query, Request
 
 from ..domain import DomainModel
 from ..generation.dependencies import save_manual_draft, save_manual_prose, select_prose
@@ -241,3 +241,46 @@ def acceptance_preview(scene_id: str,version_id: str,request: Request):
 def accept_version(scene_id: str,body: AcceptanceSelection,request: Request):
     result=request.app.state.repo.accept_version(scene_id,body.version_id,body.expected_revision,body.preview_fingerprint,body.note)
     return {'scene':result.scene,'version':result.version,'acceptance':result.acceptance}
+
+
+@router.get('/api/scenes/{scene_id}/core-review')
+def core_review_view(scene_id: str,request: Request):
+    from ..memory.core_review import core_review
+    from .localization import request_locale
+    return core_review(request.app.state.repo,scene_id,request_locale(request))
+
+
+from ..memory.core_review import CoreReviewBody
+
+
+@router.post('/api/scenes/{scene_id}/core-review')
+def core_review_apply(scene_id: str,body: CoreReviewBody,request: Request):
+    from fastapi.responses import JSONResponse
+    from ..memory.core_review import apply_core_review
+    from .localization import diagnostic, request_locale
+    locale=request_locale(request)
+    try:
+        return apply_core_review(request.app.state.repo,scene_id,body,locale)
+    except RevisionConflict:
+        raise
+    except ValueError as error:
+        # An edit the author must change (keep without a model answer, quote outside the prefix), not malformed data.
+        return JSONResponse({'detail':diagnostic(str(error),locale),'detail_original':str(error)},status_code=422)
+
+
+@router.get('/api/scenes/{scene_id}/core-review/scenes')
+def core_review_scenes(scene_id: str,request: Request):
+    from ..memory.core_review import prefix_scenes
+    return prefix_scenes(request.app.state.repo,scene_id)
+
+
+@router.get('/api/scenes/{scene_id}/core-review/fragments')
+def core_review_fragments(scene_id: str,request: Request,q: str='',source_scene_id: str | None = Query(default=None,alias='scene_id')):
+    from fastapi.responses import JSONResponse
+    from ..memory.core_review import prefix_fragments
+    from .localization import diagnostic, request_locale
+    try:
+        return prefix_fragments(request.app.state.repo,scene_id,q,source_scene_id)
+    except ValueError as error:
+        # A query outside the scene prefix is a request the author must change, not malformed data.
+        return JSONResponse({'detail':diagnostic(str(error),request_locale(request)),'detail_original':str(error)},status_code=422)
