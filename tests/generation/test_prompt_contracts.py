@@ -208,3 +208,23 @@ def test_request_without_bounds_uses_static_v3_schema():
     role = memory_role(provider=ProviderSettings(model='fake', response_mode='json_schema'))
     schema = generation_request('memory', role, 's', 'u', {'memory_wire_version': '3'})['response_format']['json_schema']['schema']
     assert schema == strict_schema(MemoryWireV3)
+
+
+@pytest.mark.req('PLANNER-ACQUAINTANCE')
+def test_custom_brief_prompt_gets_introduced_wire_contract(tmp_path):
+    from storygen.generation.prompts import expected_contract
+    from storygen.prompt_contracts import BRIEF_INTRODUCED_CONTRACT
+    repo, story, scene = prepared(tmp_path)
+    settings = RoleSettings(provider=ProviderSettings(model='fake', response_mode='json_schema'))
+    builtin = build_context(repo, scene.id, 'brief', settings)
+    assert BRIEF_INTRODUCED_CONTRACT not in builtin.system_text
+    assert '"introduced"' in builtin.system_text  # the built-in v2 prompt already describes the field
+    old_form = 'Поверни лише JSON: {"objective":"...","beats":["..."],"constraints":["..."],"proposed_changes":[]}.'
+    prompt = repo.save_version(story.id, None, 'prompt', old_form, [], prompt_contract=expected_contract('brief', settings))
+    custom = build_context(repo, scene.id, 'brief', settings.model_copy(update={'prompt_version_id': prompt.id}))
+    assert custom.system_text.startswith(old_form + '\n\n' + BRIEF_INTRODUCED_CONTRACT)
+    assert '"introduced"' in BRIEF_INTRODUCED_CONTRACT and '[]' in BRIEF_INTRODUCED_CONTRACT
+    # The stored author version is not rewritten and keeps its contract.
+    assert repo.read_text(prompt.id) == old_form
+    assert repo.get_version(prompt.id).prompt_contract == expected_contract('brief', settings)
+    assert custom.api_request['messages'][0]['content'] == custom.system_text

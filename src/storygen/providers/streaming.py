@@ -40,6 +40,14 @@ def output_limit_message(context,usage,has_text):
             'Перевірте резерв відповіді та витрати reasoning; збільшення вхідного контексту не збільшує вихідний ліміт. Автоматичного повтору немає.')
 
 
+WHITESPACE_RUNAWAY_LIMIT=1024
+
+
+def whitespace_runaway_message():
+    return (f'Модель зациклилася на пробілах у структурованій відповіді (понад {WHITESPACE_RUNAWAY_LIMIT} поспіль); потік зупинено, частковий текст збережено. '
+            'Імовірно, промпт не описує обов’язкове поле JSON-схеми. Автоматичного повтору немає.')
+
+
 def empty_output_message(context,usage):
     subject='Редактор повернув' if context.stage=='edit' else 'Модель повернула'
     message=f'{subject} порожню відповідь із finish_reason=stop: фінального тексту немає. '
@@ -72,10 +80,12 @@ class OpenAIGenerationGateway:
         complete=False
         cost=None
         response_id=None
+        blank_run=0
         try:
             require_accounting(self.settings,self.accounting)
             with build_openai_client(self.settings,self.http_client) as client:
                 body=context.api_request or generation_request(context.stage,context.settings,context.system_text,context.user_text,context.fragments)
+                structured='response_format' in body
                 output_limit=body.get('max_completion_tokens',body.get('max_tokens'))
                 request_context=context.estimated_tokens+(output_limit if type(output_limit) is int and output_limit>0 else context.settings.max_output_tokens)
                 if self.settings.provider=='venice':
@@ -116,6 +126,13 @@ class OpenAIGenerationGateway:
                             if delta.content:
                                 has_text=True
                                 yield GenerationEvent(type='delta',text=delta.content)
+                                if structured:
+                                    stripped=delta.content.rstrip()
+                                    blank_run=blank_run+len(delta.content) if not stripped else len(delta.content)-len(stripped)
+                                    if blank_run>WHITESPACE_RUNAWAY_LIMIT:
+                                        # Constrained decoding with a masked closing token degenerates into whitespace until the cap.
+                                        yield GenerationEvent(type='error',usage=usage,message=whitespace_runaway_message(),failure={'category':'degenerate_output'})
+                                        return
                             if choice.finish_reason:
                                 finish=choice.finish_reason
                 complete=finish is not None
