@@ -3064,7 +3064,7 @@
     {
       "id": "RATING-002-S02",
       "requirement": "RATING-002",
-      "scope": "Чисті правила розбору віку: заперечення, порожній рядок, найменше число, найпізніша відомість, пріоритет вердиктів.",
+      "scope": "Чисті правила розбору віку: заперечення, порожній рядок, найменше число, найпізніша відомість, пріоритет вердиктів, недійсний якір дає щонайменше «невказаний» (зокрема в редактурі patches/diff).",
       "tests": [
         "tests/characters/test_character_age.py::test_parse_age_value",
         "tests/characters/test_character_age.py::test_entry_age",
@@ -3072,9 +3072,10 @@
         "tests/characters/test_character_age.py::test_from_scene_overrides_timeless_after_anchor",
         "tests/characters/test_character_age.py::test_worst_verdict_among_timeless",
         "tests/characters/test_character_age.py::test_missing_card_is_unknown_and_each_participant_reported",
-        "tests/characters/test_character_age.py::test_later_anchor_ignored_and_bad_anchor_skipped",
-        "tests/characters/test_character_age.py::test_latest_anchor_group_wins_and_trashed_anchor_skipped",
-        "tests/characters/test_character_age.py::test_other_story_anchor_skipped"
+        "tests/characters/test_character_age.py::test_later_anchor_ignored_and_missing_anchor_is_unknown",
+        "tests/characters/test_character_age.py::test_latest_anchor_group_wins_and_trashed_anchor_is_at_least_unknown",
+        "tests/characters/test_character_age.py::test_other_story_anchor_is_unknown",
+        "tests/generation/test_content_rating_context.py::test_trashed_anchor_age_blocks_patch_and_diff_edit"
       ]
     },
     {

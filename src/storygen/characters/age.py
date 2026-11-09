@@ -31,8 +31,9 @@ def entry_age(text: str) -> AgeVerdict | None:
 def scene_ages(cards,scenes,scene_id: str) -> dict[str,AgeVerdict]:
     """Age verdict per scene participant; availability rules mirror project_characters.
 
-    Entries with an invalid anchor (trashed, missing, other story) are skipped silently:
-    the projection reports that error separately.
+    An age entry with an invalid anchor (trashed, missing, other story) is never skipped:
+    it raises that participant's verdict to at least 'unknown', because not every
+    request path runs the projection that reports the anchor error.
     """
     active={scene.id:scene for scene in scenes if not scene.trashed_at}
     scene=active.get(scene_id)
@@ -43,16 +44,18 @@ def scene_ages(cards,scenes,scene_id: str) -> dict[str,AgeVerdict]:
         card=by_id.get(character_id)
         verdict: AgeVerdict='unknown'
         if card is not None:
-            anchored: dict[int,list[AgeVerdict]]={};plain: list[AgeVerdict]=[]
+            anchored: dict[int,list[AgeVerdict]]={};plain: list[AgeVerdict]=[];invalid=False
             for entry in card.entries:
                 age=entry_age(entry.text)
                 if age is None:continue
                 if entry.availability=='from_scene':
                     anchor=active.get(entry.available_from_scene_id)
-                    if anchor is None or anchor.story_id!=scene.story_id or anchor.position>scene.position:continue
+                    if anchor is None or anchor.story_id!=scene.story_id:invalid=True;continue
+                    if anchor.position>scene.position:continue
                     anchored.setdefault(anchor.position,[]).append(age)
                 else:plain.append(age)
             group=anchored[max(anchored)] if anchored else plain
             if group:verdict=worst(group)
+            if invalid:verdict=worst([verdict,'unknown'])
         result[character_id]=verdict
     return result

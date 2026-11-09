@@ -67,23 +67,31 @@ def test_missing_card_is_unknown_and_each_participant_reported():
     assert scene_ages(cards,scenes(('A','B')),'1')=={'A':'adult','B':'unknown'}
 
 
-def test_later_anchor_ignored_and_bad_anchor_skipped():
+def test_later_anchor_ignored_and_missing_anchor_is_unknown():
     from storygen.characters.age import scene_ages
-    cards=[card('A',entry('a','Вік: 30'),entry('f','Вік: 10','from_scene','3'),entry('g','Вік: 10','from_scene','nope'))]
+    cards=[card('A',entry('a','Вік: 30'),entry('f','Вік: 10','from_scene','3'))]
     assert scene_ages(cards,scenes(),'2')=={'A':'adult'}
+    cards=[card('A',entry('a','Вік: 30'),entry('g','Вік: 40','from_scene','nope'))]
+    assert scene_ages(cards,scenes(),'2')=={'A':'unknown'}
 
 
-def test_latest_anchor_group_wins_and_trashed_anchor_skipped():
+def test_latest_anchor_group_wins_and_trashed_anchor_is_at_least_unknown():
     from storygen.characters.age import scene_ages
     sc=scenes()
     cards=[card('A',entry('a','Вік: 10','from_scene','1'),entry('b','Вік: 20','from_scene','2'))]
     assert scene_ages(cards,sc,'3')=={'A':'adult'}
     sc[1].trashed_at='x'
     assert scene_ages(cards,sc,'3')=={'A':'minor'}
+    sc=scenes();sc[0].trashed_at='x'
+    cards=[card('A',entry('a','Вік: 30'),entry('b','Вік: 16','from_scene','1'))]
+    assert scene_ages(cards,sc,'2')=={'A':'unknown'}
+    # The invalid entry never hides a valid minor verdict.
+    cards=[card('A',entry('a','Вік: 15'),entry('b','Вік: 30','from_scene','1'))]
+    assert scene_ages(cards,sc,'2')=={'A':'minor'}
 
 
-def test_other_story_anchor_skipped():
+def test_other_story_anchor_is_unknown():
     from storygen.characters.age import scene_ages
     sc=scenes()+[Scene(id='x',story_id='other',title='x',position=0)]
     cards=[card('A',entry('a','Вік: 30'),entry('b','Вік: 10','from_scene','x'))]
-    assert scene_ages(cards,sc,'1')=={'A':'adult'}
+    assert scene_ages(cards,sc,'1')=={'A':'unknown'}

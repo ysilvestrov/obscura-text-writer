@@ -176,3 +176,18 @@ def test_guard_message_has_english_translation(tmp_path):
     for text in ['Сцена має рейтинг сексуального змісту 1, але склад сцени порожній. Укажіть учасників, щоб перевірити їхній вік.',
                  'Сцена має рейтинг сексуального змісту 2. Підготуйте картки персонажів із рядком «Вік:», щоб перевірити вік учасників.']:
         assert diagnostic(text,'en')!=text
+
+
+@pytest.mark.parametrize('mode',['patches','diff'])
+def test_trashed_anchor_age_blocks_patch_and_diff_edit(tmp_path,mode):
+    cards=[{'schema_version':2,'id':'A','name':'Анна','entries':[
+        {'id':'A0','text':'Вік: 30','availability':'timeless','available_from_scene_id':None,'origin':'author','sources':[]},
+        {'id':'A1','text':'Вік: 16','availability':'from_scene','available_from_scene_id':None,'origin':'author','sources':[]}]}]
+    repo,story,scenes=make_story(tmp_path,R(1,0,0),cards=None,count=2)
+    cards[0]['entries'][1]['available_from_scene_id']=scenes[1].id
+    ref=repo.save_version(story.id,None,'character_cards',json.dumps(cards,ensure_ascii=False),[])
+    repo.publish_story_material(story.id,'characters_version_id',ref.id,repo.get_story(story.id).revision)
+    with_heads(repo,scenes[0],'brief','draft')
+    repo.set_scene_trashed(story.id,scenes[1].id,repo.get_scene(scenes[1].id).revision,False)
+    with pytest.raises(ValueError,match='персонаж «Анна» не має вказаного віку'):
+        build_context(repo,scenes[0].id,'edit',settings(edit_mode=mode))
