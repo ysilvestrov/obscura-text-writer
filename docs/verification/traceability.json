@@ -974,6 +974,8 @@
       "scope": "Визначення протагоніста та розпізнавання позначок. Знайомства головного героя. Перевірка зазначеного сценарію; не є доказом літературної якості чи фактичного представлення в прозі.",
       "tests": [
         "tests/characters/test_acquaintance_markers.py::test_protagonist_line_variants",
+        "tests/characters/test_acquaintance_markers.py::test_role_line_from_template_marks_protagonist",
+        "tests/web/test_author_templates.py::test_characters_template_marks_protagonist_and_explains_acquaintances",
         "tests/characters/test_acquaintance_markers.py::test_mid_line_italic_label_and_protagonist_colon",
         "tests/generation/test_acquaintance_context.py::test_broken_anchor_does_not_block_scene_without_hero",
         "tests/generation/test_acquaintance_context.py::test_hero_only_cast_ignores_broken_anchor",
