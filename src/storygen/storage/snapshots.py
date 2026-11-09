@@ -153,11 +153,14 @@ def compare_snapshot(view, snapshot: DependencySnapshot | dict) -> list[Dependen
     if snapshot.scope in {'brief','draft','prose_edit','author_text','author_rewrite'} and not any(s.field=='memory_projection_policy' for s in selectors):
         owner=next((s.owner_id for s in selectors if s.kind=='scene' and s.field=='title'),None)
         if owner:selectors.append(DependencySelector(kind='scene',owner_id=owner,field='memory_projection_policy',expected=[]))
-    if snapshot.scope in RATING_SCOPES and not any(s.field=='content_rating' for s in selectors):
-        # Old snapshots predate the rating: the story's first rating is their baseline, so setting it stales nothing.
+    rating=[s for s in selectors if s.field=='content_rating']
+    if snapshot.scope in RATING_SCOPES and all(s.expected is None for s in rating):
+        # Old snapshots predate the rating, and a recorded None means the story was not rated yet: either way the
+        # story's first rating is their baseline, so setting it stales nothing.
+        selectors=[s for s in selectors if s.field!='content_rating']
         initial=view.peek_story(view.story.id).initial_content_rating
         owner_field=('head','draft') if snapshot.scope=='patches' else ('scene','title')
-        owner=next((s.owner_id for s in selectors if (s.kind,s.field)==owner_field),None)
+        owner=rating[0].owner_id if rating else next((s.owner_id for s in selectors if (s.kind,s.field)==owner_field),None)
         if owner and initial is not None:
             selectors.append(DependencySelector(kind='scene',owner_id=owner,field='content_rating',expected=to_wire(initial)))
     for selector in selectors:

@@ -2,6 +2,7 @@
 import json
 from ..dependency_models import DependencySelector
 from ..storage.snapshots import selector_value
+from ..rating.levels import from_wire,is_lower
 from .models import ImpactPlan,ImpactTarget,SourceChange,fingerprint,TEXT_STAMP_EXCLUDE
 
 
@@ -118,6 +119,9 @@ def capture_target(view,version_id,*,baseline_override=None,current_sources_only
                 seen_selectors.add(seen)
                 # Historical target self selectors are known inputs, not publish targets.
                 current=selector_value(view,selector)
+                if selector.field=='content_rating' and not is_lower(from_wire(current),from_wire(selector.expected)):
+                    # A raised rating is not a changed input: it neither stales the material nor alters the capture.
+                    current=selector.expected
                 if selector.kind=='source' and selector.field=='source_characters' and current!=selector.expected and not view.story.characters_version_id:
                     raise ValueError('Змінені описи персонажів без часових карток потребують ручного перегляду')
                 if selector.kind=='order' and current!=selector.expected:raise ValueError('Зміна порядку сцен потребує ручного перегляду')

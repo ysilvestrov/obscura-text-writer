@@ -140,6 +140,43 @@ def test_author_text_never_stale_from_rating(tmp_path):
     assert not fresh(repo, story_id, manual.id).stale
 
 
+def test_unrated_snapshot_uses_initial_rating(tmp_path):
+    repo, story_id, scene_id, draft = setup(tmp_path)
+    version = save(repo, story_id, scene_id, 'draft', draft.id)
+    assert rating_selectors(repo.get_version(version.id).dependency_snapshot)[0].expected is None
+    set_story(repo, story_id, R(2, 1, 1))
+    assert not fresh(repo, story_id, version.id).stale
+    set_story(repo, story_id, R(1, 1, 1))
+    result = fresh(repo, story_id, version.id)
+    change = next(c for c in result.reasons if c.selector and c.selector.field == 'content_rating')
+    assert result.stale and (change.expected, change.current) == (['2', '1', '1'], ['1', '1', '1'])
+    set_story(repo, story_id, R(2, 1, 1))
+    assert not fresh(repo, story_id, version.id).stale
+
+
+def test_story_lowering_below_scene_override_keeps_scene_fresh(tmp_path):
+    repo, story_id, scene_id, draft = setup(tmp_path)
+    set_story(repo, story_id, R(2, 2, 2))
+    set_scene(repo, scene_id, R(1, 1, 1))
+    version = save(repo, story_id, scene_id, 'draft', draft.id)
+    set_story(repo, story_id, R(0, 0, 0))
+    assert not fresh(repo, story_id, version.id).stale
+
+
+def test_impact_capture_ignores_rating_raise(tmp_path):
+    repo, story_id, scene_id, draft = setup(tmp_path)
+    set_story(repo, story_id, R(1, 1, 1))
+    version = save(repo, story_id, scene_id, 'prose_edit', draft.id)
+    repo.set_head(scene_id, 'prose', version.id, repo.get_scene(scene_id).revision)
+    before = capture_target(repo.context_view(story_id), version.id)
+    set_story(repo, story_id, R(2, 2, 2))
+    after = capture_target(repo.context_view(story_id), version.id)
+    assert after.fingerprint == before.fingerprint
+    change = next(c for c in after.changes if c.input_field == 'content_rating')
+    assert not change.changed
+    assert next(s for s in after.selectors if s['field'] == 'content_rating')['expected'] == ['1', '1', '1']
+
+
 def test_impact_preview_tolerates_rating_selector(tmp_path):
     repo, story_id, scene_id, draft = setup(tmp_path)
     set_story(repo, story_id, R(2, 2, 2))
