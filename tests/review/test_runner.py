@@ -1,7 +1,7 @@
 import json
 import pytest
 from tests.review.test_store import setup
-from tests.memory.wire_helpers import v3_response
+from tests.memory.wire_helpers import v4_answer
 from storygen.generation.worker import RunCoordinator
 from storygen.run_models import RunRequest
 from storygen.providers.streaming import GenerationEvent
@@ -23,7 +23,7 @@ def fixture(root,concern=False,memory_fail=False,third=False):
             if ctx.stage=='memory':
                 if memory_fail:
                     yield GenerationEvent(type='error',message='Memory unavailable');return
-                raw=json.loads(v3_response())
+                raw=json.loads(v4_answer(ctx))
             else:
                 p=json.loads(ctx.user_text)
                 raw=dict(complete=True,changes=[],questions=[]) if p['phase']=='delta' else dict(complete=True,concerns=[],carry_refs=[])
@@ -210,7 +210,7 @@ def test_manual_memory_is_not_discarded_on_automatic_rebuild(tmp_path,generated,
         import threading
         class Adds:
             def stream(self,ctx,cancel):
-                yield GenerationEvent(type='delta',text=v3_response(facts_add=[dict(text='Факт про лист.',evidence_ids=['f000001'])]))
+                yield GenerationEvent(type='delta',text=v4_answer(ctx,facts_add=[dict(text='Факт про лист.',evidence_ids=['f000001'])]))
                 yield GenerationEvent(type='terminal',finish_reason='stop')
         context=build_context(repo,first.id,'memory',get_role_settings(repo,story.id)['memory'])
         a=execute_stage(repo,first.id,'memory',context,Adds(),threading.Event(),lambda _:None,run.id)

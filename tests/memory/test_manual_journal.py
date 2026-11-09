@@ -138,3 +138,74 @@ def test_manual_duplicate_adds_differing_only_in_supporting_quotes_are_distinct_
     assert plain.claim_id==add(()).claim_id and supported.claim_id==add(('Другий рядок.',)).claim_id
     assert repeat.claim_id==_add_event('facts','Той самий факт','p2','Перший рядок.',1).claim_id
     assert len({plain.claim_id,supported.claim_id,repeat.claim_id})==3
+
+
+def test_manual_resave_keeps_claim_ids_of_resolution_and_identical_fact():
+    from storygen.memory.journal import MemoryJournal,_add_event,_change_event,normalize_manual_memory
+    thread=_add_event('open_threads','Хто стукав','p1','Перший рядок.',0)
+    previous=MemoryJournal(schema_version=3,source_prose_ids=['p1'],events=[thread])
+    # Wire v4 order: the resolution fact first, then the model's identical facts.add, both occurrence 0 of their keys.
+    new=[_change_event('retire',thread.claim_id,'Стукав сусід','open_threads',[],'p2','Другий рядок.'),
+        _add_event('facts','Стукав сусід','p2','Другий рядок.',0,resolves_claim_id=thread.claim_id),
+        _add_event('facts','Стукав сусід','p2','Другий рядок.',0)]
+    raw=previous.model_copy(update={'source_prose_ids':['p1','p2'],'events':previous.events+new}).model_dump_json()
+    journal=normalize_manual_memory(raw,previous,'p2',MANUAL_PROSE,[])
+    assert [e.claim_id for e in journal.events[1:]]==[e.claim_id for e in new]
+
+
+def _same_scene_closure(link):
+    from storygen.memory.journal import MemoryEvent,MemoryJournal
+    def event(id,claim,category,text,operation='add',resolves=None):
+        return MemoryEvent(event_id=id,claim_id=claim,operation=operation,category=category,text=text,
+            source_version_id='p2',quote='Перший рядок.',resolves_claim_id=resolves)
+    return MemoryJournal(schema_version=3,source_prose_ids=['p2'],events=[
+        event('e1','manual-thread','open_threads','Хто стукав'),
+        event('e2','manual-thread','open_threads','Стукав сусід','retire'),
+        event('e3','manual-fact','facts','Стукав сусід',resolves=link)]).model_dump_json()
+
+
+def test_manual_normalization_remaps_resolution_links():
+    from storygen.memory.journal import MemoryJournal,normalize_manual_memory
+    from storygen.memory.projection import project_memory
+    journal=normalize_manual_memory(_same_scene_closure('manual-thread'),MemoryJournal(),'p2',MANUAL_PROSE,[])
+    text=project_memory(journal,[],{'p2':1}).text
+    assert text.count('Стукав сусід')==1 and text.split('ХРОНОЛОГІЯ\n')[1]=='Немає.'
+    thread,retire,fact=journal.events
+    assert thread.claim_id!='manual-thread' and retire.claim_id==thread.claim_id and fact.resolves_claim_id==thread.claim_id
+
+
+def test_manual_normalization_rejects_dangling_resolution_link():
+    import pytest
+    from storygen.memory.journal import MemoryJournal,normalize_manual_memory
+    with pytest.raises(ValueError,match='невідомий запис'):
+        normalize_manual_memory(_same_scene_closure('no-such-claim'),MemoryJournal(),'p2',MANUAL_PROSE,[])
+
+
+def test_manual_slot_only_for_tracked_character():
+    import pytest
+    from storygen.memory.journal import MemoryJournal,_add_event,normalize_manual_memory
+    def raw(cid):
+        return MemoryJournal(schema_version=3,source_prose_ids=['p2'],
+            events=[_add_event('character_states','Пальто','p2','Перший рядок.',0,[cid],slot='clothing')]).model_dump_json()
+    with pytest.raises(ValueError,match='відстежуваного'):
+        normalize_manual_memory(raw('B'),MemoryJournal(),'p2',MANUAL_PROSE,['A','B'],tracked=['A'])
+    assert normalize_manual_memory(raw('A'),MemoryJournal(),'p2',MANUAL_PROSE,['A','B'],tracked=['A']).events[0].slot=='clothing'
+
+
+def test_manual_save_rejects_slot_of_untracked_character(tmp_path):
+    import pytest
+    from storygen.domain import SceneCreate,StoryCreate
+    from storygen.storage.repository import Repository
+    from storygen.memory.journal import MemoryJournal,_add_event
+    from storygen.memory.service import save_scene_memory
+    repo=Repository(tmp_path);story=repo.create_story(StoryCreate(title='Ядро'))
+    scene=repo.create_scene(story.id,SceneCreate(title='1',beats='Вечір',character_ids=['A','B']))
+    prose=repo.save_version(story.id,scene.id,'manual',MANUAL_PROSE,[])
+    repo.set_head(scene.id,'prose',prose.id,repo.get_scene(scene.id).revision)
+    def raw(cid):
+        return MemoryJournal(schema_version=3,source_prose_ids=[prose.id],
+            events=[_add_event('character_states','Пальто',prose.id,'Перший рядок.',0,[cid],slot='clothing')]).model_dump_json()
+    # Without cards the fallback protagonist is the first cast ID of the earliest scene: A.
+    with pytest.raises(ValueError,match='відстежуваного'):
+        save_scene_memory(repo,scene.id,raw('B'),repo.get_scene(scene.id).revision)
+    save_scene_memory(repo,scene.id,raw('A'),repo.get_scene(scene.id).revision)

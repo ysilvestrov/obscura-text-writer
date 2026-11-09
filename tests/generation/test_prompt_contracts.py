@@ -96,27 +96,24 @@ def custom_memory_prompt(repo, story, schema_version):
         prompt_contract=PromptContract(stage='memory', mode='evidence_delta', schema_version=schema_version))
 
 
-def test_builtin_memory_prompt_is_v3():
+def test_builtin_memory_prompt_is_v4():
     from storygen.domain import PromptContract
     from storygen.generation.prompts import expected_contract, role_prompt
     from storygen.prompt_contracts import memory_wire_version
     role = memory_role()
-    assert expected_contract('memory', role) == PromptContract(stage='memory', mode='evidence_delta', schema_version=3)
-    assert memory_wire_version(None) == 3
-    assert '"schema_version":3' in role_prompt('memory', role)
+    assert expected_contract('memory', role) == PromptContract(stage='memory', mode='evidence_delta', schema_version=4)
+    assert memory_wire_version(None) == 4
+    assert '"schema_version":4' in role_prompt('memory', role)
 
 
-def test_custom_v2_memory_prompt_stays_valid_and_selects_v2(tmp_path):
+def test_custom_v4_memory_prompt_is_used_verbatim(tmp_path):
     from storygen.prompt_contracts import memory_wire_version, validate_role_prompt
     repo, story, scene = memory_prepared(tmp_path)
-    for version in (2, 3):
-        prompt = custom_memory_prompt(repo, story, version)
-        ref = validate_role_prompt(repo, story.id, 'memory', memory_role(prompt_version_id=prompt.id))
-        assert ref.id == prompt.id and memory_wire_version(ref) == version
-    prompt = custom_memory_prompt(repo, story, 2)
+    prompt = custom_memory_prompt(repo, story, 4)
+    ref = validate_role_prompt(repo, story.id, 'memory', memory_role(prompt_version_id=prompt.id))
+    assert ref.id == prompt.id and memory_wire_version(ref) == 4
     context = build_context(repo, scene.id, 'memory', memory_role(prompt_version_id=prompt.id))
-    assert context.fragments['memory_wire_version'] == '2'
-    assert context.memory_metrics['projection_version'] == 'memory-catalog-v2'
+    assert context.fragments['memory_wire_version'] == '4'
     assert context.system_text == 'Власний промпт пам’яті.'
 
 
@@ -128,7 +125,7 @@ def test_custom_v1_or_other_mode_still_rejected(tmp_path):
              PromptContract(stage='memory', mode='snapshot', schema_version=2)]
     for contract in wrong:
         prompt = repo.save_version(story.id, None, 'prompt', 'Інший.', [], prompt_contract=contract)
-        with pytest.raises(ValueError, match='memory/evidence_delta/3'):
+        with pytest.raises(ValueError, match='memory/evidence_delta/4'):
             validate_role_prompt(repo, story.id, 'memory', memory_role(prompt_version_id=prompt.id))
     edit_v2 = repo.save_version(story.id, None, 'prompt', 'Редактор.', [],
         prompt_contract=PromptContract(stage='edit', mode='patches', schema_version=2))
@@ -136,15 +133,15 @@ def test_custom_v1_or_other_mode_still_rejected(tmp_path):
         validate_role_prompt(repo, story.id, 'edit', RoleSettings(provider=ProviderSettings(model='fake'), edit_mode='patches', prompt_version_id=edit_v2.id))
     snapshot = repo.save_version(story.id, None, 'prompt', 'Знімок.', [],
         prompt_contract=PromptContract(stage='memory', mode='snapshot', schema_version=2))
-    with pytest.raises(ValueError, match='memory/snapshot/1'):
+    with pytest.raises(ValueError, match='memory/evidence_delta/4'):
         validate_role_prompt(repo, story.id, 'memory', RoleSettings(provider=ProviderSettings(model='fake'), memory_mode='snapshot', prompt_version_id=snapshot.id))
 
 
 def test_context_records_wire_version_and_catalog_metrics(tmp_path):
     repo, _, scene = memory_prepared(tmp_path)
     context = build_context(repo, scene.id, 'memory', memory_role())
-    assert context.fragments['memory_wire_version'] == '3'
-    assert context.memory_metrics['projection_version'] == 'memory-catalog-v3'
+    assert context.fragments['memory_wire_version'] == '4'
+    assert context.memory_metrics['projection_version'] == 'memory-catalog-v4'
     assert 'MUTABLE ДЛЯ UPDATE/RETIRE' in context.user_text
     assert '"mutable":[]' in context.user_text
 
@@ -183,23 +180,16 @@ def test_json_schema_mode_uses_wire_v3_schema():
         assert 'operations' in v2['properties']
 
 
-def test_json_schema_mode_uses_dynamic_v3_schema(tmp_path):
+def test_json_schema_mode_uses_dynamic_v4_schema(tmp_path):
     import json
     repo, _, scene = memory_prepared(tmp_path)
     role = memory_role(provider=ProviderSettings(model='fake', response_mode='json_schema'))
     context = build_context(repo, scene.id, 'memory', role)
     bounds = json.loads(context.fragments['memory_schema_bounds'])
-    assert bounds == {'fragment_ids': ['f000001'], 'mutable': {'character_states': [], 'open_threads': []}, 'character_ids': ['A']}
+    assert bounds['fragment_ids'] == ['f000001'] and bounds['mutable'] == {'character_states': []} and bounds['character_ids'] == ['A']
     schema = context.api_request['response_format']['json_schema']['schema']
     ev = schema['properties']['facts']['properties']['add']['items']['properties']['evidence_ids']
     assert ev['items']['enum'] == ['f000001']
-
-
-def test_wire_v2_context_has_no_schema_bounds(tmp_path):
-    repo, story, scene = memory_prepared(tmp_path)
-    prompt = custom_memory_prompt(repo, story, 2)
-    context = build_context(repo, scene.id, 'memory', memory_role(prompt_version_id=prompt.id))
-    assert 'memory_schema_bounds' not in context.fragments
 
 
 def test_request_without_bounds_uses_static_v3_schema():

@@ -50,3 +50,22 @@ def test_overflow_names_the_actual_limit(tokens,chars,expected):
     assert expected in str(error)
     assert "Текст не обрізано" in str(error)
     assert "245760" in str(error)
+
+
+def test_writer_context_shows_protagonist_core_first(tmp_path):
+    from storygen.memory.journal import MemoryJournal,_add_event
+    repo=Repository(tmp_path);story=repo.create_story(StoryCreate(title='Ядро'))
+    first=repo.create_scene(story.id,SceneCreate(title='1',beats='Вдома',character_ids=['A']))
+    second=repo.create_scene(story.id,SceneCreate(title='2',beats='Без героїні',character_ids=['B']))
+    prose=repo.save_version(story.id,first.id,'manual','Анна вдома в халаті.',[])
+    repo.set_head(first.id,'prose',prose.id,repo.get_scene(first.id).revision)
+    journal=MemoryJournal(schema_version=3,source_prose_ids=[prose.id],events=[
+        _add_event('character_states','Синій халат',prose.id,'в халаті',0,['A'],slot='clothing'),
+        _add_event('facts','Анна вдома',prose.id,'Анна вдома',0)])
+    memory=repo.save_version(story.id,first.id,'memory',journal.model_dump_json(),[prose.id])
+    repo.set_head(first.id,'memory',memory.id,repo.get_scene(first.id).revision)
+    context=build_context(repo,second.id,'brief',RoleSettings(provider=ProviderSettings(model='test')))
+    section=context.user_text.split('ЗДІЙСНЕНІ ПОДІЇ — ПЕРЕВІРЕНА ПАМ’ЯТЬ\n')[1]
+    # No character cards: the fallback protagonist has no name, so the header never shows the raw ID.
+    assert section.startswith('ЯДРО СТАНУ — протагоніст\nодяг: Синій халат\n\nФАКТИ\n— Анна вдома')
+    assert context.memory_metrics['projection_version']=='memory-uk-v3' and context.memory_metrics['core_line_count']==1

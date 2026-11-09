@@ -63,7 +63,10 @@ def save_scene_memory(repo,scene_id,text,expected_revision):
     if ref.kind not in {'manual','edited'} or not ref.complete:
         raise ValueError('Потрібна завершена вибрана проза')
     sources={id:view.read_text(id) for id in previous.source_prose_ids+[prose_id]}
-    journal=normalize_manual_memory(text,previous,prose_id,sources[prose_id],scene.character_ids)
+    from ..storage.snapshots import core_cards
+    from .core import tracked_characters
+    tracked=tracked_characters(core_cards(view,view.get_story(scene.story_id)),view.list_scenes(scene.story_id))
+    journal=normalize_manual_memory(text,previous,prose_id,sources[prose_id],scene.character_ids,tracked=tracked)
     validate_memory_journal(journal,sources,previous)
     refs=list(sources)
     earlier=[s for s in view.list_scenes(scene.story_id) if s.position<scene.position]

@@ -1,7 +1,7 @@
 from typing import Annotated, Literal
 from urllib.parse import urlparse
 
-from pydantic import Field, model_validator
+from pydantic import Field, field_validator, model_validator
 
 from ..domain import DomainModel
 from ..billing.models import Tariff
@@ -65,11 +65,17 @@ class RoleSettings(DomainModel):
     temperature: float | int = Field(default=0.7,ge=0,le=2)
     prompt_version_id: str | None = None
     prepare_prompt_version_id: str | None = None
-    memory_mode: Literal['snapshot', 'evidence_delta'] = 'evidence_delta'
+    memory_mode: Literal['evidence_delta'] = 'evidence_delta'
     edit_mode: Literal['prose', 'patches', 'diff'] = 'prose'
     edit_review: Literal['auto', 'review'] = 'auto'
     classification: ClassificationSettings | None = None
     stop_sequences: list[Annotated[str,Field(min_length=1,max_length=200)]] = Field(default_factory=list,max_length=4)
+
+    @field_validator('memory_mode',mode='before')
+    @classmethod
+    def legacy_memory_mode(cls,value):
+        # Snapshot is gone for new calls: a stored role reads as evidence_delta and its next call uses wire v4.
+        return 'evidence_delta' if value=='snapshot' else value
 
     @model_validator(mode='after')
     def reserve(self):

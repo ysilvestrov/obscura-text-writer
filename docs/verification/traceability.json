@@ -361,6 +361,20 @@
       ]
     },
     {
+      "id": "CONTEXT-002-S03",
+      "requirement": "CONTEXT-002",
+      "scope": "Ядро перед іншою пам’яттю. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/memory/test_core_projection.py::test_core_section_first_and_not_filtered_by_cast",
+        "tests/memory/test_core_projection.py::test_core_lines_in_registry_order_skip_empty",
+        "tests/memory/test_core_projection.py::test_author_unquoted_value_has_reader_unknown_suffix",
+        "tests/memory/test_core_projection.py::test_reader_unknown_marker_survives_unknown_decision",
+        "tests/memory/test_core_projection.py::test_slotted_states_not_duplicated_in_current_states",
+        "tests/memory/test_core_projection.py::test_hidden_core_value_not_shown",
+        "tests/generation/test_context.py::test_writer_context_shows_protagonist_core_first"
+      ]
+    },
+    {
       "id": "CONTEXT-003-S01",
       "requirement": "CONTEXT-003",
       "scope": "Застарілість перед початком. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
@@ -382,6 +396,15 @@
       "scope": "Ручне збереження зі старими джерелами. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
       "tests": [
         "tests/memory/test_manual_journal.py::test_revision_checked_before_normalization_and_future_source_rejected"
+      ]
+    },
+    {
+      "id": "MEMORY-001-S02",
+      "requirement": "MEMORY-001",
+      "scope": "Запис автора без цитати. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/memory/test_core_journal.py::test_author_without_quote_is_valid_only_for_author",
+        "tests/memory/test_core_journal.py::test_manual_memory_accepts_author_events"
       ]
     },
     {
@@ -416,8 +439,63 @@
       "scope": "Динамічна схема. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
       "tests": [
         "tests/memory/test_wire_v3_schema.py::test_schema_limits_and_enums",
-        "tests/generation/test_prompt_contracts.py::test_json_schema_mode_uses_dynamic_v3_schema",
-        "tests/generation/test_prompt_contracts.py::test_request_without_bounds_uses_static_v3_schema"
+        "tests/generation/test_prompt_contracts.py::test_json_schema_mode_uses_dynamic_v4_schema",
+        "tests/generation/test_prompt_contracts.py::test_request_without_bounds_uses_static_v3_schema",
+        "tests/memory/test_wire_v4_schema.py::test_schema_size_does_not_grow_fragment_enums_with_threads"
+      ]
+    },
+    {
+      "id": "MEMORY-002-S05",
+      "requirement": "MEMORY-002",
+      "scope": "Обов’язкові рішення v4. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/memory/test_wire_v4.py::test_missing_slot_or_thread_key_is_schema_violation",
+        "tests/memory/test_wire_v4_schema.py::test_schema_requires_every_slot_and_thread"
+      ]
+    },
+    {
+      "id": "MEMORY-002-S06",
+      "requirement": "MEMORY-002",
+      "scope": "Заміщення слота. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/memory/test_wire_v4.py::test_changed_into_occupied_slot_updates_same_claim"
+      ]
+    },
+    {
+      "id": "MEMORY-002-S07",
+      "requirement": "MEMORY-002",
+      "scope": "Закриття лінії з розв’язкою. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/memory/test_wire_v4.py::test_closed_thread_retires_and_adds_resolution_fact"
+      ]
+    },
+    {
+      "id": "MEMORY-002-S08",
+      "requirement": "MEMORY-002",
+      "scope": "Повна правильна відповідь не впирається в ліміт. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/memory/test_wire_v4.py::test_thirteen_closed_threads_are_valid"
+      ]
+    },
+    {
+      "id": "MEMORY-002-S09",
+      "requirement": "MEMORY-002",
+      "scope": "Етап пам’яті на wire v4. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/generation/test_memory_v4_pipeline.py::test_memory_context_has_v4_bounds_and_core_catalog",
+        "tests/generation/test_memory_v4_pipeline.py::test_memory_catalog_v4_shape",
+        "tests/generation/test_memory_v4_pipeline.py::test_request_uses_v4_schema",
+        "tests/generation/test_memory_v4_pipeline.py::test_stage_publishes_v4_journal",
+        "tests/generation/test_memory_v4_pipeline.py::test_default_memory_prompt_is_v4",
+        "tests/generation/test_prompt_contracts.py::test_context_records_wire_version_and_catalog_metrics"
+      ]
+    },
+    {
+      "id": "MEMORY-002-S10",
+      "requirement": "MEMORY-002",
+      "scope": "Повідомлення про зміну дня. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/generation/test_memory_v4_pipeline.py::test_day_change_notice_in_memory_context"
       ]
     },
     {
@@ -456,6 +534,57 @@
       "tests": [
         "tests/web/test_memory_forwarding_api.py::test_memory_view_rows_carry_supporting_quotes",
         "tests/web/test_memory_table_ui.py::test_memory_table_selection_conflict_and_async_save"
+      ]
+    },
+    {
+      "id": "MEMORY-003-S05",
+      "requirement": "MEMORY-003",
+      "scope": "Журнал v3 сумісний за байтами. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/memory/test_core_journal.py::test_default_fields_keep_v2_bytes_and_ids",
+        "tests/memory/test_core_journal.py::test_extra_fields_change_ids_and_serialize",
+        "tests/memory/test_core_journal.py::test_slot_requires_single_character_state_and_known_slot",
+        "tests/memory/test_core_journal.py::test_replay_rejects_second_active_slot_value",
+        "tests/memory/test_core_journal.py::test_update_cannot_change_slot",
+        "tests/memory/test_core_journal.py::test_evidence_version_quote_checked_against_that_prose",
+        "tests/memory/test_core_journal.py::test_extend_promotes_schema_version",
+        "tests/memory/test_core_journal.py::test_tracked_characters_uses_protagonist",
+        "tests/memory/test_core_journal.py::test_legacy_view_projects_evidence_version_and_omits_quoteless_author",
+        "tests/memory/test_core_journal.py::test_model_updates_keep_slot_of_claim"
+      ]
+    },
+    {
+      "id": "MEMORY-003-S08",
+      "requirement": "MEMORY-003",
+      "scope": "Ручне збереження: канонічні посилання resolves_claim_id і І2 для слотів. Перевірка зазначеного сценарію.",
+      "tests": [
+        "tests/memory/test_manual_journal.py::test_manual_normalization_remaps_resolution_links",
+        "tests/memory/test_manual_journal.py::test_manual_normalization_rejects_dangling_resolution_link",
+        "tests/memory/test_manual_journal.py::test_manual_slot_only_for_tracked_character",
+        "tests/memory/test_manual_journal.py::test_manual_save_rejects_slot_of_untracked_character"
+      ]
+    },
+    {
+      "id": "MEMORY-003-S06",
+      "requirement": "MEMORY-003",
+      "scope": "Перехід дня з рядка Початок; проміжна сцена без героя. Перевірка зазначеного сценарію.",
+      "tests": [
+        "tests/memory/test_story_time.py::test_day_change_skips_scenes_without_character",
+        "tests/memory/test_story_time.py::test_day_change_same_form_only",
+        "tests/memory/test_story_time.py::test_scene_start_date_and_day_forms",
+        "tests/memory/test_story_time.py::test_date_keys_are_canonical"
+      ]
+    },
+    {
+      "id": "MEMORY-003-S07",
+      "requirement": "MEMORY-003",
+      "scope": "Зміна протагоніста й дня робить пам’ять застарілою; зміна формулювання beats не робить. Перевірка зазначеного сценарію.",
+      "tests": [
+        "tests/storage/test_memory_core_selectors.py::test_tracked_change_makes_memory_stale",
+        "tests/storage/test_memory_core_selectors.py::test_day_key_change_makes_memory_stale",
+        "tests/storage/test_memory_core_selectors.py::test_beats_wording_change_keeps_memory_fresh",
+        "tests/storage/test_memory_core_selectors.py::test_comparison_scene_day_key_change_makes_memory_stale",
+        "tests/storage/test_memory_core_selectors.py::test_equivalent_date_spelling_keeps_memory_fresh"
       ]
     },
     {
@@ -510,29 +639,35 @@
       ]
     },
     {
-      "id": "PROMPT-CONTRACT-S02",
+      "id": "PROMPT-CONTRACT-S03",
       "requirement": "PROMPT-CONTRACT",
-      "scope": "Власний промпт пам’яті v2. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "scope": "Явний перехід власного промпту пам’яті на v4. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
       "tests": [
-        "tests/generation/test_prompt_contracts.py::test_custom_v2_memory_prompt_stays_valid_and_selects_v2",
-        "tests/memory/test_wire_v3.py::test_wire_version_mismatch",
-        "tests/generation/test_prompt_contracts.py::test_json_schema_mode_uses_wire_v3_schema",
-        "tests/web/test_evidence_settings.py::test_custom_v2_memory_prompt_keeps_v2_contract_on_save",
-        "tests/web/test_evidence_settings.py::test_new_custom_memory_prompt_and_standard_reset_get_v3",
+        "tests/generation/test_memory_v4_pipeline.py::test_upgrade_flag_assigns_v4",
+        "tests/web/test_evidence_settings.py::test_upgrade_memory_wire_saves_v4_contract",
+        "tests/web/test_evidence_settings.py::test_upgrade_with_standard_or_blank_text_returns_builtin",
+        "tests/web/test_evidence_settings.py::test_upgrade_rejected_for_non_memory_role",
+        "tests/web/test_evidence_settings.py::test_old_custom_memory_prompt_save_requires_upgrade",
+        "tests/web/test_evidence_settings.py::test_contract_follows_incoming_prompt_version_id",
         "tests/web/test_evidence_settings.py::test_settings_label_agrees_with_stored_contract"
       ]
     },
     {
-      "id": "PROMPT-CONTRACT-S03",
+      "id": "PROMPT-CONTRACT-S04",
       "requirement": "PROMPT-CONTRACT",
-      "scope": "Явний перехід власного промпту пам’яті на v3. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "scope": "Старий власний промпт пам’яті. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
       "tests": [
-        "tests/web/test_evidence_settings.py::test_upgrade_memory_wire_saves_v3_contract",
-        "tests/web/test_evidence_settings.py::test_upgrade_with_standard_or_blank_text_returns_builtin",
-        "tests/web/test_evidence_settings.py::test_upgrade_rejected_for_non_memory_role_or_snapshot",
-        "tests/web/test_evidence_settings.py::test_v2_prompt_without_upgrade_stays_v2",
-        "tests/web/test_evidence_settings.py::test_contract_follows_incoming_prompt_version_id",
-        "tests/web/test_evidence_settings.py::test_settings_label_agrees_with_stored_contract"
+        "tests/generation/test_memory_v4_pipeline.py::test_custom_v2_and_v3_memory_prompts_are_incompatible",
+        "tests/generation/test_memory_v4_pipeline.py::test_expected_memory_contract_is_v4",
+        "tests/generation/test_prompt_contracts.py::test_custom_v1_or_other_mode_still_rejected"
+      ]
+    },
+    {
+      "id": "PROMPT-CONTRACT-S05",
+      "requirement": "PROMPT-CONTRACT",
+      "scope": "Режим snapshot читається як evidence_delta. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/generation/test_memory_v4_pipeline.py::test_snapshot_mode_reads_as_evidence_delta"
       ]
     },
     {
@@ -1442,6 +1577,27 @@
       "scope": "Відбір літературної проєкції, журнал збережено; не глобальне вилучення фактів з авторських джерел.",
       "tests": [
         "tests/web/test_memory_table_ui.py::test_memory_table_selection_conflict_and_async_save"
+      ]
+    },
+    {
+      "id": "MEMORY-FORWARD-S04",
+      "requirement": "MEMORY-FORWARD",
+      "scope": "Відбір літературної проєкції, журнал збережено; не глобальне вилучення фактів з авторських джерел.",
+      "tests": [
+        "tests/memory/test_core_projection.py::test_hidden_thread_resolution_stays_hidden",
+        "tests/memory/test_core_projection.py::test_v4_closure_rendered_only_as_fact",
+        "tests/memory/test_core_projection.py::test_legacy_closure_stays_in_timeline",
+        "tests/memory/test_core_projection.py::test_enabling_hidden_thread_resolution_stales_dependents",
+        "tests/memory/test_core_projection.py::test_policy_without_resolution_facts_equals_hidden_before"
+      ]
+    },
+    {
+      "id": "MEMORY-FORWARD-S05",
+      "requirement": "MEMORY-FORWARD",
+      "scope": "Прихований слот після unknown: атмосферний стан успадковує позначку; перевірка зазначеного сценарію, не глобальне вилучення фактів з авторських джерел.",
+      "tests": [
+        "tests/memory/test_core_projection.py::test_hidden_slot_stays_hidden_after_unknown",
+        "tests/memory/test_core_projection.py::test_policy_without_resolution_facts_equals_hidden_before"
       ]
     },
     {

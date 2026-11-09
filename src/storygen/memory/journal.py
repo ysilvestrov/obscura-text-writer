@@ -22,24 +22,48 @@ class MemoryEvent(DomainModel):
     text: str = Field(min_length=1)
     character_ids: list[str] = Field(default_factory=list)
     source_version_id: str = Field(min_length=1)
-    quote: str = Field(min_length=1)
+    quote: str | None
     supporting_quotes: list[str] = Field(default_factory=list, max_length=2)
+    slot: str | None = None
+    source_kind: Literal['prose','author'] = 'prose'
+    evidence_version_id: str | None = None
+    resolves_claim_id: str | None = None
+
+    @model_validator(mode='before')
+    @classmethod
+    def author_quote_omitted(cls,data):
+        # quote=None is not serialized, so an author record without the key reads back as "no quote".
+        if isinstance(data,dict) and 'quote' not in data and data.get('source_kind')=='author':data={**data,'quote':None}
+        return data
 
     @model_validator(mode='after')
     def nonblank(self):
-        if not self.text.strip() or not self.quote.strip() or any(not q.strip() for q in self.supporting_quotes):
+        if not self.text.strip() or (self.quote is not None and not self.quote.strip()) or any(not q.strip() for q in self.supporting_quotes):
             raise ValueError('Порожнє твердження або доказ пам’яті')
+        if self.quote is None and (self.source_kind!='author' or self.evidence_version_id is not None or self.supporting_quotes):
+            raise ValueError('Без цитати дозволено лише запис автора без додаткових доказів')
+        if self.evidence_version_id is not None and not self.evidence_version_id.strip():
+            raise ValueError('Порожня версія доказу пам’яті')
+        if self.slot is not None:
+            from .core import slot_def
+            try:slot_def(self.slot)
+            except KeyError:raise ValueError('Невідомий слот пам’яті') from None
+            if self.category!='character_states' or len(self.character_ids)!=1:
+                raise ValueError('Слот дозволено лише для стану одного персонажа')
         return self
 
     @model_serializer(mode='wrap')
-    def omit_empty_supporting(self, handler):
+    def omit_defaults(self, handler):
         data=handler(self)
         if not data.get('supporting_quotes'):data.pop('supporting_quotes',None)
+        for key in ('slot','evidence_version_id','resolves_claim_id','quote'):
+            if data.get(key) is None:data.pop(key,None)
+        if data.get('source_kind')=='prose':data.pop('source_kind',None)
         return data
 
 
 class MemoryJournal(DomainModel):
-    schema_version: Literal[2] = 2
+    schema_version: Literal[2, 3] = 2
     source_prose_ids: list[str] = Field(default_factory=list)
     events: list[MemoryEvent] = Field(default_factory=list)
 
@@ -92,7 +116,7 @@ def replay_memory(journal: MemoryJournal) -> dict[str,MemoryEvent]:
     if len(sources)!=len(set(sources)):
         raise ValueError('Повтор джерела пам’яті')
     positions={id:i for i,id in enumerate(sources)}
-    active={};known=set();event_ids=set();last_position=-1
+    active={};known=set();event_ids=set();last_position=-1;slots=set()
     for event in journal.events:
         if event.event_id in event_ids or event.source_version_id not in positions:
             raise ValueError('Повтор події або невідоме джерело пам’яті')
@@ -107,6 +131,10 @@ def replay_memory(journal: MemoryJournal) -> dict[str,MemoryEvent]:
         if event.operation=='add':
             if event.claim_id in known:
                 raise ValueError('Повтор claim ID')
+            if event.slot:
+                key=(event.character_ids[0],event.slot)
+                if key in slots:raise ValueError('Слот персонажа вже має чинний запис')
+                slots.add(key)
             known.add(event.claim_id);active[event.claim_id]=event
         else:
             previous=active.get(event.claim_id)
@@ -114,7 +142,10 @@ def replay_memory(journal: MemoryJournal) -> dict[str,MemoryEvent]:
                 raise ValueError('Невідомий, закритий або незмінний claim')
             if previous.category!=event.category or previous.character_ids!=event.character_ids:
                 raise ValueError('Не можна змінювати категорію або scope claim')
+            if previous.slot!=event.slot:
+                raise ValueError('Не можна змінювати слот claim')
             if event.operation=='retire':
+                if event.slot:slots.discard((event.character_ids[0],event.slot))
                 del active[event.claim_id]
             else:
                 active[event.claim_id]=event
@@ -158,43 +189,73 @@ def load_memory(raw: str) -> MemoryJournal:
 def legacy_view(journal: MemoryJournal) -> MemorySnapshot:
     result=MemorySnapshot(source_prose_ids=journal.source_prose_ids.copy())
     for event in replay_memory(journal).values():
+        if event.quote is None:continue  # author record without a quote has no legacy form
         getattr(result,event.category).append(MemoryEntry(text=event.text,
-            source_version_id=event.source_version_id,quote=event.quote))
+            source_version_id=event.evidence_version_id or event.source_version_id,quote=event.quote))
     return result
 
 
-def _add_event(category,text,prose_id,quote,occurrence,characters=(),supporting=()):
+def _extras(quote,slot,source_kind,evidence_version_id,resolves_claim_id):
+    extras={}
+    if slot is not None:extras['slot']=slot
+    if source_kind!='prose':extras['source_kind']=source_kind
+    if evidence_version_id is not None:extras['evidence']=evidence_version_id
+    if quote is None:extras['no_quote']=True
+    if resolves_claim_id is not None:extras['resolves']=resolves_claim_id
+    return extras
+
+
+def duplicate_key(category,text,quote,supporting=(),*,slot=None,source_kind='prose',evidence_version_id=None,resolves_claim_id=None):
+    # Occurrence counter key of identical adds; shared by the wire v4 translator and manual normalization so re-save keeps IDs.
+    extras=_extras(quote,slot,source_kind,evidence_version_id,resolves_claim_id)
+    return (category,text,quote,tuple(supporting),tuple(sorted(extras.items())))
+
+
+def _add_event(category,text,prose_id,quote,occurrence,characters=(),supporting=(),*,slot=None,source_kind='prose',evidence_version_id=None,resolves_claim_id=None):
     value=[category,text,prose_id,quote,occurrence]
     if supporting:value.append(list(supporting))
+    extras=_extras(quote,slot,source_kind,evidence_version_id,resolves_claim_id)
+    if extras:value.append(extras)
     claim=stable_id('mc_',value)
     return MemoryEvent(event_id=stable_id('me_',['add',claim]),claim_id=claim,
         operation='add',category=category,text=text,character_ids=list(characters),
-        source_version_id=prose_id,quote=quote,supporting_quotes=list(supporting))
+        source_version_id=prose_id,quote=quote,supporting_quotes=list(supporting),slot=slot,
+        source_kind=source_kind,evidence_version_id=evidence_version_id,resolves_claim_id=resolves_claim_id)
 
 
-def change_event_id(action,claim_id,text,prose_id,quote,supporting=()):
+def change_event_id(action,claim_id,text,prose_id,quote,supporting=(),*,slot=None,source_kind='prose',evidence_version_id=None,resolves_claim_id=None):
     value=[action,claim_id,text,prose_id,quote]
     if supporting:value.append(list(supporting))
+    extras=_extras(quote,slot,source_kind,evidence_version_id,resolves_claim_id)
+    if extras:value.append(extras)
     return stable_id('me_',value)
 
 
-def _change_event(action,claim_id,text,category,character_ids,prose_id,quote,supporting=()):
-    return MemoryEvent(event_id=change_event_id(action,claim_id,text,prose_id,quote,supporting),
+def _change_event(action,claim_id,text,category,character_ids,prose_id,quote,supporting=(),*,slot=None,source_kind='prose',evidence_version_id=None,resolves_claim_id=None):
+    return MemoryEvent(event_id=change_event_id(action,claim_id,text,prose_id,quote,supporting,slot=slot,
+            source_kind=source_kind,evidence_version_id=evidence_version_id,resolves_claim_id=resolves_claim_id),
         claim_id=claim_id,operation=action,category=category,text=text,character_ids=list(character_ids),
-        source_version_id=prose_id,quote=quote,supporting_quotes=list(supporting))
+        source_version_id=prose_id,quote=quote,supporting_quotes=list(supporting),slot=slot,
+        source_kind=source_kind,evidence_version_id=evidence_version_id,resolves_claim_id=resolves_claim_id)
 
 
-def _extend(previous,prose_id,events):
+def _nonstandard(event):
+    return bool(event.slot or event.source_kind!='prose' or event.evidence_version_id or event.resolves_claim_id or event.quote is None)
+
+
+def _extend(previous,prose_id,events,schema_version=None):
     if prose_id in previous.source_prose_ids:
         raise ValueError('Джерело пам’яті вже враховане')
-    return MemoryJournal(source_prose_ids=previous.source_prose_ids+[prose_id],
+    if schema_version is None:
+        schema_version=3 if any(_nonstandard(e) for e in events) else previous.schema_version
+    return MemoryJournal(schema_version=schema_version,source_prose_ids=previous.source_prose_ids+[prose_id],
         events=[e.model_copy(deep=True) for e in previous.events]+events)
 
 
 def apply_operations(previous,delta,prose_id,prose,allowed_character_ids):
     delta=MemoryOperations.model_validate(delta)
     fragments={fragment.id:fragment.text for fragment in fragment_text(prose)}
-    events=[];duplicates={}
+    events=[];duplicates={};active=replay_memory(previous)
     for op in delta.operations:
         quote=fragments.get(op.evidence_id)
         if quote is None:raise ValueError('Невідомий фрагмент підтвердження пам’яті')
@@ -205,7 +266,8 @@ def apply_operations(previous,delta,prose_id,prose,allowed_character_ids):
             occurrence=duplicates.get(key,0);duplicates[key]=occurrence+1
             events.append(_add_event(op.category,op.text,prose_id,quote,occurrence,op.character_ids))
         else:
-            events.append(_change_event(op.action,op.claim_id,op.text,op.category,op.character_ids,prose_id,quote))
+            events.append(_change_event(op.action,op.claim_id,op.text,op.category,op.character_ids,prose_id,quote,
+                slot=getattr(active.get(op.claim_id),'slot',None)))
     return _extend(previous,prose_id,events)
 
 
@@ -241,18 +303,26 @@ def unwrap_model_memory(raw):
     return unwrap_model_json(raw)
 
 
-def parse_memory_result(raw,previous,prose_id,prose,mode,allowed_character_ids,*,warnings=None,wire_version=2):
+def parse_memory_result(raw,previous,prose_id,prose,mode,allowed_character_ids,*,warnings=None,wire_version=2,bounds=None):
     normalized=unwrap_model_memory(raw)
-    result=_parse_memory_data(decode_memory(normalized),previous,prose_id,prose,mode,allowed_character_ids,warnings,wire_version)
+    result=_parse_memory_data(decode_memory(normalized),previous,prose_id,prose,mode,allowed_character_ids,warnings,wire_version,bounds)
     if warnings is not None and normalized!=raw:
         warnings.append('Пам’ять: прибрано зовнішню обгортку JSON; вміст і докази не змінено.')
     return result
 
 
-def _parse_memory_data(data,previous,prose_id,prose,mode,allowed_character_ids,warnings,wire_version):
+def _parse_memory_data(data,previous,prose_id,prose,mode,allowed_character_ids,warnings,wire_version,bounds=None):
     from .models import MemoryDelta
     if mode=='snapshot':
         return merge_legacy_snapshot(previous,MemorySnapshot.model_validate(data),prose_id,prose)
+    if wire_version==4:
+        # v4 checks need the captured bounds (tracked core, threads, fragments) of the attempt, never recomputed ones.
+        from .violations import MemoryViolations
+        from .wire_v4 import MemoryWireV4,check_v4,wire_v4_events
+        if bounds is None:raise ValueError('Для пам’яті v4 потрібні зафіксовані межі схеми')
+        violations=check_v4(data,previous,bounds)
+        if violations:raise MemoryViolations(violations)
+        return wire_v4_events(MemoryWireV4.model_validate(data),previous,prose_id,prose,bounds)
     if wire_version==3:
         from .violations import MemoryViolations
         from .wire_v3 import MemoryWireV3,check_v3,wire_v3_events
@@ -283,8 +353,12 @@ def validate_memory_journal(journal,source_versions,previous=None):
     replay_memory(journal)
     if journal.source_prose_ids!=list(source_versions):
         raise ValueError('Пам’ять повинна посилатися на всі поточні джерела прози у порядку сцен')
+    positions={id:i for i,id in enumerate(journal.source_prose_ids)}
     for event in journal.events:
-        if any(q not in source_versions[event.source_version_id] for q in [event.quote,*event.supporting_quotes]):
+        if event.evidence_version_id is not None and positions.get(event.evidence_version_id,len(positions))>positions[event.source_version_id]:
+            raise ValueError('Версія доказу пам’яті поза префіксом джерел')
+        text=source_versions[event.evidence_version_id or event.source_version_id]
+        if any(q not in text for q in [event.quote,*event.supporting_quotes] if q is not None):
             raise ValueError('Запис пам’яті не має дослівного підтвердження у прозі')
     if previous is not None:
         count=len(previous.events)
@@ -293,7 +367,7 @@ def validate_memory_journal(journal,source_versions,previous=None):
     return journal
 
 
-def normalize_manual_memory(raw,previous,prose_id,prose,allowed_character_ids):
+def normalize_manual_memory(raw,previous,prose_id,prose,allowed_character_ids,*,tracked=()):
     data=decode_memory(raw)
     if not isinstance(data,dict):raise ValueError('Потрібен JSON об’єкт пам’яті')
     if 'schema_version' not in data:
@@ -303,20 +377,32 @@ def normalize_manual_memory(raw,previous,prose_id,prose,allowed_character_ids):
         raise ValueError('Нова пам’ять змінила журнал попередніх сцен')
     if journal.source_prose_ids!=previous.source_prose_ids+[prose_id]:
         raise ValueError('Пам’ять посилається на інші джерела прози')
-    events=[];mapping={};duplicates={}
+    events=[];mapping={};duplicates={};known={e.claim_id for e in previous.events}
     for event in journal.events[len(previous.events):]:
-        if event.source_version_id!=prose_id or any(q not in prose for q in [event.quote,*event.supporting_quotes]):
+        if event.source_version_id!=prose_id or (event.evidence_version_id is None and any(
+                q not in prose for q in [event.quote,*event.supporting_quotes] if q is not None)):
             raise ValueError('Новий запис потребує доказу поточної сцени')
         if event.operation=='add':
             if not set(event.character_ids)<=set(allowed_character_ids):
                 raise ValueError('Невідомий scope персонажа')
-            key=(event.category,event.text,event.quote,tuple(event.supporting_quotes))
+            # I2: a slot belongs only to a tracked character; any other slot claim would freeze (no core decisions for it).
+            if event.slot and event.character_ids[0] not in tracked:
+                raise ValueError('Слот ядра стану дозволено лише для відстежуваного персонажа (протагоніста)')
+        # Links follow the canonical IDs of this save and must name a claim recorded earlier in the journal.
+        link=mapping.get(event.resolves_claim_id,event.resolves_claim_id)
+        if link is not None and link not in known:
+            raise ValueError('Посилання resolves_claim_id вказує на невідомий запис пам’яті')
+        if event.operation=='add':
+            key=duplicate_key(event.category,event.text,event.quote,event.supporting_quotes,slot=event.slot,source_kind=event.source_kind,
+                evidence_version_id=event.evidence_version_id,resolves_claim_id=link)
             occurrence=duplicates.get(key,0);duplicates[key]=occurrence+1
-            canonical=_add_event(event.category,event.text,prose_id,event.quote,occurrence,event.character_ids,event.supporting_quotes)
-            mapping[event.claim_id]=canonical.claim_id
+            canonical=_add_event(event.category,event.text,prose_id,event.quote,occurrence,event.character_ids,event.supporting_quotes,
+                slot=event.slot,source_kind=event.source_kind,evidence_version_id=event.evidence_version_id,resolves_claim_id=link)
+            mapping[event.claim_id]=canonical.claim_id;known.add(canonical.claim_id)
         else:
             claim=mapping.get(event.claim_id,event.claim_id)
-            canonical=event.model_copy(update={'claim_id':claim,'event_id':change_event_id(
-                event.operation,claim,event.text,prose_id,event.quote,event.supporting_quotes)})
+            canonical=event.model_copy(update={'claim_id':claim,'resolves_claim_id':link,'event_id':change_event_id(
+                event.operation,claim,event.text,prose_id,event.quote,event.supporting_quotes,slot=event.slot,
+                source_kind=event.source_kind,evidence_version_id=event.evidence_version_id,resolves_claim_id=link)})
         events.append(canonical)
     return _extend(previous,prose_id,events)

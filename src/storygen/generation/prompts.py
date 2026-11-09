@@ -6,7 +6,7 @@ def role_prompt(stage, settings) -> str:
     if stage=='edit' and settings.edit_mode=='diff':
         return default_prompt('rewrite_editor')
     if stage=='memory' and settings.memory_mode=='evidence_delta':
-        return files('storygen.generation').joinpath('resources','memory_delta_uk_v3.txt').read_text(encoding='utf-8')
+        return files('storygen.generation').joinpath('resources','memory_delta_uk_v4.txt').read_text(encoding='utf-8')
     name = 'memory_delta' if stage=='memory' and settings.memory_mode=='evidence_delta' else 'copyeditor' if stage=='edit' and settings.edit_mode=='patches' else stage
     return default_prompt(name)
 

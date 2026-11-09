@@ -6,6 +6,7 @@ from storygen.storage.repository import Repository
 from storygen.providers.models import RoleSettings, ProviderSettings
 from storygen.providers.streaming import GenerationEvent
 from storygen.generation.pipeline import generate_scene
+from tests.memory.wire_helpers import v4_answer
 
 
 class FakeGateway:
@@ -14,8 +15,7 @@ class FakeGateway:
         self.contexts.append(context)
         texts={'brief':json.dumps({'objective':'Ранок','beats':['Студія'],'constraints':[],'proposed_changes':[]},ensure_ascii=False),'draft':'Олена прийшла у нову бібліотеку.','edit':'Олена увійшла до нової бібліотеки.'}
         if context.stage=='memory':
-            scene=self.repo.get_scene(context.scene_id)
-            texts['memory']=json.dumps({'facts':[{'text':'Олена у бібліотеки','source_version_id':scene.heads['prose'],'quote':'Олена увійшла'}],'source_prose_ids':[scene.heads['prose']]},ensure_ascii=False)
+            texts['memory']=v4_answer(context,facts_add=[{'text':'Олена у бібліотеки','evidence_ids':['f000001']}])
         if context.stage==self.invalid: text='not JSON'
         else: text=texts[context.stage]
         yield GenerationEvent(type='delta',text=text)

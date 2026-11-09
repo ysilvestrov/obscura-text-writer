@@ -81,15 +81,17 @@ def _element_model(category,action):
     return WireStateAdd if category=='character_states' else WireAdd
 
 
-def _envelope(data):
+def _envelope(data,version=3,groups=GROUP_ACTIONS,sections=()):
     # Shape only: labels are fixed identifiers, never keys supplied by the model.
     found=[]
-    if type(data.get('schema_version')) is not int or data['schema_version']!=3 or set(data)!={'schema_version',*CATEGORIES}:
+    if type(data.get('schema_version')) is not int or data['schema_version']!=version or set(data)!={'schema_version',*sections,*CATEGORIES}:
         found.append(Violation('$','schema'))
+    for section in sections:
+        if section in data and not isinstance(data[section],dict):found.append(Violation(section,'schema'))
     for category in CATEGORIES:
         group=data.get(category)
         if group is None and category not in data:continue
-        expected=GROUP_ACTIONS[category]
+        expected=groups[category]
         if not isinstance(group,dict):found.append(Violation(category,'schema'));continue
         for action in ACTIONS:
             if action in group and (action not in expected or not isinstance(group[action],list)):
@@ -142,7 +144,7 @@ def wire_v3_events(wire: MemoryWireV3,previous,prose_id,prose) -> list[MemoryEve
                 events.append(_add_event(category,item.text,prose_id,quote,occurrence,chars,supporting))
             else:
                 claim=active[item.claim_id]
-                events.append(_change_event(action,item.claim_id,item.text,category,claim.character_ids,prose_id,quote,supporting))
+                events.append(_change_event(action,item.claim_id,item.text,category,claim.character_ids,prose_id,quote,supporting,slot=claim.slot))
     return _extend(previous,prose_id,events)
 
 
@@ -158,29 +160,38 @@ def _object(properties):
     return {'type':'object','properties':properties,'required':list(properties),'additionalProperties':False}
 
 
+def _evidence_item(fragments):
+    return {'type':'string','enum':list(fragments)} if fragments else {'type':'string'}
+
+
+def _adds(fragments,extra=None):
+    # Without fragments no element can carry evidence: forbid elements instead of an (invalid) empty enum.
+    evidence={'type':'array','minItems':1,'maxItems':3,'items':_evidence_item(fragments)}
+    props={'text':{'type':'string'},'evidence_ids':evidence,**(extra or {})}
+    return {'type':'array','maxItems':3 if fragments else 0,'items':_object(props)}
+
+
+def _changes(ids,fragments):
+    evidence={'type':'array','minItems':1,'maxItems':3,'items':_evidence_item(fragments)}
+    claim={'type':'string','enum':list(ids)} if ids else {'type':'string'}
+    node={'type':'array','items':_object({'claim_id':claim,'text':{'type':'string'},'evidence_ids':evidence})}
+    if not ids or not fragments:node['maxItems']=0
+    return node
+
+
+def _scope(characters):
+    return ({'type':'array','items':{'type':'string','enum':list(characters)}} if characters
+        else {'type':'array','maxItems':0,'items':{'type':'string'}})
+
+
 def memory_wire_v3_schema(bounds) -> dict:
     # Only keywords the provider grammar accepts; uniqueness, non-blank text and the 12-op limit stay server-side.
     fragments=list(bounds['fragment_ids'])
-    # Without fragments no element can carry evidence: forbid elements instead of an (invalid) empty enum.
-    evidence_item={'type':'string','enum':fragments} if fragments else {'type':'string'}
-    evidence={'type':'array','minItems':1,'maxItems':3,'items':evidence_item}
-    text={'type':'string'}
-    def adds(extra=None):
-        props={'text':text,'evidence_ids':evidence,**(extra or {})}
-        return {'type':'array','maxItems':3 if fragments else 0,'items':_object(props)}
-    def changes(category):
-        ids=bounds['mutable'][category]
-        claim={'type':'string','enum':list(ids)} if ids else {'type':'string'}
-        node={'type':'array','items':_object({'claim_id':claim,'text':text,'evidence_ids':evidence})}
-        if not ids or not fragments:node['maxItems']=0
-        return node
     def mutable(category,extra=None):
-        return _object({'add':adds(extra),'update':changes(category),'retire':changes(category)})
-    characters=bounds['character_ids']
-    chars=({'type':'array','items':{'type':'string','enum':list(characters)}} if characters
-        else {'type':'array','maxItems':0,'items':{'type':'string'}})
+        ids=bounds['mutable'][category]
+        return _object({'add':_adds(fragments,extra),'update':_changes(ids,fragments),'retire':_changes(ids,fragments)})
     return _object({'schema_version':{'type':'integer','enum':[3]},
-        'facts':_object({'add':adds()}),
-        'character_states':mutable('character_states',{'character_ids':chars}),
+        'facts':_object({'add':_adds(fragments)}),
+        'character_states':mutable('character_states',{'character_ids':_scope(bounds['character_ids'])}),
         'open_threads':mutable('open_threads'),
-        'timeline':_object({'add':adds()})})
+        'timeline':_object({'add':_adds(fragments)})})

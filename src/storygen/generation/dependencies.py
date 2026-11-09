@@ -16,8 +16,8 @@ def save_manual_prose(repo,scene_id: str,text: str,expected_revision: int,conten
     if unchanged:return unchanged[1]
     scene=repo.get_scene(scene_id)
     content_format=_author_format(repo,scene,'prose',content_format)
-    from ..memory.forwarding import hidden_before
-    policy=sorted(hidden_before(repo.context_view(scene.story_id),scene.id))
+    from ..memory.forwarding import projection_policy
+    policy=projection_policy(repo.context_view(scene.story_id),scene.id)
     snapshot=_manual_snapshot(repo,scene,'prose')
     ref=repo.save_version(scene.story_id,scene.id,'manual',text,list(snapshot.refs),dependency_snapshot=snapshot,manual_projection_policy=policy,content_format=content_format)
     repo.set_head(scene.id,'prose',ref.id,expected_revision)
@@ -31,8 +31,8 @@ def save_manual_draft(repo,scene_id: str,text: str,expected_revision: int,conten
     if unchanged:return unchanged[1]
     scene=repo.get_scene(scene_id)
     content_format=_author_format(repo,scene,'draft',content_format)
-    from ..memory.forwarding import hidden_before
-    policy=sorted(hidden_before(repo.context_view(scene.story_id),scene.id))
+    from ..memory.forwarding import projection_policy
+    policy=projection_policy(repo.context_view(scene.story_id),scene.id)
     snapshot=_manual_snapshot(repo,scene,'draft')
     ref=repo.save_version(scene.story_id,scene.id,'draft',text,list(snapshot.refs),dependency_snapshot=snapshot,manual_projection_policy=policy,content_format=content_format)
     repo.set_head(scene.id,'draft',ref.id,expected_revision)
@@ -64,8 +64,8 @@ def _manual_snapshot(repo,scene,head):
     select('order',scene.id,'prefix',[s.id for s in previous]+[scene.id])
     select('head',scene.id,'plan',scene.heads.get('plan'));source(scene.heads.get('plan'))
     if not scene.heads.get('plan'):select('scene',scene.id,'beats',scene.beats)
-    from ..memory.forwarding import hidden_before
-    select('scene',scene.id,'memory_projection_policy',sorted(hidden_before(view,scene.id)))
+    from ..memory.forwarding import projection_policy
+    select('scene',scene.id,'memory_projection_policy',projection_policy(view,scene.id))
     bindings=[(s,'prose') for s in previous]
     if previous:bindings.append((previous[-1],'memory'))
     for item,name in bindings:

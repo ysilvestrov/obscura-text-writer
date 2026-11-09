@@ -50,9 +50,9 @@ def strip_wrapper(raw: str) -> tuple[str,bool]:
     return (body,True) if body.startswith('{') and body.endswith('}') else (raw,False)
 
 
-def _attempt(raw,previous,prose_id,prose,allowed,wire):
+def _attempt(raw,previous,prose_id,prose,allowed,wire,bounds=None):
     try:
-        parse_memory_result(raw,previous,prose_id,prose,'evidence_delta',allowed,wire_version=wire)
+        parse_memory_result(raw,previous,prose_id,prose,'evidence_delta',allowed,wire_version=wire,bounds=bounds)
     except MemoryViolations as error:
         return 'fail',[v.code for v in error.violations]
     except Exception:
@@ -72,7 +72,8 @@ def replay_response(raw: str, fragments: dict, prose_id: str, prose: str) -> dic
         out['as_is']='json'
         if wire==2:out['as_v3']='json'
         return out
-    out['as_is'],out['as_is_codes']=_attempt(raw,previous,prose_id,prose,allowed,wire)
+    bounds=json.loads(fragments['memory_schema_bounds']) if wire==4 and 'memory_schema_bounds' in fragments else None
+    out['as_is'],out['as_is_codes']=_attempt(raw,previous,prose_id,prose,allowed,wire,bounds)
     if wire==2:
         try:translated=json.dumps(v2_as_v3(data,{id:event.category for id,event in replay_memory(previous).items()}))
         except ValueError:out['as_v3'],out['as_v3_codes']='fail',['unmappable']

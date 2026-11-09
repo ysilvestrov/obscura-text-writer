@@ -24,6 +24,39 @@ def hidden_before(view,scene_id):
     return {id for id,enabled in choices_at(view,scene_id).items() if not enabled}
 
 
+def forwarded_before(view,scene_id):
+    return {id for id,enabled in choices_at(view,scene_id).items() if enabled}
+
+
+def effective_hidden(journal,hidden_claim_ids,*,forwarded=()):
+    # I5: a claim that continues a retired one (resolves_claim_id: a thread's resolution fact, or the atmosphere state
+    # of a slot value marked unknown) inherits its hidden mark unless the author chose for the new claim itself.
+    # Links point back in journal order, so one ordered pass also follows chains.
+    hidden=set(hidden_claim_ids)
+    for e in journal.events:
+        if e.resolves_claim_id in hidden and e.claim_id not in forwarded:hidden.add(e.claim_id)
+    return hidden
+
+
+def projection_policy(view,scene_id):
+    """Selector value scene/memory_projection_policy: the effective hidden set (I5) at the scene's boundary."""
+    choices=choices_at(view,scene_id)
+    hidden={id for id,enabled in choices.items() if not enabled}
+    if not hidden:return []
+    scene=view.peek_scene(scene_id)
+    previous=[s for s in view.peek_scenes(scene.story_id) if s.position<scene.position]
+    memory_id=previous[-1].heads.get('memory') if previous else None
+    if memory_id:
+        # Resolution links only; quotes and prefix are validated where the journal is used for content.
+        try:
+            ref=view.peek_version(memory_id)  # no freshness recomputation inside selector evaluation
+            journal=load_memory(view.read_blob(ref.relative_path,ref.sha256).decode('utf-8'))
+        except (ValueError,KeyError,OSError):journal=None
+        if journal is not None:
+            hidden=effective_hidden(journal,hidden,forwarded={id for id,enabled in choices.items() if enabled})
+    return sorted(hidden)
+
+
 def memory_view_from_view(view,scene_id):
     scene=view.get_scene(scene_id);memory_id=scene.heads.get('memory')
     scenes=view.list_scenes(scene.story_id)
@@ -43,15 +76,18 @@ def memory_view_from_view(view,scene_id):
         if event.category=='open_threads' and event.operation=='retire':entries[event.claim_id]=event
     sources={s.heads.get('prose'):s for s in scenes}
     labels={'facts':'Факт','character_states':'Стан персонажа','open_threads':'Сюжетна лінія','timeline':'Хронологія'}
+    hidden=effective_hidden(journal,{id for id,enabled in choices.items() if not enabled},forwarded={id for id in choices if choices[id]})
     for event in entries.values():
-        source=sources.get(event.source_version_id)
+        # The title and scene follow the version the quote was taken from.
+        quoted=event.evidence_version_id or event.source_version_id
+        source=sources.get(quoted)
         if source is None:
-            historical=view.get_version(event.source_version_id)
+            historical=view.get_version(quoted)
             source=next((s for s in scenes if s.id==historical.scene_id and historical.story_id==scene.story_id and s.position<=scene.position),None)
         result['rows'].append({'claim_id':event.claim_id,'text':event.text,'category':event.category,
             'category_label':labels[event.category],'source_scene':source.position+1 if source else None,
             'source_title':source.title if source else 'Попереднє джерело','quote':event.quote,'supporting_quotes':list(event.supporting_quotes),
-            'forward':choices.get(event.claim_id,True),'closed':event.operation=='retire'})
+            'forward':event.claim_id not in hidden,'closed':event.operation=='retire'})
     stale=view.get_version(memory_id).stale
     result.update(can_save=not stale,reason='Пам’ять застаріла: спершу оновіть її' if stale else None)
     return result

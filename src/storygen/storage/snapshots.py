@@ -38,6 +38,7 @@ def build_dependency_snapshot(
     elif scope == 'memory':
         if settings.memory_mode=='evidence_delta':
             select('scene',scene.id,'character_ids',scene.character_ids)
+            memory_core_selectors(view,story,scene,scenes,select)
         prefix = [s for s in scenes if s.position <= scene.position]
         order = [s.id for s in prefix]
         select('order', scene.id, 'prefix', order)
@@ -73,8 +74,8 @@ def build_dependency_snapshot(
         select('source', story.id, 'source_preamble', source_preamble(view,ref))
         for field in ['title', 'target_words', 'character_ids']:
             select('scene', scene.id, field, getattr(scene, field))
-        from ..memory.forwarding import hidden_before
-        select('scene',scene.id,'memory_projection_policy',sorted(hidden_before(view,scene.id)))
+        from ..memory.forwarding import projection_policy
+        select('scene',scene.id,'memory_projection_policy',projection_policy(view,scene.id))
         selected_ids={item.id for item in plans}
         for item in scenes:
             if item.id in selected_ids:
@@ -108,11 +109,34 @@ def build_dependency_snapshot(
     )
 
 
+def core_cards(view,story):
+    from ..characters.models import load_characters
+    if not story.characters_version_id:return []
+    ref=view.peek_version(story.characters_version_id)  # no deep copy: planning counts them
+    return load_characters(view.read_blob(ref.relative_path,ref.sha256).decode('utf-8'))
+
+
+def memory_core_selectors(view,story,scene,scenes,select):
+    from ..memory.core import tracked_characters
+    from ..memory.story_time import comparison_scene,day_key
+    tracked=tracked_characters(core_cards(view,story),scenes)
+    select('story',story.id,'tracked_characters',tracked)
+    owners=[scene]+[item for item in (comparison_scene(scenes,scene,hero) for hero in tracked) if item]
+    for item in dict((item.id,item) for item in owners).values():
+        select('scene',item.id,'memory_day_key',day_key(item))
+
+
 def selector_value(view, selector: DependencySelector):
     kind, owner, field = selector.kind, selector.owner_id, selector.field
+    if kind=='scene' and field=='memory_day_key':
+        from ..memory.story_time import day_key
+        return day_key(view.peek_scene(owner))
+    if kind=='story' and owner==view.story.id and field=='tracked_characters':
+        from ..memory.core import tracked_characters
+        return tracked_characters(core_cards(view,view.peek_story(owner)),view.peek_scenes(owner))
     if kind=='scene' and field=='memory_projection_policy':
-        from ..memory.forwarding import hidden_before
-        return sorted(hidden_before(view,owner))
+        from ..memory.forwarding import projection_policy
+        return projection_policy(view,owner)
     if kind=='scene' and field=='content_rating':
         return to_wire(effective_rating(view.peek_story(view.story.id), view.peek_scene(owner)))
     if kind == 'story' and owner == view.story.id and field in {
@@ -286,8 +310,8 @@ def freshness(view, version_id: str) -> FreshnessResult:
             if ref.stale:
                 reasons.append(DependencyChange(version_id=version_id, reason='legacy_stale'))
             if ref.scene_id and ref.kind in {'brief','draft','edited','manual'}:
-                from ..memory.forwarding import hidden_before
-                hidden=sorted(hidden_before(view,ref.scene_id))
+                from ..memory.forwarding import projection_policy
+                hidden=projection_policy(view,ref.scene_id)
                 expected=ref.manual_projection_policy if ref.manual_projection_policy is not None else []
                 if hidden!=expected:reasons.append(DependencyChange(selector=DependencySelector(kind='scene',owner_id=ref.scene_id,field='memory_projection_policy',expected=expected),expected=expected,current=hidden,reason='selector_changed'))
         else:
@@ -358,8 +382,8 @@ def build_author_baseline(view, scene_id: str) -> DependencySnapshot:
             select('scene',item.id,'beats',item.beats)
     for field in ['title','target_words','character_ids']:
         select('scene',scene.id,field,getattr(scene,field))
-    from ..memory.forwarding import hidden_before
-    select('scene',scene.id,'memory_projection_policy',sorted(hidden_before(view,scene.id)))
+    from ..memory.forwarding import projection_policy
+    select('scene',scene.id,'memory_projection_policy',projection_policy(view,scene.id))
     previous=[item for item in scenes if item.position<scene.position]
     for item,name in [(item,'prose') for item in previous]+([(previous[-1],'memory')] if previous else []):
         id=item.heads.get(name);select('head',item.id,name,id);include(id)

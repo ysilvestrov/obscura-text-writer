@@ -112,8 +112,8 @@ def test_memory_changed_during_call_is_validated_against_captured_prose(tmp_path
             scene = repo.get_scene(scenes[1].id)
             new = repo.save_version(story.id, scene.id, 'manual', 'Замінена проза', [])
             repo.set_head(scene.id, 'prose', new.id, scene.revision)
-            ids = [id for id in context.input_refs if repo.get_version(id).kind == 'manual']
-            yield GenerationEvent(type='delta', text=MemorySnapshot(source_prose_ids=ids).model_dump_json())
+            from tests.memory.wire_helpers import v4_answer
+            yield GenerationEvent(type='delta', text=v4_answer(context))
             yield GenerationEvent(type='terminal', finish_reason='stop')
     attempt = execute_stage(repo, scenes[1].id, 'memory', context, Gateway(), threading.Event(), lambda text: None)
     assert attempt.state == 'alternative'
