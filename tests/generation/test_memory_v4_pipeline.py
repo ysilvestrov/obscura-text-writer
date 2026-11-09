@@ -129,7 +129,10 @@ def test_day_change_notice_in_memory_context(tmp_path):
     repo, _, scene = two_scenes(tmp_path, 'Початок: день 1, 08:00', 'Початок: день 2, 09:00')
     context = build_context(repo, scene.id, 'memory', role())
     assert json.loads(context.fragments['memory_schema_bounds'])['day_change'] == {'A': True}
-    assert 'ЗМІНИВСЯ ДЕНЬ: day:1 → day:2' in context.user_text
+    assert 'ЗМІНИВСЯ ДЕНЬ: день 1 → день 2 (' in context.user_text and 'day:' not in context.user_text
+    repo, _, scene = two_scenes(tmp_path / 'dates', 'Початок: 01.01.2024, 22:00', 'Початок: 2.1.24, 08:00')
+    context = build_context(repo, scene.id, 'memory', role())
+    assert 'ЗМІНИВСЯ ДЕНЬ: 1.1.2024 → 2.1.2024 (' in context.user_text and 'date:' not in context.user_text
     repo, _, scene = two_scenes(tmp_path / 'plain', 'Анна вдома.', 'Початок: день 2, 09:00')
     context = build_context(repo, scene.id, 'memory', role())
     assert json.loads(context.fragments['memory_schema_bounds'])['day_change'] == {'A': False}

@@ -163,7 +163,7 @@ def build_context(repo,scene_id: str,stage: str,settings: RoleSettings,*,editor_
         from .evidence import render_fragments
         from ..characters.models import load_characters
         from ..memory.core import tracked_characters
-        from ..memory.story_time import comparison_scene, day_change, day_key
+        from ..memory.story_time import comparison_scene, day_change, day_key, day_label
         from ..memory.wire_v4 import schema_bounds_v4
         add('ПОТОЧНА ПРОЗА',prose_id)
         # Only v4 prompts pass preflight; /2 and /3 contracts are rejected before any request.
@@ -181,7 +181,7 @@ def build_context(repo,scene_id: str,stage: str,settings: RoleSettings,*,editor_
             'ЧИННІ ТВЕРДЖЕННЯ — MUTABLE ДЛЯ UPDATE/RETIRE, IMMUTABLE ЛИШЕ ДЛЯ УНИКНЕННЯ ПОВТОРІВ\n'+dump({'mutable':parts['mutable'],'immutable':parts['immutable']})]
         for cid in tracked:
             if changed[cid]:
-                sections.append(f'ЗМІНИВСЯ ДЕНЬ: {day_key(comparison_scene(scenes,scene,cid))} → {day_key(scene)} ({parts["names"][cid]})\n'
+                sections.append(f'ЗМІНИВСЯ ДЕНЬ: {day_label(day_key(comparison_scene(scenes,scene,cid)))} → {day_label(day_key(scene))} ({parts["names"][cid]})\n'
                     'Одяг, речі при собі й тілесний стан могли застаріти: якщо проза їх не підтверджує, познач unknown із причиною.')
         sections+=['ДОЗВОЛЕНІ CHARACTER_IDS ДЛЯ НОВИХ СТАНІВ\n'+json.dumps(scene.character_ids,ensure_ascii=False),
             f'ПОТОЧНА ПРОЗА [version_id={prose_id}] — НУМЕРОВАНІ ФРАГМЕНТИ\n'+render_fragments(prose_text)]

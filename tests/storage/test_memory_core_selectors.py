@@ -54,3 +54,18 @@ def test_tracked_change_makes_memory_stale(tmp_path):
     ref,_=memory_version(repo,story,s2)
     repo.publish_story_material(story.id,'characters_version_id',cards(repo,story.id,'B'),repo.get_story(story.id).revision)
     assert ('selector_changed','tracked_characters') in reasons(repo,story,ref)
+
+
+def test_comparison_scene_day_key_change_makes_memory_stale(tmp_path):
+    repo,story,(s1,s2)=setup(tmp_path)
+    ref,_=memory_version(repo,story,s2)
+    repo.update_scene_plan(s1.id,'Початок: день 0, 20:00',repo.get_scene(s1.id).revision)
+    assert ('selector_changed','memory_day_key') in reasons(repo,story,ref)
+
+
+def test_equivalent_date_spelling_keeps_memory_fresh(tmp_path):
+    repo,story,(s1,s2)=setup(tmp_path,('Початок: 1.3.2024, 20:00','Початок: 01.03.2024, 21:00'))
+    ref,snap=memory_version(repo,story,s2)
+    assert {s.expected for s in snap.selectors if s.field=='memory_day_key'}=={'date:1.3.2024'}
+    repo.update_scene_plan(s1.id,'Початок: 01.03.24, 20:00',repo.get_scene(s1.id).revision)
+    assert reasons(repo,story,ref)==[]

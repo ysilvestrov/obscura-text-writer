@@ -4,19 +4,31 @@ import re
 START=re.compile(r'(?i)^початок\s*:\s*(?:(\d{1,2}\.\d{1,2}\.\d{2,4})|(?:день|day)\s+(\d+))\s*,\s*(\d{1,2}:\d{2})')
 
 
+def canonical_date(date):
+    # 1.3.24, 01.03.2024 and 1.3.2024 are one day; the key is also the persisted memory_day_key selector value.
+    d,m,y=(int(part) for part in date.split('.'))
+    return f'date:{d}.{m}.{2000+y if y<100 else y}'
+
+
 def scene_start(beats):
     from ..characters.acquaintance import plain_line
     for line in (beats or '').splitlines():
         match=START.match(plain_line(line))
         if match:
             date,day,time=match.groups()
-            return (f'date:{date}' if date else f'day:{int(day)}'),time
+            return (canonical_date(date) if date else f'day:{int(day)}'),time
     return None
 
 
 def day_key(scene):
     start=scene_start(scene.beats)
     return start[0] if start else None
+
+
+def day_label(key):
+    # Literary form of a day key for prompts: «день 3» or «1.3.2024»; the key format never reaches the model.
+    kind,value=key.split(':',1)
+    return f'день {value}' if kind=='day' else value
 
 
 def comparison_scene(scenes,scene,character_id):
