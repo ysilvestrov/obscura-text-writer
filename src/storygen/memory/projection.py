@@ -46,6 +46,12 @@ def memory_catalog_v4(journal: MemoryJournal, tracked: list[str], names: dict[st
 READER_UNKNOWN=' (читачеві невідомо: якщо знадобиться, введи в тексті як нове)'
 
 
+def reader_unknown(event):
+    # An author's word without a quote is unknown to the reader wherever it is rendered: in the core or, after
+    # an unknown decision, as an ordinary atmosphere state.
+    return READER_UNKNOWN if event.source_kind=='author' and event.quote is None else ''
+
+
 def project_memory(journal: MemoryJournal, character_ids: list[str], source_scene_numbers: dict[str,int], *, hidden_claim_ids=(),
         forwarded_claim_ids=(), tracked=(), names=None) -> MemoryProjection:
     from .core import SLOTS
@@ -62,7 +68,7 @@ def project_memory(journal: MemoryJournal, character_ids: list[str], source_scen
         for slot in SLOTS:
             event=slots.get((cid,slot.name))
             if event is None or event.claim_id in hidden:continue
-            lines.append(f'{slot.label_uk}: {event.text}'+(READER_UNKNOWN if event.source_kind=='author' and event.quote is None else ''))
+            lines.append(f'{slot.label_uk}: {event.text}'+reader_unknown(event))
         if lines:
             # Without a card name the technical ID never reaches the literary section; tracked is the protagonist.
             sections.append(f'ЯДРО СТАНУ — {(names or {}).get(cid) or "протагоніст"}\n'+'\n'.join(lines));core_lines+=len(lines)
@@ -82,7 +88,7 @@ def project_memory(journal: MemoryJournal, character_ids: list[str], source_scen
                 omitted+=1;continue
             scene=source_scene_numbers.get(event.source_version_id)
             prefix=f'Сцена {scene}: ' if category=='timeline' and scene is not None else ''
-            lines.append('— '+prefix+event.text)
+            lines.append('— '+prefix+event.text+reader_unknown(event))
         sections.append(labels[category]+'\n'+('\n'.join(lines) if lines else 'Немає.'))
     text='\n\n'.join(sections)
     return MemoryProjection(text,{'projection_version':'memory-uk-v3','journal_chars':len(journal.model_dump_json()),

@@ -246,3 +246,15 @@ def test_policy_includes_atmosphere_of_hidden_slot(tmp_path):
     assert not next(r for r in memory_view_from_view(repo.context_view(story.id),scenes[1].id)['rows'] if r['claim_id']==atmosphere)['forward']
     choose(repo,repo.get_scene(scenes[1].id),{atmosphere:True})
     assert projection_policy(repo.context_view(story.id),scenes[2].id)==[cloth.claim_id]
+
+
+def test_reader_unknown_marker_survives_unknown_decision():
+    from tests.memory.test_wire_v4 import answer,core,dec,new,run
+    j=run(answer(core(carried=dec('unknown',reason='Не згадано'))))
+    atmosphere=new(j)[-1]
+    assert (atmosphere.slot,atmosphere.source_kind,atmosphere.quote)==(None,'author',None)
+    text=project_memory(j,['h'],{'p1':1,'p2':2},tracked=['h'],names={'h':'Ганна'}).text
+    states=text.split('ПОТОЧНІ СТАНИ\n')[1].split('\n\n')[0].splitlines()
+    assert '— Ключ'+SUFFIX in states
+    # A quoted atmosphere state stays unmarked.
+    assert '— Сутінки' in states

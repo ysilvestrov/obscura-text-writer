@@ -367,7 +367,7 @@ def validate_memory_journal(journal,source_versions,previous=None):
     return journal
 
 
-def normalize_manual_memory(raw,previous,prose_id,prose,allowed_character_ids):
+def normalize_manual_memory(raw,previous,prose_id,prose,allowed_character_ids,*,tracked=()):
     data=decode_memory(raw)
     if not isinstance(data,dict):raise ValueError('Потрібен JSON об’єкт пам’яті')
     if 'schema_version' not in data:
@@ -377,7 +377,7 @@ def normalize_manual_memory(raw,previous,prose_id,prose,allowed_character_ids):
         raise ValueError('Нова пам’ять змінила журнал попередніх сцен')
     if journal.source_prose_ids!=previous.source_prose_ids+[prose_id]:
         raise ValueError('Пам’ять посилається на інші джерела прози')
-    events=[];mapping={};duplicates={}
+    events=[];mapping={};duplicates={};known={e.claim_id for e in previous.events}
     for event in journal.events[len(previous.events):]:
         if event.source_version_id!=prose_id or (event.evidence_version_id is None and any(
                 q not in prose for q in [event.quote,*event.supporting_quotes] if q is not None)):
@@ -385,16 +385,24 @@ def normalize_manual_memory(raw,previous,prose_id,prose,allowed_character_ids):
         if event.operation=='add':
             if not set(event.character_ids)<=set(allowed_character_ids):
                 raise ValueError('Невідомий scope персонажа')
+            # I2: a slot belongs only to a tracked character; any other slot claim would freeze (no core decisions for it).
+            if event.slot and event.character_ids[0] not in tracked:
+                raise ValueError('Слот ядра стану дозволено лише для відстежуваного персонажа (протагоніста)')
+        # Links follow the canonical IDs of this save and must name a claim recorded earlier in the journal.
+        link=mapping.get(event.resolves_claim_id,event.resolves_claim_id)
+        if link is not None and link not in known:
+            raise ValueError('Посилання resolves_claim_id вказує на невідомий запис пам’яті')
+        if event.operation=='add':
             key=duplicate_key(event.category,event.text,event.quote,event.supporting_quotes,slot=event.slot,source_kind=event.source_kind,
-                evidence_version_id=event.evidence_version_id,resolves_claim_id=event.resolves_claim_id)
+                evidence_version_id=event.evidence_version_id,resolves_claim_id=link)
             occurrence=duplicates.get(key,0);duplicates[key]=occurrence+1
             canonical=_add_event(event.category,event.text,prose_id,event.quote,occurrence,event.character_ids,event.supporting_quotes,
-                slot=event.slot,source_kind=event.source_kind,evidence_version_id=event.evidence_version_id,resolves_claim_id=event.resolves_claim_id)
-            mapping[event.claim_id]=canonical.claim_id
+                slot=event.slot,source_kind=event.source_kind,evidence_version_id=event.evidence_version_id,resolves_claim_id=link)
+            mapping[event.claim_id]=canonical.claim_id;known.add(canonical.claim_id)
         else:
             claim=mapping.get(event.claim_id,event.claim_id)
-            canonical=event.model_copy(update={'claim_id':claim,'event_id':change_event_id(
+            canonical=event.model_copy(update={'claim_id':claim,'resolves_claim_id':link,'event_id':change_event_id(
                 event.operation,claim,event.text,prose_id,event.quote,event.supporting_quotes,slot=event.slot,
-                source_kind=event.source_kind,evidence_version_id=event.evidence_version_id,resolves_claim_id=event.resolves_claim_id)})
+                source_kind=event.source_kind,evidence_version_id=event.evidence_version_id,resolves_claim_id=link)})
         events.append(canonical)
     return _extend(previous,prose_id,events)

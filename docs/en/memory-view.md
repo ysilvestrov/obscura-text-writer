@@ -10,7 +10,7 @@ Finished texts are not rewritten automatically. Dependent tasks, drafts and pros
 
 Stale memory is shown read-only; refresh memory before saving its checkboxes. If another tab causes a conflict, your changes stay in the form and are not applied; **Refresh table** lets you discard the unsaved selection and reload current data. Unsaved changes block generation, and leaving for other material asks you to confirm discarding them.
 
-**JSON for advanced editing** returns the previous journal editor with all its quote/prefix checks. Checkboxes are not part of the JSON; they are a separate author setting. Historical versions are browsed through history as before. Fully regenerating an entry with a new internal ID creates a new entry with the default enabled checkbox; the system never carries a choice over to similar text by guesswork.
+**JSON for advanced editing** returns the previous journal editor with all its quote/prefix checks. Checkboxes are not part of the JSON; they are a separate author setting. A core state slot (`slot`) can be set in the JSON only for the protagonist; a `resolves_claim_id` link must point to an entry already in the journal, and the application itself moves it to the internal ID that entry receives. Historical versions are browsed through history as before. Fully regenerating an entry with a new internal ID creates a new entry with the default enabled checkbox; the system never carries a choice over to similar text by guesswork.
 
 ## Evidence in memory entries
 
@@ -26,7 +26,7 @@ The memory block for the planner, the writer and the full literary edit starts w
 
 **Closing threads.** A closed thread leaves the open threads, and its resolution becomes an ordinary fact; the closure is not repeated in the timeline. Closures made before format v4 stay in the timeline as before. If you hid a thread, its resolution is hidden too (in the memory table the resolution's checkbox is cleared) until you explicitly enable the thread itself or the resolution fact itself.
 
-**Unknown to the reader.** An author entry without a quote is a truth of the story world that the reader has not seen yet. The writer receives it marked "(читачеві невідомо: якщо знадобиться, введи в тексті як нове)" (unknown to the reader: if needed, introduce it in the text as new) and must introduce it as new information. Once the prose shows it, the memory stage marks the slot as "introduced" and the mark disappears.
+**Unknown to the reader.** An author entry without a quote is a truth of the story world that the reader has not seen yet. The writer receives it marked "(читачеві невідомо: якщо знадобиться, введи в тексті як нове)" (unknown to the reader: if needed, introduce it in the text as new) and must introduce it as new information. Once the prose shows it, the memory stage marks the slot as "introduced" and the mark disappears. If the model instead marks such a slot unknown, the entry moves to current states and keeps the mark.
 
 **Day change.** A new day is detected from the `Початок:` line in the scene plan (`D.M.Y, H:M` or `день N, H:M`). Different spellings of the same date (`1.3.24`, `01.03.2024`, `1.3.2024`) are one day. The memory model then decides separately whether clothing, carried items and body state still hold or marks them unknown with a reason. Without this line there is no signal, and the values stay current until the prose changes them.
 

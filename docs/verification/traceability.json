@@ -368,6 +368,7 @@
         "tests/memory/test_core_projection.py::test_core_section_first_and_not_filtered_by_cast",
         "tests/memory/test_core_projection.py::test_core_lines_in_registry_order_skip_empty",
         "tests/memory/test_core_projection.py::test_author_unquoted_value_has_reader_unknown_suffix",
+        "tests/memory/test_core_projection.py::test_reader_unknown_marker_survives_unknown_decision",
         "tests/memory/test_core_projection.py::test_slotted_states_not_duplicated_in_current_states",
         "tests/memory/test_core_projection.py::test_hidden_core_value_not_shown",
         "tests/generation/test_context.py::test_writer_context_shows_protagonist_core_first"
@@ -550,6 +551,17 @@
         "tests/memory/test_core_journal.py::test_tracked_characters_uses_protagonist",
         "tests/memory/test_core_journal.py::test_legacy_view_projects_evidence_version_and_omits_quoteless_author",
         "tests/memory/test_core_journal.py::test_model_updates_keep_slot_of_claim"
+      ]
+    },
+    {
+      "id": "MEMORY-003-S08",
+      "requirement": "MEMORY-003",
+      "scope": "Ручне збереження: канонічні посилання resolves_claim_id і І2 для слотів. Перевірка зазначеного сценарію.",
+      "tests": [
+        "tests/memory/test_manual_journal.py::test_manual_normalization_remaps_resolution_links",
+        "tests/memory/test_manual_journal.py::test_manual_normalization_rejects_dangling_resolution_link",
+        "tests/memory/test_manual_journal.py::test_manual_slot_only_for_tracked_character",
+        "tests/memory/test_manual_journal.py::test_manual_save_rejects_slot_of_untracked_character"
       ]
     },
     {
