@@ -55,7 +55,7 @@ Parsing rules:
 - Without a number, only the whole value `adult` (or the Ukrainian `дорослий`, `доросла`, `дорослі`, `доросле`) counts as adult.
 - The details available for the scene under [character availability](characters.md) are used: the group whose first scene is the latest one not later than the current scene. If the group has several entries with different ages, a minor takes priority, then "not specified", then adult. If a `from_scene` entry has an age line and its first scene is in the bin, missing, or belongs to another story, the participant's age is "not specified" (so generation of a sexual-content scene is blocked).
 
-Generation is blocked by an empty scene cast, missing character cards, a minor participant, or a participant without a stated age. The message names up to five characters (then "and k more") and offers three ways to unblock:
+Generation is blocked by an empty scene cast, missing character cards, a minor participant, or a participant without a stated age. The message names up to five characters (then "and k more"). If a participant's age is stated only in entries available from a later scene, the message names that scene: most likely the entry's "First available scene" in the card is set wrong. The message also offers three ways to unblock:
 
 1. add an "Age: …" line to the card (a number from 18 or "adult");
 2. remove the character from the scene cast;

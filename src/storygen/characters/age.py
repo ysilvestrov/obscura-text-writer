@@ -59,3 +59,22 @@ def scene_ages(cards,scenes,scene_id: str) -> dict[str,AgeVerdict]:
             if invalid:verdict=worst([verdict,'unknown'])
         result[character_id]=verdict
     return result
+
+
+def later_age_scenes(cards,scenes,scene_id: str) -> dict:
+    """Participants whose only age lines sit in entries available from a later scene: id → earliest such scene.
+
+    Explains an 'unknown' verdict of scene_ages; any age line visible at the scene, or one with an invalid anchor,
+    excludes the participant, since the verdict then has another cause.
+    """
+    active={scene.id:scene for scene in scenes if not scene.trashed_at}
+    scene=active[scene_id];by_id={card.id:card for card in cards};result={}
+    for character_id in scene.character_ids:
+        card=by_id.get(character_id);later=[]
+        for entry in card.entries if card else ():
+            if entry_age(entry.text) is None:continue
+            anchor=active.get(entry.available_from_scene_id) if entry.availability=='from_scene' else None
+            if anchor is None or anchor.story_id!=scene.story_id or anchor.position<=scene.position:later=None;break
+            later.append(anchor)
+        if later:result[character_id]=min(later,key=lambda item:item.position)
+    return result

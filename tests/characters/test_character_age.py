@@ -95,3 +95,15 @@ def test_other_story_anchor_is_unknown():
     sc=scenes()+[Scene(id='x',story_id='other',title='x',position=0)]
     cards=[card('A',entry('a','Вік: 30'),entry('b','Вік: 10','from_scene','x'))]
     assert scene_ages(cards,sc,'1')=={'A':'unknown'}
+
+
+def test_age_only_in_later_entry_names_that_scene():
+    from storygen.characters.age import later_age_scenes
+    sc=scenes()
+    cards=[card('A',entry('f','Вік: 25','from_scene','3'),entry('g','Вік: 26','from_scene','2'))]
+    assert {k:v.id for k,v in later_age_scenes(cards,sc,'1').items()}=={'A':'2'}
+    assert later_age_scenes(cards,sc,'2')=={}
+    # An age visible at the scene, an invalid anchor or no age line at all is not this case.
+    assert later_age_scenes([card('A',entry('a','Вік: ?'),entry('f','Вік: 25','from_scene','3'))],sc,'1')=={}
+    assert later_age_scenes([card('A',entry('g','Вік: 30','from_scene','nope'),entry('f','Вік: 25','from_scene','3'))],sc,'1')=={}
+    assert later_age_scenes([card('A',entry('e','Висока.','from_scene','3'))],sc,'1')=={}
