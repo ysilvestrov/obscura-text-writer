@@ -3,7 +3,8 @@ import {api,json,notice} from './api.js';
 import {state,refresh} from './editor.js';
 const target=document.querySelector('#context-content');
 function draw(){
-  if(!state.scene)return;
+  // Without a selected scene (e.g. the last one was trashed) no scene form may stay actionable.
+  if(!state.scene){document.querySelector('#scene-rating')?.remove();return}
   const old=document.querySelector('#scene-settings');old?.remove();
   const form=document.createElement('form');form.id='scene-settings';form.className='panel';
   uiHTML(form,"<h3><span data-i18n=\"m_760039854033\">Параметри сцени</span></h3><label><span data-i18n=\"m_382c87f95f48\">Назва</span><input name=\"title\" required></label><label><span data-i18n=\"m_fd9c23636b93\">Орієнтир, слів</span><input name=\"target_words\" type=\"number\" min=\"1\" required aria-describedby=\"scene-target-help\"><small id=\"scene-target-help\" data-i18n=\"word_target.recommendation\">Рекомендовано до 15 000 слів</small></label><div><strong><span data-i18n=\"m_418e80220ec3\">Учасники сцени</span></strong><p id=\"scene-cast\" aria-live=\"polite\"></p><small><span data-i18n=\"m_f778f01a5f94\">Склад визначається рядком «Персонажі:» або «Хто бере участь:» у плані.</span></small></div><button><span data-i18n=\"m_4111b5e5d2dd\">Зберегти параметри</span></button>",{});
@@ -49,7 +50,10 @@ function drawRating(after){
     try{
       if(state.dirty)throw new Error(t("m_7b803d601f5d"));
       const content_rating=form.elements.mode.value==='inherit'?null:Object.fromEntries(axes.map(axis=>[axis,Number(form.elements[axis].value)]));
-      state.scene=await api(`/api/scenes/${state.scene.id}/content-rating`,json('PUT',{story_id:state.storyId,content_rating,expected_revision:state.scene.revision}));
+      const scene=state.scene;
+      const saved=await api(`/api/scenes/${scene.id}/content-rating`,json('PUT',{story_id:state.storyId,content_rating,expected_revision:scene.revision}));
+      // A slow response must not switch the selection back if the author has moved to another scene meanwhile.
+      if(state.scene?.id===scene.id)state.scene=saved;
       await refresh();notice(msg('rating.scene.saved'));
     }catch(e){notice(e.message,'error')}
   };

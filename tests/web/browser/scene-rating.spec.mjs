@@ -59,6 +59,43 @@ test('author overrides the scene rating and returns to the story rating',async({
   expect(await source()).toEqual({effective:rating(0,0,2),source:'scene'});
 });
 
+const selectScene=async(page,index)=>{
+  if(test.info().project.name==='mobile'){
+    const option=await page.locator('#scene-select-mobile option').nth(index).getAttribute('value');await page.locator('#scene-select-mobile').selectOption(option);
+  }else await page.locator('#scene-list .scene-item').nth(index).click();
+};
+const selectedSceneId=page=>page.evaluate(async()=>(await import('/static/editor.js')).state.scene?.id??null);
+
+test('a slow scene rating save does not pull the selection back to its scene',async({page,request})=>{
+  const {story_id,scene_id}=await(await request.post('/test-fixture')).json();
+  const second=await(await request.post(`/api/stories/${story_id}/scenes`,{data:{title:'Друга сцена',beats:'Прогулянка.'}})).json();
+  await page.goto(`/stories/${story_id}?scene=${scene_id}`);
+  await expect(page.locator('#scene-list .scene-item')).toHaveCount(2);
+  await openPanel(page);
+  let release;const held=new Promise(resolve=>{release=resolve});
+  await page.route('**/content-rating',async route=>{await held;await route.continue()});
+  const form=page.locator('#scene-rating');
+  await form.getByLabel('Власний рейтинг').check();
+  await form.getByRole('button',{name:'Зберегти рейтинг сцени'}).click();
+  await selectScene(page,1);
+  await expect.poll(()=>selectedSceneId(page)).toBe(second.id);
+  release();
+  await expect(page.locator('#notice')).toContainText('Рейтинг сцени збережено');
+  expect(await selectedSceneId(page)).toBe(second.id);
+  expect((await view(request,story_id)).scene_ratings[scene_id].source).toBe('scene');
+});
+
+test('the rating form disappears when no scene is selected',async({page,request})=>{
+  const {story_id,scene_id}=await(await request.post('/test-fixture')).json();
+  await page.goto(`/stories/${story_id}?scene=${scene_id}`);
+  await openPanel(page);
+  await page.evaluate(async()=>{
+    const {state}=await import('/static/editor.js');
+    state.scene=null;document.dispatchEvent(new CustomEvent('story-refreshed'));
+  });
+  await expect(page.locator('#scene-rating')).toHaveCount(0);
+});
+
 test('scene of an unrated story shows "not set" and can still get its own rating',async({page,request})=>{
   const {story_id,scene_id}=await(await request.post('/test-unrated')).json();
   await page.goto(`/stories/${story_id}?scene=${scene_id}`);

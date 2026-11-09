@@ -3074,7 +3074,7 @@
     {
       "id": "RATING-001-S05",
       "requirement": "RATING-001",
-      "scope": "scene_ratings у GET /api/stories/{id}, запис і скидання перевизначення сцени, конфлікт ревізії. Форму в параметрах сцени перевіряє Playwright-spec tests/web/browser/scene-rating.spec.mjs (два сценарії: перевизначення з поверненням до рейтингу твору; твір без рейтингу); структурна матриця індексує лише pytest, тож фактичний запуск spec фіксується окремо.",
+      "scope": "scene_ratings у GET /api/stories/{id}, запис і скидання перевизначення сцени, конфлікт ревізії. Форму в параметрах сцени перевіряє Playwright-spec tests/web/browser/scene-rating.spec.mjs (чотири сценарії: перевизначення з поверненням до рейтингу твору; твір без рейтингу; запізніла відповідь збереження не повертає вибір на попередню сцену; форма зникає без вибраної сцени); структурна матриця індексує лише pytest, тож фактичний запуск spec фіксується окремо.",
       "tests": [
         "tests/web/test_rating_routes.py::test_put_scene_rating_and_reset",
         "tests/web/test_rating_routes.py::test_scene_rating_wrong_story_rejected",

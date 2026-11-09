@@ -111,3 +111,6 @@ def test_age_label_takes_highest_level_over_story_and_scenes():
     assert age_label(story, []) == '0+'
     assert age_label(story, [Scene(id='c1', story_id=story.id, title='a', position=0, content_rating=R(sexual=0, violence=1, themes=0))]) == '16+'
     assert age_label(story.model_copy(update={'content_rating': R(sexual=0, violence=0, themes=2)}), [Scene(id='c1', story_id=story.id, title='a', position=0)]) == '18+'
+    # The story rating counts on its own: scenes that all override it downwards do not lower the label.
+    lowered = [Scene(id=f'c{i}', story_id=story.id, title='a', position=i, content_rating=R(sexual=0, violence=0, themes=0)) for i in range(2)]
+    assert age_label(story.model_copy(update={'content_rating': R(sexual=0, violence=0, themes=2)}), lowered) == '18+'
