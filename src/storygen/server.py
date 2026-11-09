@@ -33,6 +33,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.open_browser:threading.Thread(target=open_when_ready,daemon=True).start()
     try:
         server.run()
+    except KeyboardInterrupt:
+        # Ctrl+C: uvicorn has already shut the app down cleanly and re-raises the signal; stop without a traceback.
+        pass
     finally:
         done.set()
     return 0

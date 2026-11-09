@@ -29,3 +29,11 @@ def test_browser_documents_and_imported_modules_are_not_cached(tmp_path):
         conditional=client.get('/static/versions.js',headers={'If-None-Match':script.headers['etag']})
         assert conditional.status_code in {200,304}
         assert conditional.headers.get('cache-control')=='no-store'
+
+
+def test_ctrl_c_stops_the_server_quietly(tmp_path,monkeypatch,capsys):
+    # uvicorn shuts down gracefully and then re-raises KeyboardInterrupt; the launcher must not print a traceback.
+    import uvicorn
+    monkeypatch.setattr(uvicorn.Server,'run',lambda self,*a,**k:(_ for _ in ()).throw(KeyboardInterrupt()))
+    assert main(['--data-dir',str(tmp_path/'data'),'--env-file',str(tmp_path/'.env')])==0
+    assert capsys.readouterr().err==''
