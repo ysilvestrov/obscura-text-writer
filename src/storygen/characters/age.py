@@ -4,7 +4,7 @@ from typing import Literal
 
 AgeVerdict=Literal['adult','minor','unknown']
 
-AGE_LINE=re.compile(r'(?im)^[ \t]*\W*(вік|age)[ \t]*:[ \t]*([^\r\n]*)$')
+AGE_LINE=re.compile(r'(?im)^[ \t]*[\W_]*(вік|age)[*_ \t]*:[ \t]*([^\r\n]*)$')
 ADULT_WORDS=frozenset({'дорослий','доросла','дорослі','доросле','adult'})
 # Worst verdict first: minor > unknown > adult.
 _SEVERITY={'minor':2,'unknown':1,'adult':0}

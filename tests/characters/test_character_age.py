@@ -19,6 +19,7 @@ def test_parse_age_value(value,expected):
     ('Вік:\nЗріст: 160 см.','unknown'),('Зовнішність: висока.\nВік: 34.','adult'),
     ('- **Вік:** 15','minor'),('Чоловік: Петро',None),('Age: 40','adult'),
     ('- **Вік:** Дорослий','adult'),('Вік: _доросла_','adult'),('Вік: **34**','adult'),
+    ('**Вік**: 34','adult'),('__Age__: 12','minor'),('**Чоловік**: Петро',None),
     ('Вік: 30\nВік: 16','minor'),('Вік: 30\nВік: невідомо','unknown'),('Без віку',None)])
 def test_entry_age(text,expected):
     from storygen.characters.age import entry_age
