@@ -18,3 +18,5 @@ To keep the model from naming someone the protagonist has not met yet, the brief
 - **Limitations.** Acquaintance is the planner's intent, not a check of the prose: if the writer skipped the introduction, the next scene still treats the character as acquainted. For earlier scenes with prose but no brief (for example written by hand), a fallback applies: everyone in the cast with the protagonist counts as acquainted. A custom brief prompt that does not describe `introduced` will not fill it.
 
 The interface does not change; existing cards, briefs and prose are not rewritten.
+
+The age that the age-rating safeguard reads comes from an `Age:` line at the start of a line in the card details; the parsing rules and the blocking messages are described in the [age rating guide](content-rating.md#character-age-and-the-safeguard).

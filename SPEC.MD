@@ -2005,6 +2005,20 @@ Restore перевіряє complete manifest, точний inventory, кожни
 - AND знімок без селектора рейтингу або з очікуваним `None` порівнюється з `initial_content_rating` твору
 - AND ручний текст автора (`author_text`) і модельний текст, явно прийнятий автором після створення, від пониження не застарівають.
 
+<a id="rating-001-s04"></a>
+#### Scenario: RATING-001-S04 — Вікова позначка експорту
+- GIVEN твір із рейтингом і сцени з перевизначеннями рейтингів
+- WHEN виконується експорт FB2 або EPUB
+- THEN позначка пишеться за найвищим рівнем серед рейтингу твору й ефективних рейтингів сцен експорту за всіма осями (0 → `0+`, 1 → `16+`, 2 → `18+`) у `custom-info info-type="age-rating"` (FB2) або `meta property="obscura:age-rating"` (EPUB)
+- AND без рейтингу твору позначки немає, у manifest є попередження «Віковий рейтинг твору не задано; позначку не додано», а `complete` і зупинка неповного експорту від цього попередження не залежать.
+
+<a id="rating-001-s05"></a>
+#### Scenario: RATING-001-S05 — Перевизначення рейтингу сцени
+- GIVEN твір із рейтингом
+- WHEN автор у параметрах сцени вибирає власний рейтинг або «як у твору»
+- THEN зберігається об’єкт осей або `null`, а `GET /api/stories/{id}` віддає `scene_ratings` з ефективним рейтингом і джерелом («story» / «scene») для кожної сцени
+- AND запис із застарілою ревізією відхиляється (409).
+
 <a id="rating-002"></a>
 ### Requirement: RATING-002 — Запобіжник щодо неповнолітніх
 
@@ -2043,7 +2057,8 @@ Restore перевіряє complete manifest, точний inventory, кожни
 - **API.** `web/routes_rating.py`: `PUT /api/stories/{id}/content-rating` (`content_rating`, `expected_revision`; `null` відхиляється) і `PUT /api/scenes/{id}/content-rating` (`story_id`, `content_rating` або `null`, `expected_revision`); конфлікт ревізії — 409. Інтерфейс: розділ «Письмо» налаштувань твору (`rating-settings.js`); форма зареєстрована в `settings-workspace.js::registerSettingsForm` (ключ `rating`), тож незбережені зміни осей позначають розділ і попереджають під час виходу зі сторінки, як інші форми налаштувань.
 - **Тести й bench.** `tests/conftest.py` автоматично оцінює тестові твори рейтингом R(0,0,0); маркер `unrated_stories` вимикає це. `tests/web/browser/server.py::rated_story()` і `workspace_bench` рейтингують власні твори; bench відмовляється від каталогів без рейтингу.
 - **Наслідок для даних.** Після оновлення жоден наявний твір не має рейтингу, тож генерація зупиняється до першого задання рейтингу твору.
-- **Поза цим набором змін (PR 2).** Перевизначення рейтингу сцени в інтерфейсі, показ ефективного рейтингу сцени та його джерела у відповіді робочого простору, вікова позначка FB2/EPUB, користувацька документація та п. 5.3 Умов використання.
+- **Вікова позначка експорту.** `rating/levels.py::age_label(story, scenes)` бере найвищий рівень за всіма осями серед рейтингу твору й ефективних рейтингів сцен експорту (0 → `0+`, 1 → `16+`, 2 → `18+`); без рейтингу твору — `None`. `publication/book.py` кладе значення в `Book.age_rating`; `publication/fb2.py` пише `<custom-info info-type="age-rating">` в `description`, `publication/epub.py` — `<meta property="obscura:age-rating">` у `metadata`. MD, TXT і PDF позначки не мають. `application/exports.py` додає в manifest поле `age_rating` і, коли рейтингу твору немає, попередження «Віковий рейтинг твору не задано; позначку не додано». Це попередження не входить до `book.warnings`, тож `manifest.complete` і зупинка неповного експорту від нього не залежать. Нової міграції й нової версії протоколу експорту немає.
+- **Рейтинг сцени в API й інтерфейсі.** `GET /api/stories/{id}` (`web/routes_stories.py`) додає `scene_ratings`: для кожної сцени `{effective, source}`, де `source` — `story` (рейтинг успадковано) або `scene` (власний); для твору без рейтингу ефективного рейтингу немає. Запис лишається в наявному `PUT /api/scenes/{id}/content-rating`. Форма «Віковий рейтинг сцени» (`scene-settings.js`) у параметрах сцени: перемикач «Як у твору (…)» / «Власний рейтинг», три списки осей, кнопка збереження з ревізією сцени; пониження позначає матеріали застарілими, підвищення — ні.
 
 <a id="maint-001"></a>
 ### Requirement: MAINT-001 — Діагностика без repair
@@ -2120,7 +2135,7 @@ Restore SHALL відхиляти неповний/змінений резерв 
 - Запуск і конфігурація пакета: `pyproject.toml`, `src/storygen/server.py`.
 - Домен: `src/storygen/domain.py`, `src/storygen/dependency_models.py`; snapshot/view/freshness: `src/storygen/storage/context_view.py`, `src/storygen/storage/snapshots.py`; авторські операції: `src/storygen/authoring/`; налаштування, контекст і виконання: `src/storygen/application/`, `src/storygen/generation/`; пам’ять: `src/storygen/memory/`; шлюзи провайдерів: `src/storygen/providers/`.
 - Репозиторій, SQL і міграції: `src/storygen/storage/` (authoring, settings_store, run_store, invalidation); незалежні моделі запусків: `src/storygen/run_models.py`; авторські рішення: `src/storygen/storage/acceptance.py`; спільна data-only identity Evaluator: `src/storygen/evaluation_identity.py`.
-- Віковий рейтинг і запобіжник: `src/storygen/rating/`, `src/storygen/characters/age.py`, `src/storygen/web/routes_rating.py`.
+- Віковий рейтинг і запобіжник: `src/storygen/rating/`, `src/storygen/characters/age.py`, `src/storygen/web/routes_rating.py`; вікова позначка експорту: `src/storygen/publication/` (book, fb2, epub) і `src/storygen/application/exports.py`; форма рейтингу сцени: `src/storygen/web/static/scene-settings.js`.
 - Автоматичне оцінювання, CLI, рубрика, калібрування: `src/storygen/evaluation/`.
 - HTTP, шаблони, стан браузера та SSE: `src/storygen/web/`.
 - Перевірки інваріантів і регресій: `tests/`; експериментальні прогони: `scripts/`, історичні результати: `docs/`.
