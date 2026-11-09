@@ -25,4 +25,12 @@ test('author sets the story rating in settings and generation is unblocked',asyn
   else await page.locator('[data-settings-nav="writing"]').click();
   await expect(form.locator('select[name="sexual"]')).toHaveValue('1');
   await expect(form.locator('select[name="themes"]')).toHaveValue('2');
+  const leaveBlocked=()=>page.evaluate(()=>{const event=new Event('beforeunload',{cancelable:true});dispatchEvent(event);return event.defaultPrevented});
+  expect(await leaveBlocked()).toBe(false);
+  await form.locator('select[name="violence"]').selectOption('2');
+  expect(await leaveBlocked()).toBe(true);
+  if(test.info().project.name!=='mobile')await expect(page.locator('[data-settings-nav="writing"]')).toContainText('незбережено');
+  await form.locator('#rating-save').click();
+  await expect(page.locator('#notice')).toContainText('Рейтинг збережено');
+  expect(await leaveBlocked()).toBe(false);
 });
