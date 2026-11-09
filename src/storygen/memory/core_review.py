@@ -52,10 +52,16 @@ def _slots(active):
     return {(c.character_ids[0],c.slot):c for c in active.values() if c.slot}
 
 
+def _same(old_text,new_text):
+    """Equal slot values up to case, apostrophes, spacing and a final period."""
+    from ..scene_description import name_key
+    return old_text==new_text or (old_text is not None and new_text is not None and name_key(old_text)==name_key(new_text))
+
+
 def _derived_status(cid,name,old,new,own):
     if any(e.slot==name and e.character_ids==[cid] and e.source_kind=='author' for e in own):return 'author'
     old_text=old.text if old else None;new_text=new.text if new else None
-    if old_text==new_text:return 'unchanged'
+    if _same(old_text,new_text):return 'unchanged'
     return 'unknown' if new_text is None else 'changed'
 
 
@@ -92,6 +98,8 @@ def core_review(repo, scene_id: str, locale: str = 'uk') -> dict:
                 if decision:
                     status=decision['status'];reason=(decision.get('reason') or None) if status=='unknown' else None
                 else:status,reason=_derived_status(cid,slot.name,old,new,own),None
+                # A 'changed' decision that restates the same value (a fresh quote for it) is shown as unchanged.
+                if status=='changed' and old and new and _same(old.text,new.text):status='unchanged'
                 result['slots'].append({'character_id':cid,'name':names.get(cid,cid),'slot':slot.name,
                     'label':slot.label_en if locale=='en' else slot.label_uk,
                     'before':old.text if old else None,'after':new.text if new else None,'status':status,'reason':reason,

@@ -177,3 +177,14 @@ def test_prefix_fragments_by_scene(tmp_path):
         ('f000001', 'Анна в халаті.'), ('f000002', 'У кишені ключ.'), ('f000003', 'Хто стукав у двері?')]
     assert [f['text'] for f in prefix_fragments(repo, s2.id, 'ключ', source_scene_id=s1.id)] == ['У кишені ключ.']
     assert len(prefix_fragments(repo, s2.id, source_scene_id=s1.id, limit=2)) == 2
+
+
+@pytest.mark.req('MEMORY-CONFIRM')
+def test_changed_to_the_same_value_shows_as_unchanged(tmp_path):
+    # The model may re-confirm a slot with a fresh quote and mark it 'changed'; the panel must not show «було: X / стало: X» as a change.
+    repo, story, s1, s2, journal, claims = two_scenes(tmp_path)
+    core = core_unchanged('A')
+    core['A']['clothing'] = {'status': 'changed', 'text': 'халат ', 'evidence_ids': ['f000001'], 'reason': ''}
+    run_memory(repo, s2, v4_response(core, {claims['thread'].claim_id: {'status': 'open', 'resolution': '', 'evidence_ids': []}}))
+    row = by_slot(core_review(repo, s2.id))[('A', 'clothing')]
+    assert (row['before'], row['status']) == ('Халат', 'unchanged')

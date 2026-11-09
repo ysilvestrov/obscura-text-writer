@@ -2094,7 +2094,8 @@
       "scope": "Diff ядра й ліній голови memory з рішеннями wire v4 і без них.",
       "tests": [
         "tests/memory/test_core_review.py::test_core_review_changed_unknown_closed",
-        "tests/memory/test_core_review.py::test_core_review_without_wire"
+        "tests/memory/test_core_review.py::test_core_review_without_wire",
+        "tests/memory/test_core_review.py::test_changed_to_the_same_value_shows_as_unchanged"
       ]
     },
     {
