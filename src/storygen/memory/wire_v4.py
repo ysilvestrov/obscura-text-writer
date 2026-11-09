@@ -37,7 +37,7 @@ class MemoryWireV4(DomainModel):
 
 GROUP_ACTIONS={'facts':('add',),'character_states':ACTIONS,'open_threads':('add',),'timeline':('add',)}
 SECTIONS=('core','threads')
-# Fields each status fills; every other field of the decision must stay empty.
+# Fields each status needs; any other field of the decision is ignored (models fill every key).
 USED={'unchanged':(),'changed':('text','evidence_ids'),'unknown':('reason',),'introduced':('evidence_ids',),
     'open':(),'closed':('resolution','evidence_ids')}
 
