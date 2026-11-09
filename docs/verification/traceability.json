@@ -3064,7 +3064,7 @@
     {
       "id": "RATING-001-S04",
       "requirement": "RATING-001",
-      "scope": "Позначка за найвищим рівнем у FB2/EPUB, відсутність позначки без рейтингу, попередження в manifest не робить експорт неповним. PDF, MD і TXT позначки не мають.",
+      "scope": "Позначка за найвищим рівнем у FB2/EPUB, відсутність позначки без рейтингу, попередження в manifest не робить експорт неповним.",
       "tests": [
         "tests/storage/test_content_rating.py::test_age_label_takes_highest_level_over_story_and_scenes",
         "tests/authoring/test_ebook_exports.py::test_scene_override_raises_export_label",

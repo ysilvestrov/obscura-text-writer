@@ -10,7 +10,7 @@ The rating describes how explicit the text may be along three axes: **Sexual con
 - **1 — adult, without graphic detail**;
 - **2 — explicit**.
 
-The rating enters the requests to the model as a limit: the model must stay within the levels of the scene. It also drives the safeguard on character age and the age label of exports.
+The rating enters the requests to the model as a limit at the stages that write the scene (task/brief, draft, edit, rewrite): the model must stay within the levels of the scene. Memory and plan preparation get no rating instruction (the age safeguard still applies to memory). The rating also drives the safeguard on character age and the age label of exports.
 
 ## Story rating in settings
 
@@ -45,7 +45,7 @@ Parsing rules:
 - If the value contains several whole numbers, the smallest is used (`Age: 17, 34` gives 17). Under 18 means a minor.
 - An empty value, or a negation such as "not yet adult", gives "age not specified".
 - Without a number, only the whole value `adult` (or the Ukrainian `дорослий`, `доросла`, `дорослі`, `доросле`) counts as adult.
-- The details available for the scene under [character availability](characters.md) are used: the group whose first scene is the latest one not later than the current scene. If the group has several entries with different ages, a minor takes priority, then "not specified", then adult.
+- The details available for the scene under [character availability](characters.md) are used: the group whose first scene is the latest one not later than the current scene. If the group has several entries with different ages, a minor takes priority, then "not specified", then adult. If a `from_scene` entry has an age line and its first scene is in the bin, missing, or belongs to another story, the participant's age is "not specified" (so generation of a sexual-content scene is blocked).
 
 Generation is blocked by an empty scene cast, missing character cards, a minor participant, or a participant without a stated age. The message names up to five characters (then "and k more") and offers three ways to unblock:
 
