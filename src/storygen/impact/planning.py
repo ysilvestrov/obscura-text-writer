@@ -86,7 +86,14 @@ def capture_target(view,version_id,*,baseline_override=None,current_sources_only
             hashes.update(proof_hashes)
             numbers={source:item.position+1 for item,source in zip(prefix,journal.source_prose_ids)}
             state='ПОТОЧНІ ДЖЕРЕЛА' if journal.source_prose_ids==[s.heads.get('prose') for s in prefix] else 'ІСТОРИЧНІ ДЖЕРЕЛА — НЕ ПЕРЕПРИВ’ЯЗАНІ ДО НОВОЇ ПРОЗИ'
-            return state+'\n'+project_memory(journal,old_cast if old else scene.character_ids,numbers,hidden_claim_ids=old_hidden if old else hidden_before(view,scene.id)).text
+            from ..memory.core import tracked_characters
+            from ..memory.forwarding import forwarded_before
+            from ..storage.snapshots import core_cards
+            cards=core_cards(view,view.story)
+            return state+'\n'+project_memory(journal,old_cast if old else scene.character_ids,numbers,
+                hidden_claim_ids=old_hidden if old else hidden_before(view,scene.id),
+                forwarded_claim_ids=() if old else forwarded_before(view,scene.id),
+                tracked=tracked_characters(cards,view.peek_scenes(view.story.id)),names={card.id:card.name for card in cards}).text
         return raw
     def document(value,selector,old=False):
         kinds=({'plan':{'scene_plan'},'brief':{'brief'},'draft':{'draft'},'prose':{'edited','manual'},'memory':{'memory'}}.get(selector.field)

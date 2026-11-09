@@ -24,6 +24,16 @@ def hidden_before(view,scene_id):
     return {id for id,enabled in choices_at(view,scene_id).items() if not enabled}
 
 
+def forwarded_before(view,scene_id):
+    return {id for id,enabled in choices_at(view,scene_id).items() if enabled}
+
+
+def effective_hidden(journal,hidden_claim_ids,*,forwarded=()):
+    # I5: a resolution fact inherits the hidden mark of the thread it closes unless the author chose for the fact itself.
+    hidden=set(hidden_claim_ids)
+    return hidden|{e.claim_id for e in journal.events if e.resolves_claim_id in hidden and e.claim_id not in forwarded}
+
+
 def memory_view_from_view(view,scene_id):
     scene=view.get_scene(scene_id);memory_id=scene.heads.get('memory')
     scenes=view.list_scenes(scene.story_id)
@@ -43,15 +53,18 @@ def memory_view_from_view(view,scene_id):
         if event.category=='open_threads' and event.operation=='retire':entries[event.claim_id]=event
     sources={s.heads.get('prose'):s for s in scenes}
     labels={'facts':'Факт','character_states':'Стан персонажа','open_threads':'Сюжетна лінія','timeline':'Хронологія'}
+    hidden=effective_hidden(journal,{id for id,enabled in choices.items() if not enabled},forwarded={id for id in choices if choices[id]})
     for event in entries.values():
-        source=sources.get(event.source_version_id)
+        # The title and scene follow the version the quote was taken from.
+        quoted=event.evidence_version_id or event.source_version_id
+        source=sources.get(quoted)
         if source is None:
-            historical=view.get_version(event.source_version_id)
+            historical=view.get_version(quoted)
             source=next((s for s in scenes if s.id==historical.scene_id and historical.story_id==scene.story_id and s.position<=scene.position),None)
         result['rows'].append({'claim_id':event.claim_id,'text':event.text,'category':event.category,
             'category_label':labels[event.category],'source_scene':source.position+1 if source else None,
             'source_title':source.title if source else 'Попереднє джерело','quote':event.quote,'supporting_quotes':list(event.supporting_quotes),
-            'forward':choices.get(event.claim_id,True),'closed':event.operation=='retire'})
+            'forward':event.claim_id not in hidden,'closed':event.operation=='retire'})
     stale=view.get_version(memory_id).stale
     result.update(can_save=not stale,reason='Пам’ять застаріла: спершу оновіть її' if stale else None)
     return result

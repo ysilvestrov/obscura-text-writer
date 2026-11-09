@@ -361,6 +361,19 @@
       ]
     },
     {
+      "id": "CONTEXT-002-S03",
+      "requirement": "CONTEXT-002",
+      "scope": "Ядро перед іншою пам’яттю. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/memory/test_core_projection.py::test_core_section_first_and_not_filtered_by_cast",
+        "tests/memory/test_core_projection.py::test_core_lines_in_registry_order_skip_empty",
+        "tests/memory/test_core_projection.py::test_author_unquoted_value_has_reader_unknown_suffix",
+        "tests/memory/test_core_projection.py::test_slotted_states_not_duplicated_in_current_states",
+        "tests/memory/test_core_projection.py::test_hidden_core_value_not_shown",
+        "tests/generation/test_context.py::test_writer_context_shows_protagonist_core_first"
+      ]
+    },
+    {
       "id": "CONTEXT-003-S01",
       "requirement": "CONTEXT-003",
       "scope": "Застарілість перед початком. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
@@ -1548,6 +1561,16 @@
       "scope": "Відбір літературної проєкції, журнал збережено; не глобальне вилучення фактів з авторських джерел.",
       "tests": [
         "tests/web/test_memory_table_ui.py::test_memory_table_selection_conflict_and_async_save"
+      ]
+    },
+    {
+      "id": "MEMORY-FORWARD-S04",
+      "requirement": "MEMORY-FORWARD",
+      "scope": "Відбір літературної проєкції, журнал збережено; не глобальне вилучення фактів з авторських джерел.",
+      "tests": [
+        "tests/memory/test_core_projection.py::test_hidden_thread_resolution_stays_hidden",
+        "tests/memory/test_core_projection.py::test_v4_closure_rendered_only_as_fact",
+        "tests/memory/test_core_projection.py::test_legacy_closure_stays_in_timeline"
       ]
     },
     {

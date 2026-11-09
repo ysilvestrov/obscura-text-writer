@@ -20,6 +20,16 @@ In the memory table, **Show evidence** opens the main quote with the supporting 
 
 For models that support response schemas, choose the `json_schema` response mode: the application builds a schema for each request (allowed fragment IDs, active entries available for update, scene characters), which rules out most format errors.
 
+## Protagonist core state in the writer context
+
+The memory block for the planner, the writer and the full literary edit starts with a **ЯДРО СТАНУ — <protagonist name>** (core state) section. It lists the current slot values in a fixed order: clothing, carried, location, body, company. Empty slots are not shown, and older stories have no such section until a scene's memory is regenerated. The core is shown even in a scene where the protagonist is not in the cast: their state carries over unchanged. A slot value is not repeated under current states. The **Forward** checkbox applies to core entries the same way as to other entries.
+
+**Closing threads.** A closed thread leaves the open threads, and its resolution becomes an ordinary fact; the closure is not repeated in the timeline. Closures made before format v4 stay in the timeline as before. If you hid a thread, its resolution is hidden too (in the memory table the resolution's checkbox is cleared) until you explicitly enable the thread itself or the resolution fact itself.
+
+**Unknown to the reader.** An author entry without a quote is a truth of the story world that the reader has not seen yet. The writer receives it marked "(читачеві невідомо: якщо знадобиться, введи в тексті як нове)" (unknown to the reader: if needed, introduce it in the text as new) and must introduce it as new information. Once the prose shows it, the memory stage marks the slot as "introduced" and the mark disappears.
+
+**Day change.** A new day is detected from the `Початок:` line in the scene plan (`D.M.Y, H:M` or `день N, H:M`). The memory model then decides separately whether clothing, carried items and body state still hold or marks them unknown with a reason. Without this line there is no signal, and the values stay current until the prose changes them.
+
 ## If a memory run fails
 
 The run status shows the full list of response-format violations (up to 50 items, then "N more"). Each item is an operation label (for example `facts.add, element 2`, `Operation 3` or `Response`) plus a code. Texts and record IDs never appear in the list.

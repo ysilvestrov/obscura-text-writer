@@ -241,9 +241,14 @@ def build_context(repo,scene_id: str,stage: str,settings: RoleSettings,*,editor_
     from ..memory.reuse import provenance_before, provenance_warnings
     inherited_provenance=provenance_before(repo,scene.id)
     warnings.extend(provenance_warnings(inherited_provenance))
-    from ..memory.forwarding import hidden_before
+    from ..memory.forwarding import hidden_before,forwarded_before
+    from ..memory.core import tracked_characters
+    from ..characters.models import load_characters
     scene_numbers={s.id:s.position+1 for s in scenes if s.position<scene.position}
-    projection=project_memory(past,scene.character_ids,{id:scene_numbers[repo.get_version(id).scene_id] for id in past.source_prose_ids},hidden_claim_ids=hidden_before(repo,scene.id))
+    cards=load_characters(repo.read_text(story.characters_version_id)) if story.characters_version_id else []
+    projection=project_memory(past,scene.character_ids,{id:scene_numbers[repo.get_version(id).scene_id] for id in past.source_prose_ids},
+        hidden_claim_ids=hidden_before(repo,scene.id),forwarded_claim_ids=forwarded_before(repo,scene.id),
+        tracked=tracked_characters(cards,scenes),names={card.id:card.name for card in cards})
     sections.append('ЗДІЙСНЕНІ ПОДІЇ — ПЕРЕВІРЕНА ПАМ’ЯТЬ\n'+projection.text)
     previous=[s for s in scenes if s.position<scene.position]
     fragments={}

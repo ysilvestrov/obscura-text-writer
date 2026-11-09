@@ -43,20 +43,40 @@ def memory_catalog_v4(journal: MemoryJournal, tracked: list[str], names: dict[st
         'mutable':mutable,'immutable':immutable},ensure_ascii=False,separators=(',',':'))
 
 
-def project_memory(journal: MemoryJournal, character_ids: list[str], source_scene_numbers: dict[str,int], *, hidden_claim_ids=()) -> MemoryProjection:
+READER_UNKNOWN=' (читачеві невідомо: якщо знадобиться, введи в тексті як нове)'
+
+
+def project_memory(journal: MemoryJournal, character_ids: list[str], source_scene_numbers: dict[str,int], *, hidden_claim_ids=(),
+        forwarded_claim_ids=(), tracked=(), names=None) -> MemoryProjection:
+    from .core import SLOTS
+    from .forwarding import effective_hidden
     active=replay_memory(journal)
+    hidden=effective_hidden(journal,hidden_claim_ids,forwarded=forwarded_claim_ids)
     labels={'facts':'ФАКТИ','character_states':'ПОТОЧНІ СТАНИ',
         'open_threads':'ВІДКРИТІ ЛІНІЇ','timeline':'ХРОНОЛОГІЯ'}
-    sections=[];omitted=0
+    sections=[];omitted=0;core_lines=0
+    # The core is a mandatory layer: first, never filtered by the scene cast, only by MEMORY-FORWARD.
+    slots={(e.character_ids[0],e.slot):e for e in active.values() if e.slot and e.character_ids[0] in tracked}
+    for cid in tracked:
+        lines=[]
+        for slot in SLOTS:
+            event=slots.get((cid,slot.name))
+            if event is None or event.claim_id in hidden:continue
+            lines.append(f'{slot.label_uk}: {event.text}'+(READER_UNKNOWN if event.source_kind=='author' and event.quote is None else ''))
+        if lines:
+            sections.append(f'ЯДРО СТАНУ — {(names or {}).get(cid,cid)}\n'+'\n'.join(lines));core_lines+=len(lines)
+    # A v4 closure is shown only as its resolution fact; a legacy retire without one stays in the timeline.
+    resolved={e.resolves_claim_id for e in journal.events if e.resolves_claim_id}
     for category in CATEGORIES:
         lines=[]
         if category=='timeline':
             entries=[e for e in journal.events if e.category=='timeline'
-                or e.category=='open_threads' and e.operation=='retire']
+                or e.category=='open_threads' and e.operation=='retire' and e.claim_id not in resolved]
         else:
-            entries=[e for e in active.values() if e.category==category]
+            entries=[e for e in active.values() if e.category==category
+                and not (e.slot and e.character_ids[0] in tracked)]
         for event in entries:
-            if event.claim_id in hidden_claim_ids:continue
+            if event.claim_id in hidden:continue
             if category=='character_states' and character_ids and event.character_ids and not set(character_ids).intersection(event.character_ids):
                 omitted+=1;continue
             scene=source_scene_numbers.get(event.source_version_id)
@@ -64,7 +84,7 @@ def project_memory(journal: MemoryJournal, character_ids: list[str], source_scen
             lines.append('— '+prefix+event.text)
         sections.append(labels[category]+'\n'+('\n'.join(lines) if lines else 'Немає.'))
     text='\n\n'.join(sections)
-    return MemoryProjection(text,{'projection_version':'memory-uk-v2','journal_chars':len(journal.model_dump_json()),
+    return MemoryProjection(text,{'projection_version':'memory-uk-v3','journal_chars':len(journal.model_dump_json()),
         'event_count':len(journal.events),'active_claim_count':len(active),
-        'projection_chars':len(text),'omitted_state_count':omitted,
-        'hidden_claim_count':len(set(hidden_claim_ids)&{e.claim_id for e in journal.events})})
+        'projection_chars':len(text),'omitted_state_count':omitted,'core_line_count':core_lines,
+        'hidden_claim_count':len(hidden&{e.claim_id for e in journal.events})})
