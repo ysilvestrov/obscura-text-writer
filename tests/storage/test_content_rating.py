@@ -4,6 +4,7 @@ from storygen.domain import ContentRating as R, RevisionConflict, Scene, SceneCr
 from storygen.rating.levels import from_wire, higher_axes, is_lower, to_wire
 from storygen.storage.repository import Repository
 
+pytestmark = pytest.mark.unrated_stories  # first-set semantics need stories created unrated
 
 def make(tmp_path, n=2):
     repo = Repository(tmp_path)

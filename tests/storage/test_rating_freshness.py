@@ -6,6 +6,8 @@ from storygen.providers.models import ProviderSettings, RoleSettings
 from storygen.storage.repository import Repository
 from storygen.storage.snapshots import build_dependency_snapshot, resolve_freshness
 
+pytestmark = pytest.mark.unrated_stories  # first-set semantics need stories created unrated
+
 RATING_SCOPES = ['brief', 'draft', 'prose_edit', 'patches', 'author_rewrite']
 
 

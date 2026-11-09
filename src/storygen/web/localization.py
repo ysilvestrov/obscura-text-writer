@@ -54,6 +54,10 @@ def _diagnostic_catalog():
     return exact,sorted(patterns,key=lambda row:-row[0])
 
 
+# Catalog parameters that hold a "; "-joined list of other catalog diagnostics.
+_LIST_PARAMS={'rating.guard.participants':('p1','; (?=персонаж «)')}
+
+
 def diagnostic(text,locale='uk'):
     """Only call for application diagnostics, never author fields/documents."""
     if locale=='uk' or not isinstance(text,str):
@@ -69,7 +73,12 @@ def diagnostic(text,locale='uk'):
         for _,pattern,key,names in patterns:
             match=pattern.fullmatch(text)
             if match:
-                return translate(key,locale,**dict(zip(names,match.groups())))
+                params=dict(zip(names,match.groups()))
+                if key in _LIST_PARAMS:
+                    # Application-built list of diagnostics; character names inside stay untranslated.
+                    param,separator=_LIST_PARAMS[key]
+                    params[param]='; '.join(diagnostic(item,locale) for item in re.split(separator,params[param]))
+                return translate(key,locale,**params)
     for prefix,translated in [('Некоректні дані: ','Invalid data: '),('Помилка редактора: ','Editor error: '),('Помилка планувальника: ','Planner error: ')]:
         if text.startswith(prefix):
             return translated+diagnostic(text[len(prefix):],locale)
