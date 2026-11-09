@@ -47,4 +47,9 @@ def test_characters_template_marks_protagonist_and_explains_acquaintances(tmp_pa
     cards=load_characters(repo.read_text(repo.get_story(story.id).characters_version_id))
     assert [c.name for c in cards]==['Олена','Марко']
     assert protagonist(cards,[])==(cards[0].id,[])
-    assert any(known_names_line(line) is not None for line in text.splitlines())
+    hero_lines=[line for entry in cards[0].entries for line in entry.text.splitlines()]
+    assert [known_names_line(line) for line in hero_lines if known_names_line(line) is not None]==[
+        ['[Імена через кому','точно як у заголовках','видаліть рядок','якщо героїня знайомиться з усіма в історії.]']]
+    assert not any(known_names_line(line) is not None for entry in cards[1].entries for line in entry.text.splitlines())
+    assert '- Рядок «Знайомий з:» перелічує імена тих, кого персонаж знає ще до першої сцени; знайомство взаємне.' in text
+    assert '- Головного героя позначте в його картці рядком «Роль у творі: Головна героїня»' in text
