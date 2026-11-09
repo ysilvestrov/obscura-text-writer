@@ -3138,17 +3138,17 @@ GET /api/scenes/{scene}/rewrites та /{attempt} SHALL повертати спи
 
 Кожна source-coordinate зміна SHALL мати inside/outside/cross_boundary й comment_ids. Insertion точно на boundary — cross_boundary; group із різними locations або кількома окремими commented ranges — cross_boundary. Це геометрична позначка, не доказ виконання вказівок. Shared static/change-review.js працює через adapter; copyedits.js зберігає чинний editor API/поведінку, rewrite adapter додає notes revision/location/instruction history. Немає автоматичного classifier/evaluator.
 
-Кнопка rewrite SHALL бути доступна лише для непорожньої візуальної draft із вказівками та valid anchors. Dirty ввід спочатку пропонує Save або Cancel; source/notes зберігаються атомарно, scene/epoch/revisions повторно перевіряються до preflight/enqueue. Latest GET notes revision/source SHALL збігатися з локально прочитаною збереженою базою; чужий notes-only Save не підміняє вказівки непомітно. Preflight confirmation показує лише writer/model і один виклик. Cancel,409, незавершений popover чи зміна вводу не запускають inference. Pending review усередині draft робить text/notes readonly й блокує наступну генерацію до рішення. Async response не перебудовує dirty буфер іншої сцени.
+Кнопка rewrite SHALL бути доступна лише для непорожньої візуальної draft із вказівками та valid anchors. Кнопка має основний стиль і показує налаштовану модель writer та один виклик. Одне натискання без діалогу спочатку атомарно зберігає dirty source/notes; scene/epoch/revisions повторно перевіряються до preflight/enqueue, а повторне натискання під час операції заблоковане. Latest GET notes revision/source SHALL збігатися з локально прочитаною збереженою базою; чужий notes-only Save не підміняє вказівки непомітно. Preflight перед запуском перевіряє точні збережені дані; помилка збереження чи preflight, 409, незавершений popover або зміна вводу не запускають inference. Pending review усередині draft робить text/notes readonly й блокує наступну генерацію до рішення. Async response не перебудовує dirty буфер іншої сцени.
 
 #### Scenario: R23-REVIEW-S01 — Розташування та спільний перегляд
 GIVEN proposal з локальними коментарями й grouped changes
 WHEN відкрито diff, вибрано subset або insertion лежить точно на межі
 THEN початковий вибір порожній, цілі sentence/format groups неподільні, геометричні мітки точні й assembled preview відповідає вибору.
 
-#### Scenario: R23-REVIEW-S02 — Save, cancel і прийняття у draft
+#### Scenario: R23-REVIEW-S02 — Збереження і прийняття у draft
 GIVEN авторський робочий буфер із вказівками
-WHEN автор скасовує dirty Save або зберігає, викликає fake writer та приймає subset чи відхиляє все
-THEN cancel не створює run, один queued call дає readonly review, прийняття лишає вкладку draft і очищає лише поточні notes, reject-all зберігає source/notes.
+WHEN автор одним натисканням запускає переписування, а збереження успішне або повертає помилку
+THEN успішне збереження і preflight без діалогу створюють один queued call і readonly review; помилка зберігає ввід і не створює run. Прийняття лишає вкладку draft і очищає лише поточні notes, reject-all зберігає source/notes.
 
 #### Scenario: R23-REVIEW-S03 — Обрати всі зміни
 GIVEN поточна пропозиція переписування з порожнім або частковим вибором
