@@ -43,7 +43,7 @@ def pre_story_known(cards,scenes,scene_id,hero_id):
     active={scene.id:scene for scene in scenes if not scene.trashed_at}
     scene=active.get(scene_id)
     if scene is None:raise ValueError('Сцена недоступна')
-    known=set();warnings=[]
+    known=set();warnings=[];reported=set()
     for card in cards:
         for entry in card.entries:
             marked=[names for names in map(known_names_line,entry.text.splitlines()) if names is not None]
@@ -51,10 +51,11 @@ def pre_story_known(cards,scenes,scene_id,hero_id):
             for names in marked:
                 ids,_=resolve_participants(names,cards)
                 for name in names:
-                    if resolve_participants([name],cards)[1]:
-                        template=AMBIGUOUS_NAME_WARNING if _ambiguous(name,cards) else UNKNOWN_NAME_WARNING
-                        warning=template.format(card=card.name[:120],name=name[:120])
-                        if warning not in warnings:warnings.append(warning)
+                    # One warning per card and name as the resolver sees it (case, apostrophes and spacing ignored).
+                    if (card.id,name_key(name)) in reported or not resolve_participants([name],cards)[1]:continue
+                    reported.add((card.id,name_key(name)))
+                    template=AMBIGUOUS_NAME_WARNING if _ambiguous(name,cards) else UNKNOWN_NAME_WARNING
+                    warnings.append(template.format(card=card.name[:120],name=name[:120]))
                 if card.id==hero_id:known.update(ids)
                 elif hero_id in ids:known.add(card.id)
     known.discard(hero_id)
