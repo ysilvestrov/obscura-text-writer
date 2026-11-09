@@ -3067,9 +3067,10 @@
     {
       "id": "RATING-002-S02",
       "requirement": "RATING-002",
-      "scope": "Чисті правила розбору віку: заперечення, порожній рядок, найменше число, найпізніша відомість, пріоритет вердиктів, недійсний якір дає щонайменше «невказаний» (зокрема в редактурі patches/diff).",
+      "scope": "Чисті правила розбору віку: заперечення, порожній рядок, найменше число, найпізніша відомість, пріоритет вердиктів, недійсний якір дає щонайменше «невказаний» (зокрема в редактурі patches/diff); рядок «Вік:» шаблону карток розбирається запобіжником.",
       "tests": [
         "tests/characters/test_character_age.py::test_parse_age_value",
+        "tests/web/test_author_templates.py::test_character_template_age_line_matches_the_minors_guard",
         "tests/characters/test_character_age.py::test_entry_age",
         "tests/characters/test_character_age.py::test_no_age_line_is_unknown",
         "tests/characters/test_character_age.py::test_from_scene_overrides_timeless_after_anchor",
