@@ -34,10 +34,16 @@ function drawRating(after){
   radio('inherit',()=>t('rating.scene.inherit',{p0:storyRating?t('rating.scene.summary',{p0:storyRating.sexual,p1:storyRating.violence,p2:storyRating.themes}):t('rating.level.unset')}));
   radio('own',()=>t('rating.scene.own'));
   for(const axis of axes){
-    const label=document.createElement('label'),span=document.createElement('span'),select=document.createElement('select');
-    uiText(span,'textContent',()=>t(`rating.axis.${axis}`));select.name=axis;
+    // The help button sits outside the <label>: a button inside it would become the labelled control instead of the select.
+    const wrap=document.createElement('div'),head=document.createElement('div'),label=document.createElement('label'),select=document.createElement('select');
+    const help=document.createElement('button'),tip=document.createElement('span'),tipId=`scene-rating-help-${axis}`;
+    wrap.className='rating-axis';head.className='rating-axis-head';
+    select.id=`scene-rating-${axis}`;select.name=axis;select.setAttribute('aria-describedby',tipId);label.htmlFor=select.id;
+    uiText(label,'textContent',()=>t(`rating.axis.${axis}`));
+    help.type='button';help.className='help-tip';help.textContent='?';help.setAttribute('aria-describedby',tipId);uiAttr(help,'aria-label',()=>t('rating.help.button'));
+    tip.id=tipId;tip.className='help-tip-text';tip.setAttribute('role','tooltip');uiText(tip,'textContent',()=>t(`rating.help.${axis}`));
     for(const level of [0,1,2]){const option=document.createElement('option');option.value=String(level);uiText(option,'textContent',()=>t(`rating.level.${level}`));select.append(option)}
-    label.append(span,select);fieldset.append(label);
+    head.append(label,help,tip);wrap.append(head,select);fieldset.append(wrap);
   }
   const hint=document.createElement('small');uiText(hint,'textContent',()=>t('rating.scene.hint'));fieldset.append(hint);
   const save=document.createElement('button');uiText(save,'textContent',()=>t('rating.scene.save'));
