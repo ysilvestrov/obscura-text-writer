@@ -40,3 +40,23 @@ test('author sets the story rating in settings and generation is unblocked',asyn
   expect(await leaveBlocked()).toBe(false);
   expect(await brief()).toMatchObject({ready:true,reason:null});
 });
+
+test('each rating axis explains itself in a help tip',async({page,request})=>{
+  const {story_id}=await(await request.post('/test-unrated')).json();
+  await page.goto(`/stories/${story_id}/settings`);
+  await openWriting(page);
+  const form=page.locator('#rating-form');
+  const expected={sexual:['Сексуальний зміст','вік від 18 років'],violence:['Насильство','бійки, поранення'],themes:['Жорсткі теми','самогубство']};
+  for(const [axis,[name,phrase]] of Object.entries(expected)){
+    // The axis name still labels its select, not the help button next to it.
+    await expect(form.getByLabel(name,{exact:true})).toHaveAttribute('name',axis);
+    const tip=form.locator(`#rating-help-${axis}`);
+    await expect(tip).toBeHidden();
+    await form.locator(`button[aria-describedby="rating-help-${axis}"]`).focus();
+    await expect(tip).toBeVisible();
+    await expect(tip).toContainText(phrase);
+    await expect(tip).toContainText(/0 — .+1 — .+2 — /);
+    await expect(form.locator(`select[name="${axis}"]`)).toHaveAttribute('aria-describedby',new RegExp(`rating-help-${axis}`));
+  }
+  await expect(form.locator('#rating-help-themes')).toContainText('«насильство» — що показано з тілом');
+});

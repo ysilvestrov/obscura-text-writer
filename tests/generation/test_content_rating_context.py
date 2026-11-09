@@ -88,7 +88,7 @@ def test_participant_without_card_uses_id_and_list_is_capped(tmp_path):
 def test_child_allowed_when_scene_sexual_zero(tmp_path):
     repo,story,scenes=make_story(tmp_path,R(2,0,0),cards=[card('A','Анна','Вік: 10')],scene_ratings={0:R(0,0,0)})
     context=build_context(repo,scenes[0].id,'brief',settings())
-    assert 'Сексуальний зміст: рівень 0 — без сексуального змісту; романтика без еротичних подробиць.' in context.system_text
+    assert 'Сексуальний зміст (еротика та інтимні сцени): рівень 0 — без сексуального змісту; романтика без еротичних подробиць.' in context.system_text
 
 
 def test_empty_cast_and_missing_cards_block(tmp_path):
@@ -106,9 +106,9 @@ def test_adult_cast_builds_with_rating_block(tmp_path):
     repo,story,scenes=make_story(tmp_path,R(1,2,0),cards=ADULTS)
     context=build_context(repo,scenes[0].id,'brief',settings())
     assert (BLOCK+'\n'
-        'Сексуальний зміст: рівень 1 — дорослий сексуальний зміст без графічних подробиць.\n'
-        'Насильство: рівень 2 — графічне насильство допустиме.\n'
-        'Жорсткі теми: рівень 0 — жорсткі теми лише згадуються, без зображення.\n'
+        'Сексуальний зміст (еротика та інтимні сцени): рівень 1 — дорослий сексуальний зміст без графічних подробиць.\n'
+        'Насильство (фізична шкода, яку показано в тексті: бійки, поранення, вбивства, катування): рівень 2 — графічне насильство допустиме.\n'
+        'Жорсткі теми (важкі теми, про які йдеться в тексті, навіть без фізичного насильства: самогубство й самоушкодження, залежності, психологічне насильство й цькування, дискримінація, тяжка втрата): рівень 0 — жорсткі теми лише згадуються, без зображення.\n'
         'Межа не вимагає досягати рівня: пиши так, як потребує сцена.') in context.system_text
     assert BLOCK not in context.user_text
     with_heads(repo,scenes[0],'prose')
