@@ -214,6 +214,13 @@ def execute_stage(
             attempt.context['planner_warnings']=[]
             brief,text=parse_planner_output(text,stage,attempt.context['planner_warnings'])
             proposed=bool(brief.proposed_changes)
+            if brief.introduced:
+                from ..characters.acquaintance import acquaintances,unexpected_introduced
+                view=repo.context_view(context.story_id) if hasattr(repo,'context_view') else repo
+                scene=view.get_scene(scene_id)
+                hero=acquaintances(view,view.get_story(context.story_id),scene).hero_id
+                if unexpected_introduced(scene,hero,brief.introduced):
+                    attempt.context['planner_warnings'].append('Планувальник: introduced містить ID поза складом сцени або головного героя; їх не враховано.')
         elif stage=='prepare':
             from .planner_output import parse_planner_output
             attempt.context['planner_warnings']=[]

@@ -105,3 +105,38 @@ def acquaintances(view,story,scene):
     pre,more=pre_story_known(cards,active,scene.id,hero)
     for cid in pre:known[cid]=None
     return Acquaintances(hero,known,warnings+more)
+
+
+WRITING_STAGES={'brief','draft','rewrite'}
+
+
+def unexpected_introduced(scene,hero_id,introduced):
+    """True, якщо brief назвав ID поза складом сцени або самого героя."""
+    if not introduced:return False
+    allowed=set(scene.character_ids)-{hero_id}
+    return any(cid not in allowed for cid in introduced)
+
+
+def acquaintance_material(view,story,scene,stage):
+    """Блок знайомств для brief/draft/rewrite: (текст, попередження); порожній текст, якщо блок не потрібен."""
+    if stage not in WRITING_STAGES:return '',[]
+    result=acquaintances(view,story,scene)
+    hero=result.hero_id
+    if hero is None or hero not in scene.character_ids:return '',result.warnings
+    others=[cid for cid in scene.character_ids if cid!=hero]
+    if not others:return '',result.warnings
+    names={card.id:card.name for card in load_characters(view.read_text(story.characters_version_id))}
+    def name(cid):return names.get(cid,cid)
+    known=[cid for cid in others if cid in result.known]
+    known.sort(key=lambda cid:(result.known[cid] is not None,result.known[cid] or 0))
+    unknown=[cid for cid in others if cid not in result.known]
+    lines=[f'ЗНАЙОМСТВА ГОЛОВНОГО ГЕРОЯ — {name(hero)}']
+    if known:
+        lines.append('Знайомі: '+'; '.join(f'{name(cid)} ('+('до початку історії' if result.known[cid] is None else f'зі сцени {result.known[cid]}')+')' for cid in known))
+    if unknown:
+        lines.append('Ще не представлені: '+'; '.join(name(cid)+(f' [id={cid}]' if stage=='brief' else '') for cid in unknown))
+    rule='Не називай ще не представлених на ім’я, доки їх не представлено в тексті історії; до того описуй їх як незнайомців.'
+    if stage=='brief':
+        rule+=' Якщо представлення відбувається в цій сцені, додай їхні ID в поле introduced.'
+    lines.append(rule)
+    return '\n'.join(lines),result.warnings
