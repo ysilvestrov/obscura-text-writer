@@ -116,12 +116,13 @@ test('scene rating axes explain themselves in help tips',async({page,request})=>
   await openPanel(page);
   const form=page.locator('#scene-rating');
   await form.getByLabel('Власний рейтинг').check();
-  for(const [axis,name] of [['sexual','Сексуальний зміст'],['violence','Насильство'],['themes','Жорсткі теми']]){
+  for(const [axis,name,phrase] of [['sexual','Сексуальний зміст','вік від 18 років'],['violence','Насильство','бійки, поранення'],['themes','Жорсткі теми','«насильство» — що показано з тілом']]){
     await expect(form.getByLabel(name,{exact:true})).toHaveAttribute('name',axis);
     const tip=form.locator(`#scene-rating-help-${axis}`);
     await expect(tip).toBeHidden();
     await form.locator(`button[aria-describedby="scene-rating-help-${axis}"]`).focus();
     await expect(tip).toBeVisible();
+    await expect(tip).toContainText(phrase);
+    await expect(tip).toContainText(/0 — .+1 — .+2 — /);
   }
-  await expect(form.locator('#scene-rating-help-violence')).toContainText('бійки, поранення');
 });

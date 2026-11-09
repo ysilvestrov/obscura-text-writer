@@ -55,6 +55,7 @@ test('each rating axis explains itself in a help tip',async({page,request})=>{
     await form.locator(`button[aria-describedby="rating-help-${axis}"]`).focus();
     await expect(tip).toBeVisible();
     await expect(tip).toContainText(phrase);
+    await expect(tip).toContainText(/0 — .+1 — .+2 — /);
     await expect(form.locator(`select[name="${axis}"]`)).toHaveAttribute('aria-describedby',new RegExp(`rating-help-${axis}`));
   }
   await expect(form.locator('#rating-help-themes')).toContainText('«насильство» — що показано з тілом');
