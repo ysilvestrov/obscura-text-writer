@@ -1,7 +1,7 @@
 import json
 import pytest
 from storygen.domain import ContentRating as R, RevisionConflict, Scene, SceneCreate, Story, StoryCreate
-from storygen.rating.levels import from_wire, higher_axes, is_lower, to_wire
+from storygen.rating.levels import age_label, from_wire, higher_axes, is_lower, to_wire
 from storygen.storage.repository import Repository
 
 pytestmark = pytest.mark.unrated_stories  # first-set semantics need stories created unrated
@@ -103,3 +103,11 @@ def test_levels_helpers():
     assert to_wire(r) == ['1', '0', '2'] and from_wire(to_wire(r)) == r
     assert to_wire(None) is None and from_wire(None) is None
     assert higher_axes(R(sexual=2, violence=0, themes=1), R(sexual=1, violence=0, themes=1)) == ['sexual']
+
+
+def test_age_label_takes_highest_level_over_story_and_scenes():
+    story = Story(id='s1', title='T', content_rating=R(sexual=0, violence=0, themes=0))
+    assert age_label(Story(id='s1', title='T'), []) is None
+    assert age_label(story, []) == '0+'
+    assert age_label(story, [Scene(id='c1', story_id=story.id, title='a', position=0, content_rating=R(sexual=0, violence=1, themes=0))]) == '16+'
+    assert age_label(story.model_copy(update={'content_rating': R(sexual=0, violence=0, themes=2)}), [Scene(id='c1', story_id=story.id, title='a', position=0)]) == '18+'

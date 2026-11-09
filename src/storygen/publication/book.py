@@ -3,8 +3,10 @@ from dataclasses import dataclass
 from uuid import UUID,uuid5
 from ..domain import new_id,now
 from ..publication_models import PublicationSnapshot
+from ..rating.levels import age_label
 import re
 
+RATING_UNSET_EXPORT='Віковий рейтинг твору не задано; позначку не додано'
 EDITION_NAMESPACE=UUID('f194517a-40c4-52c1-8d82-74d6c82bb54b')
 EXPORTER={'name':'Obscura Text Writer','version':'0.1.0','protocol':4}
 
@@ -26,6 +28,7 @@ class Book:
     export_id: str
     edition_id: str
     created_at: str
+    age_rating: str | None = None
 
     @property
     def title(self):return self.snapshot.publication.effective_title
@@ -58,7 +61,8 @@ def capture(repo,story_id,format,allow_incomplete):
         if format in {'fb2','epub','pdf'}:
             from .covers import image_info
             if image_info(cover)!=(asset.mime_type,asset.width,asset.height):raise ValueError('Обкладинка не відповідає збереженим метаданим')
-    return Book(snapshot,tuple(chapters),tuple(warnings),cover,new_id(),str(uuid5(EDITION_NAMESPACE,story_id)),now())
+    return Book(snapshot,tuple(chapters),tuple(warnings),cover,new_id(),str(uuid5(EDITION_NAMESPACE,story_id)),now(),
+        age_label(snapshot.story,[scene for scene,_ in snapshot.scenes]))
 
 
 def lines(text):return text.replace('\r\n','\n').replace('\r','\n').split('\n')

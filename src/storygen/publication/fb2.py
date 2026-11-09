@@ -58,6 +58,7 @@ def render(book):
     add(document,'date',book.created_at[:10],value=book.created_at[:10]);add(document,'id',book.edition_id);add(document,'version','1.0')
     for field in ['publisher','isbn','rights']:
         if getattr(card,field):add(description,'custom-info',getattr(card,field),**{'info-type':'publication-'+field})
+    if book.age_rating:add(description,'custom-info',book.age_rating,**{'info-type':'age-rating'})
     body=add(root,'body')
     for index,chapter in enumerate(book.chapters,1):
         section=add(body,'section',id=f'chapter-{index}');add(add(section,'title'),'p',chapter.title)
