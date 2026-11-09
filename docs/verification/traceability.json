@@ -2022,6 +2022,15 @@
       ]
     },
     {
+      "id": "MEMORY-CONFIRM-S03",
+      "requirement": "MEMORY-CONFIRM",
+      "scope": "Diff ядра й ліній голови memory з рішеннями wire v4 і без них.",
+      "tests": [
+        "tests/memory/test_core_review.py::test_core_review_changed_unknown_closed",
+        "tests/memory/test_core_review.py::test_core_review_without_wire"
+      ]
+    },
+    {
       "id": "R22-SOURCE-S01",
       "requirement": "R22-SOURCE",
       "scope": "Byte-exact no-op; точні lexical/Unicode/source ranges; редагування без втрати решти документа.",
