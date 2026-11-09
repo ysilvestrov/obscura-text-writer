@@ -56,6 +56,12 @@ test('write in with a quote from an earlier scene',async({page,request})=>{
   const entry=clothing.locator('.core-review-entry');
   await expect(entry.getByLabel('Сцена цитати')).toHaveValue(await entry.getByLabel('Сцена цитати').locator('option').nth(1).getAttribute('value'));
   await expect(entry.getByRole('radio',{name:'Стукав сусід.'})).toBeVisible();
+  // The radio keeps its own size and the fragment text gets the rest of the row (generic panel input rules must not stretch it).
+  const fragment=entry.locator('label.core-review-fragment').filter({hasText:'Стукав сусід.'});
+  const radioBox=await fragment.locator('input[type="radio"]').boundingBox(),textBox=await fragment.locator('span').boundingBox();
+  expect(radioBox.width).toBeLessThan(40);
+  expect(textBox.x).toBeGreaterThanOrEqual(radioBox.x+radioBox.width);
+  expect(textBox.height).toBeLessThan(60);
   await expect(entry.getByRole('radio',{name:'Без цитати'})).toBeChecked();
   await expect(entry.locator('.core-review-hint')).toBeVisible();
   await entry.getByLabel('Сцена цитати').selectOption({label:'1. Ранок'});
