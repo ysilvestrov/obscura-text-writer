@@ -14,6 +14,10 @@ const risky=confirmationText({calls:1,roles:{},memory_review:{memory_scene_numbe
 assert.match(risky,/Факти можуть не відповідати/);
 const confirmation=confirmationText({calls:1,roles:{memory:{provider:'local',model:'memory-model'}},evaluator:null});
 assert.match(confirmation,/memory-model/);assert.doesNotMatch(confirmation,/writer|editor|Оцінювач/);
+assert.doesNotMatch(confirmation,/непідтвердженим ядром/);
+const unconfirmed=confirmationText({calls:2,roles:{writer:{provider:'local',model:'w'}},warnings:['Увага'],unconfirmed_core_scenes:3});
+assert.match(unconfirmed,/Увага\nСцен із непідтвердженим ядром пам’яті: 3\. Автоматичний режим не чекає підтвердження\.\nВартість/);
+assert.doesNotMatch(confirmationText({calls:1,roles:{},unconfirmed_core_scenes:0}),/ядром/);
 assert.equal(runKind('failed'),'error');assert.equal(runKind('completed'),'success');assert.equal(runKind('interrupted'),'warning');
 assert.ok(controlReason('pause',null));assert.ok(controlReason('pause',{state:'completed'}));
 assert.equal(controlReason('pause',{state:'running'}),'');

@@ -6,6 +6,21 @@ from .pipeline import STAGES, STAGE_ROLES
 from .prompts import validate_role_prompt
 
 
+def unconfirmed_core_scenes(view, scenes) -> int:
+    """Active scenes whose memory head has a core (a slot event) the author has not confirmed (MEMORY-CONFIRM)."""
+    from ..memory.journal import load_memory
+    count=0
+    for scene in scenes:
+        memory_id=scene.heads.get('memory')
+        if not memory_id:continue
+        try:
+            if view.peek_version(memory_id).memory_confirmation is not None:continue
+            journal=load_memory(view.read_text(memory_id))
+        except (ValueError,KeyError,OSError):continue
+        if any(event.slot for event in journal.events):count+=1
+    return count
+
+
 def preview(repo, request, view=None):
     if request.mode=='impact':
         from .impact_context import readiness
@@ -32,6 +47,8 @@ def preview(repo, request, view=None):
     settings=get_role_settings(repo,story.id)
     roles={name:settings[name].provider.model_dump(include={'provider','model'}) for stage in stages if (name:=STAGE_ROLES[stage]) in settings}
     result={'ready':False,'reason':None,'roles':roles,'calls':len(stages),'evaluator':None,'warnings':[]}
+    # Information only: auto mode never waits for confirmation, so the count changes neither ready nor reason.
+    if request.mode in {'scene','remaining'}:result['unconfirmed_core_scenes']=unconfirmed_core_scenes(view,scenes)
     try:
         if request.mode!='prepare' and scene is None:
             raise ValueError('Оберіть сцену')

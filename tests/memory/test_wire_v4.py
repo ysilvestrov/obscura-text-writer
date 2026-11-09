@@ -215,3 +215,44 @@ def test_translation_order_is_deterministic():
         ('add','facts',None,'Ф'),('add','character_states',None,'С'),('update','character_states',None,'Ніч'),
         ('add','open_threads',None,'Л'),('add','timeline',None,'Т')]
     assert run(data)==run(json.loads(json.dumps(data)))
+
+
+ANNA_KEY=_add_event('character_states','Ключ Ганни','p1','Ганна в халаті.',0,['a'],slot='carried')
+
+
+def test_former_protagonist_slot_is_mutable_state(tmp_path):
+    # Anna ('a') lost the protagonist mark to Bohdan ('h'): her slot claims are ordinary mutable states, never core.
+    from storygen.memory.projection import memory_catalog_v4
+    prev=MemoryJournal(schema_version=3,source_prose_ids=['p1'],events=[CLOTH,CARRIED,MOOD,ANNA_KEY,T1,T2])
+    bounds=schema_bounds_v4(prev,PROSE,['h','a'],['h'],{'h':False})
+    assert bounds['tracked']=={'h':[s.name for s in SLOTS]}
+    assert bounds['mutable']=={'character_states':[MOOD.claim_id,ANNA_KEY.claim_id]}
+    catalog=json.loads(memory_catalog_v4(prev,['h'],{'h':'Ганна'}))
+    assert set(catalog['core'])=={'h'}
+    assert [m['claim_id'] for m in catalog['mutable']]==[MOOD.claim_id,ANNA_KEY.claim_id]
+    (event,)=new(run(answer(character_states_retire=[chg(ANNA_KEY.claim_id,'Ключ віддано',['f000002'])]),prev,bounds),prev)
+    assert (event.operation,event.claim_id,event.slot)==('retire',ANNA_KEY.claim_id,'carried')
+    (event,)=new(run(answer(character_states_update=[chg(ANNA_KEY.claim_id,'Ключ у сумці',['f000002'])]),prev,bounds),prev)
+    assert (event.operation,event.claim_id,event.text)==('update',ANNA_KEY.claim_id,'Ключ у сумці')
+    # Old captured bounds (slot claims never mutable) keep rejecting the same change.
+    old={**bounds,'mutable':{'character_states':[MOOD.claim_id]}}
+    assert bad(answer(character_states_retire=[chg(ANNA_KEY.claim_id,'К',['f000002'])]),prev,old)==[('character_states.retire[0]','target_unknown')]
+    # The memory context passes every tracked character, so the catalog and bounds agree with the cast.
+    from storygen.generation.context import build_context
+    from tests.memory.test_core_review import role, two_scenes
+    from tests.storage.test_memory_core_selectors import cards
+    repo,story,_,s2,_,claims=two_scenes(tmp_path)
+    repo.publish_story_material(story.id,'characters_version_id',cards(repo,story.id,'B'),repo.get_story(story.id).revision)
+    context=build_context(repo,s2.id,'memory',role())
+    live=json.loads(context.fragments['memory_schema_bounds'])
+    assert live['tracked']=={} and live['mutable']['character_states']==[claims['cloth'].claim_id,claims['key'].claim_id]
+    assert claims['cloth'].claim_id in context.user_text
+
+
+def test_tracked_slot_still_only_via_core():
+    # I1 for the tracked character holds whether or not the character is in the scene's cast.
+    for bounds in (BOUNDS,schema_bounds_v4(PREV,PROSE,[],['h'],{'h':False})):
+        data=answer(character_states_update=[chg(CLOTH.claim_id,'П',['f000001'])])
+        if not bounds['tracked']:data['core']={}
+        assert bad(data,bounds=bounds)==[('character_states.update[0]','target_unknown')]
+    assert MOOD.claim_id in BOUNDS['mutable']['character_states'] and CLOTH.claim_id not in BOUNDS['mutable']['character_states']

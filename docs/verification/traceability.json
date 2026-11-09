@@ -499,6 +499,15 @@
       ]
     },
     {
+      "id": "MEMORY-002-S11",
+      "requirement": "MEMORY-002",
+      "scope": "Слоти колишнього протагоніста в bounds.mutable і mutable каталогу, update/retire приймаються; слот відстежуваного (у складі сцени чи поза ним) і далі target_unknown; старі captured межі не змінюють перевірки.",
+      "tests": [
+        "tests/memory/test_wire_v4.py::test_former_protagonist_slot_is_mutable_state",
+        "tests/memory/test_wire_v4.py::test_tracked_slot_still_only_via_core"
+      ]
+    },
+    {
       "id": "MEMORY-003-S01",
       "requirement": "MEMORY-003",
       "scope": "Змінений стан і закрита лінія. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
@@ -2047,6 +2056,28 @@
         "tests/memory/test_core_review_apply.py::test_keep_rejected_without_wire",
         "tests/web/test_core_review_api.py::test_post_core_review_route"
       ]
+    },
+    {
+      "id": "MEMORY-CONFIRM-S06",
+      "requirement": "MEMORY-CONFIRM",
+      "scope": "unconfirmed_core_scenes у preview scene/remaining не змінює ready/reason, журнал без slot не рахується; рядок у діалозі запуску лише за N>0.",
+      "tests": [
+        "tests/generation/test_core_readiness.py::test_unconfirmed_count_is_info_not_block",
+        "tests/generation/test_core_readiness.py::test_unconfirmed_count_ignores_scenes_without_core",
+        "tests/web/test_editor_loop_ui.py::test_loop_limit_and_confirmation_only_name_editor"
+      ]
+    },
+    {
+      "id": "MEMORY-CONFIRM-S07",
+      "requirement": "MEMORY-CONFIRM",
+      "scope": "Модель панелі й чернетки (групування, доступність «Лишити попереднє», панель запису, dirty/discard, confirmUnsaved) у node-тесті; поведінку в браузері desktop/mobile перевіряє tests/web/browser/core-review.spec.mjs.",
+      "tests": [
+        "tests/web/test_memory_table_ui.py::test_core_review_panel_model_and_draft"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#core-review",
+        "reason": "check_docs.py індексує лише pytest; шість Playwright cases core-review.spec.mjs перелічено в процедурі й виконуються окремим runner, цей зв’язок не є доказом виконання."
+      }
     },
     {
       "id": "R22-SOURCE-S01",
