@@ -5,11 +5,10 @@ from pydantic import ValidationError
 from storygen.memory.journal import MemoryOperations
 
 
-def v2_prompt(repo,story):
-    # These diagnostics are about the v2 protocol: its labels and scope normalization exist only for wire v2.
-    from storygen.domain import PromptContract
-    return repo.save_version(story.id,None,'prompt','Custom memory prompt v2.',[],
-        prompt_contract=PromptContract(stage='memory',mode='evidence_delta',schema_version=2))
+def as_v2_attempt(context):
+    # v2 labels and scope normalization exist only for wire v2, now reachable only by replaying a stored v2 attempt.
+    fragments={k:v for k,v in context.fragments.items() if k not in {'memory_schema_bounds','memory_tracked'}}
+    return context.model_copy(update={'fragments':{**fragments,'memory_wire_version':'2'}})
 
 
 def test_scope_error_names_operation_without_echoing_payload():
@@ -42,8 +41,8 @@ def test_stage_preserves_partial_and_specific_evidence_failure(tmp_path,category
     scene=repo.create_scene(story.id,SceneCreate(title='Scene'))
     prose=repo.save_version(story.id,scene.id,'manual','Synthetic prose.',[])
     repo.set_head(scene.id,'prose',prose.id,scene.revision)
-    role=RoleSettings(provider=ProviderSettings(model='fake'),memory_mode='evidence_delta',context_tokens=32768,prompt_version_id=v2_prompt(repo,story).id)
-    context=build_context(repo,scene.id,'memory',role)
+    role=RoleSettings(provider=ProviderSettings(model='fake'),memory_mode='evidence_delta',context_tokens=32768)
+    context=as_v2_attempt(build_context(repo,scene.id,'memory',role))
     raw=json.dumps({'schema_version':2,'operations':[dict(action='add',category=category,text='Claim',evidence_id='f999999')]})
     class Gateway:
         def stream(self,*_):
@@ -78,11 +77,10 @@ def test_scope_normalization_never_bypasses_evidence_or_character_validation():
         parse_memory_result(json.dumps({'schema_version':2,'operations':[row]}),MemoryJournal(),'p','Evidence.','evidence_delta',['A'])
 
 
-@pytest.mark.parametrize('opening,closing,expected_warnings',[
-    ('','',['Пам’ять: операція 1 (open_threads) — прибрано зайві character_ids; текст і докази не змінено.']),
-    ('```json\n','\n```',['Пам’ять: операція 1 (open_threads) — прибрано зайві character_ids; текст і докази не змінено.', 'Пам’ять: прибрано зовнішню обгортку JSON; вміст і докази не змінено.']),
-])
-def test_normalization_warning_survives_run_reload(tmp_path,opening,closing,expected_warnings):
+def test_normalization_warning_survives_run_reload(tmp_path):
+    # New runs are wire v4, where only the outer-wrapper normalization warns (v2 scope normalization: replay tests above).
+    from tests.memory.wire_helpers import v4_answer
+    opening,closing,expected_warnings='```json\n','\n```',['Пам’ять: прибрано зовнішню обгортку JSON; вміст і докази не змінено.']
     from storygen.domain import StoryCreate,SceneCreate
     from storygen.storage.repository import Repository
     from storygen.providers.models import RoleSettings,ProviderSettings
@@ -95,12 +93,13 @@ def test_normalization_warning_survives_run_reload(tmp_path,opening,closing,expe
     scene=repo.create_scene(story.id,SceneCreate(title='Scene',character_ids=['A']))
     prose=repo.save_version(story.id,scene.id,'manual','Synthetic evidence.',[])
     repo.set_head(scene.id,'prose',prose.id,scene.revision)
-    role=RoleSettings(provider=ProviderSettings(model='fake'),context_tokens=32768,memory_mode='evidence_delta',prompt_version_id=v2_prompt(repo,story).id)
+    role=RoleSettings(provider=ProviderSettings(model='fake'),context_tokens=32768,memory_mode='evidence_delta')
     save_role_settings(repo,story.id,'memory',role,repo.get_story(story.id).revision)
-    raw=json.dumps({'schema_version':2,'operations':[dict(action='add',category='open_threads',text='Question',character_ids=['A'],evidence_id='f000001')]})
-    raw=opening+raw+closing
+    sent=[]
     class Gateway:
-        def stream(self,*_):
+        def stream(self,context,_):
+            raw=opening+v4_answer(context,open_threads_add=[dict(text='Question',evidence_ids=['f000001'])])+closing
+            sent.append(raw)
             yield GenerationEvent(type='delta',text=raw)
             yield GenerationEvent(type='terminal',finish_reason='stop')
     worker=RunCoordinator(repo,lambda _:Gateway())
@@ -108,13 +107,13 @@ def test_normalization_warning_survives_run_reload(tmp_path,opening,closing,expe
     worker._execute(run.id)
     stored=Repository(tmp_path)
     finished=stored.get_run(run.id)
-    assert finished.state=='completed' and 'character_ids' in finished.warning
+    assert finished.state=='completed' and 'обгортку' in finished.warning
     attempt=stored.list_attempts(story.id,run.id)[0]
     assert attempt.context['memory_warnings']==expected_warnings
     assert all(warning in finished.warning for warning in expected_warnings)
-    assert stored.files.read_partial(attempt.partial_path)==raw
+    assert stored.files.read_partial(attempt.partial_path)==sent[0]
     memory=load_memory(stored.read_text(stored.get_scene(scene.id).heads['memory']))
-    assert memory.events[0].character_ids==[]
+    assert memory.events[0].character_ids==[] and memory.events[0].text=='Question'
 
 
 def test_stage_records_all_three_violations_with_labels_and_no_texts(tmp_path):
@@ -128,14 +127,13 @@ def test_stage_records_all_three_violations_with_labels_and_no_texts(tmp_path):
     scene=repo.create_scene(story.id,SceneCreate(title='Scene',character_ids=['A']))
     prose=repo.save_version(story.id,scene.id,'manual','Synthetic prose.',[])
     repo.set_head(scene.id,'prose',prose.id,scene.revision)
-    # Built-in prompt: wire v3.
+    # Built-in prompt: wire v4.
+    from tests.memory.wire_helpers import v4_answer
     role=RoleSettings(provider=ProviderSettings(model='fake'),memory_mode='evidence_delta',context_tokens=32768)
     context=build_context(repo,scene.id,'memory',role)
-    raw=json.dumps({'schema_version':3,
-        'facts':{'add':[{'text':'private fact','evidence_ids':['f999999']}]},
-        'character_states':{'add':[{'text':'private state','evidence_ids':['f000001'],'character_ids':['private-id']}],'update':[],
-            'retire':[{'claim_id':'mc_private','text':'private retire','evidence_ids':['f000001']}]},
-        'open_threads':{'add':[],'update':[],'retire':[]},'timeline':{'add':[]}})
+    raw=v4_answer(context,facts_add=[{'text':'private fact','evidence_ids':['f999999']}],
+        character_states_add=[{'text':'private state','evidence_ids':['f000001'],'character_ids':['private-id']}],
+        character_states_retire=[{'claim_id':'mc_private','text':'private retire','evidence_ids':['f000001']}])
     class Gateway:
         def stream(self,*_):
             yield GenerationEvent(type='delta',text=raw)

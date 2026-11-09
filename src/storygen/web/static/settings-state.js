@@ -24,7 +24,8 @@ export class SettingsDrafts{
   anyBusy(){return [...this.records.values()].some(r=>r.busy)}
 }
 export function expectedPromptContract(stage,mode,stored,custom,text,upgrade=false){
-  // Mirrors the server: a custom memory/evidence_delta/2 prompt keeps /2 on edit and confirm; blank text is the standard v3 prompt.
-  const keepsV2=mode==='evidence_delta'&&!!custom&&stored?.stage==='memory'&&stored?.mode==='evidence_delta'&&stored?.schema_version===2&&String(text||'').trim()!==''&&!upgrade;
-  return `${stage}/${mode}/${mode==='evidence_delta'?(keepsV2?2:3):1}`;
+  // Mirrors the server: a custom memory/evidence_delta/2 or /3 prompt keeps its old contract on edit and confirm until
+  // explicitly upgraded; blank text is the standard v4 prompt.
+  const old=mode==='evidence_delta'&&!!custom&&stored?.stage==='memory'&&stored?.mode==='evidence_delta'&&[2,3].includes(stored?.schema_version)&&String(text||'').trim()!==''&&!upgrade;
+  return `${stage}/${mode}/${mode==='evidence_delta'?(old?stored.schema_version:4):1}`;
 }

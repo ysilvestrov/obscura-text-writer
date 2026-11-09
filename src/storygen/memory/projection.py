@@ -26,6 +26,23 @@ def memory_catalog_v3(journal: MemoryJournal) -> str:
     return json.dumps({'mutable':mutable,'immutable':immutable},ensure_ascii=False,separators=(',',':'))
 
 
+def memory_catalog_v4(journal: MemoryJournal, tracked: list[str], names: dict[str,str]) -> str:
+    # Core shows every registry slot of the tracked characters (empty ones as null); threads are decided by claim_id.
+    from .core import SLOTS
+    active=replay_memory(journal).values()
+    slots={(e.character_ids[0],e.slot):e for e in active if e.slot}
+    def value(event):
+        if event is None:return {'value':None,'source':None,'reader_unknown':False}
+        return {'value':event.text,'source':event.source_kind,'reader_unknown':event.source_kind=='author' and event.quote is None}
+    core={cid:{s.name:value(slots.get((cid,s.name))) for s in SLOTS} for cid in tracked}
+    threads=[{'claim_id':e.claim_id,'text':e.text} for e in active if e.category=='open_threads']
+    mutable=[{'claim_id':e.claim_id,'category':e.category,'text':e.text,'character_ids':e.character_ids}
+        for e in active if e.category=='character_states' and not e.slot]
+    immutable=[{'category':e.category,'text':e.text} for e in active if e.category in {'facts','timeline'}]
+    return json.dumps({'names':{cid:names.get(cid,cid) for cid in tracked},'core':core,'threads':threads,
+        'mutable':mutable,'immutable':immutable},ensure_ascii=False,separators=(',',':'))
+
+
 def project_memory(journal: MemoryJournal, character_ids: list[str], source_scene_numbers: dict[str,int], *, hidden_claim_ids=()) -> MemoryProjection:
     active=replay_memory(journal)
     labels={'facts':'ФАКТИ','character_states':'ПОТОЧНІ СТАНИ',

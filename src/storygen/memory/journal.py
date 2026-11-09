@@ -297,18 +297,26 @@ def unwrap_model_memory(raw):
     return unwrap_model_json(raw)
 
 
-def parse_memory_result(raw,previous,prose_id,prose,mode,allowed_character_ids,*,warnings=None,wire_version=2):
+def parse_memory_result(raw,previous,prose_id,prose,mode,allowed_character_ids,*,warnings=None,wire_version=2,bounds=None):
     normalized=unwrap_model_memory(raw)
-    result=_parse_memory_data(decode_memory(normalized),previous,prose_id,prose,mode,allowed_character_ids,warnings,wire_version)
+    result=_parse_memory_data(decode_memory(normalized),previous,prose_id,prose,mode,allowed_character_ids,warnings,wire_version,bounds)
     if warnings is not None and normalized!=raw:
         warnings.append('Пам’ять: прибрано зовнішню обгортку JSON; вміст і докази не змінено.')
     return result
 
 
-def _parse_memory_data(data,previous,prose_id,prose,mode,allowed_character_ids,warnings,wire_version):
+def _parse_memory_data(data,previous,prose_id,prose,mode,allowed_character_ids,warnings,wire_version,bounds=None):
     from .models import MemoryDelta
     if mode=='snapshot':
         return merge_legacy_snapshot(previous,MemorySnapshot.model_validate(data),prose_id,prose)
+    if wire_version==4:
+        # v4 checks need the captured bounds (tracked core, threads, fragments) of the attempt, never recomputed ones.
+        from .violations import MemoryViolations
+        from .wire_v4 import MemoryWireV4,check_v4,wire_v4_events
+        if bounds is None:raise ValueError('Для пам’яті v4 потрібні зафіксовані межі схеми')
+        violations=check_v4(data,previous,bounds)
+        if violations:raise MemoryViolations(violations)
+        return wire_v4_events(MemoryWireV4.model_validate(data),previous,prose_id,prose,bounds)
     if wire_version==3:
         from .violations import MemoryViolations
         from .wire_v3 import MemoryWireV3,check_v3,wire_v3_events

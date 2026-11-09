@@ -24,7 +24,8 @@ def test_settings_roundtrip_modes_and_effective_default_prompt(tmp_path, role, s
         assert marker in actual['prompts'][role]
 
 
-def _v2_memory_story(tmp_path):
+def _v2_memory_story(tmp_path, version=2):
+    import json
     from storygen.domain import PromptContract
     app = create_app(AppSettings(data_dir=tmp_path))
     client = TestClient(app, base_url='http://127.0.0.1:8765')
@@ -32,47 +33,43 @@ def _v2_memory_story(tmp_path):
     repo = app.state.repo
     story = client.post('/api/stories', json={'title': 'Власний v2'}).json()
     prompt = repo.save_version(story['id'], None, 'prompt', 'Власний промпт пам’яті v2.', [],
-                               prompt_contract=PromptContract(stage='memory', mode='evidence_delta', schema_version=2))
+                               prompt_contract=PromptContract(stage='memory', mode='evidence_delta', schema_version=version))
     settings = {'provider': {'model': 'fake'}, 'memory_mode': 'evidence_delta', 'prompt_version_id': prompt.id}
-    story = repo.write_role_settings(story['id'], {'memory': {**settings, 'provider': {'model': 'fake'}}}, story['revision'])
-    return client, story.id, settings
+    # Seed the persisted pre-v4 role directly: saving it now fails preflight, but old stores still hold it.
+    with repo.db.connection() as db:
+        db.execute('INSERT OR REPLACE INTO role_settings VALUES(?,?,?)', (story['id'], 'memory', json.dumps(settings)))
+    return client, story['id'], settings
 
 
 def _saved_contract(client, story_id):
     return client.get(f'/api/stories/{story_id}/settings').json()['prompt_contracts']['memory']
 
 
+@pytest.mark.parametrize('version', [2, 3])
 @pytest.mark.parametrize('change', [
     {'prompt_text': 'Змінений власний промпт пам’яті v2.'},
     {'confirm_prompt_contract': True},
 ])
-def test_custom_v2_memory_prompt_keeps_v2_contract_on_save(tmp_path, change):
-    client, story_id, settings = _v2_memory_story(tmp_path)
+def test_old_custom_memory_prompt_save_requires_upgrade(tmp_path, change, version):
+    client, story_id, settings = _v2_memory_story(tmp_path, version)
     try:
-        revision = client.get(f'/api/stories/{story_id}/settings').json()['story']['revision']
-        response = client.put(f'/api/stories/{story_id}/settings', json={
-            'expected_revision': revision, 'role': 'memory', 'settings': settings, **change})
-        assert response.status_code == 200, response.text
-        actual = client.get(f'/api/stories/{story_id}/settings').json()
-        assert actual['prompt_contracts']['memory'] == {'stage': 'memory', 'mode': 'evidence_delta', 'schema_version': 2}
+        response = _put(client, story_id, role='memory', settings=settings, **change)
+        assert response.status_code == 400 and 'memory/evidence_delta/4' in response.text
+        assert _saved_contract(client, story_id)['schema_version'] == version
     finally:
         client.__exit__(None, None, None)
 
 
-def test_new_custom_memory_prompt_and_standard_reset_get_v3(tmp_path):
+def test_new_custom_memory_prompt_and_standard_reset_get_v4(tmp_path):
     client, story_id, settings = _v2_memory_story(tmp_path)
     try:
-        revision = client.get(f'/api/stories/{story_id}/settings').json()['story']['revision']
-        response = client.put(f'/api/stories/{story_id}/settings', json={
-            'expected_revision': revision, 'role': 'memory', 'settings': settings, 'prompt_text': ''})
+        response = _put(client, story_id, role='memory', settings=settings, prompt_text='')
         assert response.status_code == 200, response.text
-        assert _saved_contract(client, story_id)['schema_version'] == 3
-        revision = response.json()['revision']
-        response = client.put(f'/api/stories/{story_id}/settings', json={
-            'expected_revision': revision, 'role': 'memory', 'settings': {**settings, 'prompt_version_id': None},
-            'prompt_text': 'Новий власний промпт.'})
+        assert _saved_contract(client, story_id)['schema_version'] == 4
+        response = _put(client, story_id, role='memory', settings={**settings, 'prompt_version_id': None},
+                        prompt_text='Новий власний промпт.')
         assert response.status_code == 200, response.text
-        assert _saved_contract(client, story_id) == {'stage': 'memory', 'mode': 'evidence_delta', 'schema_version': 3}
+        assert _saved_contract(client, story_id) == {'stage': 'memory', 'mode': 'evidence_delta', 'schema_version': 4}
     finally:
         client.__exit__(None, None, None)
 
@@ -95,17 +92,18 @@ def _put(client, story_id, **body):
     return client.put(f'/api/stories/{story_id}/settings', json={'expected_revision': revision, **body})
 
 
+@pytest.mark.parametrize('version', [2, 3])
 @pytest.mark.parametrize('change', [
-    {'prompt_text': 'Новий текст для v3.'},
+    {'prompt_text': 'Новий текст для v4.'},
     {'confirm_prompt_contract': True},
 ])
-def test_upgrade_memory_wire_saves_v3_contract(tmp_path, change):
-    client, story_id, settings = _v2_memory_story(tmp_path)
+def test_upgrade_memory_wire_saves_v4_contract(tmp_path, change, version):
+    client, story_id, settings = _v2_memory_story(tmp_path, version)
     try:
         response = _put(client, story_id, role='memory', settings=settings, upgrade_memory_wire=True, **change)
         assert response.status_code == 200, response.text
         contract = _saved_contract(client, story_id)
-        assert contract == {'stage': 'memory', 'mode': 'evidence_delta', 'schema_version': 3}
+        assert contract == {'stage': 'memory', 'mode': 'evidence_delta', 'schema_version': 4}
         assert client.get(f'/api/stories/{story_id}/settings').json()['roles']['memory']['prompt_version_id']
     finally:
         client.__exit__(None, None, None)
@@ -121,46 +119,39 @@ def test_upgrade_with_standard_or_blank_text_returns_builtin(tmp_path, standard)
         response = _put(client, story_id, role='memory', settings=settings, upgrade_memory_wire=True, prompt_text=text)
         assert response.status_code == 200, response.text
         assert client.get(f'/api/stories/{story_id}/settings').json()['roles']['memory']['prompt_version_id'] is None
-        assert _saved_contract(client, story_id)['schema_version'] == 3
+        assert _saved_contract(client, story_id)['schema_version'] == 4
     finally:
         client.__exit__(None, None, None)
 
 
-def test_upgrade_rejected_for_non_memory_role_or_snapshot(tmp_path):
+def test_upgrade_rejected_for_non_memory_role(tmp_path):
     client, story_id, settings = _v2_memory_story(tmp_path)
     try:
         r = _put(client, story_id, role='writer', settings={'provider': {'model': 'fake'}},
                  prompt_text='Власний writer.', upgrade_memory_wire=True)
         assert r.status_code == 400
+        assert _saved_contract(client, story_id)['schema_version'] == 2
+        # A stored snapshot role reads as evidence_delta, so the upgrade applies to it as well.
         r = _put(client, story_id, role='memory', settings={**settings, 'memory_mode': 'snapshot'},
                  prompt_text='Власний.', upgrade_memory_wire=True)
-        assert r.status_code == 400
-        assert _saved_contract(client, story_id)['schema_version'] == 2
-    finally:
-        client.__exit__(None, None, None)
-
-
-def test_v2_prompt_without_upgrade_stays_v2(tmp_path):
-    client, story_id, settings = _v2_memory_story(tmp_path)
-    try:
-        assert _put(client, story_id, role='memory', settings=settings, prompt_text='Інший.').status_code == 200
-        assert _saved_contract(client, story_id)['schema_version'] == 2
+        assert r.status_code == 200, r.text
+        assert _saved_contract(client, story_id)['schema_version'] == 4
     finally:
         client.__exit__(None, None, None)
 
 
 def test_contract_follows_incoming_prompt_version_id(tmp_path):
-    """Stored role settings point at /2, but the request points at another /3 prompt: the /3 contract is kept."""
+    """Stored role settings point at /2, but the request points at another /4 prompt: the /4 contract is kept."""
     from storygen.domain import PromptContract
     client, story_id, settings = _v2_memory_story(tmp_path)
     try:
         repo = client.app.state.repo
-        v3 = repo.save_version(story_id, None, 'prompt', 'Власний v3.', [],
-                               prompt_contract=PromptContract(stage='memory', mode='evidence_delta', schema_version=3))
-        response = _put(client, story_id, role='memory', settings={**settings, 'prompt_version_id': v3.id},
-                        prompt_text='Правка v3.')
+        v4 = repo.save_version(story_id, None, 'prompt', 'Власний v4.', [],
+                               prompt_contract=PromptContract(stage='memory', mode='evidence_delta', schema_version=4))
+        response = _put(client, story_id, role='memory', settings={**settings, 'prompt_version_id': v4.id},
+                        prompt_text='Правка v4.')
         assert response.status_code == 200, response.text
-        assert _saved_contract(client, story_id)['schema_version'] == 3
+        assert _saved_contract(client, story_id)['schema_version'] == 4
     finally:
         client.__exit__(None, None, None)
 

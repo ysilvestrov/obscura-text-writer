@@ -8,6 +8,7 @@ from storygen.providers.streaming import GenerationEvent
 from storygen.memory.models import MemorySnapshot, MemoryEntry
 from storygen.memory.service import rebuild_memory
 from storygen.memory.journal import load_memory
+from tests.memory.wire_helpers import v4_answer
 
 
 def test_rebuild_memory_uses_current_texts_in_order(tmp_path):
@@ -22,9 +23,7 @@ def test_rebuild_memory_uses_current_texts_in_order(tmp_path):
     class Gateway:
         def stream(self,context,cancel):
             calls.append(context.scene_id)
-            current=repo.get_scene(context.scene_id)
-            snapshot=MemorySnapshot(facts=first.facts,source_prose_ids=sources[:current.position+1])
-            yield GenerationEvent(type='delta',text=snapshot.model_dump_json())
+            yield GenerationEvent(type='delta',text=v4_answer(context))
             yield GenerationEvent(type='terminal',finish_reason='stop')
     attempts=rebuild_memory(repo,scenes[1].id,lambda _:Gateway(),threading.Event(),lambda *_:None,settings=RoleSettings(provider=ProviderSettings(model='test'),memory_mode='snapshot'))
     assert calls==[s.id for s in scenes[1:]] and all(a.state=='completed' for a in attempts)

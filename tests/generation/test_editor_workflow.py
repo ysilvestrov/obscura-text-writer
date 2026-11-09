@@ -10,7 +10,7 @@ from storygen.authoring.blueprints import save_role_settings
 from storygen.generation.worker import RunCoordinator
 from storygen.run_models import RunRequest
 from storygen.generation.copyedit_review import copyedit_preview, select_copyedits
-from tests.memory.wire_helpers import v3_response
+from tests.memory.wire_helpers import v4_answer
 
 
 def setup_workflow(tmp_path, mode='patches', no_changes=False,limit=3):
@@ -28,7 +28,7 @@ def setup_workflow(tmp_path, mode='patches', no_changes=False,limit=3):
                 changed='відчинив' in ctx.user_text and not no_changes
                 raw=json.dumps({'edits':[dict(fragment_id='f000001',original='відчинив',replacement='відчинила',category='grammar')] if changed else []}) if mode=='patches' else f'Олена відчинила двері номер {position}.'
             else:
-                raw={'brief':json.dumps({'objective':'Сцена','beats':['Подія']}),'draft':f'Олена відчинив двері номер {position}.','memory':v3_response(facts_add=[{'text':f'Подія {position}.','evidence_ids':['f000001']}])}[ctx.stage]
+                raw={'brief':json.dumps({'objective':'Сцена','beats':['Подія']}),'draft':f'Олена відчинив двері номер {position}.','memory':v4_answer(ctx,facts_add=[{'text':f'Подія {position}.','evidence_ids':['f000001']}]) if ctx.stage=='memory' else None}[ctx.stage]
             yield GenerationEvent(type='delta',text=raw)
             yield GenerationEvent(type='terminal',finish_reason='stop')
     worker=RunCoordinator(repo,lambda _:Gateway())

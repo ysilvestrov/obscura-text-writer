@@ -8,8 +8,7 @@ from ..dependency_models import DependencySnapshot, TargetCAS
 from ..storage.snapshots import build_dependency_snapshot
 from ..domain import DomainModel
 from ..memory.service import journal_before
-from ..memory.projection import project_memory, memory_catalog, memory_catalog_v3
-from ..memory.journal import legacy_view
+from ..memory.projection import project_memory, memory_catalog_v4
 from ..providers.models import RoleSettings
 from .models import StyleProfile
 from .prompts import role_prompt, validate_role_prompt
@@ -161,26 +160,35 @@ def build_context(repo,scene_id: str,stage: str,settings: RoleSettings,*,editor_
         refs.extend(past.source_prose_ids)
         if previous:refs.append(previous[-1].heads['memory'])
         expected=past.source_prose_ids+[prose_id]
-        if settings.memory_mode=='evidence_delta':
-            from .evidence import render_fragments
-            add('ПОТОЧНА ПРОЗА',prose_id)
-            wire=memory_wire_version(validate_role_prompt(repo,story.id,'memory',settings))
-            catalog=memory_catalog_v3(past) if wire==3 else memory_catalog(past)
-            heading='ЧИННІ ТВЕРДЖЕННЯ — MUTABLE ДЛЯ UPDATE/RETIRE, IMMUTABLE ЛИШЕ ДЛЯ УНИКНЕННЯ ПОВТОРІВ' if wire==3 else 'ЧИННІ ТВЕРДЖЕННЯ — КАТАЛОГ ДЛЯ ОПЕРАЦІЙ'
-            prose_text=repo.read_text(prose_id)
-            sections=[heading+'\n'+catalog,
-                'ДОЗВОЛЕНІ CHARACTER_IDS ДЛЯ НОВИХ СТАНІВ\n'+json.dumps(scene.character_ids,ensure_ascii=False),
-                f'ПОТОЧНА ПРОЗА [version_id={prose_id}] — НУМЕРОВАНІ ФРАГМЕНТИ\n'+render_fragments(prose_text)]
-            bounds={}
-            if wire==3:
-                from ..memory.wire_v3 import schema_bounds
-                bounds={'memory_schema_bounds':json.dumps(schema_bounds(past,prose_text,scene.character_ids),ensure_ascii=False)}
-            return make_context(repo,story,scene,stage,settings,sections,refs,{'previous_memory':past.model_dump_json(),'expected_source_prose_ids':json.dumps(expected),'memory_allowed_character_ids':json.dumps(scene.character_ids),'memory_wire_version':str(wire),**bounds},accepted_prose_ids=expected,**reuse,
-                memory_metrics={'projection_version':f'memory-catalog-v{wire}','journal_chars':len(past.model_dump_json()),'catalog_chars':len(catalog),'event_count':len(past.events)})
-        sections=['ПОПЕРЕДНЯ ПЕРЕВІРЕНА ПАМ’ЯТЬ\n'+legacy_view(past).model_dump_json(),
-            'EXPECTED_SOURCE_PROSE_IDS — скопіюй цей список точно у source_prose_ids:\n'+json.dumps(expected)]
-        add('ПОТОЧНА ПРОЗА — ЄДИНЕ ДЖЕРЕЛО НОВИХ ФАКТІВ',prose_id)
-        return make_context(repo,story,scene,stage,settings,sections,refs,{'expected_source_prose_ids':json.dumps(expected),'previous_memory':past.model_dump_json()},accepted_prose_ids=expected,**reuse)
+        from .evidence import render_fragments
+        from ..characters.models import load_characters
+        from ..memory.core import tracked_characters
+        from ..memory.story_time import comparison_scene, day_change, day_key
+        from ..memory.wire_v4 import schema_bounds_v4
+        add('ПОТОЧНА ПРОЗА',prose_id)
+        # Only v4 prompts pass preflight; /2 and /3 contracts are rejected before any request.
+        wire=memory_wire_version(validate_role_prompt(repo,story.id,'memory',settings))
+        cards=load_characters(repo.read_text(story.characters_version_id)) if story.characters_version_id else []
+        tracked=[cid for cid in tracked_characters(cards,scenes) if cid in scene.character_ids]
+        changed={cid:day_change(scenes,scene,cid) for cid in tracked}
+        catalog=memory_catalog_v4(past,tracked,{card.id:card.name for card in cards})
+        parts=json.loads(catalog)
+        prose_text=repo.read_text(prose_id)
+        bounds=schema_bounds_v4(past,prose_text,scene.character_ids,tracked,changed)
+        dump=lambda value:json.dumps(value,ensure_ascii=False,separators=(',',':'))
+        sections=['ЯДРО СТАНУ ВІДСТЕЖУВАНИХ ПЕРСОНАЖІВ — УСІ СЛОТИ ОБОВ’ЯЗКОВІ\n'+dump({'names':parts['names'],'core':parts['core']}),
+            'АКТИВНІ ЛІНІЇ — ДЛЯ КОЖНОЇ ОБОВ’ЯЗКОВЕ open/closed\n'+dump(parts['threads']),
+            'ЧИННІ ТВЕРДЖЕННЯ — MUTABLE ДЛЯ UPDATE/RETIRE, IMMUTABLE ЛИШЕ ДЛЯ УНИКНЕННЯ ПОВТОРІВ\n'+dump({'mutable':parts['mutable'],'immutable':parts['immutable']})]
+        for cid in tracked:
+            if changed[cid]:
+                sections.append(f'ЗМІНИВСЯ ДЕНЬ: {day_key(comparison_scene(scenes,scene,cid))} → {day_key(scene)} ({parts["names"][cid]})\n'
+                    'Одяг, речі при собі й тілесний стан могли застаріти: якщо проза їх не підтверджує, познач unknown із причиною.')
+        sections+=['ДОЗВОЛЕНІ CHARACTER_IDS ДЛЯ НОВИХ СТАНІВ\n'+json.dumps(scene.character_ids,ensure_ascii=False),
+            f'ПОТОЧНА ПРОЗА [version_id={prose_id}] — НУМЕРОВАНІ ФРАГМЕНТИ\n'+render_fragments(prose_text)]
+        return make_context(repo,story,scene,stage,settings,sections,refs,{'previous_memory':past.model_dump_json(),'expected_source_prose_ids':json.dumps(expected),
+            'memory_allowed_character_ids':json.dumps(scene.character_ids),'memory_wire_version':str(wire),
+            'memory_schema_bounds':json.dumps(bounds,ensure_ascii=False),'memory_tracked':json.dumps(tracked,ensure_ascii=False)},accepted_prose_ids=expected,**reuse,
+            memory_metrics={'projection_version':f'memory-catalog-v{wire}','journal_chars':len(past.model_dump_json()),'catalog_chars':len(catalog),'event_count':len(past.events)})
     if stage=='edit' and settings.edit_mode in {'patches','diff'}:
         from .evidence import render_fragments
         draft_id=editor_source_id or scene.heads.get('draft')

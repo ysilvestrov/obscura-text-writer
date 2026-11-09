@@ -65,7 +65,7 @@ def test_fenced_model_stage_keeps_original_partial(tmp_path):
     from storygen.providers.streaming import GenerationEvent
     from storygen.generation.context import build_context
     from storygen.generation.stages import execute_stage
-    from tests.memory.wire_helpers import v3_response
+    from tests.memory.wire_helpers import v4_answer
 
     repo = Repository(tmp_path)
     story = repo.create_story(StoryCreate(title='Synthetic'))
@@ -74,7 +74,7 @@ def test_fenced_model_stage_keeps_original_partial(tmp_path):
     repo.set_head(scene.id, 'prose', prose.id, scene.revision)
     role = RoleSettings(provider=ProviderSettings(model='fake'), memory_mode='evidence_delta', context_tokens=32768)
     context = build_context(repo, scene.id, 'memory', role)
-    raw = '```json\n' + v3_response(facts_add=[{'text': 'Claim', 'evidence_ids': ['f000001']}]) + '\n```'
+    raw = '```json\n' + v4_answer(context, facts_add=[{'text': 'Claim', 'evidence_ids': ['f000001']}]) + '\n```'
 
     class Gateway:
         def stream(self, *_):

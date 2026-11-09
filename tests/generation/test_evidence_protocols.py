@@ -9,7 +9,7 @@ from storygen.generation.stages import execute_stage
 from storygen.providers.models import ProviderSettings, RoleSettings
 from storygen.providers.streaming import GenerationEvent
 from storygen.storage.repository import Repository
-from tests.memory.wire_helpers import v3_response
+from tests.memory.wire_helpers import v4_answer
 
 
 def test_fragments_are_exact_deterministic_and_do_not_join_dialogue():
@@ -121,7 +121,7 @@ def test_evidence_memory_context_and_stage_publish_compatible_snapshot(tmp_path)
     role = RoleSettings(provider=ProviderSettings(model='fake'), memory_mode='evidence_delta')
     context = build_context(repo, scene.id, 'memory', role)
     assert 'f000001' in context.user_text
-    raw = v3_response(facts_add=[{'text': 'Олена відчинила двері.', 'evidence_ids': ['f000001']}])
+    raw = v4_answer(context, facts_add=[{'text': 'Олена відчинила двері.', 'evidence_ids': ['f000001']}])
     class Gateway:
         def stream(self, *_):
             yield GenerationEvent(type='delta', text=raw)
@@ -129,7 +129,7 @@ def test_evidence_memory_context_and_stage_publish_compatible_snapshot(tmp_path)
     attempt = execute_stage(repo, scene.id, 'memory', context, Gateway(), threading.Event(), lambda _: None)
     assert attempt.state == 'completed'
     result = json.loads(repo.read_text(attempt.result_version_id))
-    assert result['schema_version']==2
+    assert result['schema_version']==3  # wire v4 always publishes journal v3
     assert result['events'][0]['quote'] == 'Олена відчинила двері.'
     assert result['source_prose_ids'] == [prose.id]
 
@@ -150,7 +150,7 @@ def test_three_scenes_accumulate_evidence_deltas_without_echoing_old_facts(tmp_p
                 'brief': json.dumps({'objective': 'Сцена', 'beats': ['Подія']}),
                 'draft': f'Олена відчинив двері номер {position}.',
                 'edit': json.dumps({'edits':[dict(fragment_id='f000001',original='відчинив',replacement='відчинила',category='grammar')]}),
-                'memory': v3_response(facts_add=[{'text': f'Подія {position}.', 'evidence_ids': ['f000001']}]),
+                'memory': v4_answer(context, facts_add=[{'text': f'Подія {position}.', 'evidence_ids': ['f000001']}]) if context.stage == 'memory' else None,
             }[context.stage]
             yield GenerationEvent(type='delta', text=raw)
             yield GenerationEvent(type='terminal', finish_reason='stop')

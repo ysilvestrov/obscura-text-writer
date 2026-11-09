@@ -22,19 +22,17 @@ def expected_contract(stage, settings) -> PromptContract:
             'edit': settings.edit_mode, 'memory': settings.memory_mode}.get(stage)
     if mode is None:
         raise ValueError('Невідомий етап промпту')
-    return PromptContract(stage=stage, mode=mode, schema_version=3 if mode == 'evidence_delta' else 1)
+    return PromptContract(stage=stage, mode=mode, schema_version=4 if mode == 'evidence_delta' else 1)
 
 
 def compatible_contract(expected: PromptContract, actual: PromptContract | None) -> bool:
-    # Custom memory prompts written for wire v2 keep v2 wire; nothing else has a compatible older contract.
-    if expected.stage == 'memory' and expected.mode == 'evidence_delta' and actual is not None:
-        return (actual.stage, actual.mode) == ('memory', 'evidence_delta') and actual.schema_version in {2, 3}
+    # Memory /2 and /3 prompts cannot fill the mandatory core and thread decisions of wire v4: no older contract is compatible.
     return actual == expected
 
 
 def memory_wire_version(ref) -> int:
-    """Wire of the memory answer: the built-in prompt is v3, a custom prompt follows its stored contract."""
-    return 3 if ref is None else ref.prompt_contract.schema_version
+    """Wire of the memory answer: the built-in prompt is v4, a custom prompt follows its stored (validated) contract."""
+    return 4 if ref is None else ref.prompt_contract.schema_version
 
 
 def validate_role_prompt(repo, story_id, stage, settings):

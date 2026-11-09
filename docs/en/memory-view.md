@@ -14,7 +14,7 @@ Stale memory is shown read-only; refresh memory before saving its checkboxes. If
 
 ## Evidence in memory entries
 
-In evidence mode (`evidence_delta`, format v3, labelled "Evidence-based memory operations v3") the model does not rewrite quotes. It returns grouped operations: add only for facts and timeline; add, update and retire for character states and open threads. Each operation names 1 to 3 prose fragment IDs (`evidence_ids`). The application takes the verbatim quotes from the prose itself: the first fragment becomes the main quote, and the rest (up to two) become supporting quotes.
+Memory is updated only in evidence mode (`evidence_delta`, format v4, labelled "Evidence-based memory operations v4"); the legacy "Full snapshot" mode is gone, and a role saved with it automatically works in evidence mode. The model does not rewrite quotes. For the protagonist it must decide every core state slot (clothing, carried, location, body, company): unchanged, changed with evidence, unknown with a reason, or "introduced" for an author entry that the prose shows to the reader for the first time. For every active thread it must say whether the thread stays open or is closed by evidence of its resolution; a character's absence from the scene never closes a thread. When the plan's `Початок:` line shows a new day, the model receives a separate notice. Everything else is grouped operations: add only for facts and timeline, add, update and retire for other states, and add for new threads. Each operation names 1 to 3 prose fragment IDs (`evidence_ids`). The application takes the verbatim quotes from the prose itself: the first fragment becomes the main quote, and the rest (up to two) become supporting quotes.
 
 In the memory table, **Show evidence** opens the main quote with the supporting quotes below it, in the same order. If there are none, only the main quote is shown.
 
@@ -37,6 +37,6 @@ The run status shows the full list of response-format violations (up to 50 items
 
 Most often the `json_schema` mode or simply running again helps; if a code keeps repeating, review your custom prompt.
 
-## Custom memory prompt: v2 and v3
+## Custom memory prompt: moving to v4
 
-A custom prompt saved with contract `/2` keeps working as format v2 (one quote, `evidence_id`). The upgrade checkbox appears only when a saved custom `/2` memory prompt is assigned to the memory role in `evidence_delta` mode. To move to v3, first rewrite the prompt text so that it asks for the grouped v3 format, then tick **Move the custom prompt to format v3** in the memory role settings and save: the prompt is stored with contract `/3`. Without the rewritten text the model will answer in the old format and the run will fail with `wire_version`. Clearing the custom prompt returns the built-in v3 prompt.
+Custom prompts saved with contract `/2` or `/3` no longer run: they do not ask for the mandatory core state and thread decisions, so runs and role saves stop with the explanation "Incompatible prompt: required memory/evidence_delta/4". For such a prompt the memory role settings show the checkbox **Move the custom prompt to format v4**. First rewrite the text so that it asks for format v4 (the `core` and `threads` sections together with the operation groups), then tick the checkbox and save: the prompt is stored with contract `/4`. Without the rewritten text the model will answer in the old format and the run will fail with `wire_version` or `schema`. Clearing the custom prompt returns the built-in v4 prompt.

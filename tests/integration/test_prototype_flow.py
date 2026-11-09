@@ -10,10 +10,9 @@ from storygen.domain import StoryCreate
 from storygen.storage.repository import Repository
 from storygen.providers.models import ProviderSettings, RoleSettings
 from storygen.providers.streaming import GenerationEvent
-from storygen.memory.models import MemorySnapshot, MemoryEntry
-from storygen.memory.service import memory_before
 from storygen.memory.journal import load_memory
 from storygen.generation.worker import RunCoordinator, RunRequest
+from tests.memory.wire_helpers import v4_answer
 
 
 class StoryGateway:
@@ -28,12 +27,7 @@ class StoryGateway:
         if context.stage=='brief':text=json.dumps({'objective':scene.title,'beats':[scene.beats]})
         elif context.stage in {'draft','edit'}:text=f'Олена уважно оглянула кімнату. Це сцена номер {scene.position+1}.'
         else:
-            prior=memory_before(self.repo,scene.id)
-            prose=scene.heads['prose']
-            snapshot=prior.model_copy(deep=True)
-            snapshot.source_prose_ids.append(prose)
-            snapshot.facts.append(MemoryEntry(text=f'Подія {scene.position+1}',source_version_id=prose,quote='Олена уважно оглянула кімнату.'))
-            text=snapshot.model_dump_json()
+            text=v4_answer(context,facts_add=[{'text':f'Подія {scene.position+1}','evidence_ids':['f000001']}])
         yield GenerationEvent(type='delta',text=text)
         yield GenerationEvent(type='terminal',finish_reason='stop')
 

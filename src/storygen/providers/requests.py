@@ -47,7 +47,7 @@ def generation_request(stage, settings, system, user, fragments):
         body.update(venice_reasoning(provider))
     structured = stage in {'prepare', 'brief', 'memory','classify','publication_suggest','impact_delta','impact_check','impact_part'} or (stage == 'edit' and settings.edit_mode == 'patches')
     if provider.response_mode == 'json_schema' and structured:
-        wire3_bounds = None
+        wire3_bounds = wire4_bounds = None
         if stage=='impact_part':
             from ..impact.chunk_models import PartResult
             model=PartResult
@@ -60,6 +60,10 @@ def generation_request(stage, settings, system, user, fragments):
         elif stage=='classify':
             from ..generation.edit_classification import Classification
             model=Classification
+        elif stage == 'memory' and settings.memory_mode == 'evidence_delta' and fragments.get('memory_wire_version') == '4':
+            from ..memory.wire_v4 import MemoryWireV4
+            model = MemoryWireV4
+            wire4_bounds = fragments.get('memory_schema_bounds')
         elif stage == 'memory' and settings.memory_mode == 'evidence_delta' and fragments.get('memory_wire_version') == '3':
             from ..memory.wire_v3 import MemoryWireV3, memory_wire_v3_schema
             model = MemoryWireV3
@@ -69,6 +73,9 @@ def generation_request(stage, settings, system, user, fragments):
         schema = fragments.get('impact_wire_schema') if stage=='impact_part' else None
         if wire3_bounds:
             schema = memory_wire_v3_schema(json.loads(wire3_bounds))
+        if wire4_bounds:
+            from ..memory.wire_v4 import memory_wire_v4_schema
+            schema = memory_wire_v4_schema(json.loads(wire4_bounds))
         schema = schema if schema is not None else strict_schema(model)
         if stage == 'memory' and settings.memory_mode == 'snapshot' and fragments.get('expected_source_prose_ids'):
             allowed = json.loads(fragments['expected_source_prose_ids'])
