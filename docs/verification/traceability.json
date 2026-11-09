@@ -271,6 +271,16 @@
       ]
     },
     {
+      "id": "PIPE-006-S03",
+      "requirement": "PIPE-006",
+      "scope": "Зациклення на пробілах у структурованій відповіді зупиняє потік як degenerate_output; прозові та короткі пробільні фрагменти не обриваються; діагностика локалізована.",
+      "tests": [
+        "tests/providers/test_streaming.py::test_structured_whitespace_runaway_stops_stream_early",
+        "tests/providers/test_streaming.py::test_whitespace_inside_prose_or_short_runs_is_not_runaway",
+        "tests/providers/test_streaming.py::test_runaway_diagnostic_is_localized"
+      ]
+    },
+    {
       "id": "PIPE-007-S01",
       "requirement": "PIPE-007",
       "scope": "Невалідний JSON. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
@@ -985,6 +995,14 @@
         "tests/characters/test_acquaintance_markers.py::test_italic_markers_recognised",
         "tests/characters/test_acquaintance_markers.py::test_unrelated_card_with_bad_anchor_does_not_abort",
         "tests/characters/test_acquaintance_history.py::test_no_cards_returns_empty"
+      ]
+    },
+    {
+      "id": "PLANNER-ACQUAINTANCE-S06",
+      "requirement": "PLANNER-ACQUAINTANCE",
+      "scope": "Власний промпт brief отримує блок контракту форми з полем introduced; збережена версія, її контракт і вбудований промпт не змінюються. Не доводить, що модель заповнить поле правильно.",
+      "tests": [
+        "tests/generation/test_prompt_contracts.py::test_custom_brief_prompt_gets_introduced_wire_contract"
       ]
     },
     {
