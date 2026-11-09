@@ -14,7 +14,7 @@ from pathlib import Path
 from pydantic import BaseModel
 
 from ..authoring.blueprints import get_role_settings, save_role_settings
-from ..domain import SceneCreate, StoryCreate
+from ..domain import ContentRating, SceneCreate, StoryCreate
 from ..generation.dependencies import save_manual_prose
 from ..generation.pipeline import STAGES
 from ..impact.presentation import scene_status
@@ -27,6 +27,7 @@ from ..storage.repository import Repository
 REPO_ROOT = Path(__file__).resolve().parents[3]
 OPERATIONS = ('prepare', *STAGES, 'scene', 'remaining', 'rebuild_memory', 'edit_loop')
 SYNTHETIC_TITLE = 'Synthetic workspace bench'
+BENCH_RATING = ContentRating(sexual=0, violence=0, themes=0)
 BENCH_ROLES = ('planner', 'writer', 'editor', 'memory')
 # Local provider with builtin prompts: readiness stays offline and needs no budget limit. The window is
 # wide enough for a 300-scene memory and plan, so preview reaches build_context and returns ready=True.
@@ -66,6 +67,8 @@ def configure_roles(repo: Repository, story_id: str) -> None:
 
 def _build_story(repo, scenes):
     story = repo.create_story(StoryCreate(title=SYNTHETIC_TITLE))
+    # Generation is blocked for an unrated story, so the bench rates its own story before anything else.
+    story = repo.update_story_rating(story.id, BENCH_RATING, story.revision)
     sources, facts = [], []
     for i in range(scenes):
         scene = repo.create_scene(story.id, SceneCreate(title=f'Scene {i + 1}', beats=f'Plan beat {i + 1}'))
@@ -90,6 +93,9 @@ def _check_synthetic(repo, story_id, scenes):
     roles = get_role_settings(repo, story_id)
     if any(name not in roles for name in BENCH_ROLES):
         raise ValueError('synthetic_incomplete: workdir story has no bench roles (interrupted or old build); '
+                         'use a new --workdir')
+    if repo.get_story(story_id).content_rating is None:
+        raise ValueError('synthetic_unrated: workdir story has no age rating (built before content ratings); '
                          'use a new --workdir')
 
 

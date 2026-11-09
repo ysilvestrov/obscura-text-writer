@@ -83,6 +83,49 @@ def update_scene_metadata(repo,scene_id: str,changes: dict,expected_revision: in
     return scene
 
 
+def update_story_rating(repo,story_id: str,rating,expected_revision: int) -> Story:
+    if rating is None:
+        raise ValueError('Рейтинг твору не можна скинути')
+    from ..rating.levels import effective_rating,is_lower
+    with repo.db.connection() as db:
+        db.execute("BEGIN IMMEDIATE")
+        story=repo._active_story(db,story_id)
+        if story.revision!=expected_revision:
+            raise RevisionConflict("Твір уже змінено")
+        if story.content_rating==rating:return story
+        old=story
+        story=story.model_copy(update={'content_rating':rating,'revision':story.revision+1})
+        if story.initial_content_rating is None:
+            story.initial_content_rating=rating
+        repo._save_story(db,story)
+        from .invalidation import invalidate_in_transaction
+        for row in db.execute("SELECT payload FROM scenes WHERE story_id=? ORDER BY position",(story_id,)).fetchall():
+            scene=Scene.model_validate_json(row[0])
+            if scene.trashed_at:continue
+            if is_lower(effective_rating(story,scene),effective_rating(old,scene)):
+                invalidate_in_transaction(repo,db,list(scene.heads.values()))
+    return story
+
+
+def update_scene_rating(repo,scene_id: str,rating,expected_revision: int) -> Scene:
+    from ..rating.levels import effective_rating,is_lower
+    with repo.db.connection() as db:
+        db.execute("BEGIN IMMEDIATE")
+        scene=repo._active_scene(db,scene_id)
+        if scene.revision!=expected_revision:
+            raise RevisionConflict("Сцену вже змінено")
+        if scene.content_rating==rating:return scene
+        story=repo._active_story(db,scene.story_id)
+        old=scene
+        scene=scene.model_copy(update={'content_rating':rating,'revision':scene.revision+1})
+        repo._save_scene(db,scene)
+        if is_lower(effective_rating(story,scene),effective_rating(story,old)):
+            from .invalidation import invalidate_in_transaction
+            invalidate_in_transaction(repo,db,list(scene.heads.values()))
+        repo._touch_story(db,scene.story_id)
+    return scene
+
+
 def reorder_scenes(repo,story_id: str,scene_ids: list[str],expected_revision: int) -> Story:
     with repo.db.connection() as db:
         db.execute("BEGIN IMMEDIATE")

@@ -8,6 +8,9 @@ from storygen.application.workspace_bench import OPERATIONS, _shallow_model_copy
 from storygen.impact.presentation import scene_status
 from storygen.storage.repository import Repository
 
+# The bench must rate its own synthetic story; the conftest default rating would hide a missing rating.
+pytestmark = pytest.mark.unrated_stories
+
 
 def test_bench_digest_is_stable_and_synthetic_story_has_requested_size(tmp_path):
     repo = Repository(tmp_path)
@@ -62,6 +65,7 @@ def test_synthetic_story_reaches_full_readiness_path(tmp_path):
     repo = Repository(tmp_path)
     story_id = build_story(repo, 5, shallow_copies=True)
     assert set(BENCH_ROLES) <= set(get_role_settings(repo, story_id))
+    assert repo.get_story(story_id).content_rating is not None
     middle = repo.context_view(story_id).list_scenes(story_id)[2].id
     for name in ['brief', 'scene', 'memory', 'rebuild_memory', 'remaining']:
         result = preview(repo, _request(story_id, middle, name))
@@ -87,6 +91,15 @@ def test_reused_workdir_must_hold_requested_completed_workload(tmp_path):
     repo.create_story(StoryCreate(title=SYNTHETIC_TITLE))
     with pytest.raises(ValueError, match='synthetic_ambiguous'):
         run(synthetic=2, workdir=tmp_path / 'i')
+    # A completed build from before content ratings has roles but no story rating.
+    from storygen.application.workspace_bench import configure_roles
+    old = Repository(tmp_path / 'o')
+    story = old.create_story(StoryCreate(title=SYNTHETIC_TITLE))
+    for i in range(2):
+        old.create_scene(story.id, SceneCreate(title=f'Scene {i + 1}', beats='b'))
+    configure_roles(old, story.id)
+    with pytest.raises(ValueError, match='synthetic_unrated'):
+        run(synthetic=2, workdir=tmp_path / 'o')
 
 
 def test_scene_select_requests_the_editor_urls_and_enters_the_digest(tmp_path, monkeypatch):

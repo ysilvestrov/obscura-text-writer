@@ -1,6 +1,10 @@
 """Finite selectors for actual semantic inputs, never SQL or executable expressions."""
 from ..dependency_models import DependencySnapshot, DependencySelector, DependencyChange, FreshnessResult
 from ..story_horizon import selected_plan_scenes, horizon_future_count
+from ..rating.levels import effective_rating, from_wire, is_lower, to_wire
+
+# Generation scopes limited by the scene's effective content rating; author text and memory are not.
+RATING_SCOPES = frozenset({'brief', 'draft', 'prose_edit', 'patches', 'author_rewrite'})
 
 
 def build_dependency_snapshot(
@@ -84,6 +88,8 @@ def build_dependency_snapshot(
             head(previous[-1], 'memory')
         for name in {'brief': [], 'draft': ['brief'], 'prose_edit': ['brief', 'draft'], 'author_text': [],'author_rewrite': []}[scope]:
             head(scene, name)
+    if scope in RATING_SCOPES:
+        select('scene', scene.id, 'content_rating', to_wire(effective_rating(story, scene)))
     return DependencySnapshot(
         scope=scope,
         frozen_author_source_id=next((id for id in input_refs if view.get_version(id).scene_id==scene_id and view.get_version(id).kind=='draft'),None) if scope=='author_rewrite' else None,
@@ -107,6 +113,8 @@ def selector_value(view, selector: DependencySelector):
     if kind=='scene' and field=='memory_projection_policy':
         from ..memory.forwarding import hidden_before
         return sorted(hidden_before(view,owner))
+    if kind=='scene' and field=='content_rating':
+        return to_wire(effective_rating(view.peek_story(view.story.id), view.peek_scene(owner)))
     if kind == 'story' and owner == view.story.id and field in {
         'style_version_id',
         'canon_version_id',
@@ -138,6 +146,22 @@ def selector_value(view, selector: DependencySelector):
     raise ValueError('Невідомий селектор залежностей')
 
 
+def rating_fallback(view, snapshot: DependencySnapshot) -> tuple[bool, DependencySelector | None]:
+    """Whether the snapshot's rating input comes from the story's initial rating, and that baseline selector.
+
+    Old snapshots predate the rating, and a recorded None means the story was not rated yet: either way the story's
+    first rating is their baseline, so setting it stales nothing. (True, None) means the snapshot's own rating
+    selectors are dropped and no baseline exists yet (story not rated, or no owner to attach it to).
+    """
+    rating=[s for s in snapshot.selectors if s.field=='content_rating']
+    if snapshot.scope not in RATING_SCOPES or any(s.expected is not None for s in rating):return False,None
+    initial=view.peek_story(view.story.id).initial_content_rating
+    owner_field=('head','draft') if snapshot.scope=='patches' else ('scene','title')
+    owner=rating[0].owner_id if rating else next((s.owner_id for s in snapshot.selectors if (s.kind,s.field)==owner_field),None)
+    if not owner or initial is None:return True,None
+    return True,DependencySelector(kind='scene',owner_id=owner,field='content_rating',expected=to_wire(initial))
+
+
 def compare_snapshot(view, snapshot: DependencySnapshot | dict) -> list[DependencyChange]:
     snapshot = DependencySnapshot.model_validate(snapshot)
     changes = []
@@ -145,10 +169,18 @@ def compare_snapshot(view, snapshot: DependencySnapshot | dict) -> list[Dependen
     if snapshot.scope in {'brief','draft','prose_edit','author_text','author_rewrite'} and not any(s.field=='memory_projection_policy' for s in selectors):
         owner=next((s.owner_id for s in selectors if s.kind=='scene' and s.field=='title'),None)
         if owner:selectors.append(DependencySelector(kind='scene',owner_id=owner,field='memory_projection_policy',expected=[]))
+    replace,fallback=rating_fallback(view,snapshot)
+    if replace:
+        selectors=[s for s in selectors if s.field!='content_rating']+([fallback] if fallback else [])
     for selector in selectors:
         try:
             current = selector_value(view, selector)
-            if current != selector.expected:
+            if selector.field=='content_rating':
+                # Asymmetric: only a rating lower than expected on some axis changes the input.
+                changed=is_lower(from_wire(current),from_wire(selector.expected))
+            else:
+                changed=current != selector.expected
+            if changed:
                 changes.append(DependencyChange(selector=selector, expected=selector.expected, current=current, reason='selector_changed'))
         except (KeyError, ValueError):
             changes.append(DependencyChange(selector=selector, expected=selector.expected, reason='selector_unavailable'))

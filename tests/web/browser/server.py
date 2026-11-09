@@ -83,8 +83,13 @@ def main():
         app = create_app(AppSettings(data_dir=root/'data', env_file=root/'absent.env', port=port),
                          gateway_factory=forbidden_gateway, evaluator_factory=forbidden_gateway)
         repo = app.state.repo
+        def rated_story(title):
+            # Generation is blocked for an unrated story; browser fixtures start rated like conftest stories.
+            from storygen.domain import ContentRating
+            story = repo.create_story(StoryCreate(title=title))
+            return repo.update_story_rating(story.id, ContentRating(sexual=0, violence=0, themes=0), story.revision)
         def make_fixture():
-            story = repo.create_story(StoryCreate(title='Нічний каталог'))
+            story = rated_story('Нічний каталог')
             scene = repo.create_scene(story.id, SceneCreate(title='Зорі над парком', beats='Сцена 1: Зорі над парком\nДії: Лєра дивиться на зорі.'))
             draft = repo.save_version(story.id, scene.id, 'draft', 'Лєра побачила **зорі**.\n\nВечір був _тихим_.', [], content_format='markdown')
             scene = repo.set_head(scene.id, 'draft', draft.id, scene.revision)
@@ -133,6 +138,16 @@ def main():
             save_role_settings(repo,fixture['story_id'],'editor',RoleSettings(provider=ProviderSettings(model='synthetic-no-changes'),edit_mode='patches'),repo.get_story(fixture['story_id']).revision)
             return fixture
 
+        @app.post('/test-unrated')
+        def unrated_story():
+            # Unrated like a story created through the application; used by the rating settings spec.
+            story = repo.create_story(StoryCreate(title='Без рейтингу'))
+            scene = repo.create_scene(story.id, SceneCreate(title='Сцена', beats='Сцена 1: Сцена\nДії: Лєра дивиться на зорі.'))
+            from storygen.authoring.blueprints import save_role_settings
+            from storygen.providers.models import RoleSettings,ProviderSettings
+            save_role_settings(repo,story.id,'planner',RoleSettings(provider=ProviderSettings(model='synthetic')),repo.get_story(story.id).revision)
+            return {'story_id': story.id, 'scene_id': scene.id}
+
         @app.post('/test-editor-slow')
         def editor_slow():
             from storygen.authoring.blueprints import save_role_settings
@@ -146,7 +161,7 @@ def main():
             from storygen.generation.dependencies import save_manual_prose
             from storygen.authoring.blueprints import save_role_settings
             from storygen.providers.models import RoleSettings,ProviderSettings
-            story=repo.create_story(StoryCreate(title='Лист у бібліотеці'))
+            story=rated_story('Лист у бібліотеці')
             first=repo.create_scene(story.id,SceneCreate(title='План'))
             second=repo.create_scene(story.id,SceneCreate(title='Вечір'))
             save_manual_prose(repo,first.id,'Марія знає про лист.'*(120 if chunked else 1),0)

@@ -16,6 +16,10 @@
 <p><span data-i18n="m_cd1876627f27">{{ t('m_cd1876627f27') }}</span></p>
 <label><span data-i18n="m_8de58ecc02db">{{ t('m_8de58ecc02db') }}</span><input type="number" name="previous_tail_chars" min="0" max="12000"></label>
 <button><span data-i18n="m_52e63ff32323">{{ t('m_52e63ff32323') }}</span></button></form>
+<form id="rating-form" class="panel"><fieldset><legend data-i18n="rating.legend">{{ t('rating.legend') }}</legend>
+{% for axis in ['sexual','violence','themes'] %}<label><span data-i18n="rating.axis.{{axis}}">{{ t('rating.axis.' ~ axis) }}</span><select name="{{axis}}" aria-describedby="rating-hint"><option value="" data-i18n="rating.level.unset">{{ t('rating.level.unset') }}</option><option value="0" data-i18n="rating.level.0">{{ t('rating.level.0') }}</option><option value="1" data-i18n="rating.level.1">{{ t('rating.level.1') }}</option><option value="2" data-i18n="rating.level.2">{{ t('rating.level.2') }}</option></select></label>
+{% endfor %}<small id="rating-hint" data-i18n="rating.hint">{{ t('rating.hint') }}</small></fieldset>
+<button id="rating-save" type="button"><span data-i18n="rating.save">{{ t('rating.save') }}</span></button></form>
 </section>
 <section data-settings-section="models"><div class="settings-roles" aria-label="{{ t('m_ee65b1cda412') }}" data-i18n-attrs='{"aria-label": "m_ee65b1cda412"}'><button type="button" class="secondary" data-settings-role="planner"><span data-i18n="m_38c94c25c4af">{{ t('m_38c94c25c4af') }}</span></button><button type="button" class="secondary" data-settings-role="writer"><span data-i18n="m_75515c07207a">{{ t('m_75515c07207a') }}</span></button><button type="button" class="secondary" data-settings-role="editor"><span data-i18n="m_65d42cf1679c">{{ t('m_65d42cf1679c') }}</span></button><button type="button" class="secondary" data-settings-role="memory"><span data-i18n="m_aa1cfb48cc30">{{ t('m_aa1cfb48cc30') }}</span></button></div><p id="settings-loading" role="status"><span data-i18n="m_7a19b7d084d9">{{ t('m_7a19b7d084d9') }}</span></p><div id="role-settings"></div></section>
 <section data-settings-section="evaluator" hidden><div id="evaluator-settings"></div></section>
@@ -35,5 +39,5 @@
 <label><span data-i18n="m_276ae1b33f5b">{{ t('m_276ae1b33f5b') }}</span><input id="role-profile-import" type="file" accept=".json,application/json"></label>
 </details>
 </section></section>
-</div></div></main><script type="module" src="/static/settings.js"></script><script type="module" src="/static/workspace-navigation.js"></script><script type="module" src="/static/role-profiles.js"></script><script type="module" src="/static/evaluation.js"></script><script type="module" src="/static/budget.js"></script>
+</div></div></main><script type="module" src="/static/settings.js"></script><script type="module" src="/static/workspace-navigation.js"></script><script type="module" src="/static/role-profiles.js"></script><script type="module" src="/static/evaluation.js"></script><script type="module" src="/static/budget.js"></script><script type="module" src="/static/rating-settings.js"></script>
 {% endblock %}

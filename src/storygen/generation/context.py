@@ -69,6 +69,8 @@ def make_context(repo,story,scene,stage,settings,sections,refs,fragments=None,ac
         repo=repo.context_view(story.id)
         story=repo.get_story(story.id)
         scene=repo.get_scene(scene.id) if scene else None
+    from ..rating.guard import enforce_rating
+    enforce_rating(repo,story,scene,stage)
     prompt_id=settings.prepare_prompt_version_id if stage=='prepare' else settings.prompt_version_id
     ref=None if stage=='rewrite' else validate_role_prompt(repo,story.id,stage,settings)
     if ref:
@@ -87,6 +89,9 @@ def make_context(repo,story,scene,stage,settings,sections,refs,fragments=None,ac
         if content_format=='markdown':
             from ..prompt_contracts import MARKDOWN_PRESERVATION
             system+='\n\n'+MARKDOWN_PRESERVATION
+    from ..rating.instructions import rating_instructions
+    rating_text=rating_instructions(repo,story,scene,stage,settings)
+    if rating_text:system+='\n\n'+rating_text
     warnings=list(context_warnings or [])
     if prompt_id and stage in {'brief','draft','edit'} and OTHER_MATERIAL_WARNING not in warnings:
         warnings.append(OTHER_MATERIAL_WARNING)

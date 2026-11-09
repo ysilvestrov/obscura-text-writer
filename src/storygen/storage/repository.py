@@ -57,6 +57,14 @@ class Repository:
         from .authoring import update_scene_metadata
         return update_scene_metadata(self, scene_id, changes, expected_revision)
 
+    def update_story_rating(self, story_id, rating, expected_revision):
+        from .authoring import update_story_rating
+        return update_story_rating(self, story_id, rating, expected_revision)
+
+    def update_scene_rating(self, scene_id, rating, expected_revision):
+        from .authoring import update_scene_rating
+        return update_scene_rating(self, scene_id, rating, expected_revision)
+
     def reorder_scenes(self, story_id, scene_ids, expected_revision):
         from .authoring import reorder_scenes
         return reorder_scenes(self, story_id, scene_ids, expected_revision)
