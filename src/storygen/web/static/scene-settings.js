@@ -15,5 +15,44 @@ function draw(){
   form.onsubmit=async event=>{event.preventDefault();try{if(state.dirty)throw new Error(t("m_7b803d601f5d"));state.scene=await api(`/api/scenes/${state.scene.id}`,json('PATCH',{story_id:state.storyId,expected_revision:state.scene.revision,title:form.elements.title.value,target_words:Number(form.elements.target_words.value)}));await refresh();notice(msg("m_3912c755e566"))}catch(e){notice(e.message,'error')}};
   for(const [offset,label]of[[-1,msg("m_fbece07fa4b9")],[1,msg("m_64e67f3cc069")]]){const b=document.createElement('button');b.type='button';b.className='secondary';uiText(b,"textContent",()=>(label));b.onclick=async()=>{try{if(state.dirty)throw new Error(t("m_7b803d601f5d"));const ids=state.view.scenes.map(s=>s.id),index=ids.indexOf(state.scene.id),next=index+offset;if(next<0||next>=ids.length)return;[ids[index],ids[next]]=[ids[next],ids[index]];await api(`/api/stories/${state.storyId}/scene-order`,json('PUT',{scene_ids:ids,expected_revision:state.view.story.revision}));await refresh();notice(msg("m_fdf76ffdf76d"))}catch(e){notice(e.message,'error')}};form.append(b)}
   target.after(form);
+  drawRating(form);
+}
+const axes=['sexual','violence','themes'];
+function drawRating(after){
+  document.querySelector('#scene-rating')?.remove();
+  const storyRating=state.view?.story?.content_rating||null,own=state.scene.content_rating||null;
+  const form=document.createElement('form');form.id='scene-rating';form.className='panel';
+  const fieldset=document.createElement('fieldset'),legend=document.createElement('legend');
+  uiText(legend,'textContent',()=>t('rating.scene.legend'));fieldset.append(legend);
+  const radio=(value,render)=>{
+    const label=document.createElement('label'),input=document.createElement('input'),span=document.createElement('span');
+    input.type='radio';input.name='mode';input.value=value;uiText(span,'textContent',render);label.append(input,span);fieldset.append(label);return input;
+  };
+  radio('inherit',()=>t('rating.scene.inherit',{p0:storyRating?t('rating.scene.summary',{p0:storyRating.sexual,p1:storyRating.violence,p2:storyRating.themes}):t('rating.level.unset')}));
+  radio('own',()=>t('rating.scene.own'));
+  for(const axis of axes){
+    const label=document.createElement('label'),span=document.createElement('span'),select=document.createElement('select');
+    uiText(span,'textContent',()=>t(`rating.axis.${axis}`));select.name=axis;
+    for(const level of [0,1,2]){const option=document.createElement('option');option.value=String(level);uiText(option,'textContent',()=>t(`rating.level.${level}`));select.append(option)}
+    label.append(span,select);fieldset.append(label);
+  }
+  const hint=document.createElement('small');uiText(hint,'textContent',()=>t('rating.scene.hint'));fieldset.append(hint);
+  const save=document.createElement('button');uiText(save,'textContent',()=>t('rating.scene.save'));
+  form.append(fieldset,save);
+  const shownRating=own||storyRating;
+  for(const axis of axes)form.elements[axis].value=String(shownRating?shownRating[axis]:0);
+  form.elements.mode.value=own?'own':'inherit';
+  const sync=()=>{for(const axis of axes)form.elements[axis].disabled=form.elements.mode.value==='inherit'};
+  sync();form.addEventListener('change',event=>{if(event.target.name==='mode')sync()});
+  form.onsubmit=async event=>{
+    event.preventDefault();
+    try{
+      if(state.dirty)throw new Error(t("m_7b803d601f5d"));
+      const content_rating=form.elements.mode.value==='inherit'?null:Object.fromEntries(axes.map(axis=>[axis,Number(form.elements[axis].value)]));
+      state.scene=await api(`/api/scenes/${state.scene.id}/content-rating`,json('PUT',{story_id:state.storyId,content_rating,expected_revision:state.scene.revision}));
+      await refresh();notice(msg('rating.scene.saved'));
+    }catch(e){notice(e.message,'error')}
+  };
+  after.after(form);
 }
 document.addEventListener('scene-selected',draw);document.addEventListener('story-refreshed',draw);

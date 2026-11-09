@@ -2079,7 +2079,14 @@
     "rating.save": "Зберегти рейтинг",
     "rating.saved": "Рейтинг збережено",
     "rating.incomplete": "Оберіть рівень для кожної осі рейтингу",
-    "rating.changed": "Рейтинг твору вже змінено. Оновіть сторінку перед повторним збереженням."
+    "rating.changed": "Рейтинг твору вже змінено. Оновіть сторінку перед повторним збереженням.",
+    "rating.scene.legend": "Віковий рейтинг сцени",
+    "rating.scene.inherit": "Як у твору ({p0})",
+    "rating.scene.own": "Власний рейтинг",
+    "rating.scene.summary": "сексуальний зміст {p0}, насильство {p1}, жорсткі теми {p2}",
+    "rating.scene.hint": "Пониження рейтингу позначає матеріали сцени застарілими; підвищення — ні.",
+    "rating.scene.save": "Зберегти рейтинг сцени",
+    "rating.scene.saved": "Рейтинг сцени збережено"
   },
   "en": {
     "ui.save": "Save",
@@ -4161,6 +4168,13 @@
     "rating.save": "Save rating",
     "rating.saved": "Rating saved",
     "rating.incomplete": "Choose a level for every rating axis",
-    "rating.changed": "The story rating has already changed. Reload the page before saving again."
+    "rating.changed": "The story rating has already changed. Reload the page before saving again.",
+    "rating.scene.legend": "Scene age rating",
+    "rating.scene.inherit": "Same as the story ({p0})",
+    "rating.scene.own": "Own rating",
+    "rating.scene.summary": "sexual content {p0}, violence {p1}, hard themes {p2}",
+    "rating.scene.hint": "Lowering the rating marks the scene’s materials as outdated; raising it does not.",
+    "rating.scene.save": "Save scene rating",
+    "rating.scene.saved": "Scene rating saved"
   }
 }

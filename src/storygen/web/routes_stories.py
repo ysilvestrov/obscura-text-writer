@@ -49,7 +49,10 @@ def story_view(id: str,request: Request):
     from ..characters.models import load_characters
     names={card.id:card.name for card in load_characters(view.read_text(story.characters_version_id))} if story.characters_version_id else {}
     from ..impact.presentation import scene_status
-    return {"impact_status":scene_status(view),"story":story,"scenes":[view.effective_scene(scene.id) for scene in view.list_scenes(id)],"sources":[view.get_version(v.id) for v in view.versions.values() if v.kind in {"source_plan","source_characters"}],"character_names":names,"source_files":view.source_files,"active_sources":view.sources}
+    from ..rating.levels import effective_rating
+    listed=view.list_scenes(id)
+    ratings={scene.id:{"effective":effective_rating(story,scene),"source":"scene" if scene.content_rating else "story" if story.content_rating else None} for scene in listed}
+    return {"impact_status":scene_status(view),"story":story,"scenes":[view.effective_scene(scene.id) for scene in listed],"scene_ratings":ratings,"sources":[view.get_version(v.id) for v in view.versions.values() if v.kind in {"source_plan","source_characters"}],"character_names":names,"source_files":view.source_files,"active_sources":view.sources}
 
 
 @router.patch('/api/stories/{id}')
