@@ -700,6 +700,13 @@ UI SHALL показувати select/N для planner/writer/prose-editor, ви�
 - WHEN автор зберігає його
 - THEN система відхиляє некоректні дані без зміни походження записів.
 
+<a id="memory-001-s02"></a>
+#### Scenario: MEMORY-001-S02 — Запис автора без цитати
+- GIVEN подія журналу має `source_kind='author'` і `quote=None`, без `evidence_version_id` і `supporting_quotes`
+- WHEN журнал будується, читається чи перевіряється
+- THEN така подія валідна й не має перевірки дослівності
+- AND `quote=None` для `source_kind='prose'`, а також разом з `evidence_version_id` чи `supporting_quotes`, відхиляється.
+
 <a id="memory-002"></a>
 ### Requirement: MEMORY-002 — Пам’ять через фрагменти
 
@@ -777,6 +784,23 @@ events попереднього префікса. Ручне збереженн�
 лишаються побайтово незмінними й читаними старими збірками. Непорожнє поле входить
 у `claim_id` (add) та `event_id` (update/retire, `change_event_id`).
 
+Журнал v3 (`MemoryJournal.schema_version` 2 або 3; v2 і legacy читаються без змін)
+додає до `MemoryEvent` необов’язкові поля: `slot` (слот ядра стану з реєстру
+`memory/core.py`, версія `core-slots-v1`; лише для `character_states` з рівно одним
+`character_ids`), `source_kind` (`prose` типово або `author`), `evidence_version_id`
+(версія прози префікса, у якій лежить `quote`, коли вона не є прозою поточної
+сцени), `resolves_claim_id` (явне посилання факту-розв’язки на закриту лінію) і
+`quote=None` (лише для `author`, без `evidence_version_id` і `supporting_quotes`).
+Поля зі значеннями за замовчуванням не серіалізуються, а `quote=None` не
+серіалізується й читається назад для `author`. Нестандартні поля входять у
+`claim_id` (add) і `event_id` (`change_event_id`) окремим словником після
+`supporting`, лише коли він непорожній. `source_version_id` нової події лишається
+прозою поточної сцени; цитата перевіряється в `evidence_version_id` або, якщо його
+немає, у `source_version_id`, а `evidence_version_id` має стояти в префіксі не пізніше
+за джерело. Replay гарантує не більше одного активного запису на пару
+(персонаж, слот) і забороняє update/retire змінювати слот claim. Нова подія з
+нестандартним полем підвищує версію журналу до 3.
+
 <a id="memory-003-s01"></a>
 #### Scenario: MEMORY-003-S01 — Змінений стан і закрита лінія
 - GIVEN попередній claim активний
@@ -804,6 +828,13 @@ events попереднього префікса. Ручне збереженн�
 - WHEN читається `/api/scenes/{id}/memory-view`
 - THEN кожен рядок має `supporting_quotes: list[str]` (порожній для старих подій) у порядку журналу
 - AND UI показує їх після основної цитати як звичайний текст, а прапорці переносу не змінюються.
+
+<a id="memory-003-s05"></a>
+#### Scenario: MEMORY-003-S05 — Журнал v3 сумісний за байтами
+- GIVEN подія без `slot`, `source_kind='author'`, `evidence_version_id`, `resolves_claim_id` і з цитатою
+- WHEN вона створюється й серіалізується
+- THEN JSON не містить нових полів, а `claim_id` і `event_id` збігаються з v2-формою
+- AND подія з будь-яким нестандартним полем має інші ID й серіалізує це поле.
 
 <a id="memory-004"></a>
 ### Requirement: MEMORY-004 — Обмежена нормалізація й точна діагностика

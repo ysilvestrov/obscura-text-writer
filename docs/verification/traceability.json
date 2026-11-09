@@ -385,6 +385,15 @@
       ]
     },
     {
+      "id": "MEMORY-001-S02",
+      "requirement": "MEMORY-001",
+      "scope": "Запис автора без цитати. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/memory/test_core_journal.py::test_author_without_quote_is_valid_only_for_author",
+        "tests/memory/test_core_journal.py::test_manual_memory_accepts_author_events"
+      ]
+    },
+    {
       "id": "MEMORY-002-S01",
       "requirement": "MEMORY-002",
       "scope": "Невідомий фрагмент. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
@@ -456,6 +465,21 @@
       "tests": [
         "tests/web/test_memory_forwarding_api.py::test_memory_view_rows_carry_supporting_quotes",
         "tests/web/test_memory_table_ui.py::test_memory_table_selection_conflict_and_async_save"
+      ]
+    },
+    {
+      "id": "MEMORY-003-S05",
+      "requirement": "MEMORY-003",
+      "scope": "Журнал v3 сумісний за байтами. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/memory/test_core_journal.py::test_default_fields_keep_v2_bytes_and_ids",
+        "tests/memory/test_core_journal.py::test_extra_fields_change_ids_and_serialize",
+        "tests/memory/test_core_journal.py::test_slot_requires_single_character_state_and_known_slot",
+        "tests/memory/test_core_journal.py::test_replay_rejects_second_active_slot_value",
+        "tests/memory/test_core_journal.py::test_update_cannot_change_slot",
+        "tests/memory/test_core_journal.py::test_evidence_version_quote_checked_against_that_prose",
+        "tests/memory/test_core_journal.py::test_extend_promotes_schema_version",
+        "tests/memory/test_core_journal.py::test_tracked_characters_uses_protagonist"
       ]
     },
     {
