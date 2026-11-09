@@ -220,3 +220,28 @@ def test_edit_body_validation():
     with pytest.raises(ValueError):
         CoreReviewBody.model_validate({'expected_revision': 1, 'memory_version_id': 'm',
             'edits': [slot_edit('location', 'keep'), slot_edit('location', 'set', 'Кухня')]})
+
+
+@pytest.mark.req('MEMORY-CONFIRM')
+def test_repeated_author_value_on_occupied_slot(tmp_path):
+    # Coat, Shirt, Coat in one scene: the third update must not reuse the first update's event ID.
+    repo, story, scene, claims = manual_scene(tmp_path)
+    for value in ('Плащ', 'Сорочка', 'Плащ'):
+        scene = repo.get_scene(scene.id)
+        apply_core_review(repo, scene.id, body(scene, slot_edit('clothing', 'set', value)))
+    fresh, journal = head_journal(repo, scene.id)
+    assert slots_of(journal)[('A', 'clothing')].text == 'Плащ'
+    ids = [e.event_id for e in journal.events]
+    assert len(ids) == len(set(ids))
+
+
+@pytest.mark.req('MEMORY-CONFIRM')
+def test_repeated_author_value_with_captured_answer(tmp_path):
+    repo, story, scene, claims, attempt = v4_scene(tmp_path)
+    for value in ('Плащ', 'Сорочка', 'Плащ'):
+        scene = repo.get_scene(scene.id)
+        apply_core_review(repo, scene.id, body(scene, slot_edit('clothing', 'set', value)))
+    fresh, journal = head_journal(repo, scene.id)
+    assert slots_of(journal)[('A', 'clothing')].text == 'Плащ'
+    ids = [e.event_id for e in journal.events]
+    assert len(ids) == len(set(ids))

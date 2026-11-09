@@ -31,7 +31,7 @@ export function installCoreReview({container,api,json,notice,refresh}){
   const plain=(tag,text,className)=>{const n=document.createElement(tag);n.textContent=text;if(className)n.className=className;return n;};
   const action=(render,onclick,className='secondary')=>{const b=node('button',render,className);b.type='button';b.onclick=onclick;return b;};
   container.className='core-review';
-  let sceneId=null,review=null,edits=[],quoteScenes=new Map(),busy=false,token=0,quietOpen=false,entry=null,scenes=null,message=null;
+  let sceneId=null,review=null,edits=[],quoteScenes=new Map(),busy=false,inflight=0,token=0,quietOpen=false,entry=null,scenes=null,message=null;
   const setEdit=edit=>{edits=[...edits.filter(e=>editKey(e)!==editKey(edit)),edit];};
   const dropEdit=key=>{edits=edits.filter(e=>editKey(e)!==key);quoteScenes.delete(key);};
 
@@ -144,10 +144,14 @@ export function installCoreReview({container,api,json,notice,refresh}){
     if(busy||!review?.memory_version_id)return;
     busy=true;render();
     const body={expected_revision:review.revision,memory_version_id:review.memory_version_id,edits:edits.map(edit=>({...edit}))};
-    const mine=token;
+    const mine=token,submitted=sceneId;inflight++;
     try{
       const result=await api(`/api/scenes/${sceneId}/core-review`,json('POST',body));
-      if(mine!==token)return;
+      if(mine!==token){
+        // A reload overtook the request; its answer may predate the saved memory, so read the head again.
+        if(sceneId===submitted&&inflight===1){inflight--;busy=false;await load(submitted);inflight++;}
+        return;
+      }
       review=result;edits=[];quoteScenes=new Map();entry=null;busy=false;render();
       notice(msg("m_87fd861aed45"));
       await refresh?.();
@@ -155,7 +159,7 @@ export function installCoreReview({container,api,json,notice,refresh}){
       notice(error.message,'error');
       // A conflict means the memory head moved (or the edits were saved but not confirmed): show the current state.
       if(error.status===409&&mine===token){busy=false;edits=[];quoteScenes=new Map();entry=null;await load(sceneId);try{await refresh?.();}catch{}}
-    }finally{if(mine===token&&busy){busy=false;render();}}
+    }finally{inflight--;if(!inflight&&busy){busy=false;render();}}
   }
 
   function render(){
@@ -212,5 +216,7 @@ export function installCoreReview({container,api,json,notice,refresh}){
       message=node('p',()=>diagnostic(error.message),'core-review-error');render();
     }
   }
+  // Slot labels come from the server in the request locale, so a language switch reads the review again.
+  document.addEventListener?.('ui-locale-changed',()=>{if(sceneId)void load(sceneId);});
   return {load,dirty,discard};
 }

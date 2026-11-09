@@ -223,7 +223,7 @@ def _evidence(edit,ctx,allowed):
 
 
 def _author_events(base,edits,ctx,allowed):
-    active=replay_memory(base);claims={e.claim_id for e in base.events};events=[]
+    active=replay_memory(base);claims={e.claim_id for e in base.events};event_ids={e.event_id for e in base.events};events=[]
     slots={(c.character_ids[0],c.slot):c for c in active.values() if c.slot}
     prose_id=ctx.prose_id
     def add(category,text,quote,characters=(),**extra):
@@ -244,8 +244,13 @@ def _author_events(base,edits,ctx,allowed):
                 if edit.character_id not in ctx.scene.character_ids:raise ValueError('Невідомий scope персонажа')
                 add('character_states',edit.text,quote,[edit.character_id],slot=edit.slot,evidence_version_id=evidence)
             elif (claim.text,claim.quote,claim.source_kind,claim.evidence_version_id)!=(edit.text,quote,'author',evidence):
-                events.append(_change_event('update',claim.claim_id,edit.text,claim.category,claim.character_ids,prose_id,quote,
-                    slot=claim.slot,source_kind='author',evidence_version_id=evidence))
+                occurrence=0
+                while True:
+                    event=_change_event('update',claim.claim_id,edit.text,claim.category,claim.character_ids,prose_id,quote,
+                        slot=claim.slot,source_kind='author',evidence_version_id=evidence,occurrence=occurrence)
+                    if event.event_id not in event_ids:break
+                    occurrence+=1
+                events.append(event)
         else:
             claim=active.get(edit.claim_id)
             if claim is None or claim.category!='open_threads':raise ValueError(UNKNOWN_TARGET)

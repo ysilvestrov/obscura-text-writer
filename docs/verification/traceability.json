@@ -2054,7 +2054,9 @@
       "scope": "Без captured wire keep відхиляється 422, set додає подію author поверх журналу голови.",
       "tests": [
         "tests/memory/test_core_review_apply.py::test_keep_rejected_without_wire",
-        "tests/web/test_core_review_api.py::test_post_core_review_route"
+        "tests/web/test_core_review_api.py::test_post_core_review_route",
+        "tests/memory/test_core_review_apply.py::test_repeated_author_value_on_occupied_slot",
+        "tests/memory/test_core_review_apply.py::test_repeated_author_value_with_captured_answer"
       ]
     },
     {

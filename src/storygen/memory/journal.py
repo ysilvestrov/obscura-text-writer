@@ -223,17 +223,19 @@ def _add_event(category,text,prose_id,quote,occurrence,characters=(),supporting=
         source_kind=source_kind,evidence_version_id=evidence_version_id,resolves_claim_id=resolves_claim_id)
 
 
-def change_event_id(action,claim_id,text,prose_id,quote,supporting=(),*,slot=None,source_kind='prose',evidence_version_id=None,resolves_claim_id=None):
+def change_event_id(action,claim_id,text,prose_id,quote,supporting=(),*,slot=None,source_kind='prose',evidence_version_id=None,resolves_claim_id=None,occurrence=0):
     value=[action,claim_id,text,prose_id,quote]
     if supporting:value.append(list(supporting))
     extras=_extras(quote,slot,source_kind,evidence_version_id,resolves_claim_id)
     if extras:value.append(extras)
+    # A repeated identical change (an author returning a slot to an earlier value) gets a counter; the first keeps its ID.
+    if occurrence:value.append({'occurrence':occurrence})
     return stable_id('me_',value)
 
 
-def _change_event(action,claim_id,text,category,character_ids,prose_id,quote,supporting=(),*,slot=None,source_kind='prose',evidence_version_id=None,resolves_claim_id=None):
+def _change_event(action,claim_id,text,category,character_ids,prose_id,quote,supporting=(),*,slot=None,source_kind='prose',evidence_version_id=None,resolves_claim_id=None,occurrence=0):
     return MemoryEvent(event_id=change_event_id(action,claim_id,text,prose_id,quote,supporting,slot=slot,
-            source_kind=source_kind,evidence_version_id=evidence_version_id,resolves_claim_id=resolves_claim_id),
+            source_kind=source_kind,evidence_version_id=evidence_version_id,resolves_claim_id=resolves_claim_id,occurrence=occurrence),
         claim_id=claim_id,operation=action,category=category,text=text,character_ids=list(character_ids),
         source_version_id=prose_id,quote=quote,supporting_quotes=list(supporting),slot=slot,
         source_kind=source_kind,evidence_version_id=evidence_version_id,resolves_claim_id=resolves_claim_id)
@@ -377,7 +379,7 @@ def normalize_manual_memory(raw,previous,prose_id,prose,allowed_character_ids,*,
         raise ValueError('Нова пам’ять змінила журнал попередніх сцен')
     if journal.source_prose_ids!=previous.source_prose_ids+[prose_id]:
         raise ValueError('Пам’ять посилається на інші джерела прози')
-    events=[];mapping={};duplicates={};known={e.claim_id for e in previous.events}
+    events=[];mapping={};duplicates={};change_ids=set();known={e.claim_id for e in previous.events}
     for event in journal.events[len(previous.events):]:
         if event.source_version_id!=prose_id or (event.evidence_version_id is None and any(
                 q not in prose for q in [event.quote,*event.supporting_quotes] if q is not None)):
@@ -401,8 +403,12 @@ def normalize_manual_memory(raw,previous,prose_id,prose,allowed_character_ids,*,
             mapping[event.claim_id]=canonical.claim_id;known.add(canonical.claim_id)
         else:
             claim=mapping.get(event.claim_id,event.claim_id)
-            canonical=event.model_copy(update={'claim_id':claim,'resolves_claim_id':link,'event_id':change_event_id(
-                event.operation,claim,event.text,prose_id,event.quote,event.supporting_quotes,slot=event.slot,
-                source_kind=event.source_kind,evidence_version_id=event.evidence_version_id,resolves_claim_id=link)})
+            args=(event.operation,claim,event.text,prose_id,event.quote,event.supporting_quotes)
+            kwargs=dict(slot=event.slot,source_kind=event.source_kind,evidence_version_id=event.evidence_version_id,resolves_claim_id=link)
+            occurrence=0
+            while change_event_id(*args,**kwargs,occurrence=occurrence) in change_ids:occurrence+=1
+            canonical=event.model_copy(update={'claim_id':claim,'resolves_claim_id':link,
+                'event_id':change_event_id(*args,**kwargs,occurrence=occurrence)})
+            change_ids.add(canonical.event_id)
         events.append(canonical)
     return _extend(previous,prose_id,events)

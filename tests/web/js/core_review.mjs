@@ -115,4 +115,37 @@ assert.equal(confirmLabel(),catalog.uk.m_6842aa7e5803,'Discard clears the draft'
   assert.equal(await confirmUnsaved(guarded,async()=>{asked++;return false;},'?'),true,'Nothing unsaved: no question');assert.equal(asked,2);
   assert.equal(await confirmUnsaved({dirty:false},async()=>false,'?'),true,'Works before the panel is installed');
 }
+// Refreshing the table while the confirmation is still in flight must not leave Confirm disabled for good.
+{
+  let release,calls=0;
+  const slow=new Element('section');
+  const slowApi=async(url,options)=>{
+    if(options){calls++;await new Promise(r=>{release=r;});return {...review(false),revision:4,memory_version_id:'m3'};}
+    return {...review(true),memory_version_id:'m2'};
+  };
+  const slowPanel=installCoreReview({container:slow,api:slowApi,json:(method,body)=>({method,body:JSON.stringify(body)}),notice(){},refresh:async()=>{}});
+  await slowPanel.load('s2');
+  const confirm=()=>all(slow).find(n=>n.tag==='button'&&n.className.includes('core-review-confirm'));
+  const pending=confirm().onclick();await tick();
+  assert.equal(confirm().disabled,true,'Confirm is disabled while the request runs');
+  await slowPanel.load('s2');
+  release();await pending;await tick();
+  assert.equal(confirm().disabled,false,'Confirm is enabled again after a superseded request finishes');
+  assert.equal(calls,1);
+}
+// Switching the interface language reloads the panel, because slot labels come from the server in the request locale.
+{
+  const listeners={};
+  const savedDoc=globalThis.document;
+  globalThis.document={createElement:savedDoc.createElement,addEventListener:(name,fn)=>{listeners[name]=fn;}};
+  let label='Одяг',gets=0;
+  const localized=new Element('section');
+  const localeApi=async()=>{gets++;return {...review(true),slots:[slot('clothing','changed',{label,before:'Халат',after:'Пальто'})]};};
+  const localePanel=installCoreReview({container:localized,api:localeApi,json:()=>({}),notice(){},refresh:async()=>{}});
+  await localePanel.load('s2');
+  assert.ok(text(localized).includes('Одяг'));
+  label='Clothing';listeners['ui-locale-changed']();await tick();await tick();
+  assert.equal(gets,2);assert.ok(text(localized).includes('Clothing'),'Slot headings follow the new language');
+  globalThis.document=savedDoc;
+}
 console.log('core review grouping, keep availability, draft entry, labels and confirm passed');
