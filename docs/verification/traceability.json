@@ -1153,6 +1153,61 @@
       ]
     },
     {
+      "id": "PLANNER-ACQUAINTANCE-S07",
+      "requirement": "PLANNER-ACQUAINTANCE",
+      "scope": "Стан і підтвердження завдання зі знайомствами; коли підтвердження не потрібне; позначки checked. Знайомства головного героя. Перевірка зазначеного сценарію; не є доказом, що проза справді спирається на завдання.",
+      "tests": [
+        "tests/web/test_brief_link_api.py::test_state_needed_and_confirm",
+        "tests/web/test_brief_link_api.py::test_not_needed_without_brief_head_or_other_participants",
+        "tests/web/test_brief_link_api.py::test_checked_prefers_current_brief_then_lineage",
+        "tests/web/test_brief_link_api.py::test_lineage_brief_with_introduced_is_not_needed",
+        "tests/characters/test_brief_link_lineage.py::test_link_introduced_is_cut_to_current_cast"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#brief-link",
+        "reason": "check_docs.py індексує лише pytest; два Playwright cases brief-link.spec.mjs перелічено в процедурі й виконуються окремим runner, цей зв’язок не є доказом виконання."
+      }
+    },
+    {
+      "id": "PLANNER-ACQUAINTANCE-S08",
+      "requirement": "PLANNER-ACQUAINTANCE",
+      "scope": "Підтвердження й brief успадковуються через author_lineage; батько з іншої сцени відхиляється. Знайомства головного героя. Перевірка зазначеного сценарію; не є доказом, що проза справді спирається на завдання.",
+      "tests": [
+        "tests/characters/test_brief_link_lineage.py::test_link_wins_over_lineage_brief_and_is_inherited",
+        "tests/characters/test_brief_link_lineage.py::test_author_lineage_must_stay_in_scene",
+        "tests/characters/test_brief_link_lineage.py::test_without_link_behaviour_is_unchanged"
+      ]
+    },
+    {
+      "id": "PLANNER-ACQUAINTANCE-S09",
+      "requirement": "PLANNER-ACQUAINTANCE",
+      "scope": "409 після зміни голови brief/ревізії, локалізоване повідомлення, 400 для introduced поза складом або з повторами; збереження прапорців у панелі — Playwright. Знайомства головного героя. Перевірка зазначеного сценарію; не є доказом, що проза справді спирається на завдання.",
+      "tests": [
+        "tests/web/test_brief_link_api.py::test_conflicts_and_validation"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#brief-link",
+        "reason": "check_docs.py індексує лише pytest; два Playwright cases brief-link.spec.mjs перелічено в процедурі й виконуються окремим runner, цей зв’язок не є доказом виконання."
+      }
+    },
+    {
+      "id": "PLANNER-ACQUAINTANCE-S10",
+      "requirement": "PLANNER-ACQUAINTANCE",
+      "scope": "Підтвердження не змінює ревізію, голови, sha256, input_refs, dependency_snapshot і stale. Знайомства головного героя. Перевірка зазначеного сценарію; не є доказом, що проза справді спирається на завдання.",
+      "tests": [
+        "tests/web/test_brief_link_api.py::test_confirm_changes_nothing_else"
+      ]
+    },
+    {
+      "id": "PLANNER-ACQUAINTANCE-S11",
+      "requirement": "PLANNER-ACQUAINTANCE",
+      "scope": "Ручні проза й чернетка записують author_lineage без зміни input_refs і dependency_edges. Знайомства головного героя. Перевірка зазначеного сценарію; не є доказом, що проза справді спирається на завдання.",
+      "tests": [
+        "tests/characters/test_brief_link_lineage.py::test_manual_prose_records_previous_head_without_new_dependencies",
+        "tests/characters/test_brief_link_lineage.py::test_manual_draft_records_previous_draft_head"
+      ]
+    },
+    {
       "id": "MAINT-001-S01",
       "requirement": "MAINT-001",
       "scope": "Некоректна або стара база. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",

@@ -2175,18 +2175,22 @@ Restore перевіряє complete manifest, точний inventory, кожни
 <a id="planner-acquaintance"></a>
 ### Requirement: PLANNER-ACQUAINTANCE — Знайомства головного героя для планувальника
 
-Перед brief, чернеткою й переписуванням сцени система SHALL будувати детермінований блок «ЗНАЙОМСТВА ГОЛОВНОГО ГЕРОЯ — <ім’я>» після карток персонажів і ділити учасників сцени (крім героя) на знайомих (із вказаним джерелом) та ще не представлених. Блок MUST NOT будуватися для edit/memory, коли героя немає в складі сцени або коли в складі немає нікого, крім героя. Знайомства рахуються лише відносно одного головного героя, без моделей, запису й міграцій; ID історичних brief не додаються до refs чи inputs.
+Перед brief, чернеткою й переписуванням сцени система SHALL будувати детермінований блок «ЗНАЙОМСТВА ГОЛОВНОГО ГЕРОЯ — <ім’я>» після карток персонажів і ділити учасників сцени (крім героя) на знайомих (із вказаним джерелом) та ще не представлених. Блок MUST NOT будуватися для edit/memory, коли героя немає в складі сцени або коли в складі немає нікого, крім героя. Знайомства рахуються лише відносно одного головного героя, без моделей і міграцій; єдиний запис — підтвердження автора `brief_link` у метаданих прози. ID історичних brief не додаються до refs чи inputs.
 
-Технічний опис. Модуль `characters/acquaintance.py` (залежність characters → generation.models для читання WritersBrief): `protagonist`, `pre_story_known`, `lineage_brief`, `introduced_of`, `acquaintances`, `acquaintance_material(view, story, scene, stage)`, `unexpected_introduced`. Підключення в `build_context` після `character_material`.
+Технічний опис. Модуль `characters/acquaintance.py` (залежність characters → generation.models для читання WritersBrief): `protagonist`, `pre_story_known`, `lineage_brief`, `lineage_source`, `introduced_of`, `acquaintances`, `acquaintance_material(view, story, scene, stage)`, `unexpected_introduced`. Підключення в `build_context` після `character_material`.
 - Протагоніст: рядок відомості (без маркерів Markdown `**`, `*`, `-`, `—`, без регістру, кінцеві `.`, `:`, `!` ігноруються) «Протагоніст»/«Протагоністка»/«Головний герой»/«Головна героїня», або рядок ролі зі стандартного шаблону карток «Роль у творі:»/«Роль:», де перша названа роль (до `,`, `;`, `.`, `(`, тире) — одна з цих позначок; кілька позначок — перша в порядку карток із попередженням; без позначки — перший ID складу найранішої активної сцени з непорожнім складом; немає ні карток, ні складу — немає блоку. Позначка протагоніста діє незалежно від часової доступності відомості.
 - «Знайомий з: Ім’я, Ім’я» (також «знайома з», «знайомі з», «знайм з»): імена розбираються `split_participants` і зіставляються `resolve_participants`; заповнювач без жодної літери чи цифри («—», «-», «…») означає «нікого» й не є ім’ям; невідомі або неоднозначні імена дають попередження без блокування; попередження називає картку з позначкою і саме ім’я та каже, що виправити (ім’я в позначці чи назву картки), повтори того самого імені в одній картці зводяться до одного попередження. Знайомство симетричне й підкоряється часовій доступності своєї відомості (`project_characters`); джерело — «до початку історії».
 - `WritersBrief.introduced: list[str] | None` (за замовчуванням `None`, список без повторів; `null`/відсутнє — «не сказано», `[]` — «нікого не представлено»); `introduced` входить до FIELDS у `planner_output`, невалідний тип — звичайна помилка схеми. ID поза `cast(S)\{H}` не помилка: ігноруються під час підрахунку, а brief-етап записує planner warning без значень. Ручне завдання (`POST /api/scenes/{id}/brief`) приймає й повертає поле; схема SQLite, CharacterRecord і Scene не змінюються, `contract schema_version` лишається 1.
-- Підрахунок для сцени S (позиція p, герой H): активні сцени Q з позицією < p і прийнятою прозою (`heads.prose`). `intro(Q)=∅`, якщо H ∉ cast(Q); якщо в родоводі прози Q (обхід лише `input_refs` у межах тієї самої сцени) є brief з `introduced`≠`null` — `introduced ∩ cast(Q) \ {H}` (кілька brief — найновіший за `created_at`); інакше запасне правило `cast(Q) \ {H}`. Brief, збережений після прийняття прози, не є її предком. Номер сцени в блоці — `position + 1`.
+- Підрахунок для сцени S (позиція p, герой H): активні сцени Q з позицією < p і прийнятою прозою (`heads.prose`). `intro(Q)=∅`, якщо H ∉ cast(Q). Родовід прози Q обходиться від `heads.prose` через `input_refs` і `author_lineage.parent_version_id` у межах тієї самої сцени й видів prose/edited/manual/draft/brief. Версія з `brief_link` (підтвердження автора) зупиняє свою гілку: якщо в родоводі є підтвердження — `brief_link.introduced ∩ cast(Q) \ {H}` (кілька — найновіше); інакше, якщо є brief з `introduced`≠`null` — `introduced ∩ cast(Q) \ {H}` (кілька brief — найновіший за `created_at`); інакше запасне правило `cast(Q) \ {H}`. Brief, збережений після прийняття прози, не є її предком. Номер сцени в блоці — `position + 1`.
+- Зв’язок «завдання → проза» (#44, модуль `characters/brief_link.py`, маршрути в `web/routes_characters.py`). `VersionRef` має два поля метаданих у payload JSON без міграції SQL: `author_lineage: {parent_version_id}` і `brief_link: {brief_version_id, introduced, confirmed_at, by='author'}`. Жодне з них не входить до sha256, `input_refs`, `dependency_edges`, `dependency_snapshot` чи відбитків запиту, тож вони не впливають на інвалідацію, impact і stale. `save_manual_prose`/`save_manual_draft` записують `author_lineage` на попередню голову того самого виду; `Repository.save_version` відхиляє батька з іншої сцени чи твору (ValueError).
+- `GET /api/scenes/{id}/brief-link` повертає `needed`, `source` (`link`/`lineage`/`fallback`), героя, поточну голову brief (перший абзац мети, stale), підтвердження, склад без героя з позначками `checked`, `next_scene_id` (наступна за позицією сцена, де потрібне підтвердження, інакше перша така) і ревізію. `needed` істинне, коли є `heads.prose` і `heads.brief`, герой у складі, склад без героя непорожній, а родовід не має ні підтвердження, ні brief з `introduced`≠`null`. `checked` береться з підтвердження, інакше з `introduced` поточної голови brief, інакше з brief родоводу, інакше порожнє.
+- `POST /api/scenes/{id}/brief-link` (`prose_version_id`, `brief_version_id`, `introduced`, `expected_revision`) у транзакції `BEGIN IMMEDIATE` перевіряє ревізію сцени, що `heads.prose` і `heads.brief` досі ці версії і що їхні види правильні (інакше 409 «Сцена вже змінилась…»); `introduced` поза складом без героя або з повторами → 400. Записується лише `brief_link` у payload прози: ревізія, голови, stale й залежності не змінюються.
+- Панель підтвердження (`static/brief-link.js`, секція `#brief-link`) показується в режимі прози для прийнятої прози, коли підтвердження потрібне або вже є. Вона містить мету поточного brief з позначкою stale, кнопку «Відкрити завдання», прапорці знайомств, «Проза базується на цьому завданні» і «Наступна непідтверджена сцена»; після підтвердження згортається до підсумку з кнопкою «Змінити». Позначені прапорці — локальна чернетка, що переживає перезавантаження тієї самої сцени й прози; конфлікт залишає їх і нічого не зберігає.
 - Brief-блок додає інструкцію не називати ще не представлених на ім’я та вносити їхні ID в `introduced` разом зі списком «ID — ім’я»; draft/rewrite отримують той самий перелік без вимоги щодо поля.
 - Типовий промпт brief — `resources/brief_uk_v2.txt` (поле `introduced` у формі відповіді); `brief_uk_v1.txt` лишається для відтворення історичних контрактів; збережений текст власних промптів не змінюється. Якщо brief будується з власної prompt-версії, `make_context` SHALL додавати до системного тексту одразу після неї фіксований блок `BRIEF_INTRODUCED_CONTRACT` (`prompt_contracts.py`): повна форма JSON з `introduced` і пояснення `[]`. Блок не залежить від `response_mode`, контракт `brief/brief/1` і blobs не змінюються, вбудований промпт блоку не отримує (тож fingerprint стандартних brief незмінний).
 - Новий текст контексту змінює відбиток запиту: уже завершені завдання не перевикористовуються як готовий результат для нового запуску, наявні голови не стають stale.
 
-Відомі обмеження. Brief, досяжний лише через `dependency_edges`, не враховується (діє запасне правило); перевірка на реальних даних показала однакову досяжність. У строгому режимі відповіді json_schema поле `introduced` на дроті обов’язкове, але допускає null (anyOf масив/null). Усунене відхилення: припущення, що власні промпти v1 просто повернуть null, не справдилося — модель, якій промпт не описав поле, не могла закрити об’єкт після `proposed_changes` і генерувала пробіли до `finish_reason=length` (09.11.2026, три спроби по 8192 токени); тепер власний промпт отримує блок контракту форми, а зациклення зупиняє запобіжник PIPE-006-S03. Факт знайомства — намір планувальника, а не доказ із прози: якщо письменник пропустив представлення, наступна сцена вважатиме персонажа знайомим. Запасне правило (спільна присутність у складі = знайомство) діє для прози без brief у родоводі до відновлення зв’язку «завдання → проза» в [#44](https://github.com/ysilvestrov/obscura-text-writer/issues/44) і може оголосити знайомим того, хто лише стояв поруч. Якщо героя немає у складі сцени, блоку й запобіжника немає; автор додає героя до складу. Позначка протагоніста ігнорує доступність, а «Знайомий з:» її враховує. Блок контракту описує форму, але не гарантує, що модель заповнить `introduced` правильно; `null` від моделі й далі вмикає запасне правило.
+Відомі обмеження. Brief, досяжний лише через `dependency_edges`, не враховується (діє запасне правило); перевірка на реальних даних показала однакову досяжність. У строгому режимі відповіді json_schema поле `introduced` на дроті обов’язкове, але допускає null (anyOf масив/null). Усунене відхилення: припущення, що власні промпти v1 просто повернуть null, не справдилося — модель, якій промпт не описав поле, не могла закрити об’єкт після `proposed_changes` і генерувала пробіли до `finish_reason=length` (09.11.2026, три спроби по 8192 токени); тепер власний промпт отримує блок контракту форми, а зациклення зупиняє запобіжник PIPE-006-S03. Факт знайомства — намір планувальника, а не доказ із прози: якщо письменник пропустив представлення, наступна сцена вважатиме персонажа знайомим. Запасне правило (спільна присутність у складі = знайомство) діє для прози без brief у родоводі й без підтвердження автора і може оголосити знайомим того, хто лише стояв поруч. Усунене відхилення ([#44](https://github.com/ysilvestrov/obscura-text-writer/issues/44)): ручне збереження прози обривало родовід, і brief губився; тепер ручні збереження записують `author_lineage`, а для вже збереженої прози автор підтверджує завдання в панелі. Ручні збереження, зроблені до цієї зміни, `author_lineage` не мають, і їх закриває лише підтвердження. Підтвердження — слово автора, а не перевірка тексту: система не порівнює прозу із завданням. Підтвердження не робить stale уже згенеровані наступні сцени, хоча їхній блок знайомств міг рахуватися за запасним правилом. Якщо героя немає у складі сцени, блоку й запобіжника немає; автор додає героя до складу. Позначка протагоніста ігнорує доступність, а «Знайомий з:» її враховує. Блок контракту описує форму, але не гарантує, що модель заповнить `introduced` правильно; `null` від моделі й далі вмикає запасне правило.
 
 <a id="planner-acquaintance-s01"></a>
 #### Scenario: PLANNER-ACQUAINTANCE-S01 — Перша поява без позначки
@@ -2212,7 +2216,7 @@ Restore перевіряє complete manifest, точний inventory, кожни
 
 <a id="planner-acquaintance-s04"></a>
 #### Scenario: PLANNER-ACQUAINTANCE-S04 — Запасне правило і явне «нікого»
-- GIVEN попередня сцена з прозою без brief у родоводі або з brief, де `introduced` відсутнє чи `null`
+- GIVEN попередня сцена з прозою без підтвердження автора і без brief у родоводі або з brief, де `introduced` відсутнє чи `null`
 - WHEN рахуються знайомства
 - THEN SHALL діяти запасне правило: усі з cast(Q) \ {H} знайомі
 - AND явний `introduced: []` лишає учасників незнайомими, ID поза складом ігноруються й дають planner warning, а сцена без героя в складі нічого не додає.
@@ -2232,7 +2236,43 @@ Restore перевіряє complete manifest, точний inventory, кожни
 - THEN системний текст SHALL містити незмінений текст промпту, а одразу після нього — блок `BRIEF_INTRODUCED_CONTRACT` з полем `introduced`
 - AND збережена версія та її контракт не змінюються, а вбудований промпт brief блоку не отримує.
 
-Перевірки: tests/characters/test_acquaintance_markers.py, test_acquaintance_history.py, tests/generation/test_acquaintance_context.py, tests/generation/test_planner_output.py, tests/web/test_author_templates.py.
+<a id="planner-acquaintance-s07"></a>
+#### Scenario: PLANNER-ACQUAINTANCE-S07 — Підтвердження завдання зі знайомствами
+- GIVEN сцена з прийнятою прозою без brief у родоводі, поточною головою brief, героєм і ще одним учасником у складі
+- WHEN автор відкриває панель і підтверджує завдання, позначивши лише частину учасників як представлених
+- THEN `GET /api/scenes/{id}/brief-link` SHALL до підтвердження повертати `needed=true`, а після — `source=link` і `needed=false`
+- AND наступна сцена SHALL вважати знайомими лише позначених учасників, а не весь склад; порожній список означає «нікого не представлено»
+- AND без голови brief або без інших учасників, крім героя, підтвердження не потрібне.
+
+<a id="planner-acquaintance-s08"></a>
+#### Scenario: PLANNER-ACQUAINTANCE-S08 — Підтвердження й brief переживають ручну правку
+- GIVEN проза з підтвердженням або з brief у родоводі
+- WHEN автор вручну зберігає нову прозу чи чернетку тієї сцени
+- THEN підрахунок знайомств SHALL і далі брати підтвердження або brief із родоводу через `author_lineage`
+- AND батько з іншої сцени чи твору SHALL відхилятися.
+
+<a id="planner-acquaintance-s09"></a>
+#### Scenario: PLANNER-ACQUAINTANCE-S09 — Конфлікт підтвердження
+- GIVEN відкрита панель підтвердження
+- WHEN голова brief чи прози або ревізія сцени змінилися до натискання «Проза базується на цьому завданні»
+- THEN сервер SHALL повертати 409 з локалізованим «Сцена вже змінилась…», нічого не записуючи
+- AND панель SHALL лишати позначені прапорці; `introduced` поза складом без героя або з повторами дає 400.
+
+<a id="planner-acquaintance-s10"></a>
+#### Scenario: PLANNER-ACQUAINTANCE-S10 — Підтвердження не змінює версій
+- GIVEN прийнята проза сцени
+- WHEN автор підтверджує завдання
+- THEN ревізія сцени, голови, sha256, `input_refs`, `dependency_snapshot` і stale прози SHALL лишатися незмінними
+- AND жодна інша версія не стає stale.
+
+<a id="planner-acquaintance-s11"></a>
+#### Scenario: PLANNER-ACQUAINTANCE-S11 — Ручне збереження записує author_lineage
+- GIVEN сцена з головою прози або чернетки
+- WHEN автор зберігає ручну прозу чи чернетку
+- THEN версія SHALL мати `author_lineage.parent_version_id` попередньої голови того самого виду
+- AND `input_refs` і `dependency_edges` SHALL лишатися такими самими, як без цього поля.
+
+Перевірки: tests/characters/test_acquaintance_markers.py, test_acquaintance_history.py, test_brief_link_lineage.py, tests/generation/test_acquaintance_context.py, tests/generation/test_planner_output.py, tests/web/test_author_templates.py, tests/web/test_brief_link_api.py, tests/web/browser/brief-link.spec.mjs.
 
 <a id="rating-001"></a>
 ### Requirement: RATING-001 — Віковий рейтинг твору й сцени
@@ -2391,6 +2431,7 @@ Restore SHALL відхиляти неповний/змінений резерв 
 - Запуск і конфігурація пакета: `pyproject.toml`, `src/storygen/server.py`.
 - Домен: `src/storygen/domain.py`, `src/storygen/dependency_models.py`; snapshot/view/freshness: `src/storygen/storage/context_view.py`, `src/storygen/storage/snapshots.py`; авторські операції: `src/storygen/authoring/`; налаштування, контекст і виконання: `src/storygen/application/`, `src/storygen/generation/`; пам’ять: `src/storygen/memory/`; шлюзи провайдерів: `src/storygen/providers/`.
 - Репозиторій, SQL і міграції: `src/storygen/storage/` (authoring, settings_store, run_store, invalidation); незалежні моделі запусків: `src/storygen/run_models.py`; авторські рішення: `src/storygen/storage/acceptance.py`; спільна data-only identity Evaluator: `src/storygen/evaluation_identity.py`.
+- Знайомства героя й підтвердження завдання (#44): `src/storygen/characters/acquaintance.py`, `src/storygen/characters/brief_link.py`, `src/storygen/web/routes_characters.py`, `src/storygen/web/static/brief-link.js`.
 - Віковий рейтинг і запобіжник: `src/storygen/rating/`, `src/storygen/characters/age.py`, `src/storygen/web/routes_rating.py`; вікова позначка експорту: `src/storygen/publication/` (book, fb2, epub) і `src/storygen/application/exports.py`; форма рейтингу сцени: `src/storygen/web/static/scene-settings.js`.
 - Автоматичне оцінювання, CLI, рубрика, калібрування: `src/storygen/evaluation/`.
 - HTTP, шаблони, стан браузера та SSE: `src/storygen/web/`.

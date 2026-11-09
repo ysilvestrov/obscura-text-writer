@@ -173,6 +173,23 @@ def main():
             attempt=execute_stage(repo,scene.id,'brief',build_context(repo,scene.id,'brief',role),Proposal(),threading.Event(),lambda _:None)
             return dict(**fixture,proposal_id=attempt.result_version_id,old_brief_id=old.id)
 
+        @app.post('/test-brief-link')
+        def brief_link_fixture():
+            import json
+            story=rated_story('Знайомства в парку')
+            cards=[dict(schema_version=2,id=cid,name=name,entries=[dict(id='e'+cid,text=text,availability='timeless',origin='author')])
+                for cid,name,text in [('lera','Лєра','Протагоністка'),('marko','Марко','Сусід'),('nina','Ніна','Бариста')]]
+            ref=repo.save_version(story.id,None,'character_cards',json.dumps(cards,ensure_ascii=False),[])
+            repo.publish_story_material(story.id,'characters_version_id',ref.id,repo.get_story(story.id).revision)
+            ids=[]
+            for title,cast in [('Ранок у парку',['lera','marko','nina']),('Кав’ярня',['lera','nina'])]:
+                scene=repo.create_scene(story.id,SceneCreate(title=title,character_ids=cast))
+                brief=repo.save_version(story.id,scene.id,'brief',json.dumps(dict(objective=f'{title}: нейтральне завдання',beats=['Прогулянка'],constraints=[],proposed_changes=[]),ensure_ascii=False),[])
+                scene=repo.set_head(scene.id,'brief',brief.id,scene.revision)
+                prose=repo.save_version(story.id,scene.id,'manual','Тиха сцена.',[])
+                repo.set_head(scene.id,'prose',prose.id,scene.revision);ids.append(scene.id)
+            return {'story_id':story.id,'scene_ids':ids}
+
         @app.post('/test-editor-no-changes')
         def editor_no_changes():
             from storygen.authoring.blueprints import save_role_settings

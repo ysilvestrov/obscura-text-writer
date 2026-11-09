@@ -80,11 +80,11 @@ class Acquaintances:
     warnings: list
 
 
-def lineage_brief(view,scene):
-    """Найновіший brief цієї сцени в родоводі голови prose; обхід лише через input_refs, застарілість не перевіряється."""
+def _walk(view,scene):
+    """Same-scene lineage of the prose head over input_refs and author_lineage; a brief_link stops its branch."""
     head=scene.heads.get('prose')
-    if not head:return None
-    seen=set();stack=[head];briefs=[]
+    if not head:return [],[]
+    seen=set();stack=[head];briefs=[];links=[]
     while stack:
         ref_id=stack.pop()
         if ref_id in seen:continue
@@ -94,13 +94,32 @@ def lineage_brief(view,scene):
         if ref.scene_id!=scene.id or ref.kind not in LINEAGE_KINDS:continue
         if ref.kind=='brief':
             briefs.append(ref);continue
+        if ref.brief_link is not None:
+            links.append(ref);continue
         stack.extend(ref.input_refs)
+        if ref.author_lineage is not None:stack.append(ref.author_lineage.parent_version_id)
+    return briefs,links
+
+
+def lineage_brief(view,scene):
+    """Найновіший brief цієї сцени в родоводі голови prose; обхід через input_refs і author_lineage, застарілість не перевіряється."""
+    briefs,_=_walk(view,scene)
     return max(briefs,key=lambda ref:ref.created_at) if briefs else None
 
 
+def lineage_source(view,scene):
+    """('link', version з brief_link) | ('brief', brief) | None. Підтвердження автора має перевагу над brief родоводу."""
+    briefs,links=_walk(view,scene)
+    if links:return 'link',max(links,key=lambda ref:ref.created_at)
+    if briefs:return 'brief',max(briefs,key=lambda ref:ref.created_at)
+    return None
+
+
 def introduced_of(view,scene):
-    ref=lineage_brief(view,scene)
-    if ref is None:return None
+    source=lineage_source(view,scene)
+    if source is None:return None
+    kind,ref=source
+    if kind=='link':return list(ref.brief_link.introduced)
     try:return WritersBrief.model_validate_json(view.read_text(ref.id)).introduced
     except (ValueError,KeyError,OSError):return None
 

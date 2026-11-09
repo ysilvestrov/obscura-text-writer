@@ -197,6 +197,11 @@ R-22 прокрутка: Playwright `long draft scrolls internally while formatt
 
 З кореня робочої копії з `PYTHONPATH=<робоча копія>/src` запустити `frontend/node_modules/.bin/playwright test -c frontend/playwright.config.mjs core-review` (не `npx playwright`, який ставить іншу версію). Synthetic server, нейтральні сцени «Ранок»/«Гість», без provider calls. Cases `core-review.spec.mjs` для desktop і mobile: `changes are expanded, unchanged rows collapsed, confirm without edits` (знімки `docs/images/core-review-{desktop,mobile}.png`, без горизонтального прокручування); `keep previous on an unknown slot creates a version where the slot is unchanged` (після цього без wire «Лишити попереднє» вимкнене, «Вписати…» для закритої лінії відсутнє); `write in with a quote from an earlier scene` (пошук звужує фрагменти); `write in without a quote is unknown to the reader; cancel keeps the draft`; `refreshing the table asks before dropping a core draft`; `a conflict shows the server message and reloads the panel`. Переглянути обидва знімки на нейтральність. Наявність процедури не є фактичним PASS; результат запуску записується в журналі виконання.
 
+<a id="brief-link"></a>
+## Підтвердження завдання для прози
+
+З теки `frontend` з `PYTHONPATH=<робоча копія>/src` запустити `./node_modules/.bin/playwright test brief-link --reporter=line`. Synthetic server (`POST /test-brief-link`): нейтральні картки «Лера» (протагоністка), «Марко», «Ніна», сцени «Ранок у парку» і «Кав’ярня» з головою brief і ручною прозою без родоводу, без provider calls, локаль uk-UA. Cases `brief-link.spec.mjs` для desktop і mobile: `author confirms the brief with introductions and moves to the next scene` (знімки `docs/images/brief-link-{desktop,mobile}.png`; після підтвердження панель згорнута, API повертає `source=link`, «Наступна непідтверджена сцена» відкриває «Кав’ярня»); `conflict keeps the ticked introductions and saves nothing` (зміна сцени до натискання → повідомлення про помилку, прапорець лишається, `source=fallback`). Переглянути обидва знімки на нейтральність. Наявність процедури не є фактичним PASS; результат запуску записується в журналі виконання.
+
 <a id="model-import-metadata"></a>
 ## Тарифи, ліміти й journal counts
 

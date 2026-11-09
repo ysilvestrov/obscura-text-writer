@@ -19,7 +19,7 @@ def save_manual_prose(repo,scene_id: str,text: str,expected_revision: int,conten
     from ..memory.forwarding import projection_policy
     policy=projection_policy(repo.context_view(scene.story_id),scene.id)
     snapshot=_manual_snapshot(repo,scene,'prose')
-    ref=repo.save_version(scene.story_id,scene.id,'manual',text,list(snapshot.refs),dependency_snapshot=snapshot,manual_projection_policy=policy,content_format=content_format)
+    ref=repo.save_version(scene.story_id,scene.id,'manual',text,list(snapshot.refs),dependency_snapshot=snapshot,manual_projection_policy=policy,content_format=content_format,author_lineage=_lineage(scene,'prose'))
     repo.set_head(scene.id,'prose',ref.id,expected_revision)
     return ref
 
@@ -34,9 +34,16 @@ def save_manual_draft(repo,scene_id: str,text: str,expected_revision: int,conten
     from ..memory.forwarding import projection_policy
     policy=projection_policy(repo.context_view(scene.story_id),scene.id)
     snapshot=_manual_snapshot(repo,scene,'draft')
-    ref=repo.save_version(scene.story_id,scene.id,'draft',text,list(snapshot.refs),dependency_snapshot=snapshot,manual_projection_policy=policy,content_format=content_format)
+    ref=repo.save_version(scene.story_id,scene.id,'draft',text,list(snapshot.refs),dependency_snapshot=snapshot,manual_projection_policy=policy,content_format=content_format,author_lineage=_lineage(scene,'draft'))
     repo.set_head(scene.id,'draft',ref.id,expected_revision)
     return ref
+
+
+def _lineage(scene,head):
+    """The current head of the same material: the version this manual save was made from (metadata only, #44)."""
+    from ..domain import AuthorLineage
+    parent=scene.heads.get(head)
+    return AuthorLineage(parent_version_id=parent) if parent else None
 
 
 def _author_format(repo,scene,head,requested):
