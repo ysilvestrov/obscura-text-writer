@@ -10,7 +10,8 @@ if(host&&reviewHost){
   const telemetry=document.createElement('small');telemetry.className='rewrite-telemetry';telemetry.tabIndex=0;
   const details=document.createElement('div');details.id='rewrite-telemetry-details';details.className='workspace-telemetry-details';details.setAttribute('role','tooltip');
   const hint=document.createElement('p');hint.className='muted';uiText(hint,'textContent',()=>t('rewrite.hint'));
-  button.setAttribute('aria-describedby','rewrite-telemetry-details');wrap.append(button,telemetry,details);host.append(wrap,hint);
+  const warning=document.createElement('p');warning.id='rewrite-warnings';warning.className='muted';warning.setAttribute('role','status');
+  button.setAttribute('aria-describedby','rewrite-telemetry-details rewrite-warnings');wrap.append(button,telemetry,details);host.append(wrap,hint,warning);
   const noteHistory=document.createElement('details'),noteTitle=document.createElement('summary'),noteText=document.createElement('pre');
   uiText(noteTitle,'textContent',()=>t('rewrite.instructions'));noteHistory.append(noteTitle,noteText);reviewHost.append(noteHistory);
   let busy=false,current=null,writer=null,rewriteWarnings=[],settingsEpoch=0;
@@ -19,6 +20,7 @@ if(host&&reviewHost){
   function sync(){
     host.hidden=reviewHost.hidden=!active();
     const warnings=rewriteWarnings;
+    warning.hidden=!warnings.length;uiText(warning,'textContent',()=>warnings.length?t('workspace.warnings',{p0:warnings.map(diagnostic).join('; ')}):'');
     const model=writer?.provider&&writer?.model?`${writer.provider} / ${writer.model}`:'';
     uiText(telemetry,'textContent',()=>model?t('workspace.telemetry',{p0:model,p1:1})+(warnings.length?' ⚠':''):t('workspace.telemetry_unknown'));
     uiText(details,'textContent',()=>[t('workspace.model',{p0:model||t('workspace.unknown')}),t('rewrite.hint'),...(warnings.length?[t('workspace.warnings',{p0:warnings.map(diagnostic).join('; ')})]:[])].join('\n'));
@@ -48,7 +50,7 @@ if(host&&reviewHost){
   button.onclick=async()=>{
     if(busy||state.saving||!active())return;
     const captured={sceneId:state.scene.id,epoch:state.bufferEpoch};
-    busy=true;sync();
+    rewriteWarnings=[];busy=true;sync();
     try{
       if(state.dirty)await saveCurrentMaterial();
       assertCaptured(captured);
@@ -67,7 +69,7 @@ if(host&&reviewHost){
     }catch(error){notice(error.message,'error');}
     finally{busy=false;sync();}
   };
-  for(const event of ['scene-selected','story-refreshed'])document.addEventListener(event,()=>{current=null;rewriteWarnings=[];sync();void component.reload();});
+  for(const event of ['scene-selected','story-refreshed'])document.addEventListener(event,()=>{current=null;if(event==='scene-selected')rewriteWarnings=[];sync();void component.reload();});
   document.addEventListener('editor-state-changed',()=>{sync();component.updateAvailability();});
   document.addEventListener('workspace-run-state',sync);
   document.addEventListener('workspace-readiness',sync);

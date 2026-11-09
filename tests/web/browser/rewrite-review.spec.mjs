@@ -10,7 +10,9 @@ test('one saved rewrite, draft-only review, partial apply and cleared notes',asy
   let dialogs=0;await page.addLocatorHandler(page.locator('.app-dialog'),async dialog=>{dialogs++;await dialog.locator('.app-dialog-actions button').last().click();});
   const button=page.getByRole('button',{name:/Переписати за коментарями|Rewrite from comments/,exact:true});
   await expect(button).not.toHaveClass(/secondary/);
-  await expect(page.locator('.rewrite-telemetry')).toContainText(/1/);
+  const settings=await(await request.get(`/api/stories/${fixture.story_id}/settings`)).json();
+  const writer=settings.roles.writer.provider;
+  await expect(page.locator('.rewrite-telemetry')).toHaveText(new RegExp(`${writer.provider} / ${writer.model} · (до 1 викл\\.|up to 1 calls)`));
   await button.focus();await expect(page.locator('#rewrite-telemetry-details')).toBeVisible();
   await page.getByRole('button',{name:/Переписати за коментарями|Rewrite from comments/,exact:true}).click();
   const review=page.locator('#assisted-review');
@@ -41,12 +43,37 @@ test('failed save keeps notes and makes no rewrite call',async({page,request})=>
   await page.goto(`/stories/${fixture.story_id}`);await page.locator('#mode-tabs [data-mode="draft"]').click();
   await expect(page.locator('#author-general')).toBeEnabled();
   await page.locator('#author-general').fill('Моя вказівка.');
+  let preflights=0,runPosts=0;page.on('request',r=>{if(r.method()==='POST'&&r.url().includes('/rewrites/preflight'))preflights++;if(r.method()==='POST'&&r.url().endsWith('/api/runs'))runPosts++});
   await page.route(`**/api/scenes/${fixture.scene_id}/draft`,route=>route.fulfill({status:409,contentType:'application/json',body:JSON.stringify({detail:'Save conflict'})}));
   await page.getByRole('button',{name:/Переписати за коментарями|Rewrite from comments/,exact:true}).click();
   await expect(page.locator('#notice')).toContainText('Save conflict');
   await expect(page.locator('#author-general')).toHaveValue('Моя вказівка.');
   const runs=await(await request.get(`/api/stories/${fixture.story_id}/runs`)).json();
-  expect(runs.runs).toHaveLength(0);
+  expect(runs.runs).toHaveLength(0);expect(preflights).toBe(0);expect(runPosts).toBe(0);
+  await expect(page.locator('#save-state')).toHaveText(/Незбережено|Unsaved/);
+});
+
+
+test('failed preflight keeps saved notes and starts no run',async({page,request})=>{
+  const fixture=await(await request.post('/test-fixture')).json();
+  await page.goto(`/stories/${fixture.story_id}`);await page.locator('#mode-tabs [data-mode="draft"]').click();
+  await page.locator('#author-general').fill('Моя вказівка.');
+  await page.route('**/rewrites/preflight',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({ready:false,reason:'Preflight failed'})}));
+  let runPosts=0;page.on('request',r=>{if(r.method()==='POST'&&r.url().endsWith('/api/runs'))runPosts++});
+  await page.getByRole('button',{name:/Переписати за коментарями|Rewrite from comments/,exact:true}).click();
+  await expect(page.locator('#notice')).toContainText('Preflight failed');
+  await expect(page.locator('#author-general')).toHaveValue('Моя вказівка.');expect(runPosts).toBe(0);
+});
+
+
+test('preflight warnings remain visible without a dialog',async({page,request})=>{
+  const fixture=await(await request.post('/test-fixture')).json();
+  await page.goto(`/stories/${fixture.story_id}`);await page.locator('#mode-tabs [data-mode="draft"]').click();
+  await page.locator('#author-general').fill('Моя вказівка.');
+  await page.route('**/rewrites/preflight',async route=>{const response=await route.fetch();const data=await response.json();data.warnings=['Synthetic warning'];await route.fulfill({response,json:data})});
+  await page.getByRole('button',{name:/Переписати за коментарями|Rewrite from comments/,exact:true}).click();
+  await expect(page.locator('#rewrite-warnings')).toContainText('Synthetic warning');
+  await expect(page.locator('.app-dialog')).toHaveCount(0);
 });
 
 
@@ -163,7 +190,7 @@ test('repeated activation during save queues only one rewrite',async({page,reque
   page.on('request',r=>{if(r.method()==='POST'&&r.url().endsWith('/api/runs'))runs++});
   const button=page.getByRole('button',{name:/Переписати за коментарями|Rewrite from comments/,exact:true});
   await button.click();await expect.poll(()=>saves).toBe(1);await expect(button).toBeDisabled();
-  await button.evaluate(e=>e.click());release();
+  await button.evaluate(e=>e.onclick());release();
   await expect(page.locator('#assisted-review .copyedit-item')).toHaveCount(2);
   expect(saves).toBe(1);expect(runs).toBe(1);
 });
