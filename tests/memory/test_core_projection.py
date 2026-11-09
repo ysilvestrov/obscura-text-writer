@@ -133,3 +133,57 @@ def test_memory_view_title_follows_quote_version():
     view=View(j,scenes,{'m2':version('s2')})
     row=memory_view_from_view(view,'s2')['rows'][0]
     assert (row['source_title'],row['source_scene'],row['quote'])==('Сцена 1',1,'доказ')
+
+
+def closed_thread_story(root):
+    from storygen.domain import StoryCreate,SceneCreate
+    from storygen.storage.repository import Repository
+    from storygen.memory.journal import _add_event,_change_event
+    repo=Repository(root);story=repo.create_story(StoryCreate(title='Лінії'))
+    first=repo.create_scene(story.id,SceneCreate(title='1',beats='Пошук',character_ids=['A']))
+    second=repo.create_scene(story.id,SceneCreate(title='2',beats='Далі',character_ids=['A']))
+    prose=repo.save_version(story.id,first.id,'manual','Хтось украв ключ. Ключ узяв сусід.',[])
+    repo.set_head(first.id,'prose',prose.id,repo.get_scene(first.id).revision)
+    thread=_add_event('open_threads','Хто вкрав ключ',prose.id,'Хтось украв ключ',0)
+    events=[thread,_change_event('retire',thread.claim_id,'Ключ узяв сусід','open_threads',[],prose.id,'Ключ узяв сусід'),
+        _add_event('facts','Ключ узяв сусід',prose.id,'Ключ узяв сусід',0,resolves_claim_id=thread.claim_id)]
+    j=MemoryJournal(schema_version=3,source_prose_ids=[prose.id],events=events)
+    memory=repo.save_version(story.id,first.id,'memory',j.model_dump_json(),[prose.id])
+    repo.set_head(first.id,'memory',memory.id,repo.get_scene(first.id).revision)
+    return repo,story,repo.get_scene(first.id),repo.get_scene(second.id),thread.claim_id,events[2].claim_id
+
+
+def choose(repo,scene,choices):
+    from storygen.memory.forwarding import memory_view,save_forwarding
+    view=memory_view(repo,scene.id)
+    return save_forwarding(repo,scene.id,choices,view['expected_revision'],view['fingerprint'])
+
+
+def test_enabling_hidden_thread_resolution_stales_dependents(tmp_path):
+    from storygen.generation.context import build_context
+    from storygen.memory.forwarding import projection_policy
+    from storygen.providers.models import RoleSettings,ProviderSettings
+    repo,story,first,second,thread,fact=closed_thread_story(tmp_path)
+    choose(repo,first,{thread:False})
+    assert projection_policy(repo.context_view(story.id),second.id)==sorted({thread,fact})
+    ctx=build_context(repo,second.id,'brief',RoleSettings(provider=ProviderSettings(model='test')))
+    memory_block=lambda text:text.split('ЗДІЙСНЕНІ ПОДІЇ — ПЕРЕВІРЕНА ПАМ’ЯТЬ')[1].split('ЗАВЕРШЕННЯ ПОПЕРЕДНЬОЇ СЦЕНИ')[0]
+    assert 'Ключ узяв сусід' not in memory_block(ctx.user_text)
+    ref=repo.save_version(story.id,second.id,'brief','Завдання',ctx.input_refs,dependency_snapshot=ctx.dependency_snapshot)
+    manual=repo.save_version(story.id,second.id,'brief','Ручне',[],manual_projection_policy=projection_policy(repo.context_view(story.id),second.id))
+    assert not repo.get_version(ref.id).stale and not repo.get_version(manual.id).stale
+    choose(repo,first,{fact:True})
+    assert projection_policy(repo.context_view(story.id),second.id)==[thread]
+    assert repo.get_version(ref.id).stale and repo.get_version(manual.id).stale
+    assert 'Ключ узяв сусід' in memory_block(build_context(repo,second.id,'brief',RoleSettings(provider=ProviderSettings(model='test'))).user_text)
+
+
+def test_policy_without_resolution_facts_equals_hidden_before(tmp_path):
+    from tests.memory.test_forwarding import seeded,apply
+    from storygen.memory.forwarding import projection_policy,hidden_before,memory_view
+    repo,story,scenes=seeded(tmp_path)
+    assert projection_policy(repo.context_view(story.id),scenes[2].id)==[]
+    claim=memory_view(repo,scenes[1].id)['rows'][0]['claim_id']
+    apply(repo,scenes[1],{claim:False})
+    view=repo.context_view(story.id)
+    assert projection_policy(view,scenes[2].id)==sorted(hidden_before(view,scenes[2].id))==[claim]

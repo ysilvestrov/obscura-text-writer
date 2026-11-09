@@ -106,8 +106,8 @@ def save_draft_with_comments(repo,scene_id,text,content_format,expected_revision
     changed=not previous_ref or previous_ref.content_format!=content_format or repo.read_text(previous_ref.id)!=text
     ref=previous_ref
     if changed:
-        from ..memory.forwarding import hidden_before
-        policy=sorted(hidden_before(repo.context_view(scene.story_id),scene_id))
+        from ..memory.forwarding import projection_policy
+        policy=projection_policy(repo.context_view(scene.story_id),scene_id)
         id=new_id();raw=text.encode('utf-8')
         ref=VersionRef(id=id,story_id=scene.story_id,scene_id=scene_id,kind='draft',content_format=content_format,
             sha256=hashlib.sha256(raw).hexdigest(),relative_path=f'stories/{scene.story_id}/versions/{id}.txt',manual_projection_policy=policy)

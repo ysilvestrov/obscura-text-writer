@@ -167,8 +167,8 @@ def manual_brief(scene_id: str,body: BriefChange,request: Request):
     for kind in ['source_plan','source_characters']:
         source=view.active_source(story.id,kind)
         if source:inputs.append(source.id)
-    from ..memory.forwarding import hidden_before
-    policy=sorted(hidden_before(view,scene_id))
+    from ..memory.forwarding import projection_policy
+    policy=projection_policy(view,scene_id)
     ref=repo.save_version(scene.story_id,scene_id,'brief',brief.model_dump_json(),list(dict.fromkeys(inputs)),manual_projection_policy=policy)
     if scene.revision!=body.expected_revision:
         raise RevisionConflict('Сцену вже змінено; ваша версія завдання збережена в історії')

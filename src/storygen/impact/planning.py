@@ -36,8 +36,8 @@ def capture_target(view,version_id,*,baseline_override=None,current_sources_only
                 historic.setdefault(selector.field,selector.expected)
         if not current_sources_only:pending.extend(source for source in snapshot.refs if source in view.versions and view.versions[source].scene_id==scene.id and view.versions[source].kind in {'brief','draft','edited','manual'})
     old_cast=historic.get('character_ids',scene.character_ids)
-    from ..memory.forwarding import hidden_before
-    old_hidden=historic.get('memory_projection_policy',sorted(hidden_before(view,scene.id)))
+    from ..memory.forwarding import projection_policy
+    old_hidden=historic.get('memory_projection_policy',projection_policy(view,scene.id))
     read_cache={}
     def read(id,old=False):
         # One capture reaches the same input through many selectors. The text and the side effects (hashes, warnings,
@@ -79,7 +79,7 @@ def capture_target(view,version_id,*,baseline_override=None,current_sources_only
         if value.kind=='memory':
             from .memory_review import validated_journal
             from ..memory.projection import project_memory
-            from ..memory.forwarding import hidden_before
+            from ..memory.forwarding import projection_policy
             owner=view.peek_scene(value.scene_id)
             if owner.position>=scene.position:raise ValueError('Пам’ять передумов має належати попередній сцені')
             journal,proof_hashes,prefix=validated_journal(view,id,owner)
@@ -87,12 +87,12 @@ def capture_target(view,version_id,*,baseline_override=None,current_sources_only
             numbers={source:item.position+1 for item,source in zip(prefix,journal.source_prose_ids)}
             state='ПОТОЧНІ ДЖЕРЕЛА' if journal.source_prose_ids==[s.heads.get('prose') for s in prefix] else 'ІСТОРИЧНІ ДЖЕРЕЛА — НЕ ПЕРЕПРИВ’ЯЗАНІ ДО НОВОЇ ПРОЗИ'
             from ..memory.core import tracked_characters
-            from ..memory.forwarding import forwarded_before
             from ..storage.snapshots import core_cards
             cards=core_cards(view,view.story)
+            # The policy is already the effective hidden set (I5 applied); pass it through without re-deriving I5.
+            policy=set(old_hidden if old else projection_policy(view,scene.id))
             return state+'\n'+project_memory(journal,old_cast if old else scene.character_ids,numbers,
-                hidden_claim_ids=old_hidden if old else hidden_before(view,scene.id),
-                forwarded_claim_ids=() if old else forwarded_before(view,scene.id),
+                hidden_claim_ids=policy,forwarded_claim_ids={e.claim_id for e in journal.events}-policy,
                 tracked=tracked_characters(cards,view.peek_scenes(view.story.id)),names={card.id:card.name for card in cards}).text
         return raw
     def document(value,selector,old=False):

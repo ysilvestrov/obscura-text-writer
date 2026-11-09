@@ -34,6 +34,25 @@ def effective_hidden(journal,hidden_claim_ids,*,forwarded=()):
     return hidden|{e.claim_id for e in journal.events if e.resolves_claim_id in hidden and e.claim_id not in forwarded}
 
 
+def projection_policy(view,scene_id):
+    """Selector value scene/memory_projection_policy: the effective hidden set (I5) at the scene's boundary."""
+    choices=choices_at(view,scene_id)
+    hidden={id for id,enabled in choices.items() if not enabled}
+    if not hidden:return []
+    scene=view.peek_scene(scene_id)
+    previous=[s for s in view.peek_scenes(scene.story_id) if s.position<scene.position]
+    memory_id=previous[-1].heads.get('memory') if previous else None
+    if memory_id:
+        # Resolution links only; quotes and prefix are validated where the journal is used for content.
+        try:
+            ref=view.peek_version(memory_id)  # no freshness recomputation inside selector evaluation
+            journal=load_memory(view.read_blob(ref.relative_path,ref.sha256).decode('utf-8'))
+        except (ValueError,KeyError,OSError):journal=None
+        if journal is not None:
+            hidden=effective_hidden(journal,hidden,forwarded={id for id,enabled in choices.items() if enabled})
+    return sorted(hidden)
+
+
 def memory_view_from_view(view,scene_id):
     scene=view.get_scene(scene_id);memory_id=scene.heads.get('memory')
     scenes=view.list_scenes(scene.story_id)

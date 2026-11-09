@@ -1570,7 +1570,9 @@
       "tests": [
         "tests/memory/test_core_projection.py::test_hidden_thread_resolution_stays_hidden",
         "tests/memory/test_core_projection.py::test_v4_closure_rendered_only_as_fact",
-        "tests/memory/test_core_projection.py::test_legacy_closure_stays_in_timeline"
+        "tests/memory/test_core_projection.py::test_legacy_closure_stays_in_timeline",
+        "tests/memory/test_core_projection.py::test_enabling_hidden_thread_resolution_stales_dependents",
+        "tests/memory/test_core_projection.py::test_policy_without_resolution_facts_equals_hidden_before"
       ]
     },
     {
