@@ -133,15 +133,22 @@ def test_missing_slot_or_thread_key_is_schema_violation():
     assert bad(answer(threads_=threads(mc_zzz=tdec())))==[('threads','schema')]
 
 
-def test_non_empty_unused_fields_are_schema_violation():
-    assert bad(answer(core(body=dec(text='x'))))==[('core.h.body','schema')]
-    assert bad(answer(core(body=dec(ev=['f000001']))))==[('core.h.body','schema')]
-    assert bad(answer(core(clothing=dec('changed','Пальто',['f000001'],reason='x'))))==[('core.h.clothing','schema')]
-    assert bad(answer(core(carried=dec('introduced','Ключ',['f000002']))))==[('core.h.carried','schema')]
+def test_unused_fields_are_ignored_not_rejected():
+    # Models fill every key of a strict schema, e.g. a reason for a change; the server ignores fields the status does not use.
+    assert bad(answer(core(body=dec(text='x',reason='без змін'))))==[]
+    assert bad(answer(core(body=dec(ev=['f000001']))))==[]
+    assert bad(answer(core(clothing=dec('changed','Пальто',['f000001'],reason='Зняла халат'))))==[]
+    assert bad(answer(core(clothing=dec('unknown','Халат',['f000009'],reason='Не видно'))))==[]
+    assert bad(answer(threads_=threads(**{T1.claim_id:tdec(resolution='ще ні',ev=['f000001'])})))==[]
+    (event,)=new(run(answer(core(carried=dec('introduced','Інше',['f000002'],reason='x')))))
+    assert (event.text,event.quote)==('Ключ',LINE[2])
+    assert new(run(answer(core(body=dec(text='x',reason='без змін')))))==[]
+
+
+def test_required_fields_and_status_are_still_checked():
     assert bad(answer(core(clothing=dec('unknown'))))==[('core.h.clothing','schema')]
     assert bad(answer(core(clothing=dec('changed',' ',['f000001']))))==[('core.h.clothing','schema')]
     assert bad(answer(core(clothing=dec('mystery'))))==[('core.h.clothing','schema')]
-    assert bad(answer(threads_=threads(**{T1.claim_id:tdec(resolution='x')})))==[(f'threads.{T1.claim_id}','schema')]
     assert bad(answer(threads_=threads(**{T1.claim_id:tdec('closed','',['f000001'])})))==[(f'threads.{T1.claim_id}','schema')]
     assert bad(answer(core(clothing=dec('changed','П',[]))))==[('core.h.clothing','evidence_count')]
     assert bad(answer(core(clothing=dec('changed','П',['f000009']))))==[('core.h.clothing','evidence_unknown')]
