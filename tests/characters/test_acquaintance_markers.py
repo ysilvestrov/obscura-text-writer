@@ -77,3 +77,9 @@ def test_unrelated_card_with_bad_anchor_does_not_abort():
     cards=[card('A','Анна','x'),card('B','Богдан','Знайомий з: Анна'),
         card('C','Віра','без позначок',availability='from_scene',anchor='gone')]
     assert pre_story_known(cards,[scene('1',1)],'1','A')==({'B'},[])
+
+
+def test_mid_line_italic_label_and_protagonist_colon():
+    assert known_names_line('*Знайомий з:* Анна')==['Анна']
+    assert known_names_line('*Знайомий з:* *Анна*, Богдан')==['Анна','Богдан']
+    assert is_protagonist_line('*Протагоніст*:')

@@ -134,3 +134,35 @@ def test_brief_stage_records_planner_warning(tmp_path,introduced,warned):
     attempt=execute_stage(repo,scene.id,'brief',ctx,Gateway(),threading.Event(),lambda _:None)
     warnings=attempt.context['planner_warnings']
     assert any('introduced містить ID поза складом' in w for w in warnings)==warned
+
+
+def broken_anchor_story(tmp_path,casts):
+    repo,story,scenes=prepared(tmp_path,casts)
+    cards=[dict(schema_version=2,id='A',name='Анна',entries=[dict(id='eA',text='Протагоністка',availability='timeless',origin='author')]),
+        dict(schema_version=2,id='B',name='Богдан',entries=[dict(id='eB',text='Опис',availability='timeless',origin='author')]),
+        dict(schema_version=2,id='C',name='Віра',entries=[dict(id='eC',text='Знайомий з: Анна',availability='from_scene',available_from_scene_id='gone',origin='author')])]
+    ref=repo.save_version(story.id,None,'character_cards',json.dumps(cards,ensure_ascii=False),[])
+    repo.publish_story_material(story.id,'characters_version_id',ref.id,repo.get_story(story.id).revision)
+    return repo,story,scenes
+
+
+def test_broken_anchor_does_not_block_scene_without_hero(tmp_path):
+    repo,story,(no_hero,with_hero)=broken_anchor_story(tmp_path,[['B'],['A','B']])
+    assert 'ЗНАЙОМСТВА ГОЛОВНОГО ГЕРОЯ' not in context(repo,story,no_hero,'brief').user_text
+    with pytest.raises(ValueError):context(repo,story,with_hero,'brief')
+
+
+def test_planner_warning_survives_broken_anchor(tmp_path):
+    import threading
+    from storygen.generation.stages import execute_stage
+    from storygen.providers.streaming import GenerationEvent
+    repo,story,(scene,)=broken_anchor_story(tmp_path,[['B']])
+    ctx=build_context(repo,scene.id,'brief',settings('brief'))
+    body=WritersBrief(objective='o',beats=['b'],introduced=['C']).model_dump_json()
+    class Gateway:
+        def stream(self,*_):
+            yield GenerationEvent(type='delta',text=body)
+            yield GenerationEvent(type='terminal',finish_reason='stop')
+    attempt=execute_stage(repo,scene.id,'brief',ctx,Gateway(),threading.Event(),lambda _:None)
+    assert attempt.state=='completed'
+    assert attempt.context['planner_warnings']

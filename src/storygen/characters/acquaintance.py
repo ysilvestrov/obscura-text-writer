@@ -13,7 +13,7 @@ KNOWN=re.compile(r'(?i)^(?:знайомий|знайома|знайомі|зна
 
 
 def plain_line(line):
-    return re.sub(r'^[\s\-*—–]+','',line.replace('**','').replace('__','').strip()).rstrip('* ').strip()
+    return re.sub(r'^[\s\-—–]+','',line.replace('**','').replace('__','').replace('*','').strip()).strip()
 
 
 def is_protagonist_line(line):
@@ -120,9 +120,11 @@ def unexpected_introduced(scene,hero_id,introduced):
 def acquaintance_material(view,story,scene,stage):
     """Блок знайомств для brief/draft/rewrite: (текст, попередження); порожній текст, якщо блок не потрібен."""
     if stage not in WRITING_STAGES:return '',[]
+    if not story.characters_version_id:return '',[]
+    cards=load_characters(view.read_text(story.characters_version_id))
+    hero,warnings=protagonist(cards,view.list_scenes(story.id)) if cards else (None,[])
+    if hero is None or hero not in scene.character_ids:return '',warnings
     result=acquaintances(view,story,scene)
-    hero=result.hero_id
-    if hero is None or hero not in scene.character_ids:return '',result.warnings
     others=[cid for cid in scene.character_ids if cid!=hero]
     if not others:return '',result.warnings
     names={card.id:card.name for card in load_characters(view.read_text(story.characters_version_id))}
