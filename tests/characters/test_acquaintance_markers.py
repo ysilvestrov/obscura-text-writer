@@ -57,9 +57,25 @@ def test_pre_story_known_is_symmetric_and_respects_availability():
 
 
 def test_unknown_known_name_warns_without_blocking():
-    cards=[card('A','Анна','Знайомий з: Невідомий'),card('B','Богдан','x')]
+    cards=[card('A','Анна','Знайомий з: Невідомий, Богдан'),card('B','Богдан','x')]
     known,warnings=pre_story_known(cards,[scene('1',1)],'1','A')
-    assert known==set() and len(warnings)==1 and 'Невідомий' not in ' '.join(warnings)
+    assert known=={'B'}
+    assert warnings==['У картці «Анна» позначка «Знайомий з:» називає «Невідомий», але картки з таким іменем немає; виправте ім’я в позначці або назву картки.']
+
+
+def test_ambiguous_known_name_names_card_and_name_once():
+    cards=[card('A','Анна','Знайомий з: Віра','Знайома з: Віра'),card('B','Віра','x'),card('C','Віра','y')]
+    known,warnings=pre_story_known(cards,[scene('1',1)],'1','A')
+    assert known==set()
+    assert warnings==['У картці «Анна» позначка «Знайомий з:» називає «Віра», але так названо кілька карток; перейменуйте одну з них, щоб ім’я було однозначним.']
+
+
+def test_parenthetical_and_spelling_variants_of_a_bad_name():
+    cards=[card('A','Анна','Знайомий з: Віра (сусідка)','Знайома з: віра (Сусідка), Мар’яна',"Знайома з: Мар'яна"),card('B','Віра','x'),card('C','Віра','y')]
+    _,warnings=pre_story_known(cards,[scene('1',1)],'1','A')
+    assert len(warnings)==2
+    assert 'називає «Віра (сусідка)», але так названо кілька карток' in warnings[0]
+    assert 'називає «Мар’яна», але картки з таким іменем немає' in warnings[1]
 
 
 def test_bad_anchor_raises():

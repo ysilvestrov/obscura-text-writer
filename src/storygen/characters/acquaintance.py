@@ -1,12 +1,13 @@
 """Author markers in character cards: protagonist and pre-story acquaintances; pure, no IO."""
 import re
 from dataclasses import dataclass
-from ..scene_description import split_participants,resolve_participants
+from ..scene_description import split_participants,resolve_participants,name_key,without_parentheticals
 from .projection import entry_available
 from .models import load_characters
 from ..generation.models import WritersBrief
 
-BAD_NAME_WARNING='Позначка «Знайомий з:» містить невідоме або неоднозначне ім’я; перевірте картки.'
+UNKNOWN_NAME_WARNING='У картці «{card}» позначка «Знайомий з:» називає «{name}», але картки з таким іменем немає; виправте ім’я в позначці або назву картки.'
+AMBIGUOUS_NAME_WARNING='У картці «{card}» позначка «Знайомий з:» називає «{name}», але так названо кілька карток; перейменуйте одну з них, щоб ім’я було однозначним.'
 DUPLICATE_PROTAGONIST_WARNING='Позначку протагоніста мають кілька карток; використано першу за порядком.'
 PROTAGONIST=re.compile(r'(?i)^(?:протагоніст(?:ка)?|головний\s+герой|головна\s+героїня)$')
 ROLE=re.compile(r'(?i)^роль(?:\s+у\s+творі)?\s*:\s*(.*)$')
@@ -42,18 +43,29 @@ def pre_story_known(cards,scenes,scene_id,hero_id):
     active={scene.id:scene for scene in scenes if not scene.trashed_at}
     scene=active.get(scene_id)
     if scene is None:raise ValueError('Сцена недоступна')
-    known=set();bad=False
+    known=set();warnings=[];reported=set()
     for card in cards:
         for entry in card.entries:
             marked=[names for names in map(known_names_line,entry.text.splitlines()) if names is not None]
             if not marked or not entry_available(entry,active,scene):continue
             for names in marked:
-                ids,problems=resolve_participants(names,cards)
-                bad=bad or bool(problems)
+                ids,_=resolve_participants(names,cards)
+                for name in names:
+                    # One warning per card and name as the resolver sees it (case, apostrophes and spacing ignored).
+                    if (card.id,name_key(name)) in reported or not resolve_participants([name],cards)[1]:continue
+                    reported.add((card.id,name_key(name)))
+                    template=AMBIGUOUS_NAME_WARNING if _ambiguous(name,cards) else UNKNOWN_NAME_WARNING
+                    warnings.append(template.format(card=card.name[:120],name=name[:120]))
                 if card.id==hero_id:known.update(ids)
                 elif hero_id in ids:known.add(card.id)
     known.discard(hero_id)
-    return known,([BAD_NAME_WARNING] if bad else [])
+    return known,warnings
+
+
+def _ambiguous(name,cards):
+    """True when the name (or its form without parentheticals) belongs to several cards, i.e. it is ambiguous, not unknown."""
+    count=lambda value:sum(name_key(card.name)==name_key(value) for card in cards)
+    return (count(name) or count(without_parentheticals(name)))>1
 
 
 LINEAGE_KINDS={'draft','edited','manual','brief'}
