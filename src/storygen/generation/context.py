@@ -89,23 +89,29 @@ SELECTED_PROJECTION='memory-uk-v3-selected'
 def _select_memory_section(selector,sections,measured,measure,fits,settings):
     """Largest char budget whose whole request passes the same token and char checks (binary search, MEMORY-SELECT-S06).
 
-    Returns None when no smaller section exists, ('minimal', measured) when even the core does not fit,
-    otherwise (sections, selection, steps, measured)."""
+    Returns None when no smaller section exists, ('minimal', measured, sections) when no probed section fits — the
+    sections are the reduced ones the measurement was taken on — otherwise (sections, selection, steps, measured)."""
     inp=selector.build()
     low=minimal_chars(inp)
     high=min(len(selector.full_text)-1,settings.max_input_chars-(measured[1]-len(selector.full_text)))
-    if high<low:
-        if low<len(selector.full_text):
-            parts=list(sections);parts[selector.index]=selector.header+select_memory(inp,low).text
-            return 'minimal',measure(parts)
-        return None
     def attempt(budget):
         selection=select_memory(inp,budget)
         parts=list(sections);parts[selector.index]=selector.header+selection.text
         result=measure(parts)
         return fits(result),parts,selection,result
+    if high<low:
+        if low<len(selector.full_text):
+            _,parts,_,result=attempt(low)
+            return 'minimal',result,parts
+        return None
     ok,parts,selection,result=attempt(low)
-    if not ok:return 'minimal',result
+    if not ok:
+        # A verified token profile holds only inside its byte range and the fallback outside it is coarser, so the
+        # estimate is not monotonic in the budget: a failing minimum does not prove that nothing fits. Probe the
+        # largest budget before giving up.
+        top=attempt(high) if high>low else None
+        if top is None or not top[0]:return 'minimal',result,parts
+        return top[1],top[2],1,top[3]
     best=(parts,selection,result);steps=0
     while low<high and steps<SELECTION_STEPS:
         middle=(low+high+1)//2;steps+=1
@@ -168,7 +174,7 @@ def make_context(repo,story,scene,stage,settings,sections,refs,fragments=None,ac
         if selected and selected[0]=='minimal':
             minimal=selected[1]
             raise ContextOverflow(minimal[3]['input_tokens'],limit,minimal[1],memory_metrics.get('projection_chars',0),
-                request_breakdown(minimal[2],sections,stage,minimal[3],settings),max_input_chars=settings.max_input_chars,minimal_memory=True)
+                request_breakdown(minimal[2],selected[2],stage,minimal[3],settings),max_input_chars=settings.max_input_chars,minimal_memory=True)
         if selected:
             sections,selection,steps,measured=selected
             total=sum(selection.layers.values())+sum(selection.dropped.values())

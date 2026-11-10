@@ -28,6 +28,16 @@ def test_narrow_v4_keeps_core_threads_and_cast_states_and_hides_the_rest():
     assert narrow.chars<full.chars
 
 
+def test_absent_tracked_slot_is_not_a_reachable_target():
+    absent=_add_event('character_states','Червоне пальто','p1','q',0,['c2'],slot='clothing')
+    base=scene(targets={absent.claim_id})
+    data={'journal':MemoryJournal(schema_version=3,source_prose_ids=['p1'],events=[SLOT,absent]),'cast':['c1'],
+          'tracked':['c1','c2'],'names':{'c1':'Марія','c2':'Оля'},'prose':'Марія вдома.','number':2,'source_numbers':{'p1':1}}
+    s=type(base)(**{**base.__dict__,'catalog_v4':data})
+    for build in (catalog_full_v4,catalog_narrow_v4):
+        assert set(build(s).record_ids)=={SLOT.claim_id}
+
+
 def test_catalog_v4_requires_real_data():
     with pytest.raises(ValueError):
         catalog_narrow_v4(scene())
