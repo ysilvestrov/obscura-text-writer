@@ -55,30 +55,41 @@ def reader_unknown(event):
     return READER_UNKNOWN if event.source_kind=='author' and event.quote is None else ''
 
 
-def project_memory(journal: MemoryJournal, character_ids: list[str], source_scene_numbers: dict[str,int], *, hidden_claim_ids=(),
-        forwarded_claim_ids=(), tracked=(), names=None) -> MemoryProjection:
+LABELS={'facts':'ФАКТИ','character_states':'ПОТОЧНІ СТАНИ','open_threads':'ВІДКРИТІ ЛІНІЇ','timeline':'ХРОНОЛОГІЯ'}
+
+
+@dataclass(frozen=True)
+class MemoryItem:
+    """One rendered line of the literary memory section with what selection (#60) needs to place it."""
+    claim_id: str
+    section: str                 # 'core' or a journal category
+    owner: str | None            # tracked character of a core line
+    line: str
+    text: str
+    character_ids: tuple[str,...]
+    slot: str | None
+    source_scene: int | None     # scene of the event that produced this line
+
+
+def memory_items(journal: MemoryJournal, character_ids: list[str], source_scene_numbers: dict[str,int], *, hidden_claim_ids=(),
+        forwarded_claim_ids=(), tracked=(), names=None) -> tuple[list[MemoryItem],dict]:
     from .core import SLOTS
     from .forwarding import effective_hidden
     active=replay_memory(journal)
     hidden=effective_hidden(journal,hidden_claim_ids,forwarded=forwarded_claim_ids)
-    labels={'facts':'ФАКТИ','character_states':'ПОТОЧНІ СТАНИ',
-        'open_threads':'ВІДКРИТІ ЛІНІЇ','timeline':'ХРОНОЛОГІЯ'}
-    sections=[];omitted=0;core_lines=0
+    items=[];omitted=0;core_lines=0
+    item=lambda event,section,line,owner=None:MemoryItem(event.claim_id,section,owner,line,event.text,tuple(event.character_ids),
+        event.slot,source_scene_numbers.get(event.source_version_id))
     # The core is a mandatory layer: first, never filtered by the scene cast, only by MEMORY-FORWARD.
     slots={(e.character_ids[0],e.slot):e for e in active.values() if e.slot and e.character_ids[0] in tracked}
     for cid in tracked:
-        lines=[]
         for slot in SLOTS:
             event=slots.get((cid,slot.name))
             if event is None or event.claim_id in hidden:continue
-            lines.append(f'{slot.label_uk}: {event.text}'+reader_unknown(event))
-        if lines:
-            # Without a card name the technical ID never reaches the literary section; tracked is the protagonist.
-            sections.append(f'ЯДРО СТАНУ — {(names or {}).get(cid) or "протагоніст"}\n'+'\n'.join(lines));core_lines+=len(lines)
+            items.append(item(event,'core',f'{slot.label_uk}: {event.text}'+reader_unknown(event),cid));core_lines+=1
     # A v4 closure is shown only as its resolution fact; a legacy retire without one stays in the timeline.
     resolved={e.resolves_claim_id for e in journal.events if e.resolves_claim_id}
     for category in CATEGORIES:
-        lines=[]
         if category=='timeline':
             entries=[e for e in journal.events if e.category=='timeline'
                 or e.category=='open_threads' and e.operation=='retire' and e.claim_id not in resolved]
@@ -91,10 +102,31 @@ def project_memory(journal: MemoryJournal, character_ids: list[str], source_scen
                 omitted+=1;continue
             scene=source_scene_numbers.get(event.source_version_id)
             prefix=f'Сцена {scene}: ' if category=='timeline' and scene is not None else ''
-            lines.append('— '+prefix+event.text+reader_unknown(event))
-        sections.append(labels[category]+'\n'+('\n'.join(lines) if lines else 'Немає.'))
-    text='\n\n'.join(sections)
-    return MemoryProjection(text,{'projection_version':'memory-uk-v3','journal_chars':len(journal.model_dump_json()),
-        'event_count':len(journal.events),'active_claim_count':len(active),
-        'projection_chars':len(text),'omitted_state_count':omitted,'core_line_count':core_lines,
-        'hidden_claim_count':len(hidden&{e.claim_id for e in journal.events})})
+            items.append(item(event,category,'— '+prefix+event.text+reader_unknown(event)))
+    return items,{'journal_chars':len(journal.model_dump_json()),'event_count':len(journal.events),'active_claim_count':len(active),
+        'omitted_state_count':omitted,'core_line_count':core_lines,'hidden_claim_count':len(hidden&{e.claim_id for e in journal.events})}
+
+
+def render_memory(items, tracked, names=None, *, timeline_note: str | None = None) -> str:
+    sections=[]
+    for cid in tracked:
+        lines=[i.line for i in items if i.section=='core' and i.owner==cid]
+        if lines:
+            # Without a card name the technical ID never reaches the literary section; tracked is the protagonist.
+            sections.append(f'ЯДРО СТАНУ — {(names or {}).get(cid) or "протагоніст"}\n'+'\n'.join(lines))
+    for category in CATEGORIES:
+        lines=[i.line for i in items if i.section==category]
+        if category=='timeline' and timeline_note:lines.insert(0,'— '+timeline_note)
+        sections.append(LABELS[category]+'\n'+('\n'.join(lines) if lines else 'Немає.'))
+    return '\n\n'.join(sections)
+
+
+def project_memory(journal: MemoryJournal, character_ids: list[str], source_scene_numbers: dict[str,int], *, hidden_claim_ids=(),
+        forwarded_claim_ids=(), tracked=(), names=None) -> MemoryProjection:
+    items,metrics=memory_items(journal,character_ids,source_scene_numbers,hidden_claim_ids=hidden_claim_ids,
+        forwarded_claim_ids=forwarded_claim_ids,tracked=tracked,names=names)
+    text=render_memory(items,tracked,names)
+    return MemoryProjection(text,{'projection_version':'memory-uk-v3','journal_chars':metrics['journal_chars'],
+        'event_count':metrics['event_count'],'active_claim_count':metrics['active_claim_count'],
+        'projection_chars':len(text),'omitted_state_count':metrics['omitted_state_count'],'core_line_count':metrics['core_line_count'],
+        'hidden_claim_count':metrics['hidden_claim_count']})
