@@ -35,8 +35,9 @@ if(host){
     host.hidden=!active()||!model.visible;
     if(host.hidden)return;
     host.append(node('h3',()=>t('brief_link.title')));
-    if(model.confirmed&&!open){
-      const names=model.rows.filter(row=>row.checked).map(row=>row.name);
+    if(model.confirmed&&!open&&draft===null){
+      // The summary shows what the server recorded; an unsaved change keeps the form open instead.
+      const names=briefLinkModel(data,null).rows.filter(row=>row.checked).map(row=>row.name);
       host.append(node('p',()=>names.length?t('brief_link.confirmed_with',{p0:names.join(', ')}):t('brief_link.confirmed_none'),'brief-link-state'));
       const actions=node('div',null,'actions');
       actions.append(button(()=>t('brief_link.change'),()=>{open=true;render();}));
@@ -87,7 +88,11 @@ if(host){
       await api(`/api/scenes/${sceneId}/brief-link`,json('POST',{prose_version_id:proseId,brief_version_id:data.brief.version_id,introduced:model.introduced,expected_revision:data.revision}));
       drafts.delete(`${sceneId}:${proseId}`);open=false;notice(t('brief_link.saved'));
       await refresh();
-    }catch(error){notice(diagnostic(error.message),'error');}
+    }catch(error){
+      notice(diagnostic(error.message),'error');
+      // Refresh the story so reopening the scene loads the prose that replaced the one on screen.
+      try{await refresh();}catch{}
+    }
     finally{busy=false;if(state.scene?.id===sceneId)await load(true);}
   }
 

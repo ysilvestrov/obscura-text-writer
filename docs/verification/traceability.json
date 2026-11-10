@@ -1165,7 +1165,7 @@
       ],
       "manual": {
         "procedure": "docs/verification/manual.md#brief-link",
-        "reason": "check_docs.py індексує лише pytest; чотири Playwright cases brief-link.spec.mjs перелічено в процедурі й виконуються окремим runner, цей зв’язок не є доказом виконання."
+        "reason": "check_docs.py індексує лише pytest; п’ять Playwright cases brief-link.spec.mjs перелічено в процедурі й виконуються окремим runner, цей зв’язок не є доказом виконання."
       }
     },
     {
@@ -1187,7 +1187,7 @@
       ],
       "manual": {
         "procedure": "docs/verification/manual.md#brief-link",
-        "reason": "check_docs.py індексує лише pytest; чотири Playwright cases brief-link.spec.mjs перелічено в процедурі й виконуються окремим runner, цей зв’язок не є доказом виконання."
+        "reason": "check_docs.py індексує лише pytest; п’ять Playwright cases brief-link.spec.mjs перелічено в процедурі й виконуються окремим runner, цей зв’язок не є доказом виконання."
       }
     },
     {
