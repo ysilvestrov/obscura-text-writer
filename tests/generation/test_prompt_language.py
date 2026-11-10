@@ -131,3 +131,38 @@ def test_custom_prompt_kept_in_english_story(tmp_path):
                                prompt_contract=expected_contract('edit', settings))
     context = build_context(repo, scene.id, 'edit', settings.model_copy(update={'prompt_version_id': prompt.id}))
     assert context.system_text.startswith('Власна редактура автора.')
+
+
+# SHA-256 prefixes of composed Ukrainian system messages, computed on 3d53405 (before #32) for this exact world.
+UK_COMPOSED = {'brief': '461f1aa546cab9e0', 'draft': '5bd57f88e17b751b', 'edit:prose': 'eb3907d342e2fdfb',
+               'edit:patches': 'f9f7d19f0998e104', 'edit:diff': 'f578ce5c8435b0e8', 'memory': 'eb1dc2403f01490f',
+               'rewrite': 'e1fc4a0a52f7ad36'}
+
+
+@pytest.mark.req('STORY-LANGUAGE')
+def test_ukrainian_composed_system_messages_unchanged(tmp_path):
+    from storygen.memory.journal import MemoryJournal, _add_event
+    repo = Repository(tmp_path)
+    story = repo.create_story(StoryCreate(title='Маяк'))
+    story = repo.update_story_rating(story.id, ContentRating(sexual=0, violence=1, themes=1), story.revision)
+    first = repo.create_scene(story.id, SceneCreate(title='Дім', beats='Анна вдома.', character_ids=['A']))
+    second = repo.create_scene(story.id, SceneCreate(title='Пристань', beats='Анна чекає.', character_ids=['A']))
+    prose = repo.save_version(story.id, first.id, 'manual', 'Анна вдома.', [])
+    repo.set_head(first.id, 'prose', prose.id, repo.get_scene(first.id).revision)
+    journal = MemoryJournal(schema_version=3, source_prose_ids=[prose.id], events=[_add_event('facts', 'Маяк на мапі', prose.id, 'вдома', 0)])
+    memory = repo.save_version(story.id, first.id, 'memory', journal.model_dump_json(), [prose.id])
+    repo.set_head(first.id, 'memory', memory.id, repo.get_scene(first.id).revision)
+    brief = repo.save_version(story.id, second.id, 'brief', '{"objective":"Чекає","beats":["Чекає"],"constraints":[],"proposed_changes":[]}', [])
+    repo.set_head(second.id, 'brief', brief.id, repo.get_scene(second.id).revision)
+    draft = repo.save_version(story.id, second.id, 'draft', 'Анна чекала.', [brief.id])
+    repo.set_head(second.id, 'draft', draft.id, repo.get_scene(second.id).revision)
+    prose2 = repo.save_version(story.id, second.id, 'manual', 'Анна чекала.', [draft.id])
+    repo.set_head(second.id, 'prose', prose2.id, repo.get_scene(second.id).revision)
+    cases = {'brief': ('brief', {}), 'draft': ('draft', {}), 'edit:prose': ('edit', {}),
+             'edit:patches': ('edit', {'edit_mode': 'patches'}), 'edit:diff': ('edit', {'edit_mode': 'diff'}),
+             'memory': ('memory', {}), 'rewrite': ('rewrite', {})}
+    found = {}
+    for key, (stage, values) in cases.items():
+        extra = {'editor_source_id': draft.id} if stage == 'rewrite' else {}
+        found[key] = digest(build_context(repo, second.id, stage, role(**values), **extra).system_text)
+    assert found == UK_COMPOSED

@@ -81,12 +81,25 @@ def evaluation_language_error(repo,story,scenes) -> str | None:
     return ENGLISH_NOT_EVALUATED if any(prose_language(story,scene)=='en' for scene in scenes) else None
 
 
+def case_scenes(scenes,scene_id):
+    """Scenes whose prose a scene case reads: the scene itself and, when it has prose, the preceding one."""
+    scene=next((s for s in scenes if s.id==scene_id),None)
+    if scene is None:return []
+    previous=[s for s in scenes if s.position<scene.position]
+    return [scene]+([previous[-1]] if previous and previous[-1].heads.get('prose') else [])
+
+
+def evaluated_scenes(repo,story,scenes,scene_id):
+    """True when an automatic edit_pair case of this scene may be built (STORY-LANGUAGE-S06)."""
+    return evaluation_language_error(repo,story,case_scenes(scenes,scene_id)) is None
+
+
 def build_evaluation_case(repo,story_id: str,scene_id: str | None,mode: str) -> EvaluationCase:
     if hasattr(repo,'context_view'):
         repo=repo.context_view(story_id)
     story=repo.get_story(story_id)
     scenes=repo.list_scenes(story_id)
-    error=evaluation_language_error(repo,story,scenes if mode=='story' else [s for s in scenes if s.id==scene_id])
+    error=evaluation_language_error(repo,story,scenes if mode=='story' else case_scenes(scenes,scene_id))
     if error:raise ValueError(error)
     docs=[];targets=[];unchecked=[]
     def add(id,kind):

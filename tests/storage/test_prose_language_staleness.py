@@ -140,3 +140,19 @@ def test_later_scenes_stay_fresh_after_switch(tmp_path):
     switch(repo, scene_id, 'en')
     assert stale(repo, story_id, prose.id)
     assert not stale(repo, story_id, brief.id)
+
+
+@pytest.mark.req('STORY-LANGUAGE')
+def test_language_change_of_premise_scene_does_not_block_review_of_later_scene(tmp_path):
+    from storygen.impact.planning import capture_target
+    repo, story_id, scene_id, draft = setup(tmp_path)
+    second = repo.create_scene(story_id, SceneCreate(title='Second', beats='Later'))
+    prose = edited_prose(repo, story_id, scene_id, draft.id)
+    snapshot = build_dependency_snapshot(repo.context_view(story_id), second.id, 'brief', role(), [prose.id])
+    brief = repo.save_version(story_id, second.id, 'brief', 'Brief', [prose.id], dependency_snapshot=snapshot)
+    repo.set_head(second.id, 'brief', brief.id, repo.get_scene(second.id).revision)
+    switch(repo, scene_id, 'en')
+    repo.update_scene_metadata(second.id, {'title': 'Second, renamed'}, repo.get_scene(second.id).revision)
+    assert stale(repo, story_id, brief.id)
+    target = capture_target(repo.context_view(story_id), brief.id)
+    assert not any('мови прози' in blocker for blocker in target.blockers), target.blockers

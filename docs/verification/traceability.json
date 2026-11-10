@@ -3672,7 +3672,8 @@
         "tests/generation/test_context_language.py::test_prepare_request_english",
         "tests/generation/test_context_language.py::test_edit_loop_patches_request_english",
         "tests/generation/test_context_language.py::test_review_basis_note_follows_plan_language",
-        "tests/generation/test_context_language.py::test_classifier_prompt_english_has_no_cyrillic"
+        "tests/generation/test_context_language.py::test_classifier_prompt_english_has_no_cyrillic",
+        "tests/generation/test_prompt_language.py::test_ukrainian_composed_system_messages_unchanged"
       ]
     },
     {
@@ -3689,7 +3690,8 @@
         "tests/storage/test_prose_language_staleness.py::test_selector_recorded_for_prose_scopes",
         "tests/storage/test_prose_language_staleness.py::test_selector_not_recorded_for_brief_and_memory",
         "tests/storage/test_prose_language_staleness.py::test_impact_cannot_approve_prose_of_another_language",
-        "tests/storage/test_prose_language_staleness.py::test_later_scenes_stay_fresh_after_switch"
+        "tests/storage/test_prose_language_staleness.py::test_later_scenes_stay_fresh_after_switch",
+        "tests/storage/test_prose_language_staleness.py::test_language_change_of_premise_scene_does_not_block_review_of_later_scene"
       ]
     },
     {
@@ -3719,7 +3721,10 @@
       "tests": [
         "tests/evaluation/test_evaluation_language.py::test_english_scene_evaluation_rejected",
         "tests/evaluation/test_evaluation_language.py::test_ukrainian_scene_of_english_story_evaluated",
-        "tests/evaluation/test_evaluation_language.py::test_worker_skips_edit_pair_for_english_scene"
+        "tests/evaluation/test_evaluation_language.py::test_worker_skips_edit_pair_for_english_scene",
+        "tests/evaluation/test_evaluation_language.py::test_scene_case_with_english_preceding_prose_rejected",
+        "tests/evaluation/test_evaluation_language.py::test_english_run_not_blocked_by_evaluator_it_will_not_call",
+        "tests/evaluation/test_evaluation_language.py::test_scene_switched_to_english_after_queueing_skips_evaluation"
       ]
     }
   ]

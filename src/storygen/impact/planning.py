@@ -142,8 +142,11 @@ def capture_target(view,version_id,*,baseline_override=None,current_sources_only
                     raise ValueError('Змінені описи персонажів без часових карток потребують ручного перегляду')
                 if selector.kind=='order' and current!=selector.expected:raise ValueError('Зміна порядку сцен потребує ручного перегляду')
                 if selector.field=='prose_language' and current!=selector.expected:
-                    # STORY-LANGUAGE-S03: a fact check cannot make prose of another language current.
-                    raise ValueError('Зміна мови прози сцени потребує нової генерації або ручного перегляду')
+                    # STORY-LANGUAGE-S03: a fact check cannot make prose of another language current. A premise from
+                    # another scene changed language only, not facts: it is an unchanged input of this target.
+                    if selector.owner_id==scene.id:
+                        raise ValueError('Зміна мови прози сцени потребує нової генерації або ручного перегляду')
+                    current=selector.expected
                 if selector.kind=='head' and selector.field=='prose' and view.peek_scene(selector.owner_id).position>=scene.position:
                     if selector.owner_id==scene.id:continue
                     raise ValueError('Невідповідна майбутня проза')
