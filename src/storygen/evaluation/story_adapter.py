@@ -72,11 +72,22 @@ def install_calibration(repo,config: EvaluatorConfig,outcomes: list) -> ScoringP
     return profile
 
 
+ENGLISH_NOT_EVALUATED='Оцінювач відкалібровано лише для української прози; англійські сцени не оцінюються'
+
+
+def evaluation_language_error(repo,story,scenes) -> str | None:
+    """STORY-LANGUAGE-S06: the rubric is calibrated on Ukrainian prose only (EVAL-002)."""
+    from ..language import prose_language
+    return ENGLISH_NOT_EVALUATED if any(prose_language(story,scene)=='en' for scene in scenes) else None
+
+
 def build_evaluation_case(repo,story_id: str,scene_id: str | None,mode: str) -> EvaluationCase:
     if hasattr(repo,'context_view'):
         repo=repo.context_view(story_id)
     story=repo.get_story(story_id)
     scenes=repo.list_scenes(story_id)
+    error=evaluation_language_error(repo,story,scenes if mode=='story' else [s for s in scenes if s.id==scene_id])
+    if error:raise ValueError(error)
     docs=[];targets=[];unchecked=[]
     def add(id,kind):
         if id not in {d.id for d in docs}:

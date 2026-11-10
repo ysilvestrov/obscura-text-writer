@@ -119,10 +119,14 @@ class RunCoordinator:
                 except ValueError:
                     evaluation=None
                 if evaluation and evaluation.policy!='off':
+                    from ..language import prose_language
+                    story=self.repo.get_story(request.story_id)
+                    # STORY-LANGUAGE-S06: English prose is not evaluated until the rubric is calibrated for it.
+                    english={s.id for s in scenes if prose_language(story,s)=='en'}
                     expanded=[]
                     for task in tasks:
                         expanded.append(task)
-                        if task['stage']=='memory':
+                        if task['stage']=='memory' and task['scene_id'] not in english:
                             expanded.append({'scene_id':task['scene_id'],'stage':'evaluate','evaluation_mode':'edit_pair'})
                     tasks=expanded
         with self.condition:
