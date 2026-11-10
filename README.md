@@ -96,6 +96,8 @@ See the [name and logo policy](docs/en/trademark-policy.md).
 
 Обмеження майбутніх планів у контексті ролі: [горизонт сюжету](docs/story-horizon.md).
 
+Твір українською або англійською, мова прози окремої сцени: [інструкція українською](docs/story-language.md), [English](docs/en/story-language.md).
+
 Табличний перегляд і відбір пам’яті: [інструкція українською](docs/memory-view.md), [English](docs/en/memory-view.md).
 
 Жирний, курсив і збереження джерела: [візуальний редактор](docs/visual-editor.md). Переписування AI-чернетки власними словами: [інструкція українською](docs/ghost-mode.md), [English](docs/en/ghost-mode.md). Для розробника — [збірка локального JS bundle](docs/frontend-development.md).
