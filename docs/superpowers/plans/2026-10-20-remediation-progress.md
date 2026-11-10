@@ -1512,3 +1512,5 @@ Playwright `memory-kind.spec.mjs` і `core-review.spec.mjs` пройшли вр�
 - SPEC.MD PUB-001 і Scenario S03, traceability.
 
 Лишилося після злиття: тег `last-mit` на першого батька merge-коміту, push тегу, перевірка `git show last-mit:LICENSE` (має бути MIT). Юридична перевірка ліцензії, політики назви й Умов — за власником.
+
+Після злиття PR #92 (merge `3d53405`, 10.11.2026): анотований тег `last-mit` поставлено на першого батька merge-коміту `5c7d281` і відправлено на GitHub; `git show last-mit:LICENSE` починається з «MIT License», `3d53405:LICENSE` — з FSL-1.1-MIT. #88 закрито злиттям. Фактично: S, 1 PR, 3 задачі.
