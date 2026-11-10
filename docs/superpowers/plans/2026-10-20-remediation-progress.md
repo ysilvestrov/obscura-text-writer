@@ -1490,3 +1490,5 @@ memory_stage_v4 narrow  chars mean 18596.9 max 49928  recall 1.0
 - SPEC MEMORY-SELECT S08, І8, traceability; інструкції `docs/memory-view.md`, `docs/en/memory-view.md` (знімок `docs/images/memory-kind-*.png`), `docs/scene-statistics.md`.
 
 Playwright `memory-kind.spec.mjs` і `core-review.spec.mjs` пройшли вручну (desktop і mobile); verify.py Playwright не запускає. Англійської версії `scene-statistics.md` немає, тож рядок відбору описано англійською в `docs/en/memory-view.md`.
+
+Крос-рев'ю codex/gpt-6.1-sol @ 9fdb8fe — 2 знахідки, обидві прийнято: (1) rewrite повторно входить у `make_context` без `memory_selector`, тож запит із відбором падав на `memory_selector.kinds()`; тепер значення селектора `make_context` рахує сам; (2) позначка закриття лінії старого формату, яке лишається в хронології, ігнорувалася, бо `kind_overrides` брав лише активні записи; тепер береться той самий набір кандидатів, що й у `memory_items`.

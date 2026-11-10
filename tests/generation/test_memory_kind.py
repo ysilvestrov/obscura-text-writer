@@ -124,3 +124,40 @@ def test_statistics_summary_of_selection_and_narrowing(tmp_path):
     assert summary['layers']['core']==1 and all(v>0 for v in summary['dropped_layers'].values())
     assert memory_summary({'narrow':{'hidden':3,'mutable_shown':1,'immutable_shown':0}})=={'memory_narrow':{'hidden':3,'mutable_shown':1,'immutable_shown':0}}
     assert memory_summary(build_context(repo,scene.id,'brief',settings()).memory_metrics)=={}
+
+
+def test_rewrite_style_reentry_with_selection_records_the_selector(tmp_path):
+    # build_rewrite_context re-enters make_context with the base metrics and no memory_selector.
+    from storygen.generation.context import make_context
+    repo,scene,journal,_=story_with_memory(tmp_path)
+    limit=tight(repo,scene)
+    base=build_context(repo,scene.id,'brief',limit)
+    assert 'selection' in base.memory_metrics
+    mark(repo,scene.story_id,claim(journal,COAST),'core')
+    view=repo.context_view(scene.story_id)
+    ctx=make_context(view,view.story,view.get_scene(scene.id),'brief',limit,[base.user_text],list(base.input_refs),dict(base.fragments),
+        memory_metrics=base.memory_metrics,context_warnings=base.context_warnings)
+    recorded=[s for s in ctx.dependency_snapshot.selectors if s.field=='memory_kind_overrides']
+    assert len(recorded)==1 and recorded[0].expected=={claim(journal,COAST):'core'}
+
+
+def test_legacy_thread_closure_in_the_timeline_takes_a_mark():
+    from types import SimpleNamespace
+    from storygen.memory.journal import MemoryJournal, _add_event
+    from storygen.memory.kinds import kind_overrides
+    from storygen.memory.projection import candidate_claim_ids, memory_items
+    thread=_add_event('open_threads','Хто стукав?','p1','q',0)
+    retire=thread.model_copy(update={'event_id':'e-retire','operation':'retire','text':'Стукав сусід'})
+    journal=MemoryJournal(schema_version=3,source_prose_ids=['p1'],events=[thread,retire])
+    items,_=memory_items(journal,[],{'p1':1})
+    assert (thread.claim_id,'timeline') in {(i.claim_id,i.section) for i in items}
+    assert thread.claim_id in candidate_claim_ids(journal)
+    scenes=[SimpleNamespace(id='s1',story_id='st',position=0,heads={'memory':'m'},trashed_at=None),
+            SimpleNamespace(id='s2',story_id='st',position=1,heads={},trashed_at=None)]
+    class View:
+        def peek_scene(self,id):return next(s for s in scenes if s.id==id)
+        def peek_scenes(self,_):return scenes
+        def peek_story(self,_):return SimpleNamespace(memory_kind_overrides={thread.claim_id:'core'})
+        def peek_version(self,_):return SimpleNamespace(relative_path='m',sha256='x')
+        def read_blob(self,*_):return journal.model_dump_json().encode()
+    assert kind_overrides(View(),'s2')=={thread.claim_id:'core'}

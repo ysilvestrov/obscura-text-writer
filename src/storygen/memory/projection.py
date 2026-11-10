@@ -75,6 +75,19 @@ class MemoryItem:
     source_scene: int | None     # scene of the event that produced this line
 
 
+def _timeline_events(journal):
+    # A v4 closure is shown only as its resolution fact; a legacy retire without one stays in the timeline.
+    resolved={e.resolves_claim_id for e in journal.events if e.resolves_claim_id}
+    return [e for e in journal.events if e.category=='timeline'
+        or e.category=='open_threads' and e.operation=='retire' and e.claim_id not in resolved]
+
+
+def candidate_claim_ids(journal) -> set[str]:
+    """Claims memory_items can render (before the scene filter): active ones and timeline entries, including legacy thread
+    closures without a resolution fact (#60, MEMORY-SELECT-S08)."""
+    return set(replay_memory(journal))|{e.claim_id for e in _timeline_events(journal)}
+
+
 def memory_items(journal: MemoryJournal, character_ids: list[str], source_scene_numbers: dict[str,int], *, hidden_claim_ids=(),
         forwarded_claim_ids=(), tracked=(), names=None) -> tuple[list[MemoryItem],dict]:
     from .core import SLOTS
@@ -91,12 +104,9 @@ def memory_items(journal: MemoryJournal, character_ids: list[str], source_scene_
             event=slots.get((cid,slot.name))
             if event is None or event.claim_id in hidden:continue
             items.append(item(event,'core',f'{slot.label_uk}: {event.text}'+reader_unknown(event),cid));core_lines+=1
-    # A v4 closure is shown only as its resolution fact; a legacy retire without one stays in the timeline.
-    resolved={e.resolves_claim_id for e in journal.events if e.resolves_claim_id}
     for category in CATEGORIES:
         if category=='timeline':
-            entries=[e for e in journal.events if e.category=='timeline'
-                or e.category=='open_threads' and e.operation=='retire' and e.claim_id not in resolved]
+            entries=_timeline_events(journal)
         else:
             entries=[e for e in active.values() if e.category==category
                 and not (e.slot and e.character_ids[0] in tracked)]

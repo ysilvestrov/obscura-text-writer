@@ -80,7 +80,6 @@ class MemorySelector:
     header: str
     full_text: str
     build: Callable[[], SelectionInput]  # lazy: no extra work while the full request fits
-    kinds: Callable[[], dict] = dict      # selector value scene/memory_kind_overrides (MEMORY-SELECT-S08)
 
 
 SELECTION_STEPS=12
@@ -202,7 +201,9 @@ def make_context(repo,story,scene,stage,settings,sections,refs,fragments=None,ac
     if 'selection' in memory_metrics and scene:
         # MEMORY-SELECT-S08 (I8): author marks stale only versions whose request was built with selection.
         from ..dependency_models import DependencySelector
-        snapshot.selectors.append(DependencySelector(kind='scene',owner_id=scene.id,field='memory_kind_overrides',expected=memory_selector.kinds()))
+        # Computed here, not via memory_selector: a rewrite re-enters make_context with the base metrics and no selector.
+        from ..memory.kinds import kind_overrides
+        snapshot.selectors.append(DependencySelector(kind='scene',owner_id=scene.id,field='memory_kind_overrides',expected=kind_overrides(repo,scene.id)))
     if memory_provenance:
         fingerprint=hashlib.sha256((fingerprint+snapshot.model_dump_json()).encode()).hexdigest()
     head={'brief':'brief','draft':'draft','edit':'prose','memory':'memory','rewrite':'draft'}.get(stage)
@@ -369,7 +370,7 @@ def build_context(repo,scene_id: str,stage: str,settings: RoleSettings,*,editor_
     def kinds():
         from ..memory.kinds import kind_overrides
         return kind_overrides(repo if hasattr(repo,'peek_scene') else repo.context_view(story.id),scene.id)
-    memory_selector=MemorySelector(memory_index,memory_header,projection.text,selection_input,kinds)
+    memory_selector=MemorySelector(memory_index,memory_header,projection.text,selection_input)
     previous=[s for s in scenes if s.position<scene.position]
     fragments={}
     if previous:

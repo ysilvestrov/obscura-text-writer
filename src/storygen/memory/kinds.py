@@ -2,7 +2,7 @@
 
 Marks live in Story.memory_kind_overrides and act only when a request is built with selection; a request that fits
 ignores them, and only a version built with selection records the selector scene/memory_kind_overrides."""
-from ..memory.journal import load_memory, replay_memory
+from ..memory.journal import load_memory
 
 KINDS=('core','atmosphere')
 
@@ -16,7 +16,7 @@ def _journal(view,version_id):
 
 
 def kind_overrides(view,scene_id) -> dict[str,str]:
-    """Selector value scene/memory_kind_overrides: marks of the claims active in the memory before the scene."""
+    """Selector value scene/memory_kind_overrides: marks of the selection candidates in the memory before the scene."""
     scene=view.peek_scene(scene_id)
     marks=view.peek_story(scene.story_id).memory_kind_overrides
     if not marks:return {}
@@ -24,9 +24,10 @@ def kind_overrides(view,scene_id) -> dict[str,str]:
     memory_id=previous[-1].heads.get('memory') if previous else None
     journal=_journal(view,memory_id) if memory_id else None
     if journal is None:return {}
-    try:active=replay_memory(journal)
+    from .projection import candidate_claim_ids
+    try:candidates=candidate_claim_ids(journal)
     except ValueError:return {}
-    return {cid:marks[cid] for cid in sorted(marks) if cid in active}
+    return {cid:marks[cid] for cid in sorted(marks) if cid in candidates}
 
 
 def tracked_ids(view,story) -> set[str]:

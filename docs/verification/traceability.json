@@ -3621,7 +3621,9 @@
         "tests/generation/test_memory_kind.py::test_memory_view_rows_carry_kind_slot_and_story_revision",
         "tests/generation/test_memory_kind.py::test_statistics_summary_of_selection_and_narrowing",
         "tests/web/test_memory_table_ui.py::test_memory_kind_column",
-        "tests/web/test_scene_statistics_ui.py::test_statistics_buffer_and_async_guards"
+        "tests/web/test_scene_statistics_ui.py::test_statistics_buffer_and_async_guards",
+        "tests/generation/test_memory_kind.py::test_rewrite_style_reentry_with_selection_records_the_selector",
+        "tests/generation/test_memory_kind.py::test_legacy_thread_closure_in_the_timeline_takes_a_mark"
       ]
     }
   ]
