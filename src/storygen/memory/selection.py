@@ -184,3 +184,38 @@ def select_memory(inp: SelectionInput, char_budget: int) -> MemorySelection:
         chosen.discard(item.claim_id);taken[layer]-=1;dropped[layer]+=1
         text=_render(inp,chosen,note())
     return MemorySelection(text,tuple(item.claim_id for item in inp.items if item.claim_id in chosen),taken,dropped,note(),char_budget)
+
+
+NARROW_FTS_STATES=20
+
+
+@dataclass(frozen=True)
+class NarrowCatalog:
+    keep: frozenset[str]
+    hidden: int
+    mutable_shown: int
+    immutable_shown: int
+
+
+def narrow_catalog(journal, cast, tracked, names, prose: str, scene_number: int, source_numbers: Mapping[str,int]) -> NarrowCatalog:
+    """Claims the memory stage still sees when its full catalog overflows (MEMORY-SELECT-S07): the core and every thread,
+    states of the cast and general states, up to NARROW_FTS_STATES other states ranked by the scene prose, facts that
+    mention a participant and the timeline of the last TIMELINE_WINDOW scenes."""
+    from .journal import replay_memory
+    active=list(replay_memory(journal).values())
+    every,cast=set(tracked),set(cast)
+    stems=tuple(s for cid in sorted(cast) for s in name_stems(names.get(cid,'')))
+    keep=set();pool=[];mutable=immutable=0
+    for event in active:
+        if event.category=='open_threads' or event.slot and event.character_ids[0] in every:keep.add(event.claim_id)
+        elif event.category=='character_states':
+            if not event.character_ids or cast&set(event.character_ids):keep.add(event.claim_id);mutable+=1
+            else:pool.append(event)
+        elif event.category=='facts':
+            if mentions(event.text,stems):keep.add(event.claim_id);immutable+=1
+        elif event.category=='timeline':
+            number=source_numbers.get(event.source_version_id)
+            if number is None or number>=scene_number-TIMELINE_WINDOW:keep.add(event.claim_id);immutable+=1
+    ranked=fts_rank(pool,prose)[:NARROW_FTS_STATES]
+    keep.update(event.claim_id for event in ranked);mutable+=len(ranked)
+    return NarrowCatalog(frozenset(keep),len(active)-len(keep),mutable,immutable)
