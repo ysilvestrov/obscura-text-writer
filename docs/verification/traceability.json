@@ -3760,7 +3760,8 @@
       "scope": "Мова твору й прози сцени в інтерфейсі, language_locked, шаблони імпорту, вимкнене оцінювання англійської прози. Playwright story-language.spec.mjs запускається вручну (verify.py його не виконує).",
       "tests": [
         "tests/web/test_story_language_ui.py::test_story_view_reports_language_lock",
-        "tests/web/test_story_language_ui.py::test_language_lock_helper_matches_server_refusal"
+        "tests/web/test_story_language_ui.py::test_language_lock_helper_matches_server_refusal",
+        "tests/evaluation/test_evaluation_language.py::test_story_evaluation_ignores_english_scene_without_prose"
       ]
     },
     {

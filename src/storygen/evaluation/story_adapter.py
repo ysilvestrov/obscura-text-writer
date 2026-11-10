@@ -99,7 +99,8 @@ def build_evaluation_case(repo,story_id: str,scene_id: str | None,mode: str) -> 
         repo=repo.context_view(story_id)
     story=repo.get_story(story_id)
     scenes=repo.list_scenes(story_id)
-    error=evaluation_language_error(repo,story,scenes if mode=='story' else case_scenes(scenes,scene_id))
+    # A story case reads only scenes with prose; the UI applies the same scene set (STORY-LANGUAGE-S08).
+    error=evaluation_language_error(repo,story,[s for s in scenes if s.heads.get('prose')] if mode=='story' else case_scenes(scenes,scene_id))
     if error:raise ValueError(error)
     docs=[];targets=[];unchecked=[]
     def add(id,kind):
