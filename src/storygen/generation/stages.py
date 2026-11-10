@@ -294,15 +294,15 @@ def execute_stage(
             from ..copyediting import require_editor_changes
             require_editor_changes(original,text)
             attempt.context['copyedit_proposal']={'protocol_version':1,'draft_id':draft_id,'proposal':proposal.model_dump()}
-            from .language import language_warnings
-            attempt.context['language_warnings']=language_warnings(text)
+            from .language import language_warnings, scene_prose_language
+            attempt.context['language_warnings']=language_warnings(text,scene_prose_language(repo,scene_id))
             if context.settings.edit_review=='review':
                 attempt.state='needs_review'
                 attempt.error='Оберіть точкові правки в панелі «Правки редактора» та застосуйте вибір. Поточну прозу не змінено.'
                 return repo.save_attempt(attempt)
         if stage=='edit' and 'language_warnings' not in attempt.context:
-            from .language import language_warnings
-            attempt.context['language_warnings']=language_warnings(text)
+            from .language import language_warnings, scene_prose_language
+            attempt.context['language_warnings']=language_warnings(text,scene_prose_language(repo,scene_id))
         kind={'prepare':'canon','brief':'brief','draft':'draft','edit':'edited','memory':'memory'}[stage]
         ref=repo.save_version(
             context.story_id,

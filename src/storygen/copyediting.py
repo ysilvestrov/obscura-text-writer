@@ -36,7 +36,7 @@ def protected_numbers(text: str) -> list[str]:
 
 
 def protected_negations(text: str) -> list[str]:
-    return re.findall(r'\b(?:не|ні|ніколи|ніхто|ніщо|нікому|нічого|not|no|never|nothing|nobody|none|neither|nor|nowhere)\b|\b\w+n[’\x27]t\b', text.casefold())
+    return re.findall(r'\b(?:не|ні|ніколи|ніхто|ніщо|нікому|нічого|not|cannot|no|never|nothing|nobody|none|neither|nor|nowhere)\b|\b\w+n[’\x27]t\b', text.casefold())
 
 
 def apply_copyedits(text: str, proposal: CopyEdits) -> str:

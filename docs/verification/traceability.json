@@ -752,6 +752,16 @@
       ]
     },
     {
+      "id": "LANGUAGE-WARNINGS-S02",
+      "requirement": "LANGUAGE-WARNINGS",
+      "scope": "Мовні підказки за мовою прози сцени. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/generation/test_language_warnings_language.py::test_english_prose_gets_only_language_neutral_hints",
+        "tests/generation/test_language_warnings_language.py::test_ukrainian_default_unchanged",
+        "tests/generation/test_language_warnings_language.py::test_version_language_check_follows_scene_prose_language"
+      ]
+    },
+    {
       "id": "UI-001-S01",
       "requirement": "UI-001",
       "scope": "Незбережені ручні зміни. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
@@ -2127,7 +2137,8 @@
       "scope": "R-24: мовний вибір, каталог і presentation guards; не доказ літературної якості чи реальної поведінки моделей.",
       "tests": [
         "tests/web/test_localization.py::test_api_diagnostic_preserves_original",
-        "tests/web/test_localization.py::test_diagnostics_do_not_translate_author_parameters"
+        "tests/web/test_localization.py::test_diagnostics_do_not_translate_author_parameters",
+        "tests/generation/test_language_warnings_language.py::test_story_changed_conflicts_are_localized"
       ]
     },
     {
@@ -3711,7 +3722,8 @@
         "tests/generation/test_english_guards.py::test_english_negation_removed_rejected",
         "tests/generation/test_english_guards.py::test_english_spelling_fix_allowed",
         "tests/generation/test_english_guards.py::test_rewrite_diff_warns_english_negation",
-        "tests/generation/test_english_guards.py::test_word_lists_are_a_union"
+        "tests/generation/test_english_guards.py::test_word_lists_are_a_union",
+        "tests/generation/test_language_warnings_language.py::test_cannot_is_protected_negation"
       ]
     },
     {

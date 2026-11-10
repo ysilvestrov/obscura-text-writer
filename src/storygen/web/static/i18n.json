@@ -2207,7 +2207,9 @@
     "language.locked": "Мову твору зафіксовано: у творі вже є матеріал, створений моделлю",
     "evaluation.english_not_evaluated": "Оцінювач відкалібровано лише для української прози; англійські сцени не оцінюються",
     "language.run_active": "Мову твору не можна змінити, поки виконується запуск",
-    "language.impact_blocked": "Зміна мови прози сцени потребує нової генерації або ручного перегляду"
+    "language.impact_blocked": "Зміна мови прози сцени потребує нової генерації або ручного перегляду",
+    "conflict.story_changed": "Твір уже змінено",
+    "conflict.story_changed_memory_kind": "Твір уже змінено. Оновіть таблицю; тип запису не збережено."
   },
   "en": {
     "ui.save": "Save",
@@ -4417,6 +4419,8 @@
     "language.locked": "The story language is fixed: the story already has model-generated material",
     "evaluation.english_not_evaluated": "The evaluator is calibrated for Ukrainian prose only; English scenes are not evaluated",
     "language.run_active": "The story language cannot be changed while a run is in progress",
-    "language.impact_blocked": "A change of the scene's prose language needs new generation or a manual review"
+    "language.impact_blocked": "A change of the scene's prose language needs new generation or a manual review",
+    "conflict.story_changed": "The story has already changed",
+    "conflict.story_changed_memory_kind": "The story has already changed. Refresh the table; the entry type was not saved."
   }
 }
