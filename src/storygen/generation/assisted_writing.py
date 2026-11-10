@@ -3,6 +3,7 @@ import json
 from ..authoring.comments import comment_fingerprint,validate_comment_set
 from ..authoring.blueprints import get_role_settings
 from .context import build_context,make_context
+from .context_labels import label
 
 
 def saved_inputs(repo,request):
@@ -27,7 +28,7 @@ def build_rewrite_context(repo,request):
     if not role or not role.provider.model.strip():raise ValueError('Роль не налаштовано: writer')
     view=repo.context_view(scene.story_id)
     base=build_context(view,scene.id,'rewrite',role,editor_source_id=source.id)
-    sections=[base.user_text,'АВТОРСЬКІ ВКАЗІВКИ — JSON ДАНІ\n'+json.dumps({'general':notes.general,'comments':[dict(id=c.id,instruction=c.instruction,quote=c.anchor.display_quote,start=c.anchor.start,end=c.anchor.end) for c in notes.comments]},ensure_ascii=False)]
+    sections=[base.user_text,label('rewrite_notes',view.story.language)+'\n'+json.dumps({'general':notes.general,'comments':[dict(id=c.id,instruction=c.instruction,quote=c.anchor.display_quote,start=c.anchor.start,end=c.anchor.end) for c in notes.comments]},ensure_ascii=False)]
     fragments={**base.fragments,'rewrite_notes':notes.model_dump_json(),'rewrite_comment_fingerprint':request.comment_fingerprint}
     ctx=make_context(view,view.story,view.get_scene(scene.id),'rewrite',role,sections,list(base.input_refs),fragments,
         accepted_prose_ids=base.accepted_stale_prose_ids,memory_metrics=base.memory_metrics,context_warnings=base.context_warnings,

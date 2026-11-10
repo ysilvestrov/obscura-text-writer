@@ -22,13 +22,13 @@ def entry_available(entry,active_scenes,scene):
     return anchor.position<=scene.position
 
 
-def project_characters(cards,scenes,scene_id):
+def project_characters(cards,scenes,scene_id,language='uk'):
+    from ..generation.context_labels import label
     active={scene.id:scene for scene in scenes if not scene.trashed_at}
     scene=active.get(scene_id)
     if scene is None:raise ValueError('Сцена проєкції недоступна')
     warnings=[EMPTY_CAST_WARNING] if cards and not scene.character_ids else [];included=[];excluded=0;sections=[]
-    labels={'timeless':'ПОЗАЧАСОВІ ВІДОМОСТІ','from_scene':'ДОСТУПНІ АВТОРСЬКІ ВКАЗІВКИ — НЕ ДОКАЗ МИНУЛИХ ПОДІЙ',
-        'unclassified':'НЕПЕРЕВІРЕНІ ЗА ЧАСОМ АВТОРСЬКІ ВІДОМОСТІ'}
+    labels={key:label('character_'+key,language) for key in ('timeless','from_scene','unclassified')}
     for card in cards:
         if card.id not in scene.character_ids:continue
         groups={key:[] for key in labels}
@@ -40,7 +40,7 @@ def project_characters(cards,scenes,scene_id):
             groups[entry.availability].append('— '+entry.text)
             included.append(entry.id)
         body='\n\n'.join(labels[key]+'\n'+'\n'.join(lines) for key,lines in groups.items() if lines)
-        if body:sections.append('ПЕРСОНАЖ: '+card.name+'\n'+body)
+        if body:sections.append(label('character',language)+card.name+'\n'+body)
     missing=set(scene.character_ids)-{card.id for card in cards}
     if missing:warnings.append('Для частини персонажів сцени немає карток; перевірте список персонажів.')
     return CharacterProjection('\n\n'.join(sections),warnings,included,excluded)

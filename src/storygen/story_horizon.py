@@ -16,7 +16,7 @@ def selected_plan_scenes(scenes,scene,settings):
     return future if count is None else future[:count+1]
 
 
-def horizon_instructions(scene,total):
-    boundary=('Поточна сцена остання: виконайте її власний план.' if scene.position==total-1 else
-              'Поточна сцена не остання: не завершуйте весь твір і не переносіть розв’язку сюди.')
-    return ('МЕЖІ ПОТОЧНОЇ СЦЕНИ\nРеалізуйте лише біти поточної сцени. Майбутні плани та орієнтир фіналу — задум, а не вже здійснені події. '+boundary)
+def horizon_instructions(scene,total,language='uk'):
+    from .generation.context_labels import label
+    boundary=label('horizon_last' if scene.position==total-1 else 'horizon_not_last',language)
+    return label('horizon',language)+boundary

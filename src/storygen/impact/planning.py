@@ -1,5 +1,7 @@
 """Read-only old/current narrative inputs with exact provenance and temporal projection."""
 import json
+from ..generation.context_labels import label as context_label
+SOURCE_FIELDS={'canon_version_id','style_version_id','characters_version_id','source_preamble','source_plan','source_characters'}
 from ..dependency_models import DependencySelector
 from ..storage.snapshots import rating_fallback,selector_value
 from ..rating.levels import from_wire,is_lower
@@ -67,11 +69,11 @@ def capture_target(view,version_id,*,baseline_override=None,current_sources_only
             # Read-only projection over shared view models; the old cast goes into a separate copy of the target scene.
             projected_scenes=view.peek_scenes(view.story.id)
             if old:projected_scenes=[item.model_copy(update={'character_ids':old_cast}) if item.id==scene.id else item for item in projected_scenes]
-            projection=project_characters(load_characters(raw),projected_scenes,scene.id)
+            projection=project_characters(load_characters(raw),projected_scenes,scene.id,view.story.language)
             warnings.update(projection.warnings)
             return projection.text
         if value.kind=='source_characters':
-            return '[Нерозмічені вихідні описи не передаються; використовуйте картки персонажів]'
+            return context_label('impact_raw_characters',view.story.language)
         if value.kind=='source_plan':
             from ..scene_description import SCENE_HEADING
             heading=SCENE_HEADING.search(raw)
@@ -85,7 +87,7 @@ def capture_target(view,version_id,*,baseline_override=None,current_sources_only
             journal,proof_hashes,prefix=validated_journal(view,id,owner)
             hashes.update(proof_hashes)
             numbers={source:item.position+1 for item,source in zip(prefix,journal.source_prose_ids)}
-            state='ПОТОЧНІ ДЖЕРЕЛА' if journal.source_prose_ids==[s.heads.get('prose') for s in prefix] else 'ІСТОРИЧНІ ДЖЕРЕЛА — НЕ ПЕРЕПРИВ’ЯЗАНІ ДО НОВОЇ ПРОЗИ'
+            state=context_label('impact_current_sources' if journal.source_prose_ids==[s.heads.get('prose') for s in prefix] else 'impact_historical_sources',view.story.language)
             from ..memory.core import tracked_characters
             from ..storage.snapshots import core_cards
             cards=core_cards(view,view.story)
@@ -93,7 +95,7 @@ def capture_target(view,version_id,*,baseline_override=None,current_sources_only
             policy=set(old_hidden if old else projection_policy(view,scene.id))
             return state+'\n'+project_memory(journal,old_cast if old else scene.character_ids,numbers,
                 hidden_claim_ids=policy,forwarded_claim_ids={e.claim_id for e in journal.events}-policy,
-                tracked=tracked_characters(cards,view.peek_scenes(view.story.id)),names={card.id:card.name for card in cards}).text
+                tracked=tracked_characters(cards,view.peek_scenes(view.story.id)),names={card.id:card.name for card in cards},language=view.story.language).text
         return raw
     def document(value,selector,old=False):
         kinds=({'plan':{'scene_plan'},'brief':{'brief'},'draft':{'draft'},'prose':{'edited','manual'},'memory':{'memory'}}.get(selector.field)
@@ -143,7 +145,8 @@ def capture_target(view,version_id,*,baseline_override=None,current_sources_only
                     raise ValueError('Невідповідна майбутня проза')
                 old_text,old_ref=document(selector.expected,selector,True);new_text,new_ref=document(current,selector)
                 key=fingerprint([selector.model_dump(),current,old_text,new_text])
-                label=view.scenes[selector.owner_id].title if selector.owner_id in view.scenes else {'canon_version_id':'Канон','style_version_id':'Стиль','characters_version_id':'Персонажі','source_preamble':'Авторські вказівки','source_plan':'План твору','source_characters':'Описи персонажів'}.get(selector.field,selector.field)
+                label=view.scenes[selector.owner_id].title if selector.owner_id in view.scenes else (context_label('field_'+selector.field,view.story.language)
+                    if selector.field in SOURCE_FIELDS else selector.field)
                 change=SourceChange(id=key,label=label,input_kind=selector.kind,input_field=selector.field,owner_id=selector.owner_id,old_ref=old_ref,new_ref=new_ref,
                     old_text=old_text,new_text=new_text,changed=old_text!=new_text or selector.expected!=current)
                 changes[key]=change

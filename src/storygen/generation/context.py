@@ -15,6 +15,7 @@ from ..memory.selection import SelectionInput, minimal_chars, select_memory
 from ..providers.models import RoleSettings
 from .models import StyleProfile
 from .prompts import role_prompt, validate_role_prompt
+from .context_labels import label, prose_language_directive
 from ..prompt_contracts import memory_wire_version
 from ..characters.context import character_material
 from ..characters.projection import OTHER_MATERIAL_WARNING
@@ -151,6 +152,10 @@ def make_context(repo,story,scene,stage,settings,sections,refs,fragments=None,ac
             from ..prompt_contracts import markdown_preservation
             system+='\n\n'+markdown_preservation(story.language)
     from ..rating.instructions import rating_instructions
+    if stage in {'draft','edit','rewrite'} and scene is not None:
+        # STORY-LANGUAGE-S03: a scene whose prose language differs from the story gets one sentence, before the rating block.
+        directive=prose_language_directive(story,scene)
+        if directive:system+='\n\n'+directive
     rating_text=rating_instructions(repo,story,scene,stage,settings)
     if rating_text:system+='\n\n'+rating_text
     warnings=list(context_warnings or [])
@@ -229,7 +234,8 @@ def build_context(repo,scene_id: str,stage: str,settings: RoleSettings,*,editor_
     validate_scene_participants(repo,story,scene)
     scenes=repo.list_scenes(story.id)
     refs=[]
-    sections=[f'СЦЕНА {scene.position+1}/{len(scenes)}: {scene.title}\nЦільовий обсяг: {scene.target_words} слів.']
+    language=story.language
+    sections=[label('scene_header',language,number=scene.position+1,total=len(scenes),title=scene.title,words=scene.target_words)]
     def add(label,id):
         ref=repo.get_version(id)
         if (ref.stale and not (stage=='memory' and ref.kind in {'edited','manual'}) and not (stage=='rewrite' and id==editor_source_id)) or not ref.complete:
@@ -253,7 +259,7 @@ def build_context(repo,scene_id: str,stage: str,settings: RoleSettings,*,editor_
         from ..memory.core import tracked_characters
         from ..memory.story_time import comparison_scene, day_change, day_key, day_label
         from ..memory.wire_v4 import schema_bounds_v4
-        add('ПОТОЧНА ПРОЗА',prose_id)
+        add(label('current_prose',language),prose_id)
         # Only v4 prompts pass preflight; /2 and /3 contracts are rejected before any request.
         wire=memory_wire_version(validate_role_prompt(repo,story.id,'memory',settings))
         cards=load_characters(repo.read_text(story.characters_version_id)) if story.characters_version_id else []
@@ -269,15 +275,15 @@ def build_context(repo,scene_id: str,stage: str,settings: RoleSettings,*,editor_
             bounds=schema_bounds_v4(past,prose_text,scene.character_ids,everyone,changed,keep=keep)
             return catalog,parts,bounds,stage_sections(parts)
         def stage_sections(parts):
-            sections=['ЯДРО СТАНУ ВІДСТЕЖУВАНИХ ПЕРСОНАЖІВ — УСІ СЛОТИ ОБОВ’ЯЗКОВІ\n'+dump({'names':parts['names'],'core':parts['core']}),
-                'АКТИВНІ ЛІНІЇ — ДЛЯ КОЖНОЇ ОБОВ’ЯЗКОВЕ open/closed\n'+dump(parts['threads']),
-                'ЧИННІ ТВЕРДЖЕННЯ — MUTABLE ДЛЯ UPDATE/RETIRE, IMMUTABLE ЛИШЕ ДЛЯ УНИКНЕННЯ ПОВТОРІВ\n'+dump({'mutable':parts['mutable'],'immutable':parts['immutable']})]
+            sections=[label('memory_core',language)+'\n'+dump({'names':parts['names'],'core':parts['core']}),
+                label('memory_threads',language)+'\n'+dump(parts['threads']),
+                label('memory_claims',language)+'\n'+dump({'mutable':parts['mutable'],'immutable':parts['immutable']})]
             for cid in tracked:
                 if changed[cid]:
-                    sections.append(f'ЗМІНИВСЯ ДЕНЬ: {day_label(day_key(comparison_scene(scenes,scene,cid)))} → {day_label(day_key(scene))} ({parts["names"][cid]})\n'
-                        'Одяг, речі при собі й тілесний стан могли застаріти: якщо проза їх не підтверджує, познач unknown із причиною.')
-            sections+=['ДОЗВОЛЕНІ CHARACTER_IDS ДЛЯ НОВИХ СТАНІВ\n'+json.dumps(scene.character_ids,ensure_ascii=False),
-                f'ПОТОЧНА ПРОЗА [version_id={prose_id}] — НУМЕРОВАНІ ФРАГМЕНТИ\n'+render_fragments(prose_text)]
+                    sections.append(label('day_changed',language,before=day_label(day_key(comparison_scene(scenes,scene,cid)),language),
+                        after=day_label(day_key(scene),language),name=parts['names'][cid]))
+            sections+=[label('allowed_ids',language)+'\n'+json.dumps(scene.character_ids,ensure_ascii=False),
+                label('prose_fragments',language,id=prose_id)+'\n'+render_fragments(prose_text)]
             return sections
         catalog,parts,bounds,sections=catalog_sections()
         def narrower():
@@ -299,18 +305,18 @@ def build_context(repo,scene_id: str,stage: str,settings: RoleSettings,*,editor_
         from .evidence import render_fragments
         draft_id=editor_source_id or scene.heads.get('draft')
         if not draft_id:raise ValueError('Спершу створіть чернетку')
-        add('ЧЕРНЕТКА',draft_id)
-        sections=[repo.read_text(draft_id)] if settings.edit_mode=='diff' else [f'ЧЕРНЕТКА [version_id={draft_id}] — НУМЕРОВАНІ ФРАГМЕНТИ\n'+render_fragments(repo.read_text(draft_id))]
+        add(label('draft',language),draft_id)
+        sections=[repo.read_text(draft_id)] if settings.edit_mode=='diff' else [label('draft_fragments',language,id=draft_id)+'\n'+render_fragments(repo.read_text(draft_id))]
         return make_context(repo,story,scene,stage,settings,sections,refs,{'copyedit_draft_id':draft_id})
     profile=StyleProfile()
     warnings=[]
     if story.style_version_id:
-        add('ПРОФІЛЬ ПИСЬМА',story.style_version_id)
+        add(label('style',language),story.style_version_id)
         profile=StyleProfile.model_validate_json(repo.read_text(story.style_version_id))
         if profile.ending_goal.strip():
-            sections[-1]=f'ПРОФІЛЬ ПИСЬМА [version_id={story.style_version_id}]\n'+profile.model_dump_json(exclude={'ending_goal'})
+            sections[-1]=label('style',language)+f' [version_id={story.style_version_id}]\n'+profile.model_dump_json(exclude={'ending_goal'})
     if story.canon_version_id:
-        add('АВТОРСЬКИЙ КАНОН',story.canon_version_id)
+        add(label('canon',language),story.canon_version_id)
         warnings.append(OTHER_MATERIAL_WARNING)
     character_text,character_warnings,character_refs=character_material(repo,story,scene)
     if character_text:sections.append(character_text)
@@ -327,22 +333,22 @@ def build_context(repo,scene_id: str,stage: str,settings: RoleSettings,*,editor_
         if preamble:
             warnings.append(OTHER_MATERIAL_WARNING)
             refs.append(source_plan.id)
-            sections.append(f'ГЛОБАЛЬНІ АВТОРСЬКІ ВКАЗІВКИ [version_id={source_plan.id}]\n'+preamble)
+            sections.append(label('global_notes',language)+f' [version_id={source_plan.id}]\n'+preamble)
     # Author plans are explicitly future intentions, never evidence of completed events.
     for item in selected_plan_scenes(scenes,scene,settings):
         if item.heads.get('plan'):
-            add(f'МАЙБУТНІ ПОДІЇ — ПЛАН СЦЕНИ {item.position+1}',item.heads['plan'])
+            add(label('future_plan',language,number=item.position+1),item.heads['plan'])
         else:
-            sections.append(f'МАЙБУТНІ ПОДІЇ — ПЛАН СЦЕНИ {item.position+1}\n{item.beats}')
+            sections.append(label('future_plan',language,number=item.position+1)+f'\n{item.beats}')
     count=horizon_future_count(settings)
     if count is not None:
         warnings.append(HORIZON_LIMIT_WARNING)
-        sections.append(horizon_instructions(scene,len(scenes)))
+        sections.append(horizon_instructions(scene,len(scenes),language))
         if count==0 and not profile.ending_goal.strip():
             warnings.append(MISSING_ENDING_WARNING)
     if profile.ending_goal.strip():
-        sections.append('АВТОРСЬКИЙ ОРІЄНТИР ФІНАЛУ — ЗАДУМ, НЕ ЗДІЙСНЕНІ ПОДІЇ\n'+profile.ending_goal)
-        if count is None:sections.append(horizon_instructions(scene,len(scenes)))
+        sections.append(label('ending_goal',language)+'\n'+profile.ending_goal)
+        if count is None:sections.append(horizon_instructions(scene,len(scenes),language))
     past=journal_before(repo,scene.id)
     from ..memory.reuse import provenance_before, provenance_warnings
     inherited_provenance=provenance_before(repo,scene.id)
@@ -355,18 +361,18 @@ def build_context(repo,scene_id: str,stage: str,settings: RoleSettings,*,editor_
     source_numbers={id:scene_numbers[repo.get_version(id).scene_id] for id in past.source_prose_ids}
     hidden,forwarded=hidden_before(repo,scene.id),forwarded_before(repo,scene.id)
     tracked=tracked_characters(cards,scenes);names={card.id:card.name for card in cards}
-    projection=project_memory(past,scene.character_ids,source_numbers,hidden_claim_ids=hidden,forwarded_claim_ids=forwarded,tracked=tracked,names=names)
-    memory_header='ЗДІЙСНЕНІ ПОДІЇ — ПЕРЕВІРЕНА ПАМ’ЯТЬ\n'
+    projection=project_memory(past,scene.character_ids,source_numbers,hidden_claim_ids=hidden,forwarded_claim_ids=forwarded,tracked=tracked,names=names,language=language)
+    memory_header=label('memory_header',language)+'\n'
     memory_index=len(sections)
     sections.append(memory_header+projection.text)
     def selection_input():
         from ..memory.story_time import day_key
-        items,_=memory_items(past,scene.character_ids,source_numbers,hidden_claim_ids=hidden,forwarded_claim_ids=forwarded,tracked=tracked,names=names)
+        items,_=memory_items(past,scene.character_ids,source_numbers,hidden_claim_ids=hidden,forwarded_claim_ids=forwarded,tracked=tracked,names=names,language=language)
         # FTS query: the scene's own plan (already in refs) and, where it is a required input, its brief.
         query=[repo.read_text(scene.heads['plan']) if scene.heads.get('plan') else scene.beats]
         if stage in {'draft','edit'} and scene.heads.get('brief'):query.append(repo.read_text(scene.heads['brief']))
         return SelectionInput(tuple(items),scene.id,scene.position+1,tuple(scene.character_ids),tuple(tracked),names,'\n'.join(query),kinds(),
-            day_key(scene),{s.position+1:day_key(s) for s in scenes if s.position<scene.position})
+            day_key(scene),{s.position+1:day_key(s) for s in scenes if s.position<scene.position},language)
     def kinds():
         from ..memory.kinds import kind_overrides
         return kind_overrides(repo if hasattr(repo,'peek_scene') else repo.context_view(story.id),scene.id)
@@ -378,15 +384,15 @@ def build_context(repo,scene_id: str,stage: str,settings: RoleSettings,*,editor_
         refs.append(previous[-1].heads['memory'])
         tail=repo.read_text(previous[-1].heads['prose'])[-profile.previous_tail_chars:] if profile.previous_tail_chars else ''
         fragments['previous_prose_tail']=tail
-        sections.append('ЗАВЕРШЕННЯ ПОПЕРЕДНЬОЇ СЦЕНИ (явно вибраний фрагмент)\n'+tail)
+        sections.append(label('previous_tail',language)+'\n'+tail)
     if stage=='rewrite':
         fragments['rewrite_source_id']=editor_source_id
-        add('ЗБЕРЕЖЕНА ЧЕРНЕТКА ДЛЯ ПЕРЕПИСУВАННЯ',editor_source_id)
+        add(label('rewrite_source',language),editor_source_id)
     required={'rewrite':[],'brief':[],'draft':['brief'],'edit':['brief','draft'],'memory':['prose']}[stage]
     for head in required:
         version_id=editor_source_id if stage=='edit' and head=='draft' and editor_source_id else scene.heads.get(head)
         if not version_id:
             raise ValueError('Спершу завершіть попередній етап: '+head)
         if stage=='edit' and head=='draft':fragments['copyedit_draft_id']=version_id
-        add({'brief':'ЗАВДАННЯ ПИСЬМЕННИКУ','draft':'ЧЕРНЕТКА ДЛЯ РЕДАКТУРИ','prose':'ПОТОЧНА ПРОЗА — ДЖЕРЕЛО НОВОЇ ПАМ’ЯТІ'}[head],version_id)
+        add(label('head_'+head,language),version_id)
     return make_context(repo,story,scene,stage,settings,sections,refs,fragments,accepted_prose_ids=past.source_prose_ids,memory_metrics=projection.metrics,context_warnings=warnings,memory_provenance=inherited_provenance,memory_selector=memory_selector)

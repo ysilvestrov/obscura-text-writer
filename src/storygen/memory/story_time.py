@@ -25,10 +25,11 @@ def day_key(scene):
     return start[0] if start else None
 
 
-def day_label(key):
-    # Literary form of a day key for prompts: «день 3» or «1.3.2024»; the key format never reaches the model.
+def day_label(key, language='uk'):
+    # Literary form of a day key for prompts: «день 3»/«day 3» or «1.3.2024»; the key format never reaches the model.
     kind,value=key.split(':',1)
-    return f'день {value}' if kind=='day' else value
+    if kind!='day':return value
+    return f'day {value}' if language=='en' else f'день {value}'
 
 
 def comparison_scene(scenes,scene,character_id):
