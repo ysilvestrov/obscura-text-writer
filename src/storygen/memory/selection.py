@@ -4,7 +4,6 @@ Selection runs only when the full memory section does not fit the request. Candi
 projection (memory_items), so a selected section is always a subset of the full one. The core is never cut."""
 import hashlib
 import re
-import sqlite3
 from dataclasses import dataclass, field
 from typing import Mapping
 
@@ -109,15 +108,9 @@ def classify(inp: SelectionInput) -> dict[str,list[MemoryItem]]:
 
 def fts_rank(items: list[MemoryItem], query_text: str) -> list[MemoryItem]:
     """BM25 over a trigram FTS5 index of candidate texts; ties by claim_id. An empty query ranks nothing."""
+    from ..storage.fts import bm25_rank
     terms=sorted({w.replace('"','') for w in _WORD.findall(_norm(query_text)) if len(w)>=3})
-    if not terms or not items:return []
-    db=sqlite3.connect(':memory:')
-    try:
-        db.execute("CREATE VIRTUAL TABLE t USING fts5(body, tokenize='trigram')")
-        db.executemany('INSERT INTO t(rowid, body) VALUES (?, ?)',[(i,_norm(item.text)) for i,item in enumerate(items)])
-        rows=db.execute('SELECT rowid, bm25(t) FROM t WHERE t MATCH ?',(' OR '.join(f'"{t}"' for t in terms),)).fetchall()
-    finally:
-        db.close()
+    rows=bm25_rank([_norm(item.text) for item in items],terms)
     return [items[i] for i,_ in sorted(rows,key=lambda row:(row[1],items[row[0]].claim_id))]
 
 
