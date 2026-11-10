@@ -119,5 +119,7 @@ document.querySelector('#profile-form').onsubmit=async event=>{
  try{await withSettingsSave('writing',async()=>{const revision=await checkScope('writing',profileBaseline);snapshot.story=await api(`/api/stories/${id}/settings`,json('PUT',{expected_revision:revision,profile,target_words}));settingsSaved('writing');await load('writing');notice(msg("m_01e9934fcb2b"))})}catch(e){settingsFormError('writing',e);notice(e.message,'error')}
 };
 load().catch(e=>{uiText(document.querySelector('#settings-loading'),"textContent",()=>(diagnostic(e.message)));notice(e.message,'error')});
+// The story language changes default role prompts: rebuild role forms so their baselines match the server (#32).
+document.addEventListener('story-language-changed',()=>load().catch(e=>notice(e.message,'error')));
 
 function caption(key){const span=document.createElement('span');uiText(span,'textContent',()=>t(key));return span}

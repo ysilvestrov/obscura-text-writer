@@ -17,14 +17,18 @@ test('story and scene language in the interface',async({page,request})=>{
 
   await request.post(`/api/stories/${storyId}/scenes`,{data:{title:'Arrival',beats:'Scene 1: Arrival\nCharacters: Anna'}});
   await page.goto(`/stories/${storyId}/settings#writing`);
-  const openWriting=async()=>{
-    const nav=page.locator('[data-settings-nav=writing]').first();
-    if(await nav.isVisible())await nav.click();else await page.locator('#settings-section-mobile').selectOption('writing');
-  };
+  // Desktop has the side navigation, mobile the section select (declared by the test project).
+  const openWriting=async()=>test.info().project.name==='mobile'
+    ?page.locator('#settings-section-mobile').selectOption('writing')
+    :page.locator('[data-settings-nav=writing]').first().click();
   await openWriting();
   const language=page.locator('#story-language-form select[name=language]');
   await expect(language).toHaveValue('en');
   await expect(language).toBeEnabled();
+  // Saving another writing setting bumps the story revision; the language change must still go through.
+  await page.locator('input[name=target_words]').fill('8000');
+  await page.locator('#settings-save').click();
+  await expect.poll(async()=>(await(await request.get(`/api/stories/${storyId}`)).json()).story.target_words).toBe(8000);
   await language.selectOption('uk');
   await expect.poll(async()=>(await(await request.get(`/api/stories/${storyId}`)).json()).story.language).toBe('uk');
   await expect(language).toBeEnabled();
