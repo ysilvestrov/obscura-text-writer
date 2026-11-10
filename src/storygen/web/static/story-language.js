@@ -10,7 +10,7 @@ if(root&&form){
     const view=await api(`/api/stories/${id}`);story=view.story;
     select.value=story.language||'uk';
     select.disabled=!!view.language_locked;
-    uiText(help,'textContent',()=>view.language_locked?t('language.locked'):t('language.help'));
+    uiText(help,'textContent',()=>view.language_locked?t('language.locked'):t('language.help_settings'));
   }
   form.onsubmit=event=>event.preventDefault();
   select.onchange=async()=>{
