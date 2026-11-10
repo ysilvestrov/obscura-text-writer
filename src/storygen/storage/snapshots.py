@@ -137,6 +137,9 @@ def selector_value(view, selector: DependencySelector):
     if kind=='scene' and field=='memory_projection_policy':
         from ..memory.forwarding import projection_policy
         return projection_policy(view,owner)
+    if kind=='scene' and field=='memory_kind_overrides':
+        from ..memory.kinds import kind_overrides
+        return kind_overrides(view,owner)
     if kind=='scene' and field=='content_rating':
         return to_wire(effective_rating(view.peek_story(view.story.id), view.peek_scene(owner)))
     if kind == 'story' and owner == view.story.id and field in {

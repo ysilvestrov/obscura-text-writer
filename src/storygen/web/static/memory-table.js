@@ -38,7 +38,7 @@ export function installMemoryTable({state,api,json,notice,refresh,loadBuffer}){
   const wrap=node('div');wrap.className='memory-table-wrap';
   const table=node('table');table.className='memory-table';
   const caption=node('caption',msg("m_80a7d9ba02de"));const head=node('thead'),header=node('tr');
-  for(const title of [msg("m_6cf9b3a4b307"),msg("m_461437b0662b"),msg("m_7f3e53d4d224"),msg("m_aca3cc594690")]){const th=node('th',live(()=>(title)));th.scope='col';header.append(th);}
+  for(const title of [msg("m_6cf9b3a4b307"),msg("m_461437b0662b"),msg("m_7f3e53d4d224"),msg("m_aca3cc594690"),msg("memory.kind")]){const th=node('th',live(()=>(title)));th.scope='col';header.append(th);}
   head.append(header);const body=node('tbody');table.append(caption,head,body);wrap.append(table);
   const reviewBox=node('section');
   panel.append(help,actions,info,reviewBox,tools,wrap);
@@ -72,11 +72,32 @@ export function installMemoryTable({state,api,json,notice,refresh,loadBuffer}){
     if(visible&&!advanced)saveButton.disabled=loading||state.saving||!data?.can_save||!state.dirty;
     else if(visible&&advanced)saveButton.disabled=loading||state.saving;
   }
+  let kindBusy=false;
+  function kindControl(row){
+    // MEMORY-SELECT-S08: the author's selection mark, saved at once with CAS on the story revision (not via Save).
+    const cell=node('td');
+    if(row.slot){cell.append(node('span',msg('memory.kind_slot')));return cell;}
+    const select=node('select');uiAttr(select,'aria-label',()=>t('memory.kind_label',{p0:row.text}));select.className='memory-kind';
+    for(const [value,label] of [['',msg('memory.kind_auto')],['core',msg('memory.kind_core')],['atmosphere',msg('memory.kind_atmosphere')]]){const o=node('option',live(()=>(label)));o.value=value;select.append(o);}
+    select.value=row.kind||'';select.disabled=state.saving||kindBusy||data?.story_revision==null;
+    select.onchange=async()=>{
+      if(kindBusy||state.saving)return;
+      const snapshot=data,captured=currentKey(),kind=select.value||null;kindBusy=true;draw();
+      try{
+        const story=await api(`/api/stories/${snapshot.scene.story_id}/memory-kind`,json('PUT',{claim_id:row.claim_id,kind,expected_revision:snapshot.story_revision}));
+        snapshot.story_revision=story.revision;row.kind=kind;notice(t('memory.kind_saved'));
+      }catch(error){
+        notice(error.message,'error');
+        if(currentKey()===captured&&!state.dirty){kindBusy=false;void load();return;}
+      }finally{kindBusy=false;if(data===snapshot)draw();}
+    };
+    cell.append(select);return cell;
+  }
   function draw(){
     body.replaceChildren();if(!data){controls();return;}
     const rows=data.rows.filter(row=>(!filter.value||row.category===filter.value)&&(!sceneFilter.value||row.source_scene_id===sceneFilter.value)&&`${row.text} ${row.source_title}`.toLocaleLowerCase('uk').includes(search.value.toLocaleLowerCase('uk')));
     counts(rows.length);
-    if(!rows.length&&data.rows.length){const tr=node('tr'),td=node('td',msg("m_2d74a1418749"));td.colSpan=4;tr.append(td);body.append(tr);}
+    if(!rows.length&&data.rows.length){const tr=node('tr'),td=node('td',msg("m_2d74a1418749"));td.colSpan=5;tr.append(td);body.append(tr);}
     for(const row of rows){
       const tr=node('tr'),choice=node('td'),content=node('td'),category=node('td',live(()=>(diagnostic(row.category_label)+(row.closed?t("m_d5c9ae2ce4bc"):'')))),source=node('td',live(()=>(row.source_scene?t("m_90d9f38d6edc",{p0:(row.source_scene),p1:(row.source_title)}):row.source_title)));
       const check=node('input');check.type='checkbox';check.checked=pending[row.claim_id]??row.forward;
@@ -90,8 +111,9 @@ export function installMemoryTable({state,api,json,notice,refresh,loadBuffer}){
       };
       choice.append(check);content.append(node('p',live(()=>(row.text))));
       const proof=node('details');proof.append(node('summary',msg("m_a09205d5a71e")),node('p',live(()=>(row.quote||t("m_d657ca4e0613")))));for(const extra of Array.isArray(row.supporting_quotes)?row.supporting_quotes:[])proof.append(node('p',live(()=>(extra))));content.append(proof);
-      [choice,content,category,source].forEach((td,i)=>uiAttr(td,'data-label',()=>[msg("m_6cf9b3a4b307"),msg("m_461437b0662b"),msg("m_7f3e53d4d224"),msg("m_aca3cc594690")][i]));
-      tr.append(choice,content,category,source);body.append(tr);
+      const kindCell=kindControl(row);
+      [choice,content,category,source,kindCell].forEach((td,i)=>uiAttr(td,'data-label',()=>[msg("m_6cf9b3a4b307"),msg("m_461437b0662b"),msg("m_7f3e53d4d224"),msg("m_aca3cc594690"),msg("memory.kind")][i]));
+      tr.append(choice,content,category,source,kindCell);body.append(tr);
     }
     controls();
   }

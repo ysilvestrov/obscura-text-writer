@@ -198,6 +198,12 @@ def make_context(repo,story,scene,stage,settings,sections,refs,fragments=None,ac
     from ..dependency_models import MemoryReuseApproval
     snapshot.memory_provenance=[MemoryReuseApproval.model_validate(p) for p in memory_provenance]
     snapshot.accepted_stale_memory_ids=list(accepted_memory_ids)
+    if 'selection' in memory_metrics and scene:
+        # MEMORY-SELECT-S08 (I8): author marks stale only versions whose request was built with selection.
+        from ..dependency_models import DependencySelector
+        # Computed here, not via memory_selector: a rewrite re-enters make_context with the base metrics and no selector.
+        from ..memory.kinds import kind_overrides
+        snapshot.selectors.append(DependencySelector(kind='scene',owner_id=scene.id,field='memory_kind_overrides',expected=kind_overrides(repo,scene.id)))
     if memory_provenance:
         fingerprint=hashlib.sha256((fingerprint+snapshot.model_dump_json()).encode()).hexdigest()
     head={'brief':'brief','draft':'draft','edit':'prose','memory':'memory','rewrite':'draft'}.get(stage)
@@ -359,8 +365,11 @@ def build_context(repo,scene_id: str,stage: str,settings: RoleSettings,*,editor_
         # FTS query: the scene's own plan (already in refs) and, where it is a required input, its brief.
         query=[repo.read_text(scene.heads['plan']) if scene.heads.get('plan') else scene.beats]
         if stage in {'draft','edit'} and scene.heads.get('brief'):query.append(repo.read_text(scene.heads['brief']))
-        return SelectionInput(tuple(items),scene.id,scene.position+1,tuple(scene.character_ids),tuple(tracked),names,'\n'.join(query),{},
+        return SelectionInput(tuple(items),scene.id,scene.position+1,tuple(scene.character_ids),tuple(tracked),names,'\n'.join(query),kinds(),
             day_key(scene),{s.position+1:day_key(s) for s in scenes if s.position<scene.position})
+    def kinds():
+        from ..memory.kinds import kind_overrides
+        return kind_overrides(repo if hasattr(repo,'peek_scene') else repo.context_view(story.id),scene.id)
     memory_selector=MemorySelector(memory_index,memory_header,projection.text,selection_input)
     previous=[s for s in scenes if s.position<scene.position]
     fragments={}

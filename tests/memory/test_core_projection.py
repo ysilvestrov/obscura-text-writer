@@ -87,7 +87,7 @@ def test_legacy_closure_stays_in_timeline():
 
 
 def scene(**kw):
-    base=dict(id='s1',story_id='st',position=0,title='Сцена 1',revision=0,memory_forwarding={},heads={'memory':'m1','prose':'p1'})
+    base=dict(id='s1',story_id='st',position=0,title='Сцена 1',revision=0,memory_forwarding={},heads={'memory':'m1','prose':'p1'},trashed_at=None,character_ids=[])
     base.update(kw);return SimpleNamespace(**base)
 
 
@@ -100,6 +100,7 @@ class View:
     peek_scenes=list_scenes
     def read_text(self,id):return self.j.model_dump_json()
     def get_version(self,id):return self.versions[id]
+    def get_story(self,id):return SimpleNamespace(id=id,revision=0,memory_kind_overrides={},characters_version_id=None)
 
 
 def version(scene_id,stale=False):

@@ -77,6 +77,9 @@ def memory_view_from_view(view,scene_id):
     sources={s.heads.get('prose'):s for s in scenes}
     labels={'facts':'Факт','character_states':'Стан персонажа','open_threads':'Сюжетна лінія','timeline':'Хронологія'}
     hidden=effective_hidden(journal,{id for id,enabled in choices.items() if not enabled},forwarded={id for id in choices if choices[id]})
+    from .kinds import is_core_slot, tracked_ids
+    story=view.get_story(scene.story_id);marks=story.memory_kind_overrides;tracked=tracked_ids(view,story)
+    result['story_revision']=story.revision
     for event in entries.values():
         # The title and scene follow the version the quote was taken from.
         quoted=event.evidence_version_id or event.source_version_id
@@ -87,7 +90,9 @@ def memory_view_from_view(view,scene_id):
         result['rows'].append({'claim_id':event.claim_id,'text':event.text,'category':event.category,
             'category_label':labels[event.category],'source_scene':source.position+1 if source else None,
             'source_title':source.title if source else 'Попереднє джерело','quote':event.quote,'supporting_quotes':list(event.supporting_quotes),
-            'forward':event.claim_id not in hidden,'closed':event.operation=='retire'})
+            'forward':event.claim_id not in hidden,'closed':event.operation=='retire',
+            # MEMORY-SELECT-S08: the author's selection mark; a core slot is always shown and takes none.
+            'kind':marks.get(event.claim_id),'slot':is_core_slot(event,tracked)})
     stale=view.get_version(memory_id).stale
     result.update(can_save=not stale,reason='Пам’ять застаріла: спершу оновіть її' if stale else None)
     return result

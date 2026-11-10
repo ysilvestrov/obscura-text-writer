@@ -1,4 +1,7 @@
+from typing import Literal
+
 from fastapi import APIRouter, Request
+from pydantic import Field
 
 from ..domain import ContentRating, DomainModel
 
@@ -19,6 +22,18 @@ class SceneRatingChange(DomainModel):
 @router.put('/api/stories/{story_id}/content-rating')
 def put_story_rating(story_id: str,change: StoryRatingChange,request: Request):
     return request.app.state.repo.update_story_rating(story_id,change.content_rating,change.expected_revision)
+
+
+class MemoryKindChange(DomainModel):
+    claim_id: str = Field(min_length=1,max_length=200)
+    kind: Literal['core','atmosphere'] | None
+    expected_revision: int
+
+
+@router.put('/api/stories/{story_id}/memory-kind')
+def put_memory_kind(story_id: str,change: MemoryKindChange,request: Request):
+    # MEMORY-SELECT-S08: an author mark for selection; CAS on the story revision.
+    return request.app.state.repo.update_memory_kind(story_id,change.claim_id,change.kind,change.expected_revision)
 
 
 @router.put('/api/scenes/{scene_id}/content-rating')

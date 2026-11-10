@@ -48,6 +48,20 @@ Order of importance:
 
 A dropped timeline is marked in the request itself by the first line of the timeline section, for example "Не показано записів: 12 (сцени 1–12)" (12 entries not shown, scenes 1–12). If even the core does not fit, the request is not sent and the application explains that the core is never cut: reduce other materials (canon, previous prose tail, plan horizon) or increase the context to match the real model. Participants are matched by the stem of their name, so another case form (for example «Олі» for «Оля») may not be recognised; such an entry can still come in through the plan words. The memory stage likewise receives the full catalogue while it fits. When it does not, the catalogue is narrowed: the core and every thread stay, and of the other entries the states of scene participants and general states, up to 20 states found by the prose text, facts about participants and the timeline of the last 20 scenes. The application warns: "Каталог пам’яті звужено: N записів не показано моделі" (memory catalogue narrowed: N entries not shown to the model). An entry that was not shown cannot be updated in this run, so if the prose changed it, the model may add a new duplicate entry; check the memory table and turn off the extra one.
 
+### Entry type: core or atmosphere
+
+The last column of the table, **Type**, tells selection what to do with the entry when memory does not fit the context:
+
+- **Auto**: the entry goes into a layer by the usual rules.
+- **Core**: the entry is always shown, together with the hero's core.
+- **Atmosphere**: the entry only gets into the small atmosphere share (about 10% of the memory budget).
+
+Core slots of tracked characters are shown as "Core (slot)" and their type cannot be changed. The choice is saved at once, without the Save button, and applies to the whole story. While the full memory fits, a mark changes nothing. It makes stale only texts built with selection in which this entry was already in memory. If the story was changed meanwhile in another tab, the application reports a conflict and reloads the table.
+
+![Memory table with the Type column, neutral example](../images/memory-kind-desktop.png)
+
+What was selected is shown in the scene and context statistics: the line "Memory selection: X of Y chosen, Z dropped" with the layers where entries were dropped.
+
 ## Confirming the core
 
 On the **Memory** tab, below the table buttons, there is a **Protagonist core and threads** panel. It compares this scene's memory with the memory it was built from: for each core slot it shows "was" and "now", for an unknown value the model's reason, and for a closed thread its resolution. The **Changes** group is expanded; the **Unchanged** group (and threads that stay open) is collapsed. The top line shows the state: "Not confirmed" or "Confirmed" with the time. In the first scene or an older story without a core, the panel shows "The core is not filled in yet" and only the threads.

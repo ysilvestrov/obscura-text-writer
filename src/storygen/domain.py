@@ -47,6 +47,8 @@ class Story(StoryCreate):
     style_version_id: str | None = None
     canon_version_id: str | None = None
     characters_version_id: str | None = None
+    # Author marks for memory selection (#60, MEMORY-SELECT-S08); act only when selection runs.
+    memory_kind_overrides: dict[str,Literal['core','atmosphere']] = Field(default_factory=dict,max_length=10000)
     created_at: str = Field(default_factory=now)
 
 

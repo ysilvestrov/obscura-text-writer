@@ -64,6 +64,7 @@ def scene_statistics(repo,scene_id,stage,editor_source_head=None,editor_source_v
                 if editor_source_head or editor_source_version_id:raise ValueError('Явне джерело дозволено лише для редактури')
                 ctx=build_context(view,scene_id,stage,role)
             context.update(available=True,within_limits=True,**ctx.context_breakdown)
+            context.update(memory_summary(ctx.memory_metrics))
         except ContextOverflow as exc:
             context.update(available=True,within_limits=False,reason=str(exc),**(exc.breakdown or {}))
         except ValueError as exc:context['reason']=str(exc)
@@ -72,3 +73,13 @@ def scene_statistics(repo,scene_id,stage,editor_source_head=None,editor_source_v
     usage={'created_at':last.created_at,'model':last.context['api_request'].get('model'),'state':last.state,'usage':last.usage} if last else None
     return {'scene_id':scene.id,'scene_revision':scene.revision,'target_words':scene.target_words,
         'materials':materials,'memory':{'previous':prior,'through_scene':current},'stage':stage,'context':context,'last_usage':usage}
+
+
+def memory_summary(metrics) -> dict:
+    """What memory selection did in this request (#60, MEMORY-SELECT-S08); empty when the full memory fitted."""
+    if metrics.get('selection'):
+        sel=metrics['selection'];selected=sum(sel['layers'].values());dropped=sum(sel['dropped'].values())
+        return {'memory_selection':{'selected':selected,'total':selected+dropped,'dropped':dropped,
+            'layers':{k:v for k,v in sel['layers'].items() if v},'dropped_layers':{k:v for k,v in sel['dropped'].items() if v}}}
+    if metrics.get('narrow'):return {'memory_narrow':dict(metrics['narrow'])}
+    return {}
