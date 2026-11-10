@@ -2,6 +2,7 @@ import {confirmDialog,promptDialog} from './dialogs.js';
 import {live,t,msg,labelEntries,getLocale,uiText,uiAttr,uiHTML} from './i18n.js';
 import {api,json,notice} from './api.js';
 import {renderImportJournal} from './import-journal.js';
+import {sceneStatus} from './workspace-status.js';
 import {renderImportResults,showImportPending,showImportRefreshWarning} from './import-results.js';
 import {installSceneTrash} from './trash.js';
 import {createTextEditor} from './text-editor.js';
@@ -86,7 +87,7 @@ export async function refresh(options){
   for(const scene of state.view.scenes){
     const button=document.createElement('button');button.className='scene-item'+(state.scene?.id===scene.id?' active':'');uiText(button,"textContent",()=>((scene.position+1)+'. '+displaySceneTitle(scene.title)));
     button.setAttribute('aria-current',state.scene?.id===scene.id?'true':'false');
-    const small=document.createElement('small');uiText(small,"textContent",()=>(!scene.heads.prose&&!scene.heads.draft?(scene.heads.brief?t("m_4b3a60e43929"):t("m_521bdc3a57e0")):state.view.impact_status?.[scene.id]?.prose==='changes_required'?t('impact.changes_required'):state.view.impact_status?.[scene.id]?.prose==='no_impact'?t('impact.current'):scene.needs_review?(state.view.impact_status?.[scene.id]?.prose==='pending'?t('impact.pending'):t("m_f3522e6a9fcc")):scene.heads.prose?t("m_79679b4689c4"):t("m_4de0a8f8a92b")));button.append(small);button.onclick=()=>selectScene(scene);list.append(button);
+    const small=document.createElement('small');uiText(small,"textContent",()=>sceneStatus(scene,state.view.impact_status).label);button.append(small);button.onclick=()=>selectScene(scene);list.append(button);
   }
   if(!state.scene&&state.view.scenes.length)await selectScene(resolveWorkspacePosition(state.view.scenes,initialWorkspacePosition).scene);
   renderImportJournal(document.querySelector('#context-content'),state.view.source_files||[],state.view.active_sources||{});
