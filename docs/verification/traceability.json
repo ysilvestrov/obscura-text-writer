@@ -3584,7 +3584,9 @@
         "tests/generation/test_context_selection.py::test_selection_is_deterministic",
         "tests/memory/test_selection.py::test_budget_is_respected_and_every_line_counted",
         "tests/memory/test_selection.py::test_selection_is_deterministic",
-        "tests/retrieval_bench/test_product.py::test_product_selects_under_budget_core_first_then_fts"
+        "tests/retrieval_bench/test_product.py::test_product_selects_under_budget_core_first_then_fts",
+        "tests/generation/test_context_selection.py::test_failing_minimum_still_probes_the_largest_budget",
+        "tests/generation/test_context_selection.py::test_minimal_overflow_breakdown_measures_the_reduced_request"
       ]
     },
     {
@@ -3599,7 +3601,9 @@
         "tests/generation/test_memory_stage_narrow.py::test_fitting_memory_stage_is_unchanged",
         "tests/generation/test_memory_stage_narrow.py::test_overflowing_memory_stage_narrows_catalog_and_bounds",
         "tests/generation/test_memory_stage_narrow.py::test_narrowed_catalog_that_still_overflows_is_an_error",
-        "tests/retrieval_bench/test_catalog_v4.py::test_narrow_v4_keeps_core_threads_and_cast_states_and_hides_the_rest"
+        "tests/retrieval_bench/test_catalog_v4.py::test_narrow_v4_keeps_core_threads_and_cast_states_and_hides_the_rest",
+        "tests/memory/test_catalog_narrow.py::test_absent_tracked_slot_is_neither_kept_nor_counted_hidden",
+        "tests/retrieval_bench/test_catalog_v4.py::test_absent_tracked_slot_is_not_a_reachable_target"
       ]
     }
   ]

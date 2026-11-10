@@ -205,9 +205,14 @@ def narrow_catalog(journal, cast, tracked, names, prose: str, scene_number: int,
     active=list(replay_memory(journal).values())
     every,cast=set(tracked),set(cast)
     stems=tuple(s for cid in sorted(cast) for s in name_stems(names.get(cid,'')))
-    keep=set();pool=[];mutable=immutable=0
+    keep=set();pool=[];mutable=immutable=absent=0
     for event in active:
-        if event.category=='open_threads' or event.slot and event.character_ids[0] in every:keep.add(event.claim_id)
+        if event.slot and event.character_ids[0] in every:
+            # Core slots: a participant's is always shown; an absent tracked character's is in neither catalog (nor in
+            # the bounds), so narrowing does not hide it.
+            if event.character_ids[0] in cast:keep.add(event.claim_id)
+            else:absent+=1
+        elif event.category=='open_threads':keep.add(event.claim_id)
         elif event.category=='character_states':
             if not event.character_ids or cast&set(event.character_ids):keep.add(event.claim_id);mutable+=1
             else:pool.append(event)
@@ -218,4 +223,4 @@ def narrow_catalog(journal, cast, tracked, names, prose: str, scene_number: int,
             if number is None or number>=scene_number-TIMELINE_WINDOW:keep.add(event.claim_id);immutable+=1
     ranked=fts_rank(pool,prose)[:NARROW_FTS_STATES]
     keep.update(event.claim_id for event in ranked);mutable+=len(ranked)
-    return NarrowCatalog(frozenset(keep),len(active)-len(keep),mutable,immutable)
+    return NarrowCatalog(frozenset(keep),len(active)-absent-len(keep),mutable,immutable)

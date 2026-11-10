@@ -1,3 +1,5 @@
+import hashlib
+
 import pytest
 
 from storygen.memory.projection import MemoryItem, render_memory
@@ -101,7 +103,8 @@ def test_atmosphere_quota_and_hash_order():
     used=sum(len(i.line)+1 for i in many if i.claim_id in result.selected_claim_ids and i.section!='core')
     assert 0<result.layers['atmosphere'] and used<=int(ATMOSPHERE_SHARE*budget)
     order=[i.claim_id for i in classify(inp(many))['atmosphere']]
-    assert order!=sorted(order) and order==[i.claim_id for i in classify(inp(many))['atmosphere']]
+    expected=sorted((f'old{n}' for n in range(30)),key=lambda c:hashlib.sha256(f's11:{c}'.encode()).hexdigest())
+    assert order==expected and order!=sorted(order)
     other=SelectionInput(tuple(many),'s12',11,('h','a'),('h',),NAMES)
     assert [i.claim_id for i in classify(other)['atmosphere']]!=order
 

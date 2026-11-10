@@ -46,7 +46,7 @@ def test_fitting_request_is_unchanged(tmp_path):
 
 
 def test_char_limit_selects_memory_and_keeps_the_core(tmp_path):
-    repo,scene,_,_=story_with_memory(tmp_path)
+    repo,scene,journal,_=story_with_memory(tmp_path)
     full=build_context(repo,scene.id,'brief',settings())
     limit=len(full.system_text)+len(full.user_text)-400
     context=build_context(repo,scene.id,'brief',settings(max_input_chars=limit))
@@ -60,8 +60,9 @@ def test_char_limit_selects_memory_and_keeps_the_core(tmp_path):
     assert len(selection['selected_claim_ids'])==sum(selection['layers'].values())
     assert 0<selection['steps']<=12 and selection['char_budget']>=len(section)
     assert any('Повна пам’ять не вміщається' in w for w in context.context_warnings)
-    # The plan words rank the matching fact through FTS when there is room for it.
-    assert 'Маяк стоїть на старій карті' in section or selection['dropped']['fts']>0
+    # 400 chars are cut from unmatched entries; the plan words rank the matching fact through FTS, so it stays.
+    lighthouse=next(e.claim_id for e in journal.events if e.text=='Маяк стоїть на старій карті')
+    assert 'Маяк стоїть на старій карті' in section and lighthouse in selection['selected_claim_ids']
 
 
 def test_token_limit_selects_memory(tmp_path):
@@ -104,3 +105,37 @@ def test_selection_is_deterministic(tmp_path):
     first=build_context(repo,scene.id,'brief',settings(max_input_chars=limit))
     second=build_context(repo,scene.id,'brief',settings(max_input_chars=limit))
     assert first.user_text==second.user_text and first.memory_metrics==second.memory_metrics
+
+
+def test_failing_minimum_still_probes_the_largest_budget(tmp_path,monkeypatch):
+    # Below a profile's byte range the fallback overestimates: the core-only request is estimated higher than a larger
+    # one inside the range. Selection must not report ContextOverflow while a probed budget fits.
+    import storygen.token_budget.service as service
+    real=service.token_estimate;bodies=[];threshold=[None]
+    def stepped(repo,provider,base_url,request):
+        prediction=real(repo,provider,base_url,request)
+        body=prediction['body_bytes'];bodies.append(body)
+        inside=threshold[0] is None or body>=threshold[0]
+        return {**prediction,'input_tokens':body//3 if inside else body+256}
+    monkeypatch.setattr(service,'token_estimate',stepped)
+    repo,scene,_,_=story_with_memory(tmp_path)
+    full=build_context(repo,scene.id,'brief',settings(max_output_tokens=512))
+    full_chars=len(full.system_text)+len(full.user_text)
+    limit=bodies[-1]//3+10
+    tight=settings(max_output_tokens=512,max_input_chars=full_chars-400,context_tokens=600+512)
+    with pytest.raises(ContextOverflow):build_context(repo,scene.id,'brief',tight)
+    threshold[0]=min(bodies)+1  # the core-only request is the smallest body: only it falls below the profile's range
+    context=build_context(repo,scene.id,'brief',settings(max_output_tokens=512,context_tokens=limit+512,max_input_chars=full_chars-400))
+    assert context.memory_metrics['projection_version']==SELECTED_PROJECTION
+    assert context.estimated_tokens<=limit and len(context.system_text)+len(context.user_text)<=full_chars-400
+
+
+def test_minimal_overflow_breakdown_measures_the_reduced_request(tmp_path):
+    repo,scene,_,_=story_with_memory(tmp_path)
+    full=build_context(repo,scene.id,'brief',settings())
+    memory=full.memory_metrics['projection_chars']
+    with pytest.raises(ContextOverflow) as error:
+        build_context(repo,scene.id,'brief',settings(max_input_chars=len(full.system_text)+len(full.user_text)-memory+5))
+    parts={p['kind']:p for p in error.value.breakdown['parts']}
+    assert all(p['request_bytes']>=0 and p['estimated_tokens']>=0 for p in parts.values())
+    assert sum(p['request_bytes'] for p in parts.values())==error.value.breakdown['request_bytes']

@@ -3,7 +3,7 @@ import json
 
 from storygen.memory.journal import MemoryJournal, _add_event
 from storygen.memory.projection import memory_catalog_v4
-from storygen.memory.selection import NARROW_FTS_STATES, narrow_catalog
+from storygen.memory.selection import narrow_catalog
 from storygen.memory.wire_v4 import check_v4, schema_bounds_v4
 from tests.memory.test_wire_v4 import answer, chg, core, threads
 
@@ -36,7 +36,7 @@ def test_narrow_keeps_core_threads_cast_general_prose_states_facts_and_recent_ti
 
 def test_prose_ranked_states_are_capped():
     shown=narrow('Петро далеко номер '*5).keep&{e.claim_id for e in AWAY+[GUN]}
-    assert len(shown)==NARROW_FTS_STATES
+    assert len(shown)==20  # the contractual cap of MEMORY-SELECT-S07, independent of the constant
 
 
 def test_catalog_and_bounds_share_the_kept_claims():
@@ -58,3 +58,12 @@ def test_update_outside_the_narrowed_catalog_is_rejected():
     assert hidden not in keep
     data=answer(core(),{THREAD.claim_id:threads()[next(iter(threads()))]},character_states_update=[chg(hidden,'Петро повернувся',['f000001'])])
     assert ('character_states.update[0]','target_unknown') in [tuple(v) for v in check_v4(data,JOURNAL,bounds)]
+
+
+def test_absent_tracked_slot_is_neither_kept_nor_counted_hidden():
+    absent=_add_event('character_states','Червоне пальто','p1','q',0,['o'],slot='clothing')
+    journal=MemoryJournal(schema_version=3,source_prose_ids=['p1'],events=[SLOT,absent])
+    result=narrow_catalog(journal,['h'],['h','o'],{'h':'Ганна','o':'Оля'},PROSE,2,{'p1':1})
+    shown=json.loads(memory_catalog_v4(journal,['h'],{'h':'Ганна','o':'Оля'},all_tracked=['h','o'],keep=set(result.keep)))
+    assert 'Червоне пальто' not in json.dumps(shown,ensure_ascii=False)
+    assert result.keep==frozenset({SLOT.claim_id}) and result.hidden==0

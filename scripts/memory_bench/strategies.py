@@ -266,8 +266,14 @@ def _catalog_v4(name, scene: SceneInput, narrow: bool) -> Selection:
     keep = set(narrow_catalog(journal, cast, every, data['names'], data['prose'], data['number'], data['source_numbers']).keep) if narrow else None
     text = memory_catalog_v4(journal, tracked, data['names'], all_tracked=every, keep=keep)
     active = replay_memory(journal).values()
-    ids = tuple(e.claim_id for e in active if e.category in MUTABLE and (keep is None or e.claim_id in keep or e.category == 'open_threads'
-                                                                         or e.slot and e.character_ids[0] in every))
+
+    def shown(e):
+        if e.category == 'open_threads':
+            return True
+        if e.slot and e.character_ids[0] in every:  # core slot: rendered only for scene participants
+            return e.character_ids[0] in tracked
+        return keep is None or e.claim_id in keep
+    ids = tuple(e.claim_id for e in active if e.category in MUTABLE and shown(e))
     return Selection(name, ids, {k: 0 for k in LAYERS}, len(text), tokens_conservative(text), tokens_realistic(text), False, 0)
 
 
