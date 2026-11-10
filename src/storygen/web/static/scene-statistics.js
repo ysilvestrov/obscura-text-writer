@@ -48,6 +48,9 @@ export function installSceneStatistics({state,api,document}){
       body.append(node('p',live(()=>(t("m_ea0ab2a81e6d",{p0:(c.provider),p1:(c.model),p2:(c.estimated_input_tokens),p3:(c.input_budget),p4:(c.output_reserve),p5:(c.context_tokens),p6:(c.method)})))));
       table([msg("m_aca3cc594690"),msg("m_43faaa884006"),msg("m_707d60cdd672"),msg("m_7bed2c0f58d5")],c.parts.map(p=>[live(()=>groups[p.kind]||p.kind),p.characters,p.request_bytes,p.estimated_tokens]));
       body.append(node('p',msg("m_a57ab6439f85")));
+      const s=c.memory_selection;
+      if(s)body.append(node('p',live(()=>{const layers=Object.entries(s.dropped_layers||{}).map(([k,v])=>`${t('memory.layer.'+k)}: ${v}`).join(', ');return t('stats.memory_selection',{p0:s.selected,p1:s.total,p2:s.dropped,p3:layers?` (${layers})`:''});})));
+      if(c.memory_narrow)body.append(node('p',live(()=>t('stats.memory_narrow',{p0:c.memory_narrow.hidden}))));
     }
     if(c.reason)body.append(node('p',live(()=>(diagnostic(c.reason)))));
     const last=data.last_usage;body.append(node('h3',msg("m_fc489ce88b97")));

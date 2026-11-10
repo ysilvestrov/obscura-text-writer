@@ -29,4 +29,12 @@ assert.equal(ui.body.children.length,0,'late response for another scene must not
 state.bufferOrigin='history';handlers['editor-state-changed']();assert.match(ui.compact.textContent,/Історична/);
 const success=ui.load();release({scene_id:'b',scene_revision:1,materials:{prose:{words:1,characters:3,complete:true,stale:false,version_id:'v'}},memory:{previous:{available:false,reason:'Немає пам’яті'},through_scene:{available:false,reason:'Немає пам’яті'}},context:{available:false,reason:'Немає завдання'},target_words:800,last_usage:null});await success;
 assert.ok(ui.body.children.length>0,'current response must render');
+// MEMORY-SELECT-S08: the selection line names chosen, total and dropped entries with the dropped layers.
+const context={available:true,provider:'p',model:'m',estimated_input_tokens:1,input_budget:2,output_reserve:1,context_tokens:3,method:'x',parts:[],
+  memory_selection:{selected:4,total:9,dropped:5,layers:{core:1,facts:3},dropped_layers:{fts:3,timeline:2}}};
+const selected=ui.load();release({scene_id:'b',scene_revision:2,materials:{},memory:{previous:{available:false},through_scene:{available:false}},context,target_words:800,last_usage:null});await selected;
+const texts=ui.body.children.map(n=>String(n.textContent));
+assert.ok(texts.some(t=>/Відбір пам’яті: вибрано 4 з 9, відкинуто 5 \(пошук за планом: 3, хронологія: 2\)/.test(t)),texts.join('|'));
+const narrowed=ui.load();release({scene_id:'b',scene_revision:3,materials:{},memory:{previous:{available:false},through_scene:{available:false}},context:{...context,memory_selection:undefined,memory_narrow:{hidden:7}},target_words:800,last_usage:null});await narrowed;
+assert.ok(ui.body.children.some(n=>/Каталог пам’яті звужено: не показано моделі 7/.test(String(n.textContent))));
 console.log('statistics UI guards passed');

@@ -1479,3 +1479,14 @@ memory_stage_v4 narrow  chars mean 18596.9 max 49928  recall 1.0
 - Тести: FTS-перевірка інтеграційного тесту вимагає саме запис про маяк; порядок атмосфери перевіряється незалежним sha256-оракулом; ліміт 20 станів за прозою — літералом контракту.
 
 Повторний замір `memory_stage_v4` на тій самій копії даних не змінився (full 23564.5 / 69811, narrow 18596.9 / 49928, recall 1.0 обидва).
+
+## 10.11.2026 — Позначки типу запису пам'яті й рядок відбору (#60, PR 3; план `docs/superpowers/plans/2026-11/2026-11-10-memory-kind-overrides.md`)
+
+Виконано inline у 5 задачах:
+- `Story.memory_kind_overrides` і `PUT /api/stories/{id}/memory-kind` з CAS на ревізію твору; слот ядра й невідомий запис відхиляються.
+- `memory/kinds.py::kind_overrides` передає позначки у відбір; лише запит із відбором записує селектор `scene/memory_kind_overrides` (І8).
+- Рядки `memory-view` отримали `kind`/`slot`/`story_revision`; статистика має `memory_selection`/`memory_narrow`.
+- UI: стовпець «Тип» (зберігається одразу) і рядок «Відбір пам’яті: вибрано X з Y, відкинуто Z».
+- SPEC MEMORY-SELECT S08, І8, traceability; інструкції `docs/memory-view.md`, `docs/en/memory-view.md` (знімок `docs/images/memory-kind-*.png`), `docs/scene-statistics.md`.
+
+Playwright `memory-kind.spec.mjs` і `core-review.spec.mjs` пройшли вручну (desktop і mobile); verify.py Playwright не запускає. Англійської версії `scene-statistics.md` немає, тож рядок відбору описано англійською в `docs/en/memory-view.md`.

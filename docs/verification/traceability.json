@@ -3605,6 +3605,24 @@
         "tests/memory/test_catalog_narrow.py::test_absent_tracked_slot_is_neither_kept_nor_counted_hidden",
         "tests/retrieval_bench/test_catalog_v4.py::test_absent_tracked_slot_is_not_a_reachable_target"
       ]
+    },
+    {
+      "id": "MEMORY-SELECT-S08",
+      "requirement": "MEMORY-SELECT",
+      "scope": "Позначки «ядро/атмосфера» змінюють шар лише під відбором; селектор scene/memory_kind_overrides лише у версіях із відбором і лише для записів, активних до сцени; CAS і валідація (слот, невідомий запис); рядки memory-view; статистика відбору; стовпець «Тип» і рядок статистики в UI. Playwright memory-kind.spec.mjs запускається вручну (verify.py його не виконує).",
+      "tests": [
+        "tests/generation/test_memory_kind.py::test_core_mark_shows_an_unmatched_entry_under_selection",
+        "tests/generation/test_memory_kind.py::test_atmosphere_mark_moves_an_entry_out_of_its_layer",
+        "tests/generation/test_memory_kind.py::test_marks_do_not_change_a_fitting_request",
+        "tests/generation/test_memory_kind.py::test_mark_stales_only_versions_built_with_selection",
+        "tests/generation/test_memory_kind.py::test_mark_of_an_entry_absent_before_the_scene_does_not_stale",
+        "tests/generation/test_memory_kind.py::test_update_memory_kind_cas_validation_and_reset",
+        "tests/generation/test_memory_kind.py::test_memory_kind_http",
+        "tests/generation/test_memory_kind.py::test_memory_view_rows_carry_kind_slot_and_story_revision",
+        "tests/generation/test_memory_kind.py::test_statistics_summary_of_selection_and_narrowing",
+        "tests/web/test_memory_table_ui.py::test_memory_kind_column",
+        "tests/web/test_scene_statistics_ui.py::test_statistics_buffer_and_async_guards"
+      ]
     }
   ]
 }
