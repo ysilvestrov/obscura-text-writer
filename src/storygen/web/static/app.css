@@ -465,6 +465,7 @@ pre { white-space: pre-wrap; overflow-wrap: anywhere; font: 14px/1.7 var(--font-
 .brief-link { margin-block: 16px; padding-block: 8px; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); min-width: 0; overflow-wrap: anywhere; }
 .brief-link h3 { margin-block: 8px; font-size: 1rem; }
 .brief-link-help, .brief-link-state { color: var(--text-secondary); margin-block: 4px 8px; }
+.brief-link-stale { color: var(--error); margin-block: 4px 8px; }
 .brief-link-cast { display: flex; flex-wrap: wrap; gap: 8px 16px; border: 0; padding: 0; margin-block: 8px; }
 .brief-link-cast legend { font-weight: 600; margin-bottom: 4px; }
 .brief-link-cast label { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; white-space: nowrap; overflow-wrap: normal; }

@@ -2154,6 +2154,7 @@
     "brief_link.confirm": "Проза базується на цьому завданні",
     "brief_link.next": "Наступна непідтверджена сцена",
     "brief_link.change": "Змінити",
+    "brief_link.prose_changed": "Прозу змінено в іншому місці. Перевідкрийте сцену, щоб переглянути поточну прозу перед підтвердженням.",
     "brief_link.saved": "Підтвердження збережено.",
     "brief_link.confirmed_with": "Підтверджено. Представлено в цій сцені: {p0}.",
     "brief_link.confirmed_none": "Підтверджено. У цій сцені нікого не представлено."
@@ -4313,6 +4314,7 @@
     "brief_link.confirm": "The prose rests on this brief",
     "brief_link.next": "Next unconfirmed scene",
     "brief_link.change": "Change",
+    "brief_link.prose_changed": "The prose changed elsewhere. Reopen the scene to review the current prose before confirming.",
     "brief_link.saved": "Confirmation saved.",
     "brief_link.confirmed_with": "Confirmed. Introduced in this scene: {p0}.",
     "brief_link.confirmed_none": "Confirmed. Nobody is introduced in this scene."
