@@ -5,6 +5,8 @@ from ..rating.levels import effective_rating, from_wire, is_lower, to_wire
 
 # Generation scopes limited by the scene's effective content rating; author text and memory are not.
 RATING_SCOPES = frozenset({'brief', 'draft', 'prose_edit', 'patches', 'author_rewrite'})
+# Scopes whose result is prose of the scene (STORY-LANGUAGE-S04): a brief and memory do not depend on the prose language.
+PROSE_LANGUAGE_SCOPES = frozenset({'draft', 'prose_edit', 'patches', 'author_rewrite'})
 
 
 def build_dependency_snapshot(
@@ -91,6 +93,9 @@ def build_dependency_snapshot(
             head(scene, name)
     if scope in RATING_SCOPES:
         select('scene', scene.id, 'content_rating', to_wire(effective_rating(story, scene)))
+    if scope in PROSE_LANGUAGE_SCOPES:
+        from ..language import prose_language
+        select('scene', scene.id, 'prose_language', prose_language(story, scene))
     return DependencySnapshot(
         scope=scope,
         frozen_author_source_id=next((id for id in input_refs if view.get_version(id).scene_id==scene_id and view.get_version(id).kind=='draft'),None) if scope=='author_rewrite' else None,
@@ -140,6 +145,9 @@ def selector_value(view, selector: DependencySelector):
     if kind=='scene' and field=='memory_kind_overrides':
         from ..memory.kinds import kind_overrides
         return kind_overrides(view,owner)
+    if kind=='scene' and field=='prose_language':
+        from ..language import prose_language
+        return prose_language(view.peek_story(view.story.id), view.peek_scene(owner))
     if kind=='scene' and field=='content_rating':
         return to_wire(effective_rating(view.peek_story(view.story.id), view.peek_scene(owner)))
     if kind == 'story' and owner == view.story.id and field in {
@@ -196,6 +204,11 @@ def compare_snapshot(view, snapshot: DependencySnapshot | dict) -> list[Dependen
     if snapshot.scope in {'brief','draft','prose_edit','author_text','author_rewrite'} and not any(s.field=='memory_projection_policy' for s in selectors):
         owner=next((s.owner_id for s in selectors if s.kind=='scene' and s.field=='title'),None)
         if owner:selectors.append(DependencySelector(kind='scene',owner_id=owner,field='memory_projection_policy',expected=[]))
+    if snapshot.scope in PROSE_LANGUAGE_SCOPES and not any(s.field=='prose_language' for s in selectors):
+        # Snapshots from before #32 were all built for Ukrainian prose; patches record only the scene's draft head.
+        owner=next((s.owner_id for s in selectors if s.kind=='scene' and s.field=='title'),None) or next(
+            (s.owner_id for s in selectors if s.kind=='head' and s.field=='draft'),None)
+        if owner:selectors.append(DependencySelector(kind='scene',owner_id=owner,field='prose_language',expected='uk'))
     replace,fallback=rating_fallback(view,snapshot)
     if replace:
         selectors=[s for s in selectors if s.field!='content_rating']+([fallback] if fallback else [])
