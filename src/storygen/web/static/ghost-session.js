@@ -9,16 +9,17 @@ export function createSession({sceneId,draftId,format,text}){
   const source=normalizeText(text);
   return {version:1,sceneId,draftId,format,index:0,peeks:0,peekMs:0,pastesBlocked:0,
     blocks:ghostBlocks(source).map(block=>({kind:block.kind,source:codePointSlice(source,block.start,block.end),
-      state:block.kind==='separator'?'separator':'reading',touched:false,text:''}))};
+      state:block.kind==='separator'?'separator':'reading',touched:false,text:'',format}))};
 }
 
 const current=session=>session.blocks[session.index];
 
-export function input(session,text){
+// `format` is what the editor serialized: after a real edit the rich editor writes Markdown even for a plain draft.
+export function input(session,text,format=session.format){
   const block=current(session);
   if(!block||block.kind!=='text'||block.state==='peek'||block.state==='skipped')return false;
-  if(block.text===text&&block.touched)return false;
-  block.text=text;
+  if(block.text===text&&block.format===format&&block.touched)return false;
+  block.text=text;block.format=format;
   if(!block.touched&&text===''&&block.state==='reading')return false;
   block.touched=true;block.state='writing';return true;
 }
@@ -69,6 +70,11 @@ export function resultText(session){
   return session.blocks.filter(block=>block.kind==='separator'||block.state==='writing').map(block=>block.kind==='separator'?block.source:block.text.trim()).filter(Boolean).join('\n\n');
 }
 
+// The result is Markdown as soon as one written block is; otherwise it keeps the draft's format.
+export function resultFormat(session){
+  return session.blocks.some(block=>block.state==='writing'&&block.text.trim()&&block.format==='markdown')?'markdown':session.format;
+}
+
 export function clientStats(session){
   return {peeks:session.peeks,peek_ms:session.peekMs,pastes_blocked:session.pastesBlocked,blocks_skipped:skippedCount(session)};
 }
@@ -85,9 +91,18 @@ export function loadSession(storage,sceneId,draftId){
   try{
     const raw=storage?.getItem(sessionKey(sceneId,draftId));if(!raw)return null;
     const data=JSON.parse(raw);
-    if(data?.version!==1||data.sceneId!==sceneId||data.draftId!==draftId||!Array.isArray(data.blocks))return null;
-    return data;
+    return validSession(data,sceneId,draftId)?data:null;
   }catch{return null;}
+}
+
+const FORMATS=['plain','markdown'],TEXT_STATES=['reading','writing','skipped'];
+const count=value=>Number.isInteger(value)&&value>=0;
+function validSession(data,sceneId,draftId){
+  if(data?.version!==1||data.sceneId!==sceneId||data.draftId!==draftId||!FORMATS.includes(data.format))return false;
+  if(!Array.isArray(data.blocks)||!data.blocks.length||!Number.isInteger(data.index)||data.index<0||data.index>=data.blocks.length)return false;
+  if(![data.peeks,data.peekMs,data.pastesBlocked].every(count))return false;
+  return data.blocks.every(block=>block&&typeof block.source==='string'&&typeof block.text==='string'&&typeof block.touched==='boolean'&&(
+    block.kind==='separator'?block.state==='separator':block.kind==='text'&&TEXT_STATES.includes(block.state)&&FORMATS.includes(block.format)));
 }
 
 export function findSession(storage,sceneId){

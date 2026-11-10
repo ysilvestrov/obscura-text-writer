@@ -68,11 +68,11 @@ if(entry&&root){
       const area=document.createElement('textarea');area.hidden=true;
       const wrap=el('div','ghost-editor');wrap.dataset.index=String(index);wrap.append(area);host.append(wrap);
       const editor=createTextEditor(area);
-      editor.write(text,{material:'draft',content_format:session.format});
+      editor.write(text,{material:'draft',content_format:readOnly?session.format:session.blocks[index].format||session.format});
       editor.readOnly(readOnly);
       if(!readOnly){
         editor.placeholder(t('ghost.placeholder'));
-        editor.onInput(()=>{if(index!==session?.index)return;if(model.input(session,editor.read()))persist();render();});
+        editor.onInput(()=>{if(index!==session?.index)return;const snap=editor.snapshot();if(model.input(session,snap.source,snap.content_format))persist();render();});
       }
       map.set(index,{editor,wrap});
     }
@@ -137,13 +137,13 @@ if(entry&&root){
     if(event.key==='Enter'&&(event.ctrlKey||event.metaKey)){event.preventDefault();event.stopPropagation();move(1);return;}
     if(event.key==='Escape'&&authorHosts.contains(event.target)){event.preventDefault();event.stopPropagation();root.focus({preventScroll:true});}
   },true);
-  root.addEventListener('keyup',event=>{if(event.key==='Tab')peekOff();},true);
+  // Peek ends on releasing the key that started it: Tab in the field, or Space/Enter held on the Peek button (focus moves to the mode).
+  root.addEventListener('keyup',event=>{if(['Tab',' ','Enter'].includes(event.key))peekOff();},true);
   globalThis.addEventListener?.('blur',peekOff);
   document.addEventListener('visibilitychange',()=>{if(document.hidden)peekOff();});
   peekButton.addEventListener('pointerdown',event=>{event.preventDefault();if(peekOn())try{peekButton.setPointerCapture(event.pointerId);}catch{}});
   for(const type of ['pointerup','pointercancel','pointerleave'])peekButton.addEventListener(type,peekOff);
   peekButton.addEventListener('keydown',event=>{if((event.key===' '||event.key==='Enter')&&!event.repeat){event.preventDefault();peekOn();}});
-  peekButton.addEventListener('keyup',event=>{if(event.key===' '||event.key==='Enter')peekOff();});
 
   // Pasting and dropping into the author's text are blocked; the AI text cannot be copied.
   for(const type of ['paste','drop'])authorHosts.addEventListener(type,event=>{
@@ -167,7 +167,13 @@ if(entry&&root){
       aiEditors.clear();authorEditors.clear();aiHosts.replaceChildren();authorHosts.replaceChildren();
       root.hidden=false;document.body.classList.add('ghost-open');
       render();focusAuthor();
-    }catch(error){session=null;notice(diagnostic(error.message),'error');}
+    }catch(error){
+      // A broken resume never leaves the full-screen layer up without a session.
+      if(session)model.dropSession(storage,session.sceneId,session.draftId);
+      session=null;root.hidden=true;document.body.classList.remove('ghost-open');
+      aiHosts.replaceChildren();authorHosts.replaceChildren();aiEditors.clear();authorEditors.clear();
+      notice(diagnostic(error.message),'error');syncEntry();
+    }
   }
 
   async function close(ask){
@@ -188,7 +194,7 @@ if(entry&&root){
     try{
       const scene=state.view?.scenes?.find(item=>item.id===captured.sceneId)||state.scene;
       const result=await api(`/api/scenes/${captured.sceneId}/ghost-rewrite`,json('POST',{source_draft_id:captured.draftId,text:model.resultText(captured),
-        content_format:captured.format,expected_revision:scene.revision,client_stats:model.clientStats(captured)}));
+        content_format:model.resultFormat(captured),expected_revision:scene.revision,client_stats:model.clientStats(captured)}));
       model.dropSession(storage,captured.sceneId,captured.draftId);
       busy=false;await close(false);
       notice(model.ghostStatsText(result.version.ghost_rewrite,t));

@@ -473,6 +473,7 @@ pre { white-space: pre-wrap; overflow-wrap: anywhere; font: 14px/1.7 var(--font-
 
 /* Ghost Mode (#55): full-screen rewrite from memory */
 body.ghost-open { overflow: hidden; }
+body.ghost-open #notice { z-index: 70; }
 .ghost-mode { position: fixed; inset: 0; z-index: 60; overflow-y: auto; background: var(--bg-app); color: inherit; padding: 16px max(16px, calc((100vw - 860px) / 2)); display: flex; flex-direction: column; gap: 8px; }
 .ghost-mode[hidden] { display: none; }
 .ghost-mode:focus { outline: none; }

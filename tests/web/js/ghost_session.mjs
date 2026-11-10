@@ -44,6 +44,16 @@ assert.equal(s.resultText(session),'Мій текст.\n\n***\n\nДругий.')
 s.blockPasted(session);
 assert.deepEqual(s.clientStats(session),{peeks:1,peek_ms:1234,pastes_blocked:1,blocks_skipped:0});
 
+// Format: a plain draft becomes Markdown once a written block was serialized as Markdown.
+const plain=s.createSession({sceneId:'s1',draftId:'p1',format:'plain',text:['Один.','***','Два.'].join('\n\n')});
+assert.equal(plain.blocks[0].format,'plain');
+s.input(plain,'Один.');
+s.go(plain,2);s.input(plain,'**Два**.','markdown');
+assert.equal(s.resultFormat(plain),'markdown');
+assert.equal(plain.blocks[2].format,'markdown');
+s.skip(plain);
+assert.equal(s.resultFormat(plain),'plain','a skipped Markdown block does not change the format');
+
 // All blocks skipped is not a rewrite.
 const empty=s.createSession({sceneId:'s1',draftId:'d2',format:'plain',text:'Один короткий абзац.'});
 s.skip(empty);
@@ -61,6 +71,15 @@ assert.equal(s.findSession(storage,'s1'),'d1');
 assert.equal(s.loadSession(storage,'s1','other'),null);
 memory.set(s.sessionKey('s1','bad'),'{');
 assert.equal(s.loadSession(storage,'s1','bad'),null);
+// Structurally broken sessions are ignored, not resumed.
+const valid=JSON.parse(memory.get(s.sessionKey('s1','d1')));
+for(const broken of [{...valid,index:99},{...valid,index:-1},{...valid,blocks:[]},{...valid,format:'html'},{...valid,peeks:-1},
+  {...valid,blocks:[{...valid.blocks[0],state:'peek'}]},{...valid,blocks:[{...valid.blocks[0],text:5}]},{...valid,blocks:[{kind:'separator',source:'***',text:'',touched:false,state:'reading'}],index:0}]){
+  memory.set(s.sessionKey('s1','d1'),JSON.stringify(broken));
+  assert.equal(s.loadSession(storage,'s1','d1'),null,JSON.stringify(broken).slice(0,80));
+}
+memory.set(s.sessionKey('s1','d1'),JSON.stringify(valid));
+assert.ok(s.loadSession(storage,'s1','d1'));
 const broken={getItem(){throw new Error('denied')},setItem(){throw new Error('denied')},removeItem(){throw new Error('denied')},get length(){throw new Error('denied')}};
 assert.equal(s.saveSession(broken,session),false);
 assert.equal(s.loadSession(broken,'s1','d1'),null);

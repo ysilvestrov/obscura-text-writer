@@ -125,3 +125,45 @@ test('an unsaved rewrite survives a reload and cancel discards it',async({page,r
   await expect(page.locator('#ghost-entry .ghost-start')).toHaveText('Переписати по пам’яті');
   expect((await head(request,f.scene_id)).id).toBe(f.draft_id);
 });
+
+const onTop=locator=>locator.evaluate(node=>{const box=node.getBoundingClientRect();const hit=document.elementFromPoint(box.left+box.width/2,box.top+box.height/2);return node.contains(hit);});
+
+test('plain draft with formatting saves Markdown; notices stay above the mode',async({page,request})=>{
+  const f=await(await request.post('/test-ghost-mode?format=plain')).json();
+  await openDraft(page,f.story_id);
+  await page.locator('#ghost-entry .ghost-start').click();
+  await author(page).click();
+  await page.keyboard.type('Маяк ');
+  await page.keyboard.press('Control+B');await page.keyboard.type('світив');await page.keyboard.press('Control+B');
+  await author(page).evaluate(node=>{const data=new DataTransfer();data.setData('text/plain','x');node.dispatchEvent(new ClipboardEvent('paste',{clipboardData:data,bubbles:true,cancelable:true}));});
+  await expect(page.locator('#notice')).toContainText('Вставка тексту');
+  expect(await onTop(page.locator('#notice'))).toBe(true);
+  // Space held on the Peek button peeks and releasing it returns to writing.
+  await mode(page).locator('.ghost-peek').focus();
+  await page.keyboard.down(' ');
+  await expect(ai(page)).toBeVisible();
+  await page.keyboard.up(' ');
+  await expect(ai(page)).toBeHidden();
+  await expect(mode(page).locator('.ghost-author')).toBeVisible();
+  await mode(page).getByRole('button',{name:'Далі'}).click();
+  await mode(page).getByRole('button',{name:'Далі'}).click();
+  await mode(page).getByRole('button',{name:'Пропустити блок'}).click();
+  await mode(page).getByRole('button',{name:'Зберегти як чернетку'}).click();
+  await page.locator('.app-dialog .app-dialog-actions button').last().click();
+  await expect(mode(page)).toBeHidden();
+  const saved=await head(request,f.scene_id);
+  expect(saved.content_format).toBe('markdown');
+  expect((await(await request.get(`/api/versions/${saved.id}`)).json()).text).toContain('**світив**');
+});
+
+test('a corrupted saved session never leaves the mode stuck',async({page,request})=>{
+  const f=await(await request.post('/test-ghost-mode')).json();
+  await page.goto(`/stories/${f.story_id}`);
+  await page.evaluate(([scene,draft])=>localStorage.setItem(`ghost:${scene}:${draft}`,JSON.stringify({version:1,sceneId:scene,draftId:draft,format:'markdown',index:99,peeks:0,peekMs:0,pastesBlocked:0,blocks:[{kind:'text',source:'x',state:'writing',touched:true,text:'y',format:'markdown'}]})),[f.scene_id,f.draft_id]);
+  await page.locator('#mode-tabs [data-mode="draft"]').click();
+  await page.locator('#ghost-entry .ghost-start').click();
+  await expect(mode(page)).toBeVisible();
+  await expect(mode(page).locator('.ghost-progress')).toContainText('Блок 1 з 3','the broken session is ignored and a fresh one starts');
+  await mode(page).getByRole('button',{name:'Скасувати переписування'}).click();
+  await expect(mode(page)).toBeHidden();
+});

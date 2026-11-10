@@ -191,7 +191,7 @@ def main():
             return {'story_id':story.id,'scene_ids':ids}
 
         @app.post('/test-ghost-mode')
-        def ghost_mode_fixture():
+        def ghost_mode_fixture(format: str = 'markdown'):
             import json
             story=rated_story('Маяк на березі')
             scene=repo.create_scene(story.id,SceneCreate(title='Вечір біля маяка'))
@@ -202,7 +202,8 @@ def main():
                   '— Ще рано, — сказала доглядачка.\n\n— Ні, саме час.\n\n***\n\n'
                   'Вона піднялася сходами нагору, рахуючи сходинки, як робила щовечора, і зупинилася біля вікна, '
                   'звідки було видно всю затоку й далекі вогні рибальського селища.')
-            draft=repo.save_version(story.id,scene.id,'draft',text,[brief.id],source_run_id='synthetic',content_format='markdown')
+            if format=='plain':text=text.replace('**маяк**','маяк')
+            draft=repo.save_version(story.id,scene.id,'draft',text,[brief.id],source_run_id='synthetic',content_format=format)
             repo.set_head(scene.id,'draft',draft.id,scene.revision)
             return {'story_id':story.id,'scene_id':scene.id,'draft_id':draft.id}
 
