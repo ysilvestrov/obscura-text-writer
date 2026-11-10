@@ -11,7 +11,9 @@ FSL_TEMPLATE_SHA256 = '0905af4c021cb64aff11a80aae7f25f0d7bafc69c14e97992273873d1
 TEMPLATE_NOTICE = 'Copyright ${year} ${licensor name}'
 NOTICE = 'Copyright 2026 Yuriy Silvestrov'
 
-MIT_GRANT = 'Permission is hereby granted, free of charge, to any person obtaining a copy'
+SEPARATOR = '-' * 72 + '\n\n'
+# SHA-256 of LICENSE (MIT) as it stood on main before the switch (5c7d281), LF line endings.
+MIT_SHA256 = '997a49cb1721fa62bf2be51734ff94f37aba99b30d7d83ad56ff5c6b0e467c17'
 
 # Places that describe the licence of the current code to readers.
 PUBLIC_DESCRIPTIONS = [
@@ -45,11 +47,10 @@ def test_licence_is_official_fsl_template_with_only_the_notice_filled_in():
 
 @pytest.mark.req('PUB-001')
 def test_previous_mit_text_is_kept_with_its_boundary_tag():
-    text = read('docs/licensing/MIT-previous-versions.txt')
-    assert 'last-mit' in text
-    assert 'Copyright (c) 2026 Yuriy Silvestrov' in text
-    assert MIT_GRANT in text
-    assert 'IN NO EVENT SHALL THE' in text
+    intro, separator, body = read('docs/licensing/MIT-previous-versions.txt').partition(SEPARATOR)
+    assert separator
+    assert '`last-mit`' in intro
+    assert hashlib.sha256(body.encode('utf-8')).hexdigest() == MIT_SHA256
 
 
 @pytest.mark.req('PUB-001')
