@@ -1,7 +1,7 @@
 """Read-only extraction of per-scene memory snapshots through the product's own read functions."""
 from collections import Counter
 
-from storygen.memory.forwarding import hidden_before
+from storygen.memory.forwarding import forwarded_before, hidden_before
 from storygen.memory.journal import MemoryJournal, load_memory, replay_memory
 from storygen.memory.reuse import journal_for_read
 
@@ -41,6 +41,25 @@ def name_stems(name: str) -> tuple[str, ...]:
     return tuple(stems)
 
 
+def _tracked(repo, story, scenes):
+    from storygen.characters.models import load_characters
+    from storygen.memory.core import tracked_characters
+    cards = load_characters(repo.read_text(story.characters_version_id)) if story.characters_version_id else []
+    return tracked_characters(cards, scenes)
+
+
+def product_input(repo, scenes, scene, past, numbers, tracked, names, query):
+    """The product's own selection input (#60): projection lines of build_context and the scene's plan as the query."""
+    from storygen.memory.projection import memory_items
+    from storygen.memory.selection import SelectionInput
+    from storygen.memory.story_time import day_key
+    items, _ = memory_items(past, list(scene.character_ids), {k: v for k, v in numbers.items() if v is not None},
+                            hidden_claim_ids=hidden_before(repo, scene.id), forwarded_claim_ids=forwarded_before(repo, scene.id),
+                            tracked=tracked, names=names)
+    return SelectionInput(tuple(items), scene.id, scene.position + 1, tuple(scene.character_ids), tuple(tracked), dict(names),
+                          query, {}, day_key(scene), {s.position + 1: day_key(s) for s in scenes if s.position < scene.position})
+
+
 def _names(repo, story):
     if not story.characters_version_id:
         return {}
@@ -65,6 +84,7 @@ def extract_story(repo, story_id: str, protagonist: str | None = None):
     story = repo.get_story(story_id)
     scenes = sorted(repo.list_scenes(story_id), key=lambda s: s.position)
     names = _names(repo, story)
+    tracked = _tracked(repo, story, scenes)
     hero = protagonist or _protagonist(scenes)
     skipped = dict.fromkeys(SKIP_CODES + TARGET_CODES, 0)
     numbers_by_scene = {s.id: s.position + 1 for s in scenes}
@@ -94,6 +114,7 @@ def extract_story(repo, story_id: str, protagonist: str | None = None):
             present = {r.claim_id for r in records}
             for claim in targets - present:
                 skipped['targets_hidden' if claim in hidden else 'targets_absent'] += 1
-        result.append(SceneInput(scene.id, scene.position + 1, cast, _text(repo, scene.heads.get('plan')) or scene.beats,
-                                 _text(repo, scene.heads.get('prose')), records, timeline, hero, names, targets, first))
+        plan = _text(repo, scene.heads.get('plan')) or scene.beats
+        result.append(SceneInput(scene.id, scene.position + 1, cast, plan, _text(repo, scene.heads.get('prose')), records, timeline,
+                                 hero, names, targets, first, product_input(repo, scenes, scene, past, numbers, tracked, names, plan)))
     return result, skipped

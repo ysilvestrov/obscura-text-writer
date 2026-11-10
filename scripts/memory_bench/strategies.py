@@ -214,6 +214,44 @@ def structural_fts(scene: SceneInput, params: Params) -> Selection:
     return _selection('structural_fts', chosen, timeline, summary, layers, overflow, dropped, layers.get('_atmosphere_ids', ()))
 
 
+PRODUCT_STEPS = 12
+
+
+def product(scene: SceneInput, params: Params) -> Selection:
+    """storygen.memory.selection as build_context runs it: the full section while it fits, otherwise the largest char
+    budget (binary search, at most PRODUCT_STEPS steps) whose selected section fits the token budget of this measure."""
+    from storygen.memory.projection import render_memory
+    from storygen.memory.selection import classify, minimal_chars, select_memory
+    inp = scene.product
+    if inp is None:
+        raise ValueError('product strategy needs real data (SceneInput.product)')
+    cost = (lambda text: tokens_conservative(text)) if params.measure == 'conservative' else (lambda text: tokens_realistic(text))
+    full = render_memory(list(inp.items), list(inp.tracked), dict(inp.names))
+
+    def result(text, ids, layers, dropped, atmosphere, overflow):
+        return Selection('product', tuple(ids), dict(layers), len(text), tokens_conservative(text), tokens_realistic(text),
+                         overflow, dropped, tuple(atmosphere))
+    if cost(full) <= params.memory_budget_tokens:
+        return result(full, [i.claim_id for i in inp.items], {'full': len(inp.items)}, 0, (), False)
+    atmosphere = {i.claim_id for i in classify(inp)['atmosphere']}
+    low, high = minimal_chars(inp), len(full) - 1
+    best = select_memory(inp, low) if low <= high else None
+    if best is None or cost(best.text) > params.memory_budget_tokens:
+        sel = best or select_memory(inp, low)
+        return result(sel.text, sel.selected_claim_ids, sel.layers, sum(sel.dropped.values()),
+                      [c for c in sel.selected_claim_ids if c in atmosphere], True)
+    steps = 0
+    while low < high and steps < PRODUCT_STEPS:
+        middle, steps = (low + high + 1) // 2, steps + 1
+        sel = select_memory(inp, middle)
+        if cost(sel.text) <= params.memory_budget_tokens:
+            low, best = middle, sel
+        else:
+            high = middle - 1
+    return result(best.text, best.selected_claim_ids, best.layers, sum(best.dropped.values()),
+                  [c for c in best.selected_claim_ids if c in atmosphere], False)
+
+
 MUTABLE = {'character_states', 'open_threads'}
 
 

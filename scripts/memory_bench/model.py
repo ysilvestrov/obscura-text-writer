@@ -59,6 +59,7 @@ class SceneInput:
     names: Mapping[str, str]
     targets: frozenset[str]
     first_meetings: int
+    product: object | None = None  # storygen.memory.selection.SelectionInput; real data only (#60)
 
 
 @dataclass(frozen=True)
