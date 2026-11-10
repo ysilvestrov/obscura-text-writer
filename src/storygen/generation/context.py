@@ -45,6 +45,7 @@ class ContextOverflow(ValueError):
         super().__init__(message+contribution)
 
 
+CATALOG_NARROWED_WARNING='Каталог пам’яті звужено: {hidden} записів не показано моделі; оновити їх у цьому запуску неможливо, а повтор уже відомого факту можливий.'
 MEMORY_SELECTED_WARNING='Повна пам’ять не вміщається: у запит відібрано {shown} з {total} записів; ядро показано повністю, відкинуте пораховано в статистиці.'
 
 
@@ -114,7 +115,7 @@ def _select_memory_section(selector,sections,measured,measure,fits,settings):
     return best[0],best[1],steps,best[2]
 
 
-def make_context(repo,story,scene,stage,settings,sections,refs,fragments=None,accepted_prose_ids=(),memory_metrics=None,context_warnings=None,memory_provenance=(),accepted_memory_ids=(),memory_selector=None):
+def make_context(repo,story,scene,stage,settings,sections,refs,fragments=None,accepted_prose_ids=(),memory_metrics=None,context_warnings=None,memory_provenance=(),accepted_memory_ids=(),memory_selector=None,memory_narrower=None):
     if hasattr(repo, 'context_view'):
         repo=repo.context_view(story.id)
         story=repo.get_story(story.id)
@@ -175,6 +176,11 @@ def make_context(repo,story,scene,stage,settings,sections,refs,fragments=None,ac
                 'selection':{'layers':selection.layers,'dropped':selection.dropped,'selected_claim_ids':list(selection.selected_claim_ids),
                     'timeline_note':selection.timeline_note,'char_budget':selection.char_budget,'steps':steps}})
             warnings.append(MEMORY_SELECTED_WARNING.format(shown=len(selection.selected_claim_ids),total=total))
+    if not fits(measured) and memory_narrower is not None:
+        # MEMORY-SELECT-S07: one narrowed memory-stage catalog with matching schema bounds; no search, no further cuts.
+        sections,updates,metrics,warning=memory_narrower()
+        fragments.update(updates);memory_metrics.update(metrics);warnings.append(warning)
+        measured=measure(sections)
     user,chars,api_request,prediction=measured
     estimate=prediction['input_tokens']
     breakdown=request_breakdown(api_request,sections,stage,prediction,settings)
@@ -242,24 +248,41 @@ def build_context(repo,scene_id: str,stage: str,settings: RoleSettings,*,editor_
         everyone=tracked_characters(cards,scenes)
         tracked=[cid for cid in everyone if cid in scene.character_ids]
         changed={cid:day_change(scenes,scene,cid) for cid in tracked}
-        catalog=memory_catalog_v4(past,tracked,{card.id:card.name for card in cards},all_tracked=everyone)
-        parts=json.loads(catalog)
+        names={card.id:card.name for card in cards}
         prose_text=repo.read_text(prose_id)
-        bounds=schema_bounds_v4(past,prose_text,scene.character_ids,everyone,changed)
         dump=lambda value:json.dumps(value,ensure_ascii=False,separators=(',',':'))
-        sections=['ЯДРО СТАНУ ВІДСТЕЖУВАНИХ ПЕРСОНАЖІВ — УСІ СЛОТИ ОБОВ’ЯЗКОВІ\n'+dump({'names':parts['names'],'core':parts['core']}),
-            'АКТИВНІ ЛІНІЇ — ДЛЯ КОЖНОЇ ОБОВ’ЯЗКОВЕ open/closed\n'+dump(parts['threads']),
-            'ЧИННІ ТВЕРДЖЕННЯ — MUTABLE ДЛЯ UPDATE/RETIRE, IMMUTABLE ЛИШЕ ДЛЯ УНИКНЕННЯ ПОВТОРІВ\n'+dump({'mutable':parts['mutable'],'immutable':parts['immutable']})]
-        for cid in tracked:
-            if changed[cid]:
-                sections.append(f'ЗМІНИВСЯ ДЕНЬ: {day_label(day_key(comparison_scene(scenes,scene,cid)))} → {day_label(day_key(scene))} ({parts["names"][cid]})\n'
-                    'Одяг, речі при собі й тілесний стан могли застаріти: якщо проза їх не підтверджує, познач unknown із причиною.')
-        sections+=['ДОЗВОЛЕНІ CHARACTER_IDS ДЛЯ НОВИХ СТАНІВ\n'+json.dumps(scene.character_ids,ensure_ascii=False),
-            f'ПОТОЧНА ПРОЗА [version_id={prose_id}] — НУМЕРОВАНІ ФРАГМЕНТИ\n'+render_fragments(prose_text)]
+        def catalog_sections(keep=None):
+            catalog=memory_catalog_v4(past,tracked,names,all_tracked=everyone,keep=keep)
+            parts=json.loads(catalog)
+            bounds=schema_bounds_v4(past,prose_text,scene.character_ids,everyone,changed,keep=keep)
+            return catalog,parts,bounds,stage_sections(parts)
+        def stage_sections(parts):
+            sections=['ЯДРО СТАНУ ВІДСТЕЖУВАНИХ ПЕРСОНАЖІВ — УСІ СЛОТИ ОБОВ’ЯЗКОВІ\n'+dump({'names':parts['names'],'core':parts['core']}),
+                'АКТИВНІ ЛІНІЇ — ДЛЯ КОЖНОЇ ОБОВ’ЯЗКОВЕ open/closed\n'+dump(parts['threads']),
+                'ЧИННІ ТВЕРДЖЕННЯ — MUTABLE ДЛЯ UPDATE/RETIRE, IMMUTABLE ЛИШЕ ДЛЯ УНИКНЕННЯ ПОВТОРІВ\n'+dump({'mutable':parts['mutable'],'immutable':parts['immutable']})]
+            for cid in tracked:
+                if changed[cid]:
+                    sections.append(f'ЗМІНИВСЯ ДЕНЬ: {day_label(day_key(comparison_scene(scenes,scene,cid)))} → {day_label(day_key(scene))} ({parts["names"][cid]})\n'
+                        'Одяг, речі при собі й тілесний стан могли застаріти: якщо проза їх не підтверджує, познач unknown із причиною.')
+            sections+=['ДОЗВОЛЕНІ CHARACTER_IDS ДЛЯ НОВИХ СТАНІВ\n'+json.dumps(scene.character_ids,ensure_ascii=False),
+                f'ПОТОЧНА ПРОЗА [version_id={prose_id}] — НУМЕРОВАНІ ФРАГМЕНТИ\n'+render_fragments(prose_text)]
+            return sections
+        catalog,parts,bounds,sections=catalog_sections()
+        def narrower():
+            from ..memory.selection import narrow_catalog
+            numbers={s.id:s.position+1 for s in scenes}
+            narrow=narrow_catalog(past,scene.character_ids,everyone,names,prose_text,scene.position+1,
+                {id:numbers[repo.get_version(id).scene_id] for id in past.source_prose_ids})
+            small,_,small_bounds,small_sections=catalog_sections(set(narrow.keep))
+            return (small_sections,{'memory_schema_bounds':json.dumps(small_bounds,ensure_ascii=False)},
+                {'projection_version':f'memory-catalog-v{wire}-narrow','catalog_chars':len(small),
+                 'narrow':{'hidden':narrow.hidden,'mutable_shown':narrow.mutable_shown,'immutable_shown':narrow.immutable_shown}},
+                CATALOG_NARROWED_WARNING.format(hidden=narrow.hidden))
         return make_context(repo,story,scene,stage,settings,sections,refs,{'previous_memory':past.model_dump_json(),'expected_source_prose_ids':json.dumps(expected),
             'memory_allowed_character_ids':json.dumps(scene.character_ids),'memory_wire_version':str(wire),
             'memory_schema_bounds':json.dumps(bounds,ensure_ascii=False),'memory_tracked':json.dumps(tracked,ensure_ascii=False)},accepted_prose_ids=expected,**reuse,
-            memory_metrics={'projection_version':f'memory-catalog-v{wire}','journal_chars':len(past.model_dump_json()),'catalog_chars':len(catalog),'event_count':len(past.events)})
+            memory_metrics={'projection_version':f'memory-catalog-v{wire}','journal_chars':len(past.model_dump_json()),'catalog_chars':len(catalog),'event_count':len(past.events)},
+            memory_narrower=narrower)
     if stage=='edit' and settings.edit_mode in {'patches','diff'}:
         from .evidence import render_fragments
         draft_id=editor_source_id or scene.heads.get('draft')
