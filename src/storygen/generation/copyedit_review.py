@@ -57,8 +57,8 @@ def select_copyedits(repo, scene_id, attempt_id, selected_indices, expected_revi
     source_ref=repo.get_version(attempt.context['copyedit_proposal']['draft_id'])
     ref = repo.save_version(attempt.story_id, scene_id, 'edited', text, attempt.context['input_refs'],
                             attempt.run_id, dependency_snapshot=snapshot,content_format=source_ref.content_format)
-    from .language import language_warnings
-    return repo.commit_copyedit_selection(attempt_id, ref, indices, expected_revision, fingerprint, language_warnings(text))
+    from .language import language_warnings, scene_prose_language
+    return repo.commit_copyedit_selection(attempt_id, ref, indices, expected_revision, fingerprint, language_warnings(text, scene_prose_language(repo, scene_id)))
 
 
 def selection_preview(repo,scene_id,attempt_id,indices,expected_revision,fingerprint):

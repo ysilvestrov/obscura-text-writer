@@ -117,3 +117,11 @@ def test_scene_switched_to_english_after_queueing_skips_evaluation(tmp_path):
     assert worker.get_run(run.id).cursor == 1
     events = [e for e in worker.list_events(run.id) if e.type == 'evaluation_skipped']
     assert events and events[-1].data['reason'] == ENGLISH_NOT_EVALUATED
+
+
+@pytest.mark.req('STORY-LANGUAGE')
+def test_story_evaluation_ignores_english_scene_without_prose(tmp_path):
+    # The story case reads prose only: an English scene that has none is not evaluated, so it does not block (S08).
+    repo, story, scene = story_with(tmp_path, 'uk')
+    repo.create_scene(story.id, SceneCreate(title='Two', prose_language='en'))
+    assert build_evaluation_case(repo, story.id, None, 'story').mode == 'story'

@@ -17,13 +17,14 @@ def asset(db,story_id,id):
     return CoverAsset.model_validate_json(row[0])
 
 
-def card(db,story_id):
-    row=db.execute('SELECT payload FROM story_publications WHERE story_id=?',(story_id,)).fetchone()
-    return PublicationCard.model_validate_json(row[0]) if row else PublicationCard(story_id=story_id)
+def card(db,story):
+    row=db.execute('SELECT payload FROM story_publications WHERE story_id=?',(story.id,)).fetchone()
+    # An unsaved card starts in the story language; a saved one keeps the author's choice (#32).
+    return PublicationCard.model_validate_json(row[0]) if row else PublicationCard(story_id=story.id,language=story.language)
 
 
 def view(db,story):
-    item=card(db,story.id)
+    item=card(db,story)
     return PublicationView(card=item,effective_title=item.title or story.title,
         authors=[signature(db,id) for id in item.author_ids],
         translators=[signature(db,id) for id in item.translator_ids],
@@ -87,7 +88,7 @@ def operation(repo,action,**data):
         if action=='read_cover':
             item=asset(db,story.id,data['id'])
             return repo.files.read(item.relative_path,item.sha256),item.mime_type
-        current=card(db,story.id)
+        current=card(db,story)
         if current.revision!=data['expected_revision']:raise RevisionConflict('Картку публікації змінено в іншому вікні; оновіть дані')
         incoming=data['data']
         if not isinstance(incoming,PublicationData):incoming=PublicationData.model_validate(incoming)

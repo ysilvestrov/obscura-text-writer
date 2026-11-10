@@ -10,6 +10,7 @@ from ..publication_models import PublicationData
 from ..publication_suggestions import SuggestionAcceptance
 from ..publication.covers import MAX_BYTES
 from ..publication.genres import genre_catalog
+from .localization import request_locale
 
 router=APIRouter()
 
@@ -35,7 +36,7 @@ class CardUpdate(DomainModel):
 def page(story_id: str,request: Request):
     story=request.app.state.repo.get_story(story_id)
     return request.app.state.templates.TemplateResponse(request=request,name='publication.html',
-        context={'story':story,'genres':sorted(genre_catalog(),key=lambda g:g[1])})
+        context={'story':story,'genres':sorted(genre_catalog(request_locale(request)),key=lambda g:g[1])})
 
 
 @router.get('/api/publication-signatures')

@@ -124,12 +124,12 @@ def version(id: str,request: Request):
 
 @router.get('/api/versions/{id}/language-warnings')
 def check_language(id: str,request: Request):
-    from ..generation.language import language_warnings, language_suite_hash
+    from ..generation.language import language_warnings, language_suite_hash, scene_prose_language
     repo=request.app.state.repo
     ref=repo.get_version(id)
     if ref.kind not in {'draft','edited','manual'} or not ref.scene_id:
         raise ValueError('Мовна перевірка доступна лише для збереженої чернетки або прози')
-    return {'version_id':ref.id,'sha256':ref.sha256,'stale':ref.stale,'suite_hash':language_suite_hash(),'warnings':language_warnings(repo.read_text(id))}
+    return {'version_id':ref.id,'sha256':ref.sha256,'stale':ref.stale,'suite_hash':language_suite_hash(),'warnings':language_warnings(repo.read_text(id),scene_prose_language(repo,ref.scene_id))}
 
 
 @router.post('/api/scenes/{scene_id}/prose')

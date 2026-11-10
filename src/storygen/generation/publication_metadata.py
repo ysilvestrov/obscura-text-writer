@@ -10,9 +10,8 @@ from .context import ContextBundle,ContextOverflow
 
 
 def catalog_for(language):
-    # Genre labels exist in Ukrainian only; an English request names each FB2 code by itself (#32).
-    catalog=dict(genre_catalog())
-    return {code:code.replace('_',' ') for code in catalog} if language=='en' else catalog
+    # The model request names genres in the story language (#32).
+    return dict(genre_catalog('en' if language=='en' else 'uk'))
 
 
 def build_publication_context(repo,story_id):

@@ -85,6 +85,16 @@ def update_scene_metadata(repo,scene_id: str,changes: dict,expected_revision: in
     return scene
 
 
+def model_material_exists(db,story_id: str) -> bool:
+    """STORY-LANGUAGE: a version produced by a model run locks the story language."""
+    return db.execute("SELECT 1 FROM versions WHERE story_id=? AND json_extract(payload,'$.source_run_id') IS NOT NULL LIMIT 1",(story_id,)).fetchone() is not None
+
+
+def story_language_locked(repo,story_id: str) -> bool:
+    with repo.db.connection() as db:
+        return model_material_exists(db,story_id)
+
+
 def update_story_language(repo,story_id: str,language,expected_revision: int) -> Story:
     with repo.db.connection() as db:
         db.execute("BEGIN IMMEDIATE")
@@ -92,7 +102,7 @@ def update_story_language(repo,story_id: str,language,expected_revision: int) ->
         if story.revision!=expected_revision:
             raise RevisionConflict("Твір уже змінено")
         if story.language==language:return story
-        if db.execute("SELECT 1 FROM versions WHERE story_id=? AND json_extract(payload,'$.source_run_id') IS NOT NULL LIMIT 1",(story_id,)).fetchone():
+        if model_material_exists(db,story_id):
             raise RevisionConflict('Мову твору зафіксовано: у творі вже є матеріал, створений моделлю')
         # A stage builds its context when it runs: a change during a run would save material of the old language.
         active=db.execute("SELECT 1 FROM runs WHERE story_id=? AND json_extract(payload,'$.state') IN "

@@ -76,7 +76,7 @@ def _characters(repo,view,story,text,version,item,publication):
 
 
 def _plan(repo,view,story,text,version,item,publication):
-    preamble,sections=split_plan(text)
+    preamble,sections=split_plan(text,'Scene' if story.language=='en' else 'Сцена')
     existing=view.list_scenes(story.id)
     numbers={s.author_scene_number for s in existing if s.author_scene_number is not None}
     accepted=[]

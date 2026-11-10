@@ -2207,7 +2207,20 @@
     "language.locked": "Мову твору зафіксовано: у творі вже є матеріал, створений моделлю",
     "evaluation.english_not_evaluated": "Оцінювач відкалібровано лише для української прози; англійські сцени не оцінюються",
     "language.run_active": "Мову твору не можна змінити, поки виконується запуск",
-    "language.impact_blocked": "Зміна мови прози сцени потребує нової генерації або ручного перегляду"
+    "language.impact_blocked": "Зміна мови прози сцени потребує нової генерації або ручного перегляду",
+    "conflict.story_changed": "Твір уже змінено",
+    "conflict.story_changed_memory_kind": "Твір уже змінено. Оновіть таблицю; тип запису не збережено.",
+    "language.story_label": "Мова твору",
+    "language.uk": "Українська",
+    "language.en": "Англійська",
+    "language.help": "Мову твору можна змінити, доки в ньому немає матеріалу, створеного моделлю.",
+    "language.saved": "Мову твору збережено",
+    "language.prose_label": "Мова прози",
+    "language.prose_story": "Як у творі ({p0})",
+    "language.prose_help": "Зміна мови прози робить чернетку й прозу сцени застарілими.",
+    "role_profiles.language_mismatch": "Комплект зроблено для твору мовою {p0}, а цей твір має мову {p1}; власні промпти не перекладаються.",
+    "language.help_settings": "Мову твору можна змінити, доки в ньому немає матеріалу, створеного моделлю. Вибір зберігається одразу.",
+    "language.unsaved_first": "Спершу збережіть або скасуйте інші зміни налаштувань: мова твору змінює стандартні промпти ролей."
   },
   "en": {
     "ui.save": "Save",
@@ -2689,7 +2702,7 @@
     "m_760039854033": "Scene settings",
     "m_fd9c23636b93": "Target word count",
     "m_418e80220ec3": "Scene cast",
-    "m_f778f01a5f94": "Cast is determined by “Персонажі:” or “Хто бере участь:” in the outline.",
+    "m_f778f01a5f94": "Cast is determined by the “Characters:” or “Participants:” line in the outline (Ukrainian “Персонажі:” and “Хто бере участь:” also work).",
     "m_4111b5e5d2dd": "Save settings",
     "m_3da57d38ee30": "Card not found: {p0}",
     "m_c47bda0ce0de": "No cast specified.",
@@ -4417,6 +4430,19 @@
     "language.locked": "The story language is fixed: the story already has model-generated material",
     "evaluation.english_not_evaluated": "The evaluator is calibrated for Ukrainian prose only; English scenes are not evaluated",
     "language.run_active": "The story language cannot be changed while a run is in progress",
-    "language.impact_blocked": "A change of the scene's prose language needs new generation or a manual review"
+    "language.impact_blocked": "A change of the scene's prose language needs new generation or a manual review",
+    "conflict.story_changed": "The story has already changed",
+    "conflict.story_changed_memory_kind": "The story has already changed. Refresh the table; the entry type was not saved.",
+    "language.story_label": "Story language",
+    "language.uk": "Ukrainian",
+    "language.en": "English",
+    "language.help": "The story language can be changed until a model has produced material in the story.",
+    "language.saved": "Story language saved",
+    "language.prose_label": "Prose language",
+    "language.prose_story": "As the story ({p0})",
+    "language.prose_help": "Changing the prose language makes the scene's draft and prose stale.",
+    "role_profiles.language_mismatch": "The profile was made for a story in {p0}, but this story is in {p1}; custom prompts are not translated.",
+    "language.help_settings": "The story language can be changed until a model has produced material in the story. The choice is saved at once.",
+    "language.unsaved_first": "Save or discard other settings changes first: the story language changes the default role prompts."
   }
 }

@@ -61,6 +61,10 @@ class Repository:
         from .authoring import update_story_rating
         return update_story_rating(self, story_id, rating, expected_revision)
 
+    def story_language_locked(self, story_id):
+        from .authoring import story_language_locked
+        return story_language_locked(self, story_id)
+
     def update_story_language(self, story_id, language, expected_revision):
         from .authoring import update_story_language
         return update_story_language(self, story_id, language, expected_revision)

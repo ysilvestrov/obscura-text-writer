@@ -1,5 +1,5 @@
 import {confirmDialog} from './dialogs.js';
-import {live,t,msg,labelEntries,getLocale,uiText,uiAttr,uiHTML} from './i18n.js';
+import {live,t,msg,labelEntries,getLocale,uiText,uiAttr,uiHTML,diagnostic} from './i18n.js';
 import {hasUnsavedSettings,allowSettingsNavigation,registerSettingsForm,settingsSaved,withSettingsSave,settingsBusy} from './settings-workspace.js';
 import {api,json,notice} from './api.js';
 
@@ -47,7 +47,7 @@ previewButton.onclick=()=>action(async()=>{
   }
   summary.append(list);
   const evaluator=document.createElement('p');uiText(evaluator,"textContent",()=>(data.evaluator?t("m_c809605baab4",{p0:(data.evaluator.config.provider),p1:(data.evaluator.config.model||t("m_eff175374c74")),p2:(data.evaluator.policy)}):t("m_836364365ba3")));summary.append(evaluator);
-  for(const text of data.warnings){const warning=document.createElement('p');uiText(warning,"textContent",()=>(text));summary.append(warning)}
+  for(const text of data.warnings){const warning=document.createElement('p');uiText(warning,"textContent",()=>(diagnostic(text)));summary.append(warning)}
   const details=document.createElement('details'),caption=document.createElement('summary'),raw=document.createElement('pre');uiText(caption,"textContent",()=>(t("m_edc6ecf1fe8c")));uiText(raw,"textContent",()=>(JSON.stringify(data,null,2)));details.append(caption,raw);summary.append(details);
 });
 
