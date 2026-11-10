@@ -252,6 +252,33 @@ def product(scene: SceneInput, params: Params) -> Selection:
                   [c for c in best.selected_claim_ids if c in atmosphere], False)
 
 
+def _catalog_v4(name, scene: SceneInput, narrow: bool) -> Selection:
+    """Memory-stage catalog v4 exactly as build_context builds it (#60, MEMORY-SELECT-S07): record_ids are the claims the
+    model may change — core slots, threads and the shown mutable states."""
+    from storygen.memory.journal import replay_memory
+    from storygen.memory.projection import memory_catalog_v4
+    from storygen.memory.selection import narrow_catalog
+    data = scene.catalog_v4
+    if data is None:
+        raise ValueError(f'{name} needs real data (SceneInput.catalog_v4)')
+    journal, cast, every = data['journal'], data['cast'], data['tracked']
+    tracked = [cid for cid in every if cid in cast]
+    keep = set(narrow_catalog(journal, cast, every, data['names'], data['prose'], data['number'], data['source_numbers']).keep) if narrow else None
+    text = memory_catalog_v4(journal, tracked, data['names'], all_tracked=every, keep=keep)
+    active = replay_memory(journal).values()
+    ids = tuple(e.claim_id for e in active if e.category in MUTABLE and (keep is None or e.claim_id in keep or e.category == 'open_threads'
+                                                                         or e.slot and e.character_ids[0] in every))
+    return Selection(name, ids, {k: 0 for k in LAYERS}, len(text), tokens_conservative(text), tokens_realistic(text), False, 0)
+
+
+def catalog_full_v4(scene: SceneInput) -> Selection:
+    return _catalog_v4('catalog_full_v4', scene, False)
+
+
+def catalog_narrow_v4(scene: SceneInput) -> Selection:
+    return _catalog_v4('catalog_narrow_v4', scene, True)
+
+
 MUTABLE = {'character_states', 'open_threads'}
 
 

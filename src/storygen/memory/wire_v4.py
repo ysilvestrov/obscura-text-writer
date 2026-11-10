@@ -42,7 +42,7 @@ USED={'unchanged':(),'changed':('text','evidence_ids'),'unknown':('reason',),'in
     'open':(),'closed':('resolution','evidence_ids')}
 
 
-def schema_bounds_v4(previous,prose,allowed_character_ids,tracked,day_change) -> dict:
+def schema_bounds_v4(previous,prose,allowed_character_ids,tracked,day_change,*,keep=None) -> dict:
     # Captured inputs of check_v4 and the dynamic schema; day_change is computed per tracked character upstream.
     # tracked lists every tracked character of the story; only those in the cast get core decisions. Slot claims of a
     # character that is no longer tracked (former protagonist) are ordinary mutable states, never frozen.
@@ -50,8 +50,9 @@ def schema_bounds_v4(previous,prose,allowed_character_ids,tracked,day_change) ->
     scene=[cid for cid in tracked if cid in allowed]
     unquoted={(c.character_ids[0],c.slot) for c in active.values() if c.slot and c.source_kind=='author' and c.quote is None}
     return {'fragment_ids':[f.id for f in fragment_text(prose)],
+        # keep: the narrowed catalog's mutable states (MEMORY-SELECT-S07); bounds always equal what the model sees.
         'mutable':{'character_states':[c.claim_id for c in active.values() if c.category=='character_states'
-            and (not c.slot or c.character_ids[0] not in tracked)]},
+            and (not c.slot or c.character_ids[0] not in tracked) and (keep is None or c.claim_id in keep)]},
         'threads':[c.claim_id for c in active.values() if c.category=='open_threads'],
         'character_ids':allowed,
         'tracked':{cid:[s.name for s in SLOTS] for cid in scene},
@@ -125,9 +126,11 @@ def check_v4(data,previous,bounds) -> list[Violation]:
                         result.append(Violation(label,'scope_unknown'))
                     continue
                 # Slotted claims of tracked characters change only through core decisions; the captured mutable list
-                # admits former protagonist slots (old bounds never listed slot claims there).
+                # admits former protagonist slots (old bounds never listed slot claims there). Every state must be in the
+                # captured list: a narrowed catalog (MEMORY-SELECT-S07) leaves states out, and the model may not change
+                # what it was not shown. Older bounds list every unslotted state, so they accept what they did before.
                 claim=active.get(item.claim_id)
-                if claim is None or claim.category!=category or claim.slot and claim.claim_id not in bounds['mutable']['character_states']:
+                if claim is None or claim.category!=category or category=='character_states' and claim.claim_id not in bounds['mutable']['character_states']:
                     result.append(Violation(label,'target_unknown'))
         if len(data[category]['add'])>3:result.append(Violation(f'{category}.add','add_limit'))
     # Core and thread decisions are fixed by the catalog and never count toward the limit.

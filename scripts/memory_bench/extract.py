@@ -116,5 +116,8 @@ def extract_story(repo, story_id: str, protagonist: str | None = None):
                 skipped['targets_hidden' if claim in hidden else 'targets_absent'] += 1
         plan = _text(repo, scene.heads.get('plan')) or scene.beats
         result.append(SceneInput(scene.id, scene.position + 1, cast, plan, _text(repo, scene.heads.get('prose')), records, timeline,
-                                 hero, names, targets, first, product_input(repo, scenes, scene, past, numbers, tracked, names, plan)))
+                                 hero, names, targets, first, product_input(repo, scenes, scene, past, numbers, tracked, names, plan),
+                                 {'journal': past, 'cast': list(cast), 'tracked': list(tracked), 'names': dict(names),
+                                  'prose': _text(repo, scene.heads.get('prose')), 'number': scene.position + 1,
+                                  'source_numbers': {k: v for k, v in numbers.items() if v is not None}}))
     return result, skipped

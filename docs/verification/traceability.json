@@ -3586,6 +3586,21 @@
         "tests/memory/test_selection.py::test_selection_is_deterministic",
         "tests/retrieval_bench/test_product.py::test_product_selects_under_budget_core_first_then_fts"
       ]
+    },
+    {
+      "id": "MEMORY-SELECT-S07",
+      "requirement": "MEMORY-SELECT",
+      "scope": "Склад звуженого каталогу, ліміт 20 станів за прозою, той самий набір у каталозі й межах, відхилення update поза межами, звуження лише при переповненні, ContextOverflow. Відсутність втрат цілей на реальних даних — замір бенчмарку в журналі виконання, не pytest.",
+      "tests": [
+        "tests/memory/test_catalog_narrow.py::test_narrow_keeps_core_threads_cast_general_prose_states_facts_and_recent_timeline",
+        "tests/memory/test_catalog_narrow.py::test_prose_ranked_states_are_capped",
+        "tests/memory/test_catalog_narrow.py::test_catalog_and_bounds_share_the_kept_claims",
+        "tests/memory/test_catalog_narrow.py::test_update_outside_the_narrowed_catalog_is_rejected",
+        "tests/generation/test_memory_stage_narrow.py::test_fitting_memory_stage_is_unchanged",
+        "tests/generation/test_memory_stage_narrow.py::test_overflowing_memory_stage_narrows_catalog_and_bounds",
+        "tests/generation/test_memory_stage_narrow.py::test_narrowed_catalog_that_still_overflows_is_an_error",
+        "tests/retrieval_bench/test_catalog_v4.py::test_narrow_v4_keeps_core_threads_and_cast_states_and_hides_the_rest"
+      ]
     }
   ]
 }

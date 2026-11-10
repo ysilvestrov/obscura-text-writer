@@ -14,7 +14,8 @@ sys.path.insert(0, str(ROOT / 'scripts'))
 from memory_bench.extract import extract_story  # noqa: E402
 from memory_bench.metrics import aggregate, control_hits, scene_metrics  # noqa: E402
 from memory_bench.model import DEFAULT_TOKENIZER, FERTILITY, realistic_ratio, set_tokenizer  # noqa: E402
-from memory_bench.strategies import STRATEGIES, Params, catalog_full, catalog_narrow, product  # noqa: E402
+from memory_bench.strategies import (STRATEGIES, Params, catalog_full, catalog_full_v4, catalog_narrow,  # noqa: E402
+                                     catalog_narrow_v4, product)
 from memory_bench.synthetic import fit_linear, generate, measure_rates  # noqa: E402
 
 MEASURES = ('conservative', 'realistic')
@@ -84,6 +85,15 @@ def evaluate_product(scenes, others, args, contexts):
             sels = [product(s, Params(budget(context, args, others.get(s.scene_id), measure), measure, 'upper')) for s in scenes]
             result[str(context)][measure] = aggregate([scene_metrics(s, x) for s, x in zip(scenes, sels)], sels)
     return result
+
+
+def memory_stage_v4(scenes):
+    """Full and narrowed memory-stage catalog v4 on real scenes (#60); kept apart from the v3 'memory_stage'."""
+    out = {}
+    for label, build in (('full', catalog_full_v4), ('narrow', catalog_narrow_v4)):
+        sels = [build(s) for s in scenes]
+        out[label] = aggregate([scene_metrics(s, x) for s, x in zip(scenes, sels)], sels)
+    return out
 
 
 def growth(scenes, args):
@@ -156,6 +166,7 @@ def run(args):
         'real': evaluate(scenes, others, args, contexts, MEASURES),
         'memory_stage': memory_stage,
         'product': evaluate_product(scenes, others, args, contexts),
+        'memory_stage_v4': memory_stage_v4(scenes),
         'growth': growth(scenes, args),
         'synthetic': synthetic,
         'control_cases': cases,
