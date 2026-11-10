@@ -62,8 +62,29 @@ Copy-Item .env.example .env
 
 ## Ліцензія
 
-Код розповсюджується за [MIT License](LICENSE). Приватні твори та дані користувачів
+Код наступних версій розповсюджується за [Functional Source License 1.1, MIT Future
+License (FSL-1.1-MIT)](LICENSE). Це ліцензія з відкритим кодом для читання
+(source-available), але не open source за визначенням OSI:
+
+- користуватися програмою можна безкоштовно, зокрема для творів, які ви продаєте;
+- змінювати код і ділитися змінами можна, якщо це не конкурентний продукт;
+- заборонено продавати чи пропонувати збірку або сервіс, що замінює Obscura
+  чи повторює її можливості;
+- кожна версія через два роки після публікації стає доступною за MIT.
+
+Версії до тегу `last-mit` включно лишаються за MIT назавжди:
+[текст попередньої ліцензії](docs/licensing/MIT-previous-versions.txt).
+Сторонні частини лишаються під власними ліцензіями: бандл редактора
+(`src/storygen/web/static/licenses`), шрифт Noto Serif (OFL-1.1) і схеми FictionBook.
+Назву й логотип Obscura регулює [політика назви](docs/trademark-policy.md)
+([English](docs/en/trademark-policy.md)). Приватні твори та дані користувачів
 не входять до репозиторію.
+
+**English.** Versions after the `last-mit` tag are source-available under
+[FSL-1.1-MIT](LICENSE): free to use, including for books you sell; competing
+commercial builds or services are not allowed; each version becomes MIT two years
+after release. Earlier versions remain [MIT](docs/licensing/MIT-previous-versions.txt).
+See the [name and logo policy](docs/en/trademark-policy.md).
 
 Умови використання (чернетка, ще не чинна): [українською](docs/terms-of-use.md), [English](docs/en/terms-of-use.md).
 
