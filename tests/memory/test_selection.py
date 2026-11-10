@@ -45,13 +45,16 @@ def test_every_candidate_in_exactly_one_layer():
         'tl_old':'timeline','tl_new':'timeline'}
 
 
-def test_hero_recent_by_story_day_then_by_three_scenes():
-    # Same story day: an old state changed on this day is recent; another day is atmosphere.
+def test_hero_recent_by_story_day_or_three_scenes():
+    # Changed on the scene's story day, however long ago: recent.
     by_day=layer_of(classify(inp(scene_day='day:3',day_keys={2:'day:3',29:'day:2'})))
-    assert by_day['mood_old']=='hero_recent' and by_day['mood_now']=='atmosphere'
-    # Without a day key on either side: changed within the last three scenes.
-    fallback=layer_of(classify(inp(scene_day='day:3',day_keys={29:None})))
-    assert fallback['mood_now']=='hero_recent'
+    assert by_day['mood_old']=='hero_recent'
+    # Changed within the last three scenes: recent even on another day or without day keys.
+    assert by_day['mood_now']=='hero_recent'
+    assert layer_of(classify(inp(scene_day=None,day_keys={})))['mood_now']=='hero_recent'
+    # Another day and older than three scenes: atmosphere.
+    other=layer_of(classify(inp(scene_day='day:3',day_keys={2:'day:1'})))
+    assert other['mood_old']=='atmosphere'
 
 
 def test_author_overrides_win_but_slots_stay_core():

@@ -69,9 +69,12 @@ def mentions(text: str, stems) -> bool:
 
 
 def _recent(inp: SelectionInput, item: MemoryItem) -> bool:
-    source_day=inp.day_keys.get(item.source_scene) if item.source_scene is not None else None
-    if inp.scene_day and source_day:return source_day==inp.scene_day
-    return item.source_scene is not None and item.source_scene>=inp.scene_number-RECENT_SCENES
+    # Fresh = changed on the scene's story day or within the last RECENT_SCENES scenes. The day alone missed half of the
+    # updated states in a story whose every scene starts a new date (bench, 10.11.2026).
+    if item.source_scene is None:return False
+    source_day=inp.day_keys.get(item.source_scene)
+    same_day=bool(inp.scene_day and source_day and source_day==inp.scene_day)
+    return same_day or item.source_scene>=inp.scene_number-RECENT_SCENES
 
 
 def classify(inp: SelectionInput) -> dict[str,list[MemoryItem]]:
