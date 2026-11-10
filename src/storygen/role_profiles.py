@@ -36,6 +36,8 @@ class ProfileDocument(DomainModel):
     format: Literal['obscura-role-profile']='obscura-role-profile'
     schema_version: Literal[1]=1
     name: str = Field(min_length=1,max_length=100)
+    # Story language the prompts were written for; None for profiles exported before #32.
+    language: Literal['uk','en'] | None = None
     roles: dict[str,PortableRole]
     evaluator: EvaluationSettings | None = None
 
@@ -113,7 +115,7 @@ def capture_profile(repo,story_id,name,expected_revision,include_evaluator=False
         if evaluator is None:raise ValueError('Оцінювач не налаштовано')
         evaluator=EvaluationSettings.model_validate(evaluator).model_dump()
         evaluator['profile'].update(calibrated=False,evaluator_fingerprint=None,calibration_fingerprint=None)
-    document=_document(dict(name=name,roles=roles,evaluator=evaluator))
+    document=_document(dict(name=name,language=story.language,roles=roles,evaluator=evaluator))
     return repo.role_profiles('save',document=document.model_dump(),profile_id=profile_id,expected_version=expected_version,
                               source_story_id=story_id,source_revision=expected_revision)
 
@@ -130,6 +132,8 @@ def preview_profile(repo,story_id,profile_id,version,expected_revision):
     item=repo.role_profiles('read',profile_id=profile_id,version=version)
     doc=_document(item['document'])
     warnings=[]
+    if doc.language and doc.language!=story.language:
+        warnings.append(f'Комплект зроблено для твору мовою {doc.language}, а цей твір має мову {story.language}; власні промпти не перекладаються.')
     if doc.evaluator:
         validate_evaluation_settings(repo,doc.evaluator.model_copy(deep=True))
         from .evaluation.blocks import get_block

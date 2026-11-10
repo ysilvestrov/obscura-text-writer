@@ -2218,7 +2218,8 @@
     "language.saved": "Мову твору збережено",
     "language.prose_label": "Мова прози",
     "language.prose_story": "Як у творі ({p0})",
-    "language.prose_help": "Зміна мови прози робить чернетку й прозу сцени застарілими."
+    "language.prose_help": "Зміна мови прози робить чернетку й прозу сцени застарілими.",
+    "role_profiles.language_mismatch": "Комплект зроблено для твору мовою {p0}, а цей твір має мову {p1}; власні промпти не перекладаються."
   },
   "en": {
     "ui.save": "Save",
@@ -4439,6 +4440,7 @@
     "language.saved": "Story language saved",
     "language.prose_label": "Prose language",
     "language.prose_story": "As the story ({p0})",
-    "language.prose_help": "Changing the prose language makes the scene's draft and prose stale."
+    "language.prose_help": "Changing the prose language makes the scene's draft and prose stale.",
+    "role_profiles.language_mismatch": "The profile was made for a story in {p0}, but this story is in {p1}; custom prompts are not translated."
   }
 }

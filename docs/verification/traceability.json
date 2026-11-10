@@ -2138,7 +2138,8 @@
       "tests": [
         "tests/web/test_localization.py::test_api_diagnostic_preserves_original",
         "tests/web/test_localization.py::test_diagnostics_do_not_translate_author_parameters",
-        "tests/generation/test_language_warnings_language.py::test_story_changed_conflicts_are_localized"
+        "tests/generation/test_language_warnings_language.py::test_story_changed_conflicts_are_localized",
+        "tests/authoring/test_language_periphery.py::test_profile_language_warning_is_localized"
       ]
     },
     {
@@ -3760,6 +3761,18 @@
       "tests": [
         "tests/web/test_story_language_ui.py::test_story_view_reports_language_lock",
         "tests/web/test_story_language_ui.py::test_language_lock_helper_matches_server_refusal"
+      ]
+    },
+    {
+      "id": "STORY-LANGUAGE-S09",
+      "requirement": "STORY-LANGUAGE",
+      "scope": "Мова профілю ролей, мова незбереженої картки публікації, англійські підписи жанрів. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/authoring/test_language_periphery.py::test_english_genre_labels_cover_every_code",
+        "tests/authoring/test_language_periphery.py::test_english_metadata_request_uses_english_genre_labels",
+        "tests/authoring/test_language_periphery.py::test_unsaved_card_defaults_to_story_language",
+        "tests/authoring/test_language_periphery.py::test_profile_carries_story_language_and_warns_on_mismatch",
+        "tests/authoring/test_language_periphery.py::test_old_profile_without_language_imports_without_warning"
       ]
     }
   ]
