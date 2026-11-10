@@ -190,6 +190,23 @@ def main():
                 repo.set_head(scene.id,'prose',prose.id,scene.revision);ids.append(scene.id)
             return {'story_id':story.id,'scene_ids':ids}
 
+        @app.post('/test-ghost-mode')
+        def ghost_mode_fixture(format: str = 'markdown'):
+            import json
+            story=rated_story('Маяк на березі')
+            scene=repo.create_scene(story.id,SceneCreate(title='Вечір біля маяка'))
+            brief=repo.save_version(story.id,scene.id,'brief',json.dumps(dict(objective='Нейтральне завдання',beats=['Вечір'],constraints=[],proposed_changes=[]),ensure_ascii=False),[])
+            scene=repo.set_head(scene.id,'brief',brief.id,scene.revision)
+            text=('Над морем повільно сідало сонце, і **маяк** уже світив першим променем, хоча небо ще було світле. '
+                  'Хвилі билися об каміння, а вітер приносив запах солі й водоростей.\n\n'
+                  '— Ще рано, — сказала доглядачка.\n\n— Ні, саме час.\n\n***\n\n'
+                  'Вона піднялася сходами нагору, рахуючи сходинки, як робила щовечора, і зупинилася біля вікна, '
+                  'звідки було видно всю затоку й далекі вогні рибальського селища.')
+            if format=='plain':text=text.replace('**маяк**','маяк')
+            draft=repo.save_version(story.id,scene.id,'draft',text,[brief.id],source_run_id='synthetic',content_format=format)
+            repo.set_head(scene.id,'draft',draft.id,scene.revision)
+            return {'story_id':story.id,'scene_id':scene.id,'draft_id':draft.id}
+
         @app.post('/test-editor-no-changes')
         def editor_no_changes():
             from storygen.authoring.blueprints import save_role_settings

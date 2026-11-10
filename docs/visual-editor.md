@@ -12,11 +12,11 @@
 
 Статистика під редактором рахує видимий текст. Для Markdown окремо показано обсяг джерела; форматні маркери впливають на джерело й запит моделі, хоча не відображаються як текст.
 
-Форматування зберігається в модельній редактурі та у FB2/EPUB/PDF. TXT містить видимий текст; MD — джерело (старий plain текст екранується). Непідтримані Markdown-конструкції залишаються буквальними й у книгах. Коментарі та AI-assisted rewrite додаються окремими пакетами R-23.
+Форматування зберігається в модельній редактурі та у FB2/EPUB/PDF. TXT містить видимий текст; MD — джерело (старий plain текст екранується). Непідтримані Markdown-конструкції залишаються буквальними й у книгах. Коментарі та AI-assisted rewrite додаються окремими пакетами R-23. Переписати AI-чернетку власними словами блок за блоком допомагає [режим переписування по пам’яті](ghost-mode.md).
 
 ## English
 
-Draft and Prose have a visual toolbar: **B** / `Ctrl+B`, *I* / `Ctrl+I`, Undo / `Ctrl+Z`, Redo / `Ctrl+Y` or `Ctrl+Shift+Z`. Save preserves formatting and does not clear undo history. Saving unchanged text reuses its existing version.
+Draft and Prose have a visual toolbar: **B** / `Ctrl+B`, *I* / `Ctrl+I`, Undo / `Ctrl+Z`, Redo / `Ctrl+Y` or `Ctrl+Shift+Z`. Save preserves formatting and does not clear undo history. Saving unchanged text reuses its existing version. To rewrite an AI draft in your own words block by block, see [rewriting from memory](en/ghost-mode.md).
 
 Legacy plain text remains literal; formatting characters are not reinterpreted on opening. A real edit stores Markdown with escaped literal punctuation. There is no raw Markdown editing mode. Outline, brief and advanced memory JSON use plain fields. Paste imports text only. Unsupported Markdown structures appear as literal, opaque blocks. Historical versions are read-only; switching UA/EN preserves text and selection.
 

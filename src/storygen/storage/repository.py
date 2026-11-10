@@ -396,7 +396,7 @@ class Repository:
             self._touch_story(db,story_id)
         return scene
 
-    def save_version(self,story_id: str,scene_id: str | None,kind: str,text: str,input_refs: list[str],source_run_id: str | None = None,dependency_snapshot=None,prompt_contract=None,manual_projection_policy=None,content_format='plain',author_lineage=None) -> VersionRef:
+    def save_version(self,story_id: str,scene_id: str | None,kind: str,text: str,input_refs: list[str],source_run_id: str | None = None,dependency_snapshot=None,prompt_contract=None,manual_projection_policy=None,content_format='plain',author_lineage=None,ghost_rewrite=None) -> VersionRef:
         if content_format not in {'plain','markdown'} or content_format=='markdown' and kind not in {'draft','edited','manual'}:
             raise ValueError('Markdown дозволено лише для чернетки та прози')
         if prompt_contract is not None and kind!='prompt':
@@ -411,7 +411,7 @@ class Repository:
         id=new_id()
         data=text.encode("utf-8")
         version=VersionRef(id=id,story_id=story_id,scene_id=scene_id,kind=kind,format=format,content_format=content_format,sha256=hashlib.sha256(data).hexdigest(),
-            relative_path=f"stories/{story_id}/versions/{id}.{'json' if format=='json' else 'txt'}",input_refs=input_refs,source_run_id=source_run_id,dependency_snapshot=dependency_snapshot,prompt_contract=prompt_contract,manual_projection_policy=manual_projection_policy,author_lineage=author_lineage)
+            relative_path=f"stories/{story_id}/versions/{id}.{'json' if format=='json' else 'txt'}",input_refs=input_refs,source_run_id=source_run_id,dependency_snapshot=dependency_snapshot,prompt_contract=prompt_contract,manual_projection_policy=manual_projection_policy,author_lineage=author_lineage,ghost_rewrite=ghost_rewrite)
         if author_lineage is not None:
             parent=self.get_version(author_lineage.parent_version_id)
             if scene_id is None or parent.scene_id!=scene_id or parent.story_id!=story_id:

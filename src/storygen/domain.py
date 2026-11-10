@@ -100,6 +100,21 @@ class AuthorLineage(DomainModel):
     parent_version_id: str = Field(min_length=1)
 
 
+class GhostRewriteStats(DomainModel):
+    """Ghost Mode rewrite of an AI draft (#55). Metadata only: not in sha256, dependencies or request hashes.
+
+    blocks/overlap are computed by the server; peeks, peek_ms and pastes_blocked are the browser's word."""
+    source_draft_id: str = Field(min_length=1)
+    blocks: int = Field(ge=0)
+    blocks_written: int = Field(ge=0)
+    blocks_skipped: int = Field(ge=0)
+    peeks: int = Field(ge=0)
+    peek_ms: int = Field(ge=0)
+    pastes_blocked: int = Field(ge=0)
+    overlap_4gram: float | None = Field(default=None,ge=0,le=1)
+    min_block_chars: int = Field(ge=1)
+
+
 class VersionRef(DomainModel):
     id: str
     story_id: str
@@ -119,6 +134,7 @@ class VersionRef(DomainModel):
     memory_confirmation: MemoryConfirmation | None = None
     brief_link: BriefLink | None = None
     author_lineage: AuthorLineage | None = None
+    ghost_rewrite: GhostRewriteStats | None = None
     created_at: str = Field(default_factory=now)
 
     @model_validator(mode='after')

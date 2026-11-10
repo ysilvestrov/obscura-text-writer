@@ -1208,6 +1208,95 @@
       ]
     },
     {
+      "id": "GHOST-REWRITE-S01",
+      "requirement": "GHOST-REWRITE",
+      "scope": "Поділ на блоки, поріг 160, розділювачі й заголовки; дзеркало браузера на спільних векторах (node). Ядро переписування по пам’яті без інтерфейсу; не доводить, що автор справді писав по пам’яті.",
+      "tests": [
+        "tests/authoring/test_ghost.py::test_shared_vectors",
+        "tests/authoring/test_ghost.py::test_block_rules",
+        "tests/authoring/test_ghost.py::test_browser_mirror_matches_vectors"
+      ]
+    },
+    {
+      "id": "GHOST-REWRITE-S02",
+      "requirement": "GHOST-REWRITE",
+      "scope": "Переходи reading/writing/peek, Tab і кнопка проблиску, порожній блок, лічильники; модель — node-тест, поведінка в браузері — Playwright. Не доводить, що автор справді писав по пам’яті: режим — дисципліна, а не захист.",
+      "tests": [
+        "tests/web/test_ghost_mode_ui.py::test_ghost_session_states_storage_and_stats"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#ghost-mode",
+        "reason": "check_docs.py індексує лише pytest; Playwright cases ghost-mode.spec.mjs і перевірку клавіатури Windows перелічено в процедурі, вони виконуються окремо; цей зв’язок не є доказом виконання."
+      }
+    },
+    {
+      "id": "GHOST-REWRITE-S03",
+      "requirement": "GHOST-REWRITE",
+      "scope": "Блокування вставки й копіювання; лічильник вставок у моделі — node-тест, події — Playwright. Не доводить, що автор справді писав по пам’яті: режим — дисципліна, а не захист.",
+      "tests": [
+        "tests/web/test_ghost_mode_ui.py::test_ghost_session_states_storage_and_stats"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#ghost-mode",
+        "reason": "check_docs.py індексує лише pytest; Playwright cases ghost-mode.spec.mjs і перевірку клавіатури Windows перелічено в процедурі, вони виконуються окремо; цей зв’язок не є доказом виконання."
+      }
+    },
+    {
+      "id": "GHOST-REWRITE-S04",
+      "requirement": "GHOST-REWRITE",
+      "scope": "Ручна чернетка з author_lineage на AI-чернетку, незмінність AI-чернетки, залежності як у звичайної ручної чернетки, редактор і родовід до brief, формат. Ядро переписування по пам’яті без інтерфейсу; не доводить, що автор справді писав по пам’яті.",
+      "tests": [
+        "tests/web/test_ghost_rewrite_api.py::test_save_creates_manual_draft_linked_to_ai_draft",
+        "tests/web/test_ghost_rewrite_api.py::test_prose_from_author_draft_reaches_the_brief",
+        "tests/web/test_ghost_rewrite_api.py::test_format_follows_ai_draft"
+      ]
+    },
+    {
+      "id": "GHOST-REWRITE-S05",
+      "requirement": "GHOST-REWRITE",
+      "scope": "Статистика ghost_rewrite і частка збігів 4-грам (апостроф, дефіс, короткі тексти), пропущені блоки. Ядро переписування по пам’яті без інтерфейсу; не доводить, що автор справді писав по пам’яті.",
+      "tests": [
+        "tests/authoring/test_ghost.py::test_overlap_4gram",
+        "tests/authoring/test_ghost.py::test_overlap_tokens_keep_apostrophes_and_hyphens",
+        "tests/web/test_ghost_rewrite_api.py::test_save_creates_manual_draft_linked_to_ai_draft",
+        "tests/web/test_ghost_rewrite_api.py::test_skipped_blocks_and_errors"
+      ]
+    },
+    {
+      "id": "GHOST-REWRITE-S06",
+      "requirement": "GHOST-REWRITE",
+      "scope": "Сеанс у localStorage: збереження без стану peek, ігнорування пошкоджених даних, сховище з винятками; відновлення після перезавантаження — Playwright. Не доводить, що автор справді писав по пам’яті: режим — дисципліна, а не захист.",
+      "tests": [
+        "tests/web/test_ghost_mode_ui.py::test_ghost_session_states_storage_and_stats"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#ghost-mode",
+        "reason": "check_docs.py індексує лише pytest; Playwright cases ghost-mode.spec.mjs і перевірку клавіатури Windows перелічено в процедурі, вони виконуються окремо; цей зв’язок не є доказом виконання."
+      }
+    },
+    {
+      "id": "GHOST-REWRITE-S07",
+      "requirement": "GHOST-REWRITE",
+      "scope": "404/400/409 і локалізоване повідомлення; конфлікт лишає версію в історії. Ядро переписування по пам’яті без інтерфейсу; не доводить, що автор справді писав по пам’яті.",
+      "tests": [
+        "tests/web/test_ghost_rewrite_api.py::test_skipped_blocks_and_errors",
+        "tests/web/test_ghost_rewrite_api.py::test_revision_conflict_keeps_version_in_history"
+      ]
+    },
+    {
+      "id": "GHOST-REWRITE-S08",
+      "requirement": "GHOST-REWRITE",
+      "scope": "Явний пропуск і повернення блоку, умова збереження, результат без пропущених; підтвердження й blocks_skipped — Playwright і API. Не доводить, що автор справді писав по пам’яті: режим — дисципліна, а не захист.",
+      "tests": [
+        "tests/web/test_ghost_mode_ui.py::test_ghost_session_states_storage_and_stats",
+        "tests/web/test_ghost_rewrite_api.py::test_skipped_blocks_and_errors"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#ghost-mode",
+        "reason": "check_docs.py індексує лише pytest; Playwright cases ghost-mode.spec.mjs і перевірку клавіатури Windows перелічено в процедурі, вони виконуються окремо; цей зв’язок не є доказом виконання."
+      }
+    },
+    {
       "id": "MAINT-001-S01",
       "requirement": "MAINT-001",
       "scope": "Некоректна або стара база. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",

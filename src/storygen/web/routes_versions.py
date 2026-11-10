@@ -148,6 +148,27 @@ def manual_draft(scene_id: str,body: DraftChange,request: Request):
     return {'version':ref,'scene':request.app.state.repo.get_scene(scene_id)}
 
 
+class GhostClientStats(DomainModel):
+    peeks: int = Field(default=0,ge=0,le=1_000_000)
+    peek_ms: int = Field(default=0,ge=0,le=10**10)
+    pastes_blocked: int = Field(default=0,ge=0,le=1_000_000)
+    blocks_skipped: int = Field(default=0,ge=0,le=1_000_000)
+
+
+class GhostRewriteBody(AuthorTextChange):
+    source_draft_id: str = Field(min_length=1)
+    client_stats: GhostClientStats = Field(default_factory=GhostClientStats)
+
+
+@router.post('/api/scenes/{scene_id}/ghost-rewrite')
+def ghost_rewrite(scene_id: str,body: GhostRewriteBody,request: Request):
+    from ..authoring.ghost import save_ghost_rewrite
+    repo=request.app.state.repo
+    ref=save_ghost_rewrite(repo,scene_id,source_draft_id=body.source_draft_id,text=body.text,content_format=body.content_format,
+        expected_revision=body.expected_revision,client_stats=body.client_stats.model_dump())
+    return {'version':ref,'scene':repo.get_scene(scene_id)}
+
+
 @router.post('/api/scenes/{scene_id}/brief')
 def manual_brief(scene_id: str,body: BriefChange,request: Request):
     repo=request.app.state.repo
