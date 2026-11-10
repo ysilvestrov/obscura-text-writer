@@ -3635,6 +3635,85 @@
         "tests/generation/test_memory_kind.py::test_rewrite_style_reentry_with_selection_records_the_selector",
         "tests/generation/test_memory_kind.py::test_legacy_thread_closure_in_the_timeline_takes_a_mark"
       ]
+    },
+    {
+      "id": "STORY-LANGUAGE-S01",
+      "requirement": "STORY-LANGUAGE",
+      "scope": "Фіксація мови твору. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/storage/test_story_language.py::test_story_defaults_to_ukrainian",
+        "tests/storage/test_story_language.py::test_language_changes_before_generation",
+        "tests/storage/test_story_language.py::test_language_locked_after_model_version",
+        "tests/storage/test_story_language.py::test_author_material_does_not_lock_language",
+        "tests/storage/test_story_language.py::test_same_language_is_idempotent_when_locked",
+        "tests/storage/test_story_language.py::test_scene_prose_language_patch",
+        "tests/storage/test_story_language.py::test_prose_language_helper"
+      ]
+    },
+    {
+      "id": "STORY-LANGUAGE-S02",
+      "requirement": "STORY-LANGUAGE",
+      "scope": "Англійські промпти й контекст. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/generation/test_prompt_language.py::test_ukrainian_prompts_unchanged",
+        "tests/generation/test_prompt_language.py::test_registry_parity",
+        "tests/generation/test_prompt_language.py::test_english_fragments_have_no_cyrillic",
+        "tests/generation/test_prompt_language.py::test_evaluator_has_no_english_prompt",
+        "tests/generation/test_prompt_language.py::test_english_story_gets_english_brief_prompt",
+        "tests/generation/test_prompt_language.py::test_custom_prompt_kept_in_english_story",
+        "tests/generation/test_context_language.py::test_english_request_has_no_cyrillic",
+        "tests/generation/test_context_language.py::test_english_rewrite_request_has_no_cyrillic",
+        "tests/generation/test_context_language.py::test_english_request_with_character_cards_has_no_cyrillic",
+        "tests/generation/test_context_language.py::test_impact_and_publication_requests_english",
+        "tests/generation/test_context_language.py::test_label_tables_have_same_keys",
+        "tests/generation/test_context_language.py::test_acquaintance_block_follows_story_language",
+        "tests/generation/test_context_language.py::test_field_labels_follow_story_language"
+      ]
+    },
+    {
+      "id": "STORY-LANGUAGE-S03",
+      "requirement": "STORY-LANGUAGE",
+      "scope": "Мова прози окремої сцени. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/generation/test_context_language.py::test_directive_for_foreign_scene",
+        "tests/generation/test_context_language.py::test_directive_for_ukrainian_scene_in_english_story",
+        "tests/generation/test_context_language.py::test_no_directive_when_languages_match",
+        "tests/storage/test_prose_language_staleness.py::test_switching_scene_language_stales_draft_not_brief",
+        "tests/storage/test_prose_language_staleness.py::test_switch_back_restores_freshness",
+        "tests/storage/test_prose_language_staleness.py::test_author_text_without_snapshot_not_checked",
+        "tests/storage/test_prose_language_staleness.py::test_selector_recorded_for_prose_scopes",
+        "tests/storage/test_prose_language_staleness.py::test_selector_not_recorded_for_brief_and_memory"
+      ]
+    },
+    {
+      "id": "STORY-LANGUAGE-S04",
+      "requirement": "STORY-LANGUAGE",
+      "scope": "Старі знімки без селектора мови. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/storage/test_prose_language_staleness.py::test_legacy_snapshot_without_selector_treated_as_uk"
+      ]
+    },
+    {
+      "id": "STORY-LANGUAGE-S05",
+      "requirement": "STORY-LANGUAGE",
+      "scope": "Захист редактури англійською. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/generation/test_english_guards.py::test_english_number_change_rejected",
+        "tests/generation/test_english_guards.py::test_english_negation_removed_rejected",
+        "tests/generation/test_english_guards.py::test_english_spelling_fix_allowed",
+        "tests/generation/test_english_guards.py::test_rewrite_diff_warns_english_negation",
+        "tests/generation/test_english_guards.py::test_word_lists_are_a_union"
+      ]
+    },
+    {
+      "id": "STORY-LANGUAGE-S06",
+      "requirement": "STORY-LANGUAGE",
+      "scope": "Англійська проза не оцінюється. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/evaluation/test_evaluation_language.py::test_english_scene_evaluation_rejected",
+        "tests/evaluation/test_evaluation_language.py::test_ukrainian_scene_of_english_story_evaluated",
+        "tests/evaluation/test_evaluation_language.py::test_worker_skips_edit_pair_for_english_scene"
+      ]
     }
   ]
 }

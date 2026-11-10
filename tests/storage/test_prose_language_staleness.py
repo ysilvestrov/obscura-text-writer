@@ -1,4 +1,4 @@
-"""STORY-LANGUAGE-S04: switching a scene's prose language stales only material built for that language (#32)."""
+"""STORY-LANGUAGE-S03/S04: switching a scene's prose language stales only material built for that language (#32)."""
 import pytest
 
 from storygen.domain import SceneCreate, StoryCreate
