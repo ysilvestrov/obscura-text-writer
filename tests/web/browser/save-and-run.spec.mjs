@@ -25,7 +25,7 @@ for(const mode of ['brief','draft'])test(`save and run dispatches after editing 
   expect(confirmations).toBe(0);
   const data=await(await request.get(`/api/scenes/${f.scene_id}/versions`)).json();
   const saved=await(await request.get(`/api/versions/${data.scene.heads[mode]}`)).json();
-  if(mode==='brief')expect(JSON.parse(saved.text)).toEqual(JSON.parse(text));else expect(saved.text).toBe(text);
+  if(mode==='brief')expect(JSON.parse(saved.text)).toEqual({introduced:null,...JSON.parse(text)});else expect(saved.text).toBe(text);
   expect(dispatches[0].request.mode).toBe(mode==='brief'?'stage':'edit_loop');
   if(mode==='draft')expect(dispatches[0].request.editor_source_version_id).toBe(saved.version.id);
 });
