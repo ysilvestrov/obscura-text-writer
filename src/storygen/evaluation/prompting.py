@@ -3,6 +3,7 @@ from importlib.resources import files
 
 from .inputs import parse_json
 from .models import EvaluationCase, EvaluationRequest, EvaluatorConfig, JudgeReport, Rubric
+from ..language import load_prompt
 
 
 def resource_text(name: str) -> str:
@@ -39,7 +40,7 @@ def build_request(case: EvaluationCase, rubric: Rubric, config: EvaluatorConfig,
         ordered = [next(d for d in data["documents"] if d["id"] == key) for key in reversed(case.target_ids)]
         data["documents"] = others + ordered
     data["rubric"] = rubric.model_dump()
-    system = resource_text("evaluator_uk_v1.txt")
+    system = load_prompt("evaluator_v1", "uk")
     if config.response_mode == "prompt_json":
         system += "\nJSON Schema:\n" + json.dumps(schema, ensure_ascii=False)
     return EvaluationRequest(

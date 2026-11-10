@@ -135,21 +135,21 @@ def make_context(repo,story,scene,stage,settings,sections,refs,fragments=None,ac
         refs.append(ref.id)
         if stage=='brief':
             # The WritersBrief wire (strict schema) requires `introduced`; custom prompts may predate it.
-            from ..prompt_contracts import BRIEF_INTRODUCED_CONTRACT
-            system+='\n\n'+BRIEF_INTRODUCED_CONTRACT
+            from ..prompt_contracts import brief_introduced_contract
+            system+='\n\n'+brief_introduced_contract(story.language)
     else:
         if stage=='rewrite':
-            from importlib.resources import files
-            system=files('storygen.generation').joinpath('resources','assisted_writer_uk_v1.txt').read_text(encoding='utf-8')
-        else:system=role_prompt(stage,settings)
+            from ..language import load_prompt
+            system=load_prompt('assisted_writer_v1',story.language)
+        else:system=role_prompt(stage,settings,story.language)
     fragments=dict(fragments or {})
     if stage in {'draft','edit','rewrite'}:
         source_id=fragments.get('copyedit_draft_id') or fragments.get('rewrite_source_id')
         content_format='markdown' if stage=='draft' else repo.get_version(source_id).content_format if source_id else 'plain'
         fragments['output_content_format']=content_format
         if content_format=='markdown':
-            from ..prompt_contracts import MARKDOWN_PRESERVATION
-            system+='\n\n'+MARKDOWN_PRESERVATION
+            from ..prompt_contracts import markdown_preservation
+            system+='\n\n'+markdown_preservation(story.language)
     from ..rating.instructions import rating_instructions
     rating_text=rating_instructions(repo,story,scene,stage,settings)
     if rating_text:system+='\n\n'+rating_text

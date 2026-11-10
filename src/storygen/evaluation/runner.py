@@ -30,10 +30,10 @@ def identity_config(config):
 
 
 def evaluator_fingerprint(config: EvaluatorConfig, rubric: Rubric) -> str:
-    from .prompting import resource_text
+    from ..language import load_prompt
     from .suites import canonical_suite_hash
     from ..generation.language import language_suite_hash
-    identity={"config": identity_config(config), "rubric": rubric.model_dump(), "prompt": resource_text("evaluator_uk_v1.txt"),
+    identity={"config": identity_config(config), "rubric": rubric.model_dump(), "prompt": load_prompt("evaluator_v1", "uk"),
         'protocol_version': 3, 'suite_hash': canonical_suite_hash(), 'language_suite_hash': language_suite_hash()}
     if config.provider=='venice' and config.venice_disable_thinking:
         from ..providers.requests import venice_reasoning

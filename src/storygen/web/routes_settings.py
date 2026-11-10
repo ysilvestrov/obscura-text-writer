@@ -57,10 +57,10 @@ def read_settings(story_id: str,request: Request):
     repo=request.app.state.repo
     story=repo.get_story(story_id)
     roles=get_role_settings(repo,story_id)
-    prompts={role: repo.read_text(config.prompt_version_id) if config.prompt_version_id else role_prompt({'planner':'brief','writer':'draft','editor':'edit','memory':'memory'}[role],config) for role,config in roles.items()}
+    prompts={role: repo.read_text(config.prompt_version_id) if config.prompt_version_id else role_prompt({'planner':'brief','writer':'draft','editor':'edit','memory':'memory'}[role],config,story.language) for role,config in roles.items()}
     profile=StyleProfile.model_validate_json(repo.read_text(story.style_version_id)) if story.style_version_id else StyleProfile()
     planner=roles.get('planner')
-    preparation=repo.read_text(planner.prepare_prompt_version_id) if planner and planner.prepare_prompt_version_id else default_prompt('prepare')
+    preparation=repo.read_text(planner.prepare_prompt_version_id) if planner and planner.prepare_prompt_version_id else default_prompt('prepare',story.language)
     contracts={role:repo.get_version(config.prompt_version_id).prompt_contract if config.prompt_version_id else expected_contract({'planner':'brief','writer':'draft','editor':'edit','memory':'memory'}[role],config) for role,config in roles.items()}
     prepare_contract=repo.get_version(planner.prepare_prompt_version_id).prompt_contract if planner and planner.prepare_prompt_version_id else expected_contract('prepare',planner) if planner else None
     return {'story':story,'roles':roles,'profile':profile,'prompts':prompts,'prepare_prompt':preparation,'prompt_contracts':contracts,'prepare_prompt_contract':prepare_contract}
@@ -89,7 +89,7 @@ def configure_prompts(repo,story_id,change,settings):
         if ref.story_id!=story_id or ref.kind!='prompt':raise ValueError('Чужий промпт')
         change=change.model_copy(update={'prompt_text':repo.read_text(ref.id)})
     if change.prompt_text is not None:
-        standard=role_prompt({'planner':'brief','writer':'draft','editor':'edit','memory':'memory'}.get(change.role,'brief'),settings)
+        standard=role_prompt({'planner':'brief','writer':'draft','editor':'edit','memory':'memory'}.get(change.role,'brief'),settings,repo.get_story(story_id).language)
         if not change.prompt_text.strip() or change.prompt_text==standard:
             settings=settings.model_copy(update={'prompt_version_id':None})
         else:
@@ -102,7 +102,7 @@ def configure_prompts(repo,story_id,change,settings):
     if change.prepare_prompt_text is not None:
         if change.role!='planner':raise ValueError('Промпт підготовки належить планувальнику')
         id=None
-        if change.prepare_prompt_text.strip() and change.prepare_prompt_text!=default_prompt('prepare'):
+        if change.prepare_prompt_text.strip() and change.prepare_prompt_text!=default_prompt('prepare',repo.get_story(story_id).language):
             id=repo.save_version(story_id,None,'prompt',change.prepare_prompt_text,[],prompt_contract=expected_contract('prepare',settings)).id
         settings=settings.model_copy(update={'prepare_prompt_version_id':id})
     return settings

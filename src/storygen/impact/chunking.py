@@ -54,7 +54,8 @@ def plan_chunks(repo,plan):
     if cap<256:raise ValueError('Ліміти планувальника замалі навіть для службової частини аналізу')
     from importlib.resources import files
     wire=wire_version_for(role)
-    prompt=files('storygen.generation').joinpath(f'resources/impact_part_uk_v{wire}.txt').read_text(encoding='utf-8')
+    from ..language import load_prompt
+    prompt=load_prompt(f'impact_part_v{wire}',repo.get_story(plan.story_id).language)
     m=ChunkManifest(wire_schema_version=wire,plan=plan,settings=role,prompt_text=prompt,result_cap=cap,documents={},units={},coverage={},tasks=[],roots={})
     if wire==2:
         from .chunk_requests import request_for
