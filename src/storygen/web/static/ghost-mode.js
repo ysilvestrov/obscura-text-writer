@@ -178,7 +178,7 @@ if(entry&&root){
 
   async function close(ask){
     if(!session||busy)return;
-    if(ask&&model.hasWork(session)&&!await confirmDialog(t('ghost.cancel_confirm')))return;
+    if(ask&&model.hasWork(session)&&!await confirmDialog(t('ghost.cancel_confirm'),{accept:t('ghost.cancel_accept'),cancel:t('ghost.cancel_keep')}))return;
     if(ask)model.dropSession(storage,session.sceneId,session.draftId);
     session=null;root.hidden=true;document.body.classList.remove('ghost-open');
     aiHosts.replaceChildren();authorHosts.replaceChildren();aiEditors.clear();authorEditors.clear();

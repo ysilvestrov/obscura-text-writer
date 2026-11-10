@@ -31,7 +31,7 @@ After saving, and under the history list for such a version, you see statistics:
 
 ## Unsaved rewriting
 
-Until you save or cancel, the rewrite is kept in this browser: after closing the tab the button reads **Continue rewriting**. The browser warns before closing the tab. In another browser or after clearing site data the unsaved text is gone. **Cancel rewriting** deletes it after confirmation.
+Until you save or cancel, the rewrite is kept in this browser: after closing the tab the button reads **Continue rewriting**. The browser warns before closing the tab. In another browser or after clearing site data the unsaved text is gone. **Cancel rewriting** deletes it once you confirm with **Delete my text**; **Keep writing** returns you to the rewrite.
 
 If the draft was updated after you started, the mode warns you: you are rewriting the version you started from.
 
