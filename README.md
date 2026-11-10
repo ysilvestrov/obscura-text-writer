@@ -77,7 +77,7 @@ Copy-Item .env.example .env
 
 Табличний перегляд і відбір пам’яті: [інструкція українською](docs/memory-view.md), [English](docs/en/memory-view.md).
 
-Жирний, курсив і збереження джерела: [візуальний редактор](docs/visual-editor.md). Для розробника — [збірка локального JS bundle](docs/frontend-development.md).
+Жирний, курсив і збереження джерела: [візуальний редактор](docs/visual-editor.md). Переписування AI-чернетки власними словами: [інструкція українською](docs/ghost-mode.md), [English](docs/en/ghost-mode.md). Для розробника — [збірка локального JS bundle](docs/frontend-development.md).
 
 Перевірка наслідків змін після написання: [редагування книги й перевірка впливу / Book revision impact review](docs/impact-review.md). Двофазний planner-аналіз, окремі висновки для завдання/прози та пам’яті, явний бюджет і збережені докази.
 

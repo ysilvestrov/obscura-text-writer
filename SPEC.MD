@@ -2287,11 +2287,14 @@ Restore перевіряє complete manifest, точний inventory, кожни
 - Частка збігів: `overlap_4gram(author, draft)` — токени `[\w'-]+` у нижньому регістрі після заміни `’`/`ʼ` на `'`; частка позицій 4-токенних вікон автора, що трапляються серед 4-грам чернетки, округлена до 4 знаків. Текст автора < 4 токенів → `null`; чернетка < 4 токенів → `0.0`.
 - `POST /api/scenes/{id}/ghost-rewrite` (`source_draft_id`, `text`, `content_format`, `expected_revision`, `client_stats{peeks, peek_ms, pastes_blocked, blocks_skipped}`; невід’ємні цілі з верхніми межами). Відсутня версія → 404; версія іншої сцени, не kind `draft` чи неповна, порожній текст, `blocks_skipped` більше за кількість текстових блоків → 400; пошкоджений файл → 409 (`StorageCorruption`). Формат за замовчуванням — формат вихідної чернетки. Збереження йде через `save_manual_draft(..., author_lineage=AuthorLineage(source_draft_id), ghost_rewrite=…)`: знімок `author_text`, `input_refs` і `dependency_edges` такі самі, як у звичайної ручної чернетки; перевірка «текст не змінився» не застосовується, тож версія створюється завжди. `set_head('draft')` з `expected_revision`; конфлікт → 409, а збережена версія лишається в історії.
 - `VersionRef.ghost_rewrite: GhostRewriteStats{source_draft_id, blocks, blocks_written, blocks_skipped, peeks, peek_ms, pastes_blocked, overlap_4gram, min_block_chars}` — метадані payload без міграції SQL, поза sha256, залежностями й відбитками запиту. `blocks` і `overlap_4gram` рахує сервер із текстів; `peeks`, `peek_ms`, `pastes_blocked` і `blocks_skipped` — свідчення браузера.
-- Інтерфейс режиму (стани «читаю/пишу», утримання `Tab` і кнопка проблиску, блокування вставки, пропуск блоків, локальний сеанс, статистика) — наступний етап #55; до нього ендпоінт доступний лише через API.
+- Модель сеансу `web/static/ghost-session.js` (без DOM): стани блоку `reading` (AI-блок видно, нічого не набрано) → `writing` (після першої зміни; лишається навіть після стирання до порожнього) ⇄ `peek` (лише з `writing`; текст автора прихований, набір заблоковано); `skipped` (явно) → назад у `writing`, якщо блок уже редагували, інакше в `reading`. Розділювачі мають стан `separator`. Лічильники `peeks`/`peek_ms` ростуть лише з переходів `writing → peek`; під час проблиску немає навігації й вводу. «Зберегти» можливе, коли кожен текстовий блок або в `writing` з непорожнім текстом, або в `skipped`, і хоча б один написано. Результат — блоки за порядком (текст автора для `writing`, оригінальний розділювач для `separator`, без `skipped`), з’єднані порожнім рядком.
+- Сеанс у `localStorage` за ключем `ghost:<scene_id>:<draft_id>` (стани, тексти, індекс, лічильники; `peek` зберігається як `writing`). Кожне звернення в `try/catch`: без сховища режим працює без відновлення. Пошкоджені чи чужі дані ігноруються.
+- Режим `web/static/ghost-mode.js`: кнопка «Переписати по пам’яті» / «Продовжити переписування» (`#ghost-entry`) у кроці чернетки (не історія) для збереженої повної голови чернетки; повноекранний шар `#ghost-mode` (`role=dialog`). AI-блок — `createTextEditor` лише для читання без панелі форматування, `user-select:none`, `copy`/`cut`/`dragstart` скасовуються. Текст автора — окремий `createTextEditor` (R-22) на блок у форматі чернетки. `Tab` у полі автора: у `writing` без повтору й поза IME-композицією вмикає `peek` (фокус переходить на контейнер шару, редактор `readOnly`, будь-які клавіші ігноруються), `keyup Tab`, втрата фокуса вікна чи `visibilitychange` завершують; у `reading` лише `preventDefault`. Кнопка «Проблиск (утримуйте)»: `pointerdown` → `peek`, `pointerup`/`pointercancel`/`pointerleave` → назад, також утримання пробілу чи Enter на кнопці. `Ctrl+Enter` — наступний блок, `Esc` знімає фокус із поля. `paste`/`drop` у полі автора скасовуються в capture-фазі з повідомленням і рахуються. Збереження з пропущеними блоками перепитує; після успіху сеанс видаляється, відкривається нова чернетка, повідомлення показує статистику; помилка лишає сеанс і оновлює твір. Якщо голова чернетки змінилася після початку, режим попереджає, а збереження посилається на `draft_id` сеансу. `beforeunload` попереджає при незбереженому сеансі; «Скасувати переписування» з підтвердженням видаляє сеанс.
+- Рядок статистики (`ghostStatsText`) — у повідомленні після збереження, під кнопкою входу для голови чернетки з `ghost_rewrite` і під списком історії для вибраної версії: блоки написані/усього/пропущені, частка збігів у відсотках (або «—»), а лічильники проблисків і вставок підписано «за даними редактора».
 
 Інваріанти. І1: вихідна чернетка не змінюється (sha256, stale, `input_refs`, текст). І2: нова версія — kind `draft` з `author_lineage.parent_version_id = source_draft_id`. І3: `input_refs`, знімок і `dependency_edges` — як у звичайної ручної чернетки. І4: родовід прози, прийнятої з авторської чернетки напряму чи через редактора, досягає brief вихідної чернетки (PLANNER-ACQUAINTANCE без запасного правила). І5: клієнт і сервер ділять текст на ті самі блоки. І6: `ghost_rewrite` не впливає на залежності й хеші.
 
-Відомі обмеження. Режим — дисципліна автора, а не захист: чернетку можна відкрити в іншій вкладці. Лічильники проблисків і вставок — свідчення браузера без перевірки. Частка збігів рахується за дослівними 4-грамами й не бачить перефразування близько до тексту.
+Відомі обмеження. Режим — дисципліна автора, а не захист: чернетку можна відкрити в іншій вкладці. `Tab` у полі режиму не переводить фокус; утримання клавіші чи кнопки незручне для частини людей із моторними обмеженнями, а перемикача немає (рішення власника). Незбережений сеанс існує лише в цьому браузері. Лічильники проблисків і вставок — свідчення браузера без перевірки. Частка збігів рахується за дослівними 4-грамами й не бачить перефразування близько до тексту.
 
 <a id="ghost-rewrite-s01"></a>
 #### Scenario: GHOST-REWRITE-S01 — Поділ на блоки, поріг і розділювачі
@@ -2321,7 +2324,35 @@ Restore перевіряє complete manifest, точний inventory, кожни
 - THEN сервер SHALL відповідати 404, 400 або 409 відповідно з локалізованим повідомленням
 - AND за конфлікту ревізії голова чернетки SHALL лишатися попередньою, а збережена версія — в історії.
 
-Перевірки: tests/authoring/test_ghost.py, tests/web/test_ghost_rewrite_api.py, tests/web/js/ghost_blocks.mjs.
+<a id="ghost-rewrite-s02"></a>
+#### Scenario: GHOST-REWRITE-S02 — Читаю або пишу: проблиск
+- GIVEN відкритий режим на текстовому блоці
+- WHEN автор натискає `Tab` до першого символу, починає писати, стирає все, утримує `Tab` чи кнопку «Проблиск»
+- THEN до першого символу `Tab` SHALL нічого не змінювати й не рахуватися; після першого символу AI-блок SHALL зникати й не повертатися навіть для порожнього поля
+- AND під час утримання текст автора SHALL бути прихованим, AI-блок видимим, а введення й навігація заблокованими; відпускання повертає фокус у поле, а кожен проблиск рахується в `peeks`.
+
+<a id="ghost-rewrite-s03"></a>
+#### Scenario: GHOST-REWRITE-S03 — Вставка й копіювання заблоковані
+- GIVEN поле автора і видимий AI-блок
+- WHEN автор вставляє чи перетягує текст у поле або копіює AI-блок
+- THEN вставка SHALL скасовуватися з повідомленням і рахуватися в `pastes_blocked`, а копіювання AI-блоку SHALL скасовуватися
+- AND текст автора не змінюється.
+
+<a id="ghost-rewrite-s06"></a>
+#### Scenario: GHOST-REWRITE-S06 — Незбережений сеанс
+- GIVEN частково переписана чернетка
+- WHEN сторінку перезавантажено
+- THEN кнопка SHALL пропонувати «Продовжити переписування» і відновлювати тексти, стани й поточний блок з `localStorage`; стан проблиску не відновлюється
+- AND пошкоджене чи недоступне сховище не ламає режим, а «Скасувати переписування» після підтвердження видаляє сеанс і не змінює чернетку.
+
+<a id="ghost-rewrite-s08"></a>
+#### Scenario: GHOST-REWRITE-S08 — Явний пропуск блоків
+- GIVEN блок, який автор не хоче переносити
+- WHEN автор натискає «Пропустити блок» і зберігає
+- THEN «Зберегти» SHALL бути доступним лише тоді, коли кожен блок написано або пропущено й хоча б один написано, а збереження з пропущеними SHALL перепитувати
+- AND пропущений блок SHALL бути відсутнім у результаті, `blocks_skipped` SHALL дорівнювати кількості пропущених, а «Повернути блок» повертає його в попередній стан.
+
+Перевірки: tests/authoring/test_ghost.py, tests/web/test_ghost_rewrite_api.py, tests/web/js/ghost_blocks.mjs, tests/web/js/ghost_session.mjs, tests/web/browser/ghost-mode.spec.mjs.
 
 <a id="rating-001"></a>
 ### Requirement: RATING-001 — Віковий рейтинг твору й сцени
@@ -2481,7 +2512,7 @@ Restore SHALL відхиляти неповний/змінений резерв 
 - Запуск і конфігурація пакета: `pyproject.toml`, `src/storygen/server.py`.
 - Домен: `src/storygen/domain.py`, `src/storygen/dependency_models.py`; snapshot/view/freshness: `src/storygen/storage/context_view.py`, `src/storygen/storage/snapshots.py`; авторські операції: `src/storygen/authoring/`; налаштування, контекст і виконання: `src/storygen/application/`, `src/storygen/generation/`; пам’ять: `src/storygen/memory/`; шлюзи провайдерів: `src/storygen/providers/`.
 - Репозиторій, SQL і міграції: `src/storygen/storage/` (authoring, settings_store, run_store, invalidation); незалежні моделі запусків: `src/storygen/run_models.py`; авторські рішення: `src/storygen/storage/acceptance.py`; спільна data-only identity Evaluator: `src/storygen/evaluation_identity.py`.
-- Переписування по пам’яті (#55): `src/storygen/authoring/ghost.py`, `src/storygen/web/static/ghost-blocks.js`, маршрут у `src/storygen/web/routes_versions.py`.
+- Переписування по пам’яті (#55): `src/storygen/authoring/ghost.py`, `src/storygen/web/static/ghost-blocks.js`, `ghost-session.js`, `ghost-mode.js`, маршрут у `src/storygen/web/routes_versions.py`.
 - Знайомства героя й підтвердження завдання (#44): `src/storygen/characters/acquaintance.py`, `src/storygen/characters/brief_link.py`, `src/storygen/web/routes_characters.py`, `src/storygen/web/static/brief-link.js`.
 - Віковий рейтинг і запобіжник: `src/storygen/rating/`, `src/storygen/characters/age.py`, `src/storygen/web/routes_rating.py`; вікова позначка експорту: `src/storygen/publication/` (book, fb2, epub) і `src/storygen/application/exports.py`; форма рейтингу сцени: `src/storygen/web/static/scene-settings.js`.
 - Автоматичне оцінювання, CLI, рубрика, калібрування: `src/storygen/evaluation/`.
