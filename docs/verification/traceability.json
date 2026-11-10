@@ -1349,6 +1349,16 @@
       }
     },
     {
+      "id": "PUB-001-S03",
+      "requirement": "PUB-001",
+      "scope": "Чинна ліцензія FSL-1.1-MIT, збережений MIT попередніх версій і відсутність застарілих тверджень про MIT. Наявність тегу last-mit перевіряється вручну після злиття.",
+      "tests": [
+        "tests/test_licensing.py::test_licence_is_official_fsl_template_with_only_the_notice_filled_in",
+        "tests/test_licensing.py::test_previous_mit_text_is_kept_with_its_boundary_tag",
+        "tests/test_licensing.py::test_public_descriptions_do_not_claim_current_code_is_mit"
+      ]
+    },
+    {
       "id": "EDIT-SENTENCE-CONTEXT-S01",
       "requirement": "EDIT-SENTENCE-CONTEXT",
       "scope": "Правка в середині речення. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",

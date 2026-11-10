@@ -2,13 +2,13 @@
 
 > **DRAFT.** This document is not in force and requires review by a lawyer familiar with Ukrainian and EU law. Until approved, it expresses the project author's intent rather than final legal terms. The Ukrainian version is authoritative: [Українська версія](../terms-of-use.md).
 
-Revision: draft of 8 November 2026.
+Revision: draft of 10 November 2026.
 
 ## 1. Scope
 
 Obscura Text Writer (the "Application") is a local tool for writing fiction with the help of language models. The Application supports work on adult fiction, but it is built for **lawful** use.
 
-The source code is distributed under the [MIT License](../../LICENSE). These Terms do not change or restrict the code licence. They set the rules for using the Application and the ready-made builds (installers) distributed by the project author, and they apply to anyone who installs or runs such a build.
+The source code is distributed under [FSL-1.1-MIT](../../LICENSE); versions up to and including the `last-mit` tag remain available under the [MIT License](../licensing/MIT-previous-versions.txt). The name and logo are covered by the [name and logo policy](trademark-policy.md). These Terms do not change or restrict the code licence. They set the rules for using the Application and the ready-made builds (installers) distributed by the project author, and they apply to anyone who installs or runs such a build.
 
 ## 2. Age and lawfulness
 
@@ -48,7 +48,7 @@ Regardless of the law of the user's country, the Application must not be used to
 
 5.3. The Application includes technical safeguards: story and scene age ratings and a check of the characters’ stated age before generating scenes with sexual content. They help users comply with these Terms but do not guarantee legal compliance and do not shift responsibility to the project author.
 
-5.4. The Application is provided "as is", without warranty, as set out in the [MIT License](../../LICENSE) and applicable law.
+5.4. The Application is provided "as is", without warranty, as set out in the code licence (section 1) and applicable law.
 
 ## 6. Violations
 
