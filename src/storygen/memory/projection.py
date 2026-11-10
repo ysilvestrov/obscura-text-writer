@@ -2,6 +2,7 @@
 import json
 from dataclasses import dataclass
 from .journal import CATEGORIES, MemoryJournal, replay_memory
+from ..generation.context_labels import label
 
 
 @dataclass(frozen=True)
@@ -50,16 +51,16 @@ def memory_catalog_v4(journal: MemoryJournal, tracked: list[str], names: dict[st
         'mutable':mutable,'immutable':immutable},ensure_ascii=False,separators=(',',':'))
 
 
-READER_UNKNOWN=' (читачеві невідомо: якщо знадобиться, введи в тексті як нове)'
+READER_UNKNOWN=label('memory_reader_unknown','uk')
 
 
-def reader_unknown(event):
+def reader_unknown(event, language='uk'):
     # An author's word without a quote is unknown to the reader wherever it is rendered: in the core or, after
     # an unknown decision, as an ordinary atmosphere state.
-    return READER_UNKNOWN if event.source_kind=='author' and event.quote is None else ''
+    return label('memory_reader_unknown',language) if event.source_kind=='author' and event.quote is None else ''
 
 
-LABELS={'facts':'ФАКТИ','character_states':'ПОТОЧНІ СТАНИ','open_threads':'ВІДКРИТІ ЛІНІЇ','timeline':'ХРОНОЛОГІЯ'}
+LABELS={category:label('memory_'+category,'uk') for category in ('facts','character_states','open_threads','timeline')}
 
 
 @dataclass(frozen=True)
@@ -89,7 +90,7 @@ def candidate_claim_ids(journal) -> set[str]:
 
 
 def memory_items(journal: MemoryJournal, character_ids: list[str], source_scene_numbers: dict[str,int], *, hidden_claim_ids=(),
-        forwarded_claim_ids=(), tracked=(), names=None) -> tuple[list[MemoryItem],dict]:
+        forwarded_claim_ids=(), tracked=(), names=None, language='uk') -> tuple[list[MemoryItem],dict]:
     from .core import SLOTS
     from .forwarding import effective_hidden
     active=replay_memory(journal)
@@ -103,7 +104,7 @@ def memory_items(journal: MemoryJournal, character_ids: list[str], source_scene_
         for slot in SLOTS:
             event=slots.get((cid,slot.name))
             if event is None or event.claim_id in hidden:continue
-            items.append(item(event,'core',f'{slot.label_uk}: {event.text}'+reader_unknown(event),cid));core_lines+=1
+            items.append(item(event,'core',f'{slot.label_en if language=="en" else slot.label_uk}: {event.text}'+reader_unknown(event,language),cid));core_lines+=1
     for category in CATEGORIES:
         if category=='timeline':
             entries=_timeline_events(journal)
@@ -115,31 +116,32 @@ def memory_items(journal: MemoryJournal, character_ids: list[str], source_scene_
             if category=='character_states' and character_ids and event.character_ids and not set(character_ids).intersection(event.character_ids):
                 omitted+=1;continue
             scene=source_scene_numbers.get(event.source_version_id)
-            prefix=f'Сцена {scene}: ' if category=='timeline' and scene is not None else ''
-            items.append(item(event,category,'— '+prefix+event.text+reader_unknown(event)))
+            prefix=label('memory_scene_prefix',language,number=scene) if category=='timeline' and scene is not None else ''
+            items.append(item(event,category,'— '+prefix+event.text+reader_unknown(event,language)))
     return items,{'journal_chars':len(journal.model_dump_json()),'event_count':len(journal.events),'active_claim_count':len(active),
         'omitted_state_count':omitted,'core_line_count':core_lines,'hidden_claim_count':len(hidden&{e.claim_id for e in journal.events})}
 
 
-def render_memory(items, tracked, names=None, *, timeline_note: str | None = None) -> str:
+def render_memory(items, tracked, names=None, *, timeline_note: str | None = None, language='uk') -> str:
     sections=[]
     for cid in tracked:
         lines=[i.line for i in items if i.section=='core' and i.owner==cid]
         if lines:
             # Without a card name the technical ID never reaches the literary section; tracked is the protagonist.
-            sections.append(f'ЯДРО СТАНУ — {(names or {}).get(cid) or "протагоніст"}\n'+'\n'.join(lines))
+            owner=(names or {}).get(cid) or label('memory_protagonist',language)
+            sections.append(label('memory_core_owner',language,name=owner)+'\n'+'\n'.join(lines))
     for category in CATEGORIES:
         lines=[i.line for i in items if i.section==category]
         if category=='timeline' and timeline_note:lines.insert(0,'— '+timeline_note)
-        sections.append(LABELS[category]+'\n'+('\n'.join(lines) if lines else 'Немає.'))
+        sections.append(label('memory_'+category,language)+'\n'+('\n'.join(lines) if lines else label('memory_none',language)))
     return '\n\n'.join(sections)
 
 
 def project_memory(journal: MemoryJournal, character_ids: list[str], source_scene_numbers: dict[str,int], *, hidden_claim_ids=(),
-        forwarded_claim_ids=(), tracked=(), names=None) -> MemoryProjection:
+        forwarded_claim_ids=(), tracked=(), names=None, language='uk') -> MemoryProjection:
     items,metrics=memory_items(journal,character_ids,source_scene_numbers,hidden_claim_ids=hidden_claim_ids,
-        forwarded_claim_ids=forwarded_claim_ids,tracked=tracked,names=names)
-    text=render_memory(items,tracked,names)
+        forwarded_claim_ids=forwarded_claim_ids,tracked=tracked,names=names,language=language)
+    text=render_memory(items,tracked,names,language=language)
     return MemoryProjection(text,{'projection_version':'memory-uk-v3','journal_chars':metrics['journal_chars'],
         'event_count':metrics['event_count'],'active_claim_count':metrics['active_claim_count'],
         'projection_chars':len(text),'omitted_state_count':metrics['omitted_state_count'],'core_line_count':metrics['core_line_count'],

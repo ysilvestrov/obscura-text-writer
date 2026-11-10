@@ -16,6 +16,28 @@ BRIEF_INTRODUCED_CONTRACT = '''ФОРМА ВІДПОВІДІ ЗАВДАННЯ �
 Поле introduced — ID персонажів зі складу сцени, яких головний герой уперше зустрічає й яких
 представлено в цій сцені; якщо нікого — []. Не пропускай поле й закрий об’єкт після нього.'''
 
+MARKDOWN_PRESERVATION_EN = '''AUTHOR TEXT FORMAT: MARKDOWN
+The prose answer is stored as Markdown. Use only paragraphs, line breaks,
+**bold** and _italics_ where they fit. Do not add headings, HTML, images,
+links or an outer code fence. Keep the existing formatting and literal
+escape/entity fragments outside the required edits; format markers are not events
+or facts of the story. For JSON edits keep the given JSON schema: verbatim anchors
+refer to the raw Markdown, without removing its markers before quoting.'''
+
+BRIEF_INTRODUCED_CONTRACT_EN = '''BRIEF ANSWER FORMAT: REQUIRED FIELDS
+Return JSON with all fields in this order:
+{"objective":"...","beats":["..."],"constraints":["..."],"proposed_changes":[],"introduced":[]}
+The introduced field lists IDs of characters from the scene's cast whom the protagonist meets for the first time and
+who are introduced in this scene; if there are none, []. Do not skip the field, and close the object after it.'''
+
+
+def markdown_preservation(language='uk') -> str:
+    return MARKDOWN_PRESERVATION_EN if language=='en' else MARKDOWN_PRESERVATION
+
+
+def brief_introduced_contract(language='uk') -> str:
+    return BRIEF_INTRODUCED_CONTRACT_EN if language=='en' else BRIEF_INTRODUCED_CONTRACT
+
 
 def expected_contract(stage, settings) -> PromptContract:
     mode = {'prepare': 'blueprint', 'brief': 'brief', 'draft': 'prose',

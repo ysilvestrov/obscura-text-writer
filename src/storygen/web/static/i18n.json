@@ -2203,7 +2203,11 @@
     "brief_link.prose_changed": "Прозу змінено в іншому місці. Перевідкрийте сцену, щоб переглянути поточну прозу перед підтвердженням.",
     "brief_link.saved": "Підтвердження збережено.",
     "brief_link.confirmed_with": "Підтверджено. Представлено в цій сцені: {p0}.",
-    "brief_link.confirmed_none": "Підтверджено. У цій сцені нікого не представлено."
+    "brief_link.confirmed_none": "Підтверджено. У цій сцені нікого не представлено.",
+    "language.locked": "Мову твору зафіксовано: у творі вже є матеріал, створений моделлю",
+    "evaluation.english_not_evaluated": "Оцінювач відкалібровано лише для української прози; англійські сцени не оцінюються",
+    "language.run_active": "Мову твору не можна змінити, поки виконується запуск",
+    "language.impact_blocked": "Зміна мови прози сцени потребує нової генерації або ручного перегляду"
   },
   "en": {
     "ui.save": "Save",
@@ -4409,6 +4413,10 @@
     "brief_link.prose_changed": "The prose changed elsewhere. Reopen the scene to review the current prose before confirming.",
     "brief_link.saved": "Confirmation saved.",
     "brief_link.confirmed_with": "Confirmed. Introduced in this scene: {p0}.",
-    "brief_link.confirmed_none": "Confirmed. Nobody is introduced in this scene."
+    "brief_link.confirmed_none": "Confirmed. Nobody is introduced in this scene.",
+    "language.locked": "The story language is fixed: the story already has model-generated material",
+    "evaluation.english_not_evaluated": "The evaluator is calibrated for Ukrainian prose only; English scenes are not evaluated",
+    "language.run_active": "The story language cannot be changed while a run is in progress",
+    "language.impact_blocked": "A change of the scene's prose language needs new generation or a manual review"
   }
 }

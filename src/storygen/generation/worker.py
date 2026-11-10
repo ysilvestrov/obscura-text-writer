@@ -52,6 +52,7 @@ class RunCoordinator:
         return self.repo.list_run_events(id,after_seq)
 
     def enqueue(self,request: RunRequest,request_id: str) -> Run:
+        skipped_language=[]  # scenes whose automatic evaluation is skipped for their language (STORY-LANGUAGE-S06)
         if not request_id or len(request_id)>200:
             raise ValueError('Потрібен request_id до 200 символів')
         existing=self.repo.find_run_by_request_id(request_id)
@@ -119,10 +120,15 @@ class RunCoordinator:
                 except ValueError:
                     evaluation=None
                 if evaluation and evaluation.policy!='off':
+                    from ..evaluation.story_adapter import evaluated_scenes
+                    story=self.repo.get_story(request.story_id)
+                    # STORY-LANGUAGE-S06: English prose is not evaluated until the rubric is calibrated for it.
+                    english={t['scene_id'] for t in tasks if t['stage']=='memory' and not evaluated_scenes(self.repo,story,scenes,t['scene_id'])}
+                    skipped_language=[t['scene_id'] for t in tasks if t['stage']=='memory' and t['scene_id'] in english]
                     expanded=[]
                     for task in tasks:
                         expanded.append(task)
-                        if task['stage']=='memory':
+                        if task['stage']=='memory' and task['scene_id'] not in english:
                             expanded.append({'scene_id':task['scene_id'],'stage':'evaluate','evaluation_mode':'edit_pair'})
                     tasks=expanded
         with self.condition:
@@ -172,6 +178,9 @@ class RunCoordinator:
             run,created=self.repo.enqueue_run(candidate)
             if created:
                 self.event(run.id,'state',{'state':'queued'})
+                from ..evaluation.story_adapter import ENGLISH_NOT_EVALUATED
+                for scene_id in skipped_language:
+                    self.event(run.id,'evaluation_skipped',{'scene_id':scene_id,'reason':ENGLISH_NOT_EVALUATED})
             self.condition.notify_all()
         return run
 
@@ -655,4 +664,16 @@ class RunCoordinator:
                 self._save(current)
                 self.event(run.id,'evaluation_skipped',{'reason':'Оцінювач вимкнено'})
             return
+        task=run.tasks[run.cursor]
+        if task.get('evaluation_mode')=='edit_pair':
+            from ..evaluation.story_adapter import ENGLISH_NOT_EVALUATED, evaluated_scenes
+            view=self.repo.context_view(run.story_id)
+            if not evaluated_scenes(view,view.get_story(run.story_id),view.list_scenes(run.story_id),task['scene_id']):
+                # STORY-LANGUAGE-S06: automatic evaluation is skipped, not failed, when the scene became English after queueing.
+                with self.condition:
+                    current=self.get_run(run.id)
+                    current.cursor+=1
+                    self._save(current)
+                    self.event(run.id,'evaluation_skipped',{'scene_id':task['scene_id'],'reason':ENGLISH_NOT_EVALUATED})
+                return
         execute_evaluation(self,run)

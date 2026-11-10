@@ -19,8 +19,9 @@ def character_material(view,story,scene):
     if story.characters_version_id:
         ref=view.get_version(story.characters_version_id)
         if ref.stale or not ref.complete:raise ValueError('Картки персонажів застаріли; перегляньте й оновіть їх')
-        projection=project_characters(load_characters(view.read_text(ref.id)),view.list_scenes(story.id),scene.id)
-        return ('КАРТКИ ПЕРСОНАЖІВ\n'+projection.text if projection.text else '',projection.warnings,[ref.id])
+        projection=project_characters(load_characters(view.read_text(ref.id)),view.list_scenes(story.id),scene.id,story.language)
+        from ..generation.context_labels import label
+        return (label('characters',story.language)+'\n'+projection.text if projection.text else '',projection.warnings,[ref.id])
     source=view.active_source(story.id,'source_characters')
     if source:
         if source.stale or not source.complete:raise ValueError('Опис персонажів потребує оновлення')

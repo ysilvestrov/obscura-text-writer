@@ -4,6 +4,7 @@ from ..impact.models import fingerprint
 from ..providers.models import RoleSettings
 from ..providers.requests import generation_request,strict_schema
 from .wire_models import DeltaResponse,CheckResponse
+from ..generation.context_labels import label
 
 
 def compact(value):return len(json.dumps(value,ensure_ascii=False,separators=(',',':')))
@@ -30,7 +31,7 @@ def request_for(plan,spec,results):
     payload=dict(phase=spec['phase'],response_character_limit=plan['result_cap'],evidence=evidence)
     if 'basis_modes' in plan:
         payload['review_basis']={alias:plan['basis_modes'][registry[id]['version_id']] for alias,id in aliases.items() if registry[id]['kind']=='target'}
-        if 'current_consistency' in payload['review_basis'].values():payload['basis_note']='Історична база цього тексту невідома. Перевірте узгодженість із поточними передумовами; не вигадуйте його історію створення.'
+        if 'current_consistency' in payload['review_basis'].values():payload['basis_note']=label('review_basis_note',plan.get('language','uk'))
     if spec['phase']!='delta':
         payload['current_rules']=[dict(change=change_alias.get(rule['change_ref'],rule['change_ref']),current=rule['current'],retired=rule['current'] is None,retired_statement=rule['before'] if rule['current'] is None else None,source_refs=[reverse[id] for id in rule['source_refs']]) for rule in rules]
         payload['children']=[dict(has_concerns=bool(results[id]['concerns'])) for id in spec['dependencies'] if id in results and results[id]['phase']!='delta']

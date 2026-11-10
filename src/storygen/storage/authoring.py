@@ -65,7 +65,7 @@ def update_scene_plan(repo,scene_id: str,text: str,expected_revision: int) -> Sc
 
 
 def update_scene_metadata(repo,scene_id: str,changes: dict,expected_revision: int) -> Scene:
-    allowed={"title","target_words","character_ids"}
+    allowed={"title","target_words","character_ids","prose_language"}
     if set(changes)-allowed:
         raise ValueError("Непідтримувані поля сцени")
     with repo.db.connection() as db:
@@ -77,10 +77,32 @@ def update_scene_metadata(repo,scene_id: str,changes: dict,expected_revision: in
         if candidate==scene:return scene
         scene=candidate.model_copy(update={'revision':scene.revision+1})
         repo._save_scene(db,scene)
-        from .invalidation import invalidate_in_transaction
-        invalidate_in_transaction(repo,db,list(scene.heads.values()))
+        if set(changes)-{'prose_language'}:
+            # Prose language stales only material built for it, through the scene/prose_language selector.
+            from .invalidation import invalidate_in_transaction
+            invalidate_in_transaction(repo,db,list(scene.heads.values()))
         repo._touch_story(db,scene.story_id)
     return scene
+
+
+def update_story_language(repo,story_id: str,language,expected_revision: int) -> Story:
+    with repo.db.connection() as db:
+        db.execute("BEGIN IMMEDIATE")
+        story=repo._active_story(db,story_id)
+        if story.revision!=expected_revision:
+            raise RevisionConflict("Твір уже змінено")
+        if story.language==language:return story
+        if db.execute("SELECT 1 FROM versions WHERE story_id=? AND json_extract(payload,'$.source_run_id') IS NOT NULL LIMIT 1",(story_id,)).fetchone():
+            raise RevisionConflict('Мову твору зафіксовано: у творі вже є матеріал, створений моделлю')
+        # A stage builds its context when it runs: a change during a run would save material of the old language.
+        active=db.execute("SELECT 1 FROM runs WHERE story_id=? AND json_extract(payload,'$.state') IN "
+            "('queued','running','paused','pause_requested','cancellation_requested') LIMIT 1",(story_id,)).fetchone()
+        if active or db.execute("SELECT 1 FROM stage_attempts WHERE story_id=? AND json_extract(payload,'$.state')='running' LIMIT 1",
+                (story_id,)).fetchone():
+            raise RevisionConflict('Мову твору не можна змінити, поки виконується запуск')
+        story=story.model_copy(update={'language':language,'revision':story.revision+1})
+        repo._save_story(db,story)
+    return story
 
 
 def update_story_rating(repo,story_id: str,rating,expected_revision: int) -> Story:

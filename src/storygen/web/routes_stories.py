@@ -1,3 +1,5 @@
+from typing import Literal
+
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
@@ -20,6 +22,18 @@ class ScenePatch(DomainModel):
     title: str | None=None
     target_words: int | None=None
     character_ids: list[str] | None=None
+    # 'story' resets the override so the scene follows the story language again; None leaves it unchanged.
+    prose_language: Literal['uk','en','story'] | None=None
+
+
+class StoryLanguageChange(DomainModel):
+    language: Literal['uk','en']
+    expected_revision: int
+
+
+@router.put("/api/stories/{id}/language")
+def change_story_language(id: str,data: StoryLanguageChange,request: Request):
+    return request.app.state.repo.update_story_language(id,data.language,data.expected_revision)
 
 
 @router.get("/")
@@ -92,6 +106,8 @@ def patch_scene(id: str,data: ScenePatch,request: Request):
         scene=update_scene_plan(repo,id,data.beats,revision)
         revision=scene.revision
     changes={key:value for key,value in data.model_dump().items() if key in {"title","target_words","character_ids"} and value is not None}
+    if data.prose_language is not None:
+        changes['prose_language']=None if data.prose_language=='story' else data.prose_language
     return update_scene(repo,id,changes,revision) if changes else scene
 
 

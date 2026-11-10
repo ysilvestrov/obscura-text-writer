@@ -3,6 +3,7 @@ from importlib.resources import files
 from itertools import combinations_with_replacement
 from ..impact.models import fingerprint
 from . import planning as legacy
+from ..language import load_prompt
 
 
 def registry_for(targets):
@@ -19,7 +20,7 @@ def prepare_scene(repo,scene_id):
     plan=legacy.prepare_scene(repo,scene_id)
     plan.pop('id');plan.pop('delta_specs')
     plan.update(contract_version=4,classifier_version=1,registry=registry_for(plan['targets']),
-        system=files('storygen.generation').joinpath('resources/review_part_uk_v4.txt').read_text(encoding='utf-8'),
+        system=load_prompt('review_part_v4',repo.get_story(plan['story_id']).language),
         priorities=[],statements={},authority_revisions={})
     # Storage command is installed with the authority package; an empty registry is valid.
     if hasattr(repo,'review'):

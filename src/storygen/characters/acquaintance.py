@@ -170,13 +170,15 @@ def acquaintance_material(view,story,scene,stage):
     known=[cid for cid in others if cid in result.known]
     known.sort(key=lambda cid:(result.known[cid] is not None,result.known[cid] or 0))
     unknown=[cid for cid in others if cid not in result.known]
-    lines=[f'ЗНАЙОМСТВА ГОЛОВНОГО ГЕРОЯ — {name(hero)}']
+    from ..generation.context_labels import label
+    language=story.language
+    lines=[label('acquaintance_header',language,name=name(hero))]
     if known:
-        lines.append('Знайомі: '+'; '.join(f'{name(cid)} ('+('до початку історії' if result.known[cid] is None else f'зі сцени {result.known[cid]}')+')' for cid in known))
+        lines.append(label('acquaintance_known',language)+'; '.join(f'{name(cid)} ('+(label('acquaintance_before',language) if result.known[cid] is None else label('acquaintance_since',language,number=result.known[cid]))+')' for cid in known))
     if unknown:
-        lines.append('Ще не представлені: '+'; '.join(name(cid)+(f' [id={cid}]' if stage=='brief' else '') for cid in unknown))
-    rule='Не називай ще не представлених на ім’я, доки їх не представлено в тексті історії; до того описуй їх як незнайомців.'
+        lines.append(label('acquaintance_unknown',language)+'; '.join(name(cid)+(f' [id={cid}]' if stage=='brief' else '') for cid in unknown))
+    rule=label('acquaintance_rule',language)
     if stage=='brief':
-        rule+=' Якщо представлення відбувається в цій сцені, додай їхні ID в поле introduced.'
+        rule+=label('acquaintance_brief_rule',language)
     lines.append(rule)
     return '\n'.join(lines),result.warnings

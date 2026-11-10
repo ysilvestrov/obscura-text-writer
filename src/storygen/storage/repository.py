@@ -61,6 +61,10 @@ class Repository:
         from .authoring import update_story_rating
         return update_story_rating(self, story_id, rating, expected_revision)
 
+    def update_story_language(self, story_id, language, expected_revision):
+        from .authoring import update_story_language
+        return update_story_language(self, story_id, language, expected_revision)
+
     def update_memory_kind(self, story_id, claim_id, kind, expected_revision):
         from .memory_kinds import update_memory_kind
         return update_memory_kind(self, story_id, claim_id, kind, expected_revision)

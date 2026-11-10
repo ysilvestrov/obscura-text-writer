@@ -87,6 +87,9 @@ def preview(repo, request, view=None):
             except ValueError:
                 evaluation=None
             if evaluation and evaluation.policy!='off':
+                from ..evaluation.story_adapter import evaluated_scenes
+                evaluated=[t for t in targets if evaluated_scenes(repo,story,scenes,t.id)]
+            if evaluation and evaluation.policy!='off' and evaluated:
                 from ..evaluation.blocks import get_block, blocked_message
                 block = get_block(repo, story.id, evaluation.config)
                 if block and evaluation.policy == 'pause_on_failure':
@@ -95,7 +98,7 @@ def preview(repo, request, view=None):
                     result['warning'] = blocked_message(block)
                 else:
                     result['evaluator']=evaluation.config.model_dump(include={'provider','model'})
-                    result['calls']+=len(targets)
+                    result['calls']+=len(evaluated)
         if request.mode=='prepare':
             if view is None:view=repo.context_view(story.id)
             story=view.get_story(story.id)

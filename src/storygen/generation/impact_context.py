@@ -14,7 +14,8 @@ def build_impact_context(repo,target,stage,delta=None):
     role=get_role_settings(repo,target.story_id).get('planner')
     if not role or not role.provider.model.strip():raise ValueError('Налаштуйте модель планувальника')
     if stage not in {'impact_delta','impact_check'}:raise ValueError('Невідомий етап перевірки впливу')
-    system=files('storygen.generation').joinpath('resources/'+stage+'_uk_v1.txt').read_text(encoding='utf-8')
+    from ..language import load_prompt
+    system=load_prompt(stage+'_v1',repo.get_story(target.story_id).language)
     data={'sources':[c.model_dump() for c in target.changes if stage=='impact_check' or c.changed]}
     if stage=='impact_check':
         data.update(target={'version_id':target.version_id,'text':target.text,'content_format':target.content_format,'scene':target.scene_title,'scene_number':target.position+1},delta=delta)

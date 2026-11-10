@@ -9,6 +9,12 @@ from ..token_budget.service import token_estimate
 from .context import ContextBundle,ContextOverflow
 
 
+def catalog_for(language):
+    # Genre labels exist in Ukrainian only; an English request names each FB2 code by itself (#32).
+    catalog=dict(genre_catalog())
+    return {code:code.replace('_',' ') for code in catalog} if language=='en' else catalog
+
+
 def build_publication_context(repo,story_id):
     captured=repo.publication_snapshot(story_id)
     eligible=eligible_fields(captured.publication)
@@ -16,10 +22,11 @@ def build_publication_context(repo,story_id):
     stamp=source_stamp(captured)
     planner=get_role_settings(repo,story_id).get('planner')
     if not planner or not planner.provider.model.strip():raise ValueError('Налаштуйте модель планувальника')
-    system=files('storygen.generation').joinpath('resources/publication_metadata_uk_v1.txt').read_text(encoding='utf-8')
+    from ..language import load_prompt
+    system=load_prompt('publication_metadata_v1',captured.story.language)
     sections=[{'title':scene.title,'text':repo.files.read(ref.relative_path,ref.sha256).decode('utf-8')} for scene,ref in captured.scenes]
     user=json.dumps({'title':captured.story.title,'eligible_fields':eligible,
-        'genre_catalog':dict(genre_catalog()) if 'genres' in eligible else {},'scenes':sections},ensure_ascii=False)
+        'genre_catalog':catalog_for(captured.story.language) if 'genres' in eligible else {},'scenes':sections},ensure_ascii=False)
     body=generation_request('publication_suggest',planner,system,user,{})
     prediction=token_estimate(repo,planner.provider.provider,planner.provider.base_url,body)
     chars=len(json.dumps(body,ensure_ascii=False,separators=(',',':')))

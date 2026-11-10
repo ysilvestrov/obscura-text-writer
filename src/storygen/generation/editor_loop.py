@@ -69,6 +69,7 @@ def role(repo,story_id):
 
 
 def context(repo,scene_id,settings,version_id,run_id=None,*,loop_task='',loop_pass=0):
+    from .context_labels import label
     from ..characters.context import validate_scene_participants
     from ..evidence import render_fragments
     scene=repo.get_scene(scene_id);view=repo.context_view(scene.story_id) if hasattr(repo,'context_view') else repo
@@ -82,7 +83,7 @@ def context(repo,scene_id,settings,version_id,run_id=None,*,loop_task='',loop_pa
         from .context import build_context
         ctx=build_context(view,scene_id,'edit',settings,editor_source_id=version_id)
     else:
-        sections=[text] if settings.edit_mode=='diff' else [f'ЧЕРНЕТКА [version_id={ref.id}] — НУМЕРОВАНІ ФРАГМЕНТИ\n'+render_fragments(text)]
+        sections=[text] if settings.edit_mode=='diff' else [label('draft_fragments',story.language,id=ref.id)+'\n'+render_fragments(text)]
         ctx=make_context(view,story,scene,'edit',settings,sections,[ref.id],{'copyedit_draft_id':ref.id})
     fragments={'copyedit_draft_id':ref.id}
     if run_id:fragments.update(edit_loop_run_id=run_id,edit_loop_task_cursor=loop_task,edit_loop_pass_index=str(loop_pass))

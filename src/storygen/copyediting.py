@@ -30,12 +30,13 @@ class CopyEditAnchorError(ValueError):
 def protected_numbers(text: str) -> list[str]:
     # A conservative lexical guard, not a semantic proof. It intentionally
     # rejects number reformatting as well as number changes in this mode.
-    words = r'нуль|один|одна|одне|одну|одного|два|дві|двох|три|трьох|чотири|п’ять|п\x27ять|шість|сім|вісім|дев’ять|дев\x27ять|десять|двадцять|тридцять|сорок|сорока|п’ятдесят|сто|перший|перша|перше|другий|друга|друге|третій|третя|третє'
+    # Ukrainian and English words together (STORY-LANGUAGE-S05): a union, whatever the scene's language.
+    words = r'zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|million|first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth|нуль|один|одна|одне|одну|одного|два|дві|двох|три|трьох|чотири|п’ять|п\x27ять|шість|сім|вісім|дев’ять|дев\x27ять|десять|двадцять|тридцять|сорок|сорока|п’ятдесят|сто|перший|перша|перше|другий|друга|друге|третій|третя|третє'
     return re.findall(r'\d+(?:[.,:/-]\d+)*|\b(?:' + words + r')\b', text.casefold())
 
 
 def protected_negations(text: str) -> list[str]:
-    return re.findall(r'\b(?:не|ні|ніколи|ніхто|ніщо|нікому|нічого)\b', text.casefold())
+    return re.findall(r'\b(?:не|ні|ніколи|ніхто|ніщо|нікому|нічого|not|no|never|nothing|nobody|none|neither|nor|nowhere)\b|\b\w+n[’\x27]t\b', text.casefold())
 
 
 def apply_copyedits(text: str, proposal: CopyEdits) -> str:

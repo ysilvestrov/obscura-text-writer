@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 from typing import Mapping
 
 from .projection import MemoryItem, render_memory
+from ..generation.context_labels import label
 
 LAYERS=('core','hero_recent','threads','present','general','facts','timeline','atmosphere','fts')
 TIMELINE_WINDOW=20
@@ -34,6 +35,7 @@ class SelectionInput:
     kinds: Mapping[str,str] = field(default_factory=dict)       # author overrides: claim_id -> 'core' | 'atmosphere'
     scene_day: str | None = None
     day_keys: Mapping[int,str|None] = field(default_factory=dict)  # scene number -> day key
+    language: str = 'uk'           # story language of the rendered section (#32)
 
 
 @dataclass(frozen=True)
@@ -125,27 +127,27 @@ def _ranges(numbers) -> str:
     return ', '.join(parts)
 
 
-def timeline_note(dropped: list[MemoryItem]) -> str | None:
+def timeline_note(dropped: list[MemoryItem], language='uk') -> str | None:
     if not dropped:return None
     numbers=[item.source_scene for item in dropped if item.source_scene is not None]
-    scenes=f' (сцени {_ranges(numbers)})' if numbers else ''
-    return f'Не показано записів: {len(dropped)}{scenes}.'
+    scenes=label('memory_dropped_scenes',language,ranges=_ranges(numbers)) if numbers else ''
+    return label('memory_dropped',language,count=len(dropped),scenes=scenes)
 
 
 def _render(inp: SelectionInput, chosen: set[str], note: str | None) -> str:
-    return render_memory([item for item in inp.items if item.claim_id in chosen],list(inp.tracked),dict(inp.names),timeline_note=note)
+    return render_memory([item for item in inp.items if item.claim_id in chosen],list(inp.tracked),dict(inp.names),timeline_note=note,language=inp.language)
 
 
 def minimal_chars(inp: SelectionInput) -> int:
     """The smallest valid section: the whole core plus a note for every timeline line."""
     layers=classify(inp)
-    return len(_render(inp,{item.claim_id for item in layers['core']},timeline_note(layers['timeline'])))
+    return len(_render(inp,{item.claim_id for item in layers['core']},timeline_note(layers['timeline'],inp.language)))
 
 
 def select_memory(inp: SelectionInput, char_budget: int) -> MemorySelection:
     layers=classify(inp)
     core={item.claim_id for item in layers['core']}
-    needed=len(_render(inp,core,timeline_note(layers['timeline'])))
+    needed=len(_render(inp,core,timeline_note(layers['timeline'],inp.language)))
     if needed>char_budget:raise CoreOverflow(needed,char_budget)
     chosen=set(core)
     taken={name:0 for name in LAYERS};taken['core']=len(core)
@@ -177,7 +179,7 @@ def select_memory(inp: SelectionInput, char_budget: int) -> MemorySelection:
     # Exact render: the greedy pass is approximate ('Немає.' lines, the timeline note), so the last additions go back
     # until the section fits. Every removed line is counted as dropped in its layer.
     def note():
-        return timeline_note([item for item in layers['timeline'] if item.claim_id not in chosen])
+        return timeline_note([item for item in layers['timeline'] if item.claim_id not in chosen],inp.language)
     text=_render(inp,chosen,note())
     while len(text)>char_budget:
         layer,item=added.pop()
