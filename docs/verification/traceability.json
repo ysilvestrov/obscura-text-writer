@@ -3523,6 +3523,69 @@
       "tests": [
         "tests/generation/test_content_rating_context.py::test_child_allowed_when_scene_sexual_zero"
       ]
+    },
+    {
+      "id": "MEMORY-SELECT-S01",
+      "requirement": "MEMORY-SELECT",
+      "scope": "Запит без переповнення не змінюється; розкладання проєкції на рядки байтово тотожне попередній реалізації.",
+      "tests": [
+        "tests/generation/test_context_selection.py::test_fitting_request_is_unchanged",
+        "tests/memory/test_projection_items.py::test_split_projection_is_byte_identical",
+        "tests/memory/test_projection_items.py::test_items_carry_sections_and_sources"
+      ]
+    },
+    {
+      "id": "MEMORY-SELECT-S02",
+      "requirement": "MEMORY-SELECT",
+      "scope": "Шари, належність одному шару, свіжість героя, перевизначення, порядок відкидання, квота й хеш-порядок атмосфери. Recall на реальних даних — замір бенчмарку в журналі виконання, не pytest.",
+      "tests": [
+        "tests/memory/test_selection.py::test_every_candidate_in_exactly_one_layer",
+        "tests/memory/test_selection.py::test_hero_recent_by_story_day_or_three_scenes",
+        "tests/memory/test_selection.py::test_author_overrides_win_but_slots_stay_core",
+        "tests/memory/test_selection.py::test_priority_order_drops_lower_layers_first",
+        "tests/memory/test_selection.py::test_atmosphere_quota_and_hash_order"
+      ]
+    },
+    {
+      "id": "MEMORY-SELECT-S03",
+      "requirement": "MEMORY-SELECT",
+      "scope": "Ядро не обрізається: CoreOverflow у модулі, ContextOverflow з поясненням у контексті.",
+      "tests": [
+        "tests/memory/test_selection.py::test_core_overflow_never_cuts_the_core",
+        "tests/generation/test_context_selection.py::test_core_that_does_not_fit_is_an_explicit_error"
+      ]
+    },
+    {
+      "id": "MEMORY-SELECT-S04",
+      "requirement": "MEMORY-SELECT",
+      "scope": "FTS5 trigram BM25, рівні за claim_id, порожній запит.",
+      "tests": [
+        "tests/memory/test_selection.py::test_fts_ranks_by_query_ties_by_claim_and_empty_query_ranks_nothing"
+      ]
+    },
+    {
+      "id": "MEMORY-SELECT-S05",
+      "requirement": "MEMORY-SELECT",
+      "scope": "Рядок відкинутої хронології з діапазонами сцен, за вікном і за бюджетом.",
+      "tests": [
+        "tests/memory/test_selection.py::test_timeline_note_compresses_scene_ranges",
+        "tests/memory/test_selection.py::test_recent_timeline_dropped_by_budget_is_noted",
+        "tests/memory/test_selection.py::test_full_budget_selects_everything_but_old_timeline"
+      ]
+    },
+    {
+      "id": "MEMORY-SELECT-S06",
+      "requirement": "MEMORY-SELECT",
+      "scope": "Двійковий пошук бюджету під ліміт символів, токенів і нелінійну оцінку; детермінізм; узгоджені лічильники; продуктова стратегія бенчмарку. Recall на реальних даних — замір бенчмарку в журналі виконання, не pytest.",
+      "tests": [
+        "tests/generation/test_context_selection.py::test_char_limit_selects_memory_and_keeps_the_core",
+        "tests/generation/test_context_selection.py::test_token_limit_selects_memory",
+        "tests/generation/test_context_selection.py::test_whole_request_is_measured_with_a_nonlinear_estimate",
+        "tests/generation/test_context_selection.py::test_selection_is_deterministic",
+        "tests/memory/test_selection.py::test_budget_is_respected_and_every_line_counted",
+        "tests/memory/test_selection.py::test_selection_is_deterministic",
+        "tests/retrieval_bench/test_product.py::test_product_selects_under_budget_core_first_then_fts"
+      ]
     }
   ]
 }

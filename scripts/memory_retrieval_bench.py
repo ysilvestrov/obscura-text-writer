@@ -14,7 +14,7 @@ sys.path.insert(0, str(ROOT / 'scripts'))
 from memory_bench.extract import extract_story  # noqa: E402
 from memory_bench.metrics import aggregate, control_hits, scene_metrics  # noqa: E402
 from memory_bench.model import DEFAULT_TOKENIZER, FERTILITY, realistic_ratio, set_tokenizer  # noqa: E402
-from memory_bench.strategies import STRATEGIES, Params, catalog_full, catalog_narrow  # noqa: E402
+from memory_bench.strategies import STRATEGIES, Params, catalog_full, catalog_narrow, product  # noqa: E402
 from memory_bench.synthetic import fit_linear, generate, measure_rates  # noqa: E402
 
 MEASURES = ('conservative', 'realistic')
@@ -72,6 +72,17 @@ def evaluate(scenes, others, args, contexts, measures):
                     rows.append(scene_metrics(scene, sel))
                     sels.append(sel)
                 result[str(context)][measure][key] = aggregate(rows, sels)
+    return result
+
+
+def evaluate_product(scenes, others, args, contexts):
+    """The product's selection (#60) on real scenes only; kept apart from 'real' so existing keys stay unchanged."""
+    result = {}
+    for context in contexts:
+        result[str(context)] = {}
+        for measure in MEASURES:
+            sels = [product(s, Params(budget(context, args, others.get(s.scene_id), measure), measure, 'upper')) for s in scenes]
+            result[str(context)][measure] = aggregate([scene_metrics(s, x) for s, x in zip(scenes, sels)], sels)
     return result
 
 
@@ -144,6 +155,7 @@ def run(args):
                                            'share': sum(1 for o in others.values() if not o)}},
         'real': evaluate(scenes, others, args, contexts, MEASURES),
         'memory_stage': memory_stage,
+        'product': evaluate_product(scenes, others, args, contexts),
         'growth': growth(scenes, args),
         'synthetic': synthetic,
         'control_cases': cases,

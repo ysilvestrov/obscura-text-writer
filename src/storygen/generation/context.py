@@ -1,6 +1,8 @@
 from ..scene_description import SCENE_HEADING
 import hashlib
 import json
+from dataclasses import dataclass
+from typing import Callable
 
 from pydantic import Field
 
@@ -8,7 +10,8 @@ from ..dependency_models import DependencySnapshot, TargetCAS
 from ..storage.snapshots import build_dependency_snapshot
 from ..domain import DomainModel
 from ..memory.service import journal_before
-from ..memory.projection import project_memory, memory_catalog_v4
+from ..memory.projection import project_memory, memory_catalog_v4, memory_items
+from ..memory.selection import SelectionInput, minimal_chars, select_memory
 from ..providers.models import RoleSettings
 from .models import StyleProfile
 from .prompts import role_prompt, validate_role_prompt
@@ -19,12 +22,15 @@ from ..story_horizon import selected_plan_scenes,horizon_future_count,horizon_in
 
 
 class ContextOverflow(ValueError):
-    def __init__(self,estimated_tokens: int,limit: int,chars: int,memory_chars: int=0,breakdown=None,*,max_input_chars: int | None=None):
+    def __init__(self,estimated_tokens: int,limit: int,chars: int,memory_chars: int=0,breakdown=None,*,max_input_chars: int | None=None,minimal_memory: bool=False):
         self.breakdown=breakdown
         self.estimated_tokens=estimated_tokens
         self.limit=limit
         self.chars=chars
         contribution=f' Проєкція пам’яті: {memory_chars} символів.' if memory_chars else ''
+        if minimal_memory:
+            # MEMORY-SELECT-S03: even the core alone (with the timeline note) does not fit; the core is never cut.
+            contribution+=' Не вміщається навіть мінімальна пам’ять: ядро й позначка хронології; ядро не обрізається.'
         self.max_input_chars=max_input_chars
         if max_input_chars is None:
             message=f'Контекст завеликий: приблизно {estimated_tokens} токенів, доступно {limit}; {chars} символів. Текст не обрізано.'
@@ -37,6 +43,9 @@ class ContextOverflow(ValueError):
                 reason='Перевищено токенний ліміт входу'
             message=f'{reason}: {chars} символів, дозволено {max_input_chars}; приблизно {estimated_tokens} токенів, доступно {limit}. Текст не обрізано.'
         super().__init__(message+contribution)
+
+
+MEMORY_SELECTED_WARNING='Повна пам’ять не вміщається: у запит відібрано {shown} з {total} записів; ядро показано повністю, відкинуте пораховано в статистиці.'
 
 
 class ContextBundle(DomainModel):
@@ -63,7 +72,49 @@ class ContextBundle(DomainModel):
     context_breakdown: dict = Field(default_factory=dict)
 
 
-def make_context(repo,story,scene,stage,settings,sections,refs,fragments=None,accepted_prose_ids=(),memory_metrics=None,context_warnings=None,memory_provenance=(),accepted_memory_ids=()):
+@dataclass(frozen=True)
+class MemorySelector:
+    """The literary memory section of a request and how to select it under a budget (MEMORY-SELECT)."""
+    index: int                           # position of the memory section in `sections`
+    header: str
+    full_text: str
+    build: Callable[[], SelectionInput]  # lazy: no extra work while the full request fits
+
+
+SELECTION_STEPS=12
+SELECTED_PROJECTION='memory-uk-v3-selected'
+
+
+def _select_memory_section(selector,sections,measured,measure,fits,settings):
+    """Largest char budget whose whole request passes the same token and char checks (binary search, MEMORY-SELECT-S06).
+
+    Returns None when no smaller section exists, ('minimal', measured) when even the core does not fit,
+    otherwise (sections, selection, steps, measured)."""
+    inp=selector.build()
+    low=minimal_chars(inp)
+    high=min(len(selector.full_text)-1,settings.max_input_chars-(measured[1]-len(selector.full_text)))
+    if high<low:
+        if low<len(selector.full_text):
+            parts=list(sections);parts[selector.index]=selector.header+select_memory(inp,low).text
+            return 'minimal',measure(parts)
+        return None
+    def attempt(budget):
+        selection=select_memory(inp,budget)
+        parts=list(sections);parts[selector.index]=selector.header+selection.text
+        result=measure(parts)
+        return fits(result),parts,selection,result
+    ok,parts,selection,result=attempt(low)
+    if not ok:return 'minimal',result
+    best=(parts,selection,result);steps=0
+    while low<high and steps<SELECTION_STEPS:
+        middle=(low+high+1)//2;steps+=1
+        ok,parts,selection,result=attempt(middle)
+        if ok:low,best=middle,(parts,selection,result)
+        else:high=middle-1
+    return best[0],best[1],steps,best[2]
+
+
+def make_context(repo,story,scene,stage,settings,sections,refs,fragments=None,accepted_prose_ids=(),memory_metrics=None,context_warnings=None,memory_provenance=(),accepted_memory_ids=(),memory_selector=None):
     if hasattr(repo, 'context_view'):
         repo=repo.context_view(story.id)
         story=repo.get_story(story.id)
@@ -98,18 +149,37 @@ def make_context(repo,story,scene,stage,settings,sections,refs,fragments=None,ac
     warnings=list(context_warnings or [])
     if prompt_id and stage in {'brief','draft','edit'} and OTHER_MATERIAL_WARNING not in warnings:
         warnings.append(OTHER_MATERIAL_WARNING)
-    user='\n\n'.join(sections)
-    chars=len(system)+len(user)
     from ..providers.requests import generation_request
     from ..token_budget.service import token_estimate
-    api_request=generation_request(stage,settings,system,user,fragments or {})
-    prediction=token_estimate(repo,settings.provider.provider,settings.provider.base_url,api_request)
-    estimate=prediction['input_tokens']
-    limit=settings.context_tokens-settings.max_output_tokens
     from .context_metrics import request_breakdown
+    limit=settings.context_tokens-settings.max_output_tokens
+    def measure(parts):
+        user='\n\n'.join(parts)
+        api_request=generation_request(stage,settings,system,user,fragments or {})
+        prediction=token_estimate(repo,settings.provider.provider,settings.provider.base_url,api_request)
+        return user,len(system)+len(user),api_request,prediction
+    fits=lambda result:result[3]['input_tokens']<=limit and result[1]<=settings.max_input_chars
+    measured=measure(sections)
+    memory_metrics=dict(memory_metrics or {})
+    if not fits(measured) and memory_selector is not None:
+        # MEMORY-SELECT: only an overflowing request is selected; a fitting one stays byte-identical (S01).
+        selected=_select_memory_section(memory_selector,sections,measured,measure,fits,settings)
+        if selected and selected[0]=='minimal':
+            minimal=selected[1]
+            raise ContextOverflow(minimal[3]['input_tokens'],limit,minimal[1],memory_metrics.get('projection_chars',0),
+                request_breakdown(minimal[2],sections,stage,minimal[3],settings),max_input_chars=settings.max_input_chars,minimal_memory=True)
+        if selected:
+            sections,selection,steps,measured=selected
+            total=sum(selection.layers.values())+sum(selection.dropped.values())
+            memory_metrics.update({'projection_version':SELECTED_PROJECTION,'projection_chars':len(selection.text),
+                'selection':{'layers':selection.layers,'dropped':selection.dropped,'selected_claim_ids':list(selection.selected_claim_ids),
+                    'timeline_note':selection.timeline_note,'char_budget':selection.char_budget,'steps':steps}})
+            warnings.append(MEMORY_SELECTED_WARNING.format(shown=len(selection.selected_claim_ids),total=total))
+    user,chars,api_request,prediction=measured
+    estimate=prediction['input_tokens']
     breakdown=request_breakdown(api_request,sections,stage,prediction,settings)
-    if estimate>limit or chars>settings.max_input_chars:
-        raise ContextOverflow(estimate,limit,chars,(memory_metrics or {}).get('projection_chars',(memory_metrics or {}).get('catalog_chars',0)),breakdown,max_input_chars=settings.max_input_chars)
+    if not fits(measured):
+        raise ContextOverflow(estimate,limit,chars,memory_metrics.get('projection_chars',memory_metrics.get('catalog_chars',0)),breakdown,max_input_chars=settings.max_input_chars)
     accepted_stale=[id for id in dict.fromkeys(accepted_prose_ids) if id in refs and (ref:=repo.get_version(id)).stale and ref.kind in {'edited','manual'}]
     fingerprint=hashlib.sha256(json.dumps({'system':system,'user':user,'settings':settings.model_dump(),'refs':refs,'accepted_stale_prose_ids':accepted_stale,'order':build_dependency_snapshot(repo,scene.id if scene else None,stage,settings,refs).scene_order},ensure_ascii=False,sort_keys=True).encode()).hexdigest()
     snapshot=build_dependency_snapshot(repo,scene.id if scene else None,stage,settings,refs)
@@ -120,7 +190,7 @@ def make_context(repo,story,scene,stage,settings,sections,refs,fragments=None,ac
         fingerprint=hashlib.sha256((fingerprint+snapshot.model_dump_json()).encode()).hexdigest()
     head={'brief':'brief','draft':'draft','edit':'prose','memory':'memory','rewrite':'draft'}.get(stage)
     target=TargetCAS(scene_id=scene.id,head=head,version_id=scene.heads.get(head),head_revision=scene.head_revisions.get(head,0)) if scene and head else None
-    return ContextBundle(context_breakdown=breakdown,api_request=api_request,token_estimate=prediction,estimate_method=prediction['method'],dependency_snapshot=snapshot,target_cas=target,story_id=story.id,scene_id=scene.id if scene else None,stage=stage,scene_revision=scene.revision if scene else None,story_revision=story.revision,settings=settings,system_text=system,user_text=user,input_refs=list(dict.fromkeys(refs)),accepted_stale_prose_ids=accepted_stale,fingerprint=fingerprint,estimated_tokens=estimate,fragments=fragments or {},memory_metrics=memory_metrics or {},context_warnings=list(dict.fromkeys(warnings)))
+    return ContextBundle(context_breakdown=breakdown,api_request=api_request,token_estimate=prediction,estimate_method=prediction['method'],dependency_snapshot=snapshot,target_cas=target,story_id=story.id,scene_id=scene.id if scene else None,stage=stage,scene_revision=scene.revision if scene else None,story_revision=story.revision,settings=settings,system_text=system,user_text=user,input_refs=list(dict.fromkeys(refs)),accepted_stale_prose_ids=accepted_stale,fingerprint=fingerprint,estimated_tokens=estimate,fragments=fragments or {},memory_metrics=memory_metrics,context_warnings=list(dict.fromkeys(warnings)))
 
 
 def build_context(repo,scene_id: str,stage: str,settings: RoleSettings,*,editor_source_id: str | None=None,memory_approval: str | None=None,view=None) -> ContextBundle:
@@ -247,10 +317,22 @@ def build_context(repo,scene_id: str,stage: str,settings: RoleSettings,*,editor_
     from ..characters.models import load_characters
     scene_numbers={s.id:s.position+1 for s in scenes if s.position<scene.position}
     cards=load_characters(repo.read_text(story.characters_version_id)) if story.characters_version_id else []
-    projection=project_memory(past,scene.character_ids,{id:scene_numbers[repo.get_version(id).scene_id] for id in past.source_prose_ids},
-        hidden_claim_ids=hidden_before(repo,scene.id),forwarded_claim_ids=forwarded_before(repo,scene.id),
-        tracked=tracked_characters(cards,scenes),names={card.id:card.name for card in cards})
-    sections.append('ЗДІЙСНЕНІ ПОДІЇ — ПЕРЕВІРЕНА ПАМ’ЯТЬ\n'+projection.text)
+    source_numbers={id:scene_numbers[repo.get_version(id).scene_id] for id in past.source_prose_ids}
+    hidden,forwarded=hidden_before(repo,scene.id),forwarded_before(repo,scene.id)
+    tracked=tracked_characters(cards,scenes);names={card.id:card.name for card in cards}
+    projection=project_memory(past,scene.character_ids,source_numbers,hidden_claim_ids=hidden,forwarded_claim_ids=forwarded,tracked=tracked,names=names)
+    memory_header='ЗДІЙСНЕНІ ПОДІЇ — ПЕРЕВІРЕНА ПАМ’ЯТЬ\n'
+    memory_index=len(sections)
+    sections.append(memory_header+projection.text)
+    def selection_input():
+        from ..memory.story_time import day_key
+        items,_=memory_items(past,scene.character_ids,source_numbers,hidden_claim_ids=hidden,forwarded_claim_ids=forwarded,tracked=tracked,names=names)
+        # FTS query: the scene's own plan (already in refs) and, where it is a required input, its brief.
+        query=[repo.read_text(scene.heads['plan']) if scene.heads.get('plan') else scene.beats]
+        if stage in {'draft','edit'} and scene.heads.get('brief'):query.append(repo.read_text(scene.heads['brief']))
+        return SelectionInput(tuple(items),scene.id,scene.position+1,tuple(scene.character_ids),tuple(tracked),names,'\n'.join(query),{},
+            day_key(scene),{s.position+1:day_key(s) for s in scenes if s.position<scene.position})
+    memory_selector=MemorySelector(memory_index,memory_header,projection.text,selection_input)
     previous=[s for s in scenes if s.position<scene.position]
     fragments={}
     if previous:
@@ -269,4 +351,4 @@ def build_context(repo,scene_id: str,stage: str,settings: RoleSettings,*,editor_
             raise ValueError('Спершу завершіть попередній етап: '+head)
         if stage=='edit' and head=='draft':fragments['copyedit_draft_id']=version_id
         add({'brief':'ЗАВДАННЯ ПИСЬМЕННИКУ','draft':'ЧЕРНЕТКА ДЛЯ РЕДАКТУРИ','prose':'ПОТОЧНА ПРОЗА — ДЖЕРЕЛО НОВОЇ ПАМ’ЯТІ'}[head],version_id)
-    return make_context(repo,story,scene,stage,settings,sections,refs,fragments,accepted_prose_ids=past.source_prose_ids,memory_metrics=projection.metrics,context_warnings=warnings,memory_provenance=inherited_provenance)
+    return make_context(repo,story,scene,stage,settings,sections,refs,fragments,accepted_prose_ids=past.source_prose_ids,memory_metrics=projection.metrics,context_warnings=warnings,memory_provenance=inherited_provenance,memory_selector=memory_selector)
