@@ -17,23 +17,26 @@ def test_shared_vectors(vector):
     assert [b.as_dict() for b in ghost_blocks(vector['text'])] == vector['blocks']
 
 
+def _split(name):
+    text = next(v['text'] for v in VECTORS if v['name'] == name)
+    return normalize(text), [b.as_dict() for b in ghost_blocks(text)]
+
+
 def test_block_rules():
-    by_name = {v['name']: v for v in VECTORS}
-    dialogue = by_name['short_dialogue']
-    assert len(dialogue['blocks']) == 1, 'short replies are glued until the block reaches two lines; the short tail joins it'
-    middle = by_name['separator_middle']
-    text = normalize(middle['text'])
-    kinds = [b['kind'] for b in middle['blocks']]
-    assert kinds == ['text', 'separator', 'text']
-    assert text[middle['blocks'][1]['start']:middle['blocks'][1]['end']] == '***'
-    assert text[middle['blocks'][0]['start']:middle['blocks'][0]['end']].endswith('Хвіст.'), 'short remainder before a separator joins the previous block'
-    heading = by_name['heading_starts_block']
-    text = normalize(heading['text'])
-    assert all(text[b['start']] == '#' for b in heading['blocks']), 'a heading always starts a block'
-    crlf = by_name['crlf']
-    assert normalize(crlf['text'])[crlf['blocks'][0]['start']:].startswith('Рядок один.')
-    long = by_name['long_paragraphs']
-    assert all(b['end'] - b['start'] >= GHOST_MIN_BLOCK_CHARS for b in long['blocks'])
+    _, dialogue = _split('short_dialogue')
+    assert len(dialogue) == 1, 'short replies are glued until the block reaches two lines; the short tail joins it'
+    text, middle = _split('separator_middle')
+    assert [b['kind'] for b in middle] == ['text', 'separator', 'text']
+    assert text[middle[1]['start']:middle[1]['end']] == '***'
+    assert text[middle[0]['start']:middle[0]['end']].endswith('Хвіст.'), 'short remainder before a separator joins the previous block'
+    text, heading = _split('heading_starts_block')
+    assert len(heading) == 2 and all(text[b['start']] == '#' for b in heading), 'a heading always starts a block'
+    text, crlf = _split('crlf')
+    assert text[crlf[0]['start']:].startswith('Рядок один.') and chr(13) not in text
+    _, long = _split('long_paragraphs')
+    assert len(long) == 2 and all(b['end'] - b['start'] >= GHOST_MIN_BLOCK_CHARS for b in long)
+    text, astral = _split('supplementary_unicode')
+    assert astral == [{'kind': 'text', 'start': 0, 'end': len(text)}], 'lengths are code points, not UTF-16 units'
     assert ghost_blocks('') == []
 
 

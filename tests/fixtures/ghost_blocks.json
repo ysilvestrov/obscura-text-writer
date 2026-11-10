@@ -147,5 +147,37 @@
   "name": "empty",
   "text": "  \n\n ",
   "blocks": []
+ },
+ {
+  "name": "supplementary_unicode",
+  "text": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀\n\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "blocks": [
+   {
+    "kind": "text",
+    "start": 0,
+    "end": 242
+   }
+  ]
+ },
+ {
+  "name": "supplementary_offsets",
+  "text": "𝒜 коротко.\n\n***\n\n😀 після",
+  "blocks": [
+   {
+    "kind": "text",
+    "start": 0,
+    "end": 10
+   },
+   {
+    "kind": "separator",
+    "start": 12,
+    "end": 15
+   },
+   {
+    "kind": "text",
+    "start": 17,
+    "end": 24
+   }
+  ]
  }
 ]

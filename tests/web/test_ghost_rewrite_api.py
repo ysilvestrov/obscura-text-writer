@@ -46,7 +46,7 @@ def test_save_creates_manual_draft_linked_to_ai_draft(tmp_path):
     stats = ghost.ghost_rewrite
     assert (stats.source_draft_id, stats.blocks, stats.blocks_written, stats.blocks_skipped) == (d.id, 2, 2, 0)
     assert (stats.peeks, stats.peek_ms, stats.pastes_blocked, stats.min_block_chars) == (3, 4200, 1, 160)
-    assert 0.0 <= stats.overlap_4gram < 0.5
+    assert stats.overlap_4gram == 0.0, 'no 4-token window of AUTHOR occurs in AI'
     assert repo.get_scene(s1.id).heads['draft'] == ghost.id
     assert repo.read_text(ghost.id) == AUTHOR
     after = repo.get_version(d.id)
@@ -101,6 +101,8 @@ def test_skipped_blocks_and_errors(tmp_path):
         skipped['client_stats']['blocks_skipped'] = 1
         version = http.post(url, json=skipped).json()['version']
         assert (version['ghost_rewrite']['blocks_written'], version['ghost_rewrite']['blocks_skipped']) == (1, 1)
+        copied = http.post(url, json=body(repo, s1, d.id, text=AI)).json()['version']
+        assert copied['ghost_rewrite']['overlap_4gram'] == 1.0
 
 
 def test_revision_conflict_keeps_version_in_history(tmp_path):
