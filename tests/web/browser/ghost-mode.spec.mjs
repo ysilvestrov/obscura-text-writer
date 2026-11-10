@@ -120,7 +120,12 @@ test('an unsaved rewrite survives a reload and cancel discards it',async({page,r
   await expect(author(page)).toHaveText('Збережений у браузері текст.');
   await expect(ai(page)).toBeHidden();
   await mode(page).getByRole('button',{name:'Скасувати переписування'}).click();
-  await page.locator('.app-dialog .app-dialog-actions button').last().click();
+  const confirm=page.locator('.app-dialog');
+  await expect(confirm).toContainText('Вийти з переписування? Написаний текст буде видалено.');
+  await confirm.getByRole('button',{name:'Продовжити писати'}).click();
+  await expect(author(page)).toHaveText('Збережений у браузері текст.');
+  await mode(page).getByRole('button',{name:'Скасувати переписування'}).click();
+  await confirm.getByRole('button',{name:'Видалити написане'}).click();
   await expect(mode(page)).toBeHidden();
   await expect(page.locator('#ghost-entry .ghost-start')).toHaveText('Переписати по пам’яті');
   expect((await head(request,f.scene_id)).id).toBe(f.draft_id);

@@ -27,4 +27,7 @@ const entered=promptDialog('Назва');const enteredBox=body.children.at(-1);e
 const empty=promptDialog('Назва');body.children.at(-1).children[3].children[1].onclick();assert.equal(await empty,'');
 failShow=true;assert.equal(await confirmDialog('Помилка'),false);failShow=false;
 const afterFailure=confirmDialog('Працює');body.children.at(-1).children[2].children[1].onclick();assert.equal(await afterFailure,true,'A failed open does not block later dialogs');
-console.log('dialog confirmation, cancellation, input, Enter, failure recovery and focus passed');
+const named=confirmDialog('Вийти?',{accept:'Видалити написане',cancel:'Продовжити писати'});const namedBox=body.children.at(-1);
+assert.deepEqual(namedBox.children[2].children.map(b=>b.textContent),['Продовжити писати','Видалити написане'],'Named actions replace the generic labels');
+namedBox.children[2].children[0].onclick();assert.equal(await named,false);
+console.log('dialog named actions, cancellation, input, Enter, failure recovery and focus passed');
