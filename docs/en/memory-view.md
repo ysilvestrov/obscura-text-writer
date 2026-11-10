@@ -30,6 +30,24 @@ The memory block for the planner, the writer and the full literary edit starts w
 
 **Day change.** A new day is detected from the `Початок:` line in the scene plan (`D.M.Y, H:M` or `день N, H:M`). Different spellings of the same date (`1.3.24`, `01.03.2024`, `1.3.2024`) are one day. The memory model then decides separately whether clothing, carried items and body state still hold or marks them unknown with a reason. Without this line there is no signal, and the values stay current until the prose changes them.
 
+## When memory does not fit the context
+
+While the full request of the planner, the writer or the editor fits the role limits (context minus the answer reserve, and the maximum input characters), memory is sent in full and nothing changes. When it does not fit, the application selects part of the memory instead of failing and shows a warning: "Повна пам’ять не вміщається: у запит відібрано X з Y записів" (full memory does not fit: X of Y entries selected). Selection is deterministic: the same story and the same settings give the same set of entries.
+
+Order of importance:
+
+1. the protagonist's core, always in full;
+2. fresh protagonist states: changed on the scene's day (from the `Початок:` line) or within the last 3 scenes;
+3. open threads that mention scene participants;
+4. states of other participants;
+5. general states without characters;
+6. facts about participants;
+7. the timeline of the last 20 scenes;
+8. "atmosphere": older protagonist states and facts only about the protagonist, up to 10% of the memory budget;
+9. other entries found by the words of the scene plan (and, for the draft and the edit, of the brief).
+
+A dropped timeline is marked in the request itself by the first line of the timeline section, for example "Не показано записів: 12 (сцени 1–12)" (12 entries not shown, scenes 1–12). If even the core does not fit, the request is not sent and the application explains that the core is never cut: reduce other materials (canon, previous prose tail, plan horizon) or increase the context to match the real model. Participants are matched by the stem of their name, so another case form (for example «Олі» for «Оля») may not be recognised; such an entry can still come in through the plan words. The memory stage still receives the full catalogue.
+
 ## Confirming the core
 
 On the **Memory** tab, below the table buttons, there is a **Protagonist core and threads** panel. It compares this scene's memory with the memory it was built from: for each core slot it shows "was" and "now", for an unknown value the model's reason, and for a closed thread its resolution. The **Changes** group is expanded; the **Unchanged** group (and threads that stay open) is collapsed. The top line shows the state: "Not confirmed" or "Confirmed" with the time. In the first scene or an older story without a core, the panel shows "The core is not filled in yet" and only the threads.
