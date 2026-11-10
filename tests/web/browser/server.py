@@ -219,6 +219,13 @@ def main():
         def core_review_scene():
             return core_review_fixture(repo,rated_story('Ключ і пальто'))
 
+        @app.post('/test-language-lock/{story_id}')
+        def language_lock(story_id: str):
+            # STORY-LANGUAGE: a version with source_run_id stands for model material and locks the story language.
+            scene = repo.list_scenes(story_id)[0]
+            repo.save_version(story_id, scene.id, 'brief', '{}', [], 'browser-run')
+            return {'story_id': story_id, 'scene_id': scene.id}
+
         @app.post('/test-unrated')
         def unrated_story():
             # Unrated like a story created through the application; used by the rating settings spec.

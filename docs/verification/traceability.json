@@ -3752,6 +3752,15 @@
         "tests/authoring/test_bilingual_parsing.py::test_english_story_import_names_unheaded_scene_in_english",
         "tests/authoring/test_bilingual_parsing.py::test_english_templates_import_scenes_cast_and_markers"
       ]
+    },
+    {
+      "id": "STORY-LANGUAGE-S08",
+      "requirement": "STORY-LANGUAGE",
+      "scope": "Мова твору й прози сцени в інтерфейсі, language_locked, шаблони імпорту, вимкнене оцінювання англійської прози. Playwright story-language.spec.mjs запускається вручну (verify.py його не виконує).",
+      "tests": [
+        "tests/web/test_story_language_ui.py::test_story_view_reports_language_lock",
+        "tests/web/test_story_language_ui.py::test_language_lock_helper_matches_server_refusal"
+      ]
     }
   ]
 }

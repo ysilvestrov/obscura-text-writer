@@ -66,7 +66,7 @@ def story_view(id: str,request: Request):
     from ..rating.levels import effective_rating
     listed=view.list_scenes(id)
     ratings={scene.id:{"effective":effective_rating(story,scene),"source":"scene" if scene.content_rating else "story" if story.content_rating else None} for scene in listed}
-    return {"impact_status":scene_status(view),"story":story,"scenes":[view.effective_scene(scene.id) for scene in listed],"scene_ratings":ratings,"sources":[view.get_version(v.id) for v in view.versions.values() if v.kind in {"source_plan","source_characters"}],"character_names":names,"source_files":view.source_files,"active_sources":view.sources}
+    return {"impact_status":scene_status(view),"language_locked":request.app.state.repo.story_language_locked(id),"story":story,"scenes":[view.effective_scene(scene.id) for scene in listed],"scene_ratings":ratings,"sources":[view.get_version(v.id) for v in view.versions.values() if v.kind in {"source_plan","source_characters"}],"character_names":names,"source_files":view.source_files,"active_sources":view.sources}
 
 
 @router.patch('/api/stories/{id}')
