@@ -1,4 +1,4 @@
-import {sceneStatus} from "./workspace-status.js";
+import {sceneStatus} from './workspace-status.js';
 import {confirmDialog} from './dialogs.js';
 import {t,msg,labelEntries,getLocale,uiText,uiAttr,uiHTML,diagnostic} from './i18n.js';
 import {state,textEditor,selectScene,refresh} from './editor.js';
