@@ -60,7 +60,7 @@ export function blockPasted(session){session.pastesBlocked+=1;}
 
 const textBlocks=session=>session.blocks.filter(block=>block.kind==='text');
 export const skippedCount=session=>textBlocks(session).filter(block=>block.state==='skipped').length;
-export const writtenCount=session=>textBlocks(session).filter(block=>block.state==='writing'&&block.text.trim()).length;
+export const writtenCount=session=>textBlocks(session).filter(block=>['writing','peek'].includes(block.state)&&block.text.trim()).length;
 export const doneBlock=block=>block.kind!=='text'||block.state==='skipped'||(block.state==='writing'&&!!block.text.trim());
 export const canSave=session=>textBlocks(session).length>0&&textBlocks(session).every(doneBlock)&&writtenCount(session)>0;
 export const hasWork=session=>textBlocks(session).some(block=>block.touched||block.state==='skipped');
