@@ -118,7 +118,8 @@ def capture_target(view,version_id,*,baseline_override=None,current_sources_only
         snapshot=root_snapshot if id==ref.id else view.acceptances[id].baseline if id in view.acceptances else value.dependency_snapshot
         if id==ref.id and not snapshot:raise ValueError('Немає відтворюваної історичної бази')
         if snapshot:
-            snapshot_selectors=list(snapshot.selectors)
+            from ..storage.snapshots import legacy_selectors
+            snapshot_selectors=legacy_selectors(snapshot,list(snapshot.selectors))
             replace,fallback=rating_fallback(view,snapshot)
             if replace and fallback and is_lower(from_wire(selector_value(view,fallback)),from_wire(fallback.expected)):
                 # A snapshot without its own rating is judged against the story's initial rating, as freshness does.
@@ -140,6 +141,9 @@ def capture_target(view,version_id,*,baseline_override=None,current_sources_only
                 if selector.kind=='source' and selector.field=='source_characters' and current!=selector.expected and not view.story.characters_version_id:
                     raise ValueError('Змінені описи персонажів без часових карток потребують ручного перегляду')
                 if selector.kind=='order' and current!=selector.expected:raise ValueError('Зміна порядку сцен потребує ручного перегляду')
+                if selector.field=='prose_language' and current!=selector.expected:
+                    # STORY-LANGUAGE-S03: a fact check cannot make prose of another language current.
+                    raise ValueError('Зміна мови прози сцени потребує нової генерації або ручного перегляду')
                 if selector.kind=='head' and selector.field=='prose' and view.peek_scene(selector.owner_id).position>=scene.position:
                     if selector.owner_id==scene.id:continue
                     raise ValueError('Невідповідна майбутня проза')

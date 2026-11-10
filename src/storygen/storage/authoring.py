@@ -94,6 +94,12 @@ def update_story_language(repo,story_id: str,language,expected_revision: int) ->
         if story.language==language:return story
         if db.execute("SELECT 1 FROM versions WHERE story_id=? AND json_extract(payload,'$.source_run_id') IS NOT NULL LIMIT 1",(story_id,)).fetchone():
             raise RevisionConflict('Мову твору зафіксовано: у творі вже є матеріал, створений моделлю')
+        # A stage builds its context when it runs: a change during a run would save material of the old language.
+        active=db.execute("SELECT 1 FROM runs WHERE story_id=? AND json_extract(payload,'$.state') IN "
+            "('queued','running','paused','pause_requested','cancellation_requested') LIMIT 1",(story_id,)).fetchone()
+        if active or db.execute("SELECT 1 FROM stage_attempts WHERE story_id=? AND json_extract(payload,'$.state')='running' LIMIT 1",
+                (story_id,)).fetchone():
+            raise RevisionConflict('Мову твору не можна змінити, поки виконується запуск')
         story=story.model_copy(update={'language':language,'revision':story.revision+1})
         repo._save_story(db,story)
     return story

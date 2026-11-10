@@ -109,3 +109,34 @@ def test_selector_not_recorded_for_brief_and_memory(tmp_path, scope):
         repo.set_head(scene_id, 'prose', prose.id, repo.get_scene(scene_id).revision)
     snapshot, _ = snapshot_for(repo, story_id, scene_id, scope, draft.id)
     assert not any(s.field == 'prose_language' for s in snapshot.selectors)
+
+
+def edited_prose(repo, story_id, scene_id, draft_id, strip=False):
+    version = save(repo, story_id, scene_id, 'prose_edit', draft_id, strip=strip)
+    repo.set_head(scene_id, 'prose', version.id, repo.get_scene(scene_id).revision)
+    return version
+
+
+@pytest.mark.req('STORY-LANGUAGE')
+@pytest.mark.parametrize('strip', [False, True])
+def test_impact_cannot_approve_prose_of_another_language(tmp_path, strip):
+    from storygen.impact.planning import capture_target
+    repo, story_id, scene_id, draft = setup(tmp_path)
+    version = edited_prose(repo, story_id, scene_id, draft.id, strip=strip)
+    switch(repo, scene_id, 'en')
+    target = capture_target(repo.context_view(story_id), version.id)
+    assert any('мови прози' in blocker for blocker in target.blockers)
+
+
+@pytest.mark.req('STORY-LANGUAGE')
+def test_later_scenes_stay_fresh_after_switch(tmp_path):
+    repo, story_id, scene_id, draft = setup(tmp_path)
+    second = repo.create_scene(story_id, SceneCreate(title='Second', beats='Later'))
+    prose = edited_prose(repo, story_id, scene_id, draft.id)
+    assert not stale(repo, story_id, prose.id)
+    snapshot = build_dependency_snapshot(repo.context_view(story_id), second.id, 'brief', role(), [prose.id])
+    brief = repo.save_version(story_id, second.id, 'brief', 'Brief', [prose.id], dependency_snapshot=snapshot)
+    assert not stale(repo, story_id, brief.id)
+    switch(repo, scene_id, 'en')
+    assert stale(repo, story_id, prose.id)
+    assert not stale(repo, story_id, brief.id)

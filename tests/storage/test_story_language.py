@@ -94,3 +94,15 @@ def test_prose_language_helper(tmp_path):
     assert prose_language(english, scene) == 'en'
     assert prose_language(story, scene.model_copy(update={'prose_language': 'en'})) == 'en'
     assert prose_language(story, None) == 'uk'
+
+
+@pytest.mark.req('STORY-LANGUAGE')
+@pytest.mark.parametrize('state', ['queued', 'running', 'paused'])
+def test_language_change_refused_during_run(tmp_path, state):
+    from storygen.domain import new_id
+    from storygen.run_models import Run, RunRequest
+    _, repo, story, _ = setup(tmp_path)
+    run = Run(id=new_id(), story_id=story.id, request_id=new_id(), request=RunRequest(story_id=story.id, mode='prepare'), tasks=[], state=state)
+    repo.enqueue_run(run)
+    with pytest.raises(RevisionConflict, match='поки виконується запуск'):
+        repo.update_story_language(story.id, 'en', repo.get_story(story.id).revision)

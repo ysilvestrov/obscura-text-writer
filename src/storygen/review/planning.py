@@ -80,6 +80,8 @@ def prepare_scene(repo,scene_id,contract_version=3):
     plan=dict(story_id=scene.story_id,scene_id=scene_id,targets=[t.model_dump() for t in targets],basis_modes=modes_for(view,targets),settings=role.model_dump(),
         system=load_prompt('review_part_v3',view.story.language),
         result_cap=min(6000,role.max_output_tokens//2),registry=registry_for([t.model_dump() for t in targets]))
+    # The request language travels with the plan; absent means Ukrainian, so Ukrainian plan identities do not change.
+    if view.story.language!='uk':plan['language']=view.story.language
     if plan['result_cap']<256:raise ValueError('Замалий резерв відповіді пошуку')
     from ..token_budget.local_profiles import select_snapshot
     body=request_for(plan,make_spec(plan,'check'),{})[1]

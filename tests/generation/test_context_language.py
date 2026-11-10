@@ -172,3 +172,45 @@ def test_field_labels_follow_story_language():
     assert label('field_canon_version_id', 'uk') == 'Канон'
     assert label('field_canon_version_id', 'en') == 'Canon'
     assert horizon_instructions(SimpleNamespace(position=0), 2, 'en').startswith('LIMITS OF THE CURRENT SCENE')
+
+
+@pytest.mark.req('STORY-LANGUAGE')
+def test_prepare_request_english(tmp_path):
+    from storygen.authoring.imports import SourceFile, import_sources
+    from storygen.generation.pipeline import prepare_context
+    repo = Repository(tmp_path)
+    story = repo.create_story(StoryCreate(title='Tide', language='en'))
+    import_sources(repo, story.id, [SourceFile(name='plan.md', raw=b'Anna waits at the pier for a ship.', kind='source_plan')])
+    context = prepare_context(repo, story.id, role())
+    assert 'AUTHOR SOURCE [version_id=' in context.user_text
+    assert not CYRILLIC.search(texts(context))
+
+
+@pytest.mark.req('STORY-LANGUAGE')
+def test_edit_loop_patches_request_english(tmp_path):
+    from storygen.generation import editor_loop
+    repo, story, scene, draft = world(tmp_path)
+    context = editor_loop.context(repo, scene.id, role(edit_mode='patches'), draft.id)
+    assert 'DRAFT [version_id=' in context.user_text
+    assert not CYRILLIC.search(texts(context))
+
+
+@pytest.mark.req('STORY-LANGUAGE')
+@pytest.mark.parametrize('language', ['uk', 'en'])
+def test_review_basis_note_follows_plan_language(language):
+    from storygen.review.wire import request_for
+    plan = {'registry': {'t1': {'kind': 'target', 'text': 'Text.', 'material': 'prose', 'version_id': 'v1'}},
+            'basis_modes': {'v1': 'current_consistency'}, 'result_cap': 2000}
+    if language == 'en':
+        plan['language'] = 'en'
+    spec = {'phase': 'check', 'source_refs': [], 'target_refs': ['t1'], 'rule_ids': [], 'dependencies': [],
+            'settings': role().model_dump(), 'system': 'System.'}
+    payload, body, aliases = request_for(plan, spec, {})
+    assert payload['basis_note'] == label('review_basis_note', language)
+    assert bool(CYRILLIC.search(payload['basis_note'])) == (language == 'uk')
+
+
+@pytest.mark.req('STORY-LANGUAGE')
+def test_classifier_prompt_english_has_no_cyrillic():
+    from storygen.generation.edit_classification import PROMPT, PROMPT_EN
+    assert not CYRILLIC.search(PROMPT_EN) and CYRILLIC.search(PROMPT)

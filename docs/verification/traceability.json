@@ -3647,7 +3647,8 @@
         "tests/storage/test_story_language.py::test_author_material_does_not_lock_language",
         "tests/storage/test_story_language.py::test_same_language_is_idempotent_when_locked",
         "tests/storage/test_story_language.py::test_scene_prose_language_patch",
-        "tests/storage/test_story_language.py::test_prose_language_helper"
+        "tests/storage/test_story_language.py::test_prose_language_helper",
+        "tests/storage/test_story_language.py::test_language_change_refused_during_run"
       ]
     },
     {
@@ -3667,7 +3668,11 @@
         "tests/generation/test_context_language.py::test_impact_and_publication_requests_english",
         "tests/generation/test_context_language.py::test_label_tables_have_same_keys",
         "tests/generation/test_context_language.py::test_acquaintance_block_follows_story_language",
-        "tests/generation/test_context_language.py::test_field_labels_follow_story_language"
+        "tests/generation/test_context_language.py::test_field_labels_follow_story_language",
+        "tests/generation/test_context_language.py::test_prepare_request_english",
+        "tests/generation/test_context_language.py::test_edit_loop_patches_request_english",
+        "tests/generation/test_context_language.py::test_review_basis_note_follows_plan_language",
+        "tests/generation/test_context_language.py::test_classifier_prompt_english_has_no_cyrillic"
       ]
     },
     {
@@ -3682,7 +3687,9 @@
         "tests/storage/test_prose_language_staleness.py::test_switch_back_restores_freshness",
         "tests/storage/test_prose_language_staleness.py::test_author_text_without_snapshot_not_checked",
         "tests/storage/test_prose_language_staleness.py::test_selector_recorded_for_prose_scopes",
-        "tests/storage/test_prose_language_staleness.py::test_selector_not_recorded_for_brief_and_memory"
+        "tests/storage/test_prose_language_staleness.py::test_selector_not_recorded_for_brief_and_memory",
+        "tests/storage/test_prose_language_staleness.py::test_impact_cannot_approve_prose_of_another_language",
+        "tests/storage/test_prose_language_staleness.py::test_later_scenes_stay_fresh_after_switch"
       ]
     },
     {
