@@ -1,7 +1,7 @@
 """Day-change signal from the scene's «Початок:» line; pure, no IO."""
 import re
 
-START=re.compile(r'(?i)^початок\s*:\s*(?:(\d{1,2}\.\d{1,2}\.\d{2,4})|(?:день|day)\s+(\d+))\s*,\s*(\d{1,2}:\d{2})')
+START=re.compile(r'(?i)^(?:початок|start)\s*:\s*(?:(\d{1,2}\.\d{1,2}\.\d{2,4})|(?:день|day)\s+(\d+))\s*,\s*(\d{1,2}:\d{2})')
 
 
 def canonical_date(date):

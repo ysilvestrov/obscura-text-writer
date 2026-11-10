@@ -3726,6 +3726,20 @@
         "tests/evaluation/test_evaluation_language.py::test_english_run_not_blocked_by_evaluator_it_will_not_call",
         "tests/evaluation/test_evaluation_language.py::test_scene_switched_to_english_after_queueing_skips_evaluation"
       ]
+    },
+    {
+      "id": "STORY-LANGUAGE-S07",
+      "requirement": "STORY-LANGUAGE",
+      "scope": "Англійська розмітка плану й карток. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/authoring/test_bilingual_parsing.py::test_english_scene_headings_split_plan_with_author_numbers",
+        "tests/authoring/test_bilingual_parsing.py::test_scene_number_accepts_both_languages",
+        "tests/authoring/test_bilingual_parsing.py::test_unheaded_plan_uses_language_default_title",
+        "tests/authoring/test_bilingual_parsing.py::test_english_participants_and_start_line",
+        "tests/authoring/test_bilingual_parsing.py::test_english_protagonist_and_acquaintance_markers",
+        "tests/authoring/test_bilingual_parsing.py::test_english_story_import_names_unheaded_scene_in_english",
+        "tests/authoring/test_bilingual_parsing.py::test_english_templates_import_scenes_cast_and_markers"
+      ]
     }
   ]
 }

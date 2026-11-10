@@ -3,7 +3,7 @@ import re
 import unicodedata
 from dataclasses import dataclass
 
-SCENE_HEADING=re.compile(r'(?im)^[ \t]*(?:#{1,6}[ \t]*)?(?:\*\*)?Сцена[ \t]+\d+[.:][ \t]*([^\r\n]+)')
+SCENE_HEADING=re.compile(r'(?im)^[ \t]*(?:#{1,6}[ \t]*)?(?:\*\*)?(?:Сцена|Scene)[ \t]+\d+[.:][ \t]*([^\r\n]+)')
 
 
 @dataclass(frozen=True)
@@ -49,7 +49,7 @@ def parse_scene_description(text):
     names=None
     for line in text.splitlines():
         line=line.replace('**','').strip()
-        match=re.match(r'(?i)^(?:[-*]\s+)?(?:Хто\s+бере\s+участь|Персонажі)\s*:\s*(.*)$',line)
+        match=re.match(r'(?i)^(?:[-*]\s+)?(?:Хто\s+бере\s+участь|Персонажі|Characters|Participants|Cast)\s*:\s*(.*)$',line)
         if match:
             if names is None:names=[]
             names.extend(split_participants(match.group(1)))
@@ -77,5 +77,5 @@ def resolve_participants(names,cards):
 
 def explicit_scene_number(text):
     first=next((line for line in text.splitlines() if line.strip()),'')
-    match=re.match(r'(?i)^[ \t]*(?:#{1,6}[ \t]*)?(?:\*\*)?Сцена[ \t]+(\d+)[.:][ \t]*.+$',first)
+    match=re.match(r'(?i)^[ \t]*(?:#{1,6}[ \t]*)?(?:\*\*)?(?:Сцена|Scene)[ \t]+(\d+)[.:][ \t]*.+$',first)
     return int(match[1]) if match else None

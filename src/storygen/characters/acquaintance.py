@@ -9,9 +9,9 @@ from ..generation.models import WritersBrief
 UNKNOWN_NAME_WARNING='У картці «{card}» позначка «Знайомий з:» називає «{name}», але картки з таким іменем немає; виправте ім’я в позначці або назву картки.'
 AMBIGUOUS_NAME_WARNING='У картці «{card}» позначка «Знайомий з:» називає «{name}», але так названо кілька карток; перейменуйте одну з них, щоб ім’я було однозначним.'
 DUPLICATE_PROTAGONIST_WARNING='Позначку протагоніста мають кілька карток; використано першу за порядком.'
-PROTAGONIST=re.compile(r'(?i)^(?:протагоніст(?:ка)?|головний\s+герой|головна\s+героїня)$')
-ROLE=re.compile(r'(?i)^роль(?:\s+у\s+творі)?\s*:\s*(.*)$')
-KNOWN=re.compile(r'(?i)^(?:знайомий|знайома|знайомі|знайм)\s+з\s*:\s*(.*)$')
+PROTAGONIST=re.compile(r'(?i)^(?:протагоніст(?:ка)?|головний\s+герой|головна\s+героїня|protagonist|main\s+character|lead\s+character)$')
+ROLE=re.compile(r'(?i)^(?:роль(?:\s+у\s+творі)?|role(?:\s+in\s+the\s+story)?)\s*:\s*(.*)$')
+KNOWN=re.compile(r'(?i)^(?:(?:знайомий|знайома|знайомі|знайм)\s+з|knows|acquainted\s+with)\s*:\s*(.*)$')
 
 
 def plain_line(line):
