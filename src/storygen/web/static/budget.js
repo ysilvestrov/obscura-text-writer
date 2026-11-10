@@ -8,8 +8,9 @@ if(root){
   const id=root.dataset.storyId,base=`/api/stories/${id}/budget`,settings=!!document.querySelector('.settings-page');
   const host=document.createElement('section');host.className='budget-panel'+(settings?' panel':'');
   uiHTML(host,"<h2><span data-i18n=\"m_c5f278a41270\">Бюджет викликів</span></h2><p class=\"budget-summary\" role=\"status\" aria-live=\"polite\"><span data-i18n=\"m_e297ebd8c120\">Завантажуємо облік…</span></p><p class=\"budget-last-call\" role=\"status\" aria-live=\"polite\"></p><button type=\"button\" class=\"secondary budget-refresh\"><span data-i18n=\"m_1a4e00ab27b0\">Оновити облік</span></button>",{});
-  (settings?(document.querySelector('#settings-budget-content')||root):document.querySelector('.context-panel')).append(host);
-  if(!settings)uiInsertHTML(host,'beforeend',"<label><span data-i18n=\"m_48b9ac065b9f\">Ліміт наступного запуску, USD · необов’язково</span><input id=\"run-budget\" type=\"number\" min=\"0\" step=\"any\" placeholder=\"Типовий ліміт із налаштувань\" data-i18n-attrs='{\"placeholder\":\"m_c107f418a0e7\"}'></label>");
+  // #89: the workspace shows the budget as one menu line; the full panel lives in settings only.
+  if(settings)(document.querySelector('#settings-budget-content')||root).append(host);
+  if(!settings)uiInsertHTML(document.querySelector('#run-options')||host,'beforeend',"<label><span data-i18n=\"m_48b9ac065b9f\">Ліміт наступного запуску, USD · необов’язково</span><input id=\"run-budget\" type=\"number\" min=\"0\" step=\"any\" placeholder=\"Типовий ліміт із налаштувань\" data-i18n-attrs='{\"placeholder\":\"m_c107f418a0e7\"}'></label>");
   let current=null,budgetRevision=null;
   async function load(){
     current=await api(base);
