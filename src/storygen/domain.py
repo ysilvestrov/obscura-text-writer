@@ -29,6 +29,8 @@ class StorageCorruption(ValueError):
 class StoryCreate(DomainModel):
     title: str = Field(min_length=1,max_length=300)
     target_words: int = Field(default=7000,ge=5000)
+    # STORY-LANGUAGE: prose and model instructions; fixed once the story has model output.
+    language: Literal['uk','en'] = 'uk'
 
 
 class ContentRating(DomainModel):
@@ -59,6 +61,8 @@ class SceneCreate(DomainModel):
     position: int | None = Field(default=None,ge=0)
     target_words: int = Field(default=1000,ge=1)
     character_ids: list[str] = Field(default_factory=list)
+    # STORY-LANGUAGE: prose language of this scene only; None follows the story language.
+    prose_language: Literal['uk','en'] | None = None
 
 
 class Scene(SceneCreate):
