@@ -69,6 +69,15 @@ def test_import_through_mcp_matches_the_form(tmp_path):
 
 
 @pytest.mark.req('MCP-BRIDGE')
+def test_import_without_plan_or_characters_is_refused(tmp_path):
+    app, http = obscura(tmp_path)
+    story = app.state.repo.create_story(StoryCreate(title='Маяк'))
+    result = call(build_server(http), 'import_plan_and_characters', {'story_id': story.id, 'plan_markdown': '  '})
+    assert result.is_error and 'план або персонажів' in text(result)
+    assert app.state.repo.context_view(story.id).list_scenes(story.id) == []
+
+
+@pytest.mark.req('MCP-BRIDGE')
 def test_save_draft_marks_the_external_client_and_conflicts_reach_the_chat(tmp_path):
     app, http = obscura(tmp_path)
     repo = app.state.repo

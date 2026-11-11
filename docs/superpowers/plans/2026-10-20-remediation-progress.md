@@ -1577,3 +1577,12 @@ Playwright `memory-kind.spec.mjs` і `core-review.spec.mjs` пройшли вр�
 
 Рішення — у рядках `Ruling:` журналу SDD, перенесених в опис PR.
 
+## 11.11.2026 — MCP-клієнт: ядро (#84, R-32, PR 1; план `docs/superpowers/plans/2026-11/2026-11-11-mcp-bridge-core.md`)
+
+- Домен: `VersionRef.external_origin {client, model?}` — заява зовнішнього клієнта; фіксація мови твору зважає на `source_run_id` або `external_origin`.
+- `POST /api/scenes/{id}/draft` приймає `external_origin` і `expected_context_fingerprint`: відбиток обов’язковий для зовнішньої чернетки, розбіжність — 409 «Контекст сцени змінився — прочитайте його знову»; зовнішня чернетка завжди нова версія.
+- Нові ендпоінти лише для читання: `GET /api/stories` і `GET /api/scenes/{id}/writing-context` (картки й проєкція пам’яті тими самими функціями, що контекст `draft`; `memory_projection` винесено з `build_context` без зміни поведінки).
+- `storygen-mcp` (`src/storygen/mcp/bridge.py`, extra `[mcp]`, `mcp==2.3.0`; залежності додано в `requirements-lock.txt`): шість інструментів, лише loopback-адреса, помилки сервера як помилки інструмента; перевірено in-process клієнтом SDK і запуском через stdio.
+- SPEC MCP-BRIDGE S01–S09 (S07 — ручна процедура `manual.md#mcp-real-client`, ще не виконана); STORY-LANGUAGE і DATA-007 доповнено.
+
+Рішення — у рядках `Ruling:` журналу SDD, перенесених в опис PR.

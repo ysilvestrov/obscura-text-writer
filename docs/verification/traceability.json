@@ -3741,7 +3741,8 @@
         "tests/storage/test_story_language.py::test_same_language_is_idempotent_when_locked",
         "tests/storage/test_story_language.py::test_scene_prose_language_patch",
         "tests/storage/test_story_language.py::test_prose_language_helper",
-        "tests/storage/test_story_language.py::test_language_change_refused_during_run"
+        "tests/storage/test_story_language.py::test_language_change_refused_during_run",
+        "tests/web/test_external_draft.py::test_external_draft_locks_story_language"
       ]
     },
     {
@@ -3926,6 +3927,91 @@
         "tests/test_capture_screenshots.py::test_server_env_has_no_provider_keys",
         "tests/test_capture_screenshots.py::test_server_command_uses_an_isolated_env_file",
         "tests/test_capture_screenshots.py::test_relative_work_dir_is_resolved_before_seeding"
+      ]
+    },
+    {
+      "id": "MCP-BRIDGE-S01",
+      "requirement": "MCP-BRIDGE",
+      "scope": "Недоступний сервер дає помилку інструмента з адресою; каталог даних не створюється. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/mcp/test_bridge.py::test_server_not_running_is_a_tool_error_with_the_address"
+      ]
+    },
+    {
+      "id": "MCP-BRIDGE-S02",
+      "requirement": "MCP-BRIDGE",
+      "scope": "Імпорт через MCP дає той самий результат, що форма; порожній виклик відхиляється. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/mcp/test_bridge.py::test_import_through_mcp_matches_the_form",
+        "tests/mcp/test_bridge.py::test_import_without_plan_or_characters_is_refused"
+      ]
+    },
+    {
+      "id": "MCP-BRIDGE-S03",
+      "requirement": "MCP-BRIDGE",
+      "scope": "Застаріла ревізія: 409 доходить до клієнта як помилка, чернетка не змінюється. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/web/test_external_draft.py::test_stale_revision_is_rejected_and_draft_unchanged",
+        "tests/mcp/test_bridge.py::test_save_draft_marks_the_external_client_and_conflicts_reach_the_chat"
+      ]
+    },
+    {
+      "id": "MCP-BRIDGE-S04",
+      "requirement": "MCP-BRIDGE",
+      "scope": "Чернетка з external_origin поточна, попередня в історії, той самий текст — нова версія; назва клієнта з --client-name або clientInfo; відбиток обов’язковий; валідація назви. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/web/test_external_draft.py::test_external_draft_becomes_current_and_keeps_previous",
+        "tests/web/test_external_draft.py::test_same_text_from_external_client_still_creates_a_version",
+        "tests/web/test_external_draft.py::test_external_origin_requires_fingerprint",
+        "tests/web/test_external_draft.py::test_external_origin_client_name_is_validated",
+        "tests/mcp/test_bridge.py::test_save_draft_marks_the_external_client_and_conflicts_reach_the_chat",
+        "tests/mcp/test_bridge.py::test_save_draft_takes_the_client_name_from_client_info"
+      ]
+    },
+    {
+      "id": "MCP-BRIDGE-S05",
+      "requirement": "MCP-BRIDGE",
+      "scope": "Не-loopback або не-http адреса зупиняє клієнт; loopback-адреси приймаються. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/mcp/test_bridge.py::test_non_loopback_url_stops_the_client",
+        "tests/mcp/test_bridge.py::test_loopback_url_is_accepted"
+      ]
+    },
+    {
+      "id": "MCP-BRIDGE-S06",
+      "requirement": "MCP-BRIDGE",
+      "scope": "Рівно шість інструментів; стан сцен тим самим словником, що список сцен; посилання на сцену в next_steps. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/mcp/test_bridge.py::test_tool_list_is_exactly_the_six_tools",
+        "tests/mcp/test_bridge.py::test_get_story_reports_scene_states_with_the_ui_vocabulary",
+        "tests/mcp/test_bridge.py::test_next_steps_points_to_the_scene_in_obscura"
+      ]
+    },
+    {
+      "id": "MCP-BRIDGE-S07",
+      "requirement": "MCP-BRIDGE",
+      "scope": "Приймання з реальним чат-клієнтом. Процедуру ще не виконано; наявність процедури не означає її виконання.",
+      "tests": [],
+      "manual": {
+        "procedure": "docs/verification/manual.md#mcp-real-client",
+        "reason": "Потрібні обліковий запис власника в Claude Desktop, Claude Code або Codex і реальна модель клієнта; автоматичний тест не може замінити клієнт третьої сторони."
+      }
+    },
+    {
+      "id": "MCP-BRIDGE-S08",
+      "requirement": "MCP-BRIDGE",
+      "scope": "Зміна карток між читанням і записом при тій самій ревізії сцени відхиляється 409. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/web/test_external_draft.py::test_changed_cards_between_read_and_write_are_rejected"
+      ]
+    },
+    {
+      "id": "MCP-BRIDGE-S09",
+      "requirement": "MCP-BRIDGE",
+      "scope": "Проєкція пам’яті writing-context збігається з контекстом draft; відбиток збігається; список творів без кошика. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/web/test_writing_context.py::test_writing_context_of_scene_without_own_memory_matches_draft_context",
+        "tests/web/test_writing_context.py::test_story_list_skips_the_bin"
       ]
     }
   ]
