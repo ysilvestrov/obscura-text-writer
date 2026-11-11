@@ -315,3 +315,16 @@ def test_full_edition_level_two_unchanged(tmp_path):
 def test_edition_guard_message_has_english_translation():
     from storygen.web.localization import diagnostic
     assert diagnostic(EDITION,'en')=='Generation is blocked: the “sexual content” rating here is 2, and the highest level allowed in this edition of Obscura is 1. Lower the rating of the scene or the story.'
+
+
+def test_edition_messages_translate_for_every_axis():
+    from storygen.rating.guard import EDITION_LIMIT
+    from storygen.rating.instructions import AXIS_NAMES
+    from storygen.storage.authoring import SAVE_LIMIT
+    from storygen.web.localization import diagnostic
+    english={'sexual':'sexual content','violence':'violence','themes':'hard themes'}
+    for axis,name in AXIS_NAMES.items():
+        for template in (EDITION_LIMIT,SAVE_LIMIT):
+            text=template.format(axis=name,n=2,max=1)
+            translated=diagnostic(text,'en')
+            assert translated!=text and english[axis] in translated and name not in translated

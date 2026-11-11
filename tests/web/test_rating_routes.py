@@ -95,3 +95,15 @@ def test_store_edition_put_level_two_is_400_with_translation(tmp_path, store_edi
     english = client.put(f"/api/stories/{story.id}/content-rating", json=body, headers={"accept-language": "en"})
     assert english.json()["detail"] == "Invalid data: In this edition of Obscura, level 2 is not available for “sexual content”: the highest allowed is 1."
     assert repo.get_story(story.id).content_rating is None
+
+
+def test_store_edition_put_scene_level_two_is_400(tmp_path, store_edition):
+    client, repo, story, scene = make(tmp_path)
+    story = client.put(f"/api/stories/{story.id}/content-rating", json={"content_rating": {"sexual": 0, "violence": 0, "themes": 0}, "expected_revision": story.revision}).json()
+    scene = repo.get_scene(scene.id)
+    body = {"story_id": story["id"], "content_rating": {"sexual": 2, "violence": 0, "themes": 0}, "expected_revision": scene.revision}
+    response = client.put(f"/api/scenes/{scene.id}/content-rating", json=body)
+    assert response.status_code == 400 and "найвищий дозволений — 1" in response.json()["detail"]
+    assert repo.get_scene(scene.id).content_rating is None
+    inherit = client.put(f"/api/scenes/{scene.id}/content-rating", json={**body, "content_rating": None})
+    assert inherit.status_code == 200, inherit.text

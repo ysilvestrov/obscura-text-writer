@@ -68,3 +68,15 @@ def test_marker_that_is_not_a_file_is_rejected(tmp_path):
     path.mkdir()
     with pytest.raises(ValueError, match='build_edition.json'):
         load_build_edition(path)
+
+
+@pytest.mark.parametrize('url', ['https://', 'https:// example.test', 'https://example.test/a b', 'https://exa\nmple.test',
+    'HTTPS://example.test/x y', 'https://example.test/\x07'])
+def test_link_must_be_a_clean_https_url(tmp_path, url):
+    with pytest.raises(ValueError, match='build_edition.json'):
+        load_build_edition(write(tmp_path, {'edition': 'store', 'report_url': url}))
+
+
+def test_clean_https_url_with_path_and_query_is_kept(tmp_path):
+    url = 'https://example.test/form?src=obscura#top'
+    assert load_build_edition(write(tmp_path, {'edition': 'store', 'report_url': url})).report_url == url
