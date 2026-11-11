@@ -164,6 +164,9 @@ def check(root=ROOT,*,documents=None):
                 # Inline links/images; external URLs do not trigger network access.
                 for target in re.findall(r'\]\((<[^>]+>|[^\s)]+)\)',line):check_link(root,document,target)
         except (OSError,UnicodeError,ValueError) as exc:errors.append(f'{document}: {exc}')
+    if (root/'docs/site/site.json').exists():
+        from scripts.check_site import check as check_site
+        errors.extend(check_site(root))
     return errors
 
 

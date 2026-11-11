@@ -27,4 +27,6 @@ def heading_id(text,seen):
     return slug if count==1 else f'{slug}-{count}'
 
 
-def page_hash(path):return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+def page_hash(path):
+    """SHA-256 of the page with CRLF folded to LF, so a Windows checkout and CI agree."""
+    return hashlib.sha256(Path(path).read_bytes().replace(b'\r\n',b'\n')).hexdigest()
