@@ -320,10 +320,12 @@ def _parse_memory_data(data,previous,prose_id,prose,mode,allowed_character_ids,w
     if wire_version==4:
         # v4 checks need the captured bounds (tracked core, threads, fragments) of the attempt, never recomputed ones.
         from .violations import MemoryViolations
-        from .wire_v4 import MemoryWireV4,check_v4,wire_v4_events
+        from .wire_v4 import JOINED_EVIDENCE_WARNING,MemoryWireV4,check_v4,split_joined_evidence,wire_v4_events
         if bounds is None:raise ValueError('Для пам’яті v4 потрібні зафіксовані межі схеми')
+        data,split=split_joined_evidence(data,bounds)
         violations=check_v4(data,previous,bounds)
         if violations:raise MemoryViolations(violations)
+        if split and warnings is not None:warnings.append(JOINED_EVIDENCE_WARNING)
         return wire_v4_events(MemoryWireV4.model_validate(data),previous,prose_id,prose,bounds)
     if wire_version==3:
         from .violations import MemoryViolations

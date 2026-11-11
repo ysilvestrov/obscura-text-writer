@@ -10,7 +10,7 @@ from storygen.memory.journal import MemoryJournal, _add_event, _change_event, _e
 from storygen.memory.service import save_scene_memory
 from storygen.providers.models import ProviderSettings, RoleSettings
 from storygen.storage.repository import Repository
-from tests.memory.wire_helpers import core_unchanged, v4_response
+from tests.memory.wire_helpers import core_unchanged, threads_open, v4_response
 from tests.storage.test_memory_core_selectors import cards
 
 PROSE1 = 'Анна в халаті.\nУ кишені ключ.\nХто стукав у двері?'
@@ -188,3 +188,13 @@ def test_changed_to_the_same_value_shows_as_unchanged(tmp_path):
     run_memory(repo, s2, v4_response(core, {claims['thread'].claim_id: {'status': 'open', 'resolution': '', 'evidence_ids': []}}))
     row = by_slot(core_review(repo, s2.id))[('A', 'clothing')]
     assert (row['before'], row['status']) == ('Халат', 'unchanged')
+
+
+def test_captured_wire_splits_joined_evidence(tmp_path):
+    # The saved answer keeps the model's joined string; the review rebuilds from the same reading as the parser.
+    repo, story, s1, s2, journal, claims = two_scenes(tmp_path)
+    core = core_unchanged('A')
+    core['A']['clothing'] = {'status': 'changed', 'text': 'Пальто', 'evidence_ids': ['f000001,f000002'], 'reason': ''}
+    run_memory(repo, s2, v4_response(core, threads_open(claims['thread'].claim_id)))
+    wire, _ = captured_wire(repo, repo.get_scene(s2.id).heads['memory'])
+    assert wire['core']['A']['clothing']['evidence_ids'] == ['f000001', 'f000002']

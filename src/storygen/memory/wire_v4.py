@@ -1,4 +1,6 @@
 """Memory wire v4: v3 groups plus mandatory per-slot core decisions and per-thread decisions; server translates to journal v3."""
+import copy
+import re
 from collections import Counter
 from typing import Literal
 
@@ -59,6 +61,39 @@ def schema_bounds_v4(previous,prose,allowed_character_ids,tracked,day_change,*,k
         'unestablished':{cid:[s.name for s in SLOTS if (cid,s.name) in unquoted] for cid in scene},
         'day_change':dict(day_change),
         'slot_registry':SLOT_REGISTRY_VERSION}
+
+
+JOINED_EVIDENCE_WARNING='Пам’ять: склеєні ID доказів у рішеннях ядра й ліній розділено; враховано до трьох перших.'
+_FRAGMENT_ID=re.compile(r'f\d{6,}')
+_JOINERS=' \t\r\n,;._-–—/|+'
+
+
+def split_joined_evidence(data,bounds):
+    """Read one string holding several known fragment IDs as separate IDs in core and thread decisions.
+
+    Their schema has no fragment enum, so a model that wants more than three proofs packs the rest into one string
+    ('f000014_f000019', 'f000019-f000026', 'f000024,f000044'). Such a string is split only when it is nothing but
+    known IDs and separators; a range counts as its two ends. The list is then deduplicated in order and cut to the
+    first three. Anything else is left for check_v4. Returns (data, changed); the input is never mutated."""
+    known=set(bounds['fragment_ids']);found=[]
+    def split(decision):
+        ids=decision.get('evidence_ids') if isinstance(decision,dict) else None
+        if not isinstance(ids,list) or not all(isinstance(i,str) for i in ids):return
+        out=[];joined=False
+        for item in ids:
+            parts=_FRAGMENT_ID.findall(item)
+            if item not in known and len(parts)>1 and all(p in known for p in parts) and not _FRAGMENT_ID.sub('',item).strip(_JOINERS):
+                out+=parts;joined=True
+            else:out.append(item)
+        # The cut may drop only known IDs: a list that still holds anything else stays whole for check_v4.
+        if joined and all(i in known for i in out):found.append((decision,list(dict.fromkeys(out))[:3]))
+    if not isinstance(data,dict):return data,False
+    data=copy.deepcopy(data);core=data.get('core');threads=data.get('threads')
+    for person in core.values() if isinstance(core,dict) else ():
+        for decision in person.values() if isinstance(person,dict) else ():split(decision)
+    for decision in threads.values() if isinstance(threads,dict) else ():split(decision)
+    for decision,ids in found:decision['evidence_ids']=ids
+    return data,bool(found)
 
 
 def _decision(model,raw,label,fragment_ids):
