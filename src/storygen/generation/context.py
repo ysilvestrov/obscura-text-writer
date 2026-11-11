@@ -216,6 +216,21 @@ def make_context(repo,story,scene,stage,settings,sections,refs,fragments=None,ac
     return ContextBundle(context_breakdown=breakdown,api_request=api_request,token_estimate=prediction,estimate_method=prediction['method'],dependency_snapshot=snapshot,target_cas=target,story_id=story.id,scene_id=scene.id if scene else None,stage=stage,scene_revision=scene.revision if scene else None,story_revision=story.revision,settings=settings,system_text=system,user_text=user,input_refs=list(dict.fromkeys(refs)),accepted_stale_prose_ids=accepted_stale,fingerprint=fingerprint,estimated_tokens=estimate,fragments=fragments or {},memory_metrics=memory_metrics,context_warnings=list(dict.fromkeys(warnings)))
 
 
+def memory_projection(repo,story,scene,scenes,language):
+    """Memory of the preceding scenes as the writing stages see it (shared by build_context and MCP-BRIDGE writing-context)."""
+    past=journal_before(repo,scene.id)
+    from ..memory.forwarding import hidden_before,forwarded_before
+    from ..memory.core import tracked_characters
+    from ..characters.models import load_characters
+    scene_numbers={s.id:s.position+1 for s in scenes if s.position<scene.position}
+    cards=load_characters(repo.read_text(story.characters_version_id)) if story.characters_version_id else []
+    source_numbers={id:scene_numbers[repo.get_version(id).scene_id] for id in past.source_prose_ids}
+    hidden,forwarded=hidden_before(repo,scene.id),forwarded_before(repo,scene.id)
+    tracked=tracked_characters(cards,scenes);names={card.id:card.name for card in cards}
+    projection=project_memory(past,scene.character_ids,source_numbers,hidden_claim_ids=hidden,forwarded_claim_ids=forwarded,tracked=tracked,names=names,language=language)
+    return past,source_numbers,hidden,forwarded,tracked,names,projection
+
+
 def build_context(repo,scene_id: str,stage: str,settings: RoleSettings,*,editor_source_id: str | None=None,memory_approval: str | None=None,view=None) -> ContextBundle:
     if memory_approval is not None and stage!='memory':
         raise ValueError('Підтвердження пам’яті дозволено лише для її оновлення')
@@ -349,19 +364,10 @@ def build_context(repo,scene_id: str,stage: str,settings: RoleSettings,*,editor_
     if profile.ending_goal.strip():
         sections.append(label('ending_goal',language)+'\n'+profile.ending_goal)
         if count is None:sections.append(horizon_instructions(scene,len(scenes),language))
-    past=journal_before(repo,scene.id)
     from ..memory.reuse import provenance_before, provenance_warnings
     inherited_provenance=provenance_before(repo,scene.id)
     warnings.extend(provenance_warnings(inherited_provenance))
-    from ..memory.forwarding import hidden_before,forwarded_before
-    from ..memory.core import tracked_characters
-    from ..characters.models import load_characters
-    scene_numbers={s.id:s.position+1 for s in scenes if s.position<scene.position}
-    cards=load_characters(repo.read_text(story.characters_version_id)) if story.characters_version_id else []
-    source_numbers={id:scene_numbers[repo.get_version(id).scene_id] for id in past.source_prose_ids}
-    hidden,forwarded=hidden_before(repo,scene.id),forwarded_before(repo,scene.id)
-    tracked=tracked_characters(cards,scenes);names={card.id:card.name for card in cards}
-    projection=project_memory(past,scene.character_ids,source_numbers,hidden_claim_ids=hidden,forwarded_claim_ids=forwarded,tracked=tracked,names=names,language=language)
+    past,source_numbers,hidden,forwarded,tracked,names,projection=memory_projection(repo,story,scene,scenes,language)
     memory_header=label('memory_header',language)+'\n'
     memory_index=len(sections)
     sections.append(memory_header+projection.text)

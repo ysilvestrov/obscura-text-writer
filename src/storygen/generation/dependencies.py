@@ -24,11 +24,29 @@ def save_manual_prose(repo,scene_id: str,text: str,expected_revision: int,conten
     return ref
 
 
-def save_manual_draft(repo,scene_id: str,text: str,expected_revision: int,content_format=None,*,author_lineage=None,ghost_rewrite=None) -> VersionRef:
-    """`author_lineage` overrides the previous draft head as the parent; a Ghost Mode save always creates a version (#55)."""
+def writing_fingerprint(repo,scene) -> str:
+    """MCP-BRIDGE: the context fingerprint of `GET /api/scenes/{id}/writing-context` (application.writing_context)."""
+    from ..application.writing_context import context_fingerprint
+    return context_fingerprint(repo,scene.id)
+
+
+CONTEXT_CHANGED='Контекст сцени змінився — прочитайте його знову'
+
+
+def save_manual_draft(repo,scene_id: str,text: str,expected_revision: int,content_format=None,*,author_lineage=None,ghost_rewrite=None,external_origin=None,expected_context_fingerprint=None) -> VersionRef:
+    """`author_lineage` overrides the previous draft head as the parent; a Ghost Mode save always creates a version (#55).
+
+    MCP-BRIDGE: a draft with `external_origin` must name the context fingerprint it was written from and always creates a version."""
     if not text.strip():
         raise ValueError('Чернетка не може бути порожньою')
-    if ghost_rewrite is None:
+    if external_origin is not None and expected_context_fingerprint is None:
+        raise ValueError('Чернетка із зовнішнього клієнта потребує відбитка контексту')
+    if expected_context_fingerprint is not None:
+        from ..domain import RevisionConflict
+        current=repo.get_scene(scene_id)
+        if current.revision!=expected_revision:raise RevisionConflict('Сцену вже змінено')
+        if writing_fingerprint(repo,current)!=expected_context_fingerprint:raise RevisionConflict(CONTEXT_CHANGED)
+    if ghost_rewrite is None and external_origin is None:
         unchanged=repo.unchanged_scene_text(scene_id,'draft',text,expected_revision,content_format)
         if unchanged:return unchanged[1]
     scene=repo.get_scene(scene_id)
@@ -36,7 +54,7 @@ def save_manual_draft(repo,scene_id: str,text: str,expected_revision: int,conten
     from ..memory.forwarding import projection_policy
     policy=projection_policy(repo.context_view(scene.story_id),scene.id)
     snapshot=_manual_snapshot(repo,scene,'draft')
-    ref=repo.save_version(scene.story_id,scene.id,'draft',text,list(snapshot.refs),dependency_snapshot=snapshot,manual_projection_policy=policy,content_format=content_format,author_lineage=author_lineage or _lineage(scene,'draft'),ghost_rewrite=ghost_rewrite)
+    ref=repo.save_version(scene.story_id,scene.id,'draft',text,list(snapshot.refs),dependency_snapshot=snapshot,manual_projection_policy=policy,content_format=content_format,author_lineage=author_lineage or _lineage(scene,'draft'),ghost_rewrite=ghost_rewrite,external_origin=external_origin)
     repo.set_head(scene.id,'draft',ref.id,expected_revision)
     return ref
 

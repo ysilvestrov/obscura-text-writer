@@ -593,7 +593,7 @@ Read-only розбір останнього запуску06.11.2026 вияви�
 
 ## R-32 — MCP-сервер для Claude/Codex і генерація в межах підписки автора
 
-**Статус:** запит власника 10.11.2026, GitHub [#84](https://github.com/ysilvestrov/obscura-text-writer/issues/84). Реалізацію не почато. У черзі 10.11.2026 пункт 6. Специфікацію `docs/superpowers/specs/2026-11/2026-11-10-mcp-server-design.md` затверджено 10.11.2026 (L, 2 PR).
+**Статус:** запит власника 10.11.2026, GitHub [#84](https://github.com/ysilvestrov/obscura-text-writer/issues/84). PR 1 (ядро) 11.11.2026: `storygen-mcp` (extra `[mcp]`) із шістьма інструментами поверх loopback API, `GET /api/stories`, `GET /api/scenes/{id}/writing-context` з відбитком контексту, поле версії `external_origin`; SPEC MCP-BRIDGE S01–S09. PR 2 — позначка в інтерфейсі, інструкції UA/EN, приймання власником. У черзі 10.11.2026 пункт 6. Специфікацію `docs/superpowers/specs/2026-11/2026-11-10-mcp-server-design.md` затверджено 10.11.2026 (L, 2 PR).
 
 - Мета: автор працює з Obscura з чат-клієнта, яким уже користується (Claude, Codex/ChatGPT), без власного API-ключа для звичайної прози. Цільовий сценарій: ідея, план і персонажі затверджуються в чаті → передаються в Obscura → Obscura готує чернетку або покроковий план епізоду → автор пише в Ghost Mode з пам'яттю й жанровими перевірками → публікація засобами Obscura.
 - Поточний стан: MCP у застосунку немає; підписковий backend існує лише як шлюз Codex для оцінювача.

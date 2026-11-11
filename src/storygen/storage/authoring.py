@@ -86,8 +86,8 @@ def update_scene_metadata(repo,scene_id: str,changes: dict,expected_revision: in
 
 
 def model_material_exists(db,story_id: str) -> bool:
-    """STORY-LANGUAGE: a version produced by a model run locks the story language."""
-    return db.execute("SELECT 1 FROM versions WHERE story_id=? AND json_extract(payload,'$.source_run_id') IS NOT NULL LIMIT 1",(story_id,)).fetchone() is not None
+    """STORY-LANGUAGE: a version produced by a model run, or claimed by an external client (MCP-BRIDGE), locks the story language."""
+    return db.execute("SELECT 1 FROM versions WHERE story_id=? AND (json_extract(payload,'$.source_run_id') IS NOT NULL OR json_extract(payload,'$.external_origin') IS NOT NULL) LIMIT 1",(story_id,)).fetchone() is not None
 
 
 def story_language_locked(repo,story_id: str) -> bool:
