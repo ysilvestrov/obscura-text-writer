@@ -2238,7 +2238,8 @@
     "version.external_client_model": "Зовнішній клієнт: {p0} · {p1}",
     "sync.changed": "Сцену змінено ззовні",
     "sync.open_newer": "Відкрити новішу версію",
-    "sync.trashed": "Сцену перенесено в кошик в іншому вікні — скопіюйте текст"
+    "sync.trashed": "Сцену перенесено в кошик в іншому вікні — скопіюйте текст",
+    "workspace.run_details": "Показати або сховати подробиці запуску"
   },
   "en": {
     "ui.save": "Save",
@@ -4479,6 +4480,7 @@
     "version.external_client_model": "External client: {p0} · {p1}",
     "sync.changed": "The scene was changed elsewhere",
     "sync.open_newer": "Open the newer version",
-    "sync.trashed": "The scene was moved to the trash elsewhere — copy your text"
+    "sync.trashed": "The scene was moved to the trash elsewhere — copy your text",
+    "workspace.run_details": "Show or hide run details"
   }
 }
