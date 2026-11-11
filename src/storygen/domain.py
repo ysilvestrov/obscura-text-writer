@@ -106,6 +106,13 @@ class AuthorLineage(DomainModel):
     parent_version_id: str = Field(min_length=1)
 
 
+class ExternalOrigin(DomainModel):
+    """MCP-BRIDGE: the external client (Claude, Codex…) that says it wrote this version. The client's claim, not verified;
+    metadata only: not in sha256, dependencies, budget or the run trace."""
+    client: str = Field(min_length=1,max_length=64,pattern=r'^[A-Za-z0-9 ._-]+$')
+    model: str | None = Field(default=None,max_length=128)
+
+
 class GhostRewriteStats(DomainModel):
     """Ghost Mode rewrite of an AI draft (#55). Metadata only: not in sha256, dependencies or request hashes.
 
@@ -141,6 +148,7 @@ class VersionRef(DomainModel):
     brief_link: BriefLink | None = None
     author_lineage: AuthorLineage | None = None
     ghost_rewrite: GhostRewriteStats | None = None
+    external_origin: ExternalOrigin | None = None
     created_at: str = Field(default_factory=now)
 
     @model_validator(mode='after')

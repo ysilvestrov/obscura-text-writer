@@ -3,7 +3,7 @@ from typing import Literal
 
 from fastapi import APIRouter, Query, Request
 
-from ..domain import DomainModel
+from ..domain import DomainModel, ExternalOrigin
 from ..generation.dependencies import save_manual_draft, save_manual_prose, select_prose
 from ..generation.worker import RunRequest
 from ..memory.models import MemorySnapshot
@@ -32,6 +32,8 @@ class AuthorTextChange(ProseChange):
 
 class DraftChange(AuthorTextChange):
     comment_set: CommentPayload | None = None
+    external_origin: ExternalOrigin | None = None
+    expected_context_fingerprint: str | None = Field(default=None,pattern=r'^[0-9a-f]{64}$')
     expected_comments_revision: int | None = Field(default=None,ge=0)
     expected_source_version_id: str | None = None
 
@@ -41,6 +43,8 @@ class DraftChange(AuthorTextChange):
             raise ValueError('Коментарі потребують ревізії та джерела')
         if self.comment_set is None and (self.expected_comments_revision is not None or self.expected_source_version_id is not None):
             raise ValueError('Немає набору коментарів')
+        if self.comment_set is not None and (self.external_origin is not None or self.expected_context_fingerprint is not None):
+            raise ValueError('Чернетка із зовнішнього клієнта не зберігається разом із коментарями')
         return self
 
 
@@ -144,7 +148,7 @@ def manual_draft(scene_id: str,body: DraftChange,request: Request):
         repo=request.app.state.repo
         format=body.content_format or (repo.get_version(body.expected_source_version_id).content_format if body.expected_source_version_id else 'plain')
         return repo.save_draft_with_comments(scene_id,body.text,format,body.expected_revision,body.expected_comments_revision,body.comment_set,expected_source_version_id=body.expected_source_version_id)
-    ref=save_manual_draft(request.app.state.repo,scene_id,body.text,body.expected_revision,body.content_format)
+    ref=save_manual_draft(request.app.state.repo,scene_id,body.text,body.expected_revision,body.content_format,external_origin=body.external_origin,expected_context_fingerprint=body.expected_context_fingerprint)
     return {'version':ref,'scene':request.app.state.repo.get_scene(scene_id)}
 
 

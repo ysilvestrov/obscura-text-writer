@@ -24,11 +24,30 @@ def save_manual_prose(repo,scene_id: str,text: str,expected_revision: int,conten
     return ref
 
 
-def save_manual_draft(repo,scene_id: str,text: str,expected_revision: int,content_format=None,*,author_lineage=None,ghost_rewrite=None) -> VersionRef:
-    """`author_lineage` overrides the previous draft head as the parent; a Ghost Mode save always creates a version (#55)."""
+def writing_fingerprint(repo,scene) -> str:
+    """MCP-BRIDGE: SHA-256 of what a draft written outside Obscura rests on: the author-text snapshot of `draft` plus the brief head."""
+    import hashlib,json
+    payload={'snapshot':_manual_snapshot(repo,scene,'draft').model_dump(mode='json'),'brief':scene.heads.get('brief')}
+    return hashlib.sha256(json.dumps(payload,ensure_ascii=False,sort_keys=True,separators=(',',':')).encode('utf-8')).hexdigest()
+
+
+CONTEXT_CHANGED='Контекст сцени змінився — прочитайте його знову'
+
+
+def save_manual_draft(repo,scene_id: str,text: str,expected_revision: int,content_format=None,*,author_lineage=None,ghost_rewrite=None,external_origin=None,expected_context_fingerprint=None) -> VersionRef:
+    """`author_lineage` overrides the previous draft head as the parent; a Ghost Mode save always creates a version (#55).
+
+    MCP-BRIDGE: a draft with `external_origin` must name the context fingerprint it was written from and always creates a version."""
     if not text.strip():
         raise ValueError('Чернетка не може бути порожньою')
-    if ghost_rewrite is None:
+    if external_origin is not None and expected_context_fingerprint is None:
+        raise ValueError('Чернетка із зовнішнього клієнта потребує відбитка контексту')
+    if expected_context_fingerprint is not None:
+        from ..domain import RevisionConflict
+        current=repo.get_scene(scene_id)
+        if current.revision!=expected_revision:raise RevisionConflict('Сцену вже змінено')
+        if writing_fingerprint(repo,current)!=expected_context_fingerprint:raise RevisionConflict(CONTEXT_CHANGED)
+    if ghost_rewrite is None and external_origin is None:
         unchanged=repo.unchanged_scene_text(scene_id,'draft',text,expected_revision,content_format)
         if unchanged:return unchanged[1]
     scene=repo.get_scene(scene_id)
@@ -36,7 +55,7 @@ def save_manual_draft(repo,scene_id: str,text: str,expected_revision: int,conten
     from ..memory.forwarding import projection_policy
     policy=projection_policy(repo.context_view(scene.story_id),scene.id)
     snapshot=_manual_snapshot(repo,scene,'draft')
-    ref=repo.save_version(scene.story_id,scene.id,'draft',text,list(snapshot.refs),dependency_snapshot=snapshot,manual_projection_policy=policy,content_format=content_format,author_lineage=author_lineage or _lineage(scene,'draft'),ghost_rewrite=ghost_rewrite)
+    ref=repo.save_version(scene.story_id,scene.id,'draft',text,list(snapshot.refs),dependency_snapshot=snapshot,manual_projection_policy=policy,content_format=content_format,author_lineage=author_lineage or _lineage(scene,'draft'),ghost_rewrite=ghost_rewrite,external_origin=external_origin)
     repo.set_head(scene.id,'draft',ref.id,expected_revision)
     return ref
 
