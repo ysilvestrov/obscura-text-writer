@@ -43,7 +43,7 @@ Copy-Item .env.example .env
 
 Інструкції українською й англійською: [сайт Obscura](https://ysilvestrov.github.io/obscura-text-writer/) (джерело — `docs/site/`).
 
-Докладніше: [запуск і резервне копіювання](docs/prototype-runbook.md), [експорт FB2/EPUB](docs/verification/manual.md#ebook-formats) та [PDF A5](docs/verification/manual.md#pdf-publication).
+Докладніше: [запуск і резервне копіювання](https://ysilvestrov.github.io/obscura-text-writer/install.html), [експорт FB2/EPUB](docs/verification/manual.md#ebook-formats) та [PDF A5](docs/verification/manual.md#pdf-publication).
 Для першої проби можна імпортувати нейтральні [план](tests/fixtures/prototype/plan.md)
 та [персонажів](tests/fixtures/prototype/characters.md) тестової історії про бібліотеку.
 
@@ -91,21 +91,11 @@ See the [name and logo policy](docs/en/trademark-policy.md).
 Умови використання (чернетка, ще не чинна): [українською](docs/terms-of-use.md), [English](docs/en/terms-of-use.md).
 
 
-Платні виклики потребують явного ліміту оповідання/CLI та чинного тарифу.
-Налаштування й пояснення сум: [бюджет модельних викликів](docs/provider-budget.md).
+Платні виклики потребують явного ліміту оповідання/CLI та чинного тарифу; моделі, ролі, бюджет і комплекти —
+[моделі й бюджет](https://ysilvestrov.github.io/obscura-text-writer/models.html). Технічний довідник бюджету й CLI: [бюджет модельних викликів](docs/provider-budget.md).
 
-Повторне використання моделей і промптів між творами: [комплекти ролей](docs/role-profiles.md).
-
-Обмеження майбутніх планів у контексті ролі: [горизонт сюжету](docs/story-horizon.md).
-
-Твір українською або англійською, мова прози окремої сцени: [інструкція українською](docs/story-language.md), [English](docs/en/story-language.md).
-
-Табличний перегляд і відбір пам’яті: [інструкція українською](docs/memory-view.md), [English](docs/en/memory-view.md).
-
-Жирний, курсив і збереження джерела: [візуальний редактор](docs/visual-editor.md). Переписування AI-чернетки власними словами: [інструкція українською](docs/ghost-mode.md), [English](docs/en/ghost-mode.md). Для розробника — [збірка локального JS bundle](docs/frontend-development.md).
-
-Перевірка наслідків змін після написання: [редагування книги й перевірка впливу / Book revision impact review](docs/impact-review.md). Двофазний planner-аналіз, окремі висновки для завдання/прози та пам’яті, явний бюджет і збережені докази.
-
-Інтерфейс персонажів: [інструкція українською](docs/prototype-runbook.md#часова-доступність-персонажів-r-06), [English](docs/en/characters.md).
-
-Віковий рейтинг, запобіжник щодо віку персонажів і позначка в експорті: [інструкція українською](docs/content-rating.md), [English](docs/en/content-rating.md).
+Окремі теми на сайті: [робочий простір](https://ysilvestrov.github.io/obscura-text-writer/workspace.html), [персонажі](https://ysilvestrov.github.io/obscura-text-writer/characters.html),
+[пам’ять](https://ysilvestrov.github.io/obscura-text-writer/memory.html), [коментарі, промпти й горизонт](https://ysilvestrov.github.io/obscura-text-writer/writing-tools.html),
+[переписування по пам’яті](https://ysilvestrov.github.io/obscura-text-writer/ghost-mode.html), [редагування книги й перевірка впливу](https://ysilvestrov.github.io/obscura-text-writer/revision.html),
+[віковий рейтинг](https://ysilvestrov.github.io/obscura-text-writer/content-rating.html), [мова й обсяг твору](https://ysilvestrov.github.io/obscura-text-writer/story-language.html). Для розробника —
+[збірка локального JS bundle](docs/frontend-development.md).

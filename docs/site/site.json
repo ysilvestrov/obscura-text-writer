@@ -3,6 +3,20 @@
   "pages": [
     {"slug": "index", "title": {"uk": "Про Obscura", "en": "About Obscura"}},
     {"slug": "install", "title": {"uk": "Встановлення й запуск", "en": "Installation and launch"}},
-    {"slug": "first-story", "title": {"uk": "Перший твір", "en": "Your first story"}}
+    {"slug": "first-story", "title": {"uk": "Перший твір", "en": "Your first story"}},
+    {"slug": "workspace", "title": {"uk": "Робочий простір", "en": "Workspace"}},
+    {"slug": "characters", "title": {"uk": "Персонажі", "en": "Characters"}},
+    {"slug": "imports", "title": {"uk": "Імпорт матеріалів", "en": "Importing materials"}},
+    {"slug": "ghost-mode", "title": {"uk": "Переписування по пам’яті", "en": "Rewriting from memory"}},
+    {"slug": "memory", "title": {"uk": "Пам’ять", "en": "Memory"}},
+    {"slug": "writing-tools", "title": {"uk": "Коментарі, промпти й горизонт", "en": "Comments, prompts and horizon"}},
+    {"slug": "revision", "title": {"uk": "Редактура й перевірка впливу", "en": "Editing and impact review"}},
+    {"slug": "content-rating", "title": {"uk": "Віковий рейтинг", "en": "Age rating"}},
+    {"slug": "models", "title": {"uk": "Моделі й бюджет", "en": "Models and budget"}},
+    {"slug": "evaluator", "title": {"uk": "Оцінювач", "en": "Evaluator"}},
+    {"slug": "publication", "title": {"uk": "Публікація й експорт", "en": "Publication and export"}},
+    {"slug": "story-language", "title": {"uk": "Мова й обсяг твору", "en": "Story language and length"}},
+    {"slug": "troubleshooting", "title": {"uk": "Поширені проблеми", "en": "Troubleshooting"}},
+    {"slug": "legal", "title": {"uk": "Умови, ліцензія й назва", "en": "Terms, license and name"}}
   ]
 }
