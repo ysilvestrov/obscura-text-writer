@@ -45,6 +45,8 @@ test('scene rating panel follows the limit and late app info keeps unsaved scene
   let release;const held=new Promise(resolve=>{release=resolve});
   await page.route('**/api/app-info',async route=>{await held;await route.continue()});
   await page.goto(`/stories/${story_id}?scene=${scene_id}`);
+  // The scene panel lives in a collapsed details block on both layouts.
+  await page.locator('.tool-section[data-section=scene]').evaluate(details=>{details.open=true});
   const title=page.locator('#scene-settings input[name="title"]');
   await expect(title).toBeVisible();
   await title.fill('Назва, яку ще не збережено');
