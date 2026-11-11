@@ -42,6 +42,14 @@ Generation is blocked by an empty scene cast, missing cards, a minor participant
 
 When exporting FB2 or EPUB, the highest level among the story rating and the exported scenes is used: 0 gives `0+`, 1 gives `16+`, 2 gives `18+`. The label goes into the file metadata, not the text. MD, TXT and PDF carry no label. If the story rating is not set, there is no label and the export manifest contains a warning.
 
+## Microsoft Store build
+
+In the build installed from the Microsoft Store, the highest sexual content level is 1: level 2 cannot be selected for a story or a scene. Violence and hard themes levels are not limited. A hint under the rating form states this limit.
+
+A story with level 2 brought from another build opens as it is: you can read it, edit it by hand and export it, and the form shows its real rating. The model does not write for such a story or scene: story plan preparation, scene plan, draft, editing, rewriting, memory, publication metadata suggestions and writing through an external client are blocked until you lower the rating. Evaluation and checks of text that already exists keep working.
+
+If the model wrote something unacceptable, use the "Report a result" link in the application header. It opens a page in your browser; the application itself sends nothing there.
+
 ## Limitations
 
 The safeguard relies on the age and the rating the author entered and does not verify them: a false age or an understated rating bypasses it. The rating limits the model but does not guarantee matching text. The safeguard helps you comply with the [Terms of Use](legal.md) but does not guarantee legal compliance.

@@ -3725,7 +3725,9 @@
         "tests/storage/test_content_rating.py::test_store_edition_rejects_scene_level_two_and_allows_inherit",
         "tests/storage/test_content_rating.py::test_store_edition_keeps_other_axes_at_two",
         "tests/storage/test_content_rating.py::test_store_edition_lets_lower_an_existing_level_two",
-        "tests/web/test_rating_routes.py::test_store_edition_put_level_two_is_400_with_translation"
+        "tests/web/test_rating_routes.py::test_store_edition_put_level_two_is_400_with_translation",
+        "tests/web/test_rating_routes.py::test_store_edition_put_scene_level_two_is_400",
+        "tests/generation/test_content_rating_context.py::test_edition_messages_translate_for_every_axis"
       ]
     },
     {
@@ -3764,6 +3766,33 @@
       "tests": [
         "tests/web/test_app_info.py::test_app_info_full_edition",
         "tests/web/test_app_info.py::test_app_info_store_edition"
+      ]
+    },
+    {
+      "id": "BUILD-EDITION-001-S06",
+      "requirement": "BUILD-EDITION-001",
+      "scope": "Форми рейтингу твору й сцени пропонують лише рівні до межі видання плюс уже збережений вищий, показують підказку; без відповіді app-info показують усі рівні.",
+      "tests": [
+        "tests/web/test_app_info_ui.py::test_allowed_levels_and_fallback",
+        "tests/web/test_app_info_ui.py::test_rating_forms_use_the_edition_limit",
+        "tests/web/test_app_info_ui.py::test_edition_hint_is_translated"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#build-edition-forms",
+        "reason": "Браузерні специфікації не запускають сервер у виданні store; автоматичні тести перевіряють добір рівнів і підключення модуля, а вигляд форм — ручна процедура."
+      }
+    },
+    {
+      "id": "BUILD-EDITION-001-S07",
+      "requirement": "BUILD-EDITION-001",
+      "scope": "Посилання в шапці лише для непорожніх адрес у сталому порядку, у новій вкладці, з перекладом; видання full без змін; некоректна адреса зупиняє запуск.",
+      "tests": [
+        "tests/web/test_app_links.py::test_full_edition_has_no_app_links",
+        "tests/web/test_app_links.py::test_store_edition_shows_report_link_only_when_others_are_empty",
+        "tests/web/test_app_links.py::test_all_three_links_in_fixed_order",
+        "tests/web/test_app_links.py::test_link_labels_are_translated",
+        "tests/test_build_edition.py::test_link_must_be_a_clean_https_url",
+        "tests/test_build_edition.py::test_clean_https_url_with_path_and_query_is_kept"
       ]
     },
     {
