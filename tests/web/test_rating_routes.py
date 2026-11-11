@@ -84,3 +84,14 @@ def test_story_view_unrated_story_has_no_effective_rating(tmp_path):
     client, repo, story, scene = make(tmp_path)
     view = client.get(f"/api/stories/{story.id}").json()
     assert view["scene_ratings"] == {scene.id: {"effective": None, "source": None}}
+
+
+def test_store_edition_put_level_two_is_400_with_translation(tmp_path, store_edition):
+    client, repo, story, _ = make(tmp_path)
+    body = {"content_rating": {"sexual": 2, "violence": 0, "themes": 0}, "expected_revision": story.revision}
+    response = client.put(f"/api/stories/{story.id}/content-rating", json=body)
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Некоректні дані: У цьому виданні Obscura рівень 2 для осі «сексуальний зміст» недоступний: найвищий дозволений — 1."
+    english = client.put(f"/api/stories/{story.id}/content-rating", json=body, headers={"accept-language": "en"})
+    assert english.json()["detail"] == "Invalid data: In this edition of Obscura, level 2 is not available for “sexual content”: the highest allowed is 1."
+    assert repo.get_story(story.id).content_rating is None

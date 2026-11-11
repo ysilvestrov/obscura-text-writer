@@ -115,6 +115,19 @@ def update_story_language(repo,story_id: str,language,expected_revision: int) ->
     return story
 
 
+SAVE_LIMIT='У цьому виданні Obscura рівень {n} для осі «{axis}» недоступний: найвищий дозволений — {max}.'
+
+
+def _require_edition_limit(rating) -> None:
+    """BUILD-EDITION-001: a build edition may cap rating axes; reading and lowering stay possible."""
+    from .. import build_edition
+    from ..rating.instructions import AXIS_NAMES
+    over=build_edition.over_limit(rating) if rating is not None else []
+    if over:
+        axis=over[0]
+        raise ValueError(SAVE_LIMIT.format(n=getattr(rating,axis),axis=AXIS_NAMES[axis],max=getattr(build_edition.current().max_rating,axis)))
+
+
 def update_story_rating(repo,story_id: str,rating,expected_revision: int) -> Story:
     if rating is None:
         raise ValueError('Рейтинг твору не можна скинути')
@@ -125,6 +138,7 @@ def update_story_rating(repo,story_id: str,rating,expected_revision: int) -> Sto
         if story.revision!=expected_revision:
             raise RevisionConflict("Твір уже змінено")
         if story.content_rating==rating:return story
+        _require_edition_limit(rating)
         old=story
         story=story.model_copy(update={'content_rating':rating,'revision':story.revision+1})
         if story.initial_content_rating is None:
@@ -147,6 +161,7 @@ def update_scene_rating(repo,scene_id: str,rating,expected_revision: int) -> Sce
         if scene.revision!=expected_revision:
             raise RevisionConflict("Сцену вже змінено")
         if scene.content_rating==rating:return scene
+        _require_edition_limit(rating)
         story=repo._active_story(db,scene.story_id)
         old=scene
         scene=scene.model_copy(update={'content_rating':rating,'revision':scene.revision+1})

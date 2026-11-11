@@ -114,3 +114,64 @@ def test_age_label_takes_highest_level_over_story_and_scenes():
     # The story rating counts on its own: scenes that all override it downwards do not lower the label.
     lowered = [Scene(id=f'c{i}', story_id=story.id, title='a', position=i, content_rating=R(sexual=0, violence=0, themes=0)) for i in range(2)]
     assert age_label(story.model_copy(update={'content_rating': R(sexual=0, violence=0, themes=2)}), lowered) == '18+'
+
+
+LIMIT = 'У цьому виданні Obscura рівень 2 для осі «сексуальний зміст» недоступний: найвищий дозволений — 1.'
+
+
+def force_rating(repo, table, id, rating):
+    """Write a rating straight into the payload, as data made in the full edition would arrive."""
+    with repo.db.connection() as db:
+        raw = json.loads(db.execute(f'SELECT payload FROM {table} WHERE id=?', (id,)).fetchone()[0])
+        raw['content_rating'] = rating.model_dump()
+        if table == 'stories':
+            raw['initial_content_rating'] = rating.model_dump()
+        db.execute(f'UPDATE {table} SET payload=? WHERE id=?', (json.dumps(raw), id))
+
+
+def test_store_edition_rejects_story_level_two(tmp_path, store_edition):
+    repo, story, _ = make(tmp_path)
+    with pytest.raises(ValueError) as error:
+        repo.update_story_rating(story.id, R(sexual=2, violence=0, themes=0), story.revision)
+    assert str(error.value) == LIMIT
+    after = repo.get_story(story.id)
+    assert after.revision == story.revision and after.content_rating is None
+
+
+def test_store_edition_rejects_scene_level_two_and_allows_inherit(tmp_path, store_edition):
+    repo, story, [(scene, _), _] = make(tmp_path)
+    repo.update_story_rating(story.id, R(sexual=0, violence=0, themes=0), story.revision)
+    scene = repo.get_scene(scene.id)
+    with pytest.raises(ValueError) as error:
+        repo.update_scene_rating(scene.id, R(sexual=2, violence=0, themes=0), scene.revision)
+    assert str(error.value) == LIMIT and repo.get_scene(scene.id).revision == scene.revision
+    scene = repo.update_scene_rating(scene.id, R(sexual=1, violence=0, themes=0), scene.revision)
+    assert scene.content_rating == R(sexual=1, violence=0, themes=0)
+    assert repo.update_scene_rating(scene.id, None, scene.revision).content_rating is None
+
+
+def test_store_edition_keeps_other_axes_at_two(tmp_path, store_edition):
+    repo, story, _ = make(tmp_path)
+    saved = repo.update_story_rating(story.id, R(sexual=1, violence=2, themes=2), story.revision)
+    assert saved.content_rating == R(sexual=1, violence=2, themes=2)
+
+
+def test_store_edition_lets_lower_an_existing_level_two(tmp_path, store_edition):
+    repo, story, [(scene, _), _] = make(tmp_path)
+    two = R(sexual=2, violence=0, themes=0)
+    force_rating(repo, 'stories', story.id, two)
+    force_rating(repo, 'scenes', scene.id, two)
+    story, scene = repo.get_story(story.id), repo.get_scene(scene.id)
+    # Saving the unchanged rating is a no-op, not an error: the settings form may resubmit what it loaded.
+    assert repo.update_story_rating(story.id, two, story.revision).revision == story.revision
+    assert repo.update_scene_rating(scene.id, two, scene.revision).revision == scene.revision
+    lowered = repo.update_story_rating(story.id, R(sexual=1, violence=0, themes=0), story.revision)
+    assert lowered.content_rating.sexual == 1
+    scene = repo.get_scene(scene.id)
+    assert repo.update_scene_rating(scene.id, R(sexual=1, violence=0, themes=0), scene.revision).content_rating.sexual == 1
+
+
+def test_full_edition_still_accepts_level_two(tmp_path):
+    repo, story, _ = make(tmp_path)
+    top = R(sexual=2, violence=2, themes=2)
+    assert repo.update_story_rating(story.id, top, story.revision).content_rating == top
