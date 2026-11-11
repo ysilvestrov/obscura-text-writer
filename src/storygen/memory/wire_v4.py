@@ -64,7 +64,8 @@ def schema_bounds_v4(previous,prose,allowed_character_ids,tracked,day_change,*,k
 
 
 JOINED_EVIDENCE_WARNING='Пам’ять: склеєні ID доказів у рішеннях ядра й ліній розділено; враховано до трьох перших.'
-_FRAGMENT_ID=re.compile(r'f\d{6,}')
+# A full ID or its shortened form inside a joined string: 'f000013', 'f13', '13'.
+_FRAGMENT_ID=re.compile(r'f?(\d+)')
 _JOINERS=' \t\r\n,;._-–—/|+'
 
 
@@ -81,7 +82,7 @@ def split_joined_evidence(data,bounds):
         if not isinstance(ids,list) or not all(isinstance(i,str) for i in ids):return
         out=[];joined=False
         for item in ids:
-            parts=_FRAGMENT_ID.findall(item)
+            parts=['f'+digits.zfill(6) for digits in _FRAGMENT_ID.findall(item)]
             if item not in known and len(parts)>1 and all(p in known for p in parts) and not _FRAGMENT_ID.sub('',item).strip(_JOINERS):
                 out+=parts;joined=True
             else:out.append(item)
