@@ -3869,6 +3869,72 @@
       ]
     },
     {
+      "id": "DESKTOP-001-S01",
+      "requirement": "DESKTOP-001",
+      "scope": "Тека даних у профілі користувача (кирилиця в шляху), журнал у файл із ротацією, запуск без stdout/stderr.",
+      "tests": [
+        "tests/test_desktop.py::test_default_data_dir_is_under_the_user_profile",
+        "tests/test_desktop.py::test_logging_goes_to_a_rotating_file_and_survives_missing_std_streams",
+        "tests/test_desktop.py::test_main_starts_serves_and_cleans_up"
+      ]
+    },
+    {
+      "id": "DESKTOP-001-S02",
+      "requirement": "DESKTOP-001",
+      "scope": "server.json з instance_id; другий запуск відкриває перший; застарілий чи чужий запис не приймається; зайнятий порт замінюється; запис і порт звільняються.",
+      "tests": [
+        "tests/test_desktop.py::test_running_server_trusts_only_a_matching_instance",
+        "tests/test_desktop.py::test_second_launch_opens_the_running_instance",
+        "tests/test_desktop.py::test_choose_port_falls_back_when_the_preferred_one_is_busy",
+        "tests/test_desktop.py::test_browser_is_opened_once_the_server_answers",
+        "tests/test_desktop.py::test_server_that_never_starts_is_exit_code_4",
+        "tests/web/test_app_info.py::test_app_info_has_a_per_process_instance_id"
+      ]
+    },
+    {
+      "id": "DESKTOP-001-S03",
+      "requirement": "DESKTOP-001",
+      "scope": "Перевірена копія в сусідній теці перед міграцією; без копії код 3 і схема не змінюється; чинна схема й нова тека копії не потребують.",
+      "tests": [
+        "tests/storage/test_pre_migration.py::test_schema_version_constant_matches_a_fresh_database",
+        "tests/storage/test_pre_migration.py::test_no_database_and_current_schema_need_no_backup",
+        "tests/storage/test_pre_migration.py::test_old_schema_is_backed_up_next_to_the_data_dir",
+        "tests/storage/test_pre_migration.py::test_reading_the_version_does_not_change_the_data_dir",
+        "tests/storage/test_pre_migration.py::test_backup_failure_blocks_the_migration",
+        "tests/storage/test_pre_migration.py::test_existing_destination_is_a_failure_not_an_overwrite",
+        "tests/storage/test_pre_migration.py::test_unwritable_backups_location_is_a_failure",
+        "tests/test_desktop.py::test_desktop_backs_up_then_migrates",
+        "tests/test_desktop.py::test_desktop_refuses_to_start_when_backup_fails"
+      ]
+    },
+    {
+      "id": "DESKTOP-001-S05",
+      "requirement": "DESKTOP-001",
+      "scope": "Некоректна позначка видання зупиняє storygen-desktop (код 2, причина в журналі, лише logs у теці) і службові команди.",
+      "tests": [
+        "tests/test_desktop.py::test_invalid_edition_marker_is_logged_and_stops_before_data",
+        "tests/test_desktop.py::test_maintenance_commands_check_the_edition_marker"
+      ]
+    },
+    {
+      "id": "DESKTOP-001-S04",
+      "requirement": "DESKTOP-001",
+      "scope": "Меню трея: порядок, мови, пункт копій, вихід; робота без бібліотеки трея й з --no-tray.",
+      "tests": [
+        "tests/test_desktop_tray.py::test_menu_labels_order_and_actions",
+        "tests/test_desktop_tray.py::test_backups_item_appears_once_there_are_backups",
+        "tests/test_desktop_tray.py::test_menu_language_follows_the_system",
+        "tests/test_desktop_tray.py::test_run_tray_builds_the_icon_and_quit_stops_everything",
+        "tests/test_desktop_tray.py::test_missing_tray_library_is_reported",
+        "tests/test_desktop_tray.py::test_launcher_without_a_tray_keeps_running_and_logs_it",
+        "tests/test_desktop.py::test_no_tray_mode_runs_until_the_server_stops"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#desktop-launcher",
+        "reason": "Справжній значок у треї Windows і його меню не можна натиснути з автоматичного тесту; тести перевіряють меню на підставній бібліотеці."
+      }
+    },
+    {
       "id": "MEMORY-SELECT-S01",
       "requirement": "MEMORY-SELECT",
       "scope": "Запит без переповнення не змінюється; розкладання проєкції на рядки байтово тотожне попередній реалізації.",

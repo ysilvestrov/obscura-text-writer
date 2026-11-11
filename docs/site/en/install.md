@@ -64,6 +64,28 @@ If running PowerShell scripts is not allowed, use the direct command:
 ./.venv/Scripts/python.exe -m storygen.server --data-dir "$env:LOCALAPPDATA/ObscuraTextWriter/data" --env-file .env --open-browser
 ```
 
+### Launch without a console
+
+The `storygen-desktop` command starts the application without a PowerShell window:
+
+```powershell
+./.venv/Scripts/pythonw.exe -m storygen.desktop
+```
+
+- Stories are kept in the `Obscura` folder of your profile (`%USERPROFILE%\Obscura`); `--data-dir` sets another folder.
+- The log is `logs\obscura.log` in the stories folder. If the application did not open, the reason is written there.
+- If port 8765 is busy, the application takes a free one; the address is in the log and in the `server.json` file.
+- Before the database format is upgraded, the application makes a backup into the neighbouring `Obscura-backups` folder and does not start if the backup cannot be made. It never deletes old backups.
+- Launching it again while it is running only opens its page.
+
+To control the application from a tray icon ("Open Obscura", "Stories folder", "Quit"), install the `pystray` package:
+
+```powershell
+./.venv/Scripts/python.exe -m pip install "pystray>=0.19,<0.20"
+```
+
+Without it the application works, but can only be stopped from Task Manager.
+
 ## Models
 
 After the first launch open **Settings → Models** and, for each role, set the provider, the API address, the exact model ID and the limits. A local server usually listens on `http://localhost:1235/v1`. The model list button shows available IDs and known prices.
