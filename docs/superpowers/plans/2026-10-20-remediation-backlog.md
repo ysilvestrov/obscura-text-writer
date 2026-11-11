@@ -453,7 +453,7 @@ UI/CLI та захист активної звірки. Інструкція: `d
 
 ## R-25 — Двомовний сайт користування та встановлення на GitHub Pages
 
-**Статус:** заплановано за прямим запитом власника 24.10.2026, P2. Окрема задача після R-24; структуру, українські інструкції й pipeline можна готувати незалежно. Налаштування Pages і CI цим записом не виконуються. Специфікацію `docs/superpowers/specs/2026-11/2026-11-10-docs-site-design.md` затверджено 10.11.2026 (обсяг L, 2 PR); GitHub Pages увімкнено власником (`build_type: workflow`).
+**Статус:** PR 1 (ядро) 11.11.2026, GitHub [#29](https://github.com/ysilvestrov/obscura-text-writer/issues/29): збирач `scripts/build_site.py`, перевірка `scripts/check_site.py` (хеші пар мов, посилання, якорі, межа внутрішніх матеріалів), workflow GitHub Pages, сторінки «Про Obscura», «Встановлення й запуск», «Перший твір» UA/EN. PR 2 — решта тем, знімки й перенаправлення старих файлів.
 
 **Майбутня специфікація:** `docs/specs/changes/R-25-bilingual-documentation-site.md`.
 

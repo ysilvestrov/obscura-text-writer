@@ -41,6 +41,8 @@ Copy-Item .env.example .env
 ./scripts/start.ps1 -DataDir "$env:LOCALAPPDATA/ObscuraTextWriter/data"
 ```
 
+Інструкції українською й англійською: [сайт Obscura](https://ysilvestrov.github.io/obscura-text-writer/) (джерело — `docs/site/`).
+
 Докладніше: [запуск і резервне копіювання](docs/prototype-runbook.md), [експорт FB2/EPUB](docs/verification/manual.md#ebook-formats) та [PDF A5](docs/verification/manual.md#pdf-publication).
 Для першої проби можна імпортувати нейтральні [план](tests/fixtures/prototype/plan.md)
 та [персонажів](tests/fixtures/prototype/characters.md) тестової історії про бібліотеку.

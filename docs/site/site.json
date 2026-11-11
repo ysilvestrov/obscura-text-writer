@@ -1,0 +1,8 @@
+{
+  "languages": ["uk", "en"],
+  "pages": [
+    {"slug": "index", "title": {"uk": "Про Obscura", "en": "About Obscura"}},
+    {"slug": "install", "title": {"uk": "Встановлення й запуск", "en": "Installation and launch"}},
+    {"slug": "first-story", "title": {"uk": "Перший твір", "en": "Your first story"}}
+  ]
+}

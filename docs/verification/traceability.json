@@ -3856,6 +3856,64 @@
         "tests/authoring/test_language_periphery.py::test_profile_carries_story_language_and_warns_on_mismatch",
         "tests/authoring/test_language_periphery.py::test_old_profile_without_language_imports_without_warning"
       ]
+    },
+    {
+      "id": "DOCS-SITE-S01",
+      "requirement": "DOCS-SITE",
+      "scope": "Зміна однієї мовної версії без підтвердження пари; закінчення рядків. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/test_docs_site.py::test_changed_one_language_fails_with_rehash_hint"
+      ]
+    },
+    {
+      "id": "DOCS-SITE-S02",
+      "requirement": "DOCS-SITE",
+      "scope": "Заборонені посилання на внутрішні матеріали. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/test_docs_site.py::test_internal_material_link_fails",
+        "tests/test_docs_site.py::test_reference_link_to_internal_material_and_raw_html_are_not_published",
+        "tests/test_docs_site.py::test_reference_links_and_external_images_are_checked"
+      ]
+    },
+    {
+      "id": "DOCS-SITE-S03",
+      "requirement": "DOCS-SITE",
+      "scope": "Відносні шляхи, перемикач мови й детермінованість збірки. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/test_docs_site.py::test_build_is_relative_and_deterministic"
+      ]
+    },
+    {
+      "id": "DOCS-SITE-S04",
+      "requirement": "DOCS-SITE",
+      "scope": "Структура workflow: публікація лише з push у main, concurrency, права. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/test_docs_site.py::test_workflow_publishes_only_from_main",
+        "tests/test_docs_site.py::test_deploy_skips_a_commit_that_is_no_longer_main"
+      ]
+    },
+    {
+      "id": "DOCS-SITE-S05",
+      "requirement": "DOCS-SITE",
+      "scope": "Жива публікація на GitHub Pages. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [],
+      "manual": {
+        "procedure": "docs/verification/manual.md#docs-site-publish",
+        "reason": "Потрібен справжній запуск GitHub Actions і доступ до опублікованої адреси; локальні тести не мають GitHub Pages."
+      }
+    },
+    {
+      "id": "DOCS-SITE-S06",
+      "requirement": "DOCS-SITE",
+      "scope": "Переписування посилань на розділи, id заголовків і помилка неіснуючого якоря. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/test_docs_site.py::test_section_link_is_rewritten_and_target_has_id",
+        "tests/test_docs_site.py::test_heading_ids_keep_cyrillic_and_number_repeats",
+        "tests/test_docs_site.py::test_missing_anchor_fails",
+        "tests/test_docs_site.py::test_heading_suffix_collision_gets_a_fresh_id",
+        "tests/test_docs_site.py::test_dot_slash_page_link_is_rewritten",
+        "tests/test_docs_site.py::test_heading_id_uses_visible_text_only"
+      ]
     }
   ]
 }

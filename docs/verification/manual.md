@@ -198,6 +198,12 @@ R-22 прокрутка: Playwright `long draft scrolls internally while formatt
 З `PYTHONPATH=<робоча копія>/src` у `frontend` запустити `npx playwright test workspace-layout impact sequential-review review-evidence --project=desktop --project=mobile` на synthetic server без provider calls. `workspace-layout.spec.mjs`: `status row holds run controls and the next-run limit`; `story menu opens from the keyboard and returns focus on Escape`; `book revision page opens from the menu with a pending count`; `scene sections reopen after reload and leave unsaved text alone` (зокрема оцінювання приховане без оцінювача); `sections work when storage throws`. `sequential-review.spec.mjs` і `impact.spec.mjs` перевіряють запуск на `/stories/{id}/revision` і картку сесії поруч з редактором. Переглянути знімки `docs/images/workspace-*-{desktop,mobile}.png` на нейтральність і відсутність горизонтального прокручування на 375 px. Наявність процедури не є фактичним PASS; результат запуску записується в журналі виконання.
 
 
+<a id="docs-site-publish"></a>
+## Сайт інструкцій: публікація після злиття
+
+Після злиття PR, що змінює `docs/site/**`, відкрити вкладку Actions репозиторію й переконатися, що запуск workflow `site` для push у `main` завершився успішно, включно з кроком «Check the published address». Відкрити `https://ysilvestrov.github.io/obscura-text-writer/` і `…/en/install.html`: обидві сторінки відповідають, перемикач мови веде на ту саму сторінку іншою мовою, зміст відповідає новому коміту. Перевірка щойно відкритого PR: у запуску workflow для `pull_request` немає задачі `deploy`.
+
+
 <a id="core-review"></a>
 ## Панель підтвердження ядра
 
