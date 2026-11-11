@@ -28,6 +28,9 @@ storygen = "storygen.server:main"
 storygen-tokens = "storygen.token_budget.cli:main"
 storygen-budget = "storygen.billing.cli:main"
 storygen-mcp = "storygen.mcp.bridge:main"
+
+[project.gui-scripts]
+# No console window: the launcher of the installed build (DESKTOP-001).
 storygen-desktop = "storygen.desktop:main"
 
 [tool.setuptools.packages.find]

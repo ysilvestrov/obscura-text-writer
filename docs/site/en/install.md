@@ -73,7 +73,7 @@ The `storygen-desktop` command starts the application without a PowerShell windo
 ```
 
 - Stories are kept in the `Obscura` folder of your profile (`%USERPROFILE%\Obscura`); `--data-dir` sets another folder.
-- The log is `logs\obscura.log` in the stories folder. If the application did not open, the reason is written there.
+- The log is `logs\obscura.log` in the stories folder. If the application cannot start, it shows a message with the reason and the path of the log.
 - If port 8765 is busy, the application takes a free one; the address is in the log and in the `server.json` file.
 - Before the database format is upgraded, the application makes a backup into the neighbouring `Obscura-backups` folder and does not start if the backup cannot be made. It never deletes old backups.
 - Launching it again while it is running only opens its page.

@@ -92,3 +92,40 @@ def test_unwritable_backups_location_is_a_failure(tmp_path):
     with pytest.raises(PreMigrationBackupFailed):
         backup_before_migration(data)
     assert version(data) == 4
+
+
+def test_unreadable_version_is_a_failure_not_a_skipped_backup(tmp_path, monkeypatch):
+    # A database that cannot be read right now (locked, damaged) must never be opened for migration without a copy.
+    data = old_schema_dir(tmp_path)
+
+    def locked(*args, **kwargs):
+        raise sqlite3.OperationalError('database is locked')
+    monkeypatch.setattr(pre_migration.sqlite3, 'connect', locked)
+    with pytest.raises(PreMigrationBackupFailed):
+        backup_before_migration(data)
+    assert not backups_dir(data).exists()
+
+
+def test_failed_copy_is_not_left_looking_like_a_backup(tmp_path, monkeypatch):
+    data = old_schema_dir(tmp_path)
+    real = pre_migration.create_backup
+
+    def half(source, destination):
+        destination.mkdir()
+        (destination / 'manifest.json').write_text('{"status": "incomplete"}', encoding='utf-8')
+        raise OSError(28, 'No space left on device')
+    monkeypatch.setattr(pre_migration, 'create_backup', half)
+    with pytest.raises(PreMigrationBackupFailed) as error:
+        backup_before_migration(data, now=datetime(2026, 11, 11, 9, 30, 5))
+    assert 'OSError' in str(error.value) and '28' in str(error.value)
+    assert [p.name for p in backups_dir(data).iterdir()] == ['pre-migration-v4-20261111-093005.failed']
+    monkeypatch.setattr(pre_migration, 'create_backup', real)
+    assert backup_before_migration(data, now=datetime(2026, 11, 11, 9, 30, 5)).name == 'pre-migration-v4-20261111-093005'
+
+
+def test_schema_one_cannot_be_verified_and_is_refused(tmp_path):
+    # Known limitation: the verified backup knows schemas 2-5; a version 1 folder is refused, never migrated blindly.
+    data = old_schema_dir(tmp_path, upto=1)
+    with pytest.raises(PreMigrationBackupFailed) as error:
+        backup_before_migration(data)
+    assert 'unsupported_schema' in str(error.value) and version(data) == 1

@@ -253,3 +253,139 @@ def test_desktop_refuses_to_start_when_backup_fails(tmp_path):
     assert desktop.main(['--data-dir', str(data), '--no-browser', '--no-tray'], serve=no_server) == 3
     assert _version(data) == 4 and not (data / 'server.json').exists()
     assert 'Резервну копію перед оновленням бази не створено' in (data / 'logs' / 'obscura.log').read_text(encoding='utf-8')
+
+
+def test_discovery_ignores_proxy_settings(tmp_path, other_program, monkeypatch):
+    handler, url = other_program
+    handler.body = json.dumps({'instance_id': 'A'}).encode()
+    desktop.write_server_record(tmp_path, url, 'A')
+    for name in ('HTTP_PROXY', 'http_proxy', 'ALL_PROXY'):
+        monkeypatch.setenv(name, 'http://127.0.0.1:9')
+    assert desktop.running_server(tmp_path) == url
+
+
+def test_discovery_does_not_follow_redirects(tmp_path):
+    class Redirect(BaseHTTPRequestHandler):
+        def do_GET(self):
+            self.send_response(302)
+            self.send_header('Location', 'http://example.test/api/app-info')
+            self.end_headers()
+
+        def log_message(self, *args):
+            pass
+    server = HTTPServer(('127.0.0.1', 0), Redirect)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    try:
+        desktop.write_server_record(tmp_path, f'http://127.0.0.1:{server.server_address[1]}', 'A')
+        assert desktop.running_server(tmp_path) is None
+    finally:
+        server.shutdown()
+        server.server_close()
+
+
+def test_stale_record_does_not_stop_a_fresh_start(tmp_path):
+    data = tmp_path / 'data'
+    data.mkdir()
+    desktop.write_server_record(data, f'http://127.0.0.1:{free_port()}', 'gone')
+    with Launch(data, '--no-browser') as launch:
+        record = json.loads((data / 'server.json').read_text(encoding='utf-8'))
+        assert record['url'] == launch.url and record['instance_id'] != 'gone'
+    assert launch.code == 0
+
+
+def test_whole_launch_works_without_standard_streams(tmp_path, monkeypatch):
+    monkeypatch.setattr(sys, 'stdout', None)
+    monkeypatch.setattr(sys, 'stderr', None)
+    with Launch(tmp_path / 'data', '--no-browser') as launch:
+        assert info(launch.url)['edition'] == 'full'
+    assert launch.code == 0
+
+
+def test_failed_second_start_keeps_the_first_record_and_opens_it(tmp_path, monkeypatch):
+    # The first check misses the running instance (slow machine); the start then fails on the data folder lock.
+    data = tmp_path / 'data'
+    with Launch(data, '--no-browser') as first:
+        real, calls = desktop.running_server, []
+
+        def flaky(data_dir, timeout=1.0):
+            calls.append(1)
+            return None if len(calls) == 1 else real(data_dir, timeout)
+        monkeypatch.setattr(desktop, 'running_server', flaky)
+        opened, alerts = [], []
+        code = desktop.main(['--data-dir', str(data), '--no-tray'], opener=opened.append, alert=alerts.append)
+        assert (code, opened, alerts) == (0, [first.url], [])
+        assert json.loads((data / 'server.json').read_text(encoding='utf-8'))['url'] == first.url
+        assert info(first.url)['instance_id']
+
+
+def test_quit_with_an_open_stream_still_shuts_the_server_down(tmp_path, monkeypatch):
+    import asyncio
+    from fastapi.responses import StreamingResponse
+    monkeypatch.setattr(desktop, 'GRACEFUL_SHUTDOWN', 1)
+    servers = []
+
+    def serve(app, port):
+        async def endless():
+            while True:
+                yield b'data: tick\n\n'
+                await asyncio.sleep(0.05)
+        app.add_api_route('/test-stream', lambda: StreamingResponse(endless(), media_type='text/event-stream'))
+        servers.append(desktop.uvicorn_server(app, port))
+        return servers[0]
+    released, state, result = threading.Event(), {}, {}
+
+    def tray(url, data_dir, backups, stop):
+        state['stream'] = urllib.request.urlopen(url + '/test-stream', timeout=5)
+        state['stream'].read(10)
+        state['url'] = url
+        released.wait(30)
+        stop()
+    data = tmp_path / 'data'
+    thread = threading.Thread(target=lambda: result.update(code=desktop.main(['--data-dir', str(data), '--no-browser'], tray=tray, serve=serve)), daemon=True)
+    thread.start()
+    deadline = time.time() + 30
+    while time.time() < deadline and 'url' not in state:
+        time.sleep(0.05)
+    started = time.time()
+    released.set()
+    thread.join(20)
+    assert not thread.is_alive() and result == {'code': 0} and time.time() - started < 15
+    log = (data / 'logs' / 'obscura.log').read_text(encoding='utf-8')
+    assert 'Сервер зупинено' in log and 'Application shutdown complete' in log
+    assert not (data / 'server.json').exists()
+
+
+def test_access_log_is_off_so_request_paths_stay_out_of_the_log(tmp_path):
+    with Launch(tmp_path / 'data', '--no-browser') as launch:
+        urllib.request.urlopen(launch.url + '/api/app-info?q=secret-search-text', timeout=5).read()
+    assert 'secret-search-text' not in (tmp_path / 'data' / 'logs' / 'obscura.log').read_text(encoding='utf-8')
+
+
+@pytest.mark.parametrize('case,expected', [('marker', 2), ('backup', 3), ('server', 4)])
+def test_a_refused_start_tells_the_user_where_the_log_is(tmp_path, monkeypatch, case, expected):
+    data = tmp_path / 'data'
+    serve = None
+    if case == 'marker':
+        def broken():
+            raise ValueError('Некоректний файл видання build_edition.json: невідоме видання або зайві поля')
+        monkeypatch.setattr(build_edition, 'current', broken)
+    elif case == 'backup':
+        data = _old_schema(tmp_path)
+        (tmp_path / (data.name + '-backups')).write_text('не тека', encoding='utf-8')
+    else:
+        class Dead:
+            started, should_exit = False, False
+
+            def run(self):
+                raise RuntimeError('cannot bind')
+        serve = lambda app, port: Dead()
+    alerts = []
+    assert desktop.main(['--data-dir', str(data), '--no-browser', '--no-tray'], serve=serve, alert=alerts.append) == expected
+    assert len(alerts) == 1 and str(data / 'logs' / 'obscura.log') in alerts[0]
+
+
+def test_logging_restores_the_root_level(tmp_path):
+    before = logging.getLogger().level
+    desktop.configure_logging(tmp_path / 'data')
+    desktop.close_logging()
+    assert logging.getLogger().level == before

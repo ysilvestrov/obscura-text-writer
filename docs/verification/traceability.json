@@ -3875,7 +3875,11 @@
       "tests": [
         "tests/test_desktop.py::test_default_data_dir_is_under_the_user_profile",
         "tests/test_desktop.py::test_logging_goes_to_a_rotating_file_and_survives_missing_std_streams",
-        "tests/test_desktop.py::test_main_starts_serves_and_cleans_up"
+        "tests/test_desktop.py::test_main_starts_serves_and_cleans_up",
+        "tests/test_desktop.py::test_whole_launch_works_without_standard_streams",
+        "tests/test_desktop.py::test_access_log_is_off_so_request_paths_stay_out_of_the_log",
+        "tests/test_desktop.py::test_logging_restores_the_root_level",
+        "tests/test_desktop.py::test_a_refused_start_tells_the_user_where_the_log_is"
       ]
     },
     {
@@ -3888,7 +3892,11 @@
         "tests/test_desktop.py::test_choose_port_falls_back_when_the_preferred_one_is_busy",
         "tests/test_desktop.py::test_browser_is_opened_once_the_server_answers",
         "tests/test_desktop.py::test_server_that_never_starts_is_exit_code_4",
-        "tests/web/test_app_info.py::test_app_info_has_a_per_process_instance_id"
+        "tests/web/test_app_info.py::test_app_info_has_a_per_process_instance_id",
+        "tests/test_desktop.py::test_discovery_ignores_proxy_settings",
+        "tests/test_desktop.py::test_discovery_does_not_follow_redirects",
+        "tests/test_desktop.py::test_stale_record_does_not_stop_a_fresh_start",
+        "tests/test_desktop.py::test_failed_second_start_keeps_the_first_record_and_opens_it"
       ]
     },
     {
@@ -3904,7 +3912,10 @@
         "tests/storage/test_pre_migration.py::test_existing_destination_is_a_failure_not_an_overwrite",
         "tests/storage/test_pre_migration.py::test_unwritable_backups_location_is_a_failure",
         "tests/test_desktop.py::test_desktop_backs_up_then_migrates",
-        "tests/test_desktop.py::test_desktop_refuses_to_start_when_backup_fails"
+        "tests/test_desktop.py::test_desktop_refuses_to_start_when_backup_fails",
+        "tests/storage/test_pre_migration.py::test_unreadable_version_is_a_failure_not_a_skipped_backup",
+        "tests/storage/test_pre_migration.py::test_failed_copy_is_not_left_looking_like_a_backup",
+        "tests/storage/test_pre_migration.py::test_schema_one_cannot_be_verified_and_is_refused"
       ]
     },
     {
@@ -3927,7 +3938,8 @@
         "tests/test_desktop_tray.py::test_run_tray_builds_the_icon_and_quit_stops_everything",
         "tests/test_desktop_tray.py::test_missing_tray_library_is_reported",
         "tests/test_desktop_tray.py::test_launcher_without_a_tray_keeps_running_and_logs_it",
-        "tests/test_desktop.py::test_no_tray_mode_runs_until_the_server_stops"
+        "tests/test_desktop.py::test_no_tray_mode_runs_until_the_server_stops",
+        "tests/test_desktop.py::test_quit_with_an_open_stream_still_shuts_the_server_down"
       ],
       "manual": {
         "procedure": "docs/verification/manual.md#desktop-launcher",
