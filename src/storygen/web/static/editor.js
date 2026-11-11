@@ -10,6 +10,7 @@ import {createTextEditor} from './text-editor.js';
 import {confirmUnsaved} from './core-review.js';
 import {readWorkspacePosition,rememberWorkspacePosition,resolveWorkspacePosition,updateWorkspaceUrl} from './workspace-position.js';
 import {registerWorkspaceCommand,invokeWorkspaceCommand} from './workspace-commands.js';
+import {externalNotice} from './scene-sync.js';
 
 export const state={storyId:document.querySelector('#workspace')?.dataset.storyId,scene:null,view:null,mode:'plan',dirty:false,saving:false,bufferEpoch:0};
 export const initialWorkspacePosition=readWorkspacePosition(state.storyId,globalThis.location?.search||'');
@@ -37,7 +38,7 @@ export function displaySceneTitle(title){
 function renderOrigin(ref){renderOriginInto(document.querySelector('#workspace-origin'),ref)}
 export function loadBuffer(scene,mode,text,origin='current',ref=null){
   textEditor.write(text,{material:mode,content_format:ref?.content_format||'plain',version_id:ref?.id,source_ref:ref});
-  state.scene=scene;state.mode=mode;state.dirty=false;state.bufferEpoch++;
+  state.scene=scene;state.mode=mode;state.dirty=false;state.externalChange=false;state.bufferEpoch++;
   if(origin==='current'&&['plan','brief','draft','review','prose','memory'].includes(mode)){
     const position={scene_id:scene.id,material:mode};rememberWorkspacePosition(state.storyId,position);updateWorkspaceUrl(position);
   }
@@ -52,6 +53,8 @@ export function loadBuffer(scene,mode,text,origin='current',ref=null){
 export async function saveBuffer(send){
   if(state.saving)return null;
   if(!state.scene)throw new Error(t("m_f0f1417db6de"));
+  // #105: the scene went to the trash in another window; the text stays on screen for copying, the save is refused.
+  if(externalNotice(state)==='gone')throw new Error(t('sync.trashed'));
   const material=textEditor.snapshot();
   const authoring=state.mode==='draft'&&state.bufferOrigin!=='history'?authorComments:null;
   const authoringFields=authoring?.capture();
@@ -80,6 +83,12 @@ export async function saveBuffer(send){
 }
 
 export async function refresh(options){
+  // #105: the external change check waits for a refresh in progress and runs after it (workspace-sync-settle).
+  state.refreshing=(state.refreshing||0)+1;
+  try{await loadView(options)}
+  finally{state.refreshing--;document.dispatchEvent(new CustomEvent('workspace-sync-settle'))}
+}
+async function loadView(options){
   state.view=await api('/api/stories/'+state.storyId,options?.fresh===true?{fresh:true}:undefined);
   // The loaded buffer keeps its own revision until text and revision are explicitly reloaded together.
   const latest=state.view.scenes.find(s=>s.id===state.scene?.id);
@@ -162,7 +171,8 @@ document.querySelector('#import-sources').onsubmit=async event=>{
   }
 };
 document.querySelector('#add-scene').onclick=async()=>{const title=await promptDialog(t("m_dd7bf0189af8"));if(!title)return;try{await api('/api/stories/'+state.storyId+'/scenes',json('POST',{title}));await refresh()}catch(error){notice(error.message,'error')}};
-installSceneTrash(state,refresh,()=>{state.scene=null;state.dirty=false;state.bufferEpoch++;textEditor.write('');renderOrigin(null);textEditor.placeholder(live(()=>placeholders.plan));document.querySelector('#mode-tabs').replaceChildren();document.querySelector('#version-panel').replaceChildren();document.querySelector('#scene-settings')?.remove?.();uiText(document.querySelector('#scene-title'),"textContent",()=>(t("m_f0f1417db6de")));uiText(document.querySelector('#save-state'),"textContent",()=>(''));saveButton.disabled=true;document.dispatchEvent(new CustomEvent('scene-selected'));changed()});
+export function clearSceneBuffer(){state.scene=null;state.dirty=false;state.externalChange=false;state.bufferEpoch++;textEditor.write('');renderOrigin(null);textEditor.placeholder(live(()=>placeholders.plan));document.querySelector('#mode-tabs').replaceChildren();document.querySelector('#version-panel').replaceChildren();document.querySelector('#scene-settings')?.remove?.();uiText(document.querySelector('#scene-title'),"textContent",()=>(t("m_f0f1417db6de")));uiText(document.querySelector('#save-state'),"textContent",()=>(''));saveButton.disabled=true;document.dispatchEvent(new CustomEvent('scene-selected'));changed()}
+installSceneTrash(state,refresh,clearSceneBuffer);
 refresh().catch(error=>notice(error.message,'error'));
 
 const importForm=document.querySelector('#import-sources'),importButton=importForm.querySelector?.('button');

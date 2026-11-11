@@ -11,6 +11,8 @@ import {registerWorkspaceCommand} from './workspace-commands.js';
 import {loadBriefMaterial} from './brief-material.js';
 import {activateStageTab,revealStageTab,setStageTabStops} from './workspace-tabs.js';
 import {ghostStatsText} from './ghost-session.js';
+import {newerScene,ghostOpen} from './scene-sync.js';
+import {liveScene} from './workspace-status.js';
 const memoryTable=installMemoryTable({state,api,json,notice,refresh,loadBuffer});
 const editor=document.querySelector('#editor');
 const labels={get plan(){return t("m_3146141c9367")},get brief(){return t("m_5a2ec5eaf0a1")},get draft(){return t("m_e9d875d4120b")},get review(){return t("m_c2320838b6df")},get prose(){return t("m_9c685577453c")},get memory(){return t("m_aa1cfb48cc30")}};
@@ -31,7 +33,8 @@ async function show(mode,onlyIfChanged=false){
   const before={id:state.scene?.id,epoch:state.bufferEpoch,mode:state.mode};
   if(!await confirmUnsaved(state,confirmDialog,t("m_768dad0572f4")))return;
   if(state.saving||state.scene?.id!==before.id||state.bufferEpoch!==before.epoch||state.mode!==before.mode)return;
-  let scene=state.view.scenes.find(s=>s.id===state.scene.id)||state.scene;
+  // #105: the brief loader may already have put a newer scene into the buffer than the loaded view holds.
+  let scene=newerScene(state.view.scenes.find(s=>s.id===state.scene.id),state.scene);
   const epoch=state.bufferEpoch;
   let material;
   if(mode==='brief'){const result=await loadBriefMaterial(api,scene);scene=result.scene;material=result.material;}
@@ -64,7 +67,7 @@ async function render(){
   for(const [mode,label] of labelEntries(labels)){const button=document.createElement('button');button.className='secondary';button.dataset.mode=mode;button.dataset.label=label;uiText(button,"textContent",()=>(label));button.setAttribute('role','tab');button.onclick=()=>show(mode).catch(e=>notice(e.message,'error'));tabs.append(button)}
   updateTabs();
   const data=await api('/api/scenes/'+state.scene.id+'/versions');versions=data.versions;
-  state.workspaceMaterials=Object.fromEntries(['plan','brief','draft','prose','memory'].map(kind=>[kind,versions.find(v=>v.id===state.scene.heads[kind])]));
+  state.workspaceMaterials=Object.fromEntries(['plan','brief','draft','prose','memory'].map(kind=>[kind,versions.find(v=>v.id===liveScene(state.scene,state.view?.scenes).heads[kind])]));
   document.dispatchEvent(new CustomEvent('workspace-statistics'));
   const panel=document.querySelector('#version-panel');panel.replaceChildren();
   const title=document.createElement('h3');uiText(title,"textContent",()=>(t("m_ffb1638b3e7d")));panel.append(title);
@@ -97,8 +100,9 @@ document.addEventListener('scene-selected',()=>render().catch(e=>notice(e.messag
 document.addEventListener('story-refreshed',async()=>{
   try{
     const latest=state.view.scenes.find(s=>s.id===state.scene?.id);
-    if(state.mode==='brief'&&!state.dirty&&!state.saving&&state.bufferOrigin!=='history')await show('brief',true);
-    else if(['draft','prose','memory'].includes(state.mode)&&!state.dirty&&!state.saving&&state.bufferOrigin!=='history'&&latest?.heads[state.mode]&&latest.heads[state.mode]!==state.scene?.heads[state.mode])await show(state.mode);
+    // An open rewrite from memory works over the loaded draft; replacing it underneath would break that session.
+    if(state.mode==='brief'&&!state.dirty&&!state.saving&&!ghostOpen()&&state.bufferOrigin!=='history')await show('brief',true);
+    else if(['draft','prose','memory'].includes(state.mode)&&!state.dirty&&!state.saving&&!ghostOpen()&&state.bufferOrigin!=='history'&&latest?.heads[state.mode]&&latest.heads[state.mode]!==state.scene?.heads[state.mode])await show(state.mode);
     await render();
   }catch(e){notice(e.message,'error')}
 });

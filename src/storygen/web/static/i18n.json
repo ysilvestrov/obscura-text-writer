@@ -2235,7 +2235,10 @@
     "workspace.scene_section": "Налаштування сцени",
     "workspace.evaluation_section": "Оцінювання сцени",
     "version.external_client": "Зовнішній клієнт: {p0}",
-    "version.external_client_model": "Зовнішній клієнт: {p0} · {p1}"
+    "version.external_client_model": "Зовнішній клієнт: {p0} · {p1}",
+    "sync.changed": "Сцену змінено ззовні",
+    "sync.open_newer": "Відкрити новішу версію",
+    "sync.trashed": "Сцену перенесено в кошик в іншому вікні — скопіюйте текст"
   },
   "en": {
     "ui.save": "Save",
@@ -4473,6 +4476,9 @@
     "workspace.scene_section": "Scene settings",
     "workspace.evaluation_section": "Scene evaluation",
     "version.external_client": "External client: {p0}",
-    "version.external_client_model": "External client: {p0} · {p1}"
+    "version.external_client_model": "External client: {p0} · {p1}",
+    "sync.changed": "The scene was changed elsewhere",
+    "sync.open_newer": "Open the newer version",
+    "sync.trashed": "The scene was moved to the trash elsewhere — copy your text"
   }
 }

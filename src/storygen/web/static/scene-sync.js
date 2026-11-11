@@ -24,6 +24,9 @@ export function externalNotice(state){
   return latest.revision!==state.scene.revision?'changed':null;
 }
 
+// Rewrite from memory keeps its own session over the draft; the page marks it on <body> while it is open.
+export function ghostOpen(){return !!globalThis.document?.body?.classList?.contains('ghost-open')}
+
 // The buffer may be replaced only when nothing in it or around it belongs to the author's unfinished work.
 export function cleanBuffer(state,ghostOpen){
   return !state.dirty&&!state.saving&&!ghostOpen&&state.bufferOrigin==='current';
