@@ -17,6 +17,7 @@ dev = ["tokenizers==0.23.3", "pytest>=8,<10", "pypdf>=6,<7", "pdfplumber>=0.11,<
 web = ["fastapi>=0.115,<1", "uvicorn>=0.30,<1", "jinja2>=3,<4", "python-multipart>=0.0.18,<1"]
 publication = ["Pillow>=11,<13", "lxml>=6,<7", "reportlab>=4,<5"]
 browser = ["playwright>=1.40,<2", "httpx2>=2,<3"]
+mcp = ["mcp==2.3.0"]
 
 [project.scripts]
 storygen-local-tokens = "storygen.token_budget.local_cli:main"
@@ -24,6 +25,7 @@ storygen-eval = "storygen.evaluation.cli:main"
 storygen = "storygen.server:main"
 storygen-tokens = "storygen.token_budget.cli:main"
 storygen-budget = "storygen.billing.cli:main"
+storygen-mcp = "storygen.mcp.bridge:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
