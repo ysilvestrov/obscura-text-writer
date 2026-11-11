@@ -3744,7 +3744,8 @@
         "tests/generation/test_content_rating_context.py::test_edition_guard_message_has_english_translation",
         "tests/generation/test_publication_metadata.py::test_store_edition_blocks_publication_suggestions_above_limit",
         "tests/generation/test_publication_metadata.py::test_full_edition_publication_suggestions_ignore_the_limit",
-        "tests/web/test_external_draft.py::test_store_edition_blocks_external_writing_above_limit"
+        "tests/web/test_external_draft.py::test_store_edition_blocks_external_writing_above_limit",
+        "tests/web/test_writing_context.py::test_store_edition_checks_the_rating_of_the_returned_context"
       ]
     },
     {
@@ -3779,7 +3780,7 @@
       ],
       "manual": {
         "procedure": "docs/verification/manual.md#build-edition-forms",
-        "reason": "Браузерні специфікації не запускають сервер у виданні store; автоматичні тести перевіряють добір рівнів і підключення модуля, а вигляд форм — ручна процедура."
+        "reason": "check_docs.py індексує лише pytest; п’ять Playwright cases build-edition.spec.mjs перелічено в процедурі й виконуються окремим runner, а перевірка зі справжнім файлом-позначкою — ручна; цей зв’язок не є доказом виконання."
       }
     },
     {
