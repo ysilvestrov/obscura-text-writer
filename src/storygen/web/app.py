@@ -105,6 +105,8 @@ def create_app(settings: AppSettings, *, gateway_factory=None,evaluator_factory=
     app.include_router(rating_router)
     from .routes_app_info import router as app_info_router
     app.include_router(app_info_router)
+    from .routes_provider_keys import router as provider_keys_router
+    app.include_router(provider_keys_router)
     from .routes_role_profiles import router as role_profiles_router
     app.include_router(role_profiles_router)
     from .routes_characters import router as characters_router

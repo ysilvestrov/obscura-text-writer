@@ -1017,6 +1017,57 @@
       ]
     },
     {
+      "id": "SECURITY-002-S02",
+      "requirement": "SECURITY-002",
+      "scope": "PUT зберігає обрізане значення у сховищі ОС і повертає лише стан; ключ діє без перезапуску; DELETE ідемпотентний.",
+      "tests": [
+        "tests/web/test_provider_keys.py::test_state_put_delete_roundtrip",
+        "tests/web/test_provider_keys.py::test_saved_key_is_used_without_restart",
+        "tests/providers/test_secrets.py::test_store_and_delete_roundtrip",
+        "tests/providers/test_secrets.py::test_real_keyring_adapter_with_memory_keyring",
+        "tests/providers/test_secret_consumers.py::test_client_takes_the_key_from_the_store",
+        "tests/providers/test_secret_consumers.py::test_evaluator_gateway_takes_the_key_from_the_store"
+      ]
+    },
+    {
+      "id": "SECURITY-002-S03",
+      "requirement": "SECURITY-002",
+      "scope": "Значення ключа немає у відповідях, файлах теки даних і журналі; ключ зі сховища приховується в помилках провайдера; некоректні значення й назви та чужий Origin відхиляються.",
+      "tests": [
+        "tests/web/test_provider_keys.py::test_value_never_appears_in_responses_files_or_logs",
+        "tests/web/test_provider_keys.py::test_cross_site_write_is_rejected",
+        "tests/web/test_provider_keys.py::test_bad_values_are_rejected_without_echo",
+        "tests/web/test_provider_keys.py::test_invalid_names_are_rejected",
+        "tests/providers/test_secret_consumers.py::test_stored_key_is_redacted_from_provider_errors",
+        "tests/providers/test_secret_consumers.py::test_no_direct_environment_reads_of_keys_remain",
+        "tests/providers/test_secrets.py::test_invalid_names_are_rejected_for_writes",
+        "tests/providers/test_secrets.py::test_blank_value_is_rejected",
+        "tests/providers/test_secrets.py::test_store_that_raises_on_write_reports_unavailable"
+      ]
+    },
+    {
+      "id": "SECURITY-002-S04",
+      "requirement": "SECURITY-002",
+      "scope": "Змінна середовища має перевагу над сховищем; порожня змінна вважається відсутньою.",
+      "tests": [
+        "tests/providers/test_secrets.py::test_environment_wins_over_store",
+        "tests/providers/test_secrets.py::test_empty_environment_value_counts_as_missing",
+        "tests/providers/test_secret_consumers.py::test_environment_key_still_wins_for_the_client"
+      ]
+    },
+    {
+      "id": "SECURITY-002-S05",
+      "requirement": "SECURITY-002",
+      "scope": "Без сховища читання дає «немає ключа», середовище працює, запис відхиляється авторським повідомленням двома мовами.",
+      "tests": [
+        "tests/providers/test_secrets.py::test_unavailable_store_reads_as_missing_and_refuses_writes",
+        "tests/providers/test_secrets.py::test_store_that_raises_on_read_is_treated_as_missing",
+        "tests/providers/test_secrets.py::test_default_backend_is_unavailable_with_the_fail_keyring",
+        "tests/providers/test_secret_consumers.py::test_client_without_any_key_keeps_the_configuration_error",
+        "tests/web/test_provider_keys.py::test_unavailable_store_is_reported_and_refuses_writes"
+      ]
+    },
+    {
       "id": "CONTENT-001-S01",
       "requirement": "CONTENT-001",
       "scope": "Провайдер змінює поведінку. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
