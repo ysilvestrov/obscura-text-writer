@@ -3948,6 +3948,79 @@
       }
     },
     {
+      "id": "PACKAGING-001-S01",
+      "requirement": "PACKAGING-001",
+      "scope": "Звіт самоперевірки з сімома перевірками, коди 0 і 5, нічого не стартує й не чіпає даних і сховища.",
+      "tests": [
+        "tests/test_self_check.py::test_checks_pass_in_the_development_environment",
+        "tests/test_self_check.py::test_broken_tls_is_reported_not_raised",
+        "tests/test_self_check.py::test_missing_package_data_names_the_missing_file",
+        "tests/test_self_check.py::test_store_edition_is_reported",
+        "tests/test_self_check.py::test_invalid_edition_marker_fails_the_check",
+        "tests/test_self_check.py::test_key_store_check_never_reads_or_writes_the_store",
+        "tests/test_self_check.py::test_missing_key_store_fails_the_check",
+        "tests/test_self_check.py::test_frozen_build_needs_the_notices_file",
+        "tests/test_self_check.py::test_details_never_carry_the_user_profile_path",
+        "tests/test_self_check.py::test_self_check_mode_writes_the_report_and_starts_nothing",
+        "tests/test_self_check.py::test_self_check_mode_returns_5_when_a_check_fails"
+      ]
+    },
+    {
+      "id": "PACKAGING-001-S02",
+      "requirement": "PACKAGING-001",
+      "scope": "Позначка видання читається застосунком; невідповідність видання у звіті зупиняє збирання; некоректна позначка відхиляється до заморожування.",
+      "tests": [
+        "tests/test_packaging.py::test_edition_marker_is_what_the_application_reads",
+        "tests/test_packaging.py::test_edition_marker_refuses_what_the_application_would_refuse",
+        "tests/test_packaging.py::test_check_report",
+        "tests/test_packaging.py::test_build_script_help_runs_without_side_effects",
+        "tests/test_packaging.py::test_build_script_refuses_a_non_empty_output_folder"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#store-package-build",
+        "reason": "Справжнє збирання триває хвилини й потребує PyInstaller і makeappx, тому не входить у pytest; тести покривають чисті частини, а збирання виконується за процедурою."
+      }
+    },
+    {
+      "id": "PACKAGING-001-S03",
+      "requirement": "PACKAGING-001",
+      "scope": "Повідомлення з назвою, версією, ліцензією й текстом для всього замикання залежностей; дистрибутив без тексту зупиняє збирання; LGPL-бібліотека окремими файлами.",
+      "tests": [
+        "tests/test_packaging.py::test_root_requirements_come_from_the_checkout",
+        "tests/test_packaging.py::test_dependency_closure_follows_markers_and_extras",
+        "tests/test_packaging.py::test_notices_carry_name_version_licence_and_text",
+        "tests/test_packaging.py::test_distribution_without_a_licence_text_stops_the_build",
+        "tests/test_packaging.py::test_real_dependencies_all_have_licence_texts",
+        "tests/test_packaging.py::test_pystray_hook_keeps_the_lgpl_library_replaceable"
+      ]
+    },
+    {
+      "id": "PACKAGING-001-S04",
+      "requirement": "PACKAGING-001",
+      "scope": "Версія пакета з чотирьох чисел; маніфест — коректний XML з екрануванням, повною довірою, мовами й значками; пошук makeappx.",
+      "tests": [
+        "tests/test_packaging.py::test_package_version",
+        "tests/test_packaging.py::test_package_version_refuses_what_msix_cannot_hold",
+        "tests/test_packaging.py::test_manifest_structure",
+        "tests/test_packaging.py::test_manifest_escapes_every_value",
+        "tests/test_packaging.py::test_package_assets_exist_with_the_declared_sizes",
+        "tests/test_packaging.py::test_find_makeappx"
+      ]
+    },
+    {
+      "id": "PACKAGING-001-S05",
+      "requirement": "PACKAGING-001",
+      "scope": "Додаткові файли стандартної бібліотеки інтерпретатора кладуться в збірку; для звичайного CPython перелік порожній; аргументи PyInstaller.",
+      "tests": [
+        "tests/test_packaging.py::test_vendor_runtime_files",
+        "tests/test_packaging.py::test_pyinstaller_arguments"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#store-package-build",
+        "reason": "Справжнє збирання триває хвилини й потребує PyInstaller і makeappx, тому не входить у pytest; тести покривають чисті частини, а збирання виконується за процедурою."
+      }
+    },
+    {
       "id": "MEMORY-SELECT-S01",
       "requirement": "MEMORY-SELECT",
       "scope": "Запит без переповнення не змінюється; розкладання проєкції на рядки байтово тотожне попередній реалізації.",
