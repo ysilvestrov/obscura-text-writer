@@ -247,3 +247,71 @@ def test_age_only_in_later_entry_names_the_scene(tmp_path):
     assert ('the age of character “Анна” is set only in an entry available from scene 2 “Сцена 2” '
         '(check “First available scene”); character “Борис” has no age specified.') in english
     assert 'персонаж' not in english
+
+
+EDITION='Генерацію заблоковано: рейтинг «сексуальний зміст» тут 2, а в цьому виданні Obscura найвищий дозволений рівень — 1. Знизьте рейтинг сцени або твору.'
+
+
+def force_rating(repo,table,id,rating):
+    """Write a rating straight into the payload, as data made in the full edition would arrive."""
+    with repo.db.connection() as db:
+        raw=json.loads(db.execute(f'SELECT payload FROM {table} WHERE id=?',(id,)).fetchone()[0])
+        raw['content_rating']=rating.model_dump()
+        if table=='stories':raw['initial_content_rating']=rating.model_dump()
+        db.execute(f'UPDATE {table} SET payload=? WHERE id=?',(json.dumps(raw),id))
+
+
+def blocked(repo,scene_id,stage='brief'):
+    with pytest.raises(ValueError) as error:
+        build_context(repo,scene_id,stage,settings())
+    return str(error.value)
+
+
+def test_store_edition_blocks_scene_with_own_level_two(tmp_path,store_edition):
+    repo,story,scenes=make_story(tmp_path,rating=R(0,0,0),cards=ADULTS)
+    force_rating(repo,'scenes',scenes[0].id,R(2,0,0))
+    with_heads(repo,scenes[0],'prose')
+    assert blocked(repo,scenes[0].id)==EDITION and blocked(repo,scenes[0].id,'memory')==EDITION
+
+
+def test_store_edition_blocks_scene_inheriting_level_two(tmp_path,store_edition):
+    repo,story,scenes=make_story(tmp_path,rating=R(0,0,0),cards=ADULTS)
+    force_rating(repo,'stories',story.id,R(2,0,0))
+    assert scenes[0].content_rating is None and blocked(repo,scenes[0].id)==EDITION
+
+
+def test_store_edition_blocks_story_stage_without_scene(tmp_path,store_edition):
+    repo,story,scenes=make_story(tmp_path,rating=R(0,0,0),cards=ADULTS)
+    force_rating(repo,'stories',story.id,R(2,0,0))
+    with pytest.raises(ValueError) as error:
+        make_context(repo,repo.get_story(story.id),None,'prepare',settings(),['Джерело'],[])
+    assert str(error.value)==EDITION
+
+
+def test_store_edition_limit_comes_before_cast_checks(tmp_path,store_edition):
+    repo,story,scenes=make_story(tmp_path,rating=R(0,0,0),cast=(),cards=None)
+    force_rating(repo,'scenes',scenes[0].id,R(2,0,0))
+    assert blocked(repo,scenes[0].id)==EDITION
+
+
+def test_store_edition_allows_level_one_and_other_axes(tmp_path,store_edition):
+    repo,story,scenes=make_story(tmp_path,rating=R(1,2,2),cards=ADULTS)
+    assert BLOCK in build_context(repo,scenes[0].id,'brief',settings()).system_text
+
+
+def test_store_edition_does_not_block_reading_or_manual_edit(tmp_path,store_edition):
+    repo,story,scenes=make_story(tmp_path,rating=R(0,0,0),cards=ADULTS)
+    force_rating(repo,'stories',story.id,R(2,0,0))
+    assert repo.get_story(story.id).content_rating==R(2,0,0) and len(repo.list_scenes(story.id))==1
+    scene=with_heads(repo,scenes[0],'prose')
+    assert repo.read_text(scene.heads['prose'])=='Готова проза.'
+
+
+def test_full_edition_level_two_unchanged(tmp_path):
+    repo,story,scenes=make_story(tmp_path,rating=R(2,0,0),cards=ADULTS)
+    assert BLOCK in build_context(repo,scenes[0].id,'brief',settings()).system_text
+
+
+def test_edition_guard_message_has_english_translation():
+    from storygen.web.localization import diagnostic
+    assert diagnostic(EDITION,'en')=='Generation is blocked: the “sexual content” rating here is 2, and the highest level allowed in this edition of Obscura is 1. Lower the rating of the scene or the story.'
