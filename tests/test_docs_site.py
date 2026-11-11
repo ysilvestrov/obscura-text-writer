@@ -180,3 +180,60 @@ def test_workflow_publishes_only_from_main():
     for name,job in jobs.items():
         if name!='deploy':assert 'pages: write' not in job and 'upload-pages-artifact' not in job,name
     assert 'scripts/build_site.py' in jobs['build'] and 'scripts/check_site.py' in jobs['build']
+
+
+@pytest.mark.req('DOCS-SITE')
+def test_heading_suffix_collision_gets_a_fresh_id():
+    seen={}
+    assert [heading_id(t,seen) for t in ['A','A-2','A']]==['a','a-2','a-3']
+
+
+@pytest.mark.req('DOCS-SITE')
+@pytest.mark.parametrize('body,needle',[
+    ('[тут][x]\n\n[x]: missing.md\n','missing.md'),
+    ('![][img]\n\n[img]: ../../images/site/uk/none.png\n','none.png'),
+    ('![](https://example.com/shot.png)\n','https://example.com/shot.png'),
+])
+def test_reference_links_and_external_images_are_checked(tmp_path,body,needle):
+    site=synced(tmp_path)
+    (site/'uk/first-story.md').write_text('# Перший твір\n\n'+body,encoding='utf-8')
+    from scripts.check_site import rehash
+    rehash(tmp_path,'first-story')
+    assert any(needle in e for e in site_errors(tmp_path)),site_errors(tmp_path)
+
+
+@pytest.mark.req('DOCS-SITE')
+def test_dot_slash_page_link_is_rewritten(tmp_path):
+    site=synced(tmp_path)
+    (site/'uk/first-story.md').write_text('# Перший твір\n\n[встановлення](./install.md#вимоги)\n',encoding='utf-8')
+    from scripts.check_site import rehash
+    rehash(tmp_path,'first-story')
+    assert site_errors(tmp_path)==[]
+    build(tmp_path,tmp_path/'_site')
+    assert 'href="install.html#вимоги"' in (tmp_path/'_site/first-story.html').read_text(encoding='utf-8')
+
+
+@pytest.mark.req('DOCS-SITE')
+def test_deploy_skips_a_commit_that_is_no_longer_main():
+    jobs,head=workflow_jobs((ROOT/'.github/workflows/site.yml').read_text(encoding='utf-8'))
+    block=jobs['deploy']
+    assert 'git ls-remote' in block and 'refs/heads/main' in block and 'GITHUB_SHA' in block
+    assert block.index('git ls-remote')<block.index('actions/deploy-pages@')
+
+
+@pytest.mark.req('DOCS-SITE')
+def test_reference_link_to_internal_material_and_raw_html_are_not_published(tmp_path):
+    site=synced(tmp_path)
+    (site/'uk/first-story.md').write_text('# Перший твір\n\n[план\nдалі][r]\n\n[r]: ../../../SPEC.MD\n\n<a href="../../superpowers/x.md">x</a>\n',encoding='utf-8')
+    from scripts.check_site import rehash
+    rehash(tmp_path,'first-story')
+    assert any('внутрішній' in e and 'SPEC.MD' in e for e in site_errors(tmp_path)),site_errors(tmp_path)
+    build(tmp_path,tmp_path/'_site')
+    assert '<a href="../../superpowers' not in (tmp_path/'_site/first-story.html').read_text(encoding='utf-8')
+
+
+@pytest.mark.req('DOCS-SITE')
+def test_heading_id_uses_visible_text_only(tmp_path):
+    make_site(tmp_path,{'install':{'uk':'# Розділ з `code` і [лінком](first-story.md)\n','en':'# Install\n'},'first-story':{'uk':'# A\n','en':'# A\n'}})
+    build(tmp_path,tmp_path/'_site')
+    assert 'id="розділ-з-code-і-лінком"' in (tmp_path/'_site/install.html').read_text(encoding='utf-8')

@@ -18,10 +18,10 @@ Download the [obscura-text-writer](https://github.com/ysilvestrov/obscura-text-w
 python -m venv .venv
 ./.venv/Scripts/python.exe -m pip install -r requirements-lock.txt
 ./.venv/Scripts/python.exe -m pip install --no-deps -e ".[web,publication]"
-Copy-Item .env.example .env
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
 ```
 
-Copy `.env` only the first time, when the file does not exist yet.
+The last command creates `.env` only when the file does not exist yet, so running the block again does not erase your keys.
 
 ## Provider keys
 

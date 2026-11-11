@@ -3870,7 +3870,9 @@
       "requirement": "DOCS-SITE",
       "scope": "Заборонені посилання на внутрішні матеріали. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
       "tests": [
-        "tests/test_docs_site.py::test_internal_material_link_fails"
+        "tests/test_docs_site.py::test_internal_material_link_fails",
+        "tests/test_docs_site.py::test_reference_link_to_internal_material_and_raw_html_are_not_published",
+        "tests/test_docs_site.py::test_reference_links_and_external_images_are_checked"
       ]
     },
     {
@@ -3886,7 +3888,8 @@
       "requirement": "DOCS-SITE",
       "scope": "Структура workflow: публікація лише з push у main, concurrency, права. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
       "tests": [
-        "tests/test_docs_site.py::test_workflow_publishes_only_from_main"
+        "tests/test_docs_site.py::test_workflow_publishes_only_from_main",
+        "tests/test_docs_site.py::test_deploy_skips_a_commit_that_is_no_longer_main"
       ]
     },
     {
@@ -3906,7 +3909,10 @@
       "tests": [
         "tests/test_docs_site.py::test_section_link_is_rewritten_and_target_has_id",
         "tests/test_docs_site.py::test_heading_ids_keep_cyrillic_and_number_repeats",
-        "tests/test_docs_site.py::test_missing_anchor_fails"
+        "tests/test_docs_site.py::test_missing_anchor_fails",
+        "tests/test_docs_site.py::test_heading_suffix_collision_gets_a_fresh_id",
+        "tests/test_docs_site.py::test_dot_slash_page_link_is_rewritten",
+        "tests/test_docs_site.py::test_heading_id_uses_visible_text_only"
       ]
     }
   ]

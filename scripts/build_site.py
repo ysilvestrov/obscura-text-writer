@@ -14,7 +14,7 @@ from urllib.parse import unquote, urlsplit
 from markdown_it import MarkdownIt
 
 if __package__ in (None,''):sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
-from scripts.site_common import IMAGES, LABELS, SITE, heading_id, load_manifest, page_path
+from scripts.site_common import IMAGES, LABELS, SITE, heading_id, heading_text, load_manifest, page_path, page_slug
 
 ROOT=Path(__file__).resolve().parents[1]
 
@@ -26,8 +26,8 @@ def rewrite_href(href,slugs):
     """`<slug>.md[#anchor]` inside the manifest becomes `<slug>.html[#anchor]`; everything else is unchanged."""
     if is_external(href) or href.startswith('#'):return href
     path,_,fragment=href.partition("#");path,fragment=unquote(path),unquote(fragment)
-    if path.endswith('.md') and '/' not in path and path[:-3] in slugs:
-        return path[:-3]+'.html'+(f'#{fragment}' if fragment else '')
+    slug=page_slug(path,slugs)
+    if slug:return slug+'.html'+(f'#{fragment}' if fragment else '')
     return href
 
 
@@ -41,7 +41,9 @@ def image_target(root,source,src,lang):
     return prefix+'images/'+resolved.relative_to(images).as_posix()
 
 
-def markdown():return MarkdownIt('commonmark').enable('table')
+def markdown():
+    """CommonMark + tables; raw HTML is escaped, so every link goes through the checker."""
+    return MarkdownIt('commonmark',{'html':False}).enable('table')
 
 
 def render(root,lang,slug,slugs):
@@ -50,7 +52,7 @@ def render(root,lang,slug,slugs):
     tokens=md.parse(source.read_text(encoding='utf-8'))
     seen={}
     for index,token in enumerate(tokens):
-        if token.type=='heading_open':token.attrSet('id',heading_id(tokens[index+1].content,seen))
+        if token.type=='heading_open':token.attrSet('id',heading_id(heading_text(tokens[index+1]),seen))
         for child in token.children or []:
             if child.type=='link_open':child.attrSet('href',rewrite_href(child.attrGet('href') or '',slugs))
             elif child.type=='image':child.attrSet('src',image_target(root,source,child.attrGet('src') or '',lang))
@@ -67,9 +69,9 @@ def page_html(template,manifest,lang,slug,content):
     home='index.html' if 'index' in titles else f'{pages[0]["slug"]}.html'
     values={'lang':lang,'title':html.escape(titles[slug]),'base':base,'home':home,'switch':switch,'nav':nav,
             'content':content,'nav_label':LABELS[lang]['nav'],'lang_label':LABELS[lang]['lang']}
-    out=template
+    content=values.pop('content');out=template
     for key,value in values.items():out=out.replace('{'+key+'}',value)
-    return out
+    return out.replace('{content}',content)  # last: page text may contain literal {placeholders}
 
 
 def build(root=ROOT,out=None):

@@ -18,10 +18,10 @@
 python -m venv .venv
 ./.venv/Scripts/python.exe -m pip install -r requirements-lock.txt
 ./.venv/Scripts/python.exe -m pip install --no-deps -e ".[web,publication]"
-Copy-Item .env.example .env
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
 ```
 
-Копіюйте `.env` лише першого разу, якщо цього файла ще немає.
+Остання команда створює `.env` лише тоді, коли цього файла ще немає, тож повторний запуск не стирає ваших ключів.
 
 ## Ключі провайдерів
 

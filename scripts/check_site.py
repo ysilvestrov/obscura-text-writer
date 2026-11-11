@@ -7,40 +7,25 @@
 """
 import argparse
 import json
-import re
 import sys
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
 if __package__ in (None,''):sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from scripts.build_site import markdown
-from scripts.site_common import IMAGES, SITE, heading_id, load_manifest, page_hash, page_path
+from scripts.site_common import IMAGES, SITE, heading_id, heading_text, load_manifest, page_hash, page_path, page_slug
 
 ROOT=Path(__file__).resolve().parents[1]
 SYNC='docs/site/sync.json'
 INTERNAL=('docs/superpowers/','docs/research/','docs/diagnostics/','docs/specs/','SPEC.MD','docs/STATUS.md')
-LINK=re.compile(r'(!?)\[([^\]]*)\]\((<[^>]+>|[^\s)]+)(?:\s+"[^"]*")?\)')
 
 
 def rel(root,path):return Path(path).resolve().relative_to(Path(root).resolve()).as_posix()
 
 
-def lines(text):
-    """(number, line) outside fenced code blocks."""
-    fence=None
-    for number,line in enumerate(text.splitlines(),1):
-        marker=re.match(r'^\s*(`{3,}|~{3,})',line)
-        if marker:
-            token=marker[1]
-            if fence is None:fence=token
-            elif token[0]==fence[0] and len(token)>=len(fence):fence=None
-            continue
-        if fence is None:yield number,line
-
-
 def page_anchors(path):
     tokens=markdown().parse(path.read_text(encoding='utf-8'));seen={}
-    return {heading_id(tokens[i+1].content,seen) for i,token in enumerate(tokens) if token.type=='heading_open'}
+    return {heading_id(heading_text(tokens[i+1]),seen) for i,token in enumerate(tokens) if token.type=='heading_open'}
 
 
 def rehash_hint(slug):return f'python scripts/check_site.py --rehash {slug}'
@@ -51,30 +36,41 @@ def load_sync(root):
     return json.loads(path.read_text(encoding='utf-8')) if path.exists() else {}
 
 
+def page_links(source):
+    """(line, kind, target, alt) for every link and image markdown-it renders, reference-style included."""
+    tokens=markdown().parse(source.read_text(encoding='utf-8'))
+    for token in tokens:
+        line=token.map[0]+1 if token.map else 1
+        for child in token.children or []:
+            if child.type=='link_open':yield line,'link',child.attrGet('href') or '',None
+            elif child.type=='image':yield line,'image',child.attrGet('src') or '',child.content
+
+
 def check_links(root,lang,slug,slugs,errors):
     source=page_path(root,lang,slug);where=rel(root,source)
     images=(Path(root)/IMAGES).resolve()
-    for number,line in lines(source.read_text(encoding='utf-8')):
-        for bang,text,target in LINK.findall(line):
-            target=target.strip('<>');at=f'{where}:{number}'
-            if urlsplit(target).scheme or target.startswith('//'):continue
-            path,_,fragment=target.partition('#');path,fragment=unquote(path),unquote(fragment)
-            resolved=(source.parent/path).resolve() if path else source.resolve()
-            try:inside=rel(root,resolved)
-            except ValueError:errors.append(f'{at}: посилання поза репозиторієм: {target}');continue
-            if any(inside==prefix or inside.startswith(prefix) for prefix in INTERNAL):
-                errors.append(f'{at}: посилання на внутрішній матеріал {target}; сайт містить лише інструкції з docs/site');continue
-            if bang:
-                if not text.strip():errors.append(f'{at}: зображення без alt-тексту: {target}')
-                if not resolved.is_relative_to(images):errors.append(f'{at}: зображення сайту мають лежати в {IMAGES}/: {target}')
-                elif not resolved.is_file():errors.append(f'{at}: зображення не знайдено: {target}')
-                continue
-            page=resolved.stem if resolved.suffix=='.md' and resolved.parent==source.parent.resolve() else None
-            if path and page not in slugs:
-                errors.append(f'{at}: посилання на файл поза сайтом: {target}; посилайтеся на сторінку з docs/site/site.json');continue
-            if fragment:
-                linked=page_path(root,lang,page or slug)
-                if linked.is_file() and fragment not in page_anchors(linked):errors.append(f'{at}: якоря немає: {target}')
+    for number,kind,target,alt in page_links(source):
+        at=f'{where}:{number}';external=bool(urlsplit(target).scheme) or target.startswith('//')
+        if kind=='image' and not (alt or '').strip():errors.append(f'{at}: зображення без alt-тексту: {target}')
+        if external:
+            if kind=='image':errors.append(f'{at}: зображення сайту мають лежати в {IMAGES}/, а не за зовнішньою адресою: {target}')
+            continue
+        path,_,fragment=target.partition('#');path,fragment=unquote(path),unquote(fragment)
+        resolved=(source.parent/path).resolve() if path else source.resolve()
+        try:inside=rel(root,resolved)
+        except ValueError:errors.append(f'{at}: посилання поза репозиторієм: {target}');continue
+        if any(inside==prefix or inside.startswith(prefix) for prefix in INTERNAL):
+            errors.append(f'{at}: посилання на внутрішній матеріал {target}; сайт містить лише інструкції з docs/site');continue
+        if kind=='image':
+            if not resolved.is_relative_to(images):errors.append(f'{at}: зображення сайту мають лежати в {IMAGES}/: {target}')
+            elif not resolved.is_file():errors.append(f'{at}: зображення не знайдено: {target}')
+            continue
+        page=page_slug(path,slugs)
+        if path and not page:
+            errors.append(f'{at}: посилання на файл поза сайтом: {target}; посилайтеся на сторінку з docs/site/site.json');continue
+        if fragment:
+            linked=page_path(root,lang,page or slug)
+            if linked.is_file() and fragment not in page_anchors(linked):errors.append(f'{at}: якоря немає: {target}')
 
 
 def check(root=ROOT):
