@@ -4015,6 +4015,15 @@
         "tests/web/test_writing_context.py::test_writing_context_of_scene_without_own_memory_matches_draft_context",
         "tests/web/test_writing_context.py::test_story_list_skips_the_bin"
       ]
+    },
+    {
+      "id": "MCP-BRIDGE-S10",
+      "requirement": "MCP-BRIDGE",
+      "scope": "Текст позначки UA/EN без розмітки, місця показу й оновлення після збереження автором. Перевірка зазначеного сценарію; не є доказом усієї вимоги. Поведінку в браузері (перемикання мови, зникнення після збереження) перевірено вручну 11.11.2026.",
+      "tests": [
+        "tests/web/test_external_origin_ui.py::test_external_origin_label",
+        "tests/web/test_external_origin_ui.py::test_history_and_status_row_show_the_label"
+      ]
     }
   ]
 }
