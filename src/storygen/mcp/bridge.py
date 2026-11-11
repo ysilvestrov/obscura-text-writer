@@ -1,4 +1,4 @@
-"""MCP-BRIDGE stdio server: six tools mapped onto the loopback HTTP API of a running Obscura.
+"""MCP-BRIDGE stdio server: seven tools mapped onto the loopback HTTP API of a running Obscura.
 
 The bridge holds no data, keys or prompts of its own. Every tool is one HTTP request; Obscura's own checks
 (revision, context fingerprint, language lock, import limits) decide, and their messages reach the chat as tool errors.
@@ -16,10 +16,13 @@ from mcp.server.mcpserver.exceptions import ToolError
 DEFAULT_URL = 'http://127.0.0.1:8765'
 LOOPBACK = {'127.0.0.1', 'localhost', '::1'}
 FALLBACK_CLIENT = 'MCP client'
-TOOLS = ('list_stories', 'get_story', 'get_scene_context', 'import_plan_and_characters', 'save_draft', 'next_steps')
-INSTRUCTIONS = ('Obscura — локальний редактор історій. Прочитайте контекст сцени (get_scene_context), напишіть чернетку '
-                'мовою сцени й збережіть її через save_draft з revision і context_fingerprint з того самого контексту. '
-                'Конфлікт 409 означає, що сцена змінилася: прочитайте контекст знову.')
+TOOLS = ('list_stories', 'get_story', 'get_scene_context', 'get_scene_text', 'import_plan_and_characters', 'save_draft', 'next_steps')
+MATERIALS = ('plan', 'brief', 'draft', 'prose', 'memory')
+INSTRUCTIONS = ('Obscura — локальний редактор історій. Прочитайте контекст сцени (get_scene_context) і поточну чернетку '
+                '(get_scene_text з material=draft), напишіть чернетку мовою сцени й збережіть її через save_draft з revision і '
+                'context_fingerprint з контексту та draft_version_id з прочитаної чернетки. Переписуючи чернетку, беріть саме '
+                'прочитаний текст: у ньому можуть бути правки автора. Конфлікт 409 означає, що сцена чи чернетка змінилася: '
+                'прочитайте їх знову.')
 
 
 def check_url(url: str) -> str:
@@ -113,6 +116,16 @@ def build_server(http: httpx.Client, client_name: str | None = None) -> MCPServe
         return request('GET', f'/api/scenes/{identifier(scene_id)}/writing-context')
 
     @server.tool()
+    def get_scene_text(scene_id: str, material: str, offset: int = 0, max_chars: int = 20000) -> dict[str, Any]:
+        """Поточний текст одного матеріалу сцени: plan, brief, draft, prose або memory (таблиця тверджень пам’яті в JSON).
+        Нічого не змінює й не коштує грошей. Повертає version_id поточної версії (null, якщо матеріалу немає) — для draft
+        передайте його в save_draft як draft_version_id. Довгий текст приходить частинами: читайте далі з next_offset, доки
+        він не стане null; якщо content_sha256 частин різний, матеріал змінився — прочитайте його знову з offset=0."""
+        if material not in MATERIALS:
+            raise ToolError(f'Невідомий матеріал {str(material)[:40]!r}: оберіть один із {", ".join(MATERIALS)}')
+        return request('GET', f'/api/scenes/{identifier(scene_id)}/text/{material}', params={'offset': offset, 'max_chars': max_chars})
+
+    @server.tool()
     def import_plan_and_characters(story_id: str, plan_markdown: str | None = None, characters_markdown: str | None = None) -> dict[str, Any]:
         """Імпортувати план і/або персонажів у Markdown — так само, як форма «Імпорт» в Obscura. Повтор не робиться автоматично."""
         files = []
@@ -125,13 +138,18 @@ def build_server(http: httpx.Client, client_name: str | None = None) -> MCPServe
         return request('POST', f'/api/stories/{identifier(story_id)}/sources', files=files)
 
     @server.tool()
-    def save_draft(scene_id: str, text: str, expected_revision: int, context_fingerprint: str,
+    def save_draft(scene_id: str, text: str, expected_revision: int, context_fingerprint: str, draft_version_id: str | None,
                    content_format: str = 'markdown', model: str | None = None, ctx: Context | None = None) -> dict[str, Any]:
-        """Зберегти чернетку сцени як нову версію з позначкою зовнішнього клієнта. expected_revision і
-        context_fingerprint беруться з get_scene_context; якщо сцена змінилася, Obscura відповість 409."""
+        """Зберегти чернетку сцени як нову поточну версію з позначкою зовнішнього клієнта; попередня лишається в історії.
+        Грошей не коштує. expected_revision і context_fingerprint беруться з get_scene_context, draft_version_id — з
+        get_scene_text(material='draft') (null, якщо чернетки ще немає). Якщо сцену чи чернетку змінено після читання,
+        Obscura відповість 409."""
+        if draft_version_id:
+            identifier(draft_version_id)
         origin = {'client': origin_client(ctx), 'model': (model or '')[:128] or None}
         body = {'text': text, 'expected_revision': expected_revision, 'content_format': content_format,
-                'external_origin': origin, 'expected_context_fingerprint': context_fingerprint}
+                'external_origin': origin, 'expected_context_fingerprint': context_fingerprint,
+                'expected_draft_version_id': draft_version_id or None}
         result = request('POST', f'/api/scenes/{identifier(scene_id)}/draft', json=body)
         version, scene = result.get('version') or {}, result.get('scene') or {}
         return {'version_id': version.get('id'), 'revision': scene.get('revision'), 'external_origin': version.get('external_origin')}
@@ -142,6 +160,7 @@ def build_server(http: httpx.Client, client_name: str | None = None) -> MCPServe
         context = request('GET', f'/api/scenes/{identifier(scene_id)}/writing-context')
         url = f"{base}/stories/{identifier(context['story_id'])}?scene={scene_id}&material=draft"
         return (f'Відкрийте сцену в Obscura: {url}\n'
+                '0. Щоб доопрацювати чернетку з чату, спершу прочитайте її (get_scene_text) і пишіть поверх прочитаного.\n'
                 '1. Перегляньте чернетку в редакторі; попередня версія лишається в історії версій.\n'
                 '2. За потреби доопрацюйте текст у режимі Ghost Mode.\n'
                 '3. Коли текст готовий, затвердіть прозу й оновіть пам’ять сцени, щоб наступні сцени її бачили.')
