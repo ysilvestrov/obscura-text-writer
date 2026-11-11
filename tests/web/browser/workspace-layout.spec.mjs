@@ -4,7 +4,10 @@ import {test,expect} from '../../../frontend/browser-test.mjs';
 test('status row holds run controls and the next-run limit',async({page,request})=>{
   const fixture=await(await request.post('/test-editor-no-changes')).json();
   await page.goto(`/stories/${fixture.story_id}?scene=${fixture.scene_id}&material=draft`);
-  const row=page.locator('.workspace-sticky #workspace-status-row');
+  const row=page.locator('#workspace-status-row');
+  // Owner 11.11.2026: the status row scrolls with the text; only the tabs and the Save/primary row stay pinned.
+  await expect(page.locator('.workspace-sticky #workspace-status-row')).toHaveCount(0);
+  await expect(page.locator('.workspace-sticky #workspace-primary')).toHaveCount(1);
   await expect(row.locator('#workspace-scene-status')).not.toBeEmpty();
   // Which run actions are visible for which run state is unchanged (runs.js / run-readiness.js); here only their place.
   await expect(row.locator('#run-actions button',{hasText:/^(Скасувати|Cancel)$/})).toHaveCount(1);

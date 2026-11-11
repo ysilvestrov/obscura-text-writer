@@ -34,7 +34,12 @@ def test_run_controls_and_limit_live_in_the_status_row(tmp_path):
     tree,html=page(tmp_path)
     for id in ['run-status','run-actions','workspace-error-settings','run-options','workspace-scene-status']:
         assert id in tree.ancestors,id
-        assert {'.workspace-sticky','#workspace-status-row'}<=tree.ancestors[id],id
+        assert '#workspace-status-row' in tree.ancestors[id],id
+        # Owner 11.11.2026: only the tabs and the Save/primary row stay pinned, so the editor is not hidden while scrolling.
+        assert '.workspace-sticky' not in tree.ancestors[id],id
+    for id in ['mode-tabs','workspace-primary','workspace-compact-status']:
+        assert '.workspace-sticky' in tree.ancestors[id],id
+    assert '.workspace-sticky' not in tree.ancestors['workspace-hint']
     # A waiting review card can be long: it sits right under the sticky block, never inside it (final review #1).
     assert '.workspace-sticky' not in tree.ancestors['review-attention']
     assert '#workspace' in tree.ancestors['review-attention']
