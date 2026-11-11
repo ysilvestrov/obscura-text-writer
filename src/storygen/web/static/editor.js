@@ -90,7 +90,7 @@ export async function refresh(options){
     const small=document.createElement('small');uiText(small,"textContent",()=>sceneStatus(scene,state.view.impact_status).label);button.append(small);button.onclick=()=>selectScene(scene);list.append(button);
   }
   if(!state.scene&&state.view.scenes.length)await selectScene(resolveWorkspacePosition(state.view.scenes,initialWorkspacePosition).scene);
-  renderImportJournal(document.querySelector('#context-content'),state.view.source_files||[],state.view.active_sources||{});
+  renderImportJournal(document.querySelector('#import-journal')||document.querySelector('#context-content'),state.view.source_files||[],state.view.active_sources||{});
   const importer=document.querySelector('.importer');if(importer&&!importer.dataset.userOpened)importer.open=!(state.view.source_files?.length||state.view.sources?.length)&&state.view.scenes.length===0;
   document.dispatchEvent(new CustomEvent('story-refreshed'));
 }

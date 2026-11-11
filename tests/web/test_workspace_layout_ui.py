@@ -55,9 +55,21 @@ def test_story_toolbar_has_three_icon_actions_and_a_disclosure_menu(tmp_path):
     assert 'class="context-panel"' in html and 'publication-panel' not in html
 
 
-@pytest.mark.req('WORKSPACE-TOOLS')
+@pytest.mark.req('IMPACT-UI')
 def test_book_revision_page_hosts_impact_review(tmp_path):
     tree,html=page(tmp_path,'/stories/{id}/revision')
     for id in ['impact-panel','impact-preview','impact-reports','review-session','revision-return']:
         assert id in tree.attrs,id
     assert '"/static/editor.js": "/static/revision-context.js"' in html
+
+
+@pytest.mark.req('WORKSPACE-TOOLS')
+def test_side_panel_holds_only_scene_sections(tmp_path):
+    tree,html=page(tmp_path)
+    panel=html.split('class="context-panel"')[1].split('</aside>')[0]
+    assert panel.count('class="tool-section"')==2
+    assert 'data-section="scene"' in panel and 'data-section="evaluation"' in panel
+    assert {'.context-panel','.tool-section'}<=tree.ancestors['context-content']
+    assert {'.context-panel','#evaluation-section'}<=tree.ancestors['evaluation-panel']
+    assert '.importer' in tree.ancestors['import-journal']
+    assert 'm_67b44565c06d' not in panel

@@ -43,3 +43,33 @@ test('book revision page opens from the menu with a pending count',async({page,r
   await expect(page.locator('#impact-preview')).toBeVisible();
   await expect(page.locator('#revision-return')).toHaveAttribute('href',`/stories/${f.story_id}`);
 });
+
+// #89 WORKSPACE-TOOLS: the side panel is about the scene only; sections remember being open and never touch the buffer.
+test('scene sections reopen after reload and leave unsaved text alone',async({page,request})=>{
+  const fixture=await(await request.post('/test-editor-no-changes')).json();
+  await page.goto(`/stories/${fixture.story_id}?scene=${fixture.scene_id}&material=draft`);
+  const scene=page.locator('.context-panel details[data-section=scene]');
+  await expect(scene).not.toHaveAttribute('open','');
+  await expect(page.locator('#evaluation-section')).toBeHidden(); // no evaluator configured in the fixture
+  await expect(page.locator('#story-menu-evaluate')).toBeHidden();
+  await page.locator('.ProseMirror').fill('Незбережений рядок.');
+  await expect(page.locator('#save-text')).toBeEnabled();
+  await scene.locator('summary').click();
+  await expect(page.locator('#scene-settings')).toBeVisible();
+  await expect(page.locator('.ProseMirror')).toHaveText('Незбережений рядок.');
+  await expect(page.locator('#save-text')).toBeEnabled();
+  await page.locator('#save-text').click();await expect(page.locator('#save-text')).toBeDisabled();
+  await page.reload();
+  await expect(scene).toHaveAttribute('open','');
+});
+
+test('sections work when storage throws',async({page,request})=>{
+  await page.addInitScript(()=>{Object.defineProperty(window,'localStorage',{get(){throw new DOMException('denied','SecurityError')}})});
+  const errors=[];page.on('pageerror',error=>errors.push(error.message));
+  const fixture=await(await request.post('/test-editor-no-changes')).json();
+  await page.goto(`/stories/${fixture.story_id}?scene=${fixture.scene_id}&material=draft`);
+  const scene=page.locator('.context-panel details[data-section=scene]');
+  await expect(scene).not.toHaveAttribute('open','');
+  await scene.locator('summary').click();await expect(scene).toHaveAttribute('open','');
+  expect(errors.filter(message=>/tool-section|SECTIONS|denied/.test(message))).toEqual([]);
+});

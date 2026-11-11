@@ -2231,7 +2231,9 @@
     "workspace.budget_spent": "Бюджет · витрачено {p0}",
     "workspace.budget_spent_limit": "Бюджет · витрачено {p0} з {p1}",
     "workspace.revision_return": "← До твору",
-    "workspace.revision_pending": "Матеріали для перегляду: {p0}"
+    "workspace.revision_pending": "Матеріали для перегляду: {p0}",
+    "workspace.scene_section": "Налаштування сцени",
+    "workspace.evaluation_section": "Оцінювання сцени"
   },
   "en": {
     "ui.save": "Save",
@@ -4465,6 +4467,8 @@
     "workspace.budget_spent": "Budget · spent {p0}",
     "workspace.budget_spent_limit": "Budget · spent {p0} of {p1}",
     "workspace.revision_return": "← Back to the story",
-    "workspace.revision_pending": "Materials to review: {p0}"
+    "workspace.revision_pending": "Materials to review: {p0}",
+    "workspace.scene_section": "Scene settings",
+    "workspace.evaluation_section": "Scene evaluation"
   }
 }
