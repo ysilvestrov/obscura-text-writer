@@ -62,3 +62,6 @@ Desktop.ini
 
 # detent cross-review runs
 tmp/
+
+# user-guide site build output (#29)
+_site/

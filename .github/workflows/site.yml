@@ -1,0 +1,70 @@
+# User-guide site (#29, DOCS-SITE): a PR builds and checks the site without publishing;
+# a push to main publishes it to GitHub Pages and checks the live address. No secrets, no model calls.
+name: site
+
+on:
+  pull_request:
+    paths:
+      - 'docs/site/**'
+      - 'docs/images/site/**'
+      - 'scripts/build_site.py'
+      - 'scripts/check_site.py'
+      - 'scripts/site_common.py'
+      - '.github/workflows/site.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'docs/site/**'
+      - 'docs/images/site/**'
+      - 'scripts/build_site.py'
+      - 'scripts/check_site.py'
+      - 'scripts/site_common.py'
+      - '.github/workflows/site.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install "markdown-it-py>=4.2,<5"
+      - run: python scripts/check_site.py
+      - run: python scripts/build_site.py --out _site
+
+  deploy:
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    # One publication at a time; a newer pending run replaces an older pending one, so the newest commit wins.
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install "markdown-it-py>=4.2,<5"
+      - run: python scripts/build_site.py --out _site
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4
+      - name: Check the published address
+        run: |
+          curl --fail --silent --show-error --retry 6 --retry-delay 10 --retry-all-errors --output /dev/null "${{ steps.deployment.outputs.page_url }}"
+          curl --fail --silent --show-error --retry 6 --retry-delay 10 --retry-all-errors --output /dev/null "${{ steps.deployment.outputs.page_url }}en/install.html"

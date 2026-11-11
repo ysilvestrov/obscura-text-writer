@@ -151,3 +151,32 @@ def test_check_docs_includes_site_errors(tmp_path,monkeypatch):
     (tmp_path/'docs/verification/traceability.json').write_text('{"version":1,"scenarios":[]}',encoding='utf-8')
     errors=check_docs.check(tmp_path,documents=[])
     assert any('--rehash install' in e for e in errors),errors
+
+
+def workflow_jobs(text):
+    """Split the workflow into top-level job blocks by two-space-indented keys under `jobs:`."""
+    body=text.split('\njobs:\n',1)[1];jobs={};name=None
+    for line in body.splitlines():
+        match=re.match(r'^  ([A-Za-z0-9_-]+):\s*$',line)
+        if match:name=match[1];jobs[name]=[]
+        elif name:jobs[name].append(line)
+    return {key:'\n'.join(value) for key,value in jobs.items()},text.split('\njobs:\n',1)[0]
+
+
+@pytest.mark.req('DOCS-SITE')
+def test_workflow_publishes_only_from_main():
+    text=(ROOT/'.github/workflows/site.yml').read_text(encoding='utf-8')
+    jobs,head=workflow_jobs(text)
+    assert 'pull_request:' in head and 'push:' in head and 'branches: [main]' in head
+    assert re.search(r'^permissions:\n  contents: read\n(?!  )',head,re.M),head
+    assert 'pages: write' not in head and 'id-token: write' not in head
+    deploy=[name for name,block in jobs.items() if 'actions/deploy-pages@' in block]
+    assert deploy==['deploy'],deploy
+    block=jobs['deploy']
+    assert "if: github.event_name == 'push' && github.ref == 'refs/heads/main'" in block
+    assert 'group: pages' in block and 'cancel-in-progress: false' in block
+    assert 'pages: write' in block and 'id-token: write' in block
+    assert 'curl --fail' in block
+    for name,job in jobs.items():
+        if name!='deploy':assert 'pages: write' not in job and 'upload-pages-artifact' not in job,name
+    assert 'scripts/build_site.py' in jobs['build'] and 'scripts/check_site.py' in jobs['build']
