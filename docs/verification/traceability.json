@@ -508,6 +508,19 @@
       ]
     },
     {
+      "id": "MEMORY-002-S12",
+      "requirement": "MEMORY-002",
+      "scope": "Склеєні ID доказів у рішеннях core/threads розділяються, повтори прибираються, лишаються три перші, додається попередження; невідомий ID, сторонній текст і склеєний рядок у групах дають evidence_unknown; окремі ID не змінюються; captured_wire читає так само.",
+      "tests": [
+        "tests/memory/test_wire_v4.py::test_joined_evidence_ids_in_decisions_are_split",
+        "tests/memory/test_wire_v4.py::test_joined_evidence_repeats_collapse_before_the_cut",
+        "tests/memory/test_wire_v4.py::test_joined_evidence_with_unknown_id_or_other_text_is_rejected",
+        "tests/memory/test_wire_v4.py::test_separate_evidence_ids_are_not_rewritten",
+        "tests/memory/test_wire_v4.py::test_joined_evidence_in_groups_is_still_unknown",
+        "tests/memory/test_core_review.py::test_captured_wire_splits_joined_evidence"
+      ]
+    },
+    {
       "id": "MEMORY-003-S01",
       "requirement": "MEMORY-003",
       "scope": "Змінений стан і закрита лінія. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",

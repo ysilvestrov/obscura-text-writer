@@ -263,3 +263,56 @@ def test_tracked_slot_still_only_via_core():
         if not bounds['tracked']:data['core']={}
         assert bad(data,bounds=bounds)==[('character_states.update[0]','target_unknown')]
     assert MOOD.claim_id in BOUNDS['mutable']['character_states'] and CLOTH.claim_id not in BOUNDS['mutable']['character_states']
+
+
+JOINED_WARNING='Пам’ять: склеєні ID доказів у рішеннях ядра й ліній розділено; враховано до трьох перших.'
+
+
+def parse(data,warnings=None):
+    from storygen.memory.journal import parse_memory_result
+    return parse_memory_result(json.dumps(data,ensure_ascii=False),PREV,'p2',PROSE,'evidence_delta',['h'],
+        warnings=warnings,wire_version=4,bounds=BOUNDS)
+
+
+def codes(data):
+    from storygen.memory.violations import MemoryViolations
+    try:parse(data)
+    except MemoryViolations as error:return [tuple(v) for v in error.violations]
+    return []
+
+
+def test_joined_evidence_ids_in_decisions_are_split():
+    # Field case: the model hits maxItems 3 and packs further IDs (lists and ranges) into one string.
+    warnings=[]
+    j=parse(answer(core(clothing=dec('changed','Пальто',['f000001','f000002_f000003,f000004'])),
+        threads(**{T1.claim_id:tdec('closed','Стукав сусід',['f000003-f000005'])})),warnings)
+    validate_memory_journal(j,SOURCES)
+    update,retire,fact=new(j)
+    assert (update.claim_id,update.quote,update.supporting_quotes)==(CLOTH.claim_id,LINE[1],[LINE[2],LINE[3]])
+    for event in (retire,fact):assert (event.quote,event.supporting_quotes)==(LINE[3],[LINE[5]])
+    assert warnings==[JOINED_WARNING]
+
+
+def test_joined_evidence_repeats_collapse_before_the_cut():
+    j=parse(answer(core(clothing=dec('changed','Пальто',['f000002','f000002;f000001 f000004.f000005']))))
+    (update,)=new(j)
+    assert (update.quote,update.supporting_quotes)==(LINE[2],[LINE[1],LINE[4]])
+
+
+def test_joined_evidence_with_unknown_id_or_other_text_is_rejected():
+    for ids in (['f000001,f000099'],['f000001 та f000002'],['f000001f000002x'],['']):
+        assert codes(answer(core(clothing=dec('changed','Пальто',ids))))==[('core.h.clothing','evidence_unknown')]
+
+
+def test_separate_evidence_ids_are_not_rewritten():
+    warnings=[]
+    parse(answer(core(clothing=dec('changed','Пальто',['f000001','f000002']))),warnings)
+    assert warnings==[]
+    four=['f000001','f000002','f000003','f000004']
+    assert codes(answer(core(clothing=dec('changed','Пальто',four))))==[('core.h.clothing','evidence_count')]
+    assert codes(answer(core(clothing=dec('changed','Пальто',['f000001','f000001']))))==[('core.h.clothing','evidence_count')]
+
+
+def test_joined_evidence_in_groups_is_still_unknown():
+    # Groups carry the fragment enum in the schema; a joined string there stays a violation.
+    assert codes(answer(facts_add=[padd('Факт',['f000001,f000002'])]))==[('facts.add[0]','evidence_unknown')]

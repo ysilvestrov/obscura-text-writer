@@ -14,7 +14,7 @@ from .core import SLOTS, tracked_characters
 from .journal import MemoryJournal, _add_event, _change_event, decode_memory, load_memory, replay_memory
 from .replay import strip_wrapper
 from .story_time import day_change
-from .wire_v4 import MemoryWireV4, wire_v4_events
+from .wire_v4 import MemoryWireV4, split_joined_evidence, wire_v4_events
 
 
 def captured_wire(repo, memory_version_id: str) -> tuple[dict, dict] | None:
@@ -32,7 +32,8 @@ def captured_wire(repo, memory_version_id: str) -> tuple[dict, dict] | None:
         data=decode_memory(raw)
         MemoryWireV4.model_validate(data)
         if not isinstance(bounds,dict) or not isinstance(bounds.get('tracked'),dict):return None
-        return data,bounds
+        # Same reading of joined evidence strings as the parser that published this head.
+        return split_joined_evidence(data,bounds)[0],bounds
     except Exception:
         # Deleted attempt, unreadable or foreign answer: the review falls back to the journal diff.
         return None
