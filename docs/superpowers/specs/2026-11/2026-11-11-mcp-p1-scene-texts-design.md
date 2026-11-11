@@ -81,7 +81,7 @@ Spec-review: codex/gpt-6.1-sol @ e1e611d (author: claude) — 3 findings: 3 fixe
 - `draft`, `prose`: текст версії; `content_format` (`plain`/`markdown`) і `external_origin` з `VersionRef`.
 - `memory`: `text` — канонічний JSON масиву тверджень із `memory-view`. Кожне твердження має `claim_id`, `category`, `text`, `source_scene`, `source_title`, `quote`, `supporting_quotes`, `forward`, `closed`. Внутрішні поля інтерфейсу (`scene`, `can_save`, відбиток таблиці вибору) не віддаються. Частини ріжуться по тому самому JSON-рядку.
 - Матеріалу немає → `version_id=null`, `text=""`, `total_chars=0`, а не 404. Так `null` можна передати в `save_draft` як «чернетки ще немає».
-- Невідома сцена або сцена в кошику → 404 (як `writing-context`). `offset > total_chars` або `max_chars` поза межами → 400.
+- Невідома сцена або сцена в кошику → 404 (як `writing-context`). `offset > total_chars` → 400, `max_chars` поза межами → 422 (перевірка параметрів FastAPI, як і для інших маршрутів).
 - Межа рейтингу: `enforce_rating_limit(effective_rating(story, scene))` перед формуванням відповіді (як у `writing_context`), для всіх матеріалів.
 - Відповідь не містить шляхів (`relative_path`), знімків залежностей і промптів.
 
