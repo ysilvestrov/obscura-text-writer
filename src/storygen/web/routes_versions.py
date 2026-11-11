@@ -149,6 +149,14 @@ def scene_writing_context(scene_id: str,request: Request):
     return writing_context(request.app.state.repo,scene_id)
 
 
+@router.get('/api/scenes/{scene_id}/text/{material}')
+def scene_material_text(scene_id: str,material: Literal['plan','brief','draft','prose','memory'],request: Request,
+                        offset: int=Query(default=0,ge=0),max_chars: int=Query(default=20000,ge=1000,le=50000)):
+    """MCP-BRIDGE (#108): one material of a scene with its head version, in parts."""
+    from ..application.writing_context import scene_text
+    return scene_text(request.app.state.repo,scene_id,material,offset,max_chars)
+
+
 @router.post('/api/scenes/{scene_id}/draft')
 def manual_draft(scene_id: str,body: DraftChange,request: Request):
     if body.comment_set is not None:
