@@ -221,3 +221,35 @@ def test_maintenance_commands_check_the_edition_marker(tmp_path, monkeypatch, ca
     assert maintenance.main(['fsck', '--data-dir', str(tmp_path / 'data')]) == 1
     assert 'build_edition.json' in capsys.readouterr().out
     assert not (tmp_path / 'data').exists()
+
+
+def _old_schema(tmp_path):
+    from tests.storage.test_pre_migration import old_schema_dir
+    return old_schema_dir(tmp_path)
+
+
+def _version(data):
+    import sqlite3
+    with sqlite3.connect(data / 'storygen.sqlite3') as db:
+        return db.execute('PRAGMA user_version').fetchone()[0]
+
+
+def test_desktop_backs_up_then_migrates(tmp_path):
+    from storygen.storage.database import SCHEMA_VERSION
+    data = _old_schema(tmp_path)
+    with Launch(data, '--no-browser'):
+        assert _version(data) == SCHEMA_VERSION
+    copies = list((tmp_path / (data.name + '-backups')).iterdir())
+    assert len(copies) == 1 and copies[0].name.startswith('pre-migration-v4-') and _version(copies[0] / 'data') == 4
+    assert str(copies[0]) in (data / 'logs' / 'obscura.log').read_text(encoding='utf-8')
+
+
+def test_desktop_refuses_to_start_when_backup_fails(tmp_path):
+    data = _old_schema(tmp_path)
+    (tmp_path / (data.name + '-backups')).write_text('не тека', encoding='utf-8')
+
+    def no_server(app, port):
+        raise AssertionError('the server must not start without a backup')
+    assert desktop.main(['--data-dir', str(data), '--no-browser', '--no-tray'], serve=no_server) == 3
+    assert _version(data) == 4 and not (data / 'server.json').exists()
+    assert 'Резервну копію перед оновленням бази не створено' in (data / 'logs' / 'obscura.log').read_text(encoding='utf-8')

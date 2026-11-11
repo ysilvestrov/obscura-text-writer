@@ -108,7 +108,8 @@ def _wait_until_started(server, thread) -> bool:
 
 
 def main(argv=None, *, opener=webbrowser.open, tray=None, serve=None) -> int:
-    """Exit codes: 0 — ran or already running, 2 — invalid build edition marker, 4 — the server did not start."""
+    """Exit codes: 0 — ran or already running, 2 — invalid build edition marker, 3 — no backup before a migration,
+    4 — the server did not start."""
     parser = argparse.ArgumentParser(description='Obscura Text Writer')
     parser.add_argument('--data-dir', type=Path, default=None)
     parser.add_argument('--no-tray', action='store_true')
@@ -140,7 +141,16 @@ def _run(args, data_dir: Path, opener, tray, serve) -> int:
             opener(url)
         return 0
     from .application.settings import AppSettings
+    from .storage.pre_migration import PreMigrationBackupFailed, backup_before_migration
     from .web.app import create_app
+    try:
+        copy = backup_before_migration(data_dir)
+    except PreMigrationBackupFailed as error:
+        # DESKTOP-001-S03: without a verified copy the database is not opened, so it is not migrated.
+        logger.error('%s', error)
+        return 3
+    if copy is not None:
+        logger.info('Перед оновленням бази створено резервну копію: %s', copy)
     port = choose_port()
     app = create_app(AppSettings(data_dir=data_dir, env_file=data_dir / '.env', port=port))
     server = serve(app, port)
