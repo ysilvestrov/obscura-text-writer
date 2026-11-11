@@ -22,7 +22,7 @@ The chat cannot delete, publish, run generation or the evaluator, or change sett
 
 ```powershell
 ./.venv/Scripts/python.exe -m pip install -r requirements-lock.txt
-./.venv/Scripts/python.exe -m pip install --no-deps -e ".[web,publication,mcp]"
+./.venv/Scripts/python.exe -m pip install --no-deps -e ".[web,publication]"
 ```
 
 `storygen-mcp.exe` then appears in `.venv/Scripts/`. The examples below use `C:\Obscura` as the application folder; use your own.
@@ -34,8 +34,10 @@ Start Obscura as usual before you work. The chat client connects to `http://127.
 **Claude Code.** In a terminal:
 
 ```powershell
-claude mcp add obscura -- C:\Obscura\.venv\Scripts\storygen-mcp.exe
+claude mcp add --scope user obscura -- C:\Obscura\.venv\Scripts\storygen-mcp.exe
 ```
+
+`--scope user` makes the server available in any folder. Without it, Claude Code sees the server only in the folder where you ran the command.
 
 **Claude Desktop.** Open "Settings → Developer → Edit Config", add the server to `claude_desktop_config.json` and restart Claude Desktop:
 
@@ -49,7 +51,7 @@ claude mcp add obscura -- C:\Obscura\.venv\Scripts\storygen-mcp.exe
 }
 ```
 
-For another port add `"args": ["--url", "http://127.0.0.1:8770"]`.
+For another port add `"args": ["--url", "http://127.0.0.1:8770"]`. In the `claude mcp add` and `codex mcp add` commands the arguments go after the program path: `… storygen-mcp.exe --url http://127.0.0.1:8770`.
 
 **Codex.** In a terminal:
 
@@ -57,7 +59,7 @@ For another port add `"args": ["--url", "http://127.0.0.1:8770"]`.
 codex mcp add obscura -- C:\Obscura\.venv\Scripts\storygen-mcp.exe
 ```
 
-Or add a `[mcp_servers.obscura]` section with the line `command = 'C:\Obscura\.venv\Scripts\storygen-mcp.exe'` to `~/.codex/config.toml`. ChatGPT desktop reportedly uses the same configuration, but this has not been checked yet.
+Or add a `[mcp_servers.obscura]` section with the line `command = 'C:\Obscura\.venv\Scripts\storygen-mcp.exe'` to `~/.codex/config.toml`.
 
 Browser chat clients (claude.ai, chatgpt.com) do not support local servers.
 
@@ -76,7 +78,7 @@ A draft from the chat is labelled "External client: <name>" in the version histo
 
 - Obscura must be running. Otherwise the chat gets the error "Obscura не запущено за адресою …" (Obscura is not running at …).
 - The next scene's context can be read only after the previous scene's memory is updated, just as for generation in Obscura.
-- If the scene, the cards, the rating or the story language changed after the context was read, the save is refused with "Контекст сцени змінився — прочитайте його знову" (the scene context changed, read it again). Ask the chat to read the context again.
+- If the scene was changed after the context was read, the save is refused with "Сцену вже змінено" (the scene has already been changed). If the cards, the rating, the story language or the memory of earlier scenes changed, it is refused with "Контекст сцени змінився — прочитайте його знову" (the scene context changed, read it again). Either way, ask the chat to read the context again.
 - The chat sees Obscura's errors with the prefix "Error executing tool …", followed by Obscura's code and explanation.
 - A draft from the chat counts as model-made material: after it, the story language can no longer be changed.
 - Obscura does not evaluate a draft from the chat automatically and does not count it in the [budget](models.md). The cost falls on the chat client's account.

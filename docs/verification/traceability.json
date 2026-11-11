@@ -3991,8 +3991,10 @@
     {
       "id": "MCP-BRIDGE-S07",
       "requirement": "MCP-BRIDGE",
-      "scope": "Приймання з реальним чат-клієнтом. Процедуру ще не виконано; наявність процедури не означає її виконання.",
-      "tests": [],
+      "scope": "Приймання з реальним чат-клієнтом. Автоматично перевірено лише текст інструкції реєстрації (UA/EN); саму процедуру ще не виконано, наявність процедури не означає її виконання.",
+      "tests": [
+        "tests/web/test_external_origin_ui.py::test_instructions_register_claude_code_for_every_folder"
+      ],
       "manual": {
         "procedure": "docs/verification/manual.md#mcp-real-client",
         "reason": "Потрібні обліковий запис власника в Claude Desktop, Claude Code або Codex і реальна модель клієнта; автоматичний тест не може замінити клієнт третьої сторони."
@@ -4019,10 +4021,11 @@
     {
       "id": "MCP-BRIDGE-S10",
       "requirement": "MCP-BRIDGE",
-      "scope": "Текст позначки UA/EN без розмітки, місця показу й оновлення після збереження автором. Перевірка зазначеного сценарію; не є доказом усієї вимоги. Поведінку в браузері (перемикання мови, зникнення після збереження) перевірено вручну 11.11.2026.",
+      "scope": "Текст позначки UA/EN без розмітки, місця показу, оновлення після збереження автором і після кошика. Структурна перевірка коду; перемикання мови й зникнення позначки в браузері ця перевірка не відтворює. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
       "tests": [
         "tests/web/test_external_origin_ui.py::test_external_origin_label",
-        "tests/web/test_external_origin_ui.py::test_history_and_status_row_show_the_label"
+        "tests/web/test_external_origin_ui.py::test_history_and_status_row_show_the_label",
+        "tests/web/test_external_origin_ui.py::test_trashing_the_last_scene_clears_the_label"
       ]
     }
   ]

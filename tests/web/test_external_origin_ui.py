@@ -32,6 +32,23 @@ def test_history_and_status_row_show_the_label():
     load = editor[editor.index('export function loadBuffer('):].split('\n}', 1)[0]
     assert 'renderOrigin(ref)' in load
     # An author save replaces the version in the buffer: the label follows the saved version, not the one loaded.
-    assert re.search(r"textEditor\.markSaved\(\{[^;]*source_ref:result\.version\}\);renderOrigin\(result\.version\)", editor)
+    assert re.search(r"textEditor\.markSaved\(\{[^;]*source_ref:result\.version\}\);\s*renderOrigin\(result\.version\)", editor)
     assert re.search(r"externalOriginLabel\(ref\)", versions)
     assert 'innerHTML' not in (STATIC / 'external-origin.js').read_text(encoding='utf-8')
+
+
+@pytest.mark.req('MCP-BRIDGE')
+def test_trashing_the_last_scene_clears_the_label():
+    editor = (STATIC / 'editor.js').read_text(encoding='utf-8')
+    callback = editor[editor.index('installSceneTrash(state,refresh,'):].split('\n', 1)[0]
+    assert 'renderOrigin(null)' in callback
+
+
+@pytest.mark.req('MCP-BRIDGE')
+@pytest.mark.parametrize('language', ['uk', 'en'])
+def test_instructions_register_claude_code_for_every_folder(language):
+    page = (ROOT / f'docs/site/{language}/mcp.md').read_text(encoding='utf-8')
+    assert 'claude mcp add --scope user obscura -- ' in page
+    assert 'claude mcp add obscura' not in page
+    assert 'Сцену вже змінено' in page and 'Контекст сцени змінився' in page
+    assert 'ChatGPT desktop' not in page

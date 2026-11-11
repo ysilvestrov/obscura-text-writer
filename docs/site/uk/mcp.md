@@ -22,7 +22,7 @@ Obscura можна підключити до чат-клієнта, яким в�
 
 ```powershell
 ./.venv/Scripts/python.exe -m pip install -r requirements-lock.txt
-./.venv/Scripts/python.exe -m pip install --no-deps -e ".[web,publication,mcp]"
+./.venv/Scripts/python.exe -m pip install --no-deps -e ".[web,publication]"
 ```
 
 Після цього в теці `.venv/Scripts/` з’явиться `storygen-mcp.exe`. Далі в прикладах тека застосунку — `C:\Obscura`; підставте свою.
@@ -34,8 +34,10 @@ Obscura можна підключити до чат-клієнта, яким в�
 **Claude Code.** У терміналі:
 
 ```powershell
-claude mcp add obscura -- C:\Obscura\.venv\Scripts\storygen-mcp.exe
+claude mcp add --scope user obscura -- C:\Obscura\.venv\Scripts\storygen-mcp.exe
 ```
+
+`--scope user` робить сервер доступним у будь-якій теці. Без нього Claude Code бачить сервер лише в теці, де виконано команду.
 
 **Claude Desktop.** Відкрийте «Settings → Developer → Edit Config» і додайте сервер у `claude_desktop_config.json`, потім перезапустіть Claude Desktop:
 
@@ -49,7 +51,7 @@ claude mcp add obscura -- C:\Obscura\.venv\Scripts\storygen-mcp.exe
 }
 ```
 
-Для іншого порту додайте `"args": ["--url", "http://127.0.0.1:8770"]`.
+Для іншого порту додайте `"args": ["--url", "http://127.0.0.1:8770"]`. У командах `claude mcp add` і `codex mcp add` аргументи йдуть після шляху до програми: `… storygen-mcp.exe --url http://127.0.0.1:8770`.
 
 **Codex.** У терміналі:
 
@@ -57,7 +59,7 @@ claude mcp add obscura -- C:\Obscura\.venv\Scripts\storygen-mcp.exe
 codex mcp add obscura -- C:\Obscura\.venv\Scripts\storygen-mcp.exe
 ```
 
-Або додайте в `~/.codex/config.toml` розділ `[mcp_servers.obscura]` з рядком `command = 'C:\Obscura\.venv\Scripts\storygen-mcp.exe'`. ChatGPT desktop, за наявними відомостями, використовує ту саму конфігурацію, але це ще не перевірено.
+Або додайте в `~/.codex/config.toml` розділ `[mcp_servers.obscura]` з рядком `command = 'C:\Obscura\.venv\Scripts\storygen-mcp.exe'`.
 
 Чат-клієнти в браузері (claude.ai, chatgpt.com) локальних серверів не підтримують.
 
@@ -76,7 +78,7 @@ codex mcp add obscura -- C:\Obscura\.venv\Scripts\storygen-mcp.exe
 
 - Obscura має бути запущена. Інакше чат отримає помилку «Obscura не запущено за адресою …».
 - Контекст наступної сцени можна прочитати лише після того, як оновлено пам’ять попередньої. Так само працює й генерація в Obscura.
-- Якщо після читання контексту змінилися сцена, картки, рейтинг чи мова твору, збереження відхиляється з поясненням «Контекст сцени змінився — прочитайте його знову». Попросіть чат прочитати контекст ще раз.
+- Якщо після читання контексту сцену змінили, збереження відхиляється з поясненням «Сцену вже змінено». Якщо змінилися картки, рейтинг, мова твору чи пам’ять попередніх сцен — «Контекст сцени змінився — прочитайте його знову». В обох випадках попросіть чат прочитати контекст ще раз.
 - Помилки Obscura чат бачить із префіксом «Error executing tool …». Далі йде код і пояснення Obscura.
 - Чернетка з чату вважається матеріалом, створеним моделлю: після неї мову твору змінити не можна.
 - Obscura не оцінює чернетку з чату автоматично й не рахує її в [бюджеті](models.md). Витрати йдуть з облікового запису чат-клієнта.
