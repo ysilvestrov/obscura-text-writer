@@ -1,6 +1,7 @@
 import {t,msg,labelEntries,getLocale,uiText,uiAttr,uiHTML} from './i18n.js';
 import {api,json,notice} from './api.js';
 import {state,refresh} from './editor.js';
+import {appInfo,allowedLevels,limited} from './app-info.js';
 const target=document.querySelector('#context-content');
 function draw(){
   // Without a selected scene (e.g. the last one was trashed) no scene form may stay actionable.
@@ -24,9 +25,12 @@ function draw(){
   drawRating(form);
 }
 const axes=['sexual','violence','themes'];
+// BUILD-EDITION-001: until app info arrives every level is offered; the server enforces the limit either way.
+let maxRating={sexual:2,violence:2,themes:2};
 function drawRating(after){
   document.querySelector('#scene-rating')?.remove();
   const storyRating=state.view?.story?.content_rating||null,own=state.scene.content_rating||null;
+  const shownRating=own||storyRating;
   const form=document.createElement('form');form.id='scene-rating';form.className='panel';
   const fieldset=document.createElement('fieldset'),legend=document.createElement('legend');
   uiText(legend,'textContent',()=>t('rating.scene.legend'));fieldset.append(legend);
@@ -45,13 +49,13 @@ function drawRating(after){
     uiText(label,'textContent',()=>t(`rating.axis.${axis}`));
     help.type='button';help.className='help-tip';help.textContent='?';help.setAttribute('aria-describedby',tipId);uiAttr(help,'aria-label',()=>t('rating.help.button'));
     tip.id=tipId;tip.className='help-tip-text';tip.setAttribute('role','tooltip');uiText(tip,'textContent',()=>t(`rating.help.${axis}`));
-    for(const level of [0,1,2]){const option=document.createElement('option');option.value=String(level);uiText(option,'textContent',()=>t(`rating.level.${level}`));select.append(option)}
+    for(const level of allowedLevels(maxRating[axis],shownRating?shownRating[axis]:null)){const option=document.createElement('option');option.value=String(level);uiText(option,'textContent',()=>t(`rating.level.${level}`));select.append(option)}
     head.append(label,help,tip);wrap.append(head,select);fieldset.append(wrap);
   }
   const hint=document.createElement('small');uiText(hint,'textContent',()=>t('rating.scene.hint'));fieldset.append(hint);
+  if(limited(maxRating)){const limit=document.createElement('small');limit.className='rating-edition-hint';uiText(limit,'textContent',()=>t('rating.edition.hint',{p0:maxRating.sexual}));fieldset.append(limit)}
   const save=document.createElement('button');uiText(save,'textContent',()=>t('rating.scene.save'));
   form.append(fieldset,save);
-  const shownRating=own||storyRating;
   for(const axis of axes)form.elements[axis].value=String(shownRating?shownRating[axis]:0);
   form.elements.mode.value=own?'own':'inherit';
   const sync=()=>{for(const axis of axes)form.elements[axis].disabled=form.elements.mode.value==='inherit'};
@@ -71,3 +75,4 @@ function drawRating(after){
   after.after(form);
 }
 document.addEventListener('scene-selected',draw);document.addEventListener('story-refreshed',draw);
+appInfo().then(info=>{maxRating=info.max_rating;if(limited(maxRating))draw()});
