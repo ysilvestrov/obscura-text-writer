@@ -32,6 +32,9 @@ def create_app(settings: AppSettings, *, gateway_factory=None,evaluator_factory=
     app=FastAPI(title="Obscura Text Writer",docs_url=None,redoc_url=None,lifespan=lifespan)
     load_dotenv(settings.env_file)
     app.state.settings=settings
+    # DESKTOP-001: lets a second launch tell this process from any other program on the same port.
+    from uuid import uuid4
+    app.state.instance_id=uuid4().hex
     app.state.repo=Repository(settings.data_dir)
     app.state.gateway_factory=gateway_factory
     app.state.coordinator=RunCoordinator(app.state.repo,gateway_factory,evaluator_factory)

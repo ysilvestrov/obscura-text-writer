@@ -19,6 +19,7 @@ publication = ["Pillow>=11,<13", "lxml>=6,<7", "reportlab>=4,<5"]
 browser = ["playwright>=1.40,<2", "httpx2>=2,<3"]
 mcp = ["mcp==2.3.0"]
 keys = ["keyring>=25,<26"]
+desktop = ["pystray>=0.19,<0.20", "Pillow>=11,<13", "keyring>=25,<26"]
 
 [project.scripts]
 storygen-local-tokens = "storygen.token_budget.local_cli:main"
@@ -27,6 +28,7 @@ storygen = "storygen.server:main"
 storygen-tokens = "storygen.token_budget.cli:main"
 storygen-budget = "storygen.billing.cli:main"
 storygen-mcp = "storygen.mcp.bridge:main"
+storygen-desktop = "storygen.desktop:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

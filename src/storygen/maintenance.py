@@ -22,6 +22,9 @@ def main(argv=None):
             child.add_argument('--destination', type=Path, required=True)
     args = parser.parse_args(argv)
     try:
+        # BUILD-EDITION-001-S04: a build with a broken edition marker does not work on data at all.
+        from . import build_edition
+        build_edition.current()
         if args.command == 'fsck':
             result = check_integrity(args.data_dir).to_dict()
         else:
