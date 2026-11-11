@@ -10,7 +10,7 @@ If there are many scenes, click the **Scenes** heading with their count: the lis
 
 - **Characters** opens the character cards on a separate page.
 - **Settings** opens the models, writing, evaluator and budget for this story.
-- **Add scene** creates an empty scene at the end of the list.
+- **Add scene** creates a scene at the end of the list and fills its outline from a template right away. Location, characters, key realisation and emotional focus are carried over from the previous scene's outline; its "End" becomes the "Start" of the new scene, and its "What happens" becomes "Previously". "End", "What happens" and the three "Beats" items stay empty. The number in the heading is the next one after the previous scene's number. In a Ukrainian story the outline labels are Ukrainian. Whatever the previous outline lacks stays empty; you can correct everything in the outline straight away.
 - The **☰ Story actions** menu holds everything that concerns the whole story: **Book revision** (the number next to it counts materials waiting for review), **Card and publication**, **Export…**, story evaluation and reports (when an evaluator is configured), the budget line and **Rename story**. The menu works from the keyboard; `Escape` closes it.
 
 ![Story actions menu](../../images/site/en/story-menu-desktop.png)

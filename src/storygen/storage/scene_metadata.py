@@ -43,6 +43,31 @@ def apply_description(repo,db,scene,text,*,include_title=True,cards=None):
             invalidate_in_transaction(repo,db,roots)
 
 
+def cast_names(ids,cards):
+    """Plan-line form of a cast: the card name where it resolves back to the same card, otherwise the exact ID."""
+    names={card.id:card.name for card in cards}
+    def written(id):
+        name=names.get(id)
+        return name if name and resolve_participants(parse_scene_description('Персонажі: '+name).participants,cards)[0]==[id] else id
+    return ', '.join(written(id) for id in ids)
+
+
+def templated_plan(repo,db,story,active,position,data):
+    """SCENE-PLAN-TEMPLATE: the plan of a new scene from the closest active scene before its position."""
+    from ..scene_plan_template import next_scene_plan,plan_fields
+    previous=active[position-1] if position else None
+    fields=plan_fields(previous.beats) if previous else {}
+    ids=data.character_ids or ([] if 'cast' in fields or not previous else previous.character_ids)
+    if ids:fields['cast']=cast_names(ids,story_cards(repo,db,story.id))
+    number=data.author_scene_number
+    if number is None:
+        taken={scene.author_scene_number for scene in active}
+        # An unnumbered previous scene counts by its place in reading order; a taken number is never reused.
+        number=(position if previous is None or previous.author_scene_number is None else previous.author_scene_number)+1
+        while number in taken:number+=1
+    return next_scene_plan(story.language,number,data.title,fields)
+
+
 def sync_story_cast(repo,db,story_id):
     cards=story_cards(repo,db,story_id)
     for row in db.execute('SELECT payload FROM scenes WHERE story_id=?',(story_id,)).fetchall():
