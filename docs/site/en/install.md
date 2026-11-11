@@ -32,6 +32,22 @@ Open `.env` in a text editor and fill in the key only for the provider you will 
 
 A local provider needs no key. Keys stay on your computer; do not publish the `.env` file.
 
+### A key in the settings instead of `.env`
+
+You can also enter the key in the application: **Settings → Models**, the "Provider key" block under the provider and model fields (the evaluator and helper classification settings have the same block). The key is kept in the Windows credential store, works at once without a restart, and is never shown again: you only see where it comes from.
+
+- If a key exists both in `.env` and in the store, the one from `.env` is used; the block says so.
+- A key in the store belongs to the variable name ("Connection parameters" → "Environment variable with the key") and is shared by all your stories and data folders on this computer.
+- "Delete saved key" removes it from the store; on Windows the entry is also visible in Credential Manager under the name `Obscura`.
+
+In an installation from source this needs the `keyring` package, which is not in `requirements-lock.txt`:
+
+```powershell
+./.venv/Scripts/python.exe -m pip install "keyring>=25,<26"
+```
+
+Without it the block reports that the store is unavailable, and the key has to be set in `.env`.
+
 ## Launch
 
 Keep personal stories in a separate folder outside the application folder:

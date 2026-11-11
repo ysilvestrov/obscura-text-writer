@@ -10,7 +10,7 @@ Open the story settings → **Models** and choose a role. Enter the provider, AP
 
 Providers:
 
-- **Venice** and **OpenRouter** are cloud providers: they need a key in `.env` (see [Installation](install.md#provider-keys)) and a call budget. Venice accepts only models with `uncensored=true`.
+- **Venice** and **OpenRouter** are cloud providers: they need a key, either in `.env` or in the "Provider key" block under the model field (see [Installation](install.md#provider-keys)), and a call budget. Venice accepts only models with `uncensored=true`.
 - **Local** is a server on your computer, such as LM Studio or Bionic; the default address is `http://localhost:1235/v1`. No key or budget is needed.
 - **Codex CLI** uses your existing Codex sign-in; the text is sent to the Codex service.
 

@@ -1068,6 +1068,20 @@
       ]
     },
     {
+      "id": "SECURITY-002-S06",
+      "requirement": "SECURITY-002",
+      "scope": "Блок ключа у формах підключення показує лише стан, очищує поле, не позначає форму зміненою, стежить за провайдером і назвою змінної.",
+      "tests": [
+        "tests/web/test_provider_key_ui.py::test_status_keys_and_name_rules",
+        "tests/web/test_provider_key_ui.py::test_texts",
+        "tests/web/test_provider_key_ui.py::test_browser_name_rule_matches_the_server"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#provider-key-store",
+        "reason": "check_docs.py індексує лише pytest; п’ять Playwright cases provider-key.spec.mjs перелічено в процедурі й виконуються окремим runner, а перевірка зі справжнім сховищем Windows — ручна; цей зв’язок не є доказом виконання."
+      }
+    },
+    {
       "id": "CONTENT-001-S01",
       "requirement": "CONTENT-001",
       "scope": "Провайдер змінює поведінку. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
