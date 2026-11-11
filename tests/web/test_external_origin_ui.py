@@ -41,7 +41,9 @@ def test_history_and_status_row_show_the_label():
 @pytest.mark.req('MCP-BRIDGE')
 def test_trashing_the_last_scene_clears_the_label():
     editor = (STATIC / 'editor.js').read_text(encoding='utf-8')
-    callback = editor[editor.index('installSceneTrash(state,refresh,'):].split('\n', 1)[0]
+    # #105: the trash callback is the shared clearSceneBuffer, also used when the scene goes to the trash elsewhere.
+    assert 'installSceneTrash(state,refresh,clearSceneBuffer)' in editor
+    callback = editor[editor.index('export function clearSceneBuffer'):].split('\n', 1)[0]
     assert 'renderOrigin(null)' in callback
 
 

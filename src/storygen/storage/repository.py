@@ -347,6 +347,13 @@ class Repository:
             self._active_story(db,story_id)
             return self._active_source(db,story_id,kind)
 
+    def scene_revisions(self,story_id: str) -> dict[str,int]:
+        # MCP-BRIDGE (#105): one query, no context view; the workspace compares it with its loaded view on focus.
+        with self.db.connection() as db:
+            self._active_story(db,story_id)
+            rows=db.execute("SELECT id,COALESCE(json_extract(payload,'$.revision'),0) FROM scenes WHERE story_id=? AND json_extract(payload,'$.trashed_at') IS NULL",(story_id,)).fetchall()
+        return {id:revision for id,revision in rows}
+
     def list_scenes(self,story_id: str,include_trashed: bool=False) -> list[Scene]:
         view=self.context_view(story_id)
         return [s.model_copy(deep=True) if s.trashed_at else view.effective_scene(s.id) for s in view.scenes.values() if include_trashed or not s.trashed_at]

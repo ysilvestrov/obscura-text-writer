@@ -55,10 +55,12 @@ function render(){
   uiText(hint,"textContent",()=>(diagnostic(reason)||(action.target&&state.scene?.heads[action.target]?t("m_44df09bb6ff6"):state.mode==='review'?t("m_34c3cc998162"):state.mode==='memory'?t("m_e310e34e8865"):t("m_93abd76dba4c"))));
   uiText(primary,"title",()=>(diagnostic(reason)));
   const repeat=document.querySelector('#workspace-edit-prose');repeat.hidden=state.mode!=='prose';repeat.disabled=busy||isActive()||state.saving;
+  // #105: tab statuses follow the refreshed view even while the buffer keeps the author's text and revision.
+  const live=liveScene(state.scene,state.view?.scenes);
   for(const b of document.querySelectorAll('#mode-tabs button')){
     const mode=b.dataset.mode,head=mode==='review'?'prose':mode;
     const material=state.workspaceMaterials?.[mode];
-    let status=mode==='brief'&&state.pendingBrief?t('m_66d1a05343f7'):mode==='review'?(state.reviewAvailability?.pending?t("m_66d1a05343f7"):state.reviewAvailability?.hasChanges?t("m_a8cf00058976"):t("m_421a83bf60b6")):!state.scene?.heads[head]&&!(mode==='plan'&&state.scene?.beats)?t("m_8680be0998f5"):material?.stale?t("m_ac780daa8d8e"):t("m_3ee8deffed11");
+    let status=mode==='brief'&&state.pendingBrief?t('m_66d1a05343f7'):mode==='review'?(state.reviewAvailability?.pending?t("m_66d1a05343f7"):state.reviewAvailability?.hasChanges?t("m_a8cf00058976"):t("m_421a83bf60b6")):!live?.heads?.[head]&&!(mode==='plan'&&live?.beats)?t("m_8680be0998f5"):material?.stale?t("m_ac780daa8d8e"):t("m_3ee8deffed11");
     if(activeRun&&mode===(activeRun.request.mode==='edit_loop'?'review':{brief:'brief',draft:'draft',edit:'review',memory:'memory'}[activeRun.request.stage]))status=t("m_af4dd928935c");
     b.setAttribute('aria-selected',String(mode===state.mode&&state.bufferOrigin!=='history'));
     uiAttr(b,'aria-label',()=>(`${({plan:t('m_3146141c9367'),brief:t('m_5a2ec5eaf0a1'),draft:t('m_e9d875d4120b'),review:t('m_c2320838b6df'),prose:t('m_9c685577453c'),memory:t('m_aa1cfb48cc30')})[mode]||b.dataset.label}: ${diagnostic(status)}`));

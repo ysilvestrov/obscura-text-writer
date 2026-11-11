@@ -388,6 +388,7 @@ pre { white-space: pre-wrap; overflow-wrap: anywhere; font: 14px/1.7 var(--font-
 .workspace-status-row #run-status { flex: 1 1 16rem; min-width: 0; }
 .workspace-status-row #run-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .scene-status-badge { padding: 0.125rem 0.5rem; border-radius: 999px; background: var(--accent-soft); color: var(--text-primary); }
+.external-change { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; color: var(--warning); font-weight: 600; }
 .run-options { flex-basis: 100%; }
 .run-options label { max-width: 22rem; }
 #run-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-block: 0.75rem; }

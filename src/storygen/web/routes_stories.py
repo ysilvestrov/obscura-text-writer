@@ -82,6 +82,11 @@ def story_view(id: str,request: Request):
     return {"impact_status":scene_status(view),"language_locked":request.app.state.repo.story_language_locked(id),"story":story,"scenes":[view.effective_scene(scene.id) for scene in listed],"scene_ratings":ratings,"sources":[view.get_version(v.id) for v in view.versions.values() if v.kind in {"source_plan","source_characters"}],"character_names":names,"source_files":view.source_files,"active_sources":view.sources}
 
 
+@router.get("/api/stories/{id}/scene-revisions")
+def scene_revisions(id: str,request: Request):
+    return {"scenes":request.app.state.repo.scene_revisions(id)}
+
+
 @router.patch('/api/stories/{id}')
 def story_title(id: str,body: StoryTitlePatch,request: Request):
     return rename_story(request.app.state.repo,id,body.title,body.expected_revision)
