@@ -4,6 +4,7 @@
 a windowed executable has neither.
 """
 import argparse
+import http.client
 import json
 import logging
 import os
@@ -11,7 +12,6 @@ import socket
 import sys
 import threading
 import time
-import urllib.request
 import webbrowser
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
@@ -83,13 +83,16 @@ def remove_server_record(data_dir: Path) -> None:
     (Path(data_dir) / RECORD).unlink(missing_ok=True)
 
 
-class _NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, *args, **kwargs):
-        return None
-
-
-# The question goes straight to this computer: no system or environment proxy, no redirect to another address.
-_local = urllib.request.build_opener(urllib.request.ProxyHandler({}), _NoRedirect())
+def _ask_loopback(port: int, path: str, timeout: float) -> bytes | None:
+    """One plain HTTP GET to this computer: no proxy, no redirect, and no TLS machinery (a frozen build may not be
+    able to build a TLS context this early)."""
+    connection = http.client.HTTPConnection('127.0.0.1', port, timeout=timeout)
+    try:
+        connection.request('GET', path)
+        response = connection.getresponse()
+        return response.read(65536) if response.status == 200 else None
+    finally:
+        connection.close()
 
 
 def running_server(data_dir: Path, timeout: float = 1.0) -> str | None:
@@ -103,8 +106,8 @@ def running_server(data_dir: Path, timeout: float = 1.0) -> str | None:
         port = url[len(LOOPBACK):] if isinstance(url, str) and url.startswith(LOOPBACK) else ''
         if not (port.isascii() and port.isdigit() and isinstance(instance_id, str)):
             return None
-        with _local.open(url + '/api/app-info', timeout=timeout) as response:
-            answer = json.loads(response.read(65536))
+        body = _ask_loopback(int(port), '/api/app-info', timeout)
+        answer = json.loads(body) if body is not None else None
         return url if isinstance(answer, dict) and answer.get('instance_id') == instance_id else None
     except Exception:
         return None

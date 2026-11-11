@@ -3895,6 +3895,7 @@
         "tests/web/test_app_info.py::test_app_info_has_a_per_process_instance_id",
         "tests/test_desktop.py::test_discovery_ignores_proxy_settings",
         "tests/test_desktop.py::test_discovery_does_not_follow_redirects",
+        "tests/test_desktop.py::test_discovery_needs_no_tls_machinery",
         "tests/test_desktop.py::test_stale_record_does_not_stop_a_fresh_start",
         "tests/test_desktop.py::test_failed_second_start_keeps_the_first_record_and_opens_it"
       ]

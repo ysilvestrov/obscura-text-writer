@@ -389,3 +389,23 @@ def test_logging_restores_the_root_level(tmp_path):
     desktop.configure_logging(tmp_path / 'data')
     desktop.close_logging()
     assert logging.getLogger().level == before
+
+
+def test_discovery_needs_no_tls_machinery(tmp_path, other_program, monkeypatch):
+    # A frozen build may be unable to create TLS contexts at import time; asking a loopback HTTP server must not need one.
+    import importlib
+    import ssl
+
+    def broken(*args, **kwargs):
+        raise FileNotFoundError(2, 'No such file or directory')
+    monkeypatch.setattr(ssl, 'create_default_context', broken)
+    monkeypatch.setattr(ssl, '_create_default_https_context', broken)
+    module = importlib.reload(desktop)
+    try:
+        handler, url = other_program
+        handler.body = json.dumps({'instance_id': 'A'}).encode()
+        module.write_server_record(tmp_path, url, 'A')
+        assert module.running_server(tmp_path) == url
+    finally:
+        monkeypatch.undo()
+        importlib.reload(desktop)
