@@ -16,6 +16,10 @@ def catalog_for(language):
 
 def build_publication_context(repo,story_id):
     captured=repo.publication_snapshot(story_id)
+    # BUILD-EDITION-001: the proposal is model-written text about every selected scene.
+    from ..rating.guard import enforce_edition_limit
+    enforce_edition_limit(captured.story)
+    for scene,_ in captured.scenes:enforce_edition_limit(captured.story,scene)
     eligible=eligible_fields(captured.publication)
     if not eligible:raise ValueError('Немає порожніх полів, які може запропонувати модель')
     stamp=source_stamp(captured)

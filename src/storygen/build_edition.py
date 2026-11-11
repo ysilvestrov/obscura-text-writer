@@ -35,6 +35,9 @@ def load_build_edition(path: Path | None = None) -> BuildEdition:
     """A missing marker is the full edition; anything unreadable is an error, never a silent fallback."""
     source = files('storygen').joinpath(MARKER) if path is None else Path(path)
     if not source.is_file():
+        # Present but not a regular file is unreadable, not absent.
+        if source.is_dir():
+            raise ValueError(INVALID.format(reason='це не файл'))
         return BuildEdition()
     # Reasons never quote the file: it is build configuration, not something to echo into logs or pages.
     try:

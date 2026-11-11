@@ -3731,7 +3731,7 @@
     {
       "id": "BUILD-EDITION-001-S03",
       "requirement": "BUILD-EDITION-001",
-      "scope": "Видання store блокує генерацію для чинного рівня 2 (власний, успадкований, етап без сцени) до перевірок складу; читання й ручне редагування працюють; рівень 1 генерується.",
+      "scope": "Видання store блокує генерацію для чинного рівня 2 (власний, успадкований, етап без сцени) до перевірок складу, пропозицію метаданих публікації та письмо зовнішнього клієнта; читання, ручна чернетка й ручне редагування працюють; рівень 1 генерується.",
       "tests": [
         "tests/generation/test_content_rating_context.py::test_store_edition_blocks_scene_with_own_level_two",
         "tests/generation/test_content_rating_context.py::test_store_edition_blocks_scene_inheriting_level_two",
@@ -3739,7 +3739,10 @@
         "tests/generation/test_content_rating_context.py::test_store_edition_limit_comes_before_cast_checks",
         "tests/generation/test_content_rating_context.py::test_store_edition_allows_level_one_and_other_axes",
         "tests/generation/test_content_rating_context.py::test_store_edition_does_not_block_reading_or_manual_edit",
-        "tests/generation/test_content_rating_context.py::test_edition_guard_message_has_english_translation"
+        "tests/generation/test_content_rating_context.py::test_edition_guard_message_has_english_translation",
+        "tests/generation/test_publication_metadata.py::test_store_edition_blocks_publication_suggestions_above_limit",
+        "tests/generation/test_publication_metadata.py::test_full_edition_publication_suggestions_ignore_the_limit",
+        "tests/web/test_external_draft.py::test_store_edition_blocks_external_writing_above_limit"
       ]
     },
     {
@@ -3750,6 +3753,7 @@
         "tests/test_build_edition.py::test_store_edition_requires_report_url",
         "tests/test_build_edition.py::test_invalid_marker_is_rejected_not_ignored",
         "tests/test_build_edition.py::test_broken_json_is_rejected",
+        "tests/test_build_edition.py::test_marker_that_is_not_a_file_is_rejected",
         "tests/web/test_app_info.py::test_app_does_not_start_with_invalid_marker"
       ]
     },

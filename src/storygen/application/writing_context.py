@@ -42,6 +42,10 @@ def context_fingerprint(repo,scene_id: str) -> str:
 
 
 def writing_context(repo,scene_id: str) -> dict:
+    # BUILD-EDITION-001: these are writing instructions for an external model, so the edition limit applies.
+    from ..rating.guard import enforce_edition_limit
+    current=repo.get_scene(scene_id)
+    enforce_edition_limit(repo.get_story(current.story_id),current)
     scene,content,fingerprint=_read(repo,scene_id)
     return {**content,'revision':scene.revision,'context_fingerprint':fingerprint}
 

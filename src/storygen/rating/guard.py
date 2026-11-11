@@ -21,17 +21,24 @@ EDITION_LIMIT=('Генерацію заблоковано: рейтинг «{axi
     'Знизьте рейтинг сцени або твору.')
 
 
+def enforce_edition_limit(story,scene=None) -> None:
+    """BUILD-EDITION-001: refuse model-written text for a rating above the build edition limit.
+
+    Data rated above the limit (made in the full edition, imported, restored) stays readable and editable by hand.
+    An unset rating is not this check's concern."""
+    rating=effective_rating(story,scene) if scene is not None else story.content_rating
+    over=build_edition.over_limit(rating) if rating is not None else []
+    if over:
+        axis=over[0]
+        raise ValueError(EDITION_LIMIT.format(axis=AXIS_NAMES[axis],n=getattr(rating,axis),max=getattr(build_edition.current().max_rating,axis)))
+
+
 def enforce_rating(view,story,scene,stage: str) -> None:
     """Order: unset story rating → build edition limit (every stage) → (scene stages, sexual ≥ 1) empty cast →
     no cards → participant ages."""
     if story.content_rating is None:raise ValueError(UNSET)
-    # BUILD-EDITION-001: data rated above the edition limit (made in the full edition, imported, restored) is not
-    # generated for; the author sees this cause before any cast or age check.
-    rating=effective_rating(story,scene) if scene is not None else story.content_rating
-    over=build_edition.over_limit(rating)
-    if over:
-        axis=over[0]
-        raise ValueError(EDITION_LIMIT.format(axis=AXIS_NAMES[axis],n=getattr(rating,axis),max=getattr(build_edition.current().max_rating,axis)))
+    # The author sees the edition limit before any cast or age check.
+    enforce_edition_limit(story,scene)
     if scene is None or stage not in SCENE_STAGES:return
     n=effective_rating(story,scene).sexual
     if n<1:return

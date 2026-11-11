@@ -60,3 +60,11 @@ def test_broken_json_is_rejected(tmp_path):
 def test_over_limit_lists_axes(store_edition):
     assert build_edition.over_limit(ContentRating(sexual=2, violence=2, themes=2)) == ['sexual']
     assert build_edition.over_limit(ContentRating(sexual=1, violence=2, themes=2)) == []
+
+
+def test_marker_that_is_not_a_file_is_rejected(tmp_path):
+    # A present but unreadable marker must not silently become the full edition.
+    path = tmp_path / 'build_edition.json'
+    path.mkdir()
+    with pytest.raises(ValueError, match='build_edition.json'):
+        load_build_edition(path)
