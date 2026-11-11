@@ -316,3 +316,10 @@ def test_separate_evidence_ids_are_not_rewritten():
 def test_joined_evidence_in_groups_is_still_unknown():
     # Groups carry the fragment enum in the schema; a joined string there stays a violation.
     assert codes(answer(facts_add=[padd('Факт',['f000001,f000002'])]))==[('facts.add[0]','evidence_unknown')]
+
+
+def test_invalid_evidence_after_the_cut_is_not_hidden():
+    # Cutting to three must not drop an entry that would fail the check on its own.
+    for ids in (['f000001,f000002,f000003','f000004,f000099'],['f000001,f000002,f000003','f000099'],
+                ['f000001,f000002,f000003','сторонній текст']):
+        assert ('core.h.clothing','evidence_unknown') in codes(answer(core(clothing=dec('changed','Пальто',ids))))

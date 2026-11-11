@@ -85,7 +85,8 @@ def split_joined_evidence(data,bounds):
             if item not in known and len(parts)>1 and all(p in known for p in parts) and not _FRAGMENT_ID.sub('',item).strip(_JOINERS):
                 out+=parts;joined=True
             else:out.append(item)
-        if joined:found.append((decision,list(dict.fromkeys(out))[:3]))
+        # The cut may drop only known IDs: a list that still holds anything else stays whole for check_v4.
+        if joined and all(i in known for i in out):found.append((decision,list(dict.fromkeys(out))[:3]))
     if not isinstance(data,dict):return data,False
     data=copy.deepcopy(data);core=data.get('core');threads=data.get('threads')
     for person in core.values() if isinstance(core,dict) else ():
