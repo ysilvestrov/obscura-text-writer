@@ -29,10 +29,19 @@ def fingerprint(client, scene_id):
     return writing_fingerprint(repo, repo.get_scene(scene_id))
 
 
-def save(client, scene_id, revision, fp, text='Анна відчинила скриньку.', origin=ORIGIN):
+CURRENT, OMIT = object(), object()
+STALE_DRAFT = 'Чернетку змінено після того, як її прочитали — прочитайте її знову (get_scene_text)'
+
+
+def save(client, scene_id, revision, fp, text='Анна відчинила скриньку.', origin=ORIGIN, draft_id=CURRENT):
+    """`draft_id` defaults to the current draft head, as if the client had just read it with get_scene_text."""
     body = {'text': text, 'expected_revision': revision, 'content_format': 'markdown', 'expected_context_fingerprint': fp}
     if origin is not None:
         body['external_origin'] = origin
+    if draft_id is CURRENT:
+        draft_id = client.app.state.repo.get_scene(scene_id).heads.get('draft')
+    if draft_id is not OMIT:
+        body['expected_draft_version_id'] = draft_id
     return client.post(f'/api/scenes/{scene_id}/draft', json=body)
 
 
@@ -144,3 +153,47 @@ def test_store_edition_blocks_external_writing_above_limit(tmp_path, store_editi
     assert external.status_code == 400 and 'найвищий дозволений рівень — 1' in external.json()['detail']
     manual = client.post(f'/api/scenes/{scene.id}/draft', json={'text': 'Анна сама пише чернетку.', 'expected_revision': scene.revision})
     assert manual.status_code == 200, manual.text
+
+
+@pytest.mark.req('MCP-BRIDGE')
+def test_external_draft_over_stale_draft_is_409(tmp_path):
+    # #108: the client takes a fresh revision and fingerprint, but writes over a draft it read before the author's edit.
+    client, repo, story, scene = setup(tmp_path)
+    first = save(client, scene.id, scene.revision, fingerprint(client, scene.id)).json()
+    read_id = first['version']['id']
+    author = client.post(f'/api/scenes/{scene.id}/draft', json={'text': 'Правка автора.', 'expected_revision': first['scene']['revision']})
+    assert author.status_code == 200, author.text
+    fresh = repo.get_scene(scene.id)
+    count = len(repo.list_versions(story.id, scene.id, 'draft'))
+    stale = save(client, scene.id, fresh.revision, fingerprint(client, scene.id), text='Переписано чатом.', draft_id=read_id)
+    assert stale.status_code == 409 and STALE_DRAFT in stale.text
+    assert repo.get_scene(scene.id).heads['draft'] == author.json()['version']['id']
+    assert len(repo.list_versions(story.id, scene.id, 'draft')) == count
+
+
+@pytest.mark.req('MCP-BRIDGE')
+def test_external_draft_without_draft_id_is_400(tmp_path):
+    client, repo, story, scene = setup(tmp_path)
+    response = save(client, scene.id, scene.revision, fingerprint(client, scene.id), draft_id=OMIT)
+    assert response.status_code == 400
+    assert 'потребує ідентифікатора прочитаної чернетки' in response.text
+    assert 'draft' not in repo.get_scene(scene.id).heads
+
+
+@pytest.mark.req('MCP-BRIDGE')
+def test_external_draft_with_null_on_scene_without_draft(tmp_path):
+    client, repo, story, scene = setup(tmp_path)
+    response = save(client, scene.id, scene.revision, fingerprint(client, scene.id), draft_id=None)
+    assert response.status_code == 200, response.text
+    bogus = save(client, scene.id, response.json()['scene']['revision'], fingerprint(client, scene.id), draft_id=None)
+    assert bogus.status_code == 409 and STALE_DRAFT in bogus.text
+
+
+@pytest.mark.req('MCP-BRIDGE')
+def test_author_draft_with_draft_id_is_400(tmp_path):
+    client, repo, story, scene = setup(tmp_path)
+    url = f'/api/scenes/{scene.id}/draft'
+    refused = client.post(url, json={'text': 'Анна.', 'expected_revision': scene.revision, 'expected_draft_version_id': None})
+    assert refused.status_code in {400, 422}
+    ok = client.post(url, json={'text': 'Анна.', 'expected_revision': scene.revision})
+    assert ok.status_code == 200, ok.text
