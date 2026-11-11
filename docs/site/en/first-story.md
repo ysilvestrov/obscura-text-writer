@@ -10,7 +10,7 @@ In the library enter the **New story title**, a target word count and the **Stor
 
 In the scene list expand **Add materials**. Download the **Outline with timing (.md)** and **Characters (.md)** templates, fill them in with a text editor and import them. The application accepts UTF-8 TXT or Markdown. Importing again only adds new scenes and character cards.
 
-You can also start without files: **Add scene** in the top row creates an empty scene, and **Characters** opens the character cards.
+You can also start without files: **Add scene** in the top row creates a scene with an outline skeleton (all its fields are empty in the first scene), and **Characters** opens the character cards.
 
 Review the proposed scenes and participants before you run a model.
 

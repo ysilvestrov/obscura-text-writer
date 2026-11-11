@@ -1068,6 +1068,55 @@
       ]
     },
     {
+      "id": "SCENE-PLAN-TEMPLATE-S01",
+      "requirement": "SCENE-PLAN-TEMPLATE",
+      "scope": "Усі шість полів переносяться з попередньої сцени через сховище й API; кнопка надсилає лише назву.",
+      "tests": [
+        "tests/authoring/test_scene_plan_template.py::test_all_six_fields_carry_over_and_the_rest_stays_empty",
+        "tests/authoring/test_scene_plan_template.py::test_api_creates_scene_with_template_and_keeps_given_plan",
+        "tests/authoring/test_scene_plan_template.py::test_add_scene_button_sends_only_the_title"
+      ]
+    },
+    {
+      "id": "SCENE-PLAN-TEMPLATE-S02",
+      "requirement": "SCENE-PLAN-TEMPLATE",
+      "scope": "Перша сцена твору й план без частини міток дають порожні значення при тих самих рядках.",
+      "tests": [
+        "tests/authoring/test_scene_plan_template.py::test_first_scene_gets_the_same_lines_with_empty_values",
+        "tests/authoring/test_scene_plan_template.py::test_missing_labels_give_empty_values"
+      ]
+    },
+    {
+      "id": "SCENE-PLAN-TEMPLATE-S03",
+      "requirement": "SCENE-PLAN-TEMPLATE",
+      "scope": "Непорожній план не замінюється; явні номер і склад запиту; виклик без прапорця.",
+      "tests": [
+        "tests/authoring/test_scene_plan_template.py::test_author_plan_is_never_replaced",
+        "tests/authoring/test_scene_plan_template.py::test_explicit_number_and_cast_of_the_request_win",
+        "tests/authoring/test_scene_plan_template.py::test_storage_callers_without_the_flag_keep_an_empty_plan"
+      ]
+    },
+    {
+      "id": "SCENE-PLAN-TEMPLATE-S04",
+      "requirement": "SCENE-PLAN-TEMPLATE",
+      "scope": "Попередня сцена за позицією, кошик, вільний номер, сцени без номера, виділені й альтернативні мітки.",
+      "tests": [
+        "tests/authoring/test_scene_plan_template.py::test_previous_scene_is_the_closest_active_one_before_the_new_position",
+        "tests/authoring/test_scene_plan_template.py::test_unnumbered_previous_scene_counts_by_reading_order",
+        "tests/authoring/test_scene_plan_template.py::test_decorated_and_alternative_labels_are_read",
+        "tests/authoring/test_scene_plan_template.py::test_cast_without_a_plan_line_is_written_by_card_names",
+        "tests/authoring/test_scene_plan_template.py::test_pure_template_keeps_one_line_title_and_first_value"
+      ]
+    },
+    {
+      "id": "SCENE-PLAN-TEMPLATE-S05",
+      "requirement": "SCENE-PLAN-TEMPLATE",
+      "scope": "Англійські мітки шаблону й читання міток обох мов.",
+      "tests": [
+        "tests/authoring/test_scene_plan_template.py::test_english_story_uses_english_labels_and_reads_both_languages"
+      ]
+    },
+    {
       "id": "SCENE-CAST-DISPLAY-S01",
       "requirement": "SCENE-CAST-DISPLAY",
       "scope": "Імена після збереження плану. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",

@@ -398,17 +398,20 @@ class Repository:
             db.execute("INSERT INTO stories VALUES(?,?)",(story.id,story.model_dump_json()))
         return story
 
-    def create_scene(self,story_id: str,data: SceneCreate) -> Scene:
+    def create_scene(self,story_id: str,data: SceneCreate,*,plan_template: bool=False) -> Scene:
         with self.db.connection() as db:
             db.execute("BEGIN IMMEDIATE")
-            self._active_story(db,story_id)
+            story=self._active_story(db,story_id)
             scenes=[Scene.model_validate_json(r[0]) for r in db.execute("SELECT payload FROM scenes WHERE story_id=? ORDER BY position,id",(story_id,))]
             active=[s for s in scenes if not s.trashed_at]
             archived=[s for s in scenes if s.trashed_at]
             position=len(active) if data.position is None else min(data.position,len(active))
             scene=Scene(id=new_id(),story_id=story_id,**{**data.model_dump(),"position":len(scenes)})
-            from .scene_metadata import apply_description
-            apply_description(self,db,scene,data.beats)
+            from .scene_metadata import apply_description,templated_plan
+            if plan_template and not data.beats.strip():
+                # SCENE-PLAN-TEMPLATE: an author-added scene starts from the previous scene's plan; a given plan is kept.
+                scene.beats=templated_plan(self,db,story,active,position,data)
+            apply_description(self,db,scene,scene.beats)
             db.execute("INSERT INTO scenes VALUES(?,?,?,?)",(scene.id,story_id,scene.position,scene.model_dump_json()))
             active.insert(position,scene)
             self._save_scene_order(db,active+archived)

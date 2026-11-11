@@ -110,7 +110,7 @@ async def sources(id: str,request: Request):
 
 @router.post("/api/stories/{id}/scenes")
 def add_scene(id: str,data: SceneCreate,request: Request):
-    return request.app.state.repo.create_scene(id,data)
+    return request.app.state.repo.create_scene(id,data,plan_template=True)
 
 
 @router.patch("/api/scenes/{id}")
