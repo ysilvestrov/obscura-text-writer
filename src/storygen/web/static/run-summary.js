@@ -4,8 +4,9 @@
 // State, planned models when known, and a mark when a warning sits in the collapsed details.
 export function runSummaryText(run,stateLabel){
   const plan=run?.planned_telemetry;
-  const models=plan?[...Object.values(plan.roles||{}),...(plan.evaluator?[plan.evaluator]:[])].map(v=>`${v.provider} / ${v.model}`).join(', '):'';
-  return [stateLabel,models,run?.warning&&run.state!=='failed'?'⚠':''].filter(Boolean).join(' · ');
+  const models=plan?[...new Set([...Object.values(plan.roles||{}),...(plan.evaluator?[plan.evaluator]:[])].map(v=>`${v.provider} / ${v.model}`))].join(', '):'';
+  // A failed run shows its error expanded; any other run marks a hidden warning or error.
+  return [stateLabel,models,(run?.warning||run?.error)&&run.state!=='failed'?'⚠':''].filter(Boolean).join(' · ');
 }
 
 // Collapsed by default. Entering failed discloses the error even if the author collapsed this run while it ran;
@@ -13,6 +14,12 @@ export function runSummaryText(run,stateLabel){
 export function runExpanded(run,{expandedRun,collapsedFailure}){
   if(!run)return false;
   return expandedRun===run.id||(run.state==='failed'&&collapsedFailure!==run.id);
+}
+
+// A resumed run keeps its id: once it leaves failed, a remembered collapse no longer applies, so failing again opens the new error.
+export function syncRunPrefs(run,prefs){
+  if(run&&run.state!=='failed'&&prefs.collapsedFailure===run.id)return {...prefs,collapsedFailure:null};
+  return prefs;
 }
 
 export function toggleRunExpansion(run,prefs){

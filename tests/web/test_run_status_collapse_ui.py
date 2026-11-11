@@ -27,7 +27,10 @@ def test_run_status_details_collapse_behind_the_summary():
     assert "className='run-summary'" in runs and "setAttribute('aria-expanded'" in runs
     assert runs.count('run-detail') >= 5  # plan or its placeholder, messages, stage started, stage finished
     assert "classList.toggle('expanded'" in runs
+    assert 'syncRunPrefs(run,runPrefs)' in runs  # a resumed run that fails again opens its error
     css = (STATIC / 'app.css').read_text(encoding='utf-8')
+    summary_rule = css.split('#run-status .run-summary {', 1)[1].split('}', 1)[0]
+    assert 'white-space: nowrap' in summary_rule and 'text-overflow: ellipsis' in summary_rule  # one line even with many models
     assert '#run-status:not(.expanded) .run-detail' in css and '#run-status:not(.expanded) .memory-violations' in css
     catalog = json.loads((STATIC / 'i18n.json').read_text(encoding='utf-8'))
     assert catalog['uk']['workspace.run_details'] and catalog['en']['workspace.run_details']

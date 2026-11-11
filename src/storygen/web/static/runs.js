@@ -2,7 +2,7 @@ import {confirmDialog} from './dialogs.js';
 import {live as liveLabel,t,msg,labelEntries,getLocale,uiText,uiAttr,uiHTML,diagnostic} from './i18n.js';
 import {acceptedContinuation} from './acceptance.js';
 import {violationDetails} from './memory-violations.js';
-import {runSummaryText,runExpanded,toggleRunExpansion} from './run-summary.js';
+import {runSummaryText,runExpanded,toggleRunExpansion,syncRunPrefs} from './run-summary.js';
 import {api,json,notice} from './api.js';
 import {state,refresh,loadBuffer,textEditor} from './editor.js';
 import {registerWorkspaceCommand} from './workspace-commands.js';
@@ -108,7 +108,7 @@ textEditor.onInput(updateControls);
 const elapsed=document.createElement('p');elapsed.className='run-elapsed';
 // R20-WORKSPACE: one summary line; the details open on click, and a failed run opens by itself.
 let runPrefs={expandedRun:null,collapsedFailure:null},summaryNode=null;
-function applyExpanded(run){const open=runExpanded(run,runPrefs);status.classList.toggle('expanded',open);summaryNode?.setAttribute('aria-expanded',String(open))}
+function applyExpanded(run){runPrefs=syncRunPrefs(run,runPrefs);const open=runExpanded(run,runPrefs);status.classList.toggle('expanded',open);summaryNode?.setAttribute('aria-expanded',String(open))}
 function summaryButton(run){const b=document.createElement('button');b.type='button';b.className='run-summary';uiText(b,'textContent',()=>runSummaryText(run,names[run.state]||run.state));uiAttr(b,'title',()=>t('workspace.run_details'));b.setAttribute('aria-controls','run-status');b.onclick=()=>{const current=active?.id===run.id?active:run;runPrefs=toggleRunExpansion(current,runPrefs);applyExpanded(current)};summaryNode=b;return b}
 function draw(run){active=run;state.workspaceRun=run;document.dispatchEvent(new CustomEvent('workspace-run-state',{detail:run}));status.dataset.kind=run.warning&&run.state!=='failed'?'warning':runKind(run.state);status.setAttribute('role',run.state==='failed'?'alert':'status');status.replaceChildren();status.append(summaryButton(run));const plan=run.planned_telemetry;if(!plan){const missing=document.createElement('p');missing.className='muted run-detail';uiText(missing,'textContent',()=>t('workspace.run_plan_unknown'));status.append(missing)}else{const summary=document.createElement('p');summary.className='muted run-detail';uiText(summary,'textContent',()=>t('workspace.run_plan',{p0:[...Object.values(plan.roles||{}),...(plan.evaluator?[plan.evaluator]:[])].map(value=>`${value.provider} / ${value.model}`).join(', ')||t('workspace.unknown'),p1:plan.calls??'—',p2:t(({draft:'m_e9d875d4120b',prose:'m_9c685577453c',plan:'m_3146141c9367',brief:'m_5a2ec5eaf0a1'})[run.request.editor_source_head||({brief:'plan',draft:'brief',memory:'prose'})[run.request.stage]]||'workspace.unknown')}));status.append(summary)}for(const message of [...new Set([run.error,run.warning].filter(Boolean))]){const e=document.createElement('p');e.className='run-detail';uiText(e,"textContent",()=>(diagnostic(message)));status.append(e)}uiText(elapsed,"textContent",()=>(terminal.has(run.state)?'':elapsed.textContent));status.append(elapsed);applyExpanded(run);updateControls();if(run.state==='failed')showViolations(run);if(terminal.has(run.state))loadPending()}
 // Короткий запуск зі списку: лише стан для кнопок зупинки/паузи; план, помилка й слухачі `workspace-run-state` чекають повного запуску.
