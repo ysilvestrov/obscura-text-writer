@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import {pathToFileURL} from 'node:url';
+const root=process.argv[2];
+const {externalOriginLabel}=await import(pathToFileURL(root+'/src/storygen/web/static/external-origin.js'));
+const {setLocale}=await import(pathToFileURL(root+'/src/storygen/web/static/i18n.js'));
+assert.equal(externalOriginLabel(null),'');
+assert.equal(externalOriginLabel({id:'v'}),'');
+assert.equal(externalOriginLabel({external_origin:null}),'');
+assert.equal(externalOriginLabel({external_origin:{client:'Claude Code',model:null}}),'Зовнішній клієнт: Claude Code');
+assert.equal(externalOriginLabel({external_origin:{client:'Codex',model:'gpt <b>&'}}),'Зовнішній клієнт: Codex · gpt <b>&');
+await setLocale('en');
+assert.equal(externalOriginLabel({external_origin:{client:'Claude Code'}}),'External client: Claude Code');
+assert.equal(externalOriginLabel({external_origin:{client:'Codex',model:'sonnet'}}),'External client: Codex · sonnet');

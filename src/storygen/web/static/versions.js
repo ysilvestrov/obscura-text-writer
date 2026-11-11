@@ -1,3 +1,4 @@
+import {externalOriginLabel} from './external-origin.js';
 import {confirmDialog} from './dialogs.js';
 import {live,t,msg,labelEntries,getLocale,uiText,uiAttr,uiHTML,diagnostic} from './i18n.js';
 import {acceptanceReason,openAcceptance,closeAcceptancePreview} from './acceptance.js';
@@ -68,7 +69,7 @@ async function render(){
   const panel=document.querySelector('#version-panel');panel.replaceChildren();
   const title=document.createElement('h3');uiText(title,"textContent",()=>(t("m_ffb1638b3e7d")));panel.append(title);
   const list=document.createElement('select');list.id='history-version';uiAttr(list,'aria-label',()=>(t("m_f96dd4fff344")));
-  for(const ref of [...versions].reverse()){const opt=document.createElement('option');opt.value=ref.id;uiText(opt,"textContent",()=>(`${ref.kind} · ${ref.created_at.slice(0,19)}${ref.stale?t("m_e9ed25b34a92"):''}${data.acceptances?.some(a=>a.version_id===ref.id)?t("m_96a5e12eeb4f"):''}`));list.append(opt)}
+  for(const ref of [...versions].reverse()){const opt=document.createElement('option');opt.value=ref.id;uiText(opt,"textContent",()=>(`${ref.kind} · ${ref.created_at.slice(0,19)}${ref.stale?t("m_e9ed25b34a92"):''}${data.acceptances?.some(a=>a.version_id===ref.id)?t("m_96a5e12eeb4f"):''}${externalOriginLabel(ref)?' · '+externalOriginLabel(ref):''}`));list.append(opt)}
   const ghostStats=document.createElement('p');ghostStats.className='muted history-ghost-stats';
   panel.append(list,ghostStats);
   const historyActions=[];

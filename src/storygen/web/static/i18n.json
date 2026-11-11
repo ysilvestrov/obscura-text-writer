@@ -2233,7 +2233,9 @@
     "workspace.revision_return": "← До твору",
     "workspace.revision_pending": "Матеріали для перегляду: {p0}",
     "workspace.scene_section": "Налаштування сцени",
-    "workspace.evaluation_section": "Оцінювання сцени"
+    "workspace.evaluation_section": "Оцінювання сцени",
+    "version.external_client": "Зовнішній клієнт: {p0}",
+    "version.external_client_model": "Зовнішній клієнт: {p0} · {p1}"
   },
   "en": {
     "ui.save": "Save",
@@ -4469,6 +4471,8 @@
     "workspace.revision_return": "← Back to the story",
     "workspace.revision_pending": "Materials to review: {p0}",
     "workspace.scene_section": "Scene settings",
-    "workspace.evaluation_section": "Scene evaluation"
+    "workspace.evaluation_section": "Scene evaluation",
+    "version.external_client": "External client: {p0}",
+    "version.external_client_model": "External client: {p0} · {p1}"
   }
 }
