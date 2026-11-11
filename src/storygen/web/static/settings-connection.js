@@ -1,4 +1,5 @@
 import {mountModelCatalog} from './model-catalog.js';
+import {mountProviderKey} from './provider-key.js';
 import {t,msg,labelEntries,getLocale,uiText,uiAttr,uiHTML,diagnostic} from './i18n.js';
 export const providerEndpoints={local:'http://localhost:1235/v1',openrouter:'https://openrouter.ai/api/v1',venice:'https://api.venice.ai/api/v1',codex_cli:'http://localhost:1235/v1'};
 export function readConnection(original,values,kind='role'){
@@ -18,6 +19,9 @@ export function mountConnection(host,{value,kind='role',prefix='',onChange=()=>{
   host.append(group);
   const field=name=>group.querySelector(`[name="${prefix+name}"]`),names=['provider','model','base_url','timeout','key_env','response_mode','local_disable_thinking','venice_disable_thinking','venice_include_system_prompt',...(kind==='role'?['venice_reasoning_effort']:[])];
   const discover=document.createElement('button'),list=document.createElement('datalist'),status=document.createElement('p');
+  // SECURITY-002: the key block sits outside the collapsed connection details so that it can be found without opening them.
+  const keyHost=document.createElement('div');group.querySelector('.settings-fields').after(keyHost);
+  const keyBlock=mountProviderKey(keyHost,{nameField:field('key_env'),providerField:field('provider'),i18n:{t,uiText,diagnostic},request:async(url,options)=>(await import('./api.js')).api(url,options)});
   discover.type='button';discover.className='secondary';uiText(discover,"textContent",()=>(t("m_bb570a85efbc")));list.id=prefix+'connection-models';field('model').setAttribute('list',list.id);field('model').parentElement.append(list,discover);status.className='settings-hint';status.setAttribute('role','status');group.append(status);
   const catalog=mountModelCatalog({list,modelInput:field('model'),providerInput:field('provider'),baseUrlInput:field('base_url')});
   discover.onclick=async()=>{
@@ -29,7 +33,7 @@ export function mountConnection(host,{value,kind='role',prefix='',onChange=()=>{
     }catch(error){uiText(status,"textContent",()=>(diagnostic(error.message)))}finally{discover.disabled=false}
   };
   function update(){const provider=field('provider').value;group.querySelector('.connection-venice').hidden=provider!=='venice';group.querySelector('.connection-local').hidden=provider!=='local';field('model').required=provider!=='codex_cli';field('base_url').readOnly=provider!=='local';field('key_env').parentElement.hidden=provider==='codex_cli';discover.hidden=provider==='codex_cli';if(kind==='role'){field('venice_reasoning_effort').disabled=field('venice_disable_thinking').checked;if(field('venice_disable_thinking').checked)field('venice_reasoning_effort').value=''}}
-  function write(next){catalog.clear();original=structuredClone(next);const values={...next,timeout:next[kind==='evaluator'?'timeout_seconds':'timeout'],key_env:next[kind==='evaluator'?'api_key_env':'key_env']};for(const name of names){const el=field(name);if(el.type==='checkbox')el.checked=!!values[name];else el.value=values[name]??(name==='base_url'?providerEndpoints[next.provider]:'')}update()}
+  function write(next){catalog.clear();original=structuredClone(next);const values={...next,timeout:next[kind==='evaluator'?'timeout_seconds':'timeout'],key_env:next[kind==='evaluator'?'api_key_env':'key_env']};for(const name of names){const el=field(name);if(el.type==='checkbox')el.checked=!!values[name];else el.value=values[name]??(name==='base_url'?providerEndpoints[next.provider]:'')}update();keyBlock.refresh()}
   field('provider').addEventListener('change',()=>{const p=field('provider').value;field('base_url').value=providerEndpoints[p];field('timeout').value=p==='local'?3600:180;field('key_env').value=p==='venice'?'VENICE_API_KEY':'OPENROUTER_API_KEY';list.replaceChildren();update();onChange()});
   group.addEventListener('input',()=>{update();onChange()});group.addEventListener('change',()=>{update();onChange()});write(value);
   return {group,read:()=>readConnection(original,Object.fromEntries(names.map(n=>[n,field(n).type==='checkbox'?field(n).checked:field(n).value])),kind),write,update};
