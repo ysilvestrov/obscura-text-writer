@@ -6,6 +6,7 @@ import {mountClassification} from './classification-settings.js';
 import {groupRoleFields} from './settings-role-layout.js';
 import {mountHorizonControls} from './horizon-controls.js';
 import {mountModelCatalog} from './model-catalog.js';
+import {mountProviderKey} from './provider-key.js';
 const root=document.querySelector('[data-story-id]'),id=root.dataset.storyId;
 const names={get planner(){return t("m_38c94c25c4af")},get writer(){return t("m_75515c07207a")},get editor(){return t("m_19e99ed8f039")},get memory(){return t("m_aa1cfb48cc30")}};
 const defaults={provider:{provider:'local',base_url:'http://localhost:1235/v1',model:'',timeout:3600,key_env:'OPENROUTER_API_KEY',include_usage:false,response_mode:'prompt_json'},context_tokens:8192,max_output_tokens:2048,max_input_chars:80000,temperature:0.7,prompt_version_id:null,prepare_prompt_version_id:null};
@@ -63,7 +64,7 @@ async function load(onlyRole=null){
     upgradeInput.onchange=updateContract;
     form.elements.prompt_text.addEventListener('input',updateContract);updateContract();
     if(role==='planner'){const prepareAssignment=document.createElement('label');const input=document.createElement('input');input.type='checkbox';input.name='confirm_prepare_prompt_contract';prepareAssignment.append(input,caption("m_083894cf6717"));form.elements.prepare_prompt_text.parentElement.after(prepareAssignment)}
-    form.applyProvider=value=>{config.provider=structuredClone(value);for(const key of ['provider','base_url','model','timeout','key_env','response_mode'])form.elements[key].value=value[key];for(const key of ['include_usage','local_disable_thinking','venice_include_system_prompt','venice_disable_thinking'])form.elements[key].checked=value[key]||false;form.elements.venice_reasoning_effort.value=value.venice_reasoning_effort||'';updateEffort();vendorVisibility();catalog.clear()};
+    form.applyProvider=value=>{config.provider=structuredClone(value);for(const key of ['provider','base_url','model','timeout','key_env','response_mode'])form.elements[key].value=value[key];for(const key of ['include_usage','local_disable_thinking','venice_include_system_prompt','venice_disable_thinking'])form.elements[key].checked=value[key]||false;form.elements.venice_reasoning_effort.value=value.venice_reasoning_effort||'';updateEffort();vendorVisibility();catalog.clear();form.providerKey?.refresh()};
     if(role==='editor'){
       const updateReview=()=>{const manual=form.elements.edit_mode.value==='diff';form.elements.edit_review.disabled=manual;form.elements.edit_review.closest('label').hidden=form.elements.edit_mode.value!=='patches';if(manual)form.elements.edit_review.value='review'};
       const previous=form.elements.edit_mode.onchange;form.elements.edit_mode.onchange=()=>{previous?.();updateReview()};updateReview();
@@ -107,6 +108,10 @@ async function load(onlyRole=null){
     form.addEventListener('settings-reset',()=>{vendorVisibility();updateEffort();horizonControls.update();updateContract()});
     form.addEventListener('settings-unlocked',()=>{vendorVisibility();updateEffort();horizonControls.update()});
     groupRoleFields(form,role);
+    // SECURITY-002: the key block sits right under the main fields, outside the collapsed details.
+    const keyHost=document.createElement('div');form.querySelector(':scope > .settings-fields').after(keyHost);
+    form.providerKey=mountProviderKey(keyHost,{nameField:form.elements.key_env,providerField:form.elements.provider,i18n:{t,uiText,diagnostic},request:api});
+    form.providerKey.refresh();form.addEventListener('settings-reset',()=>form.providerKey.refresh());
     horizonControls.update();
     const previous=target.querySelector(`[data-role="${role}"]`);if(previous)previous.replaceWith(form);else target.append(form);registerSettingsForm(role,{form,label:name,section:'models',reset:()=>load(role)});
   }
