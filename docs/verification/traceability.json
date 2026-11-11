@@ -1042,7 +1042,10 @@
         "tests/providers/test_secret_consumers.py::test_no_direct_environment_reads_of_keys_remain",
         "tests/providers/test_secrets.py::test_invalid_names_are_rejected_for_writes",
         "tests/providers/test_secrets.py::test_blank_value_is_rejected",
-        "tests/providers/test_secrets.py::test_store_that_raises_on_write_reports_unavailable"
+        "tests/providers/test_secrets.py::test_store_that_raises_on_write_reports_unavailable",
+        "tests/providers/test_secret_consumers.py::test_key_replaced_during_a_request_is_still_redacted",
+        "tests/providers/test_secrets.py::test_value_length_boundary_is_checked_after_trimming",
+        "tests/web/test_provider_keys.py::test_length_boundary_through_the_route"
       ]
     },
     {
@@ -1052,7 +1055,8 @@
       "tests": [
         "tests/providers/test_secrets.py::test_environment_wins_over_store",
         "tests/providers/test_secrets.py::test_empty_environment_value_counts_as_missing",
-        "tests/providers/test_secret_consumers.py::test_environment_key_still_wins_for_the_client"
+        "tests/providers/test_secret_consumers.py::test_environment_key_still_wins_for_the_client",
+        "tests/providers/test_secrets.py::test_whitespace_only_environment_value_counts_as_missing"
       ]
     },
     {
@@ -1064,7 +1068,10 @@
         "tests/providers/test_secrets.py::test_store_that_raises_on_read_is_treated_as_missing",
         "tests/providers/test_secrets.py::test_default_backend_is_unavailable_with_the_fail_keyring",
         "tests/providers/test_secret_consumers.py::test_client_without_any_key_keeps_the_configuration_error",
-        "tests/web/test_provider_keys.py::test_unavailable_store_is_reported_and_refuses_writes"
+        "tests/web/test_provider_keys.py::test_unavailable_store_is_reported_and_refuses_writes",
+        "tests/providers/test_secrets.py::test_store_that_raises_on_read_is_reported_unavailable",
+        "tests/providers/test_secrets.py::test_store_state_of_a_working_store",
+        "tests/web/test_provider_keys.py::test_store_that_throws_is_reported_unavailable"
       ]
     },
     {
@@ -1078,7 +1085,7 @@
       ],
       "manual": {
         "procedure": "docs/verification/manual.md#provider-key-store",
-        "reason": "check_docs.py індексує лише pytest; п’ять Playwright cases provider-key.spec.mjs перелічено в процедурі й виконуються окремим runner, а перевірка зі справжнім сховищем Windows — ручна; цей зв’язок не є доказом виконання."
+        "reason": "check_docs.py індексує лише pytest; сім Playwright cases provider-key.spec.mjs перелічено в процедурі й виконуються окремим runner, а перевірка зі справжнім сховищем Windows — ручна; цей зв’язок не є доказом виконання."
       }
     },
     {

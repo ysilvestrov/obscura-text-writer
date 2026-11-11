@@ -11,7 +11,8 @@ SERVICE = 'Obscura'
 _NAME = re.compile(r'[A-Z][A-Z0-9_]{2,63}')
 _UNSET = object()
 _backend = _UNSET
-MAX_VALUE = 4096
+# A Windows credential blob holds 2560 bytes (1280 UTF-16 characters); real provider keys are far shorter.
+MAX_VALUE = 1024
 
 
 class SecretStoreUnavailable(ValueError):
@@ -68,6 +69,22 @@ def store_available() -> bool:
     return _store() is not None
 
 
+def store_state(name) -> tuple[bool, bool]:
+    """(a key for this name is stored, the store answered): a store that fails on reading is not available."""
+    store = _store()
+    if store is None or not valid_name(name):
+        return False, store is not None
+    try:
+        return bool(store.get(name)), True
+    except Exception:
+        return False, False
+
+
+def _environment(name):
+    # An empty or whitespace-only variable is not a key.
+    return (os.environ.get(name) or '').strip() or None
+
+
 def valid_name(name) -> bool:
     return isinstance(name, str) and _NAME.fullmatch(name) is not None
 
@@ -86,11 +103,11 @@ def _from_store(name):
 def resolve_key(name) -> str | None:
     if not name:
         return None
-    return os.environ.get(name) or _from_store(name)
+    return _environment(name) or _from_store(name)
 
 
 def key_source(name) -> Literal['env', 'store'] | None:
-    if name and os.environ.get(name):
+    if name and _environment(name):
         return 'env'
     return 'store' if _from_store(name) else None
 

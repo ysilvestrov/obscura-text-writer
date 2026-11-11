@@ -15,7 +15,8 @@ export function mountProviderKey(host,{nameField,providerField,i18n,request}){
   const input=document.createElement('input'),hint=document.createElement('small'),actions=document.createElement('div');
   const save=document.createElement('button'),remove=document.createElement('button');
   block.className='provider-key';status.className='settings-hint provider-key-status';status.setAttribute('role','status');
-  input.type='password';input.autocomplete='off';input.spellcheck=false;input.className='provider-key-input';
+  // new-password: browsers ignore autocomplete=off on password fields and would offer to save or fill the key.
+  input.type='password';input.autocomplete='new-password';input.spellcheck=false;input.className='provider-key-input';
   uiText(caption,'textContent',()=>t('keys.field.label'));uiText(hint,'textContent',()=>t('keys.field.hint'));
   label.append(caption,input,hint);
   save.type='button';remove.type='button';remove.className='secondary';actions.className='actions';
@@ -23,11 +24,12 @@ export function mountProviderKey(host,{nameField,providerField,i18n,request}){
   actions.append(save,remove);block.append(status,label,actions);host.append(block);
   // Typing a key or pressing these buttons is not a change of the settings form around it.
   for(const type of ['input','change'])block.addEventListener(type,event=>event.stopPropagation());
-  let current=0,state=null;
+  let current=0,state=null,pending=false;
   const url=()=>'/api/provider-keys/'+encodeURIComponent(nameField.value);
   const say=render=>uiText(status,'textContent',render);
   function draw(){
-    const usable=state!==null;
+    // While a write is on its way nothing may start another one: the older request could land last.
+    const usable=state!==null&&!pending;
     save.disabled=!usable||!state.store_available||!input.value.trim();
     remove.disabled=!usable||!state.stored||!state.store_available;
     input.disabled=!usable||!state.store_available;
@@ -49,14 +51,17 @@ export function mountProviderKey(host,{nameField,providerField,i18n,request}){
     }catch(error){if(ticket===current)say(()=>diagnostic(error.message))}
   }
   async function send(method,body,note){
-    const ticket=++current;save.disabled=remove.disabled=true;
+    if(pending)return;
+    const ticket=++current;pending=true;draw();
     try{
       const next=await request(url(),{method,...(body?{headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}:{})});
       if(ticket===current)show(next,note);
     }catch(error){if(ticket===current){say(()=>diagnostic(error.message));draw()}}
-    finally{input.value='';draw()}
+    finally{pending=false;input.value='';draw()}
   }
   input.addEventListener('input',draw);
+  // Enter in the key field saves the key; it must never submit the settings form around the block.
+  input.addEventListener('keydown',event=>{if(event.key!=='Enter')return;event.preventDefault();event.stopPropagation();if(!save.disabled)save.click()});
   save.onclick=()=>send('PUT',{value:input.value},'keys.saved');
   remove.onclick=()=>send('DELETE',null,'keys.deleted');
   let timer=null;

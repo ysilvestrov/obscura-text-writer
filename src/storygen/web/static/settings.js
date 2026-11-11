@@ -111,7 +111,7 @@ async function load(onlyRole=null){
     // SECURITY-002: the key block sits right under the main fields, outside the collapsed details.
     const keyHost=document.createElement('div');form.querySelector(':scope > .settings-fields').after(keyHost);
     form.providerKey=mountProviderKey(keyHost,{nameField:form.elements.key_env,providerField:form.elements.provider,i18n:{t,uiText,diagnostic},request:api});
-    form.providerKey.refresh();form.addEventListener('settings-reset',()=>form.providerKey.refresh());
+    form.providerKey.refresh();for(const type of ['settings-reset','settings-unlocked'])form.addEventListener(type,()=>form.providerKey.refresh());
     horizonControls.update();
     const previous=target.querySelector(`[data-role="${role}"]`);if(previous)previous.replaceWith(form);else target.append(form);registerSettingsForm(role,{form,label:name,section:'models',reset:()=>load(role)});
   }

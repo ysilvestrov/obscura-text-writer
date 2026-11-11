@@ -55,6 +55,28 @@ def test_stored_key_is_redacted_from_provider_errors(secret_store):
     with httpx.Client(transport=httpx.MockTransport(lambda _: reply)) as client:
         event = list(build_generation_gateway(ctx.settings.provider, client).stream(ctx, threading.Event()))[-1]
     assert event.type == 'error' and STORED not in event.message and STORED not in str(event.failure)
+    # The assertions above must come from the redaction of this very HTTP 400, not from an unrelated failure.
+    assert (event.failure['category'], event.failure['http_status'], event.failure['provider_code']) == ('provider_error', 400, 'invalid_parameter')
+    assert event.failure['provider_message'] == 'bad key [ключ приховано]'
+
+
+def test_key_replaced_during_a_request_is_still_redacted(secret_store, accounted_call):
+    # The credential the request was sent with is the one to hide, even if the store changed before the error came back.
+    secret_store.set('OPENROUTER_API_KEY', STORED)
+    settings = RoleSettings(provider=ProviderSettings(provider='openrouter', model='test'), max_output_tokens=1000, context_tokens=8192)
+    ctx = ContextBundle(story_id='s', scene_id='c', stage='draft', scene_revision=0, story_revision=0, settings=settings,
+                        system_text='system', user_text='user text', input_refs=[], fingerprint='f', estimated_tokens=10)
+
+    def handler(request):
+        if request.method == 'GET':
+            return httpx.Response(200, json={'data': [{'id': 'test', 'object': 'model', 'context_length': 200000}]})
+        secret_store.delete('OPENROUTER_API_KEY')
+        return httpx.Response(400, json={'error': {'code': 'invalid_parameter', 'message': f'bad key {STORED}'}})
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        event = list(build_generation_gateway(ctx.settings.provider, client, accounted_call('openrouter', 'test')).stream(ctx, threading.Event()))[-1]
+    assert event.type == 'error' and event.failure.get('http_status') == 400, event
+    assert STORED not in event.message and STORED not in str(event.failure)
+    assert event.failure['provider_message'] == 'bad key [ключ приховано]'
 
 
 def test_no_direct_environment_reads_of_keys_remain():

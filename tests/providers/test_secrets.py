@@ -132,3 +132,36 @@ def test_default_backend_is_unavailable_with_the_fail_keyring():
         assert secrets.default_backend() is None
     finally:
         keyring.set_keyring(previous)
+
+
+def test_store_that_raises_on_read_is_reported_unavailable(secret_store, monkeypatch):
+    def boom(name):
+        raise RuntimeError('locked profile')
+    monkeypatch.setattr(secret_store, 'get', boom)
+    assert secrets.store_state('VENICE_API_KEY') == (False, False)
+
+
+def test_store_state_of_a_working_store(secret_store):
+    assert secrets.store_state('VENICE_API_KEY') == (False, True)
+    secret_store.set('VENICE_API_KEY', 'v')
+    assert secrets.store_state('VENICE_API_KEY') == (True, True)
+    set_backend(None)
+    assert secrets.store_state('VENICE_API_KEY') == (False, False)
+
+
+def test_whitespace_only_environment_value_counts_as_missing(secret_store, monkeypatch):
+    monkeypatch.setenv('VENICE_API_KEY', ' \t ')
+    secret_store.set('VENICE_API_KEY', 'from-store')
+    assert (resolve_key('VENICE_API_KEY'), key_source('VENICE_API_KEY')) == ('from-store', 'store')
+    secret_store.delete('VENICE_API_KEY')
+    assert resolve_key('VENICE_API_KEY') is None and key_source('VENICE_API_KEY') is None
+
+
+def test_value_length_boundary_is_checked_after_trimming(secret_store):
+    # The Windows credential blob holds 2560 bytes (1280 UTF-16 characters); the limit stays well inside it.
+    assert secrets.MAX_VALUE == 1024
+    store_key('VENICE_API_KEY', '  ' + 'k' * 1024 + '\n')
+    assert secret_store.get('VENICE_API_KEY') == 'k' * 1024
+    with pytest.raises(ValueError, match='Ключ задовгий'):
+        store_key('OPENROUTER_API_KEY', 'k' * 1025)
+    assert secret_store.get('OPENROUTER_API_KEY') is None

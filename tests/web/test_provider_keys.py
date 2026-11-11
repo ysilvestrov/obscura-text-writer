@@ -88,3 +88,17 @@ def test_unavailable_store_is_reported_and_refuses_writes(client):
     assert response.json()['detail'] == 'Некоректні дані: Сховище ключів недоступне на цьому комп’ютері. Задайте ключ змінною середовища.'
     english = client.put(URL, json={'value': VALUE}, headers={'accept-language': 'en'}).json()['detail']
     assert english == 'Invalid data: The key store is unavailable on this computer. Set the key in an environment variable.'
+
+
+def test_store_that_throws_is_reported_unavailable(client, secret_store, monkeypatch):
+    def boom(name):
+        raise RuntimeError('locked profile')
+    monkeypatch.setattr(secret_store, 'get', boom)
+    assert client.get(URL).json() == state(None, False, available=False)
+
+
+def test_length_boundary_through_the_route(client, secret_store):
+    assert client.put(URL, json={'value': ' ' + 'k' * 1024 + ' '}).status_code == 200
+    too_long = client.put('/api/provider-keys/VENICE_API_KEY', json={'value': 'k' * 1025})
+    assert too_long.status_code == 400 and too_long.json()['detail'] == 'Некоректні дані: Ключ задовгий'
+    assert secret_store.items == {NAME: 'k' * 1024}

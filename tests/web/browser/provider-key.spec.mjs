@@ -98,3 +98,41 @@ test('evaluator connection has the same key block',async({page,request})=>{
   await section.locator('[name$="provider"]').first().selectOption('venice');
   await expect(section.locator('.provider-key-status').first()).toHaveText('Ключ не задано.');
 });
+
+test('Enter in the key field saves the key and never submits the settings form',async({page,request})=>{
+  const {form,block,status}=await openRole(page,request);
+  await form.locator('[name="provider"]').selectOption('openrouter');
+  await expect(status).toHaveText('Ключ не задано.');
+  const settingsWrites=[];
+  page.on('request',r=>{if(r.method()==='PUT'&&r.url().includes('/settings'))settingsWrites.push(r.url())});
+  const input=block.locator('.provider-key-input');
+  await expect(input).toHaveAttribute('autocomplete','new-password');
+  await input.fill(VALUE);
+  const saved=page.waitForResponse(r=>r.url().includes('/api/provider-keys/OPENROUTER_API_KEY')&&r.request().method()==='PUT');
+  await input.press('Enter');
+  expect((await saved).ok()).toBe(true);
+  await expect(status).toHaveText('Ключ збережено. Ключ збережено у сховищі Windows.');
+  await expect(input).toHaveValue('');
+  expect(settingsWrites).toEqual([]);
+});
+
+test('a second write cannot start while the first one is on its way',async({page,request})=>{
+  const {form,block,status}=await openRole(page,request);
+  await form.locator('[name="provider"]').selectOption('openrouter');
+  await expect(status).toHaveText('Ключ не задано.');
+  let release;const held=new Promise(resolve=>{release=resolve});const writes=[];
+  await page.route('**/api/provider-keys/OPENROUTER_API_KEY',async route=>{
+    if(route.request().method()!=='PUT')return route.continue();
+    writes.push(route.request().postDataJSON().value);await held;await route.continue();
+  });
+  const input=block.locator('.provider-key-input'),save=block.locator('button',{hasText:'Зберегти ключ'});
+  await input.fill('first-synthetic-key');
+  await save.click();
+  await expect(save).toBeDisabled();
+  await expect(input).toBeDisabled();
+  await expect(block.locator('button',{hasText:'Видалити збережений ключ'})).toBeDisabled();
+  release();
+  await expect(status).toHaveText('Ключ збережено. Ключ збережено у сховищі Windows.');
+  expect(writes).toEqual(['first-synthetic-key']);
+  await expect(input).toBeEnabled();
+});

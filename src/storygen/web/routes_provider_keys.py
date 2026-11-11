@@ -10,12 +10,13 @@ router=APIRouter()
 
 class KeyValue(DomainModel):
     # Longer than the stored limit so that surrounding whitespace of a pasted key does not fail the request shape.
-    value: str = Field(min_length=1,max_length=secrets.MAX_VALUE+64)
+    value: str = Field(min_length=1,max_length=secrets.MAX_VALUE+4096)
 
 
 def _state(name: str) -> dict:
     if not secrets.valid_name(name):raise ValueError('Некоректна назва ключа')
-    return {'name':name,'source':secrets.key_source(name),'stored':secrets.stored(name),'store_available':secrets.store_available()}
+    stored,available=secrets.store_state(name)
+    return {'name':name,'source':secrets.key_source(name),'stored':stored,'store_available':available}
 
 
 @router.get('/api/provider-keys/{name}')
