@@ -1561,3 +1561,10 @@ Playwright `memory-kind.spec.mjs` і `core-review.spec.mjs` пройшли вр�
 - Документація: `docs/prototype-runbook.md`, `docs/en/editor-workflow.md`, `docs/visual-editor.md`, `docs/impact-review.md`, `docs/sequential-review.md` (UA/EN), `docs/local-models.md`, `docs/publication-card.md`; знімки `docs/images/workspace-{menu,revision}-{desktop,mobile}.png`.
 
 Рішення в межах плану — у рядках `Ruling:` журналу SDD, перенесених в опис PR.
+
+## 11.11.2026 — Сайт інструкцій: ядро (#29, R-25, PR 1; план `docs/superpowers/plans/2026-11/2026-11-11-docs-site-core.md`)
+
+- `scripts/build_site.py` на markdown-it-py: українські сторінки в корені, англійські в `en/`, перемикач мови, переписування `<slug>.md#якір` → `.html#якір`, `id` заголовків із кирилицею, відносні шляхи, детермінований вихід.
+- `scripts/check_site.py` (з `check_docs.py`): пари мов, SHA-256 обох версій у `docs/site/sync.json` (`--rehash <slug>`; CRLF зводиться до LF), посилання/якорі/зображення/alt, заборона внутрішніх матеріалів.
+- `.github/workflows/site.yml`: PR — збірка й перевірка; push у `main` — публікація з `concurrency: pages` і `curl --fail`.
+- Сторінки «Про Obscura», «Встановлення й запуск», «Перший твір» UA/EN; SPEC DOCS-SITE S01–S06; ручна процедура `manual.md#docs-site-publish`; правило в AGENTS.md; посилання в README.

@@ -106,6 +106,7 @@ def rehash(root,slug):
 
 
 def main(argv=None):
+    if hasattr(sys.stdout,'reconfigure'):sys.stdout.reconfigure(encoding='utf-8')  # Windows consoles default to a legacy code page
     parser=argparse.ArgumentParser(description='Перевірити джерела сайту інструкцій.')
     parser.add_argument('--rehash',metavar='SLUG',help='записати хеші обох мовних версій після перевірки перекладу')
     args=parser.parse_args(argv)

@@ -96,6 +96,7 @@ def build(root=ROOT,out=None):
 
 
 def main(argv=None):
+    if hasattr(sys.stdout,'reconfigure'):sys.stdout.reconfigure(encoding='utf-8')  # Windows consoles default to a legacy code page
     parser=argparse.ArgumentParser(description='Зібрати сайт інструкцій із docs/site.')
     parser.add_argument('--out',default='_site')
     args=parser.parse_args(argv)
