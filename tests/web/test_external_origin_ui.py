@@ -28,7 +28,8 @@ def test_history_and_status_row_show_the_label():
     editor = (STATIC / 'editor.js').read_text(encoding='utf-8')
     versions = (STATIC / 'versions.js').read_text(encoding='utf-8')
     assert "from './external-origin.js'" in editor and "from './external-origin.js'" in versions
-    assert re.search(r"function renderOrigin\(ref\)\{const node=document\.querySelector\('#workspace-origin'\).*externalOriginLabel\(ref\)", editor)
+    # Rendering itself is exercised in external_origin.mjs; here only that the editor routes every buffer change to it.
+    assert "function renderOrigin(ref){renderOriginInto(document.querySelector('#workspace-origin'),ref)}" in editor
     load = editor[editor.index('export function loadBuffer('):].split('\n}', 1)[0]
     assert 'renderOrigin(ref)' in load
     # An author save replaces the version in the buffer: the label follows the saved version, not the one loaded.

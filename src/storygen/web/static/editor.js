@@ -1,4 +1,4 @@
-import {externalOriginLabel} from './external-origin.js';
+import {renderOriginInto} from './external-origin.js';
 import {confirmDialog,promptDialog} from './dialogs.js';
 import {live,t,msg,labelEntries,getLocale,uiText,uiAttr,uiHTML} from './i18n.js';
 import {api,json,notice} from './api.js';
@@ -34,7 +34,7 @@ export function displaySceneTitle(title){
 }
 
 // MCP-BRIDGE: the status row names the external client of the version in the buffer; an author save replaces the ref.
-function renderOrigin(ref){const node=document.querySelector('#workspace-origin');if(node){node.hidden=!externalOriginLabel(ref);uiText(node,'textContent',()=>externalOriginLabel(ref))}}
+function renderOrigin(ref){renderOriginInto(document.querySelector('#workspace-origin'),ref)}
 export function loadBuffer(scene,mode,text,origin='current',ref=null){
   textEditor.write(text,{material:mode,content_format:ref?.content_format||'plain',version_id:ref?.id,source_ref:ref});
   state.scene=scene;state.mode=mode;state.dirty=false;state.bufferEpoch++;

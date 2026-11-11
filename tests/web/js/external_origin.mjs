@@ -11,3 +11,20 @@ assert.equal(externalOriginLabel({external_origin:{client:'Codex',model:'gpt <b>
 await setLocale('en');
 assert.equal(externalOriginLabel({external_origin:{client:'Claude Code'}}),'External client: Claude Code');
 assert.equal(externalOriginLabel({external_origin:{client:'Codex',model:'sonnet'}}),'External client: Codex · sonnet');
+// Rendering into the status-row node: shown for an external version, hidden otherwise, relabelled on a locale switch.
+const {renderOriginInto}=await import(pathToFileURL(root+'/src/storygen/web/static/external-origin.js'));
+await setLocale('uk');
+const node={hidden:true,textContent:''};
+renderOriginInto(node,{external_origin:{client:'Codex',model:'sonnet'}});
+assert.deepEqual([node.hidden,node.textContent],[false,'Зовнішній клієнт: Codex · sonnet']);
+await setLocale('en');
+assert.deepEqual([node.hidden,node.textContent],[false,'External client: Codex · sonnet']);
+renderOriginInto(node,{id:'author-save'});
+assert.deepEqual([node.hidden,node.textContent],[true,'']);
+await setLocale('uk');
+assert.equal(node.textContent,'');
+renderOriginInto(node,{external_origin:{client:'Claude Code'}});
+assert.deepEqual([node.hidden,node.textContent],[false,'Зовнішній клієнт: Claude Code']);
+renderOriginInto(node,null);
+assert.deepEqual([node.hidden,node.textContent],[true,'']);
+renderOriginInto(null,{external_origin:{client:'Codex'}});
