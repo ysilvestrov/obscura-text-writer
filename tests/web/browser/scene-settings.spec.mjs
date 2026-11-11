@@ -4,7 +4,7 @@ test.use({locale:'uk-UA'});
 const view=async(request,id)=>(await request.get(`/api/stories/${id}`)).json();
 // The scene panel lives in a collapsed details block on both layouts; opening it is not layout specific.
 const openPanel=async page=>{
-  await page.locator('.workspace-context').evaluate(details=>{details.open=true});
+  await page.locator('.tool-section[data-section=scene]').evaluate(details=>{details.open=true});
   await expect(page.locator('#scene-settings')).toBeVisible();
 };
 const selectScene=async(page,index)=>{

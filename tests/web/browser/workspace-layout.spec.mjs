@@ -52,6 +52,7 @@ test('scene sections reopen after reload and leave unsaved text alone',async({pa
   await expect(scene).not.toHaveAttribute('open','');
   await expect(page.locator('#evaluation-section')).toBeHidden(); // no evaluator configured in the fixture
   await expect(page.locator('#story-menu-evaluate')).toBeHidden();
+  await expect(page.locator('.ProseMirror')).toHaveAttribute('contenteditable','true');
   await page.locator('.ProseMirror').fill('Незбережений рядок.');
   await expect(page.locator('#save-text')).toBeEnabled();
   await scene.locator('summary').click();
@@ -72,4 +73,17 @@ test('sections work when storage throws',async({page,request})=>{
   await expect(scene).not.toHaveAttribute('open','');
   await scene.locator('summary').click();await expect(scene).toHaveAttribute('open','');
   expect(errors.filter(message=>/tool-section|SECTIONS|denied/.test(message))).toEqual([]);
+});
+
+// #89 documentation screenshots (neutral synthetic fixture): the workspace with the story menu open, and the book revision page.
+test('workspace screenshots for the user guide',async({page,request})=>{
+  const f=await(await request.post('/test-impact?changes=true')).json(),name=test.info().project.name;
+  await page.goto(`/stories/${f.story_id}?scene=${f.scene_id}&material=prose`);
+  await expect(page.locator('#workspace-scene-status')).not.toBeEmpty();
+  await page.locator('#story-menu-toggle').click();await expect(page.locator('#story-menu')).toBeVisible();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBeTruthy();
+  await page.screenshot({path:`docs/images/workspace-menu-${name}.png`});
+  await page.locator('#story-menu-revision').click();await expect(page.locator('#impact-preview')).toBeVisible();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBeTruthy();
+  await page.screenshot({path:`docs/images/workspace-revision-${name}.png`});
 });

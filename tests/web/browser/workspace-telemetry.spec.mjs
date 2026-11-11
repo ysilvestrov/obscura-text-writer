@@ -24,6 +24,7 @@ test('legacy run with no saved plan is explicitly unknown',async({page,request})
   await page.route(`**/api/runs/${id}`,async route=>{const response=await route.fetch(),data=await response.json();data.run.planned_telemetry=null;await route.fulfill({response,json:data})});
   await page.goto(`/stories/${fixture.story_id}?scene=${fixture.scene_id}&material=draft`);
   await expect(page.locator('#run-status')).toContainText(/невідомо|unknown/i);
+  await page.unrouteAll({behavior:'ignoreErrors'});
 });
 
 test('sidebar retains the planned model after reload',async({page,request})=>{

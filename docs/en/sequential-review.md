@@ -4,7 +4,7 @@
 
 Older briefs and prose without a saved historical baseline use **Current premises**: current plans, canon, character descriptions, the scene brief for prose, and earlier scenes. The preview and report explicitly state that no before-and-after comparison was performed. Original history is preserved. A complete clean search or your decision makes the material current for these premises; later source changes require review again. Corrupt sources and invalid memory remain blockers.
 
-Open **Book revision → Check impact** on the story page. The preview shows the planner and an approximate initial search call count. Later scenes are planned after earlier scenes finish. Memory updates may require additional calls. For paid roles, enter a session spending limit; the story budget also applies. Opening a page or settings never starts a model call.
+Open **☰ Story actions → Book revision → Check impact** on the story page. While the session waits for your decision, its card is also shown in the editor status row, so you can edit the scene next to the decisions. The preview shows the planner and an approximate initial search call count. Later scenes are planned after earlier scenes finish. Memory updates may require additional calls. For paid roles, enter a session spending limit; the story budget also applies. Opening a page or settings never starts a model call.
 
 The session proceeds in scene order. A complete, successful search without concerns automatically marks the scene current. This is a practical model assessment that can miss problems, not a guarantee of literary quality.
 
