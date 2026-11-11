@@ -194,3 +194,30 @@ def test_cancel_during_stream_preserves_partial_without_proposal(tmp_path):
     assert attempt.state=='cancelled' and attempt.usage['completion_tokens']==3
     assert repo.files.read_partial(attempt.partial_path)=='Часткова відповідь'
     assert not suggestions_state(repo,story.id)['proposals']
+
+
+EDITION_LIMIT='Генерацію заблоковано: рейтинг «сексуальний зміст» тут 2, а в цьому виданні Obscura найвищий дозволений рівень — 1. Знизьте рейтинг сцени або твору.'
+
+
+def _force_rating(repo,table,id,values):
+    with repo.db.connection() as db:
+        raw=json.loads(db.execute(f'SELECT payload FROM {table} WHERE id=?',(id,)).fetchone()[0])
+        raw['content_rating']=values
+        db.execute(f'UPDATE {table} SET payload=? WHERE id=?',(json.dumps(raw),id))
+
+
+@pytest.mark.parametrize('table,target',[('stories',lambda repo,story:story.id),
+    ('scenes',lambda repo,story:repo.list_scenes(story.id)[1].id)],ids=['story','scene'])
+def test_store_edition_blocks_publication_suggestions_above_limit(tmp_path,store_edition,table,target):
+    # BUILD-EDITION-001-S03: the proposal is model-written text about the whole story, so the limit applies to it too.
+    repo,story=seeded(tmp_path)
+    _force_rating(repo,table,target(repo,story),{'sexual':2,'violence':0,'themes':0})
+    with pytest.raises(ValueError) as error:
+        build_publication_context(repo,story.id)
+    assert str(error.value)==EDITION_LIMIT
+
+
+def test_full_edition_publication_suggestions_ignore_the_limit(tmp_path):
+    repo,story=seeded(tmp_path)
+    _force_rating(repo,'stories',story.id,{'sexual':2,'violence':0,'themes':0})
+    assert build_publication_context(repo,story.id).stage=='publication_suggest'

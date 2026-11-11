@@ -135,3 +135,12 @@ def rewrite_proposal(rewrite_case):
             yield GenerationEvent(type='terminal',finish_reason='stop')
     attempt=execute_stage(repo,scene.id,'rewrite',build_rewrite_context(repo,request),Gateway(),threading.Event(),lambda _:None)
     return repo,scene,source,notes,attempt
+
+
+@pytest.fixture
+def store_edition(monkeypatch):
+    """Run the test as the Microsoft Store build edition (rating limit: sexual 1)."""
+    from storygen import build_edition
+    edition=build_edition.BuildEdition(edition='store',report_url='https://example.test/report')
+    monkeypatch.setattr(build_edition,'current',lambda:edition)
+    return edition

@@ -18,6 +18,9 @@ from ..generation.worker import RunCoordinator
 
 
 def create_app(settings: AppSettings, *, gateway_factory=None,evaluator_factory=None) -> FastAPI:
+    # BUILD-EDITION-001-S04: an invalid build edition marker stops the start before any data directory is touched.
+    from .. import build_edition
+    build_edition.current()
     @asynccontextmanager
     async def lifespan(app):
         app.state.coordinator.start()
@@ -37,7 +40,13 @@ def create_app(settings: AppSettings, *, gateway_factory=None,evaluator_factory=
     @pass_context
     def ui_translate(context, key, **params):
         return translate(key,request_locale(context['request']),**params)
-    app.state.templates.env.globals.update(t=ui_translate,ui_locale=request_locale)
+    def app_links():
+        # BUILD-EDITION-001-S07: read on every render; only non-empty addresses, in a fixed order.
+        from .. import build_edition
+        edition=build_edition.current()
+        pairs=[('app.link.support',edition.support_url),('app.link.waitlist',edition.waitlist_url),('app.link.report',edition.report_url)]
+        return [{'key':key,'url':url} for key,url in pairs if url]
+    app.state.templates.env.globals.update(t=ui_translate,ui_locale=request_locale,app_links=app_links)
     app.mount("/static",StaticFiles(directory=str(root.joinpath("static"))),name="static")
 
     def error_response(request,detail,status_code):
@@ -94,6 +103,8 @@ def create_app(settings: AppSettings, *, gateway_factory=None,evaluator_factory=
     app.include_router(settings_router)
     from .routes_rating import router as rating_router
     app.include_router(rating_router)
+    from .routes_app_info import router as app_info_router
+    app.include_router(app_info_router)
     from .routes_role_profiles import router as role_profiles_router
     app.include_router(role_profiles_router)
     from .routes_characters import router as characters_router

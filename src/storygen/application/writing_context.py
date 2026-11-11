@@ -43,6 +43,11 @@ def context_fingerprint(repo,scene_id: str) -> str:
 
 def writing_context(repo,scene_id: str) -> dict:
     scene,content,fingerprint=_read(repo,scene_id)
+    # BUILD-EDITION-001: these are writing instructions for an external model, so the edition limit applies —
+    # to the rating of this very snapshot, not to a separate read that a concurrent change could outdate.
+    from ..domain import ContentRating
+    from ..rating.guard import enforce_rating_limit
+    enforce_rating_limit(ContentRating(**content['rating']) if content['rating'] else None)
     return {**content,'revision':scene.revision,'context_fingerprint':fingerprint}
 
 

@@ -39,6 +39,11 @@ def save_manual_draft(repo,scene_id: str,text: str,expected_revision: int,conten
     MCP-BRIDGE: a draft with `external_origin` must name the context fingerprint it was written from and always creates a version."""
     if not text.strip():
         raise ValueError('Чернетка не може бути порожньою')
+    if external_origin is not None:
+        # BUILD-EDITION-001: a draft from an external client is model-written; the author's own draft is not checked.
+        from ..rating.guard import enforce_edition_limit
+        target=repo.get_scene(scene_id)
+        enforce_edition_limit(repo.get_story(target.story_id),target)
     if external_origin is not None and expected_context_fingerprint is None:
         raise ValueError('Чернетка із зовнішнього клієнта потребує відбитка контексту')
     if expected_context_fingerprint is not None:

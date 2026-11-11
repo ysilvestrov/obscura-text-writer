@@ -122,3 +122,25 @@ def test_story_level_change_after_reading_context_is_rejected(tmp_path, endpoint
     stale = save(client, scene.id, context['revision'], context['context_fingerprint'])
     assert stale.status_code == 409 and 'Контекст сцени змінився' in stale.text
     assert 'draft' not in repo.get_scene(scene.id).heads
+
+
+def _force_scene_rating(repo, scene_id, values):
+    import json
+    with repo.db.connection() as db:
+        raw = json.loads(db.execute('SELECT payload FROM scenes WHERE id=?', (scene_id,)).fetchone()[0])
+        raw['content_rating'] = values
+        db.execute('UPDATE scenes SET payload=? WHERE id=?', (json.dumps(raw), scene_id))
+
+
+def test_store_edition_blocks_external_writing_above_limit(tmp_path, store_edition):
+    # BUILD-EDITION-001-S03: an external client writes with a model, so both the instructions and its draft are refused;
+    # the author's own manual draft of the same scene is still saved.
+    client, repo, story, scene = setup(tmp_path)
+    fp = fingerprint(client, scene.id)
+    _force_scene_rating(repo, scene.id, {'sexual': 2, 'violence': 0, 'themes': 0})
+    context = client.get(f'/api/scenes/{scene.id}/writing-context')
+    assert context.status_code == 400 and 'найвищий дозволений рівень — 1' in context.json()['detail']
+    external = save(client, scene.id, scene.revision, fp)
+    assert external.status_code == 400 and 'найвищий дозволений рівень — 1' in external.json()['detail']
+    manual = client.post(f'/api/scenes/{scene.id}/draft', json={'text': 'Анна сама пише чернетку.', 'expected_revision': scene.revision})
+    assert manual.status_code == 200, manual.text
