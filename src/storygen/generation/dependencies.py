@@ -25,10 +25,9 @@ def save_manual_prose(repo,scene_id: str,text: str,expected_revision: int,conten
 
 
 def writing_fingerprint(repo,scene) -> str:
-    """MCP-BRIDGE: SHA-256 of what a draft written outside Obscura rests on: the author-text snapshot of `draft` plus the brief head."""
-    import hashlib,json
-    payload={'snapshot':_manual_snapshot(repo,scene,'draft').model_dump(mode='json'),'brief':scene.heads.get('brief')}
-    return hashlib.sha256(json.dumps(payload,ensure_ascii=False,sort_keys=True,separators=(',',':')).encode('utf-8')).hexdigest()
+    """MCP-BRIDGE: the context fingerprint of `GET /api/scenes/{id}/writing-context` (application.writing_context)."""
+    from ..application.writing_context import context_fingerprint
+    return context_fingerprint(repo,scene.id)
 
 
 CONTEXT_CHANGED='Контекст сцени змінився — прочитайте його знову'

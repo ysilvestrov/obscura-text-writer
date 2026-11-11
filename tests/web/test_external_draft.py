@@ -104,3 +104,21 @@ def test_external_origin_client_name_is_validated(tmp_path):
     client, repo, story, scene = setup(tmp_path)
     response = save(client, scene.id, scene.revision, fingerprint(client, scene.id), origin={'client': '<script>'})
     assert response.status_code == 422
+
+
+@pytest.mark.req('MCP-BRIDGE')
+@pytest.mark.parametrize('change', ['rating', 'language'])
+def test_story_level_change_after_reading_context_is_rejected(tmp_path, change):
+    client, repo, story, scene = setup(tmp_path)
+    context = client.get(f'/api/scenes/{scene.id}/writing-context').json()
+    current = repo.get_story(story.id)
+    if change == 'rating':
+        body = {'content_rating': {'sexual': 2, 'violence': 0, 'themes': 0}, 'expected_revision': current.revision}
+        response = client.put(f'/api/stories/{story.id}/content-rating', json=body)
+    else:
+        response = client.put(f'/api/stories/{story.id}/language', json={'language': 'en', 'expected_revision': current.revision})
+    assert response.status_code == 200, response.text
+    assert repo.get_scene(scene.id).revision == context['revision']
+    stale = save(client, scene.id, context['revision'], context['context_fingerprint'])
+    assert stale.status_code == 409 and 'Контекст сцени змінився' in stale.text
+    assert 'draft' not in repo.get_scene(scene.id).heads

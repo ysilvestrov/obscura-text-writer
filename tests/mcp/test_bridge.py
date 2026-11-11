@@ -156,3 +156,22 @@ def test_save_draft_takes_the_client_name_from_client_info(tmp_path):
     assert 'ctx' not in schema['properties']
     head = repo.get_version(repo.get_scene(scene.id).heads['draft'])
     assert head.external_origin.client == 'Claude Desktop' and head.external_origin.model is None
+
+
+@pytest.mark.req('MCP-BRIDGE')
+@pytest.mark.parametrize('tool,arguments', [
+    ('save_draft', {'scene_id': '../runs/RID/cancel?', 'text': 'x', 'expected_revision': 1, 'context_fingerprint': '0' * 64}),
+    ('import_plan_and_characters', {'story_id': 'ID/impact/preview?', 'plan_markdown': PLAN}),
+    ('get_story', {'story_id': '..'}),
+    ('get_scene_context', {'scene_id': 'a/b'}),
+    ('next_steps', {'scene_id': 'a?b'}),
+])
+def test_identifiers_cannot_reach_other_endpoints(tool, arguments):
+    seen = []
+
+    def record(request):
+        seen.append(request.url.path)
+        return httpx.Response(200, json={})
+    result = call(build_server(httpx.Client(base_url='http://127.0.0.1:8765', transport=httpx.MockTransport(record))), tool, arguments)
+    assert result.is_error and 'ідентифікатор' in text(result)
+    assert seen == []

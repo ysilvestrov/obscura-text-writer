@@ -48,6 +48,16 @@ def scene_state(scene: dict, impact: str | None) -> str:
     return 'prose' if heads.get('prose') else 'draft'
 
 
+IDENTIFIER = re.compile(r'[A-Za-z0-9_-]{1,64}')
+
+
+def identifier(value: str) -> str:
+    """IDs go into URL paths: only the repository's ID alphabet, so `..`, `/` or `?` cannot reach another endpoint."""
+    if not isinstance(value, str) or not IDENTIFIER.fullmatch(value):
+        raise ToolError(f'Недопустимий ідентифікатор: {str(value)[:80]!r}')
+    return value
+
+
 def _detail(response: httpx.Response) -> str:
     try:
         body = response.json()
@@ -88,7 +98,7 @@ def build_server(http: httpx.Client, client_name: str | None = None) -> MCPServe
     @server.tool()
     def get_story(story_id: str) -> dict[str, Any]:
         """Сцени історії по порядку: id, позиція, назва, revision і стан (тими самими словами, що в списку сцен)."""
-        data = request('GET', f'/api/stories/{story_id}')
+        data = request('GET', f'/api/stories/{identifier(story_id)}')
         impact = data.get('impact_status') or {}
         story = data['story']
         scenes = [{'id': s['id'], 'position': s['position'], 'title': s['title'], 'revision': s['revision'],
@@ -100,7 +110,7 @@ def build_server(http: httpx.Client, client_name: str | None = None) -> MCPServe
     def get_scene_context(scene_id: str) -> dict[str, Any]:
         """Усе потрібне для чернетки сцени: план, бриф, картки персонажів, пам’ять попередніх сцен, рейтинг, мова,
         цільова довжина, revision і context_fingerprint (обидва передайте в save_draft)."""
-        return request('GET', f'/api/scenes/{scene_id}/writing-context')
+        return request('GET', f'/api/scenes/{identifier(scene_id)}/writing-context')
 
     @server.tool()
     def import_plan_and_characters(story_id: str, plan_markdown: str | None = None, characters_markdown: str | None = None) -> dict[str, Any]:
@@ -112,7 +122,7 @@ def build_server(http: httpx.Client, client_name: str | None = None) -> MCPServe
             files.append(('characters', ('characters.md', characters_markdown.encode('utf-8'), 'text/markdown')))
         if not files:
             raise ToolError('Передайте план або персонажів')
-        return request('POST', f'/api/stories/{story_id}/sources', files=files)
+        return request('POST', f'/api/stories/{identifier(story_id)}/sources', files=files)
 
     @server.tool()
     def save_draft(scene_id: str, text: str, expected_revision: int, context_fingerprint: str,
@@ -122,15 +132,15 @@ def build_server(http: httpx.Client, client_name: str | None = None) -> MCPServe
         origin = {'client': origin_client(ctx), 'model': (model or '')[:128] or None}
         body = {'text': text, 'expected_revision': expected_revision, 'content_format': content_format,
                 'external_origin': origin, 'expected_context_fingerprint': context_fingerprint}
-        result = request('POST', f'/api/scenes/{scene_id}/draft', json=body)
+        result = request('POST', f'/api/scenes/{identifier(scene_id)}/draft', json=body)
         version, scene = result.get('version') or {}, result.get('scene') or {}
         return {'version_id': version.get('id'), 'revision': scene.get('revision'), 'external_origin': version.get('external_origin')}
 
     @server.tool()
     def next_steps(scene_id: str) -> str:
         """Що робити далі в Obscura після збереження чернетки."""
-        context = request('GET', f'/api/scenes/{scene_id}/writing-context')
-        url = f"{base}/stories/{context['story_id']}?scene={scene_id}&material=draft"
+        context = request('GET', f'/api/scenes/{identifier(scene_id)}/writing-context')
+        url = f"{base}/stories/{identifier(context['story_id'])}?scene={scene_id}&material=draft"
         return (f'Відкрийте сцену в Obscura: {url}\n'
                 '1. Перегляньте чернетку в редакторі; попередня версія лишається в історії версій.\n'
                 '2. За потреби доопрацюйте текст у режимі Ghost Mode.\n'

@@ -3984,7 +3984,8 @@
       "tests": [
         "tests/mcp/test_bridge.py::test_tool_list_is_exactly_the_six_tools",
         "tests/mcp/test_bridge.py::test_get_story_reports_scene_states_with_the_ui_vocabulary",
-        "tests/mcp/test_bridge.py::test_next_steps_points_to_the_scene_in_obscura"
+        "tests/mcp/test_bridge.py::test_next_steps_points_to_the_scene_in_obscura",
+        "tests/mcp/test_bridge.py::test_identifiers_cannot_reach_other_endpoints"
       ]
     },
     {
@@ -4000,9 +4001,10 @@
     {
       "id": "MCP-BRIDGE-S08",
       "requirement": "MCP-BRIDGE",
-      "scope": "Зміна карток між читанням і записом при тій самій ревізії сцени відхиляється 409. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "scope": "Зміна карток, рейтингу чи мови твору між читанням і записом при тій самій ревізії сцени відхиляється 409. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
       "tests": [
-        "tests/web/test_external_draft.py::test_changed_cards_between_read_and_write_are_rejected"
+        "tests/web/test_external_draft.py::test_changed_cards_between_read_and_write_are_rejected",
+        "tests/web/test_external_draft.py::test_story_level_change_after_reading_context_is_rejected"
       ]
     },
     {
