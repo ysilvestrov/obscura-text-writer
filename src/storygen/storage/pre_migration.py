@@ -30,12 +30,17 @@ def pending_migration(data_dir: Path) -> int | None:
 
     Opens the database read-only; SQLite may still add its -wal/-shm sidecar files next to a WAL database.
     Raises sqlite3.Error when the version cannot be read: an unreadable database is never "nothing to migrate"."""
+    version = stored_schema_version(data_dir)
+    return version if version is not None and 0 < version < SCHEMA_VERSION else None
+
+
+def stored_schema_version(data_dir: Path) -> int | None:
+    """`PRAGMA user_version` of the database in this data folder, read-only; None when there is no database."""
     path = Path(data_dir) / DATABASE
     if not path.is_file():
         return None
     with closing(sqlite3.connect(path.resolve().as_uri() + '?mode=ro', uri=True)) as db:
-        version = db.execute('PRAGMA user_version').fetchone()[0]
-    return version if 0 < version < SCHEMA_VERSION else None
+        return db.execute('PRAGMA user_version').fetchone()[0]
 
 
 def _reason(error: Exception) -> str:

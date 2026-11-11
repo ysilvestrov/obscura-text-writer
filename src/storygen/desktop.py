@@ -162,7 +162,14 @@ def main(argv=None, *, opener=webbrowser.open, tray=None, serve=None, alert=None
     parser.add_argument('--env-file', type=Path, default=None, help='file with provider keys; default: .env in the data folder')
     parser.add_argument('--no-tray', action='store_true')
     parser.add_argument('--no-browser', action='store_true')
+    parser.add_argument('--self-check', type=Path, default=None, metavar='REPORT')
     args = parser.parse_args(argv)
+    if args.self_check is not None:
+        # PACKAGING-001-S01: the build asks the built application what it can do; nothing is started or touched.
+        from .self_check import run_checks
+        report = run_checks()
+        args.self_check.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding='utf-8')
+        return 0 if report['ok'] else 5
     alert = alert or _default_alert
     data_dir = (args.data_dir or default_data_dir()).resolve()
     try:
