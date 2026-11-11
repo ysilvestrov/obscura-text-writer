@@ -109,3 +109,42 @@ def test_self_check_mode_returns_5_when_a_check_fails(tmp_path, monkeypatch):
     report_path = tmp_path / 'report.json'
     assert desktop.main(['--self-check', str(report_path)], alert=lambda text: None) == 5
     assert json.loads(report_path.read_text(encoding='utf-8'))['ok'] is False
+
+
+def test_frozen_package_data_is_checked_file_by_file_against_the_build_manifest(monkeypatch):
+    # PACKAGING-001: data files must be the ones of the checkout that was built, not of some installed copy.
+    import hashlib
+    from importlib.resources import files
+    from storygen import build_manifest
+    real = files('storygen').joinpath('web/static/i18n.json').read_bytes()
+    good = {'version': '9.9.9', 'files': {'web/static/i18n.json': hashlib.sha256(real).hexdigest()}}
+    monkeypatch.setattr(build_manifest, 'load', lambda: good)
+    report = run_checks()
+    assert by_name(report)['package_data'] == {'name': 'package_data', 'ok': True, 'detail': '1 файлів за маніфестом збірки'}
+    assert report['version'] == '9.9.9'
+    monkeypatch.setattr(build_manifest, 'load', lambda: {'version': '9.9.9', 'files': {'web/static/i18n.json': '0' * 64}})
+    assert by_name(run_checks())['package_data']['detail'] == 'файл відрізняється від робочої копії: web/static/i18n.json'
+    monkeypatch.setattr(build_manifest, 'load', lambda: {'version': '9.9.9', 'files': {'web/templates/absent.html': '0' * 64}})
+    assert by_name(run_checks())['package_data']['detail'] == 'немає файла web/templates/absent.html'
+
+
+def test_foreign_lookup_errors_do_not_leak_their_text(monkeypatch, tmp_path):
+    # A KeyError from third-party code may carry a path as its key; only this module's own failures are echoed.
+    from storygen import build_edition
+
+    def broken():
+        raise KeyError(str(tmp_path / 'Користувач' / 'secret'))
+    monkeypatch.setattr(build_edition, 'current', broken)
+    report = run_checks()
+    assert by_name(report)['edition_marker'] == {'name': 'edition_marker', 'ok': False, 'detail': 'KeyError'}
+    assert 'Користувач' not in json.dumps(report, ensure_ascii=False)
+
+
+def test_app_info_reports_the_version_of_the_build_manifest(tmp_path, monkeypatch):
+    from fastapi.testclient import TestClient
+    from storygen import build_manifest
+    from storygen.application.settings import AppSettings
+    from storygen.web.app import create_app
+    monkeypatch.setattr(build_manifest, 'load', lambda: {'version': '3.2.1', 'files': {}})
+    app = create_app(AppSettings(data_dir=tmp_path / 'data', env_file=tmp_path / 'absent.env'))
+    assert TestClient(app, base_url='http://127.0.0.1').get('/api/app-info').json()['version'] == '3.2.1'
