@@ -11,7 +11,7 @@ import {registerWorkspaceCommand} from './workspace-commands.js';
 import {loadBriefMaterial} from './brief-material.js';
 import {activateStageTab,revealStageTab,setStageTabStops} from './workspace-tabs.js';
 import {ghostStatsText} from './ghost-session.js';
-import {newerScene,ghostOpen} from './scene-sync.js';
+import {newerScene,ghostOpen,cleanBuffer,externalNotice} from './scene-sync.js';
 import {liveScene} from './workspace-status.js';
 const memoryTable=installMemoryTable({state,api,json,notice,refresh,loadBuffer});
 const editor=document.querySelector('#editor');
@@ -56,6 +56,7 @@ document.querySelector('#mode-tabs').addEventListener('keydown',async event=>{
   catch(error){notice(error.message,'error')}
 });
 registerWorkspaceCommand('save-material',async()=>{
+  if(externalNotice(state)==='gone')throw new Error(t('sync.trashed'));
   if(memoryTable.active()){await memoryTable.save();if(state.dirty)throw new Error(t("m_e4eb188e3a6b"));return;}
   if(!['draft','prose','memory','brief'].includes(state.mode))throw new Error(t("m_9910fb588c99"));
   return saveBuffer(snapshot=>api(`/api/scenes/${snapshot.scene.id}/${snapshot.mode}`,json('POST',{text:snapshot.text,expected_revision:snapshot.scene.revision,...(snapshot.mode==='brief'?{source_brief_id:snapshot.source_version_id||null}:{}),...(['draft','prose'].includes(snapshot.mode)&&snapshot.content_format==='markdown'?{content_format:snapshot.content_format}:{}),...(snapshot.authoringFields||{})})));
@@ -103,10 +104,13 @@ document.addEventListener('story-refreshed',async()=>{
     // An open rewrite from memory works over the loaded draft; replacing it underneath would break that session.
     if(state.mode==='brief'&&!state.dirty&&!state.saving&&!ghostOpen()&&state.bufferOrigin!=='history')await show('brief',true);
     else if(['draft','prose','memory'].includes(state.mode)&&!state.dirty&&!state.saving&&!ghostOpen()&&state.bufferOrigin!=='history'&&latest?.heads[state.mode]&&latest.heads[state.mode]!==state.scene?.heads[state.mode])await show(state.mode);
+    // #105: after a change made elsewhere a clean buffer is reloaded in every material, even when only another material moved.
+    if(state.externalChange&&cleanBuffer(state,ghostOpen())&&['plan','brief','draft','review','prose','memory'].includes(state.mode)&&latest&&latest.revision!==state.scene?.revision)await show(state.mode);
     await render();
   }catch(e){notice(e.message,'error')}
 });
 document.addEventListener('save-prose',async()=>{try{
+  if(externalNotice(state)==='gone')throw new Error(t('sync.trashed'));
   if(memoryTable.active()){await memoryTable.save();return;}
   if(!['draft','prose','memory','brief'].includes(state.mode))throw new Error(t("m_f89ef6f89e8a"));
   const result=await saveBuffer(snapshot=>api(`/api/scenes/${snapshot.scene.id}/${snapshot.mode==='prose'?'prose':snapshot.mode}`,json('POST',{text:snapshot.text,expected_revision:snapshot.scene.revision,...(snapshot.mode==='brief'?{source_brief_id:snapshot.source_version_id||null}:{}),...(['draft','prose'].includes(snapshot.mode)&&snapshot.content_format==='markdown'?{content_format:snapshot.content_format}:{}),...(snapshot.authoringFields||{})})));

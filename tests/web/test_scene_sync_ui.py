@@ -28,7 +28,7 @@ def test_open_rewrite_from_memory_blocks_buffer_replacement():
     versions = _read('versions.js')
     handler = versions[versions.index("addEventListener('story-refreshed'"):]
     handler = handler[:handler.index('await render()')]
-    assert handler.count('ghostOpen()') == 2
+    assert handler.count('ghostOpen()') == 3
 
 
 @pytest.mark.req('MCP-BRIDGE')
@@ -58,7 +58,7 @@ def test_workspace_loads_the_sync_and_its_notice():
     template = (ROOT / 'src/storygen/web/templates/story.html').read_text(encoding='utf-8')
     assert 'id="external-change"' in template and '/static/scene-sync-workspace.js' in template
     wiring = _read('scene-sync-workspace.js')
-    for needle in ("'visibilitychange'", "'focus'", '/scene-revisions', "invokeWorkspaceCommand('show',state.mode)", 'clearSceneBuffer()'):
+    for needle in ("'visibilitychange'", "'focus'", '/scene-revisions', "invokeWorkspaceCommand('show',MATERIALS.includes(state.mode)?state.mode:'plan')", 'clearSceneBuffer()'):
         assert needle in wiring
     import json
     catalog = json.loads(_read('i18n.json'))
@@ -66,3 +66,18 @@ def test_workspace_loads_the_sync_and_its_notice():
         assert catalog['uk'][key] and catalog['en'][key]
     assert catalog['uk']['sync.changed'] == 'Сцену змінено ззовні'
     assert catalog['en']['sync.open_newer'] == 'Open the newer version'
+
+
+@pytest.mark.req('MCP-BRIDGE')
+def test_review_fixes_for_clean_buffers_and_saves():
+    versions = _read('versions.js')
+    handler = versions[versions.index("addEventListener('story-refreshed'"):]
+    handler = handler[:handler.index('await render()')]
+    # A clean buffer behind an external change is reloaded in every material, not only when that material's head moved.
+    assert 'state.externalChange&&cleanBuffer(state,ghostOpen())' in handler
+    for name in ("'save-material'", "'save-prose'"):
+        body = versions[versions.index(name):][:400]
+        assert "externalNotice(state)==='gone'" in body
+    wiring = _read('scene-sync-workspace.js')
+    assert 'MATERIALS.includes(state.mode)' in wiring and "invokeWorkspaceCommand('show',state.mode)" not in wiring
+    assert "saveButton.disabled=state.saving||['history','blueprint','review'].includes(state.mode)" in wiring

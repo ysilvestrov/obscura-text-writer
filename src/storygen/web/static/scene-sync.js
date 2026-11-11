@@ -29,7 +29,8 @@ export function ghostOpen(){return !!globalThis.document?.body?.classList?.conta
 
 // The buffer may be replaced only when nothing in it or around it belongs to the author's unfinished work.
 export function cleanBuffer(state,ghostOpen){
-  return !state.dirty&&!state.saving&&!ghostOpen&&state.bufferOrigin==='current';
+  // A blueprint proposal is a run result under review, not a material the page may silently replace.
+  return !state.dirty&&!state.saving&&!ghostOpen&&state.bufferOrigin==='current'&&state.mode!=='blueprint';
 }
 
 // Throttled check on return to the page. A trigger during a busy moment (own save or refresh, or a running check)
@@ -43,7 +44,9 @@ export function createSceneSync({check,busy,now=()=>Date.now(),interval=2000}){
     if(pending)await settle();
   }
   async function trigger(){
-    if(running||busy()){pending=true;return}
+    // focus and visibilitychange arrive together; the twin of a running check is not a second request.
+    if(running){if(now()-last>=interval)pending=true;return}
+    if(busy()){pending=true;return}
     if(now()-last<interval)return;
     await run();
   }

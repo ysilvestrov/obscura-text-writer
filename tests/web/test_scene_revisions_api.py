@@ -38,3 +38,14 @@ def test_scene_revisions_reject_unknown_and_trashed_stories(tmp_path):
         story = client.post('/api/stories', json={'title': 'Твір'}).json()
         assert client.post(f'/api/stories/{story["id"]}/trash', json={'expected_revision': story['revision']}).status_code == 200
         assert client.get(f'/api/stories/{story["id"]}/scene-revisions').status_code == 404
+
+
+@pytest.mark.req('MCP-BRIDGE')
+def test_scene_revisions_read_old_payloads_without_revision_as_zero(tmp_path):
+    app = create_app(AppSettings(data_dir=tmp_path))
+    with TestClient(app, base_url='http://127.0.0.1:8765') as client:
+        story = client.post('/api/stories', json={'title': 'Твір'}).json()
+        scene = client.post(f'/api/stories/{story["id"]}/scenes', json={'title': 'Сцена'}).json()
+        with app.state.repo.db.connection() as db:
+            db.execute("UPDATE scenes SET payload=json_remove(payload,'$.revision') WHERE id=?", (scene['id'],))
+        assert client.get(f'/api/stories/{story["id"]}/scene-revisions').json()['scenes'] == _view_revisions(client, story['id']) == {scene['id']: 0}

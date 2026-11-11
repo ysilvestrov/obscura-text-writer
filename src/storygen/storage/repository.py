@@ -351,7 +351,7 @@ class Repository:
         # MCP-BRIDGE (#105): one query, no context view; the workspace compares it with its loaded view on focus.
         with self.db.connection() as db:
             self._active_story(db,story_id)
-            rows=db.execute("SELECT id,json_extract(payload,'$.revision') FROM scenes WHERE story_id=? AND json_extract(payload,'$.trashed_at') IS NULL",(story_id,)).fetchall()
+            rows=db.execute("SELECT id,COALESCE(json_extract(payload,'$.revision'),0) FROM scenes WHERE story_id=? AND json_extract(payload,'$.trashed_at') IS NULL",(story_id,)).fetchall()
         return {id:revision for id,revision in rows}
 
     def list_scenes(self,story_id: str,include_trashed: bool=False) -> list[Scene]:

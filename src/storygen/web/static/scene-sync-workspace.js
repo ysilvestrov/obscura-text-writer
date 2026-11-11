@@ -8,6 +8,8 @@ import {revisionsChanged,externalNotice,cleanBuffer,createSceneSync,ghostOpen} f
 
 const box=document.querySelector('#external-change'),text=box?.querySelector('span'),button=box?.querySelector('button');
 const saveButton=document.querySelector('#save-text');
+const MATERIALS=['plan','brief','draft','review','prose','memory'];
+let lastKind=null;
 
 async function check(){
   if(!state.view||!state.storyId)return;
@@ -29,14 +31,18 @@ document.addEventListener('editor-state-changed',settle);
 
 function render(){
   if(!box)return;
-  const kind=externalNotice(state);
+  let kind=externalNotice(state);
+  // A clean buffer is being reloaded by the story-refreshed handler; announcing the change first would only flash.
+  if(kind==='changed'&&cleanBuffer(state,ghostOpen())&&MATERIALS.includes(state.mode))kind=null;
   box.hidden=!kind;box.dataset.kind=kind||'';
   uiText(text,'textContent',()=>kind==='gone'?t('sync.trashed'):kind?t('sync.changed'):'');
   button.hidden=kind!=='changed';
   uiText(button,'textContent',()=>t('sync.open_newer'));
   if(kind==='gone'){saveButton.disabled=true;uiText(saveButton,'title',()=>t('sync.trashed'))}
-  else uiText(saveButton,'title',()=>'');
+  else{uiText(saveButton,'title',()=>'');if(lastKind==='gone')saveButton.disabled=state.saving||['history','blueprint','review'].includes(state.mode)}
+  lastKind=kind;
 }
-button?.addEventListener('click',()=>{invokeWorkspaceCommand('show',state.mode).catch(error=>notice(error.message,'error'))});
+// Blueprint and history buffers are not materials of their own: the newer version opens in the plan.
+button?.addEventListener('click',()=>{invokeWorkspaceCommand('show',MATERIALS.includes(state.mode)?state.mode:'plan').catch(error=>notice(error.message,'error'))});
 for(const event of ['editor-state-changed','story-refreshed','scene-selected'])document.addEventListener(event,render);
 render();

@@ -56,3 +56,9 @@ let release;const slow=createSceneSync({check:()=>{calls++;return new Promise(r=
 calls=0;const first=slow.trigger();time+=5000;await slow.trigger();assert.equal(calls,1);
 release();await new Promise(r=>setTimeout(r,0));assert.equal(calls,2);release();await first;
 console.log('ok');
+// Review fixes: a blueprint proposal is never treated as a clean, replaceable buffer.
+assert.equal(cleanBuffer({...clean,mode:'blueprint'},false),false);
+// focus and visibilitychange arrive together: the second one during a running check is not a second request.
+let release2;const twin=createSceneSync({check:()=>{calls++;return new Promise(r=>release2=r)},busy:()=>false,now:()=>time});
+calls=0;time+=10_000;const one=twin.trigger();await twin.trigger();release2();await one;await new Promise(r=>setTimeout(r,0));assert.equal(calls,1);
+console.log('ok2');
