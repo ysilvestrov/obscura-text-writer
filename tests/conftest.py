@@ -144,3 +144,20 @@ def store_edition(monkeypatch):
     edition=build_edition.BuildEdition(edition='store',report_url='https://example.test/report')
     monkeypatch.setattr(build_edition,'current',lambda:edition)
     return edition
+
+
+class MemorySecretStore:
+    """Stands in for the OS credential store: tests never read or write the real one."""
+    def __init__(self):self.items={}
+    def get(self,name):return self.items.get(name)
+    def set(self,name,value):self.items[name]=value
+    def delete(self,name):self.items.pop(name,None)
+
+
+@pytest.fixture(autouse=True)
+def secret_store():
+    from storygen.providers import secrets
+    store=MemorySecretStore()
+    secrets.set_backend(store)
+    yield store
+    secrets.set_backend(MemorySecretStore())
