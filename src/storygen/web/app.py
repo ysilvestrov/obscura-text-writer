@@ -40,7 +40,13 @@ def create_app(settings: AppSettings, *, gateway_factory=None,evaluator_factory=
     @pass_context
     def ui_translate(context, key, **params):
         return translate(key,request_locale(context['request']),**params)
-    app.state.templates.env.globals.update(t=ui_translate,ui_locale=request_locale)
+    def app_links():
+        # BUILD-EDITION-001-S07: read on every render; only non-empty addresses, in a fixed order.
+        from .. import build_edition
+        edition=build_edition.current()
+        pairs=[('app.link.support',edition.support_url),('app.link.waitlist',edition.waitlist_url),('app.link.report',edition.report_url)]
+        return [{'key':key,'url':url} for key,url in pairs if url]
+    app.state.templates.env.globals.update(t=ui_translate,ui_locale=request_locale,app_links=app_links)
     app.mount("/static",StaticFiles(directory=str(root.joinpath("static"))),name="static")
 
     def error_response(request,detail,status_code):
