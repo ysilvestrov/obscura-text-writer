@@ -1599,3 +1599,9 @@ Playwright `memory-kind.spec.mjs` і `core-review.spec.mjs` пройшли вр�
 - Claude Desktop з Microsoft Store читає налаштування з `%LOCALAPPDATA%\Claude-Data\claude_<id>\claude_desktop_config.json`, а не з `%APPDATA%\Claude`, не має пункту «Settings → Developer» і перезаписує файл під час роботи. Інструкцію сайту виправлено (PR #102).
 - Результат (за словами власника): сценарій виконано в Claude Desktop, MCP працює. Клієнт підписав версію як `local-agent-mode-obscura · claude-opus-5-5`.
 - Знайдені дефекти: [#103](https://github.com/ysilvestrov/obscura-text-writer/issues/103) — імпорт плану з «Сцена N:» без `##` дає зайву сцену з заголовка, а учасники не прив’язуються до карток; [#104](https://github.com/ysilvestrov/obscura-text-writer/issues/104) — видалення сцени неінтуїтивне й не задокументоване; [#105](https://github.com/ysilvestrov/obscura-text-writer/issues/105) — відкритий редактор не бачить чернетки, збереженої ззовні, до перезавантаження.
+
+## 11.11.2026 — Оновлення відкритої сцени після змін ззовні (#105)
+
+- Специфікація: `docs/superpowers/specs/2026-11/2026-11-11-external-change-refresh-design.md` (затверджено власником 11.11.2026, cross-review 5/5 виправлено). План: `docs/superpowers/plans/2026-11/2026-11-11-external-change-refresh.md`.
+- Зроблено: `GET /api/stories/{id}/scene-revisions`; `static/scene-sync.js` (чисті правила) і `static/scene-sync-workspace.js` (перевірка на фокусі, повідомлення, кошик ззовні); захист переписування по пам’яті в обробнику `story-refreshed`; статуси вкладок з оновленого view; `show()` бере новішу сцену. SPEC MCP-BRIDGE-S11, сайт `mcp` UA/EN.
+- Перевірено в браузері на окремому каталозі даних: чистий буфер оновлюється сам; з незбереженими правками текст лишається, кнопка питає підтвердження й відкриває нову версію; сцена в кошику ззовні — з правками текст лишається, збереження вимкнене з причиною, без правок вибирається інша сцена.

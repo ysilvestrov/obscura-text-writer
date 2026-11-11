@@ -79,6 +79,8 @@ Browser chat clients (claude.ai, chatgpt.com) do not support local servers.
 
 A draft from the chat is labelled "External client: <name>" in the version history and in the status row above the editor. If the chat named its model, the model is shown too. This is the client's claim: Obscura cannot check which model actually wrote the text. Once you save your own edit, the label leaves the status row; in the history it stays next to the chat's version.
 
+You can keep Obscura open next to the chat. When you return to the Obscura window, the page checks on its own whether the chat wrote anything. If the editor has no unsaved edits, you see the new draft right away. If it has, your text stays, and "The scene was changed elsewhere" appears above the editor with an "Open the newer version" button; it asks for confirmation before replacing the text.
+
 ## Limitations
 
 - Obscura must be running. Otherwise the chat gets the error "Obscura не запущено за адресою …" (Obscura is not running at …).
