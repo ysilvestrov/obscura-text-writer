@@ -79,7 +79,7 @@ def scene_text(repo,scene_id: str,material: str,offset: int=0,max_chars: int=200
     ref=view.get_version(head) if head else None
     if material=='memory':
         rows=memory_view_from_view(view,scene_id)['rows'] if head else []
-        text=json.dumps([{key:row[key] for key in MEMORY_FIELDS} for row in rows],ensure_ascii=False,sort_keys=True) if rows else ''
+        text=json.dumps([{key:row[key] for key in MEMORY_FIELDS} for row in rows],ensure_ascii=False,sort_keys=True) if head else ''
     elif material=='plan' and not head:
         text=scene.beats or ''
     else:

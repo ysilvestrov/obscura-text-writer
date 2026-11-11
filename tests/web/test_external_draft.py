@@ -194,6 +194,6 @@ def test_author_draft_with_draft_id_is_400(tmp_path):
     client, repo, story, scene = setup(tmp_path)
     url = f'/api/scenes/{scene.id}/draft'
     refused = client.post(url, json={'text': 'Анна.', 'expected_revision': scene.revision, 'expected_draft_version_id': None})
-    assert refused.status_code in {400, 422}
+    assert refused.status_code == 422
     ok = client.post(url, json={'text': 'Анна.', 'expected_revision': scene.revision})
     assert ok.status_code == 200, ok.text

@@ -108,15 +108,40 @@ def test_memory_hash_changes_with_forwarding_choice(tmp_path):
 
 
 @pytest.mark.req('MCP-BRIDGE')
-@pytest.mark.parametrize('params', [{'offset': 99}, {'max_chars': 999}, {'max_chars': 50001}, {'offset': -1}])
-def test_bad_offset_or_size_is_refused(tmp_path, params):
+@pytest.mark.parametrize('params,status', [({'offset': 99}, 400), ({'offset': -1}, 400), ({'max_chars': 999}, 422), ({'max_chars': 50001}, 422)])
+def test_bad_offset_or_size_is_refused(tmp_path, params, status):
     app, repo, story, scene = plain_scene(tmp_path)
     put_head(repo, story, scene.id, 'draft', 'draft', 'Коротко.')
     with client_for(app) as client:
         response = read(client, scene.id, 'draft', **params)
         unknown = read(client, scene.id, 'notes')
-    assert response.status_code in {400, 422}, response.text
-    assert unknown.status_code in {400, 404, 422}
+    assert response.status_code == status, response.text
+    assert unknown.status_code == 422
+
+
+@pytest.mark.req('MCP-BRIDGE')
+def test_memory_rows_match_the_memory_table(tmp_path):
+    app, repo, story, second = story_with_memory(tmp_path)
+    first = repo.list_scenes(story.id)[0]
+    fields = ['claim_id', 'category', 'text', 'source_scene', 'source_title', 'quote', 'supporting_quotes', 'forward', 'closed']
+    with client_for(app) as client:
+        table = client.get(f'/api/scenes/{first.id}/memory-view').json()['rows']
+        rows = json.loads(read(client, first.id, 'memory').json()['text'])
+    assert len(rows) == len(table) == 2
+    assert all(set(row) == set(fields) for row in rows)
+    assert sorted(rows, key=lambda r: r['claim_id']) == sorted(({k: t[k] for k in fields} for t in table), key=lambda r: r['claim_id'])
+    assert {row['text'] for row in rows} == {'Синій халат', 'Маяк стоїть на старій карті'}
+
+
+@pytest.mark.req('MCP-BRIDGE')
+def test_existing_empty_memory_is_an_empty_json_array(tmp_path):
+    from storygen.memory.journal import MemoryJournal
+    app, repo, story, scene = plain_scene(tmp_path)
+    prose = put_head(repo, story, scene.id, 'manual', 'prose', 'Анна вдома.')
+    memory = put_head(repo, story, scene.id, 'memory', 'memory', MemoryJournal(schema_version=3, source_prose_ids=[prose.id], events=[]).model_dump_json())
+    with client_for(app) as client:
+        data = read(client, scene.id, 'memory').json()
+    assert data['version_id'] == memory.id and json.loads(data['text']) == []
 
 
 @pytest.mark.req('MCP-BRIDGE')

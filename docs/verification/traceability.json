@@ -4476,6 +4476,8 @@
         "tests/web/test_scene_text.py::test_missing_material_is_empty_not_404",
         "tests/web/test_scene_text.py::test_plan_without_head_falls_back_to_beats",
         "tests/web/test_scene_text.py::test_response_has_no_paths_or_snapshots",
+        "tests/web/test_scene_text.py::test_memory_rows_match_the_memory_table",
+        "tests/web/test_scene_text.py::test_existing_empty_memory_is_an_empty_json_array",
         "tests/mcp/test_bridge.py::test_get_scene_text_reads_the_current_draft"
       ]
     },
