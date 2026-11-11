@@ -125,9 +125,26 @@ def test_empty_unrequested_known_field_is_ignored_with_warning():
     result=parse_suggestions('{"annotation":"Анотація","genres":[],"keywords":["літо"]}',['annotation','keywords'],warnings)
     assert result=={'annotation':'Анотація','keywords':['літо']}
     assert len(warnings)==1 and 'genres' in warnings[0] and 'не змінено' in warnings[0]
-    for field,value in [('genres',['short_story']),('publisher',''),('unknown',[])]:
+    for field,value in [('publisher',''),('unknown',[])]:
         with pytest.raises(ValueError):
             parse_suggestions(json.dumps({'annotation':'Анотація',field:value}),['annotation','keywords'])
+
+
+@pytest.mark.parametrize('field,value',[('title','Я - річ'),('genres',['short_story']),('genres',['unknown'])])
+def test_filled_unrequested_known_field_is_dropped_with_warning(field,value):
+    # The model repeats an already filled field: the rest of the proposal stays usable.
+    eligible=[key for key in ['annotation','genres','keywords'] if key!=field]
+    payload={'annotation':'Анотація','keywords':['літо'],field:value}
+    warnings=[]
+    result=parse_suggestions(json.dumps(payload),eligible,warnings)
+    assert field not in result and result['annotation']=='Анотація' and result['keywords']==['літо']
+    assert [w for w in warnings if f'({field})' in w and 'не змінено' in w]
+    assert all('Зайве порожнє' not in w for w in warnings)
+
+
+def test_only_unrequested_filled_field_is_still_an_empty_proposal():
+    with pytest.raises(ValueError,match='жодного непорожнього'):
+        parse_suggestions('{"title":"Переписана назва"}',['annotation','genres','keywords'])
 
 
 @pytest.mark.parametrize('kind',['empty','length','refusal_content','timeout','protocol'])

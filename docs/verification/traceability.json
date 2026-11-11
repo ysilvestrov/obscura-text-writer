@@ -2077,6 +2077,15 @@
       ]
     },
     {
+      "id": "R16-SUGGEST-S05",
+      "requirement": "R16-SUGGEST",
+      "scope": "Заповнене відоме поле поза eligible_fields пропущене з попередженням; запитані поля прийнято; лише незапитане поле дає помилку порожньої пропозиції.",
+      "tests": [
+        "tests/generation/test_publication_metadata.py::test_filled_unrequested_known_field_is_dropped_with_warning",
+        "tests/generation/test_publication_metadata.py::test_only_unrequested_filled_field_is_still_an_empty_proposal"
+      ]
+    },
+    {
       "id": "SAVE-UNCHANGED-S01",
       "requirement": "SAVE-UNCHANGED",
       "scope": "Exact bytes reuse з CAS для всіх матеріалів, незмінні metadata/head, stale збережено, зміни інвалідують.",
