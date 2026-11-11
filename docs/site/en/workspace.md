@@ -25,7 +25,7 @@ Before you press it, the primary button shows the model and the maximum number o
 
 ## Status row
 
-Above the scene text you see the scene status, the run progress and the pause, cancel, continue and repeat buttons. **Run options** sets the limit for the next run. When a sequential impact review waits for your decision, its card appears below the status row, next to the text.
+Above the scene text you see the scene status, the run progress and the pause, cancel, continue and repeat buttons. **Run options** sets the limit for the next run. **Run remaining scenes** runs the remaining scenes one after another. Pause takes effect between stages; closing the tab does not cancel the work, and cancelling does not guarantee that the provider stops answering at once. Check one scene first, as described in [Your first story](first-story.md). When a sequential impact review waits for your decision, its card appears below the status row, next to the text.
 
 ## Editor
 

@@ -32,14 +32,14 @@ What happens: Maria calls Lera and asks for advice.
 - An empty "Characters:" line clears the cast; without the line, a cast chosen by hand stays.
 - The other fields are instructions for the models. The number in the heading does not reorder scenes.
 
-A character file with name headings of the same level (`## Lera`) creates starting cards with the status "Time not verified" in a new story. Names that mix alphabets (a Latin C instead of a Cyrillic С) produce a warning.
+A character file with name headings of the same level (`## Lera`) creates starting cards with the status "Timing unverified" in a new story. Names that mix alphabets (a Latin C instead of a Cyrillic С) produce a warning.
 
 ## If something goes wrong
 
 - A wrong format or encoding rejects the whole set of files before anything is saved.
 - If one file fails, the following ones are not processed; successful files are cleared from the form, and only the failed ones remain for a retry.
 - Do not repeat the whole set automatically: unnumbered scenes would be added a second time.
-- If the server response is lost, refresh the journal and check the scenes and cards before choosing files again.
+- If the server response is lost, press **Refresh journal** and check the scenes and cards before choosing files again.
 
 ## Import journal
 

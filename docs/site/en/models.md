@@ -33,7 +33,7 @@ What the amounts mean:
 - **Reserved** — the request is sent, the result is not recorded yet.
 - **Needs reconciliation** — the cost is unknown after a failure or cancellation. The reserve stays until you reconcile the amount in **Call history and reconciliation**.
 
-The reserve before a call is conservative: it counts the whole request and the full response limit. This is an internal control, not a guarantee of the provider's bill. Local models and Codex have no dollar price: the application shows usage, not an invented zero.
+The reserve before a call is conservative: it counts the whole request and the full response limit. This is an internal control, not a guarantee of the provider's bill. Local models and Codex have no dollar price: the application shows usage, not an invented zero. Missing token data is shown as "No data", an explicit zero as 0. Enable **Request streaming usage (if supported)** only when the endpoint supports it.
 
 ## Saved presets
 

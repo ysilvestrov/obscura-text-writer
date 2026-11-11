@@ -19,9 +19,9 @@ The **Prose language** field in the scene card lets you write one scene in anoth
 
 ## What differs for English prose
 
-- **Language hints** check only mixed alphabets and repeated words; the Ukrainian rules do not apply.
-- **Negation protection** in targeted edits also covers English `not`, `cannot`, `n't`.
-- **Evaluation** of English prose is not available yet: the evaluation buttons are disabled with an explanation, because the [evaluator](evaluator.md) was calibrated on Ukrainian texts.
+- Language hints check only mixed alphabets and repeated words; the Ukrainian rules do not apply.
+- Negation protection in targeted edits also covers English `not`, `cannot`, `n't`.
+- Evaluation of English prose is not available yet: the evaluation buttons are disabled with an explanation, because the [evaluator](evaluator.md) was calibrated on Ukrainian texts.
 - A model preset remembers the language of the story it was saved from. Applying it to a story in another language shows a warning: your own prompts are not translated.
 
 ## Story length

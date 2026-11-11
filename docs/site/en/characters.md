@@ -12,13 +12,13 @@ The buttons at the top save the cards, add a character or reload what is saved. 
 
 For each entry choose:
 
-- **From the very beginning**: the model knows it in every scene;
-- **Starting from scene**: only from the chosen scene;
-- **Time not checked**: the entry is visible with a warning.
+- **From the beginning**: the model knows it in every scene;
+- **Starting from a scene**: only from the chosen scene;
+- **Timing unverified**: the entry is visible with a warning.
 
 **What the writer will see** shows which entries reach the context of the chosen scene, with no model call and without saving. After you reorder scenes, availability follows the new order.
 
-**Save entries** creates a new version of the cards. If the cards changed in another tab meanwhile, your edits stay in the form, and reloading asks for confirmation.
+**Save details** creates a new version of the cards. If the cards changed in another tab meanwhile, your edits stay in the form, and reloading asks for confirmation.
 
 ## Protagonist and acquaintances
 

@@ -54,11 +54,27 @@ def free_port():
     with socket.socket() as sock:sock.bind(('127.0.0.1',0));return sock.getsockname()[1]
 
 
-def wait_for(url,timeout=30):
+def ensure_port_free(port):
+    """Refuse a busy port: otherwise the author's own running server could answer and be photographed."""
+    with socket.socket() as sock:
+        try:sock.bind(('127.0.0.1',port))
+        except OSError:raise SystemExit(f'порт {port} зайнятий: зупиніть інший сервер або вкажіть інший --port')
+
+
+def server_env():
+    """Environment for the seed server: our sources first, no provider keys."""
+    env={k:v for k,v in os.environ.items() if not k.upper().endswith('_API_KEY')}
+    env['PYTHONPATH']=str(ROOT/'src');return env
+
+
+def wait_for(url,server,timeout=30):
     deadline=time.monotonic()+timeout
     while time.monotonic()<deadline:
+        if server.poll() is not None:raise RuntimeError(f'сервер знімків завершився з кодом {server.poll()}')
         try:
-            with urllib.request.urlopen(url,timeout=2):return
+            with urllib.request.urlopen(url,timeout=2):
+                if server.poll() is not None:raise RuntimeError(f'сервер знімків завершився з кодом {server.poll()}')
+                return
         except OSError:time.sleep(0.3)
     raise TimeoutError(f'сервер не відповів: {url}')
 
@@ -105,11 +121,11 @@ def main(argv=None):
     for lang in STORIES:  # one data folder and server per language: each library shows only its own story
         data=work/lang/'data'
         if data.exists() and any(data.iterdir()):raise SystemExit(f'{data} не порожній: знімки беруться лише з нового seed')
-        ids=seed(data,[lang]);port=args.port or free_port();base=f'http://127.0.0.1:{port}'
+        ids=seed(data,[lang]);port=args.port or free_port();ensure_port_free(port);base=f'http://127.0.0.1:{port}'
         server=subprocess.Popen([sys.executable,'-m','storygen.server','--data-dir',str(data),'--port',str(port)],cwd=ROOT,
-                                stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,env={**os.environ,"PYTHONPATH":str(ROOT/"src")})
+                                stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,env=server_env())
         try:
-            wait_for(base+'/')
+            wait_for(base+'/',server)
             shots+=capture(base,ids,[lang])
         finally:
             server.terminate()

@@ -3918,9 +3918,12 @@
     {
       "id": "DOCS-SITE-S07",
       "requirement": "DOCS-SITE",
-      "scope": "Нейтральний seed для знімків обома мовами без мережі. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "scope": "Нейтральний seed для знімків обома мовами без мережі; відмова від зайнятого порту й чужого сервера; без ключів провайдерів. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
       "tests": [
-        "tests/test_capture_screenshots.py::test_seed_creates_neutral_stories_in_both_languages"
+        "tests/test_capture_screenshots.py::test_seed_creates_neutral_stories_in_both_languages",
+        "tests/test_capture_screenshots.py::test_wait_for_refuses_another_server_when_ours_exited",
+        "tests/test_capture_screenshots.py::test_busy_port_is_refused_before_start",
+        "tests/test_capture_screenshots.py::test_server_env_has_no_provider_keys"
       ]
     }
   ]
