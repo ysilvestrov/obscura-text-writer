@@ -58,9 +58,11 @@ def parse_suggestions(text,eligible,warnings=None):
     try:
         parsed=PublicationSuggestions.model_validate(json.loads(unwrap_model_json(text),object_pairs_hook=pairs,parse_constant=invalid_constant))
         values=parsed.model_dump(exclude_none=True)
-        normalized=PublicationData(**values)
-        result={key:getattr(normalized,key) for key in values if getattr(normalized,key)}
-        if set(result)-set(eligible):raise ValueError('Заповнено чужі поля')
+        # A known field that was not requested never reaches the card: it is dropped below with a warning,
+        # so its value is not normalized and cannot reject the requested fields.
+        requested={key:value for key,value in values.items() if key in eligible}
+        normalized=PublicationData(**requested)
+        result={key:getattr(normalized,key) for key in requested if getattr(normalized,key)}
     except (ValueError,TypeError,RecursionError) as exc:
         raise ValueError('Пропозиція метаданих не відповідає JSON, схемі або переліку порожніх полів; сирий текст збережено') from exc
     if not result:raise ValueError('Модель не запропонувала жодного непорожнього поля метаданих; сирий текст збережено')
@@ -69,7 +71,10 @@ def parse_suggestions(text,eligible,warnings=None):
         for key in dict.fromkeys([*eligible,*values]):
             if key not in result:
                 if key not in eligible:
-                    warnings.append(f'Зайве порожнє поле «{labels[key]}» ({key}) пропущено; збережене значення не змінено.')
+                    value=values[key]
+                    filled=value.strip() if isinstance(value,str) else [item for item in value if item.strip()]
+                    warnings.append(f'Модель заповнила незапитане поле «{labels[key]}» ({key}); його пропущено, збережене значення не змінено.' if filled
+                        else f'Зайве порожнє поле «{labels[key]}» ({key}) пропущено; збережене значення не змінено.')
                 else:
                     warnings.append(f'Модель не запропонувала непорожнє поле «{labels[key]}» ({key}); його пропущено. Заповніть його вручну за потреби.'+(' Для FB2 жанр обов’язковий.' if key=='genres' else ''))
     return result
