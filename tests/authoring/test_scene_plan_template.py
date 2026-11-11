@@ -142,6 +142,11 @@ def test_cast_without_a_plan_line_is_written_by_card_names(tmp_path):
     repo.update_scene_metadata(scenes[0].id, {'character_ids': ['olena', 'marko']}, scenes[0].revision)
     scene = repo.create_scene(story.id, SceneCreate(title='Далі'), plan_template=True)
     assert 'Хто бере участь: Олена, Марко\n' in scene.beats and scene.character_ids == ['olena', 'marko']
+    # A manual cast over an empty cast line is still the cast of the previous scene.
+    emptied = repo.update_scene_plan(scene.id, 'Персонажі:\nЛокація: Сад', scene.revision)
+    repo.update_scene_metadata(scene.id, {'character_ids': ['marko']}, emptied.revision)
+    following = repo.create_scene(story.id, SceneCreate(title='Ще далі'), plan_template=True)
+    assert 'Хто бере участь: Марко\n' in following.beats and following.character_ids == ['marko']
 
 
 def test_decorated_and_alternative_labels_are_read(tmp_path):

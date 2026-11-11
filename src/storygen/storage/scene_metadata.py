@@ -57,7 +57,7 @@ def templated_plan(repo,db,story,active,position,data):
     from ..scene_plan_template import next_scene_plan,plan_fields
     previous=active[position-1] if position else None
     fields=plan_fields(previous.beats) if previous else {}
-    ids=data.character_ids or ([] if 'cast' in fields or not previous else previous.character_ids)
+    ids=data.character_ids or ([] if 'cast' in fields or not previous else previous.character_ids)  # 'cast' holds only a non-empty line value
     if ids:fields['cast']=cast_names(ids,story_cards(repo,db,story.id))
     number=data.author_scene_number
     if number is None:
