@@ -69,8 +69,10 @@ if (-not (Test-Path .env)) { Copy-Item .env.example .env }
 Команда `storygen-desktop` запускає застосунок без вікна PowerShell:
 
 ```powershell
-./.venv/Scripts/pythonw.exe -m storygen.desktop
+./.venv/Scripts/pythonw.exe -m storygen.desktop --env-file .env
 ```
+
+- `--env-file .env` бере ключі провайдерів із того самого файла `.env`, що й звичайний запуск. Без цього параметра застосунок шукає `.env` у теці творів; ключ, збережений у налаштуваннях (сховище Windows), діє в обох випадках.
 
 - Твори зберігаються в теці `Obscura` у вашому профілі (`%USERPROFILE%\Obscura`); іншу теку задає `--data-dir`.
 - Журнал — `logs\obscura.log` у теці творів. Якщо застосунок не зміг стартувати, він покаже повідомлення з причиною та шляхом до журналу.

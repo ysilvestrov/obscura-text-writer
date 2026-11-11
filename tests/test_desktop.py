@@ -409,3 +409,26 @@ def test_discovery_needs_no_tls_machinery(tmp_path, other_program, monkeypatch):
     finally:
         monkeypatch.undo()
         importlib.reload(desktop)
+
+
+def test_env_file_option_brings_provider_keys(tmp_path, monkeypatch):
+    # An installation from source keeps its keys in the repository .env; the launcher must be able to use that file.
+    import os
+    monkeypatch.delenv('SYNTHETIC_LAUNCHER_KEY', raising=False)
+    env_file = tmp_path / 'repo' / '.env'
+    env_file.parent.mkdir()
+    env_file.write_text('SYNTHETIC_LAUNCHER_KEY=from-env-file\n', encoding='utf-8')
+    with Launch(tmp_path / 'data', '--no-browser', '--env-file', str(env_file)):
+        assert os.environ.get('SYNTHETIC_LAUNCHER_KEY') == 'from-env-file'
+    monkeypatch.delenv('SYNTHETIC_LAUNCHER_KEY', raising=False)
+
+
+def test_default_env_file_is_in_the_data_folder(tmp_path, monkeypatch):
+    import os
+    monkeypatch.delenv('SYNTHETIC_LAUNCHER_KEY', raising=False)
+    data = tmp_path / 'data'
+    data.mkdir()
+    (data / '.env').write_text('SYNTHETIC_LAUNCHER_KEY=from-data-folder\n', encoding='utf-8')
+    with Launch(data, '--no-browser'):
+        assert os.environ.get('SYNTHETIC_LAUNCHER_KEY') == 'from-data-folder'
+    monkeypatch.delenv('SYNTHETIC_LAUNCHER_KEY', raising=False)

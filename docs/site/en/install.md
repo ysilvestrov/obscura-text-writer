@@ -69,8 +69,10 @@ If running PowerShell scripts is not allowed, use the direct command:
 The `storygen-desktop` command starts the application without a PowerShell window:
 
 ```powershell
-./.venv/Scripts/pythonw.exe -m storygen.desktop
+./.venv/Scripts/pythonw.exe -m storygen.desktop --env-file .env
 ```
+
+- `--env-file .env` takes provider keys from the same `.env` file as the ordinary launch. Without this option the application looks for `.env` in the stories folder; a key saved in the settings (Windows credential store) works in both cases.
 
 - Stories are kept in the `Obscura` folder of your profile (`%USERPROFILE%\Obscura`); `--data-dir` sets another folder.
 - The log is `logs\obscura.log` in the stories folder. If the application cannot start, it shows a message with the reason and the path of the log.
