@@ -1,7 +1,7 @@
 # Безкоштовна збірка для Microsoft Store (#30, перший крок)
 
 Дата: 2026-11-11
-Статус: чекає на затвердження
+Статус: затверджено 2026-11-11
 Spec-review: codex/gpt-6.1-sol @ 37dec8d (author: claude) — 6 findings: 6 fixed, 0 rejected
 
 ## Для власника
