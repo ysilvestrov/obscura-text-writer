@@ -323,3 +323,18 @@ def test_invalid_evidence_after_the_cut_is_not_hidden():
     for ids in (['f000001,f000002,f000003','f000004,f000099'],['f000001,f000002,f000003','f000099'],
                 ['f000001,f000002,f000003','сторонній текст']):
         assert ('core.h.clothing','evidence_unknown') in codes(answer(core(clothing=dec('changed','Пальто',ids))))
+
+
+def test_joined_evidence_with_shortened_numbers_is_split():
+    # Field case 'f000013_14_19_23_24': the first ID is full, the rest are bare fragment numbers.
+    j=parse(answer(core(clothing=dec('changed','Пальто',['f000005','f000001_2_4_5']))))
+    (update,)=new(j)
+    assert (update.quote,update.supporting_quotes)==(LINE[5],[LINE[1],LINE[2]])
+    j=parse(answer(core(clothing=dec('changed','Пальто',['3, f4; 000001']))))
+    (update,)=new(j)
+    assert (update.quote,update.supporting_quotes)==(LINE[3],[LINE[4],LINE[1]])
+
+
+def test_shortened_number_outside_fragments_or_alone_is_rejected():
+    for ids in (['f000001_2_99'],['f000001_0'],['2'],['f2']):
+        assert codes(answer(core(clothing=dec('changed','Пальто',ids))))==[('core.h.clothing','evidence_unknown')]
