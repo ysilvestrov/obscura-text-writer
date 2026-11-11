@@ -66,6 +66,17 @@
 
 Пакет MSIX на такому інтерпретаторі збирається лише з `--allow-vendor-runtime`: пакет для публікації слід збирати на офіційному CPython з python.org, бо умови розповсюдження доданого файла не з’ясовано.
 
+Для збирання зручно мати окреме середовище на офіційному Python, не чіпаючи робоче:
+
+```powershell
+& "$env:LOCALAPPDATA\Programs\Python\Python312\python.exe" -m venv C:\tmp\obscura-build-venv
+C:\tmp\obscura-build-venv\Scripts\python.exe -m pip install -r requirements-lock.txt
+C:\tmp\obscura-build-venv\Scripts\python.exe -m pip install -e ".[web,publication,local-tokens,desktop,build]"
+C:\tmp\obscura-build-venv\Scripts\python.exe scripts/build_store.py --out C:\tmp\obscura-build ...
+```
+
+Так перевірено 11.11.2026 на CPython 3.12.10: попереджень про інтерпретатор немає, додаткові файли не потрібні, пакет збирається без `--allow-vendor-runtime`.
+
 ## Ліцензії компонентів
 
 `THIRD-PARTY-NOTICES.txt` складається за фактичним вмістом збірки: скрипт читає записи PyInstaller про всі зібрані файли й бере ліцензійні тексти дистрибутивів, яким вони належать, а також ліцензію самого інтерпретатора й PyInstaller. Компонент без тексту ліцензії зупиняє збирання.
