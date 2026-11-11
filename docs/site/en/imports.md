@@ -1,0 +1,30 @@
+# Importing materials
+
+You can load the outline and the characters from UTF-8 TXT or Markdown files.
+
+## How to import
+
+1. In the scene list expand **Add materials**.
+2. If needed, download the **Outline with timing (.md)** and **Characters (.md)** templates and fill them in.
+3. Choose an outline file, a characters file or both, and press **Import**.
+
+The result appears next to the form: how many new scenes and cards were created, what was skipped and the state of each file. The current scene stays open.
+
+## Importing again only adds
+
+- **Characters:** only new names are added. Existing cards do not change; edit them on the [Characters](characters.md) page.
+- **Scenes:** a duplicate is identified by the author's explicit number: "Scene 2. The meeting" and "Scene 2: Friends" count as one scene. Titles and list positions do not identify duplicates. Sections without a number are added as new scenes every time.
+- New scenes go to the end; the existing outline keeps its text.
+
+## If something goes wrong
+
+- A wrong format or encoding rejects the whole set of files before anything is saved.
+- If one file fails, the following ones are not processed; successful files are cleared from the form, and only the failed ones remain for a retry.
+- Do not repeat the whole set automatically: unnumbered scenes would be added a second time.
+- If the server response is lost, refresh the journal and check the scenes and cards before choosing files again.
+
+## Import journal
+
+In **Add materials** the journal lists every imported file with its local date and time and the number of scenes and cards actually created. Skipped duplicates are not counted.
+
+The story word target is changed in **Settings → Writing**: at least 5,000, recommended up to 15,000 words.

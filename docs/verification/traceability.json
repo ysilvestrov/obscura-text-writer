@@ -3914,6 +3914,14 @@
         "tests/test_docs_site.py::test_dot_slash_page_link_is_rewritten",
         "tests/test_docs_site.py::test_heading_id_uses_visible_text_only"
       ]
+    },
+    {
+      "id": "DOCS-SITE-S07",
+      "requirement": "DOCS-SITE",
+      "scope": "Нейтральний seed для знімків обома мовами без мережі. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/test_capture_screenshots.py::test_seed_creates_neutral_stories_in_both_languages"
+      ]
     }
   ]
 }

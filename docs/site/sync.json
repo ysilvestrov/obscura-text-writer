@@ -1,14 +1,66 @@
 {
+  "characters": {
+    "uk": "5cf85205365ce4c7b5324d3dd54ea59df5e113209a36f9be377003cf11cafaac",
+    "en": "b67c651b89ba5c8bd1721114a307fa360a0ca604e05e854da49d3ff1760b8c60"
+  },
+  "content-rating": {
+    "uk": "3ad5d01cb1bbbbd5ac4def19c7e9423d8a1c28bd52414cbdd5ec81250b3dc159",
+    "en": "76dc669c2bebadf65169d15163e7be2a4f7bcd58521d5c76ebf8f2fe46c2b538"
+  },
+  "evaluator": {
+    "uk": "48f9b15b54162431ee10ad00e90b2fdfd18c062a95eaf1a08149fc8c1a140dc5",
+    "en": "33229f14c4446492fd9968af1d5d1685d85a3e8b5deec73f44c597b5a98eb093"
+  },
   "first-story": {
     "uk": "4f79aa84ac9f2d7961768ec3b450dcf5fbbaaa98b8807caa72e16f7020feb30a",
     "en": "e46300a6702c23a36634dac03ebe6c050a1394db63c262498a28fd109fbd229d"
   },
+  "ghost-mode": {
+    "uk": "c041a4923b436ce81b9432bbae327828d77c63ece08253edaeaf91897553c9ef",
+    "en": "6b519a53ce9caefc236e9c6de214656da24bbf994252d0d0f168b963e71aa03a"
+  },
+  "imports": {
+    "uk": "022fb56351e01955a19fb56aec5622e2c0c815080fded97e333f2d0f985c69f9",
+    "en": "ee5a3eb37e0ac491932b9701d3f37be2a770d8e7add6c16877af7a67f9af971f"
+  },
   "index": {
-    "uk": "c4d7f933efd877fd8a3ba07f88740a929de5437a6b38741dd2adb3e27f954b0f",
-    "en": "d4ec1590eb2fadfb94f6a40a0f8e5e8eb3d0224020661f31442e8c65f8397e92"
+    "uk": "45394e92ab6e271f140df4768fb42ce1e7e018ee72ebbc4dca3ea83f42a0fce1",
+    "en": "8b5650c04ded398368340b4cf7432638a69d1db9f5bebd3eada59b6ce88115a4"
   },
   "install": {
     "uk": "ddbb522686c1882d4b115591ca68da13a45194b11b98758c285954cac5b6f42e",
     "en": "dae0da026e329e182133d611cab3961ca8577292ae0cdfcefb885c7c06415044"
+  },
+  "legal": {
+    "uk": "8adca237587a2e6f400bb3465c73ac7c73e54b445da19b928b190e51cd367b11",
+    "en": "9c71aab5c00e6d045322fcfda958fe0871d5c4b4d1315a09e8a6d304ef8853b7"
+  },
+  "memory": {
+    "uk": "ddfca0303b6ef8ffb985dc97d84132e7f409161141171f8d19b859e86b777492",
+    "en": "7c3af5b5dc91e55dc66c6f3703ac383ea39fdbf2c3a86f78a2a0b2ce77401174"
+  },
+  "models": {
+    "uk": "873d2d53ab49374a8d19abb46051aab88f325f3f80b827a346451005ee090989",
+    "en": "78989958190becd03e91249b0eef8a75a23952f961addee2e3df155c8e64e5a3"
+  },
+  "publication": {
+    "uk": "aa69537a002a816e2f88c67a7f74ef89597676a339c2907021f919dd63983f74",
+    "en": "7a5ac032858d20769a9270480374bf3abd4f82a1dfcd79f7070da015fc865d26"
+  },
+  "revision": {
+    "uk": "4cf17a29ac27759ea5dd33d05101623f14a7695ab9a5ce69b488c3460ecb6999",
+    "en": "51d29aa278855505b151db7fa69391f3ef45ab3c9fed771647637ef6888003f3"
+  },
+  "story-language": {
+    "uk": "8abe46c1f3393167ad2cd87c5cd337a50468f8341b042622b6b4c2aa9a67e9ac",
+    "en": "296c476db2a566388851df699bf10385849837832f03f58ac6d363046d56cdde"
+  },
+  "troubleshooting": {
+    "uk": "932362469fc1268708a956b4207fae707b751c127988c1b1250f98914e22685a",
+    "en": "395fa43253aadea260736c35939a0bc50b1af409534958fb0a3dd206a25ae0f1"
+  },
+  "workspace": {
+    "uk": "52b8cf743b1f3f973e2d15ee034328510f6f43a4378f01e63ef3ddfc3133a1fc",
+    "en": "7f1ed8e77fd38a1e3943c715cd9530e2232ffc443842e6f946725bdb4b38e7ea"
   }
 }
