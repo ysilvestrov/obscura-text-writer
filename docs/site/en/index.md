@@ -16,6 +16,7 @@ The application runs on your computer. Stories are stored locally; a cloud provi
 - [Importing materials](imports.md): outline and characters from files.
 - [Rewriting from memory](ghost-mode.md): your own text based on an AI draft.
 - [Memory](memory.md): what the model remembers between scenes.
+- [Comments, prompts and horizon](writing-tools.md): draft comments, editor modes, custom prompts, horizon and statistics.
 - [Editing and impact review](revision.md): editor changes and book revision.
 - [Age rating](content-rating.md): explicitness levels and character age.
 - [Models and budget](models.md): roles, providers, costs and local models.

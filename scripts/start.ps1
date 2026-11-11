@@ -3,7 +3,7 @@ $ErrorActionPreference='Stop'
 $projectRoot=Split-Path -Parent $PSScriptRoot
 $pythonPath=Join-Path $projectRoot '.venv/Scripts/python.exe'
 if (-not (Test-Path -LiteralPath $pythonPath)) {
-    Write-Error 'Немає .venv. Створіть середовище Python та встановіть пакет: pip install -e ".[web]". Див. docs/prototype-runbook.md.'
+    Write-Error 'Немає .venv. Створіть середовище Python та встановіть пакет: pip install -e ".[web]". Див. https://ysilvestrov.github.io/obscura-text-writer/install.html'
     exit 1
 }
 if (-not $DataDir) { $DataDir=Join-Path $projectRoot 'data' }

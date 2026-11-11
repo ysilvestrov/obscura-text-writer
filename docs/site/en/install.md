@@ -63,6 +63,8 @@ Stop the server before copying. The built-in backup checks integrity and hashes:
 
 Destination parent folders must exist. Restore creates only a new folder and overwrites nothing. You can also copy the **whole** data folder of a stopped server; do not copy the database apart from the texts.
 
+To check the data folder without changing it, run `./.venv/Scripts/storygen.exe fsck --data-dir "<folder>" --json`. It reports problems but repairs and deletes nothing. If a backup or restore was interrupted, do not use the incomplete folder: repeat the restore from a verified backup into another new folder.
+
 ## Updating
 
 Save manual edits, stop the server, update the code and start the server again. The data schema is updated when the storage opens. After a crash, unfinished runs are marked interrupted and continue only on your command.

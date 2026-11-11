@@ -453,7 +453,7 @@ UI/CLI та захист активної звірки. Інструкція: `d
 
 ## R-25 — Двомовний сайт користування та встановлення на GitHub Pages
 
-**Статус:** PR 1 (ядро) 11.11.2026, GitHub [#29](https://github.com/ysilvestrov/obscura-text-writer/issues/29): збирач `scripts/build_site.py`, перевірка `scripts/check_site.py` (хеші пар мов, посилання, якорі, межа внутрішніх матеріалів), workflow GitHub Pages, сторінки «Про Obscura», «Встановлення й запуск», «Перший твір» UA/EN. PR 2 — решта тем, знімки й перенаправлення старих файлів.
+**Статус:** PR 1 (ядро) 11.11.2026, GitHub [#29](https://github.com/ysilvestrov/obscura-text-writer/issues/29): збирач `scripts/build_site.py`, перевірка `scripts/check_site.py` (хеші пар мов, посилання, якорі, межа внутрішніх матеріалів), workflow GitHub Pages, сторінки «Про Obscura», «Встановлення й запуск», «Перший твір» UA/EN. PR 2 (11.11.2026) — 14 тем UA/EN, знімки з нейтрального seed (`scripts/capture_screenshots.py`), перенаправлення старих інструкцій на сайт; R-25 виконано.
 
 **Майбутня специфікація:** `docs/specs/changes/R-25-bilingual-documentation-site.md`.
 

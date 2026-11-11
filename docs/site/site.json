@@ -9,6 +9,7 @@
     {"slug": "imports", "title": {"uk": "Імпорт матеріалів", "en": "Importing materials"}},
     {"slug": "ghost-mode", "title": {"uk": "Переписування по пам’яті", "en": "Rewriting from memory"}},
     {"slug": "memory", "title": {"uk": "Пам’ять", "en": "Memory"}},
+    {"slug": "writing-tools", "title": {"uk": "Коментарі, промпти й горизонт", "en": "Comments, prompts and horizon"}},
     {"slug": "revision", "title": {"uk": "Редактура й перевірка впливу", "en": "Editing and impact review"}},
     {"slug": "content-rating", "title": {"uk": "Віковий рейтинг", "en": "Age rating"}},
     {"slug": "models", "title": {"uk": "Моделі й бюджет", "en": "Models and budget"}},

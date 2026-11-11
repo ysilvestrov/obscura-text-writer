@@ -30,6 +30,8 @@ To keep the model from naming people the protagonist has not met yet, the brief,
 
 An acquaintance is the planner's intent, not a check of the prose: if the writer skipped the introduction, the next scene still treats the character as acquainted.
 
+If prose was saved by hand and its link to the brief was lost, the prose tab shows the **Brief and introductions** panel. Tick who was introduced to the protagonist in this scene and press **The prose rests on this brief**. If the brief does not match the prose, press **Open the brief**, fix and save it. **Next unconfirmed scene** moves to the next scene waiting for confirmation. Confirmation does not change the prose.
+
 ## Character age
 
 The age-rating safeguard reads the age from a line starting with `Age:` or `Вік:` in the card entries. See [Age ratings](content-rating.md#character-age).

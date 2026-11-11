@@ -16,6 +16,24 @@ The result appears next to the form: how many new scenes and cards were created,
 - **Scenes:** a duplicate is identified by the author's explicit number: "Scene 2. The meeting" and "Scene 2: Friends" count as one scene. Titles and list positions do not identify duplicates. Sections without a number are added as new scenes every time.
 - New scenes go to the end; the existing outline keeps its text.
 
+## Outline format
+
+Every scene starts with a heading "Scene N: Title" or "Scene N. Title". A line "Characters:", "Participants:" or "Cast:" sets the scene cast; names are separated by commas or semicolons.
+
+```text
+Scene 3: A call from her sister
+Characters: Lera, Maria (on the phone).
+Point of view: Lera
+What happens: Maria calls Lera and asks for advice.
+```
+
+- An explanation in brackets stays in the outline for the model but is not part of the name.
+- Names must match the cards exactly; case and extra spaces do not matter. The application does not guess a similar name and does not create a character from a name alone: generation waits until you fix the name or add a card.
+- An empty "Characters:" line clears the cast; without the line, a cast chosen by hand stays.
+- The other fields are instructions for the models. The number in the heading does not reorder scenes.
+
+A character file with name headings of the same level (`## Lera`) creates starting cards with the status "Time not verified" in a new story. Names that mix alphabets (a Latin C instead of a Cyrillic С) produce a warning.
+
 ## If something goes wrong
 
 - A wrong format or encoding rejects the whole set of files before anything is saved.
