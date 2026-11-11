@@ -102,3 +102,27 @@ test('opening a scene from book revision keeps the revision page',async({page,re
   expect(await page.evaluate(()=>window.__kept)).toBe(true);
   await tab.close();
 });
+
+// Cross-review #2: "Open material" for a brief report opens the brief even when the scene already has prose.
+test('book revision opens the reported material in the workspace',async({page,request})=>{
+  const f=await(await request.post('/test-impact?changes=true')).json();
+  await page.goto(`/stories/${f.story_id}/revision`);
+  const url=await page.evaluate(async()=>{
+    const ctx=await import('/static/revision-context.js'),cmd=await import('/static/workspace-commands.js');
+    let opened=null;window.open=u=>{opened=u};
+    const scene={id:'scene-x',heads:{brief:'b',prose:'p'}};
+    await ctx.selectScene(scene);if(ctx.state.scene?.id===scene.id&&!ctx.state.dirty)await cmd.invokeWorkspaceCommand('show','brief');
+    await new Promise(r=>setTimeout(r,50));return opened;
+  });
+  expect(url).toContain('scene=scene-x');expect(url).toContain('material=brief');
+});
+
+// Cross-review #1: coming back to the revision page while a run is active resumes polling.
+test('book revision resumes polling when the author returns during a run',async({page,request})=>{
+  const fixture=await(await request.post('/test-editor-no-changes')).json();
+  await page.goto(`/stories/${fixture.story_id}/revision`);
+  await page.evaluate(()=>{window.__runEvents=0;document.addEventListener('workspace-run-state',()=>window.__runEvents++)});
+  await request.post('/api/runs',{data:{request_id:crypto.randomUUID(),request:{story_id:fixture.story_id,scene_id:fixture.scene_id,mode:'edit_loop'}}});
+  await page.evaluate(()=>window.dispatchEvent(new Event('focus')));
+  await expect.poll(()=>page.evaluate(()=>window.__runEvents),{timeout:5000}).toBeGreaterThan(0);
+});

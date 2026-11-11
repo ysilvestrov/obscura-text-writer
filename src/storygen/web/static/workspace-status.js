@@ -13,3 +13,8 @@ export function sceneStatusKey(scene,impactStatus={}){
 export function sceneStatus(scene,impactStatus){const key=sceneStatusKey(scene,impactStatus);return {key,label:t(KEYS[key])}}
 // #89: the workspace shows a sequential review card only while that session waits for the author (a decision, a resume or a retry), not while it runs.
 export function reviewNeedsAuthor(run){return ['needs_review','paused','pause_requested','failed','interrupted','alternative'].includes(run?.state)}
+// Materials awaiting an impact decision: brief and prose of one scene count separately, as on the revision page.
+const PENDING=['pending','changes_required'];
+export function pendingMaterialCount(impactStatus){return Object.values(impactStatus||{}).reduce((n,s)=>n+PENDING.includes(s?.brief)+PENDING.includes(s?.prose),0)}
+// The editor keeps its scene object to protect the loaded buffer; status labels read the refreshed list.
+export function liveScene(scene,scenes){return scene?(scenes||[]).find(s=>s.id===scene.id)||scene:null}

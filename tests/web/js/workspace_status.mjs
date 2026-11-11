@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {pathToFileURL} from 'node:url';
-const {sceneStatus,reviewNeedsAuthor}=await import(pathToFileURL(process.argv[2]+'/src/storygen/web/static/workspace-status.js'));
+const {sceneStatus,reviewNeedsAuthor,pendingMaterialCount,liveScene}=await import(pathToFileURL(process.argv[2]+'/src/storygen/web/static/workspace-status.js'));
 const scene=(heads,needs_review=false)=>({id:'s1',heads,needs_review});
 const cases=[
   [scene({}),{},'not_started','Не почато'],
@@ -19,3 +19,9 @@ assert.deepEqual(sceneStatus(scene({brief:'b'}),undefined),{key:'no_text',label:
 for(const state of ['needs_review','paused','pause_requested','failed','interrupted','alternative'])assert.equal(reviewNeedsAuthor({state}),true,state);
 for(const state of ['queued','running','succeeded','cancelled','cancellation_requested'])assert.equal(reviewNeedsAuthor({state}),false,state);
 assert.equal(reviewNeedsAuthor(null),false);
+// Cross-review #4: the menu badge counts materials, like the revision page (brief and prose of one scene are two).
+assert.equal(pendingMaterialCount({s1:{brief:'pending',prose:'changes_required'},s2:{prose:'no_impact'},s3:{brief:'no_impact',prose:'pending'}}),3);
+assert.equal(pendingMaterialCount(undefined),0);
+// Cross-review #3: the status row reads the refreshed scene metadata, not the scene object kept for the buffer.
+const kept={id:'s1',heads:{}},fresh={id:'s1',heads:{draft:'d'}};
+assert.equal(liveScene(kept,[fresh]),fresh);assert.equal(liveScene(kept,[]),kept);assert.equal(liveScene(null,[fresh]),null);
