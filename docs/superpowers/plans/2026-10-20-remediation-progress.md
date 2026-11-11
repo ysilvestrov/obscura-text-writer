@@ -1592,3 +1592,10 @@ Playwright `memory-kind.spec.mjs` і `core-review.spec.mjs` пройшли вр�
 - `static/external-origin.js`: позначка «Зовнішній клієнт: <client> · <model>» / «External client: …» в історії версій і рядку стану (`#workspace-origin`); після збереження автором рядок стану бере нову версію. Перевірено в браузері: UA/EN, екранування, зникнення після власної правки.
 - Сторінка сайту `mcp` UA/EN: встановлення, підключення Claude Code / Claude Desktop / Codex, сценарій із Ghost Mode, обмеження.
 - SPEC MCP-BRIDGE-S10; ручна процедура S07 посилається на сторінку. S07 ще не виконано: потрібен обліковий запис власника.
+
+## 11.11.2026 — Приймання MCP-клієнта з реальним клієнтом (#84, MCP-BRIDGE-S07)
+
+- Середовище: окремий екземпляр Obscura на `127.0.0.1:8770` з новим каталогом даних `C:\tmp\mcp-accept\data` і порожнім env-файлом. Робоча Obscura на 8765 не задіяна. `storygen-mcp` зареєстровано в Claude Code (`--scope user`), Codex і Claude Desktop.
+- Claude Desktop з Microsoft Store читає налаштування з `%LOCALAPPDATA%\Claude-Data\claude_<id>\claude_desktop_config.json`, а не з `%APPDATA%\Claude`, не має пункту «Settings → Developer» і перезаписує файл під час роботи. Інструкцію сайту виправлено (PR #102).
+- Результат (за словами власника): сценарій виконано в Claude Desktop, MCP працює. Клієнт підписав версію як `local-agent-mode-obscura · claude-opus-5-5`.
+- Знайдені дефекти: [#103](https://github.com/ysilvestrov/obscura-text-writer/issues/103) — імпорт плану з «Сцена N:» без `##` дає зайву сцену з заголовка, а учасники не прив’язуються до карток; [#104](https://github.com/ysilvestrov/obscura-text-writer/issues/104) — видалення сцени неінтуїтивне й не задокументоване; [#105](https://github.com/ysilvestrov/obscura-text-writer/issues/105) — відкритий редактор не бачить чернетки, збереженої ззовні, до перезавантаження.

@@ -39,7 +39,12 @@ claude mcp add --scope user obscura -- C:\Obscura\.venv\Scripts\storygen-mcp.exe
 
 `--scope user` робить сервер доступним у будь-якій теці. Без нього Claude Code бачить сервер лише в теці, де виконано команду.
 
-**Claude Desktop.** Відкрийте «Settings → Developer → Edit Config» і додайте сервер у `claude_desktop_config.json`, потім перезапустіть Claude Desktop:
+**Claude Desktop.** Додайте сервер у файл налаштувань `claude_desktop_config.json`. Де лежить файл, залежить від способу встановлення:
+
+- версія з Microsoft Store — `%LOCALAPPDATA%\Claude-Data\claude_<ідентифікатор>\claude_desktop_config.json` (тека `claude_` з літерами й цифрами одна);
+- версія зі звичайного інсталятора — `%APPDATA%\Claude\claude_desktop_config.json`.
+
+Файл може вже містити налаштування застосунку: не видаляйте їх, а додайте поруч розділ `mcpServers`. Поки Claude Desktop працює, він сам перезаписує цей файл, тому спершу повністю закрийте застосунок, зокрема іконку в області сповіщень. Потім збережіть файл і запустіть Claude Desktop знову. Файл лише з цим сервером виглядає так:
 
 ```json
 {
