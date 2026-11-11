@@ -72,14 +72,12 @@ def _tray():
 
 
 def _database():
-    import sqlite3
-    from contextlib import closing
     from .storage.database import SCHEMA_VERSION
+    from .storage.pre_migration import stored_schema_version
     from .storage.repository import Repository
     with tempfile.TemporaryDirectory(prefix='obscura-self-check-', ignore_cleanup_errors=True) as root:
         Repository(Path(root) / 'data')
-        with closing(sqlite3.connect(Path(root) / 'data' / 'storygen.sqlite3')) as db:
-            found = db.execute('PRAGMA user_version').fetchone()[0]
+        found = stored_schema_version(Path(root) / 'data')
     if found != SCHEMA_VERSION:
         raise CheckFailed(f'схема {found}, очікувано {SCHEMA_VERSION}')
     return f'схема {found}'
