@@ -3704,6 +3704,65 @@
       ]
     },
     {
+      "id": "BUILD-EDITION-001-S01",
+      "requirement": "BUILD-EDITION-001",
+      "scope": "Без файла-позначки видання full з межею 2; рівень 2 зберігається й генерується, як раніше.",
+      "tests": [
+        "tests/test_build_edition.py::test_no_marker_file_is_full_edition",
+        "tests/test_build_edition.py::test_repository_ships_without_marker",
+        "tests/storage/test_content_rating.py::test_full_edition_still_accepts_level_two",
+        "tests/generation/test_content_rating_context.py::test_full_edition_level_two_unchanged"
+      ]
+    },
+    {
+      "id": "BUILD-EDITION-001-S02",
+      "requirement": "BUILD-EDITION-001",
+      "scope": "Видання store відхиляє збереження сексуального змісту 2 для твору й сцени з перекладом; рівень 1, успадкування й інші осі приймаються; наявний рівень 2 можна лишити чи знизити.",
+      "tests": [
+        "tests/test_build_edition.py::test_store_edition_caps_only_sexual",
+        "tests/test_build_edition.py::test_over_limit_lists_axes",
+        "tests/storage/test_content_rating.py::test_store_edition_rejects_story_level_two",
+        "tests/storage/test_content_rating.py::test_store_edition_rejects_scene_level_two_and_allows_inherit",
+        "tests/storage/test_content_rating.py::test_store_edition_keeps_other_axes_at_two",
+        "tests/storage/test_content_rating.py::test_store_edition_lets_lower_an_existing_level_two",
+        "tests/web/test_rating_routes.py::test_store_edition_put_level_two_is_400_with_translation"
+      ]
+    },
+    {
+      "id": "BUILD-EDITION-001-S03",
+      "requirement": "BUILD-EDITION-001",
+      "scope": "Видання store блокує генерацію для чинного рівня 2 (власний, успадкований, етап без сцени) до перевірок складу; читання й ручне редагування працюють; рівень 1 генерується.",
+      "tests": [
+        "tests/generation/test_content_rating_context.py::test_store_edition_blocks_scene_with_own_level_two",
+        "tests/generation/test_content_rating_context.py::test_store_edition_blocks_scene_inheriting_level_two",
+        "tests/generation/test_content_rating_context.py::test_store_edition_blocks_story_stage_without_scene",
+        "tests/generation/test_content_rating_context.py::test_store_edition_limit_comes_before_cast_checks",
+        "tests/generation/test_content_rating_context.py::test_store_edition_allows_level_one_and_other_axes",
+        "tests/generation/test_content_rating_context.py::test_store_edition_does_not_block_reading_or_manual_edit",
+        "tests/generation/test_content_rating_context.py::test_edition_guard_message_has_english_translation"
+      ]
+    },
+    {
+      "id": "BUILD-EDITION-001-S04",
+      "requirement": "BUILD-EDITION-001",
+      "scope": "Некоректна позначка (не JSON, невідоме видання, зайве поле, адреса не https, store без report_url) зупиняє запуск без створення теки даних і без вмісту файла в повідомленні.",
+      "tests": [
+        "tests/test_build_edition.py::test_store_edition_requires_report_url",
+        "tests/test_build_edition.py::test_invalid_marker_is_rejected_not_ignored",
+        "tests/test_build_edition.py::test_broken_json_is_rejected",
+        "tests/web/test_app_info.py::test_app_does_not_start_with_invalid_marker"
+      ]
+    },
+    {
+      "id": "BUILD-EDITION-001-S05",
+      "requirement": "BUILD-EDITION-001",
+      "scope": "GET /api/app-info віддає лише видання, межу, версію й адреси посилань.",
+      "tests": [
+        "tests/web/test_app_info.py::test_app_info_full_edition",
+        "tests/web/test_app_info.py::test_app_info_store_edition"
+      ]
+    },
+    {
       "id": "MEMORY-SELECT-S01",
       "requirement": "MEMORY-SELECT",
       "scope": "Запит без переповнення не змінюється; розкладання проєкції на рядки байтово тотожне попередній реалізації.",
