@@ -1,3 +1,4 @@
+import {renderOriginInto} from './external-origin.js';
 import {confirmDialog,promptDialog} from './dialogs.js';
 import {live,t,msg,labelEntries,getLocale,uiText,uiAttr,uiHTML} from './i18n.js';
 import {api,json,notice} from './api.js';
@@ -32,6 +33,8 @@ export function displaySceneTitle(title){
   return title.replace(/^\s*#{1,6}\s+/, '').replace(/\*\*|__/g, '').trim();
 }
 
+// MCP-BRIDGE: the status row names the external client of the version in the buffer; an author save replaces the ref.
+function renderOrigin(ref){renderOriginInto(document.querySelector('#workspace-origin'),ref)}
 export function loadBuffer(scene,mode,text,origin='current',ref=null){
   textEditor.write(text,{material:mode,content_format:ref?.content_format||'plain',version_id:ref?.id,source_ref:ref});
   state.scene=scene;state.mode=mode;state.dirty=false;state.bufferEpoch++;
@@ -39,6 +42,7 @@ export function loadBuffer(scene,mode,text,origin='current',ref=null){
     const position={scene_id:scene.id,material:mode};rememberWorkspacePosition(state.storyId,position);updateWorkspaceUrl(position);
   }
     state.bufferOrigin=origin;
+  renderOrigin(ref);
   textEditor.placeholder(live(()=>placeholders[mode]||''));
   textEditor.readOnly(origin==='history'||['review','blueprint'].includes(mode));
   uiText(document.querySelector('#save-state'),"textContent",()=>(t("m_4fc1598084c2")));
@@ -63,6 +67,7 @@ export async function saveBuffer(send){
       const savedAcceptedBrief=snapshot.mode==='brief'&&!result.needs_review&&result.version?.id&&
         result.scene?.heads?.brief===result.version.id&&textEditor.identity().version_id===snapshot.source_version_id;
       if(!state.dirty||savedAcceptedBrief)textEditor.markSaved({...material,version_id:result.version?.id,source_ref:result.version});
+      renderOrigin(result.version);
       authoring?.saved(result);
       state.dirty=state.dirty||!!authoring?.isDirty();
       uiText(document.querySelector('#save-state'),"textContent",()=>(state.dirty?t("m_5da9339e255c"):t("m_7f00ac2a170a")));
@@ -157,7 +162,7 @@ document.querySelector('#import-sources').onsubmit=async event=>{
   }
 };
 document.querySelector('#add-scene').onclick=async()=>{const title=await promptDialog(t("m_dd7bf0189af8"));if(!title)return;try{await api('/api/stories/'+state.storyId+'/scenes',json('POST',{title}));await refresh()}catch(error){notice(error.message,'error')}};
-installSceneTrash(state,refresh,()=>{state.scene=null;state.dirty=false;state.bufferEpoch++;textEditor.write('');textEditor.placeholder(live(()=>placeholders.plan));document.querySelector('#mode-tabs').replaceChildren();document.querySelector('#version-panel').replaceChildren();document.querySelector('#scene-settings')?.remove?.();uiText(document.querySelector('#scene-title'),"textContent",()=>(t("m_f0f1417db6de")));uiText(document.querySelector('#save-state'),"textContent",()=>(''));saveButton.disabled=true;document.dispatchEvent(new CustomEvent('scene-selected'));changed()});
+installSceneTrash(state,refresh,()=>{state.scene=null;state.dirty=false;state.bufferEpoch++;textEditor.write('');renderOrigin(null);textEditor.placeholder(live(()=>placeholders.plan));document.querySelector('#mode-tabs').replaceChildren();document.querySelector('#version-panel').replaceChildren();document.querySelector('#scene-settings')?.remove?.();uiText(document.querySelector('#scene-title'),"textContent",()=>(t("m_f0f1417db6de")));uiText(document.querySelector('#save-state'),"textContent",()=>(''));saveButton.disabled=true;document.dispatchEvent(new CustomEvent('scene-selected'));changed()});
 refresh().catch(error=>notice(error.message,'error'));
 
 const importForm=document.querySelector('#import-sources'),importButton=importForm.querySelector?.('button');

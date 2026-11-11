@@ -1586,3 +1586,9 @@ Playwright `memory-kind.spec.mjs` і `core-review.spec.mjs` пройшли вр�
 - SPEC MCP-BRIDGE S01–S09 (S07 — ручна процедура `manual.md#mcp-real-client`, ще не виконана); STORY-LANGUAGE і DATA-007 доповнено.
 
 Рішення — у рядках `Ruling:` журналу SDD, перенесених в опис PR.
+
+## 11.11.2026 — MCP-клієнт: позначка й інструкції (#84, R-32, PR 2; план `docs/superpowers/plans/2026-11/2026-11-11-mcp-bridge-ui.md`)
+
+- `static/external-origin.js`: позначка «Зовнішній клієнт: <client> · <model>» / «External client: …» в історії версій і рядку стану (`#workspace-origin`); після збереження автором рядок стану бере нову версію. Перевірено в браузері: UA/EN, екранування, зникнення після власної правки.
+- Сторінка сайту `mcp` UA/EN: встановлення, підключення Claude Code / Claude Desktop / Codex, сценарій із Ghost Mode, обмеження.
+- SPEC MCP-BRIDGE-S10; ручна процедура S07 посилається на сторінку. S07 ще не виконано: потрібен обліковий запис власника.

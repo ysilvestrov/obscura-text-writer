@@ -15,6 +15,7 @@
     {"slug": "models", "title": {"uk": "Моделі й бюджет", "en": "Models and budget"}},
     {"slug": "evaluator", "title": {"uk": "Оцінювач", "en": "Evaluator"}},
     {"slug": "publication", "title": {"uk": "Публікація й експорт", "en": "Publication and export"}},
+    {"slug": "mcp", "title": {"uk": "Чат-клієнти (MCP)", "en": "Chat clients (MCP)"}},
     {"slug": "story-language", "title": {"uk": "Мова й обсяг твору", "en": "Story language and length"}},
     {"slug": "troubleshooting", "title": {"uk": "Поширені проблеми", "en": "Troubleshooting"}},
     {"slug": "legal", "title": {"uk": "Умови, ліцензія й назва", "en": "Terms, license and name"}}
