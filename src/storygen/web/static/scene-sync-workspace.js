@@ -15,7 +15,8 @@ async function check(){
   if(!state.view||!state.storyId)return;
   const {scenes}=await api(`/api/stories/${encodeURIComponent(state.storyId)}/scene-revisions`,{fresh:true});
   const result=revisionsChanged(state.view.scenes,scenes,state.scene);
-  if(!result.changed)return;
+  // A view refreshed by the author's own action can be current while the buffer is still behind: notice that once.
+  if(!result.changed&&(state.externalChange||!(result.currentChanged||result.currentGone)))return;
   if(result.currentChanged||result.currentGone)state.externalChange=true;
   if(result.currentGone&&cleanBuffer(state,ghostOpen()))clearSceneBuffer();
   await refresh({fresh:true});
@@ -28,6 +29,20 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)trigger()}
 globalThis.addEventListener?.('focus',trigger);
 document.addEventListener('workspace-sync-settle',settle);
 document.addEventListener('editor-state-changed',settle);
+
+// A buffer that becomes clean while behind (the author undid the edits) is reloaded, not just relieved of its notice.
+let reloading=false;
+const reloadable=()=>externalNotice(state)==='changed'&&cleanBuffer(state,ghostOpen())&&MATERIALS.includes(state.mode);
+function reloadIfClean(){
+  if(reloading||!reloadable())return;
+  reloading=true;
+  // One keystroke emits several buffer events (input, then the comment layer bumps the epoch); show() would abort
+  // on that epoch change, so the reload waits until the keystroke has settled and checks again.
+  setTimeout(async()=>{
+    try{if(reloadable())await invokeWorkspaceCommand('show',state.mode)}catch(error){notice(error.message,'error')}finally{reloading=false}
+  },0);
+}
+document.addEventListener('editor-state-changed',reloadIfClean);
 
 function render(){
   if(!box)return;

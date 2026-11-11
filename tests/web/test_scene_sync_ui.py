@@ -28,6 +28,8 @@ def test_open_rewrite_from_memory_blocks_buffer_replacement():
     versions = _read('versions.js')
     handler = versions[versions.index("addEventListener('story-refreshed'"):]
     handler = handler[:handler.index('await render()')]
+    # Both head-change branches refuse to run while the rewrite is open; the external branch goes through cleanBuffer.
+    assert handler.count('&&!ghostOpen()&&') == 2 and handler.count('cleanBuffer(state,ghostOpen())') == 1
     assert handler.count('ghostOpen()') == 3
 
 
@@ -79,5 +81,16 @@ def test_review_fixes_for_clean_buffers_and_saves():
         body = versions[versions.index(name):][:400]
         assert "externalNotice(state)==='gone'" in body
     wiring = _read('scene-sync-workspace.js')
-    assert 'MATERIALS.includes(state.mode)' in wiring and "invokeWorkspaceCommand('show',state.mode)" not in wiring
+    button = wiring[wiring.index("button?.addEventListener('click'"):].split(chr(10), 1)[0]
+    assert "invokeWorkspaceCommand('show',MATERIALS.includes(state.mode)?state.mode:'plan')" in button
     assert "saveButton.disabled=state.saving||['history','blueprint','review'].includes(state.mode)" in wiring
+
+
+@pytest.mark.req('MCP-BRIDGE')
+def test_cross_review_fixes_for_stale_buffers():
+    wiring = _read('scene-sync-workspace.js')
+    check = wiring[wiring.index('async function check'):wiring.index('const sync=')]
+    # A view refreshed by the author's own action can be current while the buffer is still behind: notice it once.
+    assert 'if(!result.changed&&(state.externalChange||!(result.currentChanged||result.currentGone)))return;' in check
+    # A buffer that became clean (undo) while behind is reloaded, not just relieved of its notice.
+    assert "document.addEventListener('editor-state-changed',reloadIfClean)" in wiring

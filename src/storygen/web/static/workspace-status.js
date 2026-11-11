@@ -16,5 +16,10 @@ export function reviewNeedsAuthor(run){return ['needs_review','paused','pause_re
 // Materials awaiting an impact decision: brief and prose of one scene count separately, as on the revision page.
 const PENDING=['pending','changes_required'];
 export function pendingMaterialCount(impactStatus){return Object.values(impactStatus||{}).reduce((n,s)=>n+PENDING.includes(s?.brief)+PENDING.includes(s?.prose),0)}
-// The editor keeps its scene object to protect the loaded buffer; status labels read the refreshed list.
-export function liveScene(scene,scenes){return scene?(scenes||[]).find(s=>s.id===scene.id)||scene:null}
+// The editor keeps its scene object to protect the loaded buffer; status labels read the refreshed list,
+// unless the buffer already holds a newer scene than the list (#105: the brief loader fetches a fresh one).
+export function liveScene(scene,scenes){
+  if(!scene)return null;
+  const listed=(scenes||[]).find(s=>s.id===scene.id);
+  return listed&&(listed.revision??0)>=(scene.revision??0)?listed:scene;
+}

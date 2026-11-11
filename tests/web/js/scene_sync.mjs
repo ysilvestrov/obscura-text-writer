@@ -62,3 +62,10 @@ assert.equal(cleanBuffer({...clean,mode:'blueprint'},false),false);
 let release2;const twin=createSceneSync({check:()=>{calls++;return new Promise(r=>release2=r)},busy:()=>false,now:()=>time});
 calls=0;time+=10_000;const one=twin.trigger();await twin.trigger();release2();await one;await new Promise(r=>setTimeout(r,0));assert.equal(calls,1);
 console.log('ok2');
+// Cross-review: status labels never fall back to an older view entry than the scene already in the buffer.
+const {liveScene}=await import(pathToFileURL(root+'/src/storygen/web/static/workspace-status.js'));
+const inBuffer={id:'a',revision:2,heads:{draft:'v2'}},inView={id:'a',revision:1,heads:{}};
+assert.equal(liveScene(inBuffer,[inView]),inBuffer);
+assert.equal(liveScene(inView,[inBuffer]),inBuffer);
+assert.equal(liveScene(inBuffer,[]),inBuffer);
+console.log('ok3');
