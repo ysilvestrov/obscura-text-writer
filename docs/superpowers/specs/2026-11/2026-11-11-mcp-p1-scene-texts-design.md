@@ -1,7 +1,7 @@
 # MCP, пакет 1: читання текстів сцени й запис чернетки поверх прочитаного
 
 Дата: 2026-11-11
-Статус: чекає на затвердження
+Статус: затверджено 2026-11-12
 Spec-review: codex/gpt-6.1-sol @ e1e611d (author: claude) — 3 findings: 3 fixed, 0 rejected
 
 Пакет 1 загального дизайну [MCP як пульт Obscura](2026-11-11-mcp-full-toolset-design.md). Закриває [#108](https://github.com/ysilvestrov/obscura-text-writer/issues/108).
