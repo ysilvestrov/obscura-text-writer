@@ -14,7 +14,7 @@ def client(tmp_path):
 def test_app_info_full_edition(tmp_path):
     info = client(tmp_path).get('/api/app-info').json()
     assert info['edition'] == 'full' and info['max_rating'] == {'sexual': 2, 'violence': 2, 'themes': 2}
-    assert set(info) == {'edition', 'max_rating', 'version', 'support_url', 'waitlist_url', 'report_url'}
+    assert set(info) == {'edition', 'max_rating', 'version', 'support_url', 'waitlist_url', 'report_url', 'instance_id'}
     assert info['support_url'] == info['waitlist_url'] == info['report_url'] == ''
     assert isinstance(info['version'], str) and info['version']
 
@@ -32,3 +32,9 @@ def test_app_does_not_start_with_invalid_marker(tmp_path, monkeypatch):
     with pytest.raises(ValueError, match='report_url'):
         create_app(AppSettings(data_dir=tmp_path / 'data', env_file=tmp_path / 'absent.env'))
     assert not (tmp_path / 'data').exists()
+
+
+def test_app_info_has_a_per_process_instance_id(tmp_path):
+    first = client(tmp_path / 'a').get('/api/app-info').json()['instance_id']
+    second = client(tmp_path / 'b').get('/api/app-info').json()['instance_id']
+    assert isinstance(first, str) and len(first) == 32 and first != second

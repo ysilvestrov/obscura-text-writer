@@ -14,7 +14,9 @@ os.environ['PYTHONPATH']=os.pathsep.join([_SRC,*[p for p in os.environ.get('PYTH
 
 
 @pytest.fixture(autouse=True)
-def no_network(monkeypatch):
+def no_network(request,monkeypatch):
+    # Tests marked `loopback` start a real local server (the desktop launcher); only 127.0.0.1 is opened for them.
+    loopback=request.node.get_closest_marker("loopback") is not None
     local=threading.local()
     socketpair=socket.socketpair
     def internal_pair(*args,**kwargs):
@@ -27,6 +29,9 @@ def no_network(monkeypatch):
         def checked(*args,**kwargs):
             if getattr(local,"in_pair",False):
                 return original(*args,**kwargs)
+            address=args[1] if len(args)>1 else None
+            if loopback and isinstance(address,tuple) and address[0]=="127.0.0.1":
+                return original(*args,**kwargs)
             raise AssertionError("Тест не повинен звертатися до мережі")
         return checked
     monkeypatch.setattr(socket,"socketpair",internal_pair)
@@ -35,6 +40,7 @@ def no_network(monkeypatch):
 
 
 def pytest_configure(config):
+    config.addinivalue_line("markers","loopback: тест відкриває з’єднання лише з 127.0.0.1 (локальний сервер запуску)")
     config.addinivalue_line("markers","unrated_stories: нові твори в тесті створюються без вікового рейтингу (як у застосунку)")
 
 

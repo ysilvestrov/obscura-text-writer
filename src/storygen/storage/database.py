@@ -4,6 +4,10 @@ from importlib.resources import files
 from pathlib import Path
 
 
+# The schema version a start brings every database to (DESKTOP-001-S03 backs up older ones first).
+SCHEMA_VERSION = 5
+
+
 class Database:
     def __init__(self,path: Path):
         self.path=path
@@ -38,7 +42,7 @@ class Database:
                             data['author_scene_number']=explicit_scene_number(data.get('title',''))
                         db.execute('UPDATE scenes SET payload=? WHERE id=?',(json.dumps(data,ensure_ascii=False),row['id']))
                 db.execute('PRAGMA user_version=5')
-            if db.execute("PRAGMA user_version").fetchone()[0] != 5:
+            if db.execute("PRAGMA user_version").fetchone()[0] != SCHEMA_VERSION:
                 raise ValueError("Непідтримувана версія бази даних")
 
     @contextmanager
