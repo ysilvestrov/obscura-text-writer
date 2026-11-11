@@ -1605,3 +1605,10 @@ Playwright `memory-kind.spec.mjs` і `core-review.spec.mjs` пройшли вр�
 - Специфікація: `docs/superpowers/specs/2026-11/2026-11-11-external-change-refresh-design.md` (затверджено власником 11.11.2026, cross-review 5/5 виправлено). План: `docs/superpowers/plans/2026-11/2026-11-11-external-change-refresh.md`.
 - Зроблено: `GET /api/stories/{id}/scene-revisions`; `static/scene-sync.js` (чисті правила) і `static/scene-sync-workspace.js` (перевірка на фокусі, повідомлення, кошик ззовні); захист переписування по пам’яті в обробнику `story-refreshed`; статуси вкладок з оновленого view; `show()` бере новішу сцену. SPEC MCP-BRIDGE-S11, сайт `mcp` UA/EN.
 - Перевірено в браузері на окремому каталозі даних: чистий буфер оновлюється сам; з незбереженими правками текст лишається, кнопка питає підтвердження й відкриває нову версію; сцена в кошику ззовні — з правками текст лишається, збереження вимкнене з причиною, без правок вибирається інша сцена.
+
+## 11.11.2026 — Згорнутий рядок запуску над редактором (R20-WORKSPACE-S04)
+
+- Специфікація: `docs/superpowers/specs/2026-11/2026-11-11-run-status-collapse-design.md` (затверджено власником 11.11.2026, cross-review 2/2 виправлено). Зауваження власника під час приймання #105: вивід запуску не прокручується й ховає редактор.
+- Зроблено: `static/run-summary.js` (текст підсумку, правила розгортання); у `runs.js` підсумок — кнопка з `aria-expanded`, подробиці мають клас `run-detail` і приховані CSS, поки рядок не розгорнуто; провалений запуск розгортається сам.
+- Перевірено: `tests/web` (pytest, включно з `tests/web/js/run_summary.mjs`); Playwright `run-status-collapse.spec.mjs` 16/16 (desktop + mobile, 4 повтори) і наявні `workspace-telemetry`, `workspace-cancel`, `impact`, `sequential-review` — 62 passed. Playwright запускався з `PYTHONPATH=<worktree>/src`: без нього `.venv` бере `storygen` з основної теки.
+- Документація: SPEC R20-WORKSPACE-S04, traceability, ручна процедура `manual.md#run-status-collapse`, сторінка сайту `workspace` (UA/EN).
