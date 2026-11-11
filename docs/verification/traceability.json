@@ -3878,6 +3878,175 @@
       ]
     },
     {
+      "id": "DESKTOP-001-S01",
+      "requirement": "DESKTOP-001",
+      "scope": "Тека даних у профілі користувача (кирилиця в шляху), журнал у файл із ротацією, запуск без stdout/stderr.",
+      "tests": [
+        "tests/test_desktop.py::test_default_data_dir_is_under_the_user_profile",
+        "tests/test_desktop.py::test_logging_goes_to_a_rotating_file_and_survives_missing_std_streams",
+        "tests/test_desktop.py::test_main_starts_serves_and_cleans_up",
+        "tests/test_desktop.py::test_whole_launch_works_without_standard_streams",
+        "tests/test_desktop.py::test_access_log_is_off_so_request_paths_stay_out_of_the_log",
+        "tests/test_desktop.py::test_logging_restores_the_root_level",
+        "tests/test_desktop.py::test_a_refused_start_tells_the_user_where_the_log_is",
+        "tests/test_desktop.py::test_env_file_option_brings_provider_keys",
+        "tests/test_desktop.py::test_default_env_file_is_in_the_data_folder"
+      ]
+    },
+    {
+      "id": "DESKTOP-001-S02",
+      "requirement": "DESKTOP-001",
+      "scope": "server.json з instance_id; другий запуск відкриває перший; застарілий чи чужий запис не приймається; зайнятий порт замінюється; запис і порт звільняються.",
+      "tests": [
+        "tests/test_desktop.py::test_running_server_trusts_only_a_matching_instance",
+        "tests/test_desktop.py::test_second_launch_opens_the_running_instance",
+        "tests/test_desktop.py::test_choose_port_falls_back_when_the_preferred_one_is_busy",
+        "tests/test_desktop.py::test_browser_is_opened_once_the_server_answers",
+        "tests/test_desktop.py::test_server_that_never_starts_is_exit_code_4",
+        "tests/web/test_app_info.py::test_app_info_has_a_per_process_instance_id",
+        "tests/test_desktop.py::test_discovery_ignores_proxy_settings",
+        "tests/test_desktop.py::test_discovery_does_not_follow_redirects",
+        "tests/test_desktop.py::test_discovery_needs_no_tls_machinery",
+        "tests/test_desktop.py::test_stale_record_does_not_stop_a_fresh_start",
+        "tests/test_desktop.py::test_failed_second_start_keeps_the_first_record_and_opens_it"
+      ]
+    },
+    {
+      "id": "DESKTOP-001-S03",
+      "requirement": "DESKTOP-001",
+      "scope": "Перевірена копія в сусідній теці перед міграцією; без копії код 3 і схема не змінюється; чинна схема й нова тека копії не потребують.",
+      "tests": [
+        "tests/storage/test_pre_migration.py::test_schema_version_constant_matches_a_fresh_database",
+        "tests/storage/test_pre_migration.py::test_no_database_and_current_schema_need_no_backup",
+        "tests/storage/test_pre_migration.py::test_old_schema_is_backed_up_next_to_the_data_dir",
+        "tests/storage/test_pre_migration.py::test_reading_the_version_does_not_change_the_data_dir",
+        "tests/storage/test_pre_migration.py::test_backup_failure_blocks_the_migration",
+        "tests/storage/test_pre_migration.py::test_existing_destination_is_a_failure_not_an_overwrite",
+        "tests/storage/test_pre_migration.py::test_unwritable_backups_location_is_a_failure",
+        "tests/test_desktop.py::test_desktop_backs_up_then_migrates",
+        "tests/test_desktop.py::test_desktop_refuses_to_start_when_backup_fails",
+        "tests/storage/test_pre_migration.py::test_unreadable_version_is_a_failure_not_a_skipped_backup",
+        "tests/storage/test_pre_migration.py::test_failed_copy_is_not_left_looking_like_a_backup",
+        "tests/storage/test_pre_migration.py::test_schema_one_cannot_be_verified_and_is_refused",
+        "tests/storage/test_pre_migration.py::test_a_copy_made_by_another_launch_is_never_renamed"
+      ]
+    },
+    {
+      "id": "DESKTOP-001-S05",
+      "requirement": "DESKTOP-001",
+      "scope": "Некоректна позначка видання зупиняє storygen-desktop (код 2, причина в журналі, лише logs у теці) і службові команди.",
+      "tests": [
+        "tests/test_desktop.py::test_invalid_edition_marker_is_logged_and_stops_before_data",
+        "tests/test_desktop.py::test_maintenance_commands_check_the_edition_marker"
+      ]
+    },
+    {
+      "id": "DESKTOP-001-S04",
+      "requirement": "DESKTOP-001",
+      "scope": "Меню трея: порядок, мови, пункт копій, вихід; робота без бібліотеки трея й з --no-tray.",
+      "tests": [
+        "tests/test_desktop_tray.py::test_menu_labels_order_and_actions",
+        "tests/test_desktop_tray.py::test_backups_item_appears_once_there_are_backups",
+        "tests/test_desktop_tray.py::test_menu_language_follows_the_system",
+        "tests/test_desktop_tray.py::test_run_tray_builds_the_icon_and_quit_stops_everything",
+        "tests/test_desktop_tray.py::test_missing_tray_library_is_reported",
+        "tests/test_desktop_tray.py::test_launcher_without_a_tray_keeps_running_and_logs_it",
+        "tests/test_desktop.py::test_no_tray_mode_runs_until_the_server_stops",
+        "tests/test_desktop.py::test_quit_with_an_open_stream_still_shuts_the_server_down"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#desktop-launcher",
+        "reason": "Справжній значок у треї Windows і його меню не можна натиснути з автоматичного тесту; тести перевіряють меню на підставній бібліотеці."
+      }
+    },
+    {
+      "id": "PACKAGING-001-S01",
+      "requirement": "PACKAGING-001",
+      "scope": "Звіт самоперевірки з сімома перевірками, версією й виданням, коди 0 і 5; нічого не стартує й не чіпає даних і сховища; чужі тексти винятків не потрапляють у звіт.",
+      "tests": [
+        "tests/test_self_check.py::test_checks_pass_in_the_development_environment",
+        "tests/test_self_check.py::test_broken_tls_is_reported_not_raised",
+        "tests/test_self_check.py::test_missing_package_data_names_the_missing_file",
+        "tests/test_self_check.py::test_store_edition_is_reported",
+        "tests/test_self_check.py::test_invalid_edition_marker_fails_the_check",
+        "tests/test_self_check.py::test_key_store_check_never_reads_or_writes_the_store",
+        "tests/test_self_check.py::test_missing_key_store_fails_the_check",
+        "tests/test_self_check.py::test_frozen_build_needs_the_notices_file",
+        "tests/test_self_check.py::test_details_never_carry_the_user_profile_path",
+        "tests/test_self_check.py::test_foreign_lookup_errors_do_not_leak_their_text",
+        "tests/test_self_check.py::test_self_check_mode_writes_the_report_and_starts_nothing",
+        "tests/test_self_check.py::test_self_check_mode_returns_5_when_a_check_fails"
+      ]
+    },
+    {
+      "id": "PACKAGING-001-S02",
+      "requirement": "PACKAGING-001",
+      "scope": "Збірка з робочої копії: маніфест даних із контрольними сумами, звірка у самоперевірці, версія й видання у звіті, повний набір перевірок, відмова на чужих метаданих і невідстежуваних файлах, позначка перевіряється в пам’яті.",
+      "tests": [
+        "tests/test_packaging.py::test_edition_marker_is_what_the_application_reads",
+        "tests/test_packaging.py::test_edition_marker_refuses_what_the_application_would_refuse",
+        "tests/test_packaging.py::test_edition_marker_is_validated_without_touching_the_disk",
+        "tests/test_packaging.py::test_package_data_manifest_lists_tracked_data_with_digests",
+        "tests/test_self_check.py::test_frozen_package_data_is_checked_file_by_file_against_the_build_manifest",
+        "tests/test_self_check.py::test_app_info_reports_the_version_of_the_build_manifest",
+        "tests/test_packaging.py::test_check_report_accepts_only_a_complete_matching_report",
+        "tests/test_packaging.py::test_check_report_requires_exactly_the_seven_checks",
+        "tests/test_packaging.py::test_check_report_treats_a_non_boolean_ok_as_failure",
+        "tests/test_packaging.py::test_build_script_help_runs_without_side_effects",
+        "tests/test_packaging.py::test_build_script_refuses_a_non_empty_output_folder",
+        "tests/test_packaging.py::test_build_script_refuses_bad_arguments_before_freezing"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#store-package-build",
+        "reason": "Справжнє збирання триває близько пів хвилини й потребує PyInstaller і makeappx, тому не входить у pytest; тести покривають чисті частини й відмови до заморожування, а саме збирання виконується за процедурою."
+      }
+    },
+    {
+      "id": "PACKAGING-001-S03",
+      "requirement": "PACKAGING-001",
+      "scope": "Повідомлення за фактичним вмістом збірки (записи PyInstaller), ліцензійні файли лише з dist-info, ліцензія інтерпретатора; компонент без тексту зупиняє збирання; LGPL-бібліотека окремими вихідними файлами.",
+      "tests": [
+        "tests/test_packaging.py::test_bundled_distributions_come_from_the_freezer_records",
+        "tests/test_packaging.py::test_notices_carry_name_version_licence_and_text",
+        "tests/test_packaging.py::test_only_real_licence_files_are_taken",
+        "tests/test_packaging.py::test_distribution_without_a_licence_text_stops_the_build",
+        "tests/test_packaging.py::test_root_requirements_come_from_the_checkout",
+        "tests/test_packaging.py::test_dependency_closure_follows_markers_and_extras",
+        "tests/test_packaging.py::test_declared_dependencies_all_have_licence_texts",
+        "tests/test_packaging.py::test_pystray_hook_ships_the_lgpl_library_as_source_files"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#store-package-build",
+        "reason": "Справжнє збирання триває близько пів хвилини й потребує PyInstaller і makeappx, тому не входить у pytest; тести покривають чисті частини й відмови до заморожування, а саме збирання виконується за процедурою."
+      }
+    },
+    {
+      "id": "PACKAGING-001-S04",
+      "requirement": "PACKAGING-001",
+      "scope": "Версія пакета з чотирьох чисел із четвертою 0 і межами Store; маніфест — коректний XML з екрануванням, повною довірою, мовами, назвою і значками; явний шлях до makeappx не підміняється.",
+      "tests": [
+        "tests/test_packaging.py::test_package_version",
+        "tests/test_packaging.py::test_package_version_refuses_what_the_store_cannot_hold",
+        "tests/test_packaging.py::test_manifest_structure",
+        "tests/test_packaging.py::test_manifest_escapes_every_value",
+        "tests/test_packaging.py::test_package_assets_exist_with_the_declared_sizes",
+        "tests/test_packaging.py::test_find_makeappx"
+      ]
+    },
+    {
+      "id": "PACKAGING-001-S05",
+      "requirement": "PACKAGING-001",
+      "scope": "Додаткові файли стандартної бібліотеки інтерпретатора кладуться в збірку; для звичайного CPython перелік порожній; аргументи PyInstaller.",
+      "tests": [
+        "tests/test_packaging.py::test_vendor_runtime_files",
+        "tests/test_packaging.py::test_pyinstaller_arguments"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#store-package-build",
+        "reason": "Справжнє збирання триває близько пів хвилини й потребує PyInstaller і makeappx, тому не входить у pytest; тести покривають чисті частини й відмови до заморожування, а саме збирання виконується за процедурою."
+      }
+    },
+    {
       "id": "MEMORY-SELECT-S01",
       "requirement": "MEMORY-SELECT",
       "scope": "Запит без переповнення не змінюється; розкладання проєкції на рядки байтово тотожне попередній реалізації.",

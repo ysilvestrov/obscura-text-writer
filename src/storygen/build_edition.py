@@ -44,16 +44,25 @@ def _clean_https(url: str) -> bool:
 
 def load_build_edition(path: Path | None = None) -> BuildEdition:
     """A missing marker is the full edition; anything unreadable is an error, never a silent fallback."""
-    source = files('storygen').joinpath(MARKER) if path is None else Path(path)
+    source = files(__package__).joinpath(MARKER) if path is None else Path(path)
     if not source.is_file():
         # Present but not a regular file is unreadable, not absent.
         if source.is_dir():
             raise ValueError(INVALID.format(reason='це не файл'))
         return BuildEdition()
+    try:
+        text = source.read_text(encoding='utf-8')
+    except (OSError, ValueError):
+        raise ValueError(INVALID.format(reason='файл не читається як JSON')) from None
+    return parse_build_edition(text)
+
+
+def parse_build_edition(text: str) -> BuildEdition:
+    """The marker's rules, applied to its text: the build script validates with exactly what the application reads."""
     # Reasons never quote the file: it is build configuration, not something to echo into logs or pages.
     try:
-        data = json.loads(source.read_text(encoding='utf-8'))
-    except (OSError, ValueError):
+        data = json.loads(text)
+    except ValueError:
         raise ValueError(INVALID.format(reason='файл не читається як JSON')) from None
     try:
         loaded = BuildEdition.model_validate(data)
