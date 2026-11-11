@@ -57,6 +57,13 @@ def characters_page(id: str,request: Request):
     return request.app.state.templates.TemplateResponse(request=request,name="characters.html",context={"story":request.app.state.repo.get_story(id)})
 
 
+@router.get("/api/stories")
+def stories_list(request: Request):
+    """MCP-BRIDGE: active stories for an external client; the HTML library stays at `/`."""
+    from ..application.writing_context import story_list
+    return story_list(request.app.state.repo)
+
+
 @router.post("/api/stories")
 def create_story(data: StoryCreate,request: Request):
     return request.app.state.repo.create_story(data)

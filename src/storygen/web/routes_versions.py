@@ -142,6 +142,13 @@ def prose(scene_id: str,body: AuthorTextChange,request: Request):
     return {'version':ref,'scene':request.app.state.repo.get_scene(scene_id)}
 
 
+@router.get('/api/scenes/{scene_id}/writing-context')
+def scene_writing_context(scene_id: str,request: Request):
+    """MCP-BRIDGE: plan, brief, participant cards and preceding memory as the draft stage sees them, plus the context fingerprint."""
+    from ..application.writing_context import writing_context
+    return writing_context(request.app.state.repo,scene_id)
+
+
 @router.post('/api/scenes/{scene_id}/draft')
 def manual_draft(scene_id: str,body: DraftChange,request: Request):
     if body.comment_set is not None:
