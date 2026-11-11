@@ -168,12 +168,17 @@ def _run(args, data_dir: Path, opener, tray, serve) -> int:
         logger.info('Сервер працює: %s; тека даних: %s', url, data_dir)
         if not args.no_browser:
             opener(url)
-        if tray is not None and not args.no_tray:
+        if not args.no_tray:
+            from .desktop_tray import TrayUnavailable, run_tray
             from .storage.pre_migration import backups_dir
-            tray(url, data_dir, backups_dir(data_dir), stop)
-        else:
-            while thread.is_alive():
-                thread.join(0.5)
+            try:
+                # Blocks until "Quit"; a stand-in is injected by tests.
+                (tray or run_tray)(url, data_dir, backups_dir(data_dir), stop)
+                return 0
+            except TrayUnavailable:
+                logger.warning('Значок у треї недоступний; застосунок працює без нього, доки процес не зупинять')
+        while thread.is_alive():
+            thread.join(0.5)
         return 0
     except KeyboardInterrupt:
         return 0
