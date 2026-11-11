@@ -44,7 +44,7 @@ test('shared classifier connection shows the same tariff without changing its li
   const form=page.locator('form[data-role=editor]'),toggle=form.locator('[name=classification_enabled]');
   await toggle.evaluate(e=>e.closest('details').open=true);await toggle.check();
   const fields=form.locator('.classification-fields'),limit=fields.locator('[name=classification_max_output_tokens]');
-  const before=await limit.inputValue();await fields.locator('button').click();
+  const before=await limit.inputValue();await fields.locator('label:has([name=classification_model]) button').click();
   await fields.locator('[name=classification_model]').fill('synthetic-priced');
   await expect(fields.locator('[data-model-info]')).toContainText('0.07');
   await page.locator('[data-ui-locale=en]').click();await expect(fields.locator('[data-model-info]')).toContainText('Input:');

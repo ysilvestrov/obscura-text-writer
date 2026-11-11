@@ -126,6 +126,27 @@ def main():
         app = create_app(AppSettings(data_dir=root/'data', env_file=root/'absent.env', port=port),
                          gateway_factory=forbidden_gateway, evaluator_factory=forbidden_gateway)
         repo = app.state.repo
+        # SECURITY-002: specs never touch the real OS credential store or the keys of this machine.
+        import os
+        from storygen.providers import secrets
+        for name in ('OPENROUTER_API_KEY','VENICE_API_KEY'):os.environ.pop(name,None)
+
+        class MemorySecretStore:
+            def __init__(self):self.items={}
+            def get(self,name):return self.items.get(name)
+            def set(self,name,value):self.items[name]=value
+            def delete(self,name):self.items.pop(name,None)
+        secrets.set_backend(MemorySecretStore())
+
+        @app.post('/test-secret-store')
+        def reset_secret_store(body: dict):
+            # Empties the in-memory store; {"available": false} simulates a machine without one,
+            # {"env": {"NAME": "value"}} sets or (null) clears environment variables of the server.
+            secrets.set_backend(MemorySecretStore() if body.get('available',True) else None)
+            for name,value in (body.get('env') or {}).items():
+                if value is None:os.environ.pop(name,None)
+                else:os.environ[name]=value
+            return {'available': secrets.store_available()}
         def rated_story(title):
             # Generation is blocked for an unrated story; browser fixtures start rated like conftest stories.
             from storygen.domain import ContentRating

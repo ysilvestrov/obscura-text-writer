@@ -29,7 +29,7 @@ On the workspace page press **Evaluate scene** or **Evaluate story** and confirm
 
 | What you see | What to check |
 |---|---|
-| Missing key / authentication error | The key in `.env` and the variable name in the settings |
+| Missing key / authentication error | The key in `.env` or in the "Provider key" block, and the variable name in the settings |
 | Quota / rate limit | Balance or rate limits at the provider |
 | Timeout / connection | API availability and the timeout |
 | Incomplete response | The response reserve and the model's format support |

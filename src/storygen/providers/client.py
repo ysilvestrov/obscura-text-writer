@@ -1,9 +1,8 @@
-import os
-
 import httpx
 from openai import OpenAI
 
 from .models import ProviderSettings
+from .secrets import resolve_key
 
 
 class ProviderConfigurationError(ValueError):
@@ -12,7 +11,7 @@ class ProviderConfigurationError(ValueError):
 
 def build_openai_client(settings: ProviderSettings, http_client: httpx.Client | None = None) -> OpenAI:
     key_env=getattr(settings,'key_env',None) or getattr(settings,'api_key_env',None)
-    key='local-server' if settings.provider=='local' else os.environ.get(key_env)
+    key='local-server' if settings.provider=='local' else resolve_key(key_env)
     if not key:
         raise ProviderConfigurationError('Ключ провайдера відсутній у серверному середовищі')
     timeout=getattr(settings,'timeout',None) or getattr(settings,'timeout_seconds',None) or (3600 if settings.provider=='local' else 180)

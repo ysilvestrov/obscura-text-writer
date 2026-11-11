@@ -2,20 +2,20 @@
 
 **ПЕРЕВІРКА ПРОЙШЛА** — свідчення конкретного запуску, не поточного довільного стану.
 
-- Початок (UTC): 2026-11-11T17:47:38.228408+00:00
-- Завершення (UTC): 2026-11-11T17:55:19.130388+00:00
-- Базовий commit: `ca63496cdd64042a816079812bab3a2890e2a508`
+- Початок (UTC): 2026-11-11T18:23:00.301425+00:00
+- Завершення (UTC): 2026-11-11T18:30:48.432363+00:00
+- Базовий commit: `5715157f286d37f7aa0e10dd0979dede5e7b99da`
 - Незакомічені зміни під час перевірки: `false`
-- SHA-256 вихідного знімка: `2924d0e2474e9e97b9b1c01354da411f9acb3c726ecc46e0f61fbc141df2b72f`
+- SHA-256 вихідного знімка: `c67fb47e5be670c32ee329fcf3b2f0954a28751b487f6351b32f68dba49709b8`
 - Зміна знімка під час прогону: `false`
 - Exit code: `0`
-- Фактичні testcase результати JUnit: passed: 2439 · failed: 0 · errors: 0 · skipped: 1
-- Тривалість: 460.91 с
+- Фактичні testcase результати JUnit: passed: 2496 · failed: 0 · errors: 0 · skipped: 1
+- Тривалість: 468.14 с
 
 Точний argv (JSON, не shell-команда):
 
 ```json
-["C:\\Projects\\text-generator\\.venv\\Scripts\\python.exe", "-m", "pytest", "-q", "--junitxml=C:\\tmp\\mes\\artifacts\\verification-un26uvfn\\junit.xml", "--basetemp=C:\\tmp\\mes\\artifacts\\verification-un26uvfn\\test-tmp"]
+["C:\\Projects\\text-generator\\.venv\\Scripts\\python.exe", "-m", "pytest", "-q", "--junitxml=C:\\tmp\\mes\\artifacts\\verification-lcqzjsom\\junit.xml", "--basetemp=C:\\tmp\\mes\\artifacts\\verification-lcqzjsom\\test-tmp"]
 ```
 
 Результат стосується лише наведеної команди й вихідного знімка. Якщо в argv зазначено окремі файли або фільтри, це часткова перевірка. Збір (collection) не є виконанням; skipped не зараховано до passed. Відсутній або непридатний XML позначається непідтвердженим. Після зміни вихідних файлів звіт історичний. Власний STATUS і artifacts виключено зі знімка; початкова ревізія може мати dirty=true, оскільки звіт створюється до коміту.

@@ -78,12 +78,16 @@ class OpenAIGenerationGateway:
         has_text=False
         refusal=False
         complete=False
+        used_key=None
         cost=None
         response_id=None
         blank_run=0
         try:
             require_accounting(self.settings,self.accounting)
             with build_openai_client(self.settings,self.http_client) as client:
+                # SECURITY-002: error texts are cleaned of the credential this request was sent with; the stored key
+                # may be replaced or deleted before the provider answers.
+                used_key=client.api_key if self.settings.provider!='local' else None
                 body=context.api_request or generation_request(context.stage,context.settings,context.system_text,context.user_text,context.fragments)
                 structured='response_format' in body
                 output_limit=body.get('max_completion_tokens',body.get('max_tokens'))
@@ -153,10 +157,10 @@ class OpenAIGenerationGateway:
         except Exception as exc:
             # SDK errors may contain request bodies, headers or server echoes. Never serialize them.
             if not cancel.is_set():
-                import os
                 from ..evaluation.failures import api_failure
+                from .secrets import resolve_key
                 from openai import APIError
-                detail=(api_failure(exc,secret=os.environ.get(self.settings.key_env or ''),documents=(context.system_text,context.user_text)).model_dump(mode='json')
+                detail=(api_failure(exc,secret=used_key or resolve_key(self.settings.key_env),documents=(context.system_text,context.user_text)).model_dump(mode='json')
                     if isinstance(exc,APIError) else {'category':'technical','http_status':None,'message':'Не вдалося завершити запит; точну причину не встановлено.'})
                 role={'classify':'класифікатора','publication_suggest':'планувальника'}.get(context.stage,'провайдера')
                 detail['message']=detail['message'].replace('оцінювача',role).replace('оцінювачем',{'classify':'класифікатором','publication_suggest':'планувальником'}.get(context.stage,'провайдером')).replace('Оцінювач',{'publication_suggest':'Планувальник','classify':'Класифікатор'}.get(context.stage,'Провайдер'))

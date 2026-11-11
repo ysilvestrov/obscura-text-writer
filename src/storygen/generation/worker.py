@@ -421,7 +421,7 @@ class RunCoordinator:
         # The evaluator normally converts provider failures into a structured outcome.
         # This path is for unexpected exceptions that escaped that boundary.
         from ..evaluation.failures import safe_message
-        import os
+        from ..providers.secrets import resolve_key
 
         attempt=None
         try:
@@ -438,7 +438,7 @@ class RunCoordinator:
             from ..evaluation.story_adapter import get_evaluation_settings
             config=get_evaluation_settings(self.repo,run.story_id).config
             if config.provider in {'openrouter','venice'}:
-                secret=os.environ.get(config.api_key_env)
+                secret=resolve_key(config.api_key_env)
         except Exception:
             pass
         if attempt:
@@ -449,7 +449,7 @@ class RunCoordinator:
             frozen_config=attempt.context.get('config',{})
             key_env=frozen_config.get('api_key_env') if isinstance(frozen_config,dict) else None
             if isinstance(key_env,str):
-                frozen_secret=os.environ.get(key_env)
+                frozen_secret=resolve_key(key_env)
         diagnostic=safe_message(str(exc),secret,documents,secrets=(frozen_secret,))
         detail=f'{type(exc).__name__}: {diagnostic}' if diagnostic else type(exc).__name__
         message=f'Помилка оцінювача — {detail}. Автоматичного повтору немає.'
