@@ -153,10 +153,10 @@ class OpenAIGenerationGateway:
         except Exception as exc:
             # SDK errors may contain request bodies, headers or server echoes. Never serialize them.
             if not cancel.is_set():
-                import os
                 from ..evaluation.failures import api_failure
+                from .secrets import resolve_key
                 from openai import APIError
-                detail=(api_failure(exc,secret=os.environ.get(self.settings.key_env or ''),documents=(context.system_text,context.user_text)).model_dump(mode='json')
+                detail=(api_failure(exc,secret=resolve_key(self.settings.key_env),documents=(context.system_text,context.user_text)).model_dump(mode='json')
                     if isinstance(exc,APIError) else {'category':'technical','http_status':None,'message':'Не вдалося завершити запит; точну причину не встановлено.'})
                 role={'classify':'класифікатора','publication_suggest':'планувальника'}.get(context.stage,'провайдера')
                 detail['message']=detail['message'].replace('оцінювача',role).replace('оцінювачем',{'classify':'класифікатором','publication_suggest':'планувальником'}.get(context.stage,'провайдером')).replace('Оцінювач',{'publication_suggest':'Планувальник','classify':'Класифікатор'}.get(context.stage,'Провайдер'))

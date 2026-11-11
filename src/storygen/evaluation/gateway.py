@@ -1,4 +1,3 @@
-import os
 import time
 from pathlib import Path
 from typing import Protocol
@@ -39,7 +38,8 @@ class OpenAICompatibleGateway:
         self.config = config
         self.accounting = accounting
         load_dotenv(Path.cwd() / ".env")
-        key = os.environ.get(config.api_key_env) if config.provider in {"openrouter", 'venice'} else "local-model"
+        from ..providers.secrets import resolve_key
+        key = resolve_key(config.api_key_env) if config.provider in {"openrouter", 'venice'} else "local-model"
         if not key:
             raise GatewayFailure("missing_api_key: Не задано ключ провайдера", detail=FailureDetail(category='missing_key', message='Не задано ключ провайдера у серверному середовищі.'))
         self._key = key
