@@ -46,6 +46,12 @@ def story_page(id: str,request: Request):
     return request.app.state.templates.TemplateResponse(request=request,name="story.html",context={"story":request.app.state.repo.get_story(id)})
 
 
+@router.get("/stories/{id}/revision")
+def revision_page(id: str,request: Request):
+    """#89: book revision (impact review) lives on its own page; no new API."""
+    return request.app.state.templates.TemplateResponse(request=request,name="revision.html",context={"story":request.app.state.repo.get_story(id)})
+
+
 @router.get("/stories/{id}/characters")
 def characters_page(id: str,request: Request):
     return request.app.state.templates.TemplateResponse(request=request,name="characters.html",context={"story":request.app.state.repo.get_story(id)})

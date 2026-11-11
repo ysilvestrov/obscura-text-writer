@@ -29,8 +29,13 @@ async function priority(material,preferred,superseded,revokeId=null){
   }));
   await refresh();
 }
+// #89: in the workspace the card shows only while the session waits for the author; the revision page shows it always.
+const attentionOnly=host?.dataset?.scope==='attention';
+const waiting=run=>['queued','running','paused','needs_review','pause_requested','cancellation_requested','interrupted','alternative','failed'].includes(run?.state);
 function render(){
-  host.replaceChildren();host.hidden=!session;if(!session)return;
+  host.replaceChildren();host.hidden=!session||(attentionOnly&&!waiting(session));
+  if(attentionOnly){const box=host.closest?.('#review-attention');if(box)box.hidden=host.hidden}
+  if(host.hidden)return;
   host.append(node('h3',t('review.title')));
   host.append(node('p',t('review.scene_progress',{p0:Math.min(session.impact.scene_cursor+1,session.tasks.length),p1:session.tasks.length})));
   if(session.error)host.append(node('p',diagnostic(session.error)));
@@ -132,7 +137,7 @@ export async function load(){
     if(ticket!==epoch)return;session=run;current=p;policies=policy;render();
     const attention=run&&['needs_review','failed','interrupted','paused','alternative'].includes(run.state);
     const marker=p?.report?.id||run?.id+':'+run?.state;
-    if(attention&&opened!==marker&&!state.dirty&&!state.saving){opened=marker;document.querySelector('#impact-panel').open=true;}
+    if(attention&&opened!==marker&&!state.dirty&&!state.saving){opened=marker;const panel=document.querySelector('#impact-panel');if(panel)panel.open=true;}
   }catch(e){if(ticket===epoch)notice(diagnostic(e.message),'error');}
 }
 document.addEventListener('story-refreshed',()=>void load());

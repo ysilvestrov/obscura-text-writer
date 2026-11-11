@@ -13,8 +13,7 @@ test('legacy current-consistency mode is explicit in preview and restored author
 
 async function start(page,request,query=''){
   const f=await(await request.post('/test-impact?changes=true'+query)).json();
-  await page.goto(`/stories/${f.story_id}?scene=${f.scene_id}&material=prose`);
-  await page.locator('#impact-panel summary').click();
+  await page.goto(`/stories/${f.story_id}/revision`);
   await page.locator('#impact-preview').click();await expect(page.locator('#impact-start')).toBeEnabled();
   if(query.includes('legacy=true'))await expect(page.locator('#impact-targets')).toContainText(/Поточні передумови|Current premises/);
   await page.locator('#impact-start').click();
@@ -33,10 +32,11 @@ test('dismiss all continues without a clean confirmation or another search',asyn
 
 test('memory failure preserves acceptance and reload needs an explicit retry',async({page,request})=>{
   const f=await start(page,request,'&memory_fail=true');
+  await page.goto(`/stories/${f.story_id}?scene=${f.scene_id}&material=prose`);
   await expect(page.locator('#run-status')).toContainText(/Потрібне рішення автора|Author decision required/);
   await page.evaluate(async()=>{
     const {state}=await import('/static/editor.js');
-    state.workspaceRuns=state.workspaceRuns.map(run=>run.id===state.workspaceRun.id?{...run,state:'running'}:run);
+    state.workspaceRuns=(state.workspaceRuns||[state.workspaceRun]).map(run=>run.id===state.workspaceRun.id?{...run,state:'running'}:run);
     document.dispatchEvent(new CustomEvent('editor-state-changed'));
   });
   await expect(page.locator('#review-session').getByRole('button',{name:/Відхилити всі|Dismiss all/})).toBeEnabled();
@@ -49,7 +49,8 @@ test('memory failure preserves acceptance and reload needs an explicit retry',as
   expect((await(await request.get(url)).json()).attempts).toHaveLength(before.attempts.length);
   await page.addLocatorHandler(page.locator('.app-dialog'),async dialog=>{await dialog.locator('.app-dialog-actions button').last().click()});
   await page.locator('#review-session').getByRole('button',{name:/Відновити перегляд|Resume review/}).click();
-  await expect(page.locator('#review-session')).toContainText(/Перегляд завершено|Review complete/);
+  await expect(page.locator('#review-attention')).toBeHidden();
+  await page.goto(`/stories/${f.story_id}/revision`);await expect(page.locator('#review-session')).toContainText(/Перегляд завершено|Review complete/);
   const after=await(await request.get(url)).json();
   expect(after.attempts.filter(a=>a.stage==='review_part')).toHaveLength(3);
   expect(after.attempts.filter(a=>a.stage==='memory')).toHaveLength(3);
@@ -57,6 +58,7 @@ test('memory failure preserves acceptance and reload needs an explicit retry',as
 
 test('author repairs survive reload and settings return with protected text',async({page,request})=>{
   const f=await start(page,request);
+  await page.goto(`/stories/${f.story_id}?scene=${f.scene_id}&material=prose`);
   await page.locator('#review-session [data-decision]').selectOption('fix');
   await page.locator('#review-session').getByRole('button',{name:/Застосувати рішення|Apply decisions/}).click();
   await expect(page.locator('#review-session')).toContainText(/Внесіть обрані|Make your selected/);
@@ -71,7 +73,9 @@ test('author repairs survive reload and settings return with protected text',asy
   await expect(page.locator('#review-session')).toContainText('Save your open edits first');
   await page.locator('#save-text').click();await expect(finish).toBeEnabled();
   await page.locator('#review-session').screenshot({path:`../artifacts/sequential-review/${test.info().project.name}.png`});
-  await finish.click();await expect(page.locator('#review-session')).toContainText('Review complete');
+  // #89: a finished session leaves the workspace; its result stays on the book revision page.
+  await finish.click();await expect(page.locator('#review-attention')).toBeHidden();
+  await page.goto(`/stories/${f.story_id}/revision`);await expect(page.locator('#review-session')).toContainText('Review complete');
   const data=await(await request.get(`/api/scenes/${f.scene_id}/versions`)).json();
   expect(data.scene.heads.prose).not.toBe(f.prose_id);
 });

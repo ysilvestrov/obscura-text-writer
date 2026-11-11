@@ -14,3 +14,32 @@ test('status row holds run controls and the next-run limit',async({page,request}
   await expect(row.locator('#run-options #run-budget')).toBeVisible();
   await expect(page.locator('.context-panel .budget-panel')).toHaveCount(0);
 });
+
+// #89 WORKSPACE-TOOLS: three icon actions, story actions behind a keyboard-operable disclosure menu.
+test('story menu opens from the keyboard and returns focus on Escape',async({page,request})=>{
+  const fixture=await(await request.post('/test-editor-no-changes')).json();
+  await page.goto(`/stories/${fixture.story_id}?scene=${fixture.scene_id}&material=draft`);
+  for(const id of ['#workspace-characters','#workspace-settings','#add-scene'])await expect(page.locator(id)).toHaveAttribute('aria-label',/.+/);
+  const toggle=page.locator('#story-menu-toggle'),menu=page.locator('#story-menu');
+  await expect(menu).toBeHidden();
+  await toggle.focus();await page.keyboard.press('Enter');
+  await expect(toggle).toHaveAttribute('aria-expanded','true');await expect(menu).toBeVisible();
+  await expect(menu.locator('#story-menu-revision')).toHaveAttribute('href',`/stories/${fixture.story_id}/revision`);
+  await expect(menu.locator('#story-menu-budget')).toContainText(/Бюджет|Budget/);
+  await page.keyboard.press('Escape');
+  await expect(menu).toBeHidden();await expect(toggle).toBeFocused();await expect(toggle).toHaveAttribute('aria-expanded','false');
+  await toggle.click();await expect(menu).toBeVisible();
+  await page.locator('#story-title').click();await expect(menu).toBeHidden();
+});
+
+test('book revision page opens from the menu with a pending count',async({page,request})=>{
+  const f=await(await request.post('/test-impact?changes=true')).json();
+  await page.goto(`/stories/${f.story_id}?scene=${f.scene_id}&material=prose`);
+  await page.locator('#story-menu-toggle').click();
+  await expect(page.locator('#story-menu-revision-count')).toHaveText(/^[1-9]\d*$/);
+  await expect(page.locator('#story-menu-toggle .menu-dot')).toBeVisible();
+  await page.locator('#story-menu-revision').click();
+  await expect(page).toHaveURL(new RegExp(`/stories/${f.story_id}/revision$`));
+  await expect(page.locator('#impact-preview')).toBeVisible();
+  await expect(page.locator('#revision-return')).toHaveAttribute('href',`/stories/${f.story_id}`);
+});

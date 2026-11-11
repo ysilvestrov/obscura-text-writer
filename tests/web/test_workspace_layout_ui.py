@@ -36,3 +36,28 @@ def test_run_controls_and_limit_live_in_the_status_row(tmp_path):
         assert id in tree.ancestors,id
         assert {'.workspace-sticky','#workspace-status-row'}<=tree.ancestors[id],id
     assert 'workspace-status"' not in html.split('class="context-panel"')[1]
+
+
+@pytest.mark.req('WORKSPACE-TOOLS')
+def test_story_toolbar_has_three_icon_actions_and_a_disclosure_menu(tmp_path):
+    tree,html=page(tmp_path)
+    toggle=tree.attrs['story-menu-toggle']
+    assert toggle.get('aria-expanded')=='false' and toggle.get('aria-controls')=='story-menu'
+    for id in ['workspace-characters','workspace-settings','add-scene']:
+        assert tree.attrs[id].get('aria-label') and tree.attrs[id].get('title'),id
+        assert '.storybar' in tree.ancestors[id],id
+    for id in ['story-menu-revision','story-menu-publication','export-story','story-menu-evaluate','story-menu-reports','story-menu-budget','story-menu-rename']:
+        assert '#story-menu' in tree.ancestors[id],id
+    assert '#export-dialog' in tree.ancestors['export-form']
+    for id in ['impact-panel','impact-reports','impact-preview']:
+        assert id not in tree.attrs,id
+    assert '#review-attention' in tree.ancestors['review-session']
+    assert 'class="context-panel"' in html and 'publication-panel' not in html
+
+
+@pytest.mark.req('WORKSPACE-TOOLS')
+def test_book_revision_page_hosts_impact_review(tmp_path):
+    tree,html=page(tmp_path,'/stories/{id}/revision')
+    for id in ['impact-panel','impact-preview','impact-reports','review-session','revision-return']:
+        assert id in tree.attrs,id
+    assert '"/static/editor.js": "/static/revision-context.js"' in html
