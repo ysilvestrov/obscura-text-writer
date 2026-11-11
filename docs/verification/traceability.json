@@ -3236,6 +3236,19 @@
       }
     },
     {
+      "id": "R20-WORKSPACE-S04",
+      "requirement": "R20-WORKSPACE",
+      "scope": "Правила підсумку й розгортання (run-summary.js) і структура згортання в runs.js/app.css; поведінку в браузері перевіряє ручна процедура.",
+      "tests": [
+        "tests/web/test_run_status_collapse_ui.py::test_run_summary_rules",
+        "tests/web/test_run_status_collapse_ui.py::test_run_status_details_collapse_behind_the_summary"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#run-status-collapse",
+        "reason": "Playwright run-status-collapse запускається вручну; check_docs.py індексує лише pytest IDs."
+      }
+    },
+    {
       "id": "WORKSPACE-TOOLS-S01",
       "requirement": "WORKSPACE-TOOLS",
       "scope": "Розмітка верхнього рядка й меню; клавіатура — у ручній процедурі.",
