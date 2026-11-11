@@ -86,8 +86,10 @@ def test_changed_cards_between_read_and_write_are_rejected(tmp_path):
 @pytest.mark.req('MCP-BRIDGE')
 def test_external_origin_requires_fingerprint(tmp_path):
     client, repo, story, scene = setup(tmp_path)
-    response = save(client, scene.id, scene.revision, None)
-    assert response.status_code in {400, 422}
+    explicit_null = save(client, scene.id, scene.revision, None)
+    omitted = client.post(f'/api/scenes/{scene.id}/draft', json={'text': 'Анна.', 'expected_revision': scene.revision, 'external_origin': ORIGIN})
+    assert explicit_null.status_code == 400 and omitted.status_code == 400
+    assert 'відбитка контексту' in omitted.text
     assert 'draft' not in repo.get_scene(scene.id).heads
 
 
@@ -107,16 +109,14 @@ def test_external_origin_client_name_is_validated(tmp_path):
 
 
 @pytest.mark.req('MCP-BRIDGE')
-@pytest.mark.parametrize('change', ['rating', 'language'])
-def test_story_level_change_after_reading_context_is_rejected(tmp_path, change):
+@pytest.mark.parametrize('endpoint,body', [
+    ('content-rating', {'content_rating': {'sexual': 2, 'violence': 0, 'themes': 0}}),
+    ('language', {'language': 'en'}),
+])
+def test_story_level_change_after_reading_context_is_rejected(tmp_path, endpoint, body):
     client, repo, story, scene = setup(tmp_path)
     context = client.get(f'/api/scenes/{scene.id}/writing-context').json()
-    current = repo.get_story(story.id)
-    if change == 'rating':
-        body = {'content_rating': {'sexual': 2, 'violence': 0, 'themes': 0}, 'expected_revision': current.revision}
-        response = client.put(f'/api/stories/{story.id}/content-rating', json=body)
-    else:
-        response = client.put(f'/api/stories/{story.id}/language', json={'language': 'en', 'expected_revision': current.revision})
+    response = client.put(f'/api/stories/{story.id}/{endpoint}', json={**body, 'expected_revision': repo.get_story(story.id).revision})
     assert response.status_code == 200, response.text
     assert repo.get_scene(scene.id).revision == context['revision']
     stale = save(client, scene.id, context['revision'], context['context_fingerprint'])

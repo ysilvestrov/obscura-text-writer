@@ -61,11 +61,20 @@ def test_server_not_running_is_a_tool_error_with_the_address(tmp_path, monkeypat
 def test_import_through_mcp_matches_the_form(tmp_path):
     app, http = obscura(tmp_path)
     story = app.state.repo.create_story(StoryCreate(title='Маяк'))
+    form_story = app.state.repo.create_story(StoryCreate(title='Маяк, форма'))
     result = call(build_server(http), 'import_plan_and_characters', {'story_id': story.id, 'plan_markdown': PLAN, 'characters_markdown': CHARACTERS})
     assert not result.is_error, text(result)
+    form = http.post(f'/api/stories/{form_story.id}/sources', files=[('plan', ('plan.md', PLAN.encode(), 'text/markdown')),
+                                                                    ('characters', ('characters.md', CHARACTERS.encode(), 'text/markdown'))])
+    assert form.status_code == 200, form.text
+
+    def outcome(data):
+        return [(f['name'], f['kind'], f['status'], f['created_character_cards'], len(f['created_scene_ids']), f['warnings']) for f in data['files']], data['partial']
+    assert outcome(result.structured_content) == outcome(form.json())
+    assert [row[:5] for row in outcome(form.json())[0]] == [('plan.md', 'source_plan', 'imported', 0, 1), ('characters.md', 'source_characters', 'imported', 1, 0)]
     scenes = app.state.repo.context_view(story.id).list_scenes(story.id)
     assert [s.title for s in scenes] == ['Лист']
-    assert 'Анна' in text(result) or '"files"' in text(result)
+    assert list(http.get(f'/api/stories/{story.id}').json()['character_names'].values()) == ['Анна']
 
 
 @pytest.mark.req('MCP-BRIDGE')
