@@ -2220,7 +2220,20 @@
     "language.prose_help": "Зміна мови прози робить чернетку й прозу сцени застарілими.",
     "role_profiles.language_mismatch": "Комплект зроблено для твору мовою {p0}, а цей твір має мову {p1}; власні промпти не перекладаються.",
     "language.help_settings": "Мову твору можна змінити, доки в ньому немає матеріалу, створеного моделлю. Вибір зберігається одразу.",
-    "language.unsaved_first": "Спершу збережіть або скасуйте інші зміни налаштувань: мова твору змінює стандартні промпти ролей."
+    "language.unsaved_first": "Спершу збережіть або скасуйте інші зміни налаштувань: мова твору змінює стандартні промпти ролей.",
+    "workspace.run_options": "Параметри запуску",
+    "workspace.review_attention": "Перевірка впливу чекає на вас — відкрити «Редагування книги»",
+    "workspace.add_scene": "Додати сцену",
+    "workspace.menu": "Дії твору",
+    "workspace.menu_revision": "Редагування книги",
+    "workspace.menu_export": "Експорт…",
+    "workspace.budget_unknown": "Бюджет · невідомо",
+    "workspace.budget_spent": "Бюджет · витрачено {p0}",
+    "workspace.budget_spent_limit": "Бюджет · витрачено {p0} з {p1}",
+    "workspace.revision_return": "← До твору",
+    "workspace.revision_pending": "Матеріали для перегляду: {p0}",
+    "workspace.scene_section": "Налаштування сцени",
+    "workspace.evaluation_section": "Оцінювання сцени"
   },
   "en": {
     "ui.save": "Save",
@@ -4443,6 +4456,19 @@
     "language.prose_help": "Changing the prose language makes the scene's draft and prose stale.",
     "role_profiles.language_mismatch": "The profile was made for a story in {p0}, but this story is in {p1}; custom prompts are not translated.",
     "language.help_settings": "The story language can be changed until a model has produced material in the story. The choice is saved at once.",
-    "language.unsaved_first": "Save or discard other settings changes first: the story language changes the default role prompts."
+    "language.unsaved_first": "Save or discard other settings changes first: the story language changes the default role prompts.",
+    "workspace.run_options": "Run options",
+    "workspace.review_attention": "Impact review is waiting for you — open Book revision",
+    "workspace.add_scene": "Add scene",
+    "workspace.menu": "Story actions",
+    "workspace.menu_revision": "Book revision",
+    "workspace.menu_export": "Export…",
+    "workspace.budget_unknown": "Budget · unknown",
+    "workspace.budget_spent": "Budget · spent {p0}",
+    "workspace.budget_spent_limit": "Budget · spent {p0} of {p1}",
+    "workspace.revision_return": "← Back to the story",
+    "workspace.revision_pending": "Materials to review: {p0}",
+    "workspace.scene_section": "Scene settings",
+    "workspace.evaluation_section": "Scene evaluation"
   }
 }

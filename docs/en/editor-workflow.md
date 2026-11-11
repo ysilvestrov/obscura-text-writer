@@ -28,6 +28,18 @@ Model capacity checks compare the estimated actual input plus the response reser
 
 
 A model proposal with exactly scene_number/change is preserved as “Сцена N: …” text with a warning. Its scene number and text are retained; the brief still requires explicit acceptance. Other unknown shapes remain errors. Manual JSON uses a list of strings for proposed_changes.
+# Story workspace
+
+The top row has three icon actions: **Characters**, **Settings** and **Add scene** (labelled on wide screens). Story-wide actions live in the **☰ Story actions** menu: **Book revision** (a separate page with **← Back to the story**; the number next to it counts materials waiting for review), **Card and publication**, **Export…** (a dialog), story evaluation and reports, a budget line linking to settings, and rename. The menu works from the keyboard; `Escape` closes it and returns focus.
+
+A status row above the scene text shows the scene status, run progress and run controls; **Run options** holds the next-run limit. When a sequential impact review waits for your decision, its card appears just below the status row, next to the text. The side panel is about the scene only: **Scene settings** and **Scene evaluation** collapse and remember their state in this browser; evaluation is hidden when the evaluator is off. The import journal opens inside the import section of the scene list.
+
+![Workspace with the Story actions menu](../images/workspace-menu-desktop.png)
+
+![Book revision page](../images/workspace-revision-desktop.png)
+
+Mobile: [workspace](../images/workspace-menu-mobile.png), [Book revision](../images/workspace-revision-mobile.png).
+
 # One-click workspace actions
 
 Before a primary model action, the button displays the planned model and maximum number of calls; hover or focus for details and warnings. One click saves changes and starts the stage after its checks. While it runs, the button requests cancellation; the server reports its own status, and calls may already have incurred costs. If the enqueue response is lost, the interface checks the server and blocks a new primary run until the result is known or you press Stop to resolve the pending request. Browser local storage is required for reconciliation. Current Work shows the saved plan, which can differ from parameters used by a later call. Reusing stale previous memory still requires separate consent.

@@ -5,7 +5,7 @@ const view=async(request,id)=>(await request.get(`/api/stories/${id}`)).json();
 const rating=(sexual,violence,themes)=>({sexual,violence,themes});
 // The scene panel lives in a collapsed details block on both layouts; opening it is not layout specific.
 const openPanel=async page=>{
-  await page.locator('.workspace-context').evaluate(details=>{details.open=true});
+  await page.locator('.tool-section[data-section=scene]').evaluate(details=>{details.open=true});
   await expect(page.locator('#scene-rating')).toBeVisible();
 };
 const axisSelects=form=>['sexual','violence','themes'].map(axis=>form.locator(`select[name="${axis}"]`));

@@ -42,7 +42,7 @@ test('latest scene reports collapse and retain state across language and refresh
   const f=await(await request.post('/test-impact')).json();
   let includeReports=true;
   await page.route(`**/api/stories/${f.story_id}/impact`,async route=>{const response=await route.fetch(),body=await response.json();body.pending.push({scene_title:'Synthetic blocker scene',material:'prose',blockers:['Synthetic prerequisite unavailable']});body.reports=includeReports?['brief','prose'].map(material=>({id:'synthetic-'+material,scene_id:f.scene_id,scene_title:'Сцена: Вечір',material,current:material==='prose',verdict:'no_impact',explanation:'Передумови перевірено.',protocol:1,delta:null,findings:[],memory_check_current:false,memory_evidence_status:'valid',memory_needs_update:false})):[];await route.fulfill({response,json:body});});
-  await page.goto(`/stories/${f.story_id}`);await page.locator('#impact-panel > summary').click();
+  await page.goto(`/stories/${f.story_id}/revision`);
   const history=page.locator('#impact-report-list');
   await expect(history).toHaveAttribute('open','');
   await expect(history.locator('.impact-report')).toHaveCount(2);

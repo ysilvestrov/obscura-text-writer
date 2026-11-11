@@ -2,7 +2,7 @@
 
 ## Українською
 
-На сторінці твору розгорніть **«Редагування книги»** під назвою. Інструмент порівнює змінені передумови із завданнями та прозою залежних сцен. Він не переписує текст.
+На сторінці твору відкрийте меню **☰ «Дії твору»** праворуч від назви й оберіть **«Редагування книги»**: інструмент відкривається окремою сторінкою, а **«← До твору»** повертає до редактора. Число біля пункту меню показує матеріали, що чекають перевірки. Інструмент порівнює змінені передумови із завданнями та прозою залежних сцен. Він не переписує текст.
 
 1. Збережіть правки в главі. Якщо є незбережений текст, «Перевірити вплив» спочатку запропонує його зберегти; скасування не запускає модель.
 2. Натисніть **«Перевірити вплив»**. Перегляньте матеріали, модель планувальника, число можливих викликів і бюджет. У налаштуваннях планувальника можна змінити контекст/резерв/response mode; ця операція використовує окремі вбудовані промпти дельти й перевірки, а не користувацький промпт генерації завдання.
@@ -42,7 +42,7 @@
 
 ## English
 
-Expand **Book revision** below the story title. This tool compares changed premises against dependent briefs and prose. It does not rewrite the manuscript.
+Open the **☰ Story actions** menu next to the story title and choose **Book revision**: the tool opens as a separate page, and **← Back to the story** returns to the editor. The number next to the menu item counts materials waiting for review. This tool compares changed premises against dependent briefs and prose. It does not rewrite the manuscript.
 
 1. Save your chapter edits. **Check impact** offers to save unsaved text first; cancelling dispatches no model call.
 2. Review the affected materials, planner model, possible calls and budget. **Planner settings** opens the relevant role. The feature uses separate built-in delta/check prompts rather than your custom brief-generation prompt.

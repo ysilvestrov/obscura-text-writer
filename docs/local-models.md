@@ -6,7 +6,7 @@
 
 У налаштуваннях оповідання відкрийте **Моделі → Планувальник**. Вкажіть local endpoint `http://localhost:1235/v1`, model ID `huihui-qwen3.5-9b-abliterated`, контекст131072, резерв відповіді8192, температуру0,1, ліміт входу500000 символів і JSON Schema. У додаткових параметрах увімкніть **Вимкнути thinking (reasoning_effort=none)**. Збережіть лише цю роль. Цей параметр перевірено з поточним Bionic; він не гарантує підтримки всіма локальними серверами.
 
-У панелі «Редагування книги» спершу сформуйте попередній перегляд: новий локальний профіль покаже **Контракт JSON2**, кількість частин і зведень. Генерація почнеться лише після явного запуску. Попередній перегляд не викликає модель. Великі книги потребують багатьох локальних викликів: відсутність плати не усуває витрат часу. Контекст розраховується консервативно; збільшення символьного ліміту не збільшує фізичний контекст.
+На сторінці «Редагування книги» (меню ☰ «Дії твору») спершу сформуйте попередній перегляд: новий локальний профіль покаже **Контракт JSON2**, кількість частин і зведень. Генерація почнеться лише після явного запуску. Попередній перегляд не викликає модель. Великі книги потребують багатьох локальних викликів: відсутність плати не усуває витрат часу. Контекст розраховується консервативно; збільшення символьного ліміту не збільшує фізичний контекст.
 
 Модель повертає короткі посилання на точні докази. Код розкриває їх і звіряє з текстом; невідома цитата, неповна відповідь чи перевищення резерву зупинять етап зі збереженням успішних частин. Автоматичних повторів немає. `uncertain` означає потребу в рішенні автора; коректний JSON не доводить відсутність сюжетних суперечностей. Інші ролі можуть продовжувати працювати через Venice/OpenRouter.
 
@@ -16,7 +16,7 @@ For the tested Bionic profile on an 8 GB GPU, load **Huihui-Qwen3.5-9B-abliterat
 
 Open **Settings → Models → Planner**. Select the local endpoint `http://localhost:1235/v1`, model ID `huihui-qwen3.5-9b-abliterated`, context131072, output reserve8192, temperature0.1, input character limit500000 and JSON Schema. Under advanced settings enable **Disable thinking (reasoning_effort=none)**. Save only this role. This option was verified with the current Bionic runtime; support by other local servers is not guaranteed.
 
-In **Book editing**, preview the impact check first. The new local profile displays **JSON contract2**, the number of parts and synthesis calls. Inference starts only after explicit dispatch; preview never calls the model. Large books still require many local calls and processing time. Context estimates are conservative; increasing a character limit does not increase physical context capacity.
+On the **Book revision** page (☰ Story actions menu), preview the impact check first. The new local profile displays **JSON contract2**, the number of parts and synthesis calls. Inference starts only after explicit dispatch; preview never calls the model. Large books still require many local calls and processing time. Context estimates are conservative; increasing a character limit does not increase physical context capacity.
 
 The model returns short references to exact evidence. Code expands and validates them against the text. Unknown evidence, incomplete output or an exceeded reserve stops the stage while preserving successful parts. There are no automatic retries. `uncertain` requires author review; valid JSON does not prove narrative consistency. Other roles can keep using Venice/OpenRouter.
 

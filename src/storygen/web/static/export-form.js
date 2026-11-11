@@ -10,8 +10,11 @@ export function installExportForm({state,api,json,notice,document}){
     button.disabled=busy||!!reason;submit.disabled=busy||!!reason;uiText(button,"title",()=>(diagnostic(reason)));uiText(submit,"title",()=>(diagnostic(reason)));
     if(reason){uiText(status,"textContent",()=>(diagnostic(reason)));status.className='muted';}
   }
-  button.onclick=()=>{form.hidden=!form.hidden;button.setAttribute('aria-expanded',String(!form.hidden));if(!form.hidden)get('export-format').focus();};
-  get('export-cancel').onclick=()=>{form.hidden=true;button.setAttribute('aria-expanded','false');button.focus();};
+  // #89: in the workspace the form lives in a dialog opened from the story menu.
+  const dialog=form.closest?.('dialog');
+  if(dialog)dialog.addEventListener('close',()=>{button.setAttribute('aria-expanded','false');document.querySelector('#story-menu-toggle')?.focus()});
+  button.onclick=()=>{if(dialog){form.hidden=false;dialog.showModal();button.setAttribute('aria-expanded','true');get('export-format').focus();return}form.hidden=!form.hidden;button.setAttribute('aria-expanded',String(!form.hidden));if(!form.hidden)get('export-format').focus();};
+  get('export-cancel').onclick=()=>{if(dialog){dialog.close();return}form.hidden=true;button.setAttribute('aria-expanded','false');button.focus();};
   form.onsubmit=async event=>{
     event.preventDefault();availability();if(submit.disabled)return;
     busy=true;availability();form.setAttribute('aria-busy','true');uiText(status,"textContent",()=>(t("m_74a8c1872ac9")));status.className='muted';

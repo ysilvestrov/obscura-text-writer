@@ -75,7 +75,7 @@ test('word target recommendation permits larger values',async({page,request})=>{
   await expect(page.locator('#word-target-help')).toContainText(/15.?000/);
   const f=await(await request.post('/test-fixture')).json();
   await page.goto(`/stories/${f.story_id}`);
-  await page.locator('.workspace-context > summary').click();
+  await page.locator('.tool-section[data-section=scene] > summary').click();
   const scene=page.locator('#scene-settings [name="target_words"]');
   await scene.fill('30000');
   expect(await scene.evaluate(el=>el.checkValidity())).toBeTruthy();

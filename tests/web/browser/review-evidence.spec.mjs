@@ -2,8 +2,7 @@ import {test,expect} from '../../../frontend/browser-test.mjs';
 
 test('evidence review shows exact quotes, author priority and locale after reload',async({page,request})=>{
   const f=await(await request.post('/test-impact?changes=true&evidence=true')).json();
-  await page.goto(`/stories/${f.story_id}?scene=${f.scene_id}&material=prose`);
-  await page.locator('#impact-panel summary').click();
+  await page.goto(`/stories/${f.story_id}/revision`);
   await page.locator('#review-contract-version').selectOption('4');
   await page.locator('#impact-preview').click();await expect(page.locator('#impact-start')).toBeEnabled();
   await page.locator('#impact-start').click();

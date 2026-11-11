@@ -2,8 +2,7 @@ import {test,expect} from '../../../frontend/browser-test.mjs';
 
 test('impact review previews planner calls and clears only verified prose',async({page,request})=>{
   const f=await(await request.post('/test-impact')).json();
-  await page.goto(`/stories/${f.story_id}?scene=${f.scene_id}&material=prose`);
-  await page.locator('#impact-panel summary').click();
+  await page.goto(`/stories/${f.story_id}/revision`);
   await page.locator('#impact-preview').click();
   await expect(page.locator('#impact-preview-info')).toContainText('synthetic-impact');
   await expect(page.locator('#impact-start')).toBeEnabled();
@@ -18,10 +17,11 @@ test('impact review previews planner calls and clears only verified prose',async
 
 test('specific impact findings preserve unsaved prose and locale switch',async({page,request})=>{
   const f=await(await request.post('/test-impact?changes=true')).json();
+  // #89: the review starts on the book revision page; the waiting session shows next to the editor in the workspace.
+  await page.goto(`/stories/${f.story_id}/revision`);await page.locator('#impact-preview').click();
+  await page.locator('#impact-start').click();await expect(page.locator('#review-session [data-decision]')).toHaveCount(1);
   await page.goto(`/stories/${f.story_id}?scene=${f.scene_id}&material=prose`);
   await expect(page.locator('.ProseMirror')).toHaveAttribute('contenteditable','true');
-  await page.locator('#impact-panel summary').click();await page.locator('#impact-preview').click();
-  await page.locator('#impact-start').click();
   await page.locator('.ProseMirror').fill('Незбережена авторська правка.');
   await expect(page.locator('#review-session')).toContainText(/оберіть рішення|choose a decision/);
   await expect(page.locator('#review-session blockquote')).not.toHaveCount(0);
@@ -39,16 +39,16 @@ test('old backend does not expose new review actions after a static update',asyn
     const response=await route.fetch();const data=await response.json();delete data.review_protocols;
     await route.fulfill({response,json:data});
   });
-  await page.goto(`/stories/${f.story_id}`);
+  await page.goto(`/stories/${f.story_id}/revision`);
   await expect(page.locator('#impact-panel')).toHaveAttribute('data-review-protocol','unsupported');
   await expect(page.locator('#impact-panel')).toBeHidden();
+  await page.unrouteAll({behavior:'ignoreErrors'});
 });
 
 
 test('large impact preview shows parts and synthesis before author dispatch',async({page,request})=>{
   const f=await(await request.post('/test-impact?chunked=true')).json();
-  await page.goto(`/stories/${f.story_id}?scene=${f.scene_id}&material=prose`);
-  await page.locator('#impact-panel summary').click();
+  await page.goto(`/stories/${f.story_id}/revision`);
   await page.locator('#impact-preview').click();
   await expect(page.locator('#impact-preview-info')).toContainText(/Початковий пошук|Initial search/i);
   await expect(page.locator('#impact-start')).toBeEnabled();
@@ -67,8 +67,7 @@ test('slow impact preview is visible immediately and can be cancelled without di
   const held=new Promise(resolve=>{release=resolve});const started=new Promise(resolve=>{entered=resolve});
   await page.route('**/review/preview',async route=>{entered();await held;try{await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({ready:false,reason:'test'})});}catch{}});
   try{
-    await page.goto(`/stories/${f.story_id}?scene=${f.scene_id}&material=prose`);
-    await page.locator('#impact-panel summary').click();await page.locator('#impact-preview').click();await started;
+    await page.goto(`/stories/${f.story_id}/revision`);await page.locator('#impact-preview').click();await started;
     await expect(page.locator('#impact-preview-info')).toBeVisible();
     await expect(page.locator('#impact-progress')).toContainText(/Підготовка|Preparing/);
     await expect(page.locator('#impact-start')).toBeHidden();
@@ -86,8 +85,7 @@ test('impact preview timeout unlocks controls and reports a specific cause',asyn
   const held=new Promise(resolve=>{release=resolve});const started=new Promise(resolve=>{entered=resolve});
   await page.route('**/review/preview',async route=>{entered();await held;try{await route.abort();}catch{}});
   try{
-    await page.goto(`/stories/${f.story_id}?scene=${f.scene_id}&material=prose`);
-    await page.locator('#impact-panel summary').click();await page.clock.install();
+    await page.goto(`/stories/${f.story_id}/revision`);await page.clock.install();
     await page.locator('#impact-preview').click();await started;await page.clock.fastForward(121000);
     await expect(page.locator('#impact-preview')).toBeEnabled();
     await expect(page.locator('#notice')).toContainText(/120/);
@@ -100,8 +98,7 @@ test('impact preview timeout unlocks controls and reports a specific cause',asyn
 test('failed impact preview unlocks retry and does not retain stale start action',async({page,request})=>{
   const f=await(await request.post('/test-impact')).json();let calls=0;
   await page.route('**/review/preview',async route=>{if(++calls===1)await route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({detail:'Synthetic preflight failure'})});else await route.continue();});
-  await page.goto(`/stories/${f.story_id}?scene=${f.scene_id}&material=prose`);
-  await page.locator('#impact-panel summary').click();await page.locator('#impact-preview').click();
+  await page.goto(`/stories/${f.story_id}/revision`);await page.locator('#impact-preview').click();
   await expect(page.locator('#notice')).toContainText('Synthetic preflight failure');
   await expect(page.locator('#impact-preview')).toBeEnabled();
   await expect(page.locator('#impact-preview-panel')).toBeHidden();

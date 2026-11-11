@@ -27,7 +27,8 @@ code=code.replace(/^import .* from '\.\/editor.js';$/m,'const {state,textEditor,
   .replace(/^import .* from '\.\/api.js';$/m,'const {api,json,notice}=globalThis.fixture;')
   .replace(/^import .* from '\.\/workspace-commands.js';$/m,'const {invokeWorkspaceCommand}=globalThis.fixture;')
   .replace("'./workspace-state.js'",JSON.stringify(new URL('workspace-state.js',base).href))
-  .replace("'./run-readiness.js'",JSON.stringify(new URL('run-readiness.js',base).href));
+  .replace("'./run-readiness.js'",JSON.stringify(new URL('run-readiness.js',base).href))
+  .replace("'./workspace-status.js'",JSON.stringify(new URL('workspace-status.js',base).href));
 await import('data:text/javascript;base64,'+Buffer.from(code).toString('base64'));
 const primary=element('#workspace-primary');
 assert.equal(primary.disabled,false);

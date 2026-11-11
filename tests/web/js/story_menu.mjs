@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import {pathToFileURL} from 'node:url';
+const {menuBudgetText}=await import(pathToFileURL(process.argv[2]+'/src/storygen/web/static/budget-format.js'));
+const {setLocale}=await import(pathToFileURL(process.argv[2]+'/src/storygen/web/static/i18n.js'));
+assert.equal(menuBudgetText({exposure_nanos:420000000,limit_nanos:5000000000}),'Бюджет · витрачено $0,42 з $5');
+assert.equal(menuBudgetText({exposure_nanos:420000000,limit_nanos:null}),'Бюджет · витрачено $0,42');
+assert.equal(menuBudgetText(null),'Бюджет · невідомо');
+assert.equal(menuBudgetText({exposure_nanos:null,limit_nanos:null}),'Бюджет · невідомо');
+setLocale('en');
+assert.equal(menuBudgetText({exposure_nanos:420000000,limit_nanos:5000000000}),'Budget · spent $0.42 of $5');
