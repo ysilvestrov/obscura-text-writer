@@ -8,6 +8,9 @@
 # Continue after a merge from a new branch cut from origin/main. To push into
 # the old branch anyway: ALLOW_PUSH_TO_MERGED=1 git push ...
 #
+# The pull request is looked up in the repository being pushed to; a pull
+# request opened from a fork into another repository is not seen.
+#
 # If GitHub cannot be asked (no gh, no network, not signed in) the hook warns
 # and lets the push through.
 
@@ -25,6 +28,29 @@ if ! command -v gh >/dev/null 2>&1; then
     exit 0
 fi
 
+# The destination repository, not the one gh would pick for this checkout.
+path=${remote_url#*github.com}
+path=${path#[:/]}
+path=${path%/}
+path=${path%.git}
+owner=${path%%/*}
+repo=${path#*/}
+case "$path" in
+    */*) ;;
+    *) owner= ;;
+esac
+case "$owner$repo" in
+    "" | *[!A-Za-z0-9._-]*) owner= ;;
+esac
+if [ -z "$owner" ] || [ -z "$repo" ]; then
+    echo "pre-push: unrecognised GitHub address, pull request state not checked" >&2
+    exit 0
+fi
+owner_lc=$(printf '%s' "$owner" | tr 'A-Z' 'a-z')
+# Only pull requests whose head branch lives under the destination owner count:
+# another fork may have a branch of the same name.
+filter="[.[] | select((.headRepositoryOwner.login // \"\" | ascii_downcase) == \"$owner_lc\") | .state] | join(\" \")"
+
 status=0
 while read -r local_ref local_sha remote_ref remote_sha; do
     # An all-zero local id means the remote branch is being deleted.
@@ -37,8 +63,8 @@ while read -r local_ref local_sha remote_ref remote_sha; do
         *) continue ;;
     esac
 
-    if ! states=$(gh pr list --head "$branch" --state all --limit 50 \
-            --json state --jq '[.[].state] | join(" ")' </dev/null 2>/dev/null); then
+    if ! states=$(gh pr list --repo "$owner/$repo" --head "$branch" --state all \
+            --limit 50 --json state,headRepositoryOwner --jq "$filter" </dev/null 2>/dev/null); then
         echo "pre-push: could not ask GitHub about '$branch', pull request state not checked" >&2
         continue
     fi

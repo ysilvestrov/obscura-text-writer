@@ -117,3 +117,27 @@ def test_other_remotes_are_not_checked(tmp_path):
 def test_explicit_override_lets_the_push_through(tmp_path):
     result, _ = run(tmp_path, states="MERGED", extra_env={"ALLOW_PUSH_TO_MERGED": "1"})
     assert result.returncode == 0
+
+
+@pytest.mark.parametrize("url", [
+    "https://github.com/Owner/repo.git",
+    "https://github.com/Owner/repo",
+    "git@github.com:Owner/repo.git",
+    "ssh://git@github.com/Owner/repo.git",
+])
+def test_the_destination_repository_is_the_one_asked(tmp_path, url):
+    _, calls = run(tmp_path, states="OPEN", url=url)
+    assert "--repo Owner/repo " in calls
+
+
+def test_only_pull_requests_from_the_destination_owner_count(tmp_path):
+    _, calls = run(tmp_path, states="OPEN", url="https://github.com/Owner/repo.git")
+    assert "headRepositoryOwner" in calls
+    assert '"owner"' in calls  # compared in lower case
+
+
+def test_unrecognised_github_address_warns_and_lets_the_push_through(tmp_path):
+    result, calls = run(tmp_path, states="MERGED", url="https://github.com/only-one-part")
+    assert result.returncode == 0
+    assert "not checked" in result.stderr
+    assert calls == ""
