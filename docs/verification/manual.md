@@ -201,7 +201,7 @@ R-22 прокрутка: Playwright `long draft scrolls internally while formatt
 <a id="run-status-collapse"></a>
 ## Згорнутий рядок запуску над редактором
 
-З `PYTHONPATH=<робоча копія>/src` у `frontend` запустити `npx playwright test run-status-collapse --project=desktop --project=mobile` на synthetic server без provider calls. `run-status-collapse.spec.mjs`: `a finished run collapses to one line and opens its details on click` (висота рядка, ⚠, приховане попередження, клік розгортає й згортає); `a failed run shows its error at once and can be collapsed`. Наявність процедури не є фактичним PASS; результат запуску записується в журналі виконання.
+З `PYTHONPATH=<робоча копія>/src` у `frontend` запустити `npx playwright test run-status-collapse --project=desktop --project=mobile` на synthetic server без provider calls. `run-status-collapse.spec.mjs`: `a finished run collapses to one line and opens its details on click` (⚠, приховане попередження, клік розгортає й згортає); `a running run with many long models keeps the mark and the timer on the summary line` (обрізання моделей, витрати «усього / останній» з двох подій, usage лише в підказці, ⚠ і таймер у тому самому рядку, знімок `run-status.png` у результатах тесту); `a failed run shows its error at once and can be collapsed`. Наявність процедури не є фактичним PASS; результат запуску записується в журналі виконання.
 
 
 <a id="docs-site-publish"></a>

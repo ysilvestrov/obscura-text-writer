@@ -29,8 +29,10 @@ def test_run_status_details_collapse_behind_the_summary():
     assert "classList.toggle('expanded'" in runs
     assert 'syncRunPrefs(run,runPrefs)' in runs  # a resumed run that fails again opens its error
     css = (STATIC / 'app.css').read_text(encoding='utf-8')
-    summary_rule = css.split('#run-status .run-summary {', 1)[1].split('}', 1)[0]
-    assert 'white-space: nowrap' in summary_rule and 'text-overflow: ellipsis' in summary_rule  # one line even with many models
+    text_rule = css.split('#run-status .run-summary-text {', 1)[1].split('}', 1)[0]
+    assert 'white-space: nowrap' in text_rule and 'text-overflow: ellipsis' in text_rule  # one line even with many models
+    assert "className='run-summary-mark'" in runs  # the mark sits outside the truncated text
+    assert "className='run-summary-cost'" in runs and 'm_15e66c683330' not in runs  # dollars in the line, raw usage only in the tooltip
     assert '#run-status:not(.expanded) .run-detail' in css and '#run-status:not(.expanded) .memory-violations' in css
     catalog = json.loads((STATIC / 'i18n.json').read_text(encoding='utf-8'))
     assert catalog['uk']['workspace.run_details'] and catalog['en']['workspace.run_details']

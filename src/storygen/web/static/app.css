@@ -387,10 +387,15 @@ pre { white-space: pre-wrap; overflow-wrap: anywhere; font: 14px/1.7 var(--font-
 .workspace-status-row > * { margin: 0; }
 .workspace-status-row #run-status { flex: 1 1 16rem; min-width: 0; }
 #run-status:not(.expanded) .run-detail, #run-status:not(.expanded) .memory-violations { display: none; }
-#run-status .run-summary { background: none; border: 0; padding: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; text-decoration: underline dotted; display: inline-block; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom; }
-#run-status .run-summary::before { content: '▸ '; }
-#run-status.expanded .run-summary::before { content: '▾ '; }
-#run-status .run-elapsed { display: inline; margin-left: 0.5rem; }
+/* One summary line: the summary shrinks (models truncate), the ⚠ mark and the timer keep their room; details go below. */
+#run-status { display: grid; grid-template-columns: minmax(0, max-content) 1fr; column-gap: 0.5rem; align-items: center; }
+#run-status > * { grid-column: 1 / -1; min-width: 0; }
+#run-status > .run-summary { grid-row: 1; grid-column: 1; display: flex; align-items: center; justify-content: flex-start; gap: 0.25rem; min-width: 0; background: none; border: 0; padding: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+#run-status > .run-elapsed { grid-row: 1; grid-column: 2; margin: 0; white-space: nowrap; min-width: max-content; }
+#run-status .run-summary-text { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-decoration: underline dotted; }
+#run-status .run-summary-mark, #run-status .run-summary-cost { flex: none; }
+#run-status .run-summary::before { content: '▸'; flex: none; }
+#run-status.expanded .run-summary::before { content: '▾'; }
 .workspace-status-row #run-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .scene-status-badge { padding: 0.125rem 0.5rem; border-radius: 999px; background: var(--accent-soft); color: var(--text-primary); }
 .external-change { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; color: var(--warning); font-weight: 600; }
