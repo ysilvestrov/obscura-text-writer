@@ -323,8 +323,9 @@ def test_edition_messages_translate_for_every_axis():
     from storygen.storage.authoring import SAVE_LIMIT
     from storygen.web.localization import diagnostic
     english={'sexual':'sexual content','violence':'violence','themes':'hard themes'}
+    assert set(AXIS_NAMES)==set(english)
     for axis,name in AXIS_NAMES.items():
-        for template in (EDITION_LIMIT,SAVE_LIMIT):
-            text=template.format(axis=name,n=2,max=1)
-            translated=diagnostic(text,'en')
-            assert translated!=text and english[axis] in translated and name not in translated
+        assert diagnostic(EDITION_LIMIT.format(axis=name,n=2,max=1),'en')==(f'Generation is blocked: the “{english[axis]}” rating here is 2, '
+            'and the highest level allowed in this edition of Obscura is 1. Lower the rating of the scene or the story.')
+        assert diagnostic(SAVE_LIMIT.format(axis=name,n=2,max=1),'en')==(f'In this edition of Obscura, level 2 is not available for '
+            f'“{english[axis]}”: the highest allowed is 1.')

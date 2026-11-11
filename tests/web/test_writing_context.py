@@ -60,3 +60,20 @@ def test_story_list_skips_the_bin(tmp_path):
     assert response.status_code == 200, response.text
     rating = repo.get_story(kept.id).content_rating
     assert response.json() == [{'id': kept.id, 'title': 'Лишається', 'language': 'uk', 'rating': rating.model_dump() if rating else None, 'scene_count': 1}]
+
+
+def test_store_edition_checks_the_rating_of_the_returned_context(tmp_path, store_edition, monkeypatch):
+    # The limit is applied to the snapshot that is returned, not to a separate earlier read of the scene.
+    from storygen.application import writing_context as module
+    app = create_app(AppSettings(data_dir=tmp_path))
+    repo = app.state.repo
+    story = repo.create_story(StoryCreate(title='Маяк'))
+    scene = repo.create_scene(story.id, SceneCreate(title='Лист', beats='Анна знаходить лист.'))
+    original = module._read
+
+    def raised_meanwhile(repo, scene_id):
+        scene, content, fingerprint = original(repo, scene_id)
+        return scene, {**content, 'rating': {'sexual': 2, 'violence': 0, 'themes': 0}}, fingerprint
+    monkeypatch.setattr(module, '_read', raised_meanwhile)
+    with pytest.raises(ValueError, match='найвищий дозволений рівень — 1'):
+        module.writing_context(repo, scene.id)

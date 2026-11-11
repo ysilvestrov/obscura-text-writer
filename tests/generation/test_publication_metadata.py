@@ -206,13 +206,12 @@ def _force_rating(repo,table,id,values):
         db.execute(f'UPDATE {table} SET payload=? WHERE id=?',(json.dumps(raw),id))
 
 
-@pytest.mark.parametrize('target',['story','scene'])
-def test_store_edition_blocks_publication_suggestions_above_limit(tmp_path,store_edition,target):
+@pytest.mark.parametrize('table,target',[('stories',lambda repo,story:story.id),
+    ('scenes',lambda repo,story:repo.list_scenes(story.id)[1].id)],ids=['story','scene'])
+def test_store_edition_blocks_publication_suggestions_above_limit(tmp_path,store_edition,table,target):
     # BUILD-EDITION-001-S03: the proposal is model-written text about the whole story, so the limit applies to it too.
     repo,story=seeded(tmp_path)
-    two={'sexual':2,'violence':0,'themes':0}
-    if target=='story':_force_rating(repo,'stories',story.id,two)
-    else:_force_rating(repo,'scenes',repo.list_scenes(story.id)[1].id,two)
+    _force_rating(repo,table,target(repo,story),{'sexual':2,'violence':0,'themes':0})
     with pytest.raises(ValueError) as error:
         build_publication_context(repo,story.id)
     assert str(error.value)==EDITION_LIMIT

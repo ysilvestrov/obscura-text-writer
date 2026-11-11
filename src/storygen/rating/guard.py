@@ -26,7 +26,11 @@ def enforce_edition_limit(story,scene=None) -> None:
 
     Data rated above the limit (made in the full edition, imported, restored) stays readable and editable by hand.
     An unset rating is not this check's concern."""
-    rating=effective_rating(story,scene) if scene is not None else story.content_rating
+    enforce_rating_limit(effective_rating(story,scene) if scene is not None else story.content_rating)
+
+
+def enforce_rating_limit(rating) -> None:
+    """The same check for an already captured rating (`None` — unset, not checked)."""
     over=build_edition.over_limit(rating) if rating is not None else []
     if over:
         axis=over[0]

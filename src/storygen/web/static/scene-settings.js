@@ -75,4 +75,16 @@ function drawRating(after){
   after.after(form);
 }
 document.addEventListener('scene-selected',draw);document.addEventListener('story-refreshed',draw);
-appInfo().then(info=>{maxRating=info.max_rating;if(limited(maxRating))draw()});
+// App info may arrive after the forms are drawn: only the rating panel is redrawn, keeping what the author already
+// chose in it; the scene settings form with its unsaved fields is never rebuilt here.
+appInfo().then(info=>{
+  maxRating=info.max_rating;
+  const settings=document.querySelector('#scene-settings'),old=document.querySelector('#scene-rating');
+  if(!limited(maxRating)||!state.scene||!settings||!old)return;
+  const mode=old.elements.mode.value,values=axes.map(axis=>old.elements[axis].value);
+  drawRating(settings);
+  const form=document.querySelector('#scene-rating');
+  axes.forEach((axis,index)=>{if([...form.elements[axis].options].some(option=>option.value===values[index]))form.elements[axis].value=values[index]});
+  const chosen=[...form.elements.mode].find(input=>input.value===mode);
+  chosen.checked=true;chosen.dispatchEvent(new Event('change',{bubbles:true}));
+});

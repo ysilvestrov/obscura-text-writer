@@ -226,6 +226,29 @@ def main():
             repo.save_version(story_id, scene.id, 'brief', '{}', [], 'browser-run')
             return {'story_id': story_id, 'scene_id': scene.id}
 
+        @app.post('/test-build-edition')
+        def switch_build_edition(body: dict):
+            # BUILD-EDITION-001: the fixture server runs as the full edition; a spec switches it and must switch back.
+            from storygen import build_edition
+            original=getattr(build_edition,'_fixture_original',None) or build_edition.current
+            build_edition._fixture_original=original
+            if body.get('edition')=='store':
+                edition=build_edition.BuildEdition(edition='store',report_url='https://example.test/report',support_url='https://example.test/thanks')
+                build_edition.current=lambda:edition
+            else:
+                build_edition.current=original
+            return {'edition': build_edition.current().edition}
+
+        @app.post('/test-force-story-rating/{story_id}')
+        def force_story_rating(story_id: str, body: dict):
+            # Data rated in the full edition arrives in a store build unchanged; the API cannot create it there.
+            import json
+            with repo.db.connection() as db:
+                raw=json.loads(db.execute('SELECT payload FROM stories WHERE id=?',(story_id,)).fetchone()[0])
+                raw['content_rating']=raw['initial_content_rating']=body
+                db.execute('UPDATE stories SET payload=? WHERE id=?',(json.dumps(raw),story_id))
+            return {'ok': True}
+
         @app.post('/test-unrated')
         def unrated_story():
             # Unrated like a story created through the application; used by the rating settings spec.
