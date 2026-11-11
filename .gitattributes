@@ -11,3 +11,4 @@
 *.ttf binary
 src/storygen/publication/resources/fonts/OFL.txt -text
 tests/fixtures/prototype/*.md -whitespace
+.githooks/* text eol=lf

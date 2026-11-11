@@ -1,0 +1,57 @@
+#!/bin/sh
+# Refuses a push into a GitHub branch whose pull request is already merged or
+# closed: GitHub accepts such a push silently and the commits never reach main.
+#
+# Enable once per clone (covers every worktree of it):
+#   git config core.hooksPath "$(git rev-parse --show-toplevel)/.githooks"
+#
+# Continue after a merge from a new branch cut from origin/main. To push into
+# the old branch anyway: ALLOW_PUSH_TO_MERGED=1 git push ...
+#
+# If GitHub cannot be asked (no gh, no network, not signed in) the hook warns
+# and lets the push through.
+
+remote_url=$2
+
+[ "${ALLOW_PUSH_TO_MERGED:-}" = 1 ] && exit 0
+
+case "$remote_url" in
+    *github.com*) ;;
+    *) exit 0 ;;
+esac
+
+if ! command -v gh >/dev/null 2>&1; then
+    echo "pre-push: gh not found, pull request state not checked" >&2
+    exit 0
+fi
+
+status=0
+while read -r local_ref local_sha remote_ref remote_sha; do
+    # An all-zero local id means the remote branch is being deleted.
+    case "$local_sha" in
+        *[!0]*) ;;
+        *) continue ;;
+    esac
+    case "$remote_ref" in
+        refs/heads/*) branch=${remote_ref#refs/heads/} ;;
+        *) continue ;;
+    esac
+
+    if ! states=$(gh pr list --head "$branch" --state all --limit 50 \
+            --json state --jq '[.[].state] | join(" ")' </dev/null 2>/dev/null); then
+        echo "pre-push: could not ask GitHub about '$branch', pull request state not checked" >&2
+        continue
+    fi
+
+    case " $states " in
+        *" OPEN "*) ;;
+        *" MERGED "* | *" CLOSED "*)
+            echo "pre-push: the pull request of '$branch' is already merged or closed." >&2
+            echo "pre-push: these commits would not reach main. Start a new branch from origin/main" >&2
+            echo "pre-push: and open a new pull request (override: ALLOW_PUSH_TO_MERGED=1)." >&2
+            status=1
+            ;;
+    esac
+done
+
+exit $status
