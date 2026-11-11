@@ -159,6 +159,7 @@ def main(argv=None, *, opener=webbrowser.open, tray=None, serve=None, alert=None
     4 — the server did not start. A refused start is reported through `alert` with the path of the log."""
     parser = argparse.ArgumentParser(description='Obscura Text Writer')
     parser.add_argument('--data-dir', type=Path, default=None)
+    parser.add_argument('--env-file', type=Path, default=None, help='file with provider keys; default: .env in the data folder')
     parser.add_argument('--no-tray', action='store_true')
     parser.add_argument('--no-browser', action='store_true')
     args = parser.parse_args(argv)
@@ -210,7 +211,8 @@ def _run(args, data_dir: Path, opener, tray, serve) -> tuple[int, str | None]:
     if copy is not None:
         logger.info('Перед оновленням бази створено резервну копію: %s', copy)
     port = choose_port()
-    app = create_app(AppSettings(data_dir=data_dir, env_file=data_dir / '.env', port=port))
+    env_file = args.env_file.resolve() if args.env_file else data_dir / '.env'
+    app = create_app(AppSettings(data_dir=data_dir, env_file=env_file, port=port))
     server = serve(app, port)
     thread = threading.Thread(target=_serve, args=(server,), name='obscura-server', daemon=True)
     thread.start()

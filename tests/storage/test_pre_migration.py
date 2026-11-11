@@ -129,3 +129,20 @@ def test_schema_one_cannot_be_verified_and_is_refused(tmp_path):
     with pytest.raises(PreMigrationBackupFailed) as error:
         backup_before_migration(data)
     assert 'unsupported_schema' in str(error.value) and version(data) == 1
+
+
+def test_a_copy_made_by_another_launch_is_never_renamed(tmp_path, monkeypatch):
+    # Two launches in the same second: the other one finishes its copy between our look and our attempt.
+    data = old_schema_dir(tmp_path)
+    moment = datetime(2026, 11, 11, 9, 30, 5)
+    real = pre_migration.create_backup
+
+    def other_launch_wins(source, destination):
+        real(source, destination)                    # the other launch completes its copy
+        return real(source, destination)             # ours then finds the destination taken
+    monkeypatch.setattr(pre_migration, 'create_backup', other_launch_wins)
+    with pytest.raises(PreMigrationBackupFailed):
+        backup_before_migration(data, now=moment)
+    kept = backups_dir(data) / 'pre-migration-v4-20261111-093005'
+    assert [p.name for p in backups_dir(data).iterdir()] == [kept.name]
+    assert json.loads((kept / 'manifest.json').read_text(encoding='utf-8'))['status'] == 'complete'

@@ -3879,7 +3879,9 @@
         "tests/test_desktop.py::test_whole_launch_works_without_standard_streams",
         "tests/test_desktop.py::test_access_log_is_off_so_request_paths_stay_out_of_the_log",
         "tests/test_desktop.py::test_logging_restores_the_root_level",
-        "tests/test_desktop.py::test_a_refused_start_tells_the_user_where_the_log_is"
+        "tests/test_desktop.py::test_a_refused_start_tells_the_user_where_the_log_is",
+        "tests/test_desktop.py::test_env_file_option_brings_provider_keys",
+        "tests/test_desktop.py::test_default_env_file_is_in_the_data_folder"
       ]
     },
     {
@@ -3916,7 +3918,8 @@
         "tests/test_desktop.py::test_desktop_refuses_to_start_when_backup_fails",
         "tests/storage/test_pre_migration.py::test_unreadable_version_is_a_failure_not_a_skipped_backup",
         "tests/storage/test_pre_migration.py::test_failed_copy_is_not_left_looking_like_a_backup",
-        "tests/storage/test_pre_migration.py::test_schema_one_cannot_be_verified_and_is_refused"
+        "tests/storage/test_pre_migration.py::test_schema_one_cannot_be_verified_and_is_refused",
+        "tests/storage/test_pre_migration.py::test_a_copy_made_by_another_launch_is_never_renamed"
       ]
     },
     {
