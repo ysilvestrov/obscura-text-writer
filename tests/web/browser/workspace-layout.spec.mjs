@@ -82,8 +82,23 @@ test('workspace screenshots for the user guide',async({page,request})=>{
   await expect(page.locator('#workspace-scene-status')).not.toBeEmpty();
   await page.locator('#story-menu-toggle').click();await expect(page.locator('#story-menu')).toBeVisible();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBeTruthy();
+  const box=await page.locator('#story-menu').boundingBox(),width=await page.evaluate(()=>innerWidth);
+  expect(box.x).toBeGreaterThanOrEqual(0);expect(box.x+box.width).toBeLessThanOrEqual(width);  // final review #2: no clipping on either side
   await page.screenshot({path:`docs/images/workspace-menu-${name}.png`});
   await page.locator('#story-menu-revision').click();await expect(page.locator('#impact-preview')).toBeVisible();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBeTruthy();
   await page.screenshot({path:`docs/images/workspace-revision-${name}.png`});
+});
+
+// #89 final review #4: opening a scene from the revision page keeps the page (and unsaved review choices) alive.
+test('opening a scene from book revision keeps the revision page',async({page,request,context})=>{
+  const f=await(await request.post('/test-impact?changes=true')).json();
+  await page.goto(`/stories/${f.story_id}/revision`);
+  await page.evaluate(()=>{window.__kept=true});
+  const opened=context.waitForEvent('page');
+  await page.evaluate(()=>import('/static/revision-context.js').then(m=>m.selectScene(m.state.view?.scenes?.[0]||{id:'x',heads:{}})));
+  const tab=await opened;await tab.waitForLoadState();
+  expect(tab.url()).toContain(`/stories/${f.story_id}?scene=`);
+  expect(await page.evaluate(()=>window.__kept)).toBe(true);
+  await tab.close();
 });

@@ -11,3 +11,5 @@ export function sceneStatusKey(scene,impactStatus={}){
   return heads.prose?'prose':'draft';
 }
 export function sceneStatus(scene,impactStatus){const key=sceneStatusKey(scene,impactStatus);return {key,label:t(KEYS[key])}}
+// #89: the workspace shows a sequential review card only while that session waits for the author (a decision, a resume or a retry), not while it runs.
+export function reviewNeedsAuthor(run){return ['needs_review','paused','pause_requested','failed','interrupted','alternative'].includes(run?.state)}

@@ -32,9 +32,12 @@ def page(tmp_path,path='/stories/{id}'):
 @pytest.mark.req('R20-WORKSPACE')
 def test_run_controls_and_limit_live_in_the_status_row(tmp_path):
     tree,html=page(tmp_path)
-    for id in ['run-status','run-actions','workspace-error-settings','run-options','review-attention','workspace-scene-status']:
+    for id in ['run-status','run-actions','workspace-error-settings','run-options','workspace-scene-status']:
         assert id in tree.ancestors,id
         assert {'.workspace-sticky','#workspace-status-row'}<=tree.ancestors[id],id
+    # A waiting review card can be long: it sits right under the sticky block, never inside it (final review #1).
+    assert '.workspace-sticky' not in tree.ancestors['review-attention']
+    assert '#workspace' in tree.ancestors['review-attention']
     assert 'workspace-status"' not in html.split('class="context-panel"')[1]
 
 
@@ -49,6 +52,7 @@ def test_story_toolbar_has_three_icon_actions_and_a_disclosure_menu(tmp_path):
     for id in ['story-menu-revision','story-menu-publication','export-story','story-menu-evaluate','story-menu-reports','story-menu-budget','story-menu-rename']:
         assert '#story-menu' in tree.ancestors[id],id
     assert '#export-dialog' in tree.ancestors['export-form']
+    assert tree.attrs['story-menu-budget']['href'].endswith('/settings?section=budget')  # settingsRoute reads ?section= only
     for id in ['impact-panel','impact-reports','impact-preview']:
         assert id not in tree.attrs,id
     assert '#review-attention' in tree.ancestors['review-session']

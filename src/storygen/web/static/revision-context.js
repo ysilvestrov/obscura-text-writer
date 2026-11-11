@@ -13,4 +13,6 @@ export function sceneUrl(scene){
   const material=scene.heads?.prose?'prose':'brief';
   return `/stories/${encodeURIComponent(state.storyId)}?`+new URLSearchParams({scene:scene.id,material});
 }
-export async function selectScene(scene){location.assign(sceneUrl(scene))}
+// A new tab keeps this page, so unsaved review choices survive opening a scene; coming back re-reads the story.
+export async function selectScene(scene){window.open(sceneUrl(scene),'_blank','noopener')}
+window.addEventListener('focus',()=>{if(state.view)refresh().catch(()=>{})});

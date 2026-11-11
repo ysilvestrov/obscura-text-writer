@@ -3,6 +3,7 @@ import {t,diagnostic} from './i18n.js';
 import {api,json,notice} from './api.js';
 import {state,refresh,selectScene} from './editor.js';
 import {invokeWorkspaceCommand} from './workspace-commands.js';
+import {reviewNeedsAuthor} from './workspace-status.js';
 
 const host=document.querySelector('#review-session');
 let current=null,session=null,busy=false,epoch=0,opened=null,policies=null;
@@ -31,7 +32,7 @@ async function priority(material,preferred,superseded,revokeId=null){
 }
 // #89: in the workspace the card shows only while the session waits for the author; the revision page shows it always.
 const attentionOnly=host?.dataset?.scope==='attention';
-const waiting=run=>['queued','running','paused','needs_review','pause_requested','cancellation_requested','interrupted','alternative','failed'].includes(run?.state);
+const waiting=reviewNeedsAuthor;
 function render(){
   host.replaceChildren();host.hidden=!session||(attentionOnly&&!waiting(session));
   if(attentionOnly){const box=host.closest?.('#review-attention');if(box)box.hidden=host.hidden}

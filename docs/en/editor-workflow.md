@@ -32,7 +32,7 @@ A model proposal with exactly scene_number/change is preserved as “Сцена 
 
 The top row has three icon actions: **Characters**, **Settings** and **Add scene** (labelled on wide screens). Story-wide actions live in the **☰ Story actions** menu: **Book revision** (a separate page with **← Back to the story**; the number next to it counts materials waiting for review), **Card and publication**, **Export…** (a dialog), story evaluation and reports, a budget line linking to settings, and rename. The menu works from the keyboard; `Escape` closes it and returns focus.
 
-A status row above the scene text shows the scene status, run progress and run controls; **Run options** holds the next-run limit. When a sequential impact review waits for your decision, its card appears here too, next to the text. The side panel is about the scene only: **Scene settings** and **Scene evaluation** collapse and remember their state in this browser; evaluation is hidden when the evaluator is off. The import journal opens inside the import section of the scene list.
+A status row above the scene text shows the scene status, run progress and run controls; **Run options** holds the next-run limit. When a sequential impact review waits for your decision, its card appears just below the status row, next to the text. The side panel is about the scene only: **Scene settings** and **Scene evaluation** collapse and remember their state in this browser; evaluation is hidden when the evaluator is off. The import journal opens inside the import section of the scene list.
 
 ![Workspace with the Story actions menu](../images/workspace-menu-desktop.png)
 

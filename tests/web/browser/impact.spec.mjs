@@ -42,6 +42,7 @@ test('old backend does not expose new review actions after a static update',asyn
   await page.goto(`/stories/${f.story_id}/revision`);
   await expect(page.locator('#impact-panel')).toHaveAttribute('data-review-protocol','unsupported');
   await expect(page.locator('#impact-panel')).toBeHidden();
+  await page.unrouteAll({behavior:'ignoreErrors'});
 });
 
 
