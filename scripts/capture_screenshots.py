@@ -67,6 +67,16 @@ def server_env():
     env['PYTHONPATH']=str(ROOT/'src');return env
 
 
+def server_command(data,port,env_file):
+    """Seed server command: an explicit empty env file, so the repository `.env` keys are never loaded."""
+    return [sys.executable,'-m','storygen.server','--data-dir',str(data),'--port',str(port),'--env-file',str(env_file)]
+
+
+def resolve_work_dir(value):
+    """Absolute work directory: the server runs with cwd=ROOT, so a relative path would point elsewhere."""
+    return Path(value).resolve()
+
+
 def wait_for(url,server,timeout=30):
     deadline=time.monotonic()+timeout
     while time.monotonic()<deadline:
@@ -116,13 +126,14 @@ def main(argv=None):
     parser.add_argument('--work-dir',help='порожній каталог для тимчасових даних (типово новий у C:/tmp)')
     parser.add_argument('--port',type=int)
     args=parser.parse_args(argv)
-    work=Path(args.work_dir) if args.work_dir else Path(tempfile.mkdtemp(prefix='obscura-shots-',dir='C:/tmp' if Path('C:/tmp').is_dir() else None))
+    work=resolve_work_dir(args.work_dir) if args.work_dir else Path(tempfile.mkdtemp(prefix='obscura-shots-',dir='C:/tmp' if Path('C:/tmp').is_dir() else None))
     shots=[]
     for lang in STORIES:  # one data folder and server per language: each library shows only its own story
         data=work/lang/'data'
         if data.exists() and any(data.iterdir()):raise SystemExit(f'{data} не порожній: знімки беруться лише з нового seed')
         ids=seed(data,[lang]);port=args.port or free_port();ensure_port_free(port);base=f'http://127.0.0.1:{port}'
-        server=subprocess.Popen([sys.executable,'-m','storygen.server','--data-dir',str(data),'--port',str(port)],cwd=ROOT,
+        env_file=work/lang/'empty.env';env_file.write_text('',encoding='utf-8')
+        server=subprocess.Popen(server_command(data,port,env_file),cwd=ROOT,
                                 stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,env=server_env())
         try:
             wait_for(base+'/',server)

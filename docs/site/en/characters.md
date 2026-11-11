@@ -24,8 +24,8 @@ For each entry choose:
 
 To keep the model from naming people the protagonist has not met yet, the brief, draft and rewrite contexts get a short "Protagonist acquaintances" block.
 
-- Mark the protagonist with a line of its own in a card description. The app recognises only the Ukrainian words «протагоніст», «протагоністка», «головний герой» or «головна героїня». The template line «Роль у творі: Головна героїня» also works. Without a mark, the protagonist is the first participant of the earliest scene.
-- Acquaintances from before the story use the Ukrainian line «Знайомий з: Name, Name» («Знайома з:», «Знайомі з:»). A dash, «Знайомий з: —», means the protagonist knows nobody. An unknown name produces a warning but does not block generation.
+- Mark the protagonist with a line of its own in a card description: `Protagonist`, `Main character` or `Lead character` (or the Ukrainian «протагоніст», «протагоністка», «головний герой», «головна героїня»). A template line such as `Role in the story: Protagonist` also works. Without a mark, the protagonist is the first participant of the earliest scene.
+- Acquaintances from before the story use the line `Knows: Name, Name` or `Acquainted with: Name, Name` (or the Ukrainian «Знайомий з:», «Знайома з:», «Знайомі з:»). A dash, `Knows: —`, means the protagonist knows nobody. An unknown name produces a warning but does not block generation.
 - The planner records in the brief whom the protagonist meets in this scene. If you write the brief by hand, you can change this field.
 
 An acquaintance is the planner's intent, not a check of the prose: if the writer skipped the introduction, the next scene still treats the character as acquainted.

@@ -3923,7 +3923,9 @@
         "tests/test_capture_screenshots.py::test_seed_creates_neutral_stories_in_both_languages",
         "tests/test_capture_screenshots.py::test_wait_for_refuses_another_server_when_ours_exited",
         "tests/test_capture_screenshots.py::test_busy_port_is_refused_before_start",
-        "tests/test_capture_screenshots.py::test_server_env_has_no_provider_keys"
+        "tests/test_capture_screenshots.py::test_server_env_has_no_provider_keys",
+        "tests/test_capture_screenshots.py::test_server_command_uses_an_isolated_env_file",
+        "tests/test_capture_screenshots.py::test_relative_work_dir_is_resolved_before_seeding"
       ]
     }
   ]

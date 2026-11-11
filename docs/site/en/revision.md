@@ -26,11 +26,11 @@ When you change early scenes, the outline or the characters, later materials may
 
 ## Sequential review
 
-A sequential review goes through the scenes in order. A scene without concerns becomes current automatically. Concerns pause the session: each shows the message, a scene passage and the premise. Choose **Dismiss as irrelevant** or **Address in corrections** and apply your decisions. **Dismiss all and continue** is an explicit batch decision by the author.
+A sequential review goes through the scenes in order. In the regular review, a scene without concerns becomes current automatically. Concerns pause the session: each shows the message, a scene passage and the premise. Choose **Dismiss as irrelevant** or **Address in corrections** and apply your decisions. **Dismiss all and continue** is an explicit batch decision by the author.
 
 While the session waits for you, its card is also visible in the workspace below the status row, so you can edit the scene next to the decisions. After editing press **Finish corrections and continue**. Decisions survive a reload.
 
-Before the preview you can choose **Review with exact evidence**: it first matches the premises against each other and then the text against them. **Correction needed** means the text contradicts a current premise, **Premise conflict** needs your decision, and **Missing information** names what is missing.
+Before the preview you can choose **Review with exact evidence**: it first matches the premises against each other and then the text against them. **Correction needed** means the text contradicts a current premise, **Premise conflict** needs your decision, and **Missing information** names what is missing. Such a report always waits for your confirmation, even with no concerns: the scene does not become current automatically.
 
 ## Limits
 
