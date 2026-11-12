@@ -946,6 +946,14 @@
       ]
     },
     {
+      "id": "EDIT-REVIEW-S04",
+      "requirement": "EDIT-REVIEW",
+      "scope": "Список пропозицій: новий прохід стає вибраним, вибір автора зберігається без нового проходу, інша сцена починає з найновішої.",
+      "tests": [
+        "tests/web/test_copyedit_review_ui.py::test_copyedit_panel_selection_and_dirty_guards"
+      ]
+    },
+    {
       "id": "LANGUAGE-WARNINGS-S01",
       "requirement": "LANGUAGE-WARNINGS",
       "scope": "Контекстний дефект і чистий приклад. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
