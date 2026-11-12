@@ -36,7 +36,7 @@ def text(result):
 
 
 @pytest.mark.req('MCP-BRIDGE')
-def test_tool_list_is_exactly_the_thirteen_tools(tmp_path):
+def test_tool_list_is_exactly_the_eighteen_tools(tmp_path):
     app, http = obscura(tmp_path)
 
     async def run():
@@ -44,7 +44,8 @@ def test_tool_list_is_exactly_the_thirteen_tools(tmp_path):
             return [tool.name for tool in (await client.list_tools()).tools]
     names = anyio.run(run)
     assert sorted(names) == sorted(TOOLS) == sorted(['list_stories', 'get_story', 'get_scene_context', 'import_plan_and_characters', 'save_draft', 'next_steps', 'get_scene_text',
-                                                    'create_story', 'get_templates', 'update_story', 'add_scene', 'update_scene', 'open_ghost_mode'])
+                                                    'create_story', 'get_templates', 'update_story', 'add_scene', 'update_scene', 'open_ghost_mode',
+                                                    'get_publication', 'update_publication', 'add_signature', 'upload_cover', 'export_book'])
     assert not [name for name in names if any(word in name for word in ('delete', 'trash', 'order', 'move'))]
 
 
