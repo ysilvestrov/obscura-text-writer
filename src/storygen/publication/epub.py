@@ -5,7 +5,7 @@ import zipfile
 from datetime import datetime
 from urllib.parse import urlsplit
 from xml.etree import ElementTree as ET
-from .book import xml_bytes
+from .book import part_starts,xml_bytes
 from .markup import chapter_paragraphs,append_xml_runs
 
 XHTML='http://www.w3.org/1999/xhtml'
@@ -73,13 +73,20 @@ def render(book):
         blank,body=page(book.title,card.language);add(body,'h1',book.title)
         resource('title-page','title.xhtml','application/xhtml+xml',xml_bytes(blank),reading=True)
         add(add(toc,'li'),'a',book.title,href='title.xhtml')
+    starts=part_starts(book);entries=toc
     for index,chapter in enumerate(chapters,1):
+        if index-1 in starts:
+            # BOOK-STRUCTURE-S05: a part title page in the spine and a nested list in the table of contents.
+            number=chapter.part_index+1;title=starts[index-1];part_name=f'part-{number}.xhtml'
+            part_page,part_body=page(title,card.language);add(part_body,'h1',title)
+            resource(f'part-{number}',part_name,'application/xhtml+xml',xml_bytes(part_page),reading=True)
+            item=add(toc,'li');add(item,'a',title,href=part_name);entries=add(item,'ol')
         name=f'chapter-{index}.xhtml';document,body=page(chapter.title,card.language);add(body,'h1',chapter.title)
         for runs in chapter_paragraphs(chapter):
             paragraph=append_xml_runs(add(body,'p'),runs)
             if not runs:add(paragraph,'br')
         resource(f'chapter-{index}',name,'application/xhtml+xml',xml_bytes(document),reading=True)
-        add(add(toc,'li'),'a',chapter.title,href=name)
+        add(add(entries,'li'),'a',chapter.title,href=name)
     resource('nav','nav.xhtml','application/xhtml+xml',xml_bytes(nav),'nav')
     resources['EPUB/package.opf']=xml_bytes(root)
     container=ET.Element('container',{'xmlns':OCF,'version':'1.0'})

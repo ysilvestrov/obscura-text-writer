@@ -6,7 +6,7 @@ from importlib.resources import files
 from urllib.parse import urlparse
 from pathlib import PurePosixPath
 from xml.etree import ElementTree as ET
-from .book import EXPORTER,lines,xml_bytes
+from .book import EXPORTER,lines,part_starts,xml_bytes
 from .markup import chapter_paragraphs,append_xml_runs
 
 NS='http://www.gribuser.ru/xml/fictionbook/2.0'
@@ -60,8 +60,12 @@ def render(book):
         if getattr(card,field):add(description,'custom-info',getattr(card,field),**{'info-type':'publication-'+field})
     if book.age_rating:add(description,'custom-info',book.age_rating,**{'info-type':'age-rating'})
     body=add(root,'body')
+    starts=part_starts(book);parent=body
     for index,chapter in enumerate(book.chapters,1):
-        section=add(body,'section',id=f'chapter-{index}');add(add(section,'title'),'p',chapter.title)
+        if index-1 in starts:
+            # BOOK-STRUCTURE-S05: a part is a section holding its scene sections.
+            parent=add(body,'section',id=f'part-{chapter.part_index+1}');add(add(parent,'title'),'p',starts[index-1])
+        section=add(parent,'section',id=f'chapter-{index}');add(add(section,'title'),'p',chapter.title)
         for runs in chapter_paragraphs(chapter):
             append_xml_runs(add(section,'p'),runs,italic='emphasis') if runs else add(section,'empty-line')
     if not book.chapters:add(add(body,'section'),'p')
