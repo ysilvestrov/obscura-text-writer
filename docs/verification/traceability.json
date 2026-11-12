@@ -4185,6 +4185,47 @@
       ]
     },
     {
+      "id": "BOOK-STRUCTURE-S05",
+      "requirement": "BOOK-STRUCTURE",
+      "scope": "Частини в MD/TXT/FB2/EPUB/PDF, «Частина N»/«Part N» для частини без назви, без арок; пласка книга без змін.",
+      "tests": [
+        "tests/authoring/test_export_parts.py::test_markdown_has_part_headings",
+        "tests/authoring/test_export_parts.py::test_markdown_part_without_title_in_english",
+        "tests/authoring/test_export_parts.py::test_flat_markdown_is_unchanged",
+        "tests/authoring/test_export_parts.py::test_txt_has_part_paragraphs",
+        "tests/authoring/test_export_parts.py::test_fb2_nests_scene_sections_in_parts",
+        "tests/authoring/test_export_parts.py::test_epub_has_part_pages_and_nested_toc",
+        "tests/authoring/test_export_parts.py::test_pdf_renders_with_parts"
+      ]
+    },
+    {
+      "id": "BOOK-STRUCTURE-S06",
+      "requirement": "BOOK-STRUCTURE",
+      "scope": "Групування списку, варіанти арки, правила буфера панелі (node); підключення сторінок; браузер: групи, поле «Арка», панель, пласка книга.",
+      "tests": [
+        "tests/web/test_book_structure_ui.py::test_group_rows_arc_options_and_panel_buffer",
+        "tests/web/test_book_structure_ui.py::test_pages_load_the_structure_modules"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#book-structure-browser",
+        "reason": "check_docs.py індексує лише pytest; Playwright cases tests/web/browser/book-structure.spec.mjs виконуються окремим runner, цей зв’язок не є доказом виконання."
+      }
+    },
+    {
+      "id": "BUILD-EDITION-001-S08",
+      "requirement": "BUILD-EDITION-001",
+      "scope": "Обхід таблиці маршрутів: кожен маршрут запису під запобіжником або в списку дозволених; пласка книга й видання з довгою прозою працюють; читання й експорт дозволені.",
+      "tests": [
+        "tests/web/test_long_prose_guard.py::test_every_write_route_is_guarded_or_allowed_with_a_reason",
+        "tests/web/test_long_prose_guard.py::test_allowed_list_names_only_existing_routes",
+        "tests/web/test_long_prose_guard.py::test_flat_book_is_writable_in_store",
+        "tests/web/test_long_prose_guard.py::test_one_named_part_and_arc_is_writable_in_store",
+        "tests/web/test_long_prose_guard.py::test_structured_book_reads_and_exports_in_store",
+        "tests/web/test_long_prose_guard.py::test_structured_book_is_writable_with_long_prose",
+        "tests/web/test_book_structure_ui.py::test_server_refusals_are_translated"
+      ]
+    },
+    {
       "id": "BUILD-EDITION-001-S09",
       "requirement": "BUILD-EDITION-001",
       "scope": "Видання paid без report_url, межа 2, довга проза; store без довгої прози: маршрути структури 400, імпорт без розбору.",

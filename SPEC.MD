@@ -2991,6 +2991,23 @@ Restore перевіряє complete manifest, точний inventory, кожни
 - AND додатковий імпорт із назвою останньої частини продовжує її, наявні сцени пласкої книги потрапляють у першу частину
 - AND план без маркерів лишає неявну структуру, а у виданні без довгої прози план імпортується, як раніше (рядки лишаються текстом).
 
+<a id="book-structure-s05"></a>
+#### Scenario: BOOK-STRUCTURE-S05 — Експорт частин
+- GIVEN книга з кількома частинами
+- WHEN автор експортує її в MD, TXT, FB2, EPUB чи PDF
+- THEN частини — рівень вище за сцени: MD — `#` книга, `##` частина, `###` сцена; TXT — назва частини окремим абзацом; FB2 — вкладені `section`, що проходять XSD; EPUB — сторінка частини в spine і вкладений зміст; PDF — сторінка частини й закладки двох рівнів
+- AND частина без назви — «Частина N» (`Part N` для твору англійською), арки не експортуються
+- AND пласка книга експортується, як раніше.
+
+<a id="book-structure-s06"></a>
+#### Scenario: BOOK-STRUCTURE-S06 — Інтерфейс структури
+- GIVEN видання з довгою прозою
+- WHEN автор відкриває структуровану книгу
+- THEN список сцен згрупований заголовками частин (і арок, коли в частині їх кілька або арка має назву), нумерація наскрізна, мобільний вибір сцени має групи частин
+- AND панель «Структура книги» на сторінці налаштувань додає, перейменовує, переміщує й видаляє частини й арки (не частину чи арку зі сценами, не останню арку частини, не останню частину) й зберігає все одним `PUT` із CAS; «Розформувати» — `DELETE` після підтвердження; відмова сервера не стирає буфер
+- AND поле «Арка» в параметрах сцени зберігає вибір одразу
+- AND пласка книга виглядає, як раніше.
+
 #### Технічний опис і сумісність (BOOK-STRUCTURE)
 
 - **Модель.** `domain.Arc{id,title}`, `Part{id,title,arcs}`, `BookStructure{parts}`; `Story.book_structure: BookStructure | None`, `Story.scene_arcs: dict[scene_id, arc_id]` (до 100000 записів). Межі: до 200 частин, до 1000 арок, назва до 200 символів, порожня назва допустима, ID частин і арок унікальні.
@@ -2999,7 +3016,9 @@ Restore перевіряє complete manifest, точний inventory, кожни
 - **API.** `PUT /api/stories/{id}/structure` `{expected_revision, parts:[{id|null,title,arcs:[{id|null,title}]}], scene_arcs}`, `DELETE /api/stories/{id}/structure` `{expected_revision}`, `PUT /api/stories/{id}/scenes/{scene_id}/arc` `{arc_id, expected_revision}` (`web/routes_structure.py`); у виданні без довгої прози — 400 (`book/guard.py::require_long_prose`). `GET /api/stories/{id}` віддає `book_structure: {kind, explicit, parts}` і `arc_id` кожної сцени. MCP `get_story` додає до сцен `part_id`, `part_title`, `arc_id`, `arc_title`.
 - **Імпорт.** `plan_sections.split_book_plan(text, default_title) -> (preamble, [BookSection{section, part_title, arc_title}], found)`: заголовок частини — рівень вище за пронумеровані заголовки сцен (або будь-який, якщо сцени без заголовків), назва відповідає `^(частина|part)\b`, назва частини — текст після двокрапки або весь заголовок; рядок арки — `^(арка|arc)\s*:` після зняття Markdown-позначок. Секція без рядка продовжує арку попередньої у своїй частині; `None` означає поточну частину чи арку книги. `_plan` використовує розбір лише при `build_edition.current().long_prose`. `publish_import`: частина продовжує останню частину книги за збігом назви, інакше додається нова; арка шукається за назвою в частині (повернення до ранішої арки порушує послідовність і відкочує всю публікацію). Агрегований план джерела містить тексти сцен без заголовків частин і рядків арок.
 - **Fsck.** `storage/book_checks.py`: `book_structure_unknown_arc` і `book_structure_not_sequential` — обмеження (`limitations`), не проблеми: від структури не залежить жоден текст.
-- **Сумісність.** Міграції немає: старі payload читаються з `book_structure=None`, `scene_arcs={}`. Експорт частин, інтерфейс структури й режим лише для читання у виданні без довгої прози — наступні пакети зміни (специфікація `docs/superpowers/specs/2026-11/2026-11-12-book-structure-design.md`).
+- **Експорт.** `publication/book.py::book_parts` дає `Book.parts` (ефективні назви; порожня — «Частина N»/«Part N» за мовою твору) і `Chapter.part_index`; для пласкої книги `parts=()`, і всі формати будуються тим самим кодом, що до зміни. `part_starts(book)` — перша глава кожної частини; її читають `application/exports.py` (MD/TXT), `fb2.py`, `epub.py` (`part-N.xhtml`), `pdf.py` (сторінка частини, рівень закладки 0, сцени — 1).
+- **Інтерфейс.** `web/static/book-structure.js` — чисті функції `groupScenes`, `arcOptions`, буфер панелі (`createBuffer`, `addPart`, `addArc`, `rename`, `move`, `remove`, `payload`; нові частини й арки отримують клієнтські ID). `editor.js` малює заголовки груп як `div.scene-group` (не `.scene-item`, тож `selectScene` і нумерація не змінюються). `book-structure-ui.js` — поле «Арка» й банер лише для читання; `book-structure-panel.js` — панель на сторінці налаштувань; обидва читають `app-info.long_prose`. Тексти — `book.*` в `i18n.json` (uk/en).
+- **Сумісність.** Міграції немає: старі payload читаються з `book_structure=None`, `scene_arcs={}`. Пам’ять і контекст поки не знають арок: паралельні арки, злиття пам’яті й підсумки — наступні проєкти загального дизайну довгої прози (`docs/superpowers/specs/2026-11/2026-11-12-long-prose-design.md`).
 
 <a id="build-edition-001"></a>
 ### Requirement: BUILD-EDITION-001 — Видання збірки й межа рейтингу
@@ -3044,7 +3063,7 @@ Restore перевіряє complete manifest, точний inventory, кожни
 #### Scenario: BUILD-EDITION-001-S05 — Відомості про застосунок
 - GIVEN запущений застосунок
 - WHEN інтерфейс запитує `GET /api/app-info`
-- THEN відповідь містить лише `edition`, `max_rating`, `version`, `support_url`, `waitlist_url`, `report_url` і `instance_id` (DESKTOP-001).
+- THEN відповідь містить лише `edition`, `max_rating`, `long_prose`, `version`, `support_url`, `waitlist_url`, `report_url` і `instance_id` (DESKTOP-001).
 
 <a id="build-edition-001-s06"></a>
 #### Scenario: BUILD-EDITION-001-S06 — Форми рейтингу
@@ -3062,6 +3081,16 @@ Restore перевіряє complete manifest, точний inventory, кожни
 - AND у виданні `full` без адрес шапка не змінюється
 - AND адреса не `https`, без хоста, з пробілом чи керівним символом зупиняє запуск.
 
+<a id="build-edition-001-s08"></a>
+#### Scenario: BUILD-EDITION-001-S08 — Видання без довгої прози
+- GIVEN видання `store` і книга з кількома частинами чи арками
+- WHEN надходить запит будь-якого маршруту запису твору, сцени чи запуску або GET-запит, що будує контекст генерації (контекст письма, завдання етапу для чату)
+- THEN запит відхиляється з кодом 400 і поясненням «лише для читання й експорту», нічого не змінюється
+- AND читання, експорт, переміщення твору в кошик і відновлення, зупинка запуску та налаштування застосунку працюють
+- AND пласка книга (зокрема з однією названою частиною й аркою) працює повністю
+- AND тест обходить таблицю маршрутів застосунку: кожен маршрут запису або перевірено запобіжником, або він є у списку дозволених із причиною; новий маршрут поза обома валить тест
+- AND інтерфейс не показує панелі структури й поля «Арка», а для такої книги показує банер.
+
 <a id="build-edition-001-s09"></a>
 #### Scenario: BUILD-EDITION-001-S09 — Видання `paid`
 - GIVEN позначка `{"edition": "paid"}` без `report_url`
@@ -3075,6 +3104,7 @@ Restore перевіряє complete manifest, точний inventory, кожни
 - **Збереження.** `storage/authoring.py::update_story_rating` і `update_scene_rating` перевіряють межу після порівняння ревізії та раннього повернення «рейтинг не змінився», до запису.
 - **Запобіжник.** `rating/guard.py::enforce_edition_limit(story, scene=None)` порівнює чинний рейтинг (для виклику без сцени — рейтинг твору; незаданий рейтинг пропускає) з межею. `enforce_rating`: рейтинг твору не задано → `enforce_edition_limit` (усі її етапи) → перевірки RATING-002. Ту саму функцію викликають `generation/publication_metadata.py::build_publication_context` (твір і кожна сцена знімка), `application/writing_context.py::writing_context` і `generation/dependencies.py::save_manual_draft` для `external_origin` (до перевірки відбитка контексту). Контексти оцінювання, послідовної перевірки, перевірки впливу й класифікації правок її не викликають.
 - **Запуск.** `web/app.py::create_app` викликає `build_edition.current()` першим, до створення `Repository`.
+- **Довга проза.** `book/guard.py`: `require_long_prose()` (маршрути структури) і `enforce_long_prose(story, scenes)`. Режим лише для читання — одна перевірка в HTTP-middleware `web/app.py::local_requests` через `web/long_prose_guard.py::blocked`: у виданні без довгої прози для не-GET маршрутів і `GENERATIVE_GET` вона знаходить твір за параметром шляху (`story_id`, `scene_id`, `id` твору, сцени чи запуску) або `story_id` (`request.story_id`) у JSON-тілі, читає його через `storage/book_structure.py::structured_story` і для `structure_kind == 'structured'` відповідає 400. Список `ALLOWED` — маршрути, що не змінюють книги, з причиною. У виданнях із довгою прозою перевірка не читає БД. `scripts/build_store.py --edition` приймає `paid`.
 - **Повідомлення.** Ключі `rating.edition.save_limit.<вісь>` і `rating.edition.guard_limit.<вісь>` в `i18n.json` для `uk` і `en`; окремий ключ на вісь, бо `diagnostic` не перекладає значення параметра.
 - **Інтерфейс.** `web/static/app-info.js`: `appInfo()` (один запит на сторінку; у разі помилки — значення видання `full`), `allowedLevels(max, current)` (рівні до межі плюс уже збережений вищий) і `limited(max_rating)`. `rating-settings.js` ховає й вимикає недоступні варіанти, `scene-settings.js` не створює їх; обидві форми показують підказку `rating.edition.hint`. Посилання малює сервер: глобальна функція шаблонів `app_links()` у `web/app.py` читає `build_edition.current()` під час кожного рендера, `base.html` виводить `<nav class="app-links">` лише за наявності посилань (ключі `app.link.*`).
 - **Пізня відповідь.** Якщо `app-info` надходить після малювання панелі сцени, перемальовується лише панель рейтингу зі збереженням уже вибраних режиму й рівнів; форма параметрів сцени з незбереженими полями не перебудовується. Контекст письма для зовнішнього клієнта перевіряє рейтинг того самого знімка, який повертає (`rating/guard.py::enforce_rating_limit`).
