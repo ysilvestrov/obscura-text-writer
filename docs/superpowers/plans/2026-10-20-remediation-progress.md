@@ -1848,3 +1848,4 @@ Playwright `memory-kind.spec.mjs` і `core-review.spec.mjs` пройшли вр�
 - Cross-review (agy/gemini-3.8-flash; codex і agy Argon — ліміти): 3 знахідки, усі виправлено (`bd15be0`).
 - `verify.py` на `bd15be0` (з `C:/tmp/epl`): passed 2898, failed 0, skipped 1.
 - Після злиття `origin/main` (#149, #152) у гілку: `verify.py` на `c994de4`: passed 2898, failed 0, skipped 1.
+- Після злиття #151 у `main` і повторного злиття в гілку: `verify.py` на `5302c74`: passed 2904, failed 0, skipped 1.
