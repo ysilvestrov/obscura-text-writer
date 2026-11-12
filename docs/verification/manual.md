@@ -276,6 +276,11 @@ WORKSPACE-TOOLS-S05. Автоматична частина — Playwright `tests
 
 MODEL-005-S03. Автоматична частина — Playwright case «limits above the chosen model caps block the save until fixed» у `tests/web/browser/model-picker.spec.mjs` (поле резерву відповіді отримує `max` з каталогу, значення понад межу показує пояснення й не надсилає PUT, допустиме значення зберігається): `node frontend/node_modules/@playwright/test/cli.js test tests/web/browser/model-picker.spec.mjs --config frontend/playwright.config.mjs`. Цей зв’язок не є доказом виконання; фактичний запуск фіксується окремо.
 
+<a id="edit-pass-limit-browser"></a>
+## Максимум проходів редактури після перезавантаження
+
+EDIT-LOOP-REVIEW-S02. Автоматична частина — Playwright `tests/web/browser/edit-pass-limit.spec.mjs` (значення 3 зберігається після переходу на сторінку налаштувань і назад; інший твір показує типове 5): `node frontend/node_modules/@playwright/test/cli.js test tests/web/browser/edit-pass-limit.spec.mjs --config frontend/playwright.config.mjs`. Цей зв’язок не є доказом виконання; фактичний запуск фіксується окремо.
+
 <a id="model-policy-browser"></a>
 ## Згода й позначка відмови в браузері
 

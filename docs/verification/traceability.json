@@ -1766,6 +1766,18 @@
       ]
     },
     {
+      "id": "EDIT-LOOP-REVIEW-S02",
+      "requirement": "EDIT-LOOP-REVIEW",
+      "scope": "Вибраний максимум проходів не скидається після перезавантаження. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/web/test_edit_pass_limit.py::test_edit_pass_limit_is_remembered_per_story"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#edit-pass-limit-browser",
+        "reason": "check_docs.py індексує лише pytest; Playwright case tests/web/browser/edit-pass-limit.spec.mjs виконується окремим runner, цей зв’язок не є доказом виконання."
+      }
+    },
+    {
       "id": "EDIT-WORKFLOW-S01",
       "requirement": "EDIT-WORKFLOW",
       "scope": "Спільний diff кожної сцени і явне продовження. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",

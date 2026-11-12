@@ -1839,3 +1839,13 @@ Playwright `memory-kind.spec.mjs` і `core-review.spec.mjs` пройшли вр�
 - Cross-review (agy/gemini-3.8-flash): 5 знахідок, усі виправлено (`35f1187`) — головна: спільний провайдер не перевіряв типові ліміти ще не збережених ролей.
 - `verify.py` на `35f1187` (з `C:/tmp/epl`): passed 2903, failed 0, skipped 1.
 - Після злиття `origin/main` (#149, #152) у гілку: `verify.py` на `a5fdc79`: passed 2903, failed 0, skipped 1.
+
+## 12.11.2026 — Максимум проходів редактури не скидається до 5 (EDIT-LOOP-REVIEW-S02)
+
+- Дефект від власника: після зміни моделі редактора поле «Максимум проходів редактури» поверталося до 5. Причина: модель змінюють на окремій сторінці налаштувань, повернення перезавантажує робочу область, а поле завжди створювалося зі значенням 5 і ніде не зберігалося.
+- Виправлення: `static/edit-pass-limit.js` зберігає вибране значення в браузері окремо для кожного твору (ціле 1..10, ключ `obscura.edit-pass-limit.v1.<story_id>`), `runs.js` відновлює його при завантаженні. Недоступне чи пошкоджене сховище дає 5.
+- SPEC.MD: Scenario EDIT-LOOP-REVIEW-S02; traceability; ручна процедура `manual.md#edit-pass-limit-browser` (Playwright `edit-pass-limit.spec.mjs`). Інструкції сайту цього поля не описують — оновлення не потрібне.
+- Cross-review (agy/gemini-3.8-flash; codex і agy Argon — ліміти): 3 знахідки, усі виправлено (`bd15be0`).
+- `verify.py` на `bd15be0` (з `C:/tmp/epl`): passed 2898, failed 0, skipped 1.
+- Після злиття `origin/main` (#149, #152) у гілку: `verify.py` на `c994de4`: passed 2898, failed 0, skipped 1.
+- Після злиття #151 у `main` і повторного злиття в гілку: `verify.py` на `5302c74`: passed 2904, failed 0, skipped 1.
