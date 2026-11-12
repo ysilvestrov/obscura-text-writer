@@ -7,17 +7,21 @@ import {invokeWorkspaceCommand} from './workspace-commands.js';
 import {performPrimary,primaryAction} from './workspace-state.js';
 import {compactBudgetText} from './workspace-links.js';
 import {editorLoopOperation} from './run-readiness.js';
+import {installRunJump} from './run-jump.js';
+import {installWorkspaceFocus} from './workspace-focus.js';
 
-const primary=document.querySelector('#workspace-primary'),hint=document.querySelector('#workspace-hint');
+const primary=document.querySelector('#workspace-primary'),hint=document.querySelector('#workspace-hint'),hintInfo=document.querySelector('#workspace-hint-info');
 const primaryWrap=document.createElement('span');primaryWrap.className='workspace-primary-wrap';
 primary.before(primaryWrap);primaryWrap.append(primary);
 const telemetry=document.createElement('small');telemetry.id='workspace-telemetry';
 telemetry.tabIndex=0;
 const detailsCard=document.createElement('div');detailsCard.id='workspace-telemetry-details';detailsCard.className='workspace-telemetry-details';detailsCard.setAttribute('role','tooltip');
-primaryWrap.append(telemetry,detailsCard);primary.setAttribute('aria-describedby','workspace-hint workspace-telemetry workspace-telemetry-details');
+primaryWrap.append(telemetry,detailsCard);primary.setAttribute('aria-describedby','workspace-hint workspace-hint-info workspace-telemetry workspace-telemetry-details');
 const activeKey=()=>`storygen.primary.active.${state.storyId}`;
 function activeId(){try{return sessionStorage.getItem(activeKey())}catch{return null}}
 function setActiveId(id){try{if(id)sessionStorage.setItem(activeKey(),id);else sessionStorage.removeItem(activeKey())}catch{}}
+const updateRunJump=installRunJump(document,()=>state.workspaceRun?.state);
+installWorkspaceFocus(document,textEditor);
 let busy=false,pending=null,primaryRun=activeId(),primaryController=null,cancelRequested=false;
 const activeStates=new Set(['queued','running','pause_requested','cancellation_requested']);
 const isActive=()=>activeStates.has(state.workspaceRun?.state)||(state.workspaceRuns||[]).some(run=>activeStates.has(run.state));
@@ -52,7 +56,9 @@ function render(){
   uiText(primary,"textContent",()=>(canStop?t('workspace.stop'):(primaryAction(state).label||t("m_b31265827ca7"))));primary.disabled=canStop?cancelRequested:!!reason;
   const scenes=state.view?.scenes||[],last=scenes.at(-1)?.id===state.scene?.id;
   if(state.mode==='memory'&&!canStop)uiText(primary,"textContent",()=>(last?t("m_0471f5c4220f"):t("m_58a98c56a879")));
-  uiText(hint,"textContent",()=>(diagnostic(reason)||(action.target&&state.scene?.heads[action.target]?t("m_44df09bb6ff6"):state.mode==='review'?t("m_34c3cc998162"):state.mode==='memory'?t("m_e310e34e8865"):t("m_93abd76dba4c"))));
+  // The blocked-action reason stays pinned above the editor; the general consequence note scrolls under the material.
+  hint.hidden=!diagnostic(reason);uiText(hint,"textContent",()=>(diagnostic(reason)));
+  uiText(hintInfo,"textContent",()=>(action.target&&state.scene?.heads[action.target]?t("m_44df09bb6ff6"):state.mode==='review'?t("m_34c3cc998162"):state.mode==='memory'?t("m_e310e34e8865"):t("m_93abd76dba4c")));
   uiText(primary,"title",()=>(diagnostic(reason)));
   const repeat=document.querySelector('#workspace-edit-prose');repeat.hidden=state.mode!=='prose';repeat.disabled=busy||isActive()||state.saving;
   // #105: tab statuses follow the refreshed view even while the buffer keeps the author's text and revision.
@@ -66,6 +72,7 @@ function render(){
     uiAttr(b,'aria-label',()=>(`${({plan:t('m_3146141c9367'),brief:t('m_5a2ec5eaf0a1'),draft:t('m_e9d875d4120b'),review:t('m_c2320838b6df'),prose:t('m_9c685577453c'),memory:t('m_aa1cfb48cc30')})[mode]||b.dataset.label}: ${diagnostic(status)}`));
     let small=b.querySelector('small');if(!small){small=document.createElement('small');b.append(small)}uiText(small,"textContent",()=>(diagnostic(status)));
   }
+  updateRunJump();
 }
 async function nextScene(){
   const scenes=state.view.scenes,index=scenes.findIndex(s=>s.id===state.scene.id);
