@@ -9,7 +9,7 @@ export function groupRoleFields(form,role){
   for(const name of ['provider','model','context_tokens','max_output_tokens','temperature','edit_mode','edit_review','memory_mode']){
     const el=form.elements[name];if(el)main.append(el.closest('label'));
   }
-  const modelLabel=form.elements.model.closest('label');modelLabel.append(form.querySelector('datalist'),form.querySelector('.discover'));
+  const modelLabel=form.elements.model.closest('label');modelLabel.append(form.querySelector('.discover'));modelLabel.after(form.querySelector('.model-picker'));
   const reserve=document.createElement('p');reserve.className='settings-hint';
   function capacity(){const count=Number(form.elements.context_tokens.value)-Number(form.elements.max_output_tokens.value);uiText(reserve,"textContent",()=>(count>0?t("m_4331bc0af9cd",{p0:(count.toLocaleString(getLocale()==='en'?'en-US':'uk-UA'))}):t("m_0d8b5b177c7c")))}
   for(const name of ['context_tokens','max_output_tokens'])form.elements[name].addEventListener('input',capacity);capacity();
