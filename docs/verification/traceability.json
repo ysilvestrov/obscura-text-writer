@@ -319,6 +319,22 @@
       }
     },
     {
+      "id": "MODEL-005-S03",
+      "requirement": "MODEL-005",
+      "scope": "Ліміти не більші за межі моделі з каталогу: клієнт і сервер. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/web/test_model_limits_save.py::test_role_limits_above_catalog_caps_are_rejected",
+        "tests/web/test_model_limits_save.py::test_variant_and_classifier_limits_are_checked_against_their_own_model",
+        "tests/web/test_model_limits_save.py::test_shared_provider_checks_every_role_limits",
+        "tests/web/test_model_limits_save.py::test_unknown_caps_unknown_model_local_and_offline_catalog_do_not_block",
+        "tests/web/test_model_picker.py::test_model_picker_badges_filters_and_selectability"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#model-limits-browser",
+        "reason": "check_docs.py індексує лише pytest; Playwright case «limits above the chosen model caps block the save until fixed» у tests/web/browser/model-picker.spec.mjs виконується окремим runner, цей зв’язок не є доказом виконання."
+      }
+    },
+    {
       "id": "BUDGET-001-S01",
       "requirement": "BUDGET-001",
       "scope": "Конкурентні резерви. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",

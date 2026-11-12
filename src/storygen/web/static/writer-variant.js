@@ -1,7 +1,7 @@
 // MODEL-001: the writer's optional model for scenes rated 0–1. The prompt and the response mode stay shared with the main model.
 import {t,uiText} from './i18n.js';
 import {api,json,notice} from './api.js';
-import {mountModelPicker} from './model-picker.js';
+import {mountModelPicker,pickerMessage} from './model-picker.js';
 import {mountModelPolicy} from './model-policy.js';
 import {providerEndpoints} from './settings-connection.js';
 
@@ -45,7 +45,7 @@ export function mountWriterVariant(form,config){
   toggle.checked=Boolean(stored);provider.value=start.provider.provider;baseUrl.value=start.provider.base_url||providerEndpoints[start.provider.provider];model.value=start.provider.model||'';
   for(const name of NUMBERS)inputs[name].value=String(start[name]);
   inputs.timeout.value=String(start.timeout??start.provider.timeout??'');
-  const picker=mountModelPicker({host:pickerHost,modelInput:model,providerInput:provider,baseUrlInput:baseUrl,responseModeInput:form.elements.response_mode});
+  const picker=mountModelPicker({host:pickerHost,modelInput:model,providerInput:provider,baseUrlInput:baseUrl,responseModeInput:form.elements.response_mode,limitInputs:{context_tokens:inputs.context_tokens,max_output_tokens:inputs.max_output_tokens}});
   // Consent and the refusal mark are keyed by role writer + the variant's endpoint and model (MODEL-003, MODEL-004).
   pickerHost.append(policyHost);
   mountModelPolicy({host:policyHost,role:'writer',modelInput:model,providerInput:provider,baseUrlInput:baseUrl,picker});
@@ -60,5 +60,5 @@ export function mountWriterVariant(form,config){
   // Hidden and disabled while off: its required fields do not block the writer save.
   function update(){fields.hidden=fields.disabled=!toggle.checked}
   toggle.addEventListener('change',update);form.addEventListener('settings-reset',update);form.addEventListener('settings-unlocked',update);update();
-  return {block,read(){const blocked=toggle.checked?picker.validate():null;if(blocked)throw new Error(t(blocked));return variantPayload(form)}};
+  return {block,read(){const blocked=toggle.checked?picker.validate():null;if(blocked)throw new Error(pickerMessage(blocked));return variantPayload(form)}};
 }

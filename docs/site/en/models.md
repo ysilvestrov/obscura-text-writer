@@ -16,6 +16,8 @@ Providers:
 
 The input limit in characters is a safeguard, not a token count. Before sending, the application estimates the tokens of the whole request and adds the response reserve; the sum must fit the context. Raising the numbers in the form does not increase the model's real context. Text is never silently cut: a request that does not fit is not sent.
 
+When the Venice or OpenRouter model list reports the chosen model's maximum context or maximum response, the form does not let you save larger values: an explanation appears under the model and the field shows the allowed maximum. The server checks the same on save, including for the separate writer model, the classifier and the shared provider. If the list is unavailable or the model reports no bounds, saving is not blocked.
+
 ## A separate writer model for scenes 0-1
 
 In the **Writer** settings, the **Separate model for scenes rated 0-1** checkbox opens its own provider, API address, model, limits, temperature and timeout. The prompt and response mode stay shared with the main model. The variant is used when no axis of the scene's [rating](content-rating.md) (its own, or the story's when the scene has none) is 2; for level 2 scenes the main model writes. Generation cannot start until the story has a rating, so a scene without its own rating is always judged by the story's. The variant applies to the Draft and Rewrite stages.

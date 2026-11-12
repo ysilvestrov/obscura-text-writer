@@ -266,6 +266,11 @@ MODEL-005-S01, MODEL-005-S02. Автоматична частина — Playwrig
 
 MODEL-001-S02. Автоматична частина — Playwright `tests/web/browser/writer-variant.spec.mjs` (два cases: перемикач «Окрема модель для сцен рівня 0–1» відкриває власні поля, збереження пише `low_rating_variant` з лімітами, відновлення після reload, зняття перемикача зберігає `null`; модель варіанта без Uncensored отримує власний блок згоди для ролі письменника): `node frontend/node_modules/@playwright/test/cli.js test tests/web/browser/writer-variant.spec.mjs --config frontend/playwright.config.mjs`. Цей зв’язок не є доказом виконання; фактичний запуск фіксується окремо.
 
+<a id="model-limits-browser"></a>
+## Межі моделі з каталогу у формі налаштувань
+
+MODEL-005-S03. Автоматична частина — Playwright case «limits above the chosen model caps block the save until fixed» у `tests/web/browser/model-picker.spec.mjs` (поле резерву відповіді отримує `max` з каталогу, значення понад межу показує пояснення й не надсилає PUT, допустиме значення зберігається): `node frontend/node_modules/@playwright/test/cli.js test tests/web/browser/model-picker.spec.mjs --config frontend/playwright.config.mjs`. Цей зв’язок не є доказом виконання; фактичний запуск фіксується окремо.
+
 <a id="model-policy-browser"></a>
 ## Згода й позначка відмови в браузері
 
