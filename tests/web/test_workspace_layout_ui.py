@@ -56,7 +56,7 @@ def test_pinned_area_keeps_only_tabs_toolbar_and_notes(tmp_path):
         assert {'.workspace-sticky','.editor-toolbar'}<=tree.ancestors[id],id
     assert 'hidden' in tree.attrs['run-jump'] and tree.attrs['run-jump'].get('href')=='#workspace-status-row'
     focus=tree.attrs['workspace-focus']
-    assert focus.get('aria-pressed')=='false' and focus.get('aria-label') and focus.get('title')
+    assert focus.get('aria-pressed')=='false' and focus.get('aria-label')==focus.get('title')=='На весь екран'
 
 
 @pytest.mark.req('WORKSPACE-TOOLS')

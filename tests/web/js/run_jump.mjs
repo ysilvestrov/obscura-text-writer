@@ -19,6 +19,9 @@ d=doc({buttons:[el({hidden:true}),el()]});assert.equal(jumpTarget(d).focus,d.but
 // No usable action: the waiting review card is both the scroll and the focus target.
 d=doc({buttons:[el({disabled:true})],reviewHidden:false});
 target=jumpTarget(d);assert.equal(target.scroll,d.review);assert.equal(target.focus,d.review);
+// Nothing usable and no card: scroll to the status row and focus the run summary.
+d=doc({buttons:[el({disabled:true})]});const summary=el();d.row.querySelector=q=>q==='.run-summary'?summary:null;
+target=jumpTarget(d);assert.equal(target.scroll,d.row);assert.equal(target.focus,summary);
 // The card appears asynchronously (review-session.js), without a render(): the observer alone shows the link.
 let observed=null;
 class FakeObserver{constructor(cb){this.cb=cb}observe(node,options){observed={node,options,cb:this.cb}}}

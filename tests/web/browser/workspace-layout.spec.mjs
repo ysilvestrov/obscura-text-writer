@@ -33,7 +33,7 @@ test('waiting run shows a decision link and the pinned area stays small',async({
     expect(sticky.height).toBeLessThanOrEqual(800/3);
     await jump.click();
     await expect(page.locator('#workspace-status-row')).toBeInViewport();
-    expect(await page.evaluate(()=>!!document.activeElement?.closest('#workspace-status-row'))).toBe(true);
+    expect(await page.evaluate(()=>!!document.activeElement?.matches('#workspace-status-row #run-actions button:enabled'))).toBe(true);
   }finally{await page.unrouteAll({behavior:'wait'});}
 });
 
@@ -47,6 +47,10 @@ test('full screen mode spreads the editor and exits on Escape',async({page,reque
   await toggle.click();
   await expect(toggle).toHaveAttribute('aria-pressed','true');
   await expect(toggle).toHaveAttribute('aria-label',/Згорнути|Exit full screen/);
+  // Notices (save errors) stay above the fixed editor panel.
+  await page.evaluate(()=>{const n=document.querySelector('#notice');n.textContent='Synthetic notice';n.hidden=false;n.className='error'});
+  const notice=await page.locator('#notice').boundingBox();
+  expect(await page.evaluate(([x,y])=>document.elementFromPoint(x,y)?.closest('#notice')!==null,[notice.x+notice.width/2,notice.y+notice.height/2])).toBe(true);
   for(const hidden of ['.scene-panel','.context-panel','.storybar','#mode-tabs','#workspace-status-row','#workspace-primary','.topbar'])await expect(page.locator(hidden).first()).toBeHidden();
   await expect(page.locator('#save-text')).toBeVisible();
   const box=await page.locator('.ProseMirror').boundingBox();
