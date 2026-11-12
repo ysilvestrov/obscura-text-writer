@@ -1,7 +1,7 @@
 # MCP, пакет 7: посилання, що відкриває Ghost Mode
 
 Дата: 2026-11-11
-Статус: чекає на затвердження
+Статус: затверджено 2026-11-12
 Spec-review: codex/gpt-6.1-sol @ dbb016d (author: claude) — 3 findings: 3 fixed, 0 rejected
 
 Пакет 7 загального дизайну [MCP як пульт Obscura](2026-11-11-mcp-full-toolset-design.md). Спирається на пакет 1: ідентифікатор чернетки чат бере з `get_scene_text` або з відповіді `save_draft`.
