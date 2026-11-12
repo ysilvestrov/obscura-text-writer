@@ -4,6 +4,7 @@ import threading
 from ..domain import StageAttempt, new_id
 from ..memory.journal import load_memory, parse_memory_result
 from ..memory.service import journal_before, validate_memory_journal
+from ..providers.policy import STAGE_POLICY_ROLE, check_consent, check_refusal, context_rating, record_refusal
 from .stream_buffer import StreamBuffer
 
 
@@ -21,6 +22,15 @@ def execute_stage(
 ) -> StageAttempt:
     """`external_origin` (MCP-BRIDGE package 3): the answer came from a chat client through `ExternalTextGateway`;
     the version and the attempt carry the client's claim."""
+    # MODEL-003/MODEL-004: the single enforcement point for every model call except a chat answer.
+    policy_role=policy_rating=None
+    if external_origin is None and stage in STAGE_POLICY_ROLE:
+        policy_role=STAGE_POLICY_ROLE[stage]
+        policy_rating=context_rating(repo,context)
+        provider=context.settings.provider
+        check_refusal(repo,policy_role,provider,policy_rating)
+        if provider.provider!='venice':  # Venice checks consent against its catalog in the gateway.
+            check_consent(repo,policy_role,provider,policy_rating,None)
     id=new_id()
     attempt=StageAttempt(
         id=id,
@@ -59,11 +69,12 @@ def execute_stage(
                 run.request.budget_limit_usd if run else None,
             )
         )
+    request=context if policy_role is None else context.model_copy(update={'policy_role':policy_role,'policy_rating':policy_rating})
     parts=[]
     terminal=None
     try:
         with StreamBuffer(repo.files.open_partial(attempt.partial_path), on_delta) as buffer:
-            for event in gateway.stream(context,cancel):
+            for event in gateway.stream(request,cancel):
                 if event.type=='delta':
                     parts.append(event.text)
                     buffer.append(event.text)
@@ -113,6 +124,12 @@ def execute_stage(
                     context.api_request,attempt.usage,attempt.id)
             except Exception:
                 attempt.context['token_observation_warning']='Не вдалося зберегти token usage; первинні дані лишилися у спробі.'
+    if policy_role is not None and (attempt.finish_reason=='content_filter' or (terminal and terminal.refusal)):
+        try:
+            record_refusal(repo,policy_role,context.settings.provider,policy_rating,story_id=context.story_id,scene_id=scene_id,
+                attempt_id=attempt.id,category='refusal_content' if attempt.finish_reason=='content_filter' else 'refusal_unknown')
+        except Exception:
+            attempt.context['model_policy_warning']='Не вдалося зберегти відмову моделі; наступні виклики не заблоковано.'
     if cancel.is_set() or (terminal and terminal.type=='cancelled'):
         attempt.state='cancelled'
     elif terminal is None or terminal.type!='terminal' or terminal.finish_reason!='stop' or not text.strip() or (stage in {'rewrite','impact_delta','impact_check','impact_part','review_part'} and terminal.refusal):

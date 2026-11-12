@@ -67,3 +67,20 @@ def test_api_diagnostic_preserves_original(tmp_path):
         assert response.status_code==404
         assert response.json()['detail']=='Material not found'
         assert response.json()['detail_original']=='Матеріал не знайдено'
+
+
+@pytest.mark.req('MODEL-003')
+def test_model_policy_block_texts_are_translated_with_role_and_parameters():
+    from storygen.providers.policy import CONSENT_REQUIRED, REFUSAL_BLOCKED, ROLE_LABELS
+    from storygen.web.localization import diagnostic, translate
+    for role, label in ROLE_LABELS.items():
+        consent = CONSENT_REQUIRED.format(model='vendor/m-1', rating='2/0/1', role=label)
+        refusal = REFUSAL_BLOCKED.format(model='vendor/m-1', seen='1/0/0', rating='2/0/0', role=label)
+        assert translate(f'policy.block.consent.{role}', 'uk', p0='vendor/m-1', p1='2/0/1') == consent
+        assert translate(f'policy.block.refusal.{role}', 'uk', p0='vendor/m-1', p1='1/0/0', p2='2/0/0') == refusal
+        assert diagnostic(consent, 'en') == translate(f'policy.block.consent.{role}', 'en', p0='vendor/m-1', p1='2/0/1')
+        assert diagnostic('Некоректні дані: ' + refusal, 'en') == 'Invalid data: ' + translate(
+            f'policy.block.refusal.{role}', 'en', p0='vendor/m-1', p1='1/0/0', p2='2/0/0')
+    assert diagnostic(CONSENT_REQUIRED.format(model='x/y', rating='1/0/0', role=ROLE_LABELS['memory']), 'en') == (
+        'Model “x/y” has no Uncensored mark, and this request is rated 1/0/0. Confirm in the “Memory” role settings '
+        'that you agree to calls of this model for adult content, or choose another model.')

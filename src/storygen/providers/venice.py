@@ -31,12 +31,13 @@ def model_options(client,repo=None):
     return [model_option('venice',{'id':id,'model_spec':spec},repo) for id,spec in catalog_models(client)]
 
 
-def validate_model(client,model_id,requires_schema,*,context_tokens=None,max_output_tokens=None):
-    spec=next((spec for id,spec in uncensored_models(client) if id==model_id),None)
-    if spec is None:
+def validate_model(client,model_id,requires_schema,*,context_tokens=None,max_output_tokens=None,require_uncensored=True):
+    spec=next((spec for id,spec in catalog_models(client) if id==model_id),None)
+    if spec is None or (require_uncensored and spec.get('uncensored') is not True):
         raise VeniceModelUnavailable('Venice: модель не має uncensored=true або недоступна в каталозі.')
     if requires_schema and spec.get('capabilities',{}).get('supportsResponseSchema') is not True:
         raise VeniceModelUnavailable('Venice: модель не підтримує JSON Schema. Змініть модель або режим відповіді.')
 
     from .catalog import validate_limits
     validate_limits(spec.get('availableContextTokens'),spec.get('maxCompletionTokens'),context_tokens,max_output_tokens)
+    return spec

@@ -1,4 +1,5 @@
 import json
+import pytest
 import threading
 import time
 from pathlib import Path
@@ -157,3 +158,25 @@ def test_seven_scenes_accept_alternative_restart_and_export(tmp_path):
     assert len(reports)==7 and all(not r.stale for r in reports)
     assert all(r.dependency_snapshot and reopened.get_scene(r.scene_id).heads['prose'] in r.input_refs for r in reports)
     assert export_story(reopened,story.id,'md').exists()
+
+
+@pytest.mark.req('MODEL-004')
+def test_refusal_mid_run_blocks_next_scene_with_explanation(tmp_path):
+    # content_filter stops the run on that attempt, so the mid-run case is a refusal flag on a completed draft.
+    repo,story,scenes=fixture(tmp_path)
+    class Gateway(StoryGateway):
+        def stream(self,context,cancel):
+            for event in super().stream(context,cancel):
+                if event.type=='terminal' and context.stage=='draft' and context.scene_id==scenes[0].id:
+                    event=event.model_copy(update={'refusal':True})
+                yield event
+    gateway=Gateway(repo);worker=RunCoordinator(repo,lambda _:gateway);worker.start()
+    try:
+        run=worker.enqueue(RunRequest(story_id=story.id,scene_id=scenes[0].id,mode='remaining'),'refusal-mid-run')
+        failed=wait(worker,run.id,{'completed','failed'})
+    finally:worker.stop()
+    assert failed.state=='failed'
+    assert 'уже відмовила ролі «Письменник»' in failed.error and '0/0/0' in failed.error
+    assert gateway.calls[-1]==(scenes[1].id,'brief')  # the writer is never called for the next scene
+    assert ('draft' not in {stage for scene_id,stage in gateway.calls if scene_id==scenes[1].id})
+    assert repo.list_attempts(story.id,run.id)[-1].stage=='brief'

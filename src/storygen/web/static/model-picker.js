@@ -33,7 +33,6 @@ export function filterModels(models,{query='',uncensoredOnly=false,minPrivacy='a
 
 export function selectable(model,{provider,responseMode}={}){
   if(model===null||model===undefined)return {ok:true,reason:null};
-  if(provider==='venice'&&model.uncensored!==true)return {ok:false,reason:'venice_uncensored_pending'};
   // Only an explicit "no" blocks; unknown support (local, rows without the field) stays selectable with a hint.
   if(schemaLocked(responseMode)&&model.supports_schema===false)return {ok:false,reason:'schema_required'};
   return {ok:true,reason:null};
@@ -131,7 +130,9 @@ export function mountModelPicker({host,modelInput,providerInput,baseUrlInput,res
     foot.hidden=!all.length;foot.textContent=t('models.shown',{p0:shown.length,p1:all.length});
     toggle.setAttribute('aria-expanded',String(!panel.hidden));renderChosen();
   }
-  function clear(){catalog=new Map();binding=null;message=null;render()}
+  // The catalog can change without an input event on the model field; dependants (consent block) re-read selected().
+  const catalogChanged=()=>modelInput.dispatchEvent(new CustomEvent('model-catalog-changed'));
+  function clear(){catalog=new Map();binding=null;message=null;render();catalogChanged()}
   toggle.onclick=()=>{panel.hidden=!panel.hidden;render()};
   schema.addEventListener('change',()=>{if(!schemaLocked(responseModeInput?.value))userSchema=schema.checked;render()});
   for(const control of [query,uncensored,privacy])control.addEventListener('input',render);
@@ -142,8 +143,8 @@ export function mountModelPicker({host,modelInput,providerInput,baseUrlInput,res
   // Forms are rebuilt on reload; a picker that was shown and then detached stops listening for locale changes.
   let attached=false;const onLocale=()=>{if(host.isConnected){attached=true;render()}else if(attached)document.removeEventListener('ui-locale-changed',onLocale)};document.addEventListener('ui-locale-changed',onLocale);
   render();
-  return {capture:identity,clear,validate,update:render,setModels(models,captured){
+  return {capture:identity,clear,validate,update:render,selected:current,loaded:bound,open(){panel.hidden=false;render();toggle.focus()},setModels(models,captured){
     if(captured!==identity())return false;
-    catalog=new Map(models.map(model=>[model.id,model]));binding=captured;message=null;panel.hidden=false;render();return true;
+    catalog=new Map(models.map(model=>[model.id,model]));binding=captured;message=null;panel.hidden=false;render();catalogChanged();return true;
   }};
 }

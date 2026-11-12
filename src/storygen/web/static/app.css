@@ -573,3 +573,12 @@ body.ghost-open #notice { z-index: 70; }
 .model-picker-list tr[aria-disabled="true"] { cursor: not-allowed; color: var(--text-muted); }
 .model-picker-id { display: block; font-size: 12px; color: var(--text-muted); overflow-wrap: anywhere; }
 .model-picker-foot { margin: 0; padding: 8px 12px; font-size: 12.5px; color: var(--text-muted); border-top: 1px solid var(--border-color); }
+/* Consent and refusal mark under the chosen model (MODEL-003, MODEL-004). */
+.model-policy-notice { margin-top: 10px; padding: 10px 12px; border: 1px solid; border-radius: var(--radius-control); font-size: 14px; color: var(--text-primary); }
+.model-policy-notice p { margin: 0; }
+.model-policy-warn { border-color: var(--warning); background: color-mix(in srgb, var(--warning) 8%, transparent); }
+.model-policy-refusal { border-color: var(--error); background: color-mix(in srgb, var(--error) 8%, transparent); }
+.model-policy-consent { display: flex; gap: 8px; align-items: flex-start; margin-top: 8px; font-size: 14px; color: var(--text-primary); }
+.model-policy-consent input { flex: none; margin: 4px 0 0; }
+.model-policy-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.model-policy-error { margin: 6px 0 0; font-size: 13px; color: var(--error); }

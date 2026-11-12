@@ -51,3 +51,12 @@ const budget={textContent:'',isConnected:true};
 uiText(budget,'textContent',()=>compactBudgetText({exposure_nanos:125000000,limit_nanos:1000000000}));
 const ukBudget=budget.textContent;setLocale('en');assert.notEqual(budget.textContent,ukBudget);
 assert.ok(budget.textContent.includes('$0.125'));
+
+// MODEL-003/MODEL-004: server block texts reach English UI users in English, role name included.
+setLocale('en');
+assert.equal(diagnostic('Модель «x/y» не має позначки Uncensored, а рейтинг цього запиту 2/0/0. Підтвердьте в налаштуваннях ролі «Письменник», що погоджуєтеся на виклики цієї моделі для дорослого змісту, або виберіть іншу модель.'),
+  'Model “x/y” has no Uncensored mark, and this request is rated 2/0/0. Confirm in the “Writer” role settings that you agree to calls of this model for adult content, or choose another model.');
+assert.equal(diagnostic('Некоректні дані: Модель «a/b» уже відмовила ролі «Пам’ять» через зміст на запиті з рейтингом 1/0/0. Виклики з рейтингом 2/0/0 заблоковано: зніміть позначку в налаштуваннях ролі або виберіть іншу модель.'),
+  'Invalid data: Model “a/b” already refused the “Memory” role on content for a request rated 1/0/0. Calls rated 2/0/0 are blocked: clear the mark in the role settings or choose another model.');
+setLocale('uk');
+console.log('Model policy block diagnostics passed');

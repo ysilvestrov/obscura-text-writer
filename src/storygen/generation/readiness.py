@@ -7,9 +7,17 @@ from ..memory.journal import load_memory
 from .context import build_context, make_context
 from .pipeline import STAGES, STAGE_ROLES
 from .prompts import validate_role_prompt
+from ..providers.policy import STAGE_POLICY_ROLE, check_consent, check_refusal, request_rating
 
 
 _SLOT_EVENT=re.compile(r'"slot"\s*:\s*"')
+
+
+def _check_model_policy(repo,role,provider,rating):
+    """MODEL-003/MODEL-004 offline: the same refusal and consent check `execute_stage` makes, before the run starts."""
+    check_refusal(repo,role,provider,rating)
+    if provider.provider!='venice':  # Venice consent depends on its live catalog; the gateway checks it.
+        check_consent(repo,role,provider,rating,None)
 
 
 def unconfirmed_core_scenes(view, scenes) -> int:
@@ -109,6 +117,7 @@ def preview(repo, request, view=None):
             if any(s.stale or not s.complete for s in sources):
                 raise ValueError('Авторські джерела потребують оновлення')
             make_context(view,story,None,'prepare',settings['planner'],[view.read_text(s.id) for s in sources],[s.id for s in sources])
+            _check_model_policy(repo,'planner',settings['planner'].provider,request_rating(view,story,[]))
         else:
             if stages[0]=='brief':
                 for target in targets:
@@ -125,7 +134,10 @@ def preview(repo, request, view=None):
             from ..rating.guard import enforce_rating
             rated_story=view.get_story(story.id)
             for target in targets:
-                for stage in stages:enforce_rating(view,rated_story,target,stage)
+                for stage in stages:
+                    enforce_rating(view,rated_story,target,stage)
+                    policy_role=STAGE_POLICY_ROLE[stage]
+                    _check_model_policy(repo,policy_role,settings[policy_role].provider,request_rating(view,rated_story,[target.id]))
             # Later tasks may consume outputs that this run has not generated yet.
             from ..memory.reuse import MemoryApprovalRequired
             try:
