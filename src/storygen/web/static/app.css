@@ -101,6 +101,9 @@ h3 { font-size: 15px; font-weight: 650; }
 .scene-item:hover { background: var(--bg-subtle); border-color: transparent; color: var(--text-primary); }
 .scene-item.active { background: var(--accent-soft); border-left-color: var(--accent-primary); }
 .scene-item small { display: block; margin-top: 4px; color: var(--text-secondary); font-size: 11px; }
+.scene-group { margin: 12px 0 4px; padding: 0 12px; color: var(--text-secondary); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .03em; overflow-wrap: anywhere; }
+.scene-group-arc { margin-top: 6px; text-transform: none; font-weight: 500; }
+#book-readonly { margin: 0 0 12px; }
 .editor-panel { min-width: 0; padding: 28px 30px; background: var(--bg-surface); }
 .editor-toolbar { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin-bottom: 18px; }
 .editor-toolbar > div { flex: 1 1 220px; min-width: 0; }
