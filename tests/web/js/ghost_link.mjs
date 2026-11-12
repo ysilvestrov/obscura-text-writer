@@ -33,4 +33,20 @@ assert.deepEqual(calls,[[{keep:true},'http://127.0.0.1:8765/stories/st1?scene=s1
 g.clearGhostLink({href:'http://127.0.0.1:8765/stories/st1?scene=s1'},{replaceState:()=>calls.push('again')});
 assert.equal(calls.length,1,'nothing to clear, no history entry');
 g.clearGhostLink({href:'http://127.0.0.1:8765/stories/st1?ghost=1'},{replaceState(){throw new Error('restricted');}});
+// Cross-review: the editor may rewrite the address to material=plan before ghost-mode.js runs; the link is read at module load.
+globalThis.location={search:'?scene=s1&material=draft&ghost=1&draft=d1',href:'http://127.0.0.1:8765/stories/st1?scene=s1&material=draft&ghost=1&draft=d1'};
+const fresh=await import(new URL('ghost-link.js?start',root));
+globalThis.location={search:'?scene=s1&material=plan&ghost=1&draft=d1',href:'http://127.0.0.1:8765/stories/st1?scene=s1&material=plan&ghost=1&draft=d1'};
+assert.deepEqual(fresh.startGhostLink(),{sceneId:'s1',draftId:'d1'});
+delete globalThis.location;
+
+// Cross-review: after the version request the buffer must still be the same scene's clean current draft.
+const buffer={scene:{id:'s1'},mode:'draft',bufferOrigin:'live',dirty:false,saving:false};
+assert.equal(g.sameDraftBuffer('s1',buffer),true);
+assert.equal(g.sameDraftBuffer('s1',{...buffer,scene:{id:'s2'}}),false);
+assert.equal(g.sameDraftBuffer('s1',{...buffer,mode:'plan'}),false);
+assert.equal(g.sameDraftBuffer('s1',{...buffer,bufferOrigin:'history'}),false);
+assert.equal(g.sameDraftBuffer('s1',{...buffer,dirty:true}),false);
+assert.equal(g.sameDraftBuffer('s1',{...buffer,saving:true}),false);
+assert.equal(g.sameDraftBuffer('s1',{...buffer,scene:null}),false);
 console.log('ghost link ok');

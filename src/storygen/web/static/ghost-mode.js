@@ -7,7 +7,7 @@ import {confirmDialog} from './dialogs.js';
 import {createTextEditor} from './text-editor.js';
 import {invokeWorkspaceCommand} from './workspace-commands.js';
 import * as model from './ghost-session.js';
-import {readGhostLink,ghostLinkRefusal,clearGhostLink} from './ghost-link.js';
+import {startGhostLink,ghostLinkRefusal,clearGhostLink,sameDraftBuffer} from './ghost-link.js';
 
 const entry=document.querySelector('#ghost-entry'),root=document.querySelector('#ghost-mode');
 const storage=(()=>{try{return globalThis.localStorage;}catch{return null;}})();
@@ -161,6 +161,8 @@ if(entry&&root){
       const resumeId=model.findSession(storage,scene.id);
       const draftId=resumeId||scene.heads.draft;
       const material=await api('/api/versions/'+draftId);
+      // The author may have moved to another scene or started editing while the version loaded.
+      if(!sameDraftBuffer(scene.id,state)||state.scene.heads?.draft!==scene.heads.draft)return;
       if(!material.version.complete||material.version.kind!=='draft')throw new Error(t('ghost.invalid_source'));
       session=(resumeId&&model.loadSession(storage,scene.id,resumeId))||model.createSession({sceneId:scene.id,draftId,format:material.version.content_format,text:material.text});
       if(!session.blocks.some(b=>b.kind==='text'))throw new Error(t('ghost.empty_draft'));
@@ -208,7 +210,7 @@ if(entry&&root){
   syncEntry();
 
   // MCP-BRIDGE-S23/S24: a link from the chat opens the mode once the draft tab of its scene is loaded, as the button would.
-  const link=readGhostLink(globalThis.location?.search||'');
+  const link=startGhostLink();
   if(link){
     clearGhostLink();
     const waitForDraft=()=>{
