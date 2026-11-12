@@ -7,6 +7,7 @@ from ..generation.models import StoryBlueprint, StyleProfile
 from ..generation.prompts import default_prompt, role_prompt, expected_contract
 from ..providers.discovery import discover_models
 from ..providers.models import ProviderSettings, RoleSettings
+from ..providers.schema_support import schema_mismatch
 
 router=APIRouter()
 
@@ -37,6 +38,9 @@ class SharedProviderChange(SettingsChange):
 def shared_provider(story_id: str,change: SharedProviderChange,request: Request):
     repo=request.app.state.repo
     settings=change.settings
+    # Catalog lookup is a network call: do it before any write (configure_prompts stores prompt versions).
+    message=schema_mismatch(change.provider)
+    if message:raise ValueError(message)
     if change.profile is not None or change.target_words is not None:raise ValueError('Профіль і обсяг зберігаються окремо')
     if change.role:
         if settings is None:raise ValueError('Потрібні налаштування ролі')
@@ -75,6 +79,9 @@ def write_settings(story_id: str,change: SettingsChange,request: Request):
     if change.target_words is not None:raise ValueError('Обсяг зберігається у розділі Письмо')
     if not change.role or change.settings is None or change.profile is not None:
         raise ValueError('Збережіть окремо профіль або одну роль')
+    # Catalog lookup is a network call: do it before any write (configure_prompts stores prompt versions).
+    message=schema_mismatch(change.settings.provider)
+    if message:raise ValueError(message)
     settings=configure_prompts(repo,story_id,change,change.settings)
     return save_role_settings(repo,story_id,change.role,settings,change.expected_revision)
 

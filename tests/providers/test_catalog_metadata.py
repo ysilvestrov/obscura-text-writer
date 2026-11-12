@@ -58,3 +58,77 @@ def test_current_cached_official_tariff_matches_billing_snapshot(monkeypatch):
     with httpx.Client(transport=httpx.MockTransport(lambda _:httpx.Response(200,json={'data':[row('venice')]}))) as client:
         found=discover_models(ProviderSettings(provider='venice',model='test'),client,repo=repo)
     assert found[0].tariff==cached
+
+
+def venice_row(id,privacy='private',uncensored=False,schema=False,e2ee=False,tee=False,offline=False):
+    caps={'supportsResponseSchema':schema,'supportsE2EE':e2ee,'supportsTeeAttestation':tee}
+    return {'id':id,'object':'model','model_spec':{'name':id.upper(),'privacy':privacy,'uncensored':uncensored,'offline':offline,'capabilities':caps,
+        'availableContextTokens':1000,'pricing':{'input':{'usd':1},'output':{'usd':2}}}}
+
+
+def or_row(id,params):
+    r={'id':id,'object':'model','name':id.upper(),'context_length':1000}
+    if params is not None:r['supported_parameters']=params
+    return r
+
+
+def discover(rows,provider):
+    with httpx.Client(transport=httpx.MockTransport(lambda _:httpx.Response(200,json={'data':rows}))) as client:
+        return discover_models(ProviderSettings(provider=provider,model='test'),client)
+
+
+@pytest.mark.req('MODEL-005')
+def test_venice_catalog_fields_become_badges(monkeypatch):
+    monkeypatch.setenv('VENICE_API_KEY','synthetic-key')
+    # anonymized uncensored, private schema, tee: all three are returned, offline is not
+    rows=[venice_row('a',privacy='anonymized',uncensored=True),venice_row('p',privacy='private',schema=True),
+          venice_row('t',privacy='private',e2ee=True,tee=True),venice_row('off',offline=True)]
+    found={m.id:m for m in discover(rows,'venice')}
+    assert set(found)=={'a','p','t'}
+    assert (found['a'].privacy,found['a'].uncensored,found['a'].tee)==('anonymized',True,False)
+    assert (found['p'].uncensored,found['p'].supports_schema)==(False,True)
+    assert found['t'].tee is True and found['t'].privacy=='private' and found['t'].name=='T'
+
+
+@pytest.mark.req('MODEL-005')
+def test_missing_fields_stay_unknown(monkeypatch):
+    monkeypatch.setenv('VENICE_API_KEY','synthetic-key')
+    row=venice_row('x'); del row['model_spec']['privacy']; del row['model_spec']['pricing']
+    m=discover([row],'venice')[0]
+    assert m.privacy=='unknown' and m.tariff is None
+
+
+@pytest.mark.req('MODEL-005')
+def test_missing_capabilities_stay_unknown(monkeypatch):
+    monkeypatch.setenv('VENICE_API_KEY','synthetic-key')
+    # No supportsResponseSchema key: schema support is unknown, not "no".
+    no_schema_key=venice_row('s'); del no_schema_key['model_spec']['capabilities']['supportsResponseSchema']
+    # No capabilities object at all: no TEE claim and unknown schema support.
+    no_caps=venice_row('c'); del no_caps['model_spec']['capabilities']
+    found={m.id:m for m in discover([no_schema_key,no_caps],'venice')}
+    assert found['s'].supports_schema is None and found['s'].tee is False
+    assert found['c'].supports_schema is None and found['c'].tee is False
+
+
+@pytest.mark.req('MODEL-005')
+def test_either_e2ee_or_tee_attestation_marks_tee(monkeypatch):
+    monkeypatch.setenv('VENICE_API_KEY','synthetic-key')
+    rows=[venice_row('e',e2ee=True),venice_row('t',tee=True),venice_row('n')]
+    found={m.id:m for m in discover(rows,'venice')}
+    assert (found['e'].tee,found['t'].tee,found['n'].tee)==(True,True,False)
+
+
+@pytest.mark.req('MODEL-005')
+def test_openrouter_schema_from_supported_parameters(monkeypatch):
+    monkeypatch.setenv('OPENROUTER_API_KEY','synthetic-key')
+    rows=[or_row('s',['response_format','structured_outputs']),or_row('j',['response_format']),or_row('n',None)]
+    found={m.id:m for m in discover(rows,'openrouter')}
+    assert (found['s'].supports_schema,found['j'].supports_schema,found['n'].supports_schema)==(True,False,None)
+    assert all(m.privacy=='unknown' and m.uncensored is None and m.tee is False for m in found.values())
+    assert found['s'].name=='S'
+
+
+@pytest.mark.req('MODEL-005')
+def test_local_catalog_fields_are_unknown():
+    m=discover([{'id':'l','object':'model'}],'local')[0]
+    assert (m.privacy,m.tee,m.supports_schema,m.uncensored,m.name)==('unknown',False,None,None,None)

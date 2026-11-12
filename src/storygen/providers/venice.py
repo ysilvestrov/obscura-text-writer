@@ -16,9 +16,19 @@ def uncensored_models(client):
     return result
 
 
+def catalog_models(client):
+    # Every online text model; the uncensored flag is a badge, not a filter.
+    result=[]
+    for model in client.models.list(extra_query={'type':'text'}):
+        spec=getattr(model,'model_spec',None)
+        if isinstance(spec,dict) and spec.get('offline') is not True:
+            result.append((model.id,spec))
+    return result
+
+
 def model_options(client,repo=None):
     from .catalog import model_option
-    return [model_option('venice',{'id':id,'model_spec':spec},repo) for id,spec in uncensored_models(client)]
+    return [model_option('venice',{'id':id,'model_spec':spec},repo) for id,spec in catalog_models(client)]
 
 
 def validate_model(client,model_id,requires_schema,*,context_tokens=None,max_output_tokens=None):

@@ -34,8 +34,19 @@ def model_option(provider, row, repo=None):
                 if (saved.provider,saved.model,saved.base_url)!=(provider,row['id'],ENDPOINTS[provider]):
                     raise ValueError('Збережений тариф належить іншій моделі або endpoint')
                 if saved.kind == 'manual' or saved.current(): tariff = saved
-    return ModelOption(id=row['id'], context_tokens=known_limit(context), max_output_tokens=known_limit(output),
-        uncensored=True if provider == 'venice' else None, tariff=tariff)
+    name = spec.get('name') if provider == 'venice' else row.get('name')
+    privacy, tee, schema, uncensored = 'unknown', False, None, None
+    if provider == 'venice':
+        caps = spec.get('capabilities')
+        caps = caps if isinstance(caps,dict) else {}
+        privacy = spec.get('privacy') if spec.get('privacy') in ('anonymized','private') else 'unknown'
+        tee = caps.get('supportsTeeAttestation') is True or caps.get('supportsE2EE') is True
+        schema = caps.get('supportsResponseSchema') is True if 'supportsResponseSchema' in caps else None
+        uncensored = spec.get('uncensored') is True
+    elif provider == 'openrouter' and isinstance(row.get('supported_parameters'),list):
+        schema = 'structured_outputs' in row['supported_parameters']
+    return ModelOption(id=row['id'], name=name if isinstance(name,str) and name else None, context_tokens=known_limit(context),
+        max_output_tokens=known_limit(output), uncensored=uncensored, tariff=tariff, privacy=privacy, tee=tee, supports_schema=schema)
 
 
 def validate_limits(context_cap, output_cap, context_tokens=None, max_output_tokens=None):
