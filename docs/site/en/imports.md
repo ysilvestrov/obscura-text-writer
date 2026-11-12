@@ -18,7 +18,7 @@ The result appears next to the form: how many new scenes and cards were created,
 
 ## Outline format
 
-Every scene starts with a heading "Scene N: Title" or "Scene N. Title". A line "Characters:", "Participants:" or "Cast:" sets the scene cast; names are separated by commas or semicolons.
+Every scene starts with a heading "Scene N: Title" or "Scene N. Title". The file may open with the plan title, a single first-level heading (`# The Lighthouse`): the title and the text under it up to the first scene are the plan introduction. It does not become a scene, and the models see it as general notes for every scene. Other headings without a number (`## Interlude`) become unnumbered scenes. A line "Characters:", "Participants:" or "Cast:" sets the scene cast; names are separated by commas or semicolons.
 
 ```text
 Scene 3: A call from her sister

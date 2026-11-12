@@ -253,7 +253,8 @@ def build_server(http: httpx.Client, client_name: str | None = None) -> MCPServe
 
     @server.tool()
     def import_plan_and_characters(story_id: str, plan_markdown: str | None = None, characters_markdown: str | None = None) -> dict[str, Any]:
-        """Імпортувати план і/або персонажів у Markdown — так само, як форма «Імпорт» в Obscura. Повтор не робиться автоматично."""
+        """Імпортувати план і/або персонажів у Markdown — так само, як форма «Імпорт» в Obscura. Повтор не робиться автоматично.
+        proposed_scenes[].character_ids — склад, збережений у створених сценах (також із карток цього самого виклику)."""
         files = []
         if plan_markdown and plan_markdown.strip():
             files.append(('plan', ('plan.md', plan_markdown.encode('utf-8'), 'text/markdown')))
