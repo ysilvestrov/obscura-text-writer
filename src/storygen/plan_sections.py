@@ -42,3 +42,69 @@ def split_plan(text,default_title='Сцена'):
         end=boundaries[index+1][0] if index+1<len(boundaries) else len(text)
         sections.append(PlanSection(title,text[start:end],number))
     return text[:boundaries[0][0]],sections
+
+
+# BOOK-STRUCTURE: parts and arcs in a plan. A part heading sits above the scene level; an arc line is cut from the scene plan.
+PART_TITLE=re.compile(r'^(?:частина|part)\b[^:]*(?::\s*(.*))?$',re.IGNORECASE)
+ARC_LINE=re.compile(r'^(?:арка|arc)\s*:\s*(.*)$',re.IGNORECASE)
+
+
+@dataclass(frozen=True)
+class BookSection:
+    section: PlanSection
+    part_title: str | None
+    arc_title: str | None
+
+
+def _plain(line):
+    return re.sub(r'^[\s\-—–>]+','',line.replace('**','').replace('__','').replace('*','').strip()).strip()
+
+
+def _part_headings(text):
+    """(start, end, title) of part headings: level above the numbered scene headings, or any level if scenes have none."""
+    found=[];offset=0;headings=[]
+    for line in text.splitlines(keepends=True):
+        content=line.rstrip('\r\n')
+        heading=re.match(r'^[ \t]*(#{1,6})[ \t]+(.+)$',content)
+        if heading:headings.append((offset,offset+len(line),len(heading[1]),heading[2],explicit_scene_number(content)))
+        offset+=len(line)
+    numbered=[level for _,_,level,_,number in headings if number is not None]
+    for start,end,level,title,number in headings:
+        title=clean_title(title)
+        match=PART_TITLE.fullmatch(title)
+        if not match or number is not None or numbered and level>=min(numbered):continue
+        found.append((start,end,(match[1] if match[1] is not None else title).strip()))
+    return found
+
+
+def _cut_arc_lines(text):
+    """The section text without arc lines, and the last arc title found in it (None when there is none)."""
+    kept=[];arc=None
+    for line in text.splitlines(keepends=True):
+        match=ARC_LINE.fullmatch(_plain(line.rstrip('\r\n')))
+        if match:arc=match[1].strip()[:200];continue
+        kept.append(line)
+    return ''.join(kept),arc
+
+
+def split_book_plan(text,default_title='Сцена'):
+    """split_plan with parts and arcs: (preamble, sections, found) — found is whether any part heading or arc line exists.
+
+    A section before any part heading has part_title None (the book's current part); a section without an arc line keeps
+    the previous section's arc in its part, and the first one of a part has arc_title None (the part's current arc)."""
+    parts=_part_headings(text)
+    stripped=[];marks=[];cursor=0;removed=0
+    for start,end,title in parts:
+        stripped.append(text[cursor:start]);removed+=end-start;cursor=end
+        marks.append((start-(removed-(end-start)),title))
+    stripped.append(text[cursor:])
+    preamble,sections=split_plan(''.join(stripped),default_title)
+    found=bool(parts);result=[];offset=len(preamble);part=None;arc=None;mark=0
+    for section in sections:
+        while mark<len(marks) and marks[mark][0]<=offset:
+            part=marks[mark][1];arc=None;mark+=1
+        body,line_arc=_cut_arc_lines(section.text)
+        if line_arc is not None:arc=line_arc;found=True
+        result.append(BookSection(PlanSection(section.title,body,section.author_scene_number),part,arc))
+        offset+=len(section.text)
+    return preamble,result,found
