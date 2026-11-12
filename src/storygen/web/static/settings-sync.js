@@ -8,7 +8,7 @@ export function settingsContentKey(settings,evaluator){
   const {block,revision,...evaluatorSettings}=evaluator||{};
   return settingsSignature({roles:data.roles??null,profile:data.profile??null,prompts:data.prompts??null,prepare_prompt:data.prepare_prompt??null,
     prompt_contracts:data.prompt_contracts??null,prepare_prompt_contract:data.prepare_prompt_contract??null,
-    target_words:story.target_words??null,language:story.language??null,content_rating:story.content_rating??null,
+    target_words:story.target_words??null,language:story.language??null,writing_mode:story.writing_mode??null,content_rating:story.content_rating??null,
     evaluator:evaluator?evaluatorSettings:null});
 }
 

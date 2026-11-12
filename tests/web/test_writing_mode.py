@@ -96,3 +96,17 @@ def test_refusals_are_translated_for_english_locale(tmp_path):
     story = repo.get_story(story.id)
     refused = set_mode(client, story, 'obscura', {**BRIDGE, 'Accept-Language': 'en'})
     assert refused.json()['detail'] != MODE_OWNER_ONLY
+
+
+def test_new_story_form_offers_mode_with_obscura_by_default(tmp_path):
+    app, repo, story, scene, client = app_with_scene(tmp_path, prose=False)
+    page = client.get('/').text
+    assert '<select name="writing_mode"' in page
+    assert '<option value="obscura" selected' in page and '<option value="chat"' in page
+
+
+def test_settings_page_has_mode_toggle(tmp_path):
+    app, repo, story, scene, client = app_with_scene(tmp_path, prose=False)
+    page = client.get(f'/stories/{story.id}/settings').text
+    assert 'id="story-mode-form"' in page and 'name="writing_mode"' in page
+    assert '/static/story-mode.js' in page
