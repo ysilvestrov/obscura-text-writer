@@ -72,20 +72,21 @@ def test_bridge_cancels_only_its_own_run_and_never_pauses(tmp_path, ready):
     foreign = stage_run(client, story, scene, request_id='ui', headers={}).json()['id']
     for action in ('pause', 'resume'):
         refused = client.post(f'/api/runs/{own}/{action}', json={}, headers=BRIDGE)
-        assert refused.status_code == 403, action
+        assert refused.status_code == 403 and RUN_OWNER_ONLY in refused.text, action
     refused = client.post(f'/api/runs/{own}/continue-after-acceptance', json={'version_id': 'v', 'expected_cursor': 0, 'expected_scene_revision': 0, 'acceptance_id': 'a'}, headers=BRIDGE)
-    assert refused.status_code == 403
+    assert refused.status_code == 403 and RUN_OWNER_ONLY in refused.text
     refused = client.post(f'/api/runs/{foreign}/cancel', json={}, headers=BRIDGE)
     assert refused.status_code == 403 and RUN_OWNER_ONLY in refused.text
     assert app.state.coordinator.get_run(foreign).state == 'queued'
     cancelled = client.post(f'/api/runs/{own}/cancel', json={}, headers=BRIDGE)
-    assert cancelled.status_code == 200 and cancelled.json()['state'] in {'cancelled', 'cancellation_requested'}
+    assert cancelled.status_code == 200 and cancelled.json()['state'] == 'cancelled'
 
 
 @pytest.mark.req('MCP-BRIDGE')
 def test_run_refusals_are_translated(tmp_path, ready):
     app, repo, story, scene, client = scene_app(tmp_path, 'chat')
     refused = stage_run(client, story, scene, headers={**BRIDGE, 'Accept-Language': 'en'})
-    assert refused.status_code == 409 and CHAT_WRITES not in refused.json()['detail']
+    assert refused.status_code == 409
+    assert refused.json()['detail'] == 'The story is in the "The chat writes" mode: write the text yourself (get_stage_task, save_draft)'
     refused = client.post('/api/runs', json={'request_id': 'x', 'request': {'story_id': story.id, 'mode': 'prepare'}}, headers={**BRIDGE, 'Accept-Language': 'en'})
-    assert refused.status_code == 403 and RUN_OWNER_ONLY not in refused.json()['detail']
+    assert refused.status_code == 403 and refused.json()['detail'] == 'Only the author takes this run action in Obscura'

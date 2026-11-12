@@ -102,8 +102,8 @@ def test_memory_result_with_violations_saves_nothing(tmp_path):
     response = save(client, scene.id, 'memory', data['task_fingerprint'], dump(broken))
     assert response.status_code == 422, response.text
     body = response.json()
-    codes = {item['operation'] for item in body['memory_violations']['items']}
-    assert 'core.marta.body' in str(body) and body['memory_violations']['total'] == 2 and codes
+    items = {(item['operation'], item['code']) for item in body['memory_violations']['items']}
+    assert body['memory_violations']['total'] == 2 and items == {('core.marta.body', 'schema'), ('open_threads.add[0]', 'evidence_unknown')}
     assert 'memory' not in repo.get_scene(scene.id).heads
     assert [v.id for v in repo.list_versions(story.id) if v.kind == 'memory'] == before
 

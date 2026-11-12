@@ -48,7 +48,7 @@ def test_writing_context_has_draft_instructions(tmp_path):
     from storygen.application.chat_stages import chat_role_settings
     repo, story, scene = scene_with_draft(tmp_path)
     data = writing_context(repo, scene.id)
-    assert data['instructions'] == system_of(repo, story, scene, 'draft', chat_role_settings(repo, story.id, 'draft'))
+    assert data['instructions'] == build_context(repo, scene.id, 'draft', chat_role_settings(repo, story.id, 'draft')).system_text
     assert data['instructions_error'] is None and data['instructions'].strip()
 
 
@@ -68,16 +68,20 @@ def test_writer_prompt_change_changes_context_fingerprint(tmp_path):
 
 
 @pytest.mark.req('MCP-BRIDGE')
-def test_incompatible_writer_prompt_does_not_break_writing_context(tmp_path, monkeypatch):
-    """Review focus 1: a prompt the pipeline would refuse leaves the materials readable."""
-    from storygen.application import writing_context as module
+def test_incompatible_writer_prompt_does_not_break_writing_context(tmp_path):
+    """Review focus 1: a stored writer prompt with another stage's contract, which the pipeline refuses, leaves the materials readable."""
+    from storygen.application.writing_context import writing_context
     repo, story, scene = scene_with_draft(tmp_path)
-
-    def refuse(*args, **kwargs):
-        raise ValueError('Несумісний промпт: потрібно draft/prose')
-    monkeypatch.setattr(module, 'stage_system_text', refuse)
-    data = module.writing_context(repo, scene.id)
-    assert data['instructions'] is None and data['instructions_error'] == 'Несумісний промпт: потрібно draft/prose'
+    prompt = repo.save_version(story.id, None, 'prompt', 'Власний промпт планувальника.', [],
+                               prompt_contract=PromptContract(stage='brief', mode='brief', schema_version=1))
+    role = RoleSettings(provider=ProviderSettings(model='test'), prompt_version_id=prompt.id)
+    # The settings store refuses such a prompt now; a stored row from before a contract change is how it reaches a story.
+    with repo.db.connection() as db:
+        db.execute('INSERT OR REPLACE INTO role_settings VALUES(?,?,?)', (story.id, 'writer', role.model_dump_json()))
+    with pytest.raises(ValueError) as refused:
+        build_context(repo, scene.id, 'draft', role)
+    data = writing_context(repo, scene.id)
+    assert data['instructions'] is None and data['instructions_error'] == str(refused.value)
     assert data['plan'] == 'Марта лагодить маяк.'
 
 

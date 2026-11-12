@@ -3,7 +3,7 @@ import json
 
 from storygen.generation.dependencies import writing_fingerprint
 from storygen.web.bridge_marker import MODE_OWNER_ONLY, OBSCURA_WRITES
-from tests.web.test_chat_stage_routes import ORIGIN, PROSE, app_with_scene, task
+from tests.web.test_chat_stage_routes import MEMORY, ORIGIN, PROSE, app_with_scene, task
 
 BRIDGE = {'X-Obscura-Client': 'mcp'}
 
@@ -89,13 +89,21 @@ def test_chat_mode_keeps_bridge_writes(tmp_path):
     assert draft(client, scene, BRIDGE).status_code == 200
     data = client.get(f'/api/scenes/{scene.id}/chat-task/memory', headers=BRIDGE)
     assert data.status_code == 200, data.text
+    saved = client.post(f'/api/scenes/{scene.id}/chat-result/memory', headers=BRIDGE,
+                        json={'task_fingerprint': data.json()['task_fingerprint'], 'text': json.dumps(MEMORY, ensure_ascii=False), 'external_origin': ORIGIN})
+    assert saved.status_code == 200, saved.text
 
 
 def test_refusals_are_translated_for_english_locale(tmp_path):
     app, repo, story, scene, client = app_with_scene(tmp_path, prose=True)
     story = repo.get_story(story.id)
     refused = set_mode(client, story, 'obscura', {**BRIDGE, 'Accept-Language': 'en'})
-    assert refused.json()['detail'] != MODE_OWNER_ONLY
+    assert refused.status_code == 403 and refused.json()['detail'] == 'Only the author changes the story mode in Obscura'
+    set_mode(client, story, 'obscura')
+    scene = repo.get_scene(scene.id)
+    refused = client.get(f'/api/scenes/{scene.id}/chat-task/memory', headers={**BRIDGE, 'Accept-Language': 'en'})
+    assert refused.status_code == 409
+    assert refused.json()['detail'] == 'The story is in the "Obscura writes" mode: start the stage with start_run'
 
 
 def test_new_story_form_offers_mode_with_obscura_by_default(tmp_path):

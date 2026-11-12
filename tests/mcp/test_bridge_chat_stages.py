@@ -76,6 +76,7 @@ def test_scene_context_carries_instructions(tmp_path):
 @pytest.mark.req('MCP-BRIDGE')
 def test_next_steps_suggests_memory_after_prose(tmp_path):
     app, http, repo, story, scene = scene_with_prose(tmp_path)
+    writes = spy_writes(http)
     steps = text(call(build_server(http), 'next_steps', {'scene_id': scene.id}))
     assert "get_stage_task(stage='memory')" in steps
-    spy_writes(http)
+    assert writes == []

@@ -21,6 +21,7 @@ def test_bridge_client_marks_every_request():
     assert BRIDGE_HEADERS == {BRIDGE_HEADER: 'mcp'}
     with build_client('http://127.0.0.1:8765') as http:
         assert http.headers[BRIDGE_HEADER] == 'mcp'
+        assert http.build_request('POST', '/api/scenes/S1/draft', json={}).headers[BRIDGE_HEADER] == 'mcp'
 
 
 @pytest.mark.req('WRITING-MODE')
@@ -48,3 +49,16 @@ def test_save_draft_in_obscura_mode_is_refused(tmp_path):
                                          'context_fingerprint': context['context_fingerprint'], 'draft_version_id': None})
     assert result.is_error and OBSCURA_WRITES in text(result)
     assert app.state.repo.get_scene(scene.id).heads.get('draft') is None
+
+
+@pytest.mark.req('WRITING-MODE')
+def test_stage_tools_in_obscura_mode_are_refused(tmp_path):
+    app, http, server = bridge(tmp_path)
+    story = ok(call(server, 'create_story', {'title': 'Сад', 'writing_mode': 'obscura'}))
+    from storygen.domain import SceneCreate
+    scene = app.state.repo.create_scene(story['id'], SceneCreate(title='Ранок', beats='Анна відчиняє скриньку.'))
+    task = call(server, 'get_stage_task', {'scene_id': scene.id, 'stage': 'brief'})
+    assert task.is_error and OBSCURA_WRITES in text(task)
+    saved = call(server, 'save_stage_result', {'scene_id': scene.id, 'stage': 'brief', 'task_fingerprint': 'a' * 64, 'result': '{}'})
+    assert saved.is_error and OBSCURA_WRITES in text(saved)
+    assert app.state.repo.list_versions(story['id'], scene.id) == []
