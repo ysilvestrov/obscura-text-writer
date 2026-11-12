@@ -1,6 +1,6 @@
 import {test,expect} from '../../../frontend/browser-test.mjs';
 
-// #104 WORKSPACE-TOOLS-S04: the delete action sits next to the selected scene in the list. The test browser runs the English UI.
+// #104 WORKSPACE-TOOLS-S05: the delete action sits next to the selected scene in the list. The test browser runs the English UI.
 test('delete icon follows the selected scene and moves it to the scene trash',async({page,request})=>{
   test.skip(test.info().project.name==='mobile','the scene list is replaced by a picker on narrow screens');
   const fixture=await(await request.post('/test-fixture')).json();

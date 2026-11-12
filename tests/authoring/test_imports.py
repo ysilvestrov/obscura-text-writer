@@ -74,7 +74,7 @@ def test_plan_title_before_plain_scene_lines_is_not_imported_as_a_scene(tmp_path
     result=import_sources(repo,story.id,_plan_and_cards(['plan']))
     scenes=repo.list_scenes(story.id)
     assert [(s.author_scene_number,s.title,s.target_words) for s in scenes]==[(1,'Лист у скриньці',3500),(2,'Пристань уночі',3500)]
-    assert not any('без номера' in warning for warning in result.warnings)
+    assert result.warnings==[]
     again=import_sources(repo,story.id,_plan_and_cards(['plan']))
     assert again.created_scene_ids==[] and len(repo.list_scenes(story.id))==2
 
