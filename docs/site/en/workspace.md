@@ -6,6 +6,13 @@ If there are many scenes, click the **Scenes** heading with their count: the lis
 
 ![Story workspace with the scene list, stages and status row](../../images/site/en/workspace-desktop.png)
 
+## Delete and restore a scene
+
+- In the scene list, the selected scene has a button with a trash icon: **Delete scene**. The app asks for confirmation and moves the scene to the scene trash; the following scenes will then need review.
+- Save your text first: with unsaved changes the scene is not deleted and the app tells you why.
+- To bring a scene back, expand **Scene trash** under the list and click **Restore**. Scenes are never deleted permanently.
+- On a narrow screen there is no scene list: pick the scene in the selector and click **Delete scene** in the extra actions under the editor.
+
 ## Top row
 
 - **Characters** opens the character cards on a separate page.

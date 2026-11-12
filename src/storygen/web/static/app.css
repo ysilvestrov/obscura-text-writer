@@ -518,6 +518,12 @@ body.ghost-open #notice { z-index: 70; }
 .icon-settings { --icon: url(/static/icons/settings.svg); }
 .icon-plus { --icon: url(/static/icons/plus.svg); }
 .icon-menu { --icon: url(/static/icons/menu.svg); }
+.icon-trash { --icon: url(/static/icons/trash.svg); }
+/* #104: delete action laid over the right edge of the selected scene row. */
+#scene-list .scene-item.active { padding-right: 3rem; }
+.scene-row-actions { position: relative; height: 0; }
+.scene-delete { position: absolute; right: 6px; bottom: 12px; display: inline-flex; align-items: center; justify-content: center; width: 2.25rem; height: 2.25rem; padding: 0; border: 0; border-radius: var(--radius-control); background: transparent; color: var(--text-secondary); cursor: pointer; }
+.scene-delete:hover, .scene-delete:focus-visible { background: var(--bg-subtle); color: var(--text-primary); }
 .icon-label { display: none; }
 @media (min-width: 1280px) { .icon-label { display: inline; } }
 .story-menu-wrap { position: relative; }

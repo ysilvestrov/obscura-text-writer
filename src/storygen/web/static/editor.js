@@ -120,8 +120,9 @@ export async function selectScene(scene){
   uiText(document.querySelector('#current-kind'),"textContent",()=>(t("m_9ecb77f7d846")));
   uiText(document.querySelector('#scene-title'),"textContent",()=>(displaySceneTitle(scene.title)));
   const picker=document.querySelector('#scene-select-mobile');if(picker)picker.value=scene.id;
-  document.dispatchEvent(new CustomEvent('scene-selected'));
   for(const button of document.querySelectorAll('.scene-item')){const active=button.textContent.startsWith((scene.position+1)+'.');button.classList.toggle('active',active);button.setAttribute('aria-current',active?'true':'false')}
+  // After the rows are re-marked: listeners place row actions next to the active row (#104).
+  document.dispatchEvent(new CustomEvent('scene-selected'));
 }
 
 textEditor.onInput(()=>{state.dirty=textEditor.isDirty()||!!authorComments?.isDirty();state.bufferEpoch++;uiText(document.querySelector('#save-state'),"textContent",()=>(state.dirty?t("m_ee929a68273c"):t("m_4fc1598084c2")));changed()});

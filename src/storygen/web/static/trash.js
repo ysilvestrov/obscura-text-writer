@@ -6,22 +6,29 @@ import {api,json,notice} from './api.js';
 function action(label,callback){const button=document.createElement('button');button.type='button';button.className='secondary';uiText(button,"textContent",()=>(label));button.onclick=callback;return button}
 
 export function installSceneTrash(state,refresh,clear){
-  const trash=action(live(()=>(t("m_225f1a7f10a9"))),async()=>{
+  const moveToTrash=async()=>{
     if(state.dirty||state.saving){notice(msg("m_a4c2e86ecc1a"),'error');return}
     if(!state.scene){notice(msg("m_f0f1417db6de"),'error');return}
     const sceneId=state.scene.id,revision=state.scene.revision;
-    if(!await confirmDialog(t("m_5853565cd7c6")))return;
+    if(!await confirmDialog(t("scenes.delete_confirm")))return;
     if(state.dirty||state.saving||state.scene?.id!==sceneId||state.scene.revision!==revision)return;
     trash.disabled=true;state.saving=true;
     const editor=createTextEditor(document.querySelector("#editor")),readOnly=editor.isReadOnly();editor.readOnly(true);
     document.dispatchEvent(new CustomEvent("editor-state-changed"));
     try{
       await api('/api/scenes/'+state.scene.id+'/trash',json('POST',{story_id:state.storyId,expected_revision:state.scene.revision}));
-      clear();state.saving=false;await refresh();notice(msg("m_4731b2e61aa6"));
+      clear();state.saving=false;await refresh();notice(msg("scenes.deleted"));
     }catch(error){notice(error.message,'error')}finally{trash.disabled=false;state.saving=false;editor.readOnly(readOnly);document.dispatchEvent(new CustomEvent('editor-state-changed'))}
-  });
+  };
+  const trash=action(live(()=>(t("scenes.delete"))),moveToTrash);
+  // #104: the same action as an icon next to the selected scene; it stays enabled and a click explains a refusal.
+  const holder=document.createElement('div'),listButton=document.createElement('button'),icon=document.createElement('span');
+  holder.className='scene-row-actions';listButton.type='button';listButton.className='scene-delete';icon.className='icon icon-trash';icon.setAttribute('aria-hidden','true');
+  uiAttr(listButton,'aria-label',()=>t("scenes.delete"));uiText(listButton,'title',()=>t("scenes.delete"));
+  listButton.append(icon);listButton.onclick=moveToTrash;holder.append(listButton);
+  function place(){const row=state.scene&&document.querySelector('#scene-list .scene-item.active');if(row)row.after(holder);else holder.remove()}
   (document.querySelector('#workspace-scene-actions')||document.querySelector('.editor-toolbar')).append(trash);
-  function availability(){const reason=!state.scene?t("m_f0f1417db6de"):state.saving?t("m_1705600b6470"):state.dirty?t("m_a4c2e86ecc1a"):'';trash.disabled=!!reason;uiText(trash,"title",()=>(diagnostic(reason)))}
+  function availability(){const reason=!state.scene?t("m_f0f1417db6de"):state.saving?t("m_1705600b6470"):state.dirty?t("m_a4c2e86ecc1a"):'';trash.disabled=!!reason;uiText(trash,"title",()=>(diagnostic(reason)));place()}
   for(const event of ['scene-selected','story-refreshed','editor-state-changed'])document.addEventListener(event,availability);availability();
   const details=document.createElement('details'),summary=document.createElement('summary'),list=document.createElement('div');
   uiText(summary,"textContent",()=>(t("m_62ad9a54bdd0")));details.append(summary,list);document.querySelector('.scene-panel').append(details);

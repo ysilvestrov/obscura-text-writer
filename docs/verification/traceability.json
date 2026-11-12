@@ -3644,6 +3644,18 @@
       }
     },
     {
+      "id": "WORKSPACE-TOOLS-S05",
+      "requirement": "WORKSPACE-TOOLS",
+      "scope": "Кнопка-іконка видалення біля обраної сцени: спільні запобіжники з кнопкою під редактором, доступна назва, прибирання без обраної сцени; розміщення й видалення — у браузері.",
+      "tests": [
+        "tests/web/test_trash_api.py::test_trash_ui_preserves_unsaved_buffers"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#scene-delete-browser",
+        "reason": "check_docs.py індексує лише pytest; Playwright cases tests/web/browser/scene-delete.spec.mjs виконуються окремим runner, цей зв’язок не є доказом виконання."
+      }
+    },
+    {
       "id": "IMPACT-UI-HISTORY",
       "requirement": "IMPACT-UI",
       "scope": "tests/web/browser/collapsible-scenes.spec.mjs: latest scene reports collapse and retain state across language and refresh — current/history reports, blockers, порожня історія, keyboard, locale/refresh; не перевірка dirty буфера.",
