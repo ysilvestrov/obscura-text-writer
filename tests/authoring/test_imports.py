@@ -56,15 +56,15 @@ TITLED_PLAN="""# План: Маяк на пристані
 Анна знаходить лист без зворотної адреси.
 
 Сцена 2: Пристань уночі
-Хто бере участь: Анна.
+Хто бере участь: Борис, Анна.
 Анна йде з ліхтарем до старої пристані.
 """
-ONE_CARD="# Персонажі\n\n## Анна\nДоглядачка маяка, 34 роки.\n"
+TWO_CARDS="# Персонажі\n\n## Анна\nДоглядачка маяка, 34 роки.\n\n## Борис\nРибалка, 50 років.\n"
 
 
 def _plan_and_cards(order):
     files={'plan':SourceFile(name='plan.md',raw=TITLED_PLAN.encode('utf-8')),
-           'cards':SourceFile(name='characters.md',raw=ONE_CARD.encode('utf-8'),kind='source_characters')}
+           'cards':SourceFile(name='characters.md',raw=TWO_CARDS.encode('utf-8'),kind='source_characters')}
     return [files[key] for key in order]
 
 
@@ -85,5 +85,5 @@ def test_import_report_shows_the_stored_cast(tmp_path,order):
     story=repo.create_story(StoryCreate(title='Маяк'))
     result=import_sources(repo,story.id,_plan_and_cards(order))
     stored=[scene.character_ids for scene in repo.list_scenes(story.id)]
-    assert all(len(ids)==1 for ids in stored)
+    assert [len(ids) for ids in stored]==[1,2] and stored[1][1]==stored[0][0]
     assert [scene.character_ids for scene in result.proposed_scenes]==stored

@@ -54,13 +54,12 @@ def test_opening_title_does_not_change_the_level_of_other_headings():
     assert [(s.title,s.author_scene_number) for s in sections]==[('Інтерлюдія',None),('Зустріч',2)]
 
 
-@pytest.mark.parametrize('text',[
-    '# Пролог\nТиша\nСцена 1: Лист\nОпис\n# Епілог\nКінець',   # two level-1 headings: both are scenes
-    'Вступ\n# Пролог\nТиша\nСцена 1: Лист\nОпис',               # not the first line of the file
+@pytest.mark.parametrize('text,expected',[
+    ('# Пролог\nТиша\nСцена 1: Лист\nОпис\n# Епілог\nКінець',[('Пролог',None),('Лист',1),('Епілог',None)]),  # two level-1 headings
+    ('Вступ\n# Пролог\nТиша\nСцена 1: Лист\nОпис',[('Пролог',None),('Лист',1)]),  # not the first line of the file
 ])
-def test_level_one_heading_that_is_not_a_lone_opening_title_stays_a_scene(text):
-    sections=split_plan(text)[1]
-    assert sections[0].title=='Пролог' and sections[0].author_scene_number is None
+def test_level_one_heading_that_is_not_a_lone_opening_title_stays_a_scene(text,expected):
+    assert [(s.title,s.author_scene_number) for s in split_plan(text)[1]]==expected
 
 
 def test_opening_title_without_numbered_scenes_stays_a_scene():
