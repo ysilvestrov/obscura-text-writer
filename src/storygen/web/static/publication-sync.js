@@ -10,3 +10,8 @@ export function externalPublicationChange({loadedRevision,freshRevision,formDirt
   const warnCard=cardChanged&&!reloadCard;
   return {reloadCard,warnCard,reloadLibrary:!reloadCard&&libraryChanged&&!libraryDirty};
 }
+
+// The card save sends the revision of every chosen signature: a fresh library must refresh those revisions too.
+export function withLibraryRevisions(revisions,library){
+  return {...revisions,...Object.fromEntries((library||[]).map(item=>[item.id,item.revision]))};
+}
