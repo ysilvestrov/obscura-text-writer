@@ -51,7 +51,7 @@ class RunCoordinator:
     def list_events(self,id,after_seq=0):
         return self.repo.list_run_events(id,after_seq)
 
-    def enqueue(self,request: RunRequest,request_id: str) -> Run:
+    def enqueue(self,request: RunRequest,request_id: str,origin: str | None = None) -> Run:
         skipped_language=[]  # scenes whose automatic evaluation is skipped for their language (STORY-LANGUAGE-S06)
         if not request_id or len(request_id)>200:
             raise ValueError('Потрібен request_id до 200 символів')
@@ -174,7 +174,7 @@ class RunCoordinator:
             telemetry={'roles':readiness.get('roles',{}),'calls':readiness.get('calls')} if readiness is not None else None
             if telemetry is not None and readiness.get('evaluator'):
                 telemetry['evaluator']=readiness['evaluator']
-            candidate=Run(id=new_id(),story_id=request.story_id,request_id=request_id,request=request,tasks=tasks,impact=impact_data,planned_telemetry=telemetry)
+            candidate=Run(id=new_id(),story_id=request.story_id,request_id=request_id,request=request,tasks=tasks,impact=impact_data,planned_telemetry=telemetry,origin=origin)
             run,created=self.repo.enqueue_run(candidate)
             if created:
                 self.event(run.id,'state',{'state':'queued'})

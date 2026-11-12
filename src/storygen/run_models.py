@@ -79,6 +79,8 @@ class Run(DomainModel):
     editor_loops: dict[str,dict] = Field(default_factory=dict)
     planned_telemetry: dict | None = None
     cancelled_before_enqueue: bool = False
+    # MCP-BRIDGE-S50: 'mcp' for a run the bridge started; the bridge may cancel only those.
+    origin: Literal['mcp'] | None = None
     created_at: str = Field(default_factory=now)
 
 
