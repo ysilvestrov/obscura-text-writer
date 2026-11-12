@@ -36,11 +36,11 @@ If a role or connection uses the **JSON Schema** response mode, the JSON Schema 
 
 ## Consent for a model without Uncensored
 
-A cloud model (Venice, OpenRouter) that the provider has not marked as Uncensored may refuse explicit text. So when the request rating is above 0 on at least one axis, the application does not call such a model until you agree. The request rating is the highest level on each axis among the story rating and the scenes whose material goes into the request. For a 0/0/0 story with one 2/0/0 scene, consent is needed only for that scene.
+A cloud model (Venice, OpenRouter) that the provider has not marked as Uncensored may refuse explicit text. So when the request rating is above 0 on at least one axis, the application does not call such a model until you agree. The request rating is the highest level on each axis among the story rating and the scene of the stage; material of earlier scenes (memory, the end of the previous prose) does not raise it. Impact, review and publication-suggestion stages read several scenes, so their rating also counts those scenes. For a 0/0/0 story with one 2/0/0 scene, consent is needed only for that scene.
 
 Under the chosen model in the role settings (and in the evaluation classification settings for the Editor role) a warning with an "I agree…" checkbox appears. The checkbox acts at once, without the **Save:** button. Consent belongs to the "role + model + API address" pair and applies in all stories; another role, model or address needs its own consent. Clearing the checkbox blocks calls again. Local models need no consent.
 
-Without consent the stage stops with an explanation of which model, role and rating are involved, and no request is sent to the provider. For Venice the Uncensored state comes from the catalog, so a saved model shows the warning until the model list is loaded.
+Without consent the stage stops with an explanation of which model, role and rating are involved, and no request is sent to the provider. For Venice the Uncensored state comes from the catalog, so the warning appears only after the model list is loaded.
 
 ## Refusal mark
 

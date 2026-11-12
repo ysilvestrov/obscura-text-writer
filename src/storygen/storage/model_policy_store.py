@@ -1,4 +1,4 @@
-"""Consent and refusal records per role, endpoint and exact model in app_settings; SQL schema remains 2."""
+"""Consent and refusal records per role, endpoint and exact model in app_settings; no new tables, the SQL schema version does not change."""
 from datetime import datetime, timezone
 from ..providers.policy import normalize_endpoint
 from .billing_store import read, write

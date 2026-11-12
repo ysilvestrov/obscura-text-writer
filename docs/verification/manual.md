@@ -264,7 +264,7 @@ MODEL-005-S01, MODEL-005-S02. Автоматична частина — Playwrig
 <a id="model-policy-browser"></a>
 ## Згода й позначка відмови в браузері
 
-MODEL-003-S02, MODEL-003-S03, MODEL-004-S01. Автоматична частина — Playwright `tests/web/browser/model-policy.spec.mjs` (п’ять cases на desktop і mobile: згода для моделі OpenRouter записується одразу й не переходить на іншу модель, Venice без Uncensored показує галочку, а локальна модель — ні, збій запиту згоди лишає попередній стан із помилкою, записана відмова показує червоне повідомлення зі зняттям і вибором іншої моделі, налаштування класифікації мають блок згоди для ролі редактора): `node frontend/node_modules/@playwright/test/cli.js test tests/web/browser/model-policy.spec.mjs --config frontend/playwright.config.mjs`. Цей зв’язок не є доказом виконання; фактичний запуск фіксується окремо.
+MODEL-003-S02, MODEL-003-S03, MODEL-004-S01. Автоматична частина — Playwright `tests/web/browser/model-policy.spec.mjs` (шість cases на desktop і mobile: згода для моделі OpenRouter записується одразу й не переходить на іншу модель, Venice без Uncensored показує галочку, а локальна модель — ні, збережена модель Venice не показує попередження до завантаження списку моделей, збій запиту згоди лишає попередній стан із помилкою, записана відмова показує червоне повідомлення зі зняттям і вибором іншої моделі, налаштування класифікації мають блок згоди для ролі редактора): `node frontend/node_modules/@playwright/test/cli.js test tests/web/browser/model-policy.spec.mjs --config frontend/playwright.config.mjs`. Цей зв’язок не є доказом виконання; фактичний запуск фіксується окремо.
 
 <a id="desktop-launcher"></a>
 ## Запуск без консолі та значок у треї

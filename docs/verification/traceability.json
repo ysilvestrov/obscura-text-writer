@@ -170,7 +170,8 @@
         "tests/providers/test_venice.py::test_generation_accepts_catalog_model_without_uncensored",
         "tests/providers/test_streaming_policy.py::test_gateway_lets_uncensored_venice_model_through",
         "tests/providers/test_streaming_policy.py::test_gateway_catalog_failure_does_not_bypass_check",
-        "tests/generation/test_model_policy_stages.py::test_chat_answer_is_never_checked_or_recorded"
+        "tests/generation/test_model_policy_stages.py::test_chat_answer_is_never_checked_or_recorded",
+        "tests/web/test_localization.py::test_model_policy_block_texts_are_translated_with_role_and_parameters"
       ],
       "manual": {
         "procedure": "docs/verification/manual.md#model-policy-browser",
@@ -209,7 +210,8 @@
       "scope": "Сцена з рейтингом вище за твір блокується, інші сцени — ні. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
       "tests": [
         "tests/generation/test_model_policy_stages.py::test_scene_rated_above_zero_story_needs_consent_only_for_that_scene",
-        "tests/providers/test_model_policy.py::test_unset_story_rating_counts_as_zero"
+        "tests/providers/test_model_policy.py::test_unset_story_rating_counts_as_zero",
+        "tests/providers/test_model_policy.py::test_scene_stage_rates_its_scene_and_multi_scene_stage_rates_input_refs"
       ]
     },
     {
@@ -220,6 +222,7 @@
         "tests/generation/test_model_policy_stages.py::test_content_filter_records_refusal_and_blocks_same_or_higher",
         "tests/generation/test_model_policy_stages.py::test_refusal_flag_on_completed_draft_still_records",
         "tests/generation/test_model_policy_stages.py::test_refusal_record_failure_does_not_break_the_attempt",
+        "tests/generation/test_model_policy_stages.py::test_refusal_on_rated_scene_does_not_block_the_next_plain_scene",
         "tests/integration/test_prototype_flow.py::test_refusal_mid_run_blocks_next_scene_with_explanation",
         "tests/web/test_model_policy_api.py::test_refusal_is_listed_and_cleared"
       ],

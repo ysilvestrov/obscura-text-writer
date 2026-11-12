@@ -10,6 +10,8 @@ POLICY_ROLES = ('planner', 'writer', 'editor', 'memory')
 STAGE_POLICY_ROLE = {'prepare': 'planner', 'brief': 'planner', 'impact_delta': 'planner', 'impact_check': 'planner',
     'impact_part': 'planner', 'review_part': 'planner', 'publication_suggest': 'planner', 'draft': 'writer',
     'rewrite': 'writer', 'edit': 'editor', 'classify': 'editor', 'memory': 'memory'}
+# Stages whose material spans several scenes: the request rating also counts the scenes behind `input_refs`.
+MULTI_SCENE_STAGES = frozenset({'impact_delta', 'impact_check', 'impact_part', 'review_part', 'publication_suggest'})
 ROLE_LABELS = {'planner': 'Планувальник', 'writer': 'Письменник', 'editor': 'Редактор', 'memory': 'Пам’ять'}
 
 CONSENT_REQUIRED = ('Модель «{model}» не має позначки Uncensored, а рейтинг цього запиту {rating}. '
@@ -53,9 +55,11 @@ def request_rating(view, story, scene_ids: Iterable[str]) -> tuple[int, int, int
 
 
 def context_rating(repo, context) -> tuple[int, int, int]:
+    """A scene stage rates the story and its own scene; a multi-scene stage also rates the scenes of `input_refs`."""
     story = repo.get_story(context.story_id)
     scene_ids = [context.scene_id] if context.scene_id else []
-    for ref in context.input_refs:
+    refs = context.input_refs if getattr(context, 'stage', None) in MULTI_SCENE_STAGES else []
+    for ref in refs:
         try:
             version = repo.get_version(ref)
         except KeyError:

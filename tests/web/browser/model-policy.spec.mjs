@@ -50,6 +50,22 @@ test('venice shows the checkbox only for a model without Uncensored; local never
   await expect(view.warn).toBeHidden();
 });
 
+test('a saved Venice model shows no consent warning before the model list is loaded',async({page,request})=>{
+  const plain=unique('pol-saved'),storyId=await story(request);
+  const current=await(await request.get(`/api/stories/${storyId}/settings`)).json();
+  const settings={...current.roles.writer,provider:{...current.roles.writer.provider,provider:'venice',model:plain,base_url:'https://api.venice.ai/api/v1',key_env:'VENICE_API_KEY'}};
+  const saved=await request.put(`/api/stories/${storyId}/settings`,{data:{role:'writer',settings,expected_revision:current.story.revision}});
+  expect(saved.ok()).toBeTruthy();
+  await page.route('**/api/providers/discover',route=>route.fulfill({json:{models:[option(plain,false)]}}));
+  await page.goto(`/stories/${storyId}/settings`);await page.locator('[data-settings-role=writer]').click();
+  const form=page.locator('form[data-role=writer]'),warn=form.locator('.model-picker [data-model-consent]');
+  await expect(form.locator('[name=model]')).toHaveValue(plain);
+  // Uncensored is unknown until the catalog is loaded: no false warning for the saved model.
+  await expect(warn).toBeHidden();
+  await form.locator('.discover').click();
+  await expect(warn).toBeVisible();
+});
+
 test('a failed consent request keeps the previous state and shows the error',async({page,request})=>{
   const id=unique('pol-err');
   const view=await openWriter(page,{storyId:await story(request),catalog:[option(id)]});

@@ -3,7 +3,9 @@
 import {t,uiText,diagnostic} from './i18n.js';
 import {api,json} from './api.js';
 
-export const consentVisible=(option,provider)=>provider!=='local'&&option?.uncensored!==true;
+// Venice reports Uncensored in its catalog: until the list is loaded the mark is unknown, so nothing is shown (the gateway
+// still enforces consent). OpenRouter and other cloud providers never report it, so their warning is always shown.
+export const consentVisible=(option,provider,catalogLoaded)=>provider!=='local'&&(provider!=='venice'||catalogLoaded===true)&&option?.uncensored!==true;
 export const refusalRatings=refusals=>refusals.map(({rating:[sexual,violence,themes]})=>t('rating.scene.summary',{p0:sexual,p1:violence,p2:themes})).join('; ');
 
 function el(tag,props={},...children){const node=document.createElement(tag);for(const[k,v]of Object.entries(props))if(k in node&&!k.includes('-'))node[k]=v;else node.setAttribute(k,v);node.append(...children);return node}
@@ -30,7 +32,7 @@ export function mountModelPolicy({host,role,modelInput,providerInput,baseUrlInpu
   const shown=()=>stateKey!==null&&stateKey===keyOf(target())?state:null;
   function render(){
     const value=target(),current=shown();
-    warn.hidden=!value||!consentVisible(picker?.selected?.()??null,value.provider);
+    warn.hidden=!value||!consentVisible(picker?.selected?.()??null,value.provider,Boolean(picker?.loaded?.()));
     consent.checked=pending??Boolean(current?.consent);consent.disabled=busy||!current||modelInput.disabled;
     const refusals=current?.refusals||[];refusal.hidden=!refusals.length;clear.disabled=busy||modelInput.disabled;
     uiText(refusedText,'textContent',()=>refusals.length?t('policy.refused',{p0:refusalRatings(refusals)}):'');

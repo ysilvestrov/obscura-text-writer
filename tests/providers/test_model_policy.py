@@ -93,3 +93,15 @@ def test_unset_story_rating_counts_as_zero(repo_with_story):  # MODEL-003-S05
     ctx = SimpleNamespace(story_id=story.id, scene_id=b.id, input_refs=['unknown-version'])
     assert context_rating(repo, ctx) == (0, 0, 0)
     assert context_rating(repo, SimpleNamespace(story_id=story.id, scene_id=a.id, input_refs=[])) == (2, 0, 0)
+
+
+@pytest.mark.req('MODEL-003')
+def test_scene_stage_rates_its_scene_and_multi_scene_stage_rates_input_refs(repo_with_story):  # MODEL-003-S05
+    repo, story, a, b = repo_with_story
+    prose = repo.save_version(story.id, a.id, 'manual', 'Текст.', [])
+    for stage in ('brief', 'draft', 'rewrite', 'edit', 'classify', 'memory', 'prepare'):
+        ctx = SimpleNamespace(story_id=story.id, scene_id=b.id, stage=stage, input_refs=[prose.id])
+        assert context_rating(repo, ctx) == (0, 0, 0), stage
+    for stage in ('impact_delta', 'impact_check', 'impact_part', 'review_part', 'publication_suggest'):
+        ctx = SimpleNamespace(story_id=story.id, scene_id=None, stage=stage, input_refs=[prose.id])
+        assert context_rating(repo, ctx) == (2, 0, 0), stage

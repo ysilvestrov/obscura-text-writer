@@ -8,6 +8,7 @@ from storygen.authoring.blueprints import save_role_settings
 from storygen.domain import ContentRating, ExternalOrigin, SceneCreate, StoryCreate
 from storygen.generation.context import build_context
 from storygen.generation.stages import execute_stage
+from storygen.memory.journal import MemoryJournal
 from storygen.providers.models import ProviderSettings, RoleSettings
 from storygen.providers.policy import ModelPolicyBlocked, endpoint
 from storygen.providers.streaming import GenerationEvent
@@ -102,17 +103,47 @@ def test_consent_lets_any_story_through_and_model_change_resets_it(tmp_path):  #
         draft(repo, repo.get_scene(scene.id), FakeGateway(), model='x/z')
 
 
+def accept_scene(repo, scene, prose_ids):
+    """Selected prose and memory for a finished scene, so the next scene's real draft context can be built."""
+    prose = repo.save_version(scene.story_id, scene.id, 'manual', f'Проза сцени {scene.title}.', [])
+    repo.set_head(scene.id, 'prose', prose.id, repo.get_scene(scene.id).revision)
+    prose_ids.append(prose.id)
+    journal = MemoryJournal(schema_version=3, source_prose_ids=list(prose_ids), events=[])
+    memory = repo.save_version(scene.story_id, scene.id, 'memory', journal.model_dump_json(), [prose.id])
+    repo.set_head(scene.id, 'memory', memory.id, repo.get_scene(scene.id).revision)
+
+
 @pytest.mark.req('MODEL-003')
 def test_scene_rated_above_zero_story_needs_consent_only_for_that_scene(tmp_path):  # MODEL-003-S05
-    repo, [plain, rated] = setup(tmp_path, R(0, 0, 0), (None, R(2, 0, 0)))
-    assert draft(repo, plain, FakeGateway()).state == 'completed'
-    # The rated scene's own context would first need the previous memory; only its identity matters here.
-    context = build_context(repo, plain.id, 'draft', writer_role()).model_copy(
-        update={'scene_id': rated.id, 'input_refs': [rated.heads['brief']]})
+    repo, [first, rated, third] = setup(tmp_path, R(0, 0, 0), (None, R(2, 0, 0), None))
+    prose_ids = []
+    assert draft(repo, first, FakeGateway()).state == 'completed'
+    accept_scene(repo, repo.get_scene(first.id), prose_ids)
     gateway = FakeGateway()
     with pytest.raises(ModelPolicyBlocked) as e:
-        execute_stage(repo, rated.id, 'draft', context, gateway, threading.Event(), noop)
+        draft(repo, repo.get_scene(rated.id), gateway)
     assert '2/0/0' in str(e.value) and gateway.calls == []
+    accept_scene(repo, repo.get_scene(rated.id), prose_ids)  # The author wrote the rated scene by hand.
+    context = build_context(repo, third.id, 'draft', writer_role())
+    assert rated.id in {repo.get_version(ref).scene_id for ref in context.input_refs}  # Its prose is memory input.
+    gateway = FakeGateway()
+    assert execute_stage(repo, third.id, 'draft', context, gateway, threading.Event(), noop).state == 'completed'
+    assert tuple(gateway.calls[0].policy_rating) == (0, 0, 0)
+
+
+@pytest.mark.req('MODEL-004')
+def test_refusal_on_rated_scene_does_not_block_the_next_plain_scene(tmp_path):  # MODEL-004-S01
+    repo, [first, rated, third] = setup(tmp_path, R(0, 0, 0), (None, R(2, 0, 0), None))
+    consent(repo)
+    prose_ids = []
+    accept_scene(repo, first, prose_ids)
+    attempt = draft(repo, repo.get_scene(rated.id), FakeGateway(text='', type='error', finish_reason='content_filter'))
+    assert attempt.state == 'failed'
+    assert [e['rating'] for e in refusal(repo)['refusals']] == [[2, 0, 0]]
+    accept_scene(repo, repo.get_scene(rated.id), prose_ids)
+    gateway = FakeGateway()
+    assert draft(repo, repo.get_scene(third.id), gateway).state == 'completed'
+    assert tuple(gateway.calls[0].policy_rating) == (0, 0, 0)
 
 
 @pytest.mark.req('MODEL-004')
@@ -168,7 +199,8 @@ def test_impact_refusal_records_planner_with_max_scene_rating(tmp_path):  # MODE
     planner = RoleSettings(provider=ProviderSettings(provider='openrouter', model='x/y'))
     consent(repo, 'planner')
     refs = [first.heads['brief'], second.heads['brief']]
-    context = build_context(repo, first.id, 'brief', planner).model_copy(update={'scene_id': None, 'input_refs': refs})
+    context = build_context(repo, first.id, 'brief', planner).model_copy(
+        update={'stage': 'impact_delta', 'scene_id': None, 'input_refs': refs})
     attempt = execute_stage(repo, None, 'impact_delta', context,
         FakeGateway(text='', type='error', finish_reason='content_filter'), threading.Event(), noop)
     assert attempt.state == 'failed'

@@ -4,9 +4,14 @@ globalThis.document={querySelector:()=>null,addEventListener:()=>{}};
 const {consentVisible,refusalRatings}=await import(pathToFileURL(process.argv[2]+'/src/storygen/web/static/model-policy.js'));
 const {t,setLocale}=await import(pathToFileURL(process.argv[2]+'/src/storygen/web/static/i18n.js'));
 // MODEL-003: the consent checkbox is shown for any non-local model that is not explicitly Uncensored.
-assert.equal(consentVisible({uncensored:true},'venice'),false);
-assert.equal(consentVisible({uncensored:false},'venice'),true);
+assert.equal(consentVisible({uncensored:true},'venice',true),false);
+assert.equal(consentVisible({uncensored:false},'venice',true),true);
+assert.equal(consentVisible(null,'venice',true),true);  // Not in the loaded catalog.
+// Venice before its catalog is loaded: Uncensored is unknown, so no false warning.
+assert.equal(consentVisible(null,'venice',false),false);
+assert.equal(consentVisible({uncensored:false},'venice',false),false);
 assert.equal(consentVisible(null,'openrouter'),true);
+assert.equal(consentVisible(null,'openrouter',false),true);
 assert.equal(consentVisible({uncensored:null},'local'),false);
 assert.equal(consentVisible(null,'local'),false);
 assert.equal(consentVisible({uncensored:null},'openrouter'),true);
