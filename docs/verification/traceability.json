@@ -4511,6 +4511,101 @@
       ]
     },
     {
+      "id": "MEMORY-SUMMARY-S01",
+      "requirement": "MEMORY-SUMMARY",
+      "scope": "Блоки пласкої книги й книги з частинами, кошик, пороги рекомендації й заміни, старий payload.",
+      "tests": [
+        "tests/memory/test_summary_blocks.py::test_flat_book_has_full_blocks_of_ten",
+        "tests/memory/test_summary_blocks.py::test_trashed_scenes_do_not_count",
+        "tests/memory/test_summary_blocks.py::test_structured_book_has_a_block_per_part",
+        "tests/memory/test_summary_blocks.py::test_recommendation_and_replacement_thresholds",
+        "tests/memory/test_summary_blocks.py::test_old_story_payload_reads_without_heads"
+      ]
+    },
+    {
+      "id": "MEMORY-SUMMARY-S02",
+      "requirement": "MEMORY-SUMMARY",
+      "scope": "Підсумок заміняє весь блок під відбором, порядок рендеру, тісний бюджет, лічильник; input_refs і селектор голів у запиті сцени 23, не для сцени 21.",
+      "tests": [
+        "tests/memory/test_summary_selection.py::test_summary_replaces_the_whole_block_and_is_not_counted",
+        "tests/memory/test_summary_selection.py::test_render_order_note_then_summaries_then_entries",
+        "tests/memory/test_summary_selection.py::test_tight_budget_takes_the_later_block_first_and_an_unfit_summary_returns_its_entries",
+        "tests/memory/test_summary_selection.py::test_trimmed_summary_counts_its_block_once",
+        "tests/memory/test_summary_selection.py::test_stale_head_with_dropped_entries_warns",
+        "tests/generation/test_context_summaries.py::test_overflowing_request_of_scene_23_uses_the_summary",
+        "tests/generation/test_context_summaries.py::test_scene_21_does_not_use_the_summary"
+      ]
+    },
+    {
+      "id": "MEMORY-SUMMARY-S03",
+      "requirement": "MEMORY-SUMMARY",
+      "scope": "Запит, що вміщається, байт у байт той самий при наявній голові; відбір без підсумків незмінний.",
+      "tests": [
+        "tests/generation/test_context_summaries.py::test_fitting_request_is_byte_identical_with_a_head",
+        "tests/memory/test_summary_selection.py::test_no_summary_keeps_the_selection_unchanged"
+      ]
+    },
+    {
+      "id": "MEMORY-SUMMARY-S04",
+      "requirement": "MEMORY-SUMMARY",
+      "scope": "Зміна складу, прози чи пам’яті блоку робить підсумок непридатним, попередження контексту й причина стану.",
+      "tests": [
+        "tests/generation/test_context_summaries.py::test_changed_block_is_not_used_and_warns",
+        "tests/generation/test_context_summaries.py::test_state_reasons_for_prose_and_memory_changes",
+        "tests/storage/test_timeline_summaries.py::test_prose_change_in_the_block_makes_the_summary_stale",
+        "tests/web/test_timeline_summaries_api.py::test_list_shows_states_and_recommendation"
+      ]
+    },
+    {
+      "id": "MEMORY-SUMMARY-S05",
+      "requirement": "MEMORY-SUMMARY",
+      "scope": "Запуск timeline_summary: валідація запиту, контекст без прози, публікація, помилки без публікації, конфлікт ревізії, готовність, повторний запуск, межа видання для кожної сцени блоку, мова.",
+      "tests": [
+        "tests/generation/test_timeline_summary_run.py::test_request_validation",
+        "tests/generation/test_timeline_summary_run.py::test_context_holds_the_block_timeline_not_prose",
+        "tests/generation/test_timeline_summary_run.py::test_run_publishes_the_head",
+        "tests/generation/test_timeline_summary_run.py::test_invalid_answer_fails_without_publication",
+        "tests/generation/test_timeline_summary_run.py::test_revision_conflict_leaves_the_version_unpublished",
+        "tests/generation/test_timeline_summary_run.py::test_scene_without_memory_is_not_ready_and_not_queued",
+        "tests/generation/test_timeline_summary_run.py::test_second_run_of_the_same_block_is_refused",
+        "tests/generation/test_timeline_summary_run.py::test_ready_preview_names_the_memory_role",
+        "tests/generation/test_timeline_summary_run.py::test_rating_of_any_block_scene_blocks_the_store_edition",
+        "tests/generation/test_timeline_summary_run.py::test_validate_summary_language",
+        "tests/web/test_timeline_summaries_api.py::test_readiness_route",
+        "tests/web/test_timeline_summaries_api.py::test_not_ready_block_names_the_scene"
+      ]
+    },
+    {
+      "id": "MEMORY-SUMMARY-S06",
+      "requirement": "MEMORY-SUMMARY",
+      "scope": "Публікація з CAS, виправлення автора новою версією, застарілість зібраного зі старою головою, 409, fsck.",
+      "tests": [
+        "tests/storage/test_timeline_summaries.py::test_publish_sets_the_head_with_cas",
+        "tests/storage/test_timeline_summaries.py::test_publish_refuses_a_foreign_block_or_kind",
+        "tests/storage/test_timeline_summaries.py::test_new_head_makes_texts_built_with_the_old_one_stale",
+        "tests/storage/test_timeline_summaries.py::test_author_correction_is_a_new_version_with_cas_on_the_head",
+        "tests/storage/test_timeline_summaries.py::test_prose_change_in_the_block_makes_the_summary_stale",
+        "tests/storage/test_timeline_summaries.py::test_fsck_reports_a_head_on_a_wrong_version",
+        "tests/web/test_timeline_summaries_api.py::test_author_correction_with_cas"
+      ]
+    },
+    {
+      "id": "MEMORY-SUMMARY-S07",
+      "requirement": "MEMORY-SUMMARY",
+      "scope": "Рядки панелі (node), підключення сторінки, тексти обох мов, переклад повідомлень сервера, статистика підсумків, рекомендація в API. Playwright timeline-summaries.spec.mjs запускається вручну (verify.py його не виконує).",
+      "tests": [
+        "tests/web/test_timeline_summaries_ui.py::test_panel_rows",
+        "tests/web/test_timeline_summaries_ui.py::test_story_page_loads_the_panel_and_both_languages_have_the_texts",
+        "tests/web/test_timeline_summaries_ui.py::test_server_messages_match_the_catalog",
+        "tests/web/test_timeline_summaries_ui.py::test_statistics_count_summaries_in_the_request",
+        "tests/web/test_timeline_summaries_api.py::test_block_without_summary_is_recommended_once_part_of_it_left_the_window"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#timeline-summaries-panel",
+        "reason": "Редагування з конфліктом і збереження в браузері перевіряє Playwright, який verify.py не запускає."
+      }
+    },
+    {
       "id": "STORY-LANGUAGE-S01",
       "requirement": "STORY-LANGUAGE",
       "scope": "Фіксація мови твору. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
