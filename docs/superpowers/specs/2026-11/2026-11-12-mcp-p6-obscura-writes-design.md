@@ -1,7 +1,7 @@
 # MCP, пакет 6: режим «пише Obscura»
 
 Дата: 2026-11-12
-Статус: чекає на затвердження
+Статус: затверджено 2026-11-12
 Spec-review: failed (author: claude; codex: You’ve hit your usage limit. Upgrade to Pro (https://chatgpt.com/explore/pro), visit https://chatgpt.com/settings/usage to purchase more credits or try again at Nov 15th, 2026 3:17 PM.; agy: canary failed, review not run: Individual quota reached. Please upgrade your subscription to increase your limits. Resets in 38h15m34s.)
 
 Пакет 6 загального дизайну [MCP як пульт Obscura](2026-11-11-mcp-full-toolset-design.md), останній. Спирається на пакети 1–5 і 7 (23 інструменти після пакета 3).
@@ -29,7 +29,7 @@ Spec-review: failed (author: claude; codex: You’ve hit your usage limit. Upgra
 - **Перемикання режиму тексти не змінює.** Чернетки й проза від чату лишаються з позначкою «Зовнішній клієнт» і можуть бути входом для запусків Obscura. Запуск, що вже йде, перемикання не зупиняє.
 - **Скільки це коштує.** Запуски в режимі «пише Obscura» коштують грошей за тарифами моделей твоїх ролей. Хмарні провайдери вимагають явного ліміту бюджету твору, як і для кнопок. Решта інструментів безкоштовна.
 - **Інструментів стає 25,** це рівно орієнтир: `start_run` і `get_run` (скасування — параметром `get_run`).
-- **Твої дії:** затвердити специфікацію (питання вирішено); після злиття — приймання зі справжнім клієнтом разом із пакетом 3.
+- **Твої дії:** немає до злиття; специфікацію затверджено; після злиття — приймання зі справжнім клієнтом разом із пакетом 3.
 
 ### На чому стоїть рішення
 
