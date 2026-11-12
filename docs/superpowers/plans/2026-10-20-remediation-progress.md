@@ -1725,3 +1725,4 @@ Playwright `memory-kind.spec.mjs` і `core-review.spec.mjs` пройшли вр�
 - Cross-review специфікації (codex, 3/3 виправлено) і коду (codex, 2/2 виправлено: збережена чернетка в тесті інвалідації; відхилення застарілого контексту MCP після зміни дня).
 - Перший `verify.py` із worktree всередині репозиторію дав 1032 `FileNotFoundError` через задовгий шлях `test-tmp`; результат відкинуто, повтор із `C:/tmp/wcs`.
 - `verify.py` на `1e4d38c` (з `C:/tmp/wcs`): passed 2706, failed 0, skipped 1.
+- Після злиття `origin/main` (пакет MCP 4, PR #130; сценарій перенумеровано на MCP-BRIDGE-S32): `verify.py` на `2ca923f` (з `C:/tmp/wcs2`): passed 2732, failed 0, skipped 1.
