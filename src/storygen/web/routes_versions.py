@@ -172,6 +172,8 @@ def chat_stage_task(scene_id: str,stage: Literal['brief','edit','memory'],reques
                     offset: int=Query(default=0,ge=0),max_chars: int=Query(default=20000,ge=1000,le=50000)):
     """MCP-BRIDGE-S40: a stage's instructions and material as the model sees them, for a chat client."""
     from ..application.chat_stages import stage_task
+    from .bridge_marker import guard_scene_write
+    guard_scene_write(request,scene_id)
     return stage_task(request.app.state.repo,scene_id,stage,offset,max_chars)
 
 
@@ -180,6 +182,8 @@ def chat_stage_result(scene_id: str,stage: Literal['brief','edit','memory'],body
     """MCP-BRIDGE-S41–S44: the chat's answer through the pipeline's own parsing and commit; 422 lists every violation."""
     from fastapi.responses import JSONResponse
     from ..application.chat_stages import ChatStageRejected, stage_result
+    from .bridge_marker import guard_scene_write
+    guard_scene_write(request,scene_id)
     try:
         return stage_result(request.app.state.repo,scene_id,stage,body.task_fingerprint,body.text,body.external_origin)
     except ChatStageRejected as exc:
@@ -188,6 +192,9 @@ def chat_stage_result(scene_id: str,stage: Literal['brief','edit','memory'],body
 
 @router.post('/api/scenes/{scene_id}/draft')
 def manual_draft(scene_id: str,body: DraftChange,request: Request):
+    if body.external_origin is not None:
+        from .bridge_marker import guard_scene_write
+        guard_scene_write(request,scene_id)
     if body.comment_set is not None:
         repo=request.app.state.repo
         format=body.content_format or (repo.get_version(body.expected_source_version_id).content_format if body.expected_source_version_id else 'plain')

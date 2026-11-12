@@ -59,7 +59,7 @@ def test_story_list_skips_the_bin(tmp_path):
         response = client.get('/api/stories')
     assert response.status_code == 200, response.text
     rating = repo.get_story(kept.id).content_rating
-    assert response.json() == [{'id': kept.id, 'title': 'Лишається', 'language': 'uk', 'rating': rating.model_dump() if rating else None, 'scene_count': 1}]
+    assert response.json() == [{'id': kept.id, 'title': 'Лишається', 'language': 'uk', 'rating': rating.model_dump() if rating else None, 'writing_mode': 'chat', 'scene_count': 1}]
 
 
 def test_store_edition_checks_the_rating_of_the_returned_context(tmp_path, store_edition, monkeypatch):

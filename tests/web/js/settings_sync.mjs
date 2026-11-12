@@ -14,6 +14,7 @@ assert.equal(key(reversed,evaluator),base,'key order does not matter');
 for(const [label,changed] of [
   ['rating',{...settings,story:{...settings.story,content_rating:{sexual:0,violence:2,dark:0}}}],
   ['language',{...settings,story:{...settings.story,language:'en'}}],
+  ['writing mode',{...settings,story:{...settings.story,writing_mode:'obscura'}}],
   ['target words',{...settings,story:{...settings.story,target_words:9000}}],
   ['role',{...settings,roles:{writer:{...settings.roles.writer,temperature:0.9}}}],
   ['profile',{...settings,profile:{...settings.profile,tone:'dry'}}],

@@ -42,7 +42,7 @@ def test_create_story_returns_id_revision_language_rating(tmp_path):
     data = ok(call(build_server(http), 'create_story', {'title': 'Острів', 'language': 'en', 'content_rating': RATING}))
     story = app.state.repo.get_story(data['id'])
     assert data == {'id': story.id, 'title': 'Острів', 'revision': story.revision, 'language': 'en', 'content_rating': RATING,
-                    'target_words': 7000}
+                    'target_words': 7000, 'writing_mode': 'chat'}
     assert story.initial_content_rating.model_dump() == RATING
 
 

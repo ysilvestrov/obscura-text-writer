@@ -91,6 +91,7 @@ function watchOutsideChanges(){
   const rebase=async()=>{try{loadedKey=await readKey()}catch{/* the next own action rebases again */}};
   document.addEventListener?.('workspace-settings-loaded',()=>void rebase());
   document.addEventListener?.('story-language-changed',()=>void rebase());
+  document.addEventListener?.('story-mode-changed',()=>void rebase());
   document.addEventListener?.('settings-save-state',()=>{if(!settingsBusy())void rebase()});
   const sync=async()=>{
     if(loadedKey===null||syncing||Date.now()-lastSync<2000)return;

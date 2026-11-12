@@ -34,6 +34,20 @@ class StoryLanguageChange(DomainModel):
     expected_revision: int
 
 
+class StoryWritingModeChange(DomainModel):
+    writing_mode: Literal['chat','obscura']
+    expected_revision: int
+
+
+@router.put("/api/stories/{id}/writing-mode")
+def change_writing_mode(id: str,data: StoryWritingModeChange,request: Request):
+    """WRITING-MODE-S02/S04: the author's choice; the bridge may not change it."""
+    from .bridge_marker import MODE_OWNER_ONLY, BridgeForbidden, from_bridge
+    if from_bridge(request):
+        raise BridgeForbidden(MODE_OWNER_ONLY)
+    return request.app.state.repo.update_writing_mode(id,data.writing_mode,data.expected_revision)
+
+
 @router.put("/api/stories/{id}/language")
 def change_story_language(id: str,data: StoryLanguageChange,request: Request):
     return request.app.state.repo.update_story_language(id,data.language,data.expected_revision)

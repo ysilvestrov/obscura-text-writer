@@ -81,8 +81,8 @@ h3 { font-size: 15px; font-weight: 650; }
 .library { max-width: 1120px; margin: 64px auto; padding: 0 30px; }
 .panel-heading { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 18px; font-size: 11px; font-weight: 650; letter-spacing: .12em; color: var(--text-secondary); }
 .muted { color: var(--text-secondary); }
-.new-story { display: grid; grid-template-columns: minmax(0, 1fr) 145px auto; gap: 20px; align-items: center; margin: 32px 0 40px; padding: 24px; background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-panel); }
-.new-story button { margin-top: 10px; }
+.new-story { display: grid; grid-template-columns: minmax(0, 1.2fr) 145px minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; margin: 32px 0 40px; padding: 24px; background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-panel); }
+.new-story button { margin-top: 10px; grid-column: 1 / -1; justify-self: start; }
 .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); gap: 20px; }
 .card { padding: 28px; border: 1px solid var(--border-color); border-radius: var(--radius-panel); background: var(--bg-surface); }
 .card h2 { margin-top: 0; }

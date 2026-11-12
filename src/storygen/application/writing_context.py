@@ -68,7 +68,7 @@ def story_list(repo) -> list[dict]:
     result=[]
     for story in repo.list_stories():
         rating=story.content_rating
-        result.append({'id':story.id,'title':story.title,'language':story.language,'rating':rating.model_dump() if rating else None,
+        result.append({'id':story.id,'title':story.title,'language':story.language,'rating':rating.model_dump() if rating else None,'writing_mode':story.writing_mode,
                        'scene_count':len(repo.context_view(story.id).list_scenes(story.id))})
     return result
 
