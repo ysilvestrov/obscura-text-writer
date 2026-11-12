@@ -26,22 +26,23 @@ class StorageCorruption(ValueError):
     pass
 
 
-class StoryCreate(DomainModel):
-    title: str = Field(min_length=1,max_length=300)
-    target_words: int = Field(default=7000,ge=5000)
-    # STORY-LANGUAGE: prose and model instructions; fixed once the story has model output.
-    language: Literal['uk','en'] = 'uk'
-
-
 class ContentRating(DomainModel):
     sexual: Literal[0,1,2]
     violence: Literal[0,1,2]
     themes: Literal[0,1,2]
 
 
+class StoryCreate(DomainModel):
+    title: str = Field(min_length=1,max_length=300)
+    target_words: int = Field(default=7000,ge=5000)
+    # STORY-LANGUAGE: prose and model instructions; fixed once the story has model output.
+    language: Literal['uk','en'] = 'uk'
+    # MCP-BRIDGE-S17: optional rating at creation, checked against the edition limit before the insert.
+    content_rating: ContentRating | None = None
+
+
 class Story(StoryCreate):
     trashed_at: str | None = None
-    content_rating: ContentRating | None = None
     initial_content_rating: ContentRating | None = None
     id: str
     revision: int = 0

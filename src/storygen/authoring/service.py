@@ -6,8 +6,8 @@ def rename_story(repo: Repository,story_id: str,title: str,expected_revision: in
     return repo.rename_story(story_id,title,expected_revision)
 
 
-def update_scene_plan(repo: Repository, scene_id: str, text: str, expected_revision: int) -> Scene:
-    return repo.update_scene_plan(scene_id, text, expected_revision)
+def update_scene_plan(repo: Repository, scene_id: str, text: str, expected_revision: int, **read) -> Scene:
+    return repo.update_scene_plan(scene_id, text, expected_revision, **read)
 
 
 def update_scene(repo: Repository, scene_id: str, changes: dict, expected_revision: int) -> Scene:

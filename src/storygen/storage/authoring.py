@@ -39,7 +39,21 @@ def unchanged_scene_text(repo,scene_id,head,text,expected_revision,content_forma
         return scene,ContextView(repo,db,scene.story_id).get_version(id)
 
 
-def update_scene_plan(repo,scene_id: str,text: str,expected_revision: int) -> Scene:
+_NOT_READ=object()
+STALE_PLAN='План сцени змінено після того, як його прочитали — прочитайте його знову (get_scene_text)'
+
+
+def _require_read_plan(scene,expected_revision,expected_plan_version_id):
+    if expected_plan_version_id is _NOT_READ:return
+    if scene.revision!=expected_revision:
+        raise RevisionConflict("Сцену змінено в іншій вкладці")
+    if scene.heads.get('plan')!=expected_plan_version_id:
+        raise RevisionConflict(STALE_PLAN)
+
+
+def update_scene_plan(repo,scene_id: str,text: str,expected_revision: int,expected_plan_version_id=_NOT_READ) -> Scene:
+    # MCP-BRIDGE-S19: a plan from the chat names the plan it was written over; checked before any version is saved.
+    _require_read_plan(repo.get_scene(scene_id),expected_revision,expected_plan_version_id)
     unchanged=unchanged_scene_text(repo,scene_id,'plan',text,expected_revision)
     if unchanged:return unchanged[0]
     scene=repo.get_scene(scene_id)
@@ -49,6 +63,7 @@ def update_scene_plan(repo,scene_id: str,text: str,expected_revision: int) -> Sc
         current=repo._active_scene(db,scene_id)
         if current.revision!=expected_revision:
             raise RevisionConflict("Сцену змінено в іншій вкладці")
+        _require_read_plan(current,expected_revision,expected_plan_version_id)
         previous=current.heads.get('plan')
         from .scene_metadata import apply_description
         apply_description(repo,db,current,text)
