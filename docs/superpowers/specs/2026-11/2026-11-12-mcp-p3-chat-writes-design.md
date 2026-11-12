@@ -1,8 +1,8 @@
 # MCP, пакет 3: режим «пише чат» повністю
 
 Дата: 2026-11-12
-Статус: чернетка
-Spec-review: —
+Статус: чекає на затвердження
+Spec-review: failed (author: claude; codex: You’ve hit your usage limit. Upgrade to Pro (https://chatgpt.com/explore/pro), visit https://chatgpt.com/settings/usage to purchase more credits or try again at Nov 15th, 2026 3:17 PM.; agy: canary failed, review not run: Individual quota reached. Please upgrade your subscription to increase your limits. Resets in 38h54m7s.)
 
 Пакет 3 загального дизайну [MCP як пульт Obscura](2026-11-11-mcp-full-toolset-design.md). Спирається на пакети 1, 2, 7, 4 і 5 (21 інструмент після пакета 5).
 
@@ -128,4 +128,4 @@ Spec-review: —
 
 ## Рев'ю спеки
 
-—
+Перехресне рецензування не відбулося: codex вичерпав ліміт використання до 15.11.2026, у agy вичерпано квоту (оновлення приблизно за 39 год). Специфікацію перевірив лише автор (self-review) за чинним кодом: маршрути, `build_context`, `execute_stage`, `commit_stage_result` і стан `alternative` звірено з пробами П2–П4.
