@@ -114,7 +114,10 @@ export function mountModelPicker({host,modelInput,providerInput,baseUrlInput,res
       .sort((a,b)=>{const x=read(a),y=read(b);if(x===y)return 0;if(x===null)return 1;if(y===null)return -1;return (x>y?1:-1)*direction});
     for(const th of heads)if(th.dataset.sort)th.setAttribute('aria-sort',th.dataset.sort===sortKey?(direction>0?'ascending':'descending'):'none');
     const empty=text=>el('tr',{},el('td',{colSpan:5,className:'settings-hint'},text));
+    // Rows are rebuilt on every render; keep keyboard focus on the same model row.
+    const focused=tbody.contains(document.activeElement)?document.activeElement.closest('tr[data-model-id]')?.dataset.modelId:null;
     tbody.replaceChildren(...(!all.length?[empty(t('models.catalog_empty'))]:shown.length?shown.map(row):[empty(t('models.no_match'))]));
+    if(focused)[...tbody.rows].find(tr=>tr.dataset.modelId===focused)?.focus();
     foot.hidden=!all.length;foot.textContent=t('models.shown',{p0:shown.length,p1:all.length});
     toggle.setAttribute('aria-expanded',String(!panel.hidden));renderChosen();
   }

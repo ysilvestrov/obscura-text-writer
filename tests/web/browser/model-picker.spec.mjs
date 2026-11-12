@@ -94,6 +94,12 @@ test('rows are selectable from the keyboard',async({page,request})=>{
   const priv=row(picker,'syn-private');await expect(priv).toHaveAttribute('role','button');await expect(priv).toHaveAttribute('tabindex','0');
   await priv.focus();await page.keyboard.press('Enter');
   await expect(model).toHaveValue('syn-private');await expect(priv).toHaveAttribute('aria-pressed','true');
+  const focusedId=()=>page.evaluate(()=>document.activeElement?.dataset?.modelId??null);
+  expect(await focusedId()).toBe('syn-private');
+  // Enter on a blocked row shows the reason and keeps focus on that row.
+  await row(picker,'syn-tee').focus();await page.keyboard.press('Enter');
+  await expect(picker.locator('[data-model-blocked]')).toContainText('Uncensored');await expect(model).toHaveValue('syn-private');
+  expect(await focusedId()).toBe('syn-tee');
   await expect(picker.locator('[data-model-chosen] .model-badge')).toHaveText(['Uncensored','Private','JSON Schema']);
   await page.locator('[data-ui-locale=en]').click();
   await expect(picker.locator('.model-picker-foot')).toContainText('Showing 3 of 4');
