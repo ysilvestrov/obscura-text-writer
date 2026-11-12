@@ -19,7 +19,10 @@ def settings_for(role_settings: RoleSettings, role: str, story, scene) -> RoleSe
     if role != 'writer' or not uses_low_rating_variant(role_settings, story, scene):
         return role_settings
     variant = role_settings.low_rating_variant
-    provider = variant.provider if variant.timeout is None else variant.provider.model_copy(update={'timeout': variant.timeout})
+    # The response mode stays shared with the main writer, like the prompt (MODEL-001).
+    provider = variant.provider.model_copy(update={'response_mode': role_settings.provider.response_mode})
+    if variant.timeout is not None:
+        provider = provider.model_copy(update={'timeout': variant.timeout})
     return role_settings.model_copy(update={'provider': provider, 'context_tokens': variant.context_tokens,
         'max_output_tokens': variant.max_output_tokens, 'max_input_chars': variant.max_input_chars,
         'temperature': variant.temperature, 'low_rating_variant': None})

@@ -170,7 +170,11 @@
         "tests/authoring/test_role_profiles.py::test_profile_v1_with_variant_is_rejected",
         "tests/authoring/test_role_profiles.py::test_profile_variant_on_other_role_is_rejected",
         "tests/mcp/test_bridge_settings.py::test_update_settings_keeps_the_writer_low_rating_variant",
-        "tests/web/test_writer_variant_ui.py::test_writer_variant_payload_and_texts"
+        "tests/web/test_writer_variant_ui.py::test_writer_variant_payload_and_texts",
+        "tests/generation/test_role_routing.py::test_routed_provider_keeps_the_main_response_mode",
+        "tests/generation/test_role_routing.py::test_rewrite_context_routes_to_the_variant",
+        "tests/generation/test_role_routing.py::test_fingerprint_settings_of_an_unrouted_variant_writer_have_no_variant_key",
+        "tests/generation/test_readiness.py::test_resume_preview_rejects_empty_variant_model_for_a_later_draft_task"
       ],
       "manual": {
         "procedure": "docs/verification/manual.md#writer-variant-browser",

@@ -10,6 +10,7 @@ from storygen.application.settings import AppSettings
 from storygen.authoring.blueprints import save_role_settings
 from storygen.domain import ContentRating, SceneCreate, StoryCreate
 from storygen.generation.context import build_context
+from storygen.generation.assisted_writing import build_rewrite_context
 from storygen.generation.pipeline import generate_scene
 from storygen.generation.role_routing import VARIANT_WRITER_ONLY, WRITER_STAGES, settings_for, uses_low_rating_variant
 from storygen.generation.stages import execute_stage
@@ -233,3 +234,40 @@ def test_shared_provider_rejects_variant_for_other_roles(tmp_path):
         assert response.status_code == 400 and VARIANT_WRITER_ONLY in response.text
         assert c.get(f'/api/stories/{sid}/settings').json()['story']['revision'] == revision  # Nothing written.
         assert c.put(f'/api/stories/{sid}/settings/shared-provider', json={**body, 'role': 'writer'}).status_code == 200
+
+
+@pytest.mark.req('MODEL-001')
+def test_routed_provider_keeps_the_main_response_mode():
+    for main_mode, variant_mode in (('json_schema', 'prompt_json'), ('prompt_json', 'json_schema')):
+        main = ProviderSettings(provider='local', model='local/main', response_mode=main_mode)
+        low = ProviderSettings(provider='openrouter', model='openrouter/x', response_mode=variant_mode)
+        role = RoleSettings(provider=main, low_rating_variant=RoleVariant(provider=low, context_tokens=16384, max_output_tokens=1024))
+        routed = settings_for(role, 'writer', story(0, 0, 0), scene(None))
+        assert routed.provider.model == 'openrouter/x' and routed.provider.response_mode == main_mode
+
+
+@pytest.mark.req('MODEL-001')
+def test_rewrite_context_routes_to_the_variant(rewrite_case):
+    repo, item, _, _, _, request = rewrite_case
+    role = writer_with_variant(main='local/main', low='local/low')
+    story_id = item.story_id
+    save_role_settings(repo, story_id, 'writer', role, repo.get_story(story_id).revision)
+    repo.update_story_rating(story_id, R(0, 1, 1), repo.get_story(story_id).revision)
+    low = build_rewrite_context(repo, request)
+    assert (low.settings.provider.model, low.settings.context_tokens, low.settings.max_output_tokens) == ('local/low', 16384, 1024)
+    repo.update_scene_rating(item.id, R(0, 2, 0), repo.get_scene(item.id).revision)
+    high = build_rewrite_context(repo, request)
+    assert high.settings.provider.model == 'local/main' and high.settings.context_tokens == 8192
+
+
+@pytest.mark.req('MODEL-001')
+def test_fingerprint_settings_of_an_unrouted_variant_writer_have_no_variant_key(tmp_path, monkeypatch):
+    from storygen.generation import context as module
+    repo, item = make_repo(tmp_path, R(0, 2, 0))  # An axis at 2: the variant is not routed, the main model writes.
+    seen = []
+    real = module.json.dumps
+    monkeypatch.setattr(module.json, 'dumps', lambda obj, *a, **k: (seen.append(obj), real(obj, *a, **k))[1])
+    context = build_context(repo, item.id, 'draft', writer_with_variant(main='local/main', low='local/low'))
+    assert context.settings.provider.model == 'local/main'
+    payloads = [o['settings'] for o in seen if isinstance(o, dict) and 'settings' in o and 'system' in o]
+    assert len(payloads) == 1 and 'low_rating_variant' not in payloads[0]

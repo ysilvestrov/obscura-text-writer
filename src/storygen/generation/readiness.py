@@ -229,6 +229,8 @@ def pending_preview(repo,run):
                 name=STAGE_ROLES[task['stage']]
                 if name not in settings or not settings[name].provider.model.strip():raise ValueError('Роль не налаштовано: '+name)
                 role=settings[name]
+                if name=='writer' and task['stage'] in WRITER_STAGES and role.low_rating_variant is not None and not role.low_rating_variant.provider.model.strip():
+                    raise ValueError('Не задано модель письменника для сцен 0–1')
                 validate_role_prompt(repo,run.story_id,task['stage'],role)
                 prompt_id=role.prepare_prompt_version_id if task['stage']=='prepare' else role.prompt_version_id
                 if prompt_id:
