@@ -13,6 +13,7 @@ from fastapi.templating import Jinja2Templates
 
 from ..application.settings import AppSettings
 from ..domain import RevisionConflict, StorageCorruption
+from .bridge_marker import BridgeForbidden
 from ..storage.repository import Repository
 from ..generation.worker import RunCoordinator
 
@@ -74,6 +75,10 @@ def create_app(settings: AppSettings, *, gateway_factory=None,evaluator_factory=
     @app.exception_handler(RevisionConflict)
     async def conflict(request,exc):
         return error_response(request,str(exc),409)
+
+    @app.exception_handler(BridgeForbidden)
+    async def bridge_forbidden(request,exc):
+        return error_response(request,str(exc),403)
 
     @app.exception_handler(StorageCorruption)
     async def corrupt(request,exc):

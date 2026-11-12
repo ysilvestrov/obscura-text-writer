@@ -130,6 +130,19 @@ def update_story_language(repo,story_id: str,language,expected_revision: int) ->
     return story
 
 
+def update_writing_mode(repo,story_id: str,writing_mode,expected_revision: int) -> Story:
+    """WRITING-MODE-S02: texts and running runs stay as they are; only later chat writes are checked."""
+    with repo.db.connection() as db:
+        db.execute("BEGIN IMMEDIATE")
+        story=repo._active_story(db,story_id)
+        if story.revision!=expected_revision:
+            raise RevisionConflict("Твір уже змінено")
+        if story.writing_mode==writing_mode:return story
+        story=story.model_copy(update={'writing_mode':writing_mode,'revision':story.revision+1})
+        repo._save_story(db,story)
+    return story
+
+
 SAVE_LIMIT='У цьому виданні Obscura рівень {n} для осі «{axis}» недоступний: найвищий дозволений — {max}.'
 
 

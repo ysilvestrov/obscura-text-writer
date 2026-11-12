@@ -65,6 +65,10 @@ class Repository:
         from .authoring import story_language_locked
         return story_language_locked(self, story_id)
 
+    def update_writing_mode(self, story_id, writing_mode, expected_revision):
+        from .authoring import update_writing_mode
+        return update_writing_mode(self, story_id, writing_mode, expected_revision)
+
     def update_story_language(self, story_id, language, expected_revision):
         from .authoring import update_story_language
         return update_story_language(self, story_id, language, expected_revision)
