@@ -1,7 +1,7 @@
 # MCP, пакет 2: початок твору з чату
 
 Дата: 2026-11-11
-Статус: чекає на затвердження
+Статус: затверджено 2026-11-12
 Spec-review: codex/gpt-6.1-sol @ 8910af6 (author: claude) — 3 findings: 3 fixed, 0 rejected
 
 Пакет 2 загального дизайну [MCP як пульт Obscura](2026-11-11-mcp-full-toolset-design.md). Спирається на пакет 1 ([читання текстів сцени](2026-11-11-mcp-p1-scene-texts-design.md)): ідентифікатор поточного плану сцени чат бере з `get_scene_text`.
