@@ -32,7 +32,7 @@ Venice lists all online models, including those without Uncensored, but such a m
 
 ### JSON Schema mode
 
-If a role or connection uses the **JSON Schema** response mode, the JSON Schema filter is on and locked, and models without schema support are visible but cannot be chosen. Changing the response mode rebuilds the list at once. If the already chosen model does not support JSON Schema, the form will not save, and the server also rejects such a save with an explanation: choose another model or the "JSON by prompt" mode. If the catalog is unavailable or support is unknown, saving is allowed and the app makes the final check before the call. In "JSON by prompt" mode the filter is ordinary and optional.
+If a role or connection uses the **JSON Schema** response mode, the JSON Schema filter is on and locked, and models the catalog marks as lacking schema support are visible but cannot be chosen. Models with unknown support (for example, all local ones) can be chosen and saved; a hint beside them says "JSON Schema support is unknown: check the model yourself." Changing the response mode rebuilds the list at once. If the already chosen model does not support JSON Schema, the form will not save, and the server also rejects such a save with an explanation: choose another model or the "JSON by prompt" mode. If the catalog is unavailable or support is unknown, saving is allowed. Before a call the app checks the model against the catalog only for Venice; for OpenRouter and local models check schema support yourself. In "JSON by prompt" mode the filter is ordinary and optional.
 
 ## Call budget
 

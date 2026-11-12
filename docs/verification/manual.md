@@ -259,7 +259,7 @@ SECURITY-002-S06. Автоматична частина — Playwright `tests/we
 <a id="model-picker-browser"></a>
 ## Каталог моделей у браузері
 
-MODEL-005-S01, MODEL-005-S02. Автоматична частина — Playwright `tests/web/browser/model-picker.spec.mjs` (шість cases на desktop і mobile: позначки й типовий фільтр приватності, режим JSON Schema із заблокованим фільтром, Venice-модель без Uncensored, ручний ID поза каталогом, очищення списку після зміни провайдера, вибір рядка з клавіатури): `node frontend/node_modules/@playwright/test/cli.js test tests/web/browser/model-picker.spec.mjs --config frontend/playwright.config.mjs`. Цей зв’язок не є доказом виконання; фактичний запуск фіксується окремо.
+MODEL-005-S01, MODEL-005-S02. Автоматична частина — Playwright `tests/web/browser/model-picker.spec.mjs` (дев’ять cases на desktop і mobile: позначки й типовий фільтр приватності, режим JSON Schema із заблокованим фільтром, Venice-модель без Uncensored, ручний ID поза каталогом, очищення списку після зміни провайдера, вибір рядка з клавіатури, локальна модель із невідомою підтримкою в режимі JSON Schema вибирається й зберігається, сортування з `aria-sort`, рядки не змінюють модель під час збереження форми): `node frontend/node_modules/@playwright/test/cli.js test tests/web/browser/model-picker.spec.mjs --config frontend/playwright.config.mjs`. Цей зв’язок не є доказом виконання; фактичний запуск фіксується окремо.
 
 <a id="desktop-launcher"></a>
 ## Запуск без консолі та значок у треї
