@@ -11,7 +11,7 @@
 
 ### Що зміниться для тебе
 
-- Закріпленими вгорі лишаються тільки вкладки етапів і рядок «назва етапу · Збережено · Зберегти · основна дія» з рядком моделі під кнопкою.
+- Закріпленими вгорі лишаються тільки вкладки етапів і рядок «назва етапу · Збережено · Зберегти · основна дія» з рядком моделі під кнопкою. Попередження «матеріал змінено ззовні» з кнопкою оновлення теж лишається вгорі: його треба бачити під час набору тексту. Зазвичай воно сховане.
 - Підказка «Попередній результат залишиться в історії…», стан сцени, рядок запуску з подробицями, кнопки «Скасувати / Продовжити…», «Параметри запуску» і картка послідовної перевірки, що чекає на тебе, переходять під редактор і прокручуються разом зі сторінкою. Набір кнопок для кожного стану запуску не змінюється.
 - Коли запуск чекає твого рішення, у закріпленому рядку з'являється посилання «Потрібне рішення ↓». Воно прокручує до кнопок і ставить фокус на перший доступний варіант. Так само посилання з'являється, коли під редактором чекає картка послідовної перевірки.
 - У закріпленому рядку з'являється кнопка-іконка «На весь екран». Вона розгортає редактор на все вікно застосунку: ховаються шапка застосунку й твору, бокові панелі, вкладки, основна дія й усе під редактором. Лишається тонкий рядок «назва етапу · Збережено · Зберегти · Згорнути». Вийти можна цією кнопкою або клавішею Esc. Режим діє для будь-якого етапу: і для звичайного поля (План, Завдання), і для редактора з форматуванням (Чернетка, Проза).
@@ -57,7 +57,7 @@
 
 Один PR на `main`.
 
-- `templates/story.html`: у `.workspace-sticky` лишаються `#mode-tabs`, `.editor-toolbar` і `#workspace-compact-status`. Нові елементи тулбару: посилання `a#run-jump.run-jump` (`href="#workspace-status-row"`, приховане за замовчуванням) і кнопка `button#workspace-focus.secondary.icon-button` з іконкою, `aria-pressed`, `aria-label` і `title`. `#workspace-hint`, `#workspace-status-row` (зі всім вмістом) і `#review-attention` переносяться одразу після `section#workspace-material`, у тому самому порядку: підказка, рядок стану, картка перевірки.
+- `templates/story.html`: у `.workspace-sticky` лишаються `#mode-tabs`, `.editor-toolbar` і `#workspace-compact-status`; `p#external-change` виноситься з рядка стану й стає окремим рядком закріпленої області одразу після тулбару (ID, вміст і логіка `scene-sync-workspace.js` без змін). Нові елементи тулбару: посилання `a#run-jump.run-jump` (`href="#workspace-status-row"`, приховане за замовчуванням) і кнопка `button#workspace-focus.secondary.icon-button` з іконкою, `aria-pressed`, `aria-label` і `title`. `#workspace-hint`, `#workspace-status-row` (з рештою вмісту: стан сцени, `#workspace-origin`, `#run-status`, `#run-actions`, `#workspace-error-settings`, `#run-options`) і `#review-attention` переносяться одразу після `section#workspace-material`, у тому самому порядку: підказка, рядок стану, картка перевірки.
 - `static/workspace-focus.js` (новий): `installWorkspaceFocus(root)`. Клік по `#workspace-focus` перемикає клас `focus-mode` на `#workspace` і `aria-pressed`, змінює підпис («На весь екран» ↔ «Згорнути») і повертає фокус у редактор (`textEditor.focus()`). Esc на `document` виходить з режиму, якщо подія не `defaultPrevented` і немає відкритого `dialog[open]` чи popover; після виходу фокус лишається на редакторі. Режим не пишеться в сховище.
 - `static/run-jump.js` (новий): `runJumpVisible(runState, reviewWaiting)` — чиста функція, що повертає `true` для станів `needs_review`, `alternative`, `paused`, `failed`, `interrupted` або коли `reviewWaiting`. `installRunJump()` оновлює `a#run-jump.hidden` з `render()` у `workspace-route.js` (стан — `state.workspaceRun?.state`, картка — `!#review-attention.hidden`). Клік прокручує до `#workspace-status-row` (`scrollIntoView({block:'start'})`) і ставить фокус на першу ввімкнену кнопку `#run-actions`, або на `#review-attention`, якщо кнопок немає.
 - `static/icons/maximize.svg`, `static/icons/minimize.svg` (Lucide `maximize-2`/`minimize-2`, ISC, як решта іконок).
@@ -72,6 +72,8 @@
   - R20-WORKSPACE-S04: «над редактором» → «під редактором»; поведінка підсумку без змін.
   - Новий Scenario R20-WORKSPACE-S05 — режим «На весь екран».
   - RUN-RECOVERY-UI: місце показу дій — рядок стану під редактором.
+  - Опис походження версії (`#workspace-origin`): «рядок стану над редактором» → «під редактором».
+  - R20-WORKSPACE: попередження про зовнішню зміну (`#external-change`) лишається в закріпленій області окремим рядком (зараз SPEC.MD його розміщення не описує).
   - IMPACT-UI-S03, якщо згадує «над редактором», — уточнення місця.
   - `docs/verification/traceability.json`: S03, S04, S05 з тестами.
 - Тести:
@@ -92,6 +94,7 @@
 - **П1.** `templates/story.html:5-6`: `<div class="workspace-sticky">` містить `#mode-tabs`, `.editor-toolbar`, `#workspace-hint`, `#workspace-compact-status` і `section#workspace-status-row` з `#run-status`, `#run-actions`, `#workspace-error-settings`, `details#run-options`. `app.css:367`: `.workspace-sticky { position: sticky; top: 0; z-index: 10 }`. `#review-attention` іде одразу після закріпленої області, перед `#workspace-material`.
 - **П2.** `app.css:115`: `.editor-panel textarea { min-height: 54vh }`; `rich-editor.css:7`: `.rich-text-host .ProseMirror { height: 54dvh }`. `text-editor.js:24-27`: rich-редактор (`.rich-text-surface`) монтується після textarea лише для `draft`/`prose`; для інших матеріалів видно textarea.
 - **П3.** SPEC.MD, абзац перед R20-WORKSPACE-S03: «Закріплена область над редактором SHALL містити рядок стану (#89)…»; RUN-RECOVERY-UI: «Місце показу дій відновлення — рядок стану над редактором (R20-WORKSPACE-S03, #89)». Тести `test_workspace_layout_ui.py:35-39` і `workspace-layout.spec.mjs:7` перевіряють це розміщення.
+- **П5.** `templates/story.html:6`: `#external-change` і `#workspace-origin` лежать у `#workspace-status-row`; SPEC.MD (опис походження версій) називає `#workspace-origin` частиною «рядка стану над редактором».
 - **П4.** Esc уже обробляють `author-comments.js:84` (popover коментаря) і `ghost-mode.js:139`; обидва викликають `preventDefault()`, тож перевірка `defaultPrevented` їх не перебиває.
 
 ## Заявка → доказ
