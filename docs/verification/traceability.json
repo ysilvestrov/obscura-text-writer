@@ -4428,9 +4428,9 @@
     {
       "id": "MCP-BRIDGE-S06",
       "requirement": "MCP-BRIDGE",
-      "scope": "Рівно сім інструментів; стан сцен тим самим словником, що список сцен; посилання на сцену в next_steps. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "scope": "Рівно двадцять п’ять інструментів; стан сцен тим самим словником, що список сцен; посилання на сцену в next_steps. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
       "tests": [
-        "tests/mcp/test_bridge.py::test_tool_list_is_exactly_the_twenty_three_tools",
+        "tests/mcp/test_bridge.py::test_tool_list_is_exactly_the_twenty_five_tools",
         "tests/mcp/test_bridge.py::test_get_story_reports_scene_states_with_the_ui_vocabulary",
         "tests/mcp/test_bridge.py::test_next_steps_points_to_the_scene_in_obscura",
         "tests/mcp/test_bridge.py::test_identifiers_cannot_reach_other_endpoints",
@@ -4844,6 +4844,56 @@
         "tests/generation/test_chat_stages.py::test_incompatible_writer_prompt_does_not_break_writing_context",
         "tests/mcp/test_bridge_chat_stages.py::test_scene_context_carries_instructions",
         "tests/mcp/test_bridge_chat_stages.py::test_next_steps_suggests_memory_after_prose"
+      ]
+    },
+    {
+      "id": "MCP-BRIDGE-S47",
+      "requirement": "MCP-BRIDGE",
+      "scope": "Перегляд без confirm: готовність, моделі, виклики, бюджет; черга порожня. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/mcp/test_bridge_runs.py::test_start_run_without_confirm_only_previews"
+      ]
+    },
+    {
+      "id": "MCP-BRIDGE-S48",
+      "requirement": "MCP-BRIDGE",
+      "scope": "Запуск етапу й пропозиції картки з origin=mcp і лімітом; неготовий етап і пам’ять із підтвердженням відхилено; next_steps за режимом. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/mcp/test_bridge_runs.py::test_start_run_with_confirm_queues_a_marked_run",
+        "tests/mcp/test_bridge_runs.py::test_unready_run_is_refused_with_reason",
+        "tests/mcp/test_bridge_runs.py::test_memory_needing_author_approval_is_refused_with_advice",
+        "tests/mcp/test_bridge_runs.py::test_publication_suggestion_run_and_result",
+        "tests/mcp/test_bridge_runs.py::test_next_steps_follow_the_story_mode",
+        "tests/web/test_bridge_runs.py::test_bridge_stage_run_in_obscura_mode_is_marked"
+      ]
+    },
+    {
+      "id": "MCP-BRIDGE-S49",
+      "requirement": "MCP-BRIDGE",
+      "scope": "Режим chat: відмова мосту 409 у сервері й інструменті, запуск автора проходить; невідома дія без запиту. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/web/test_bridge_runs.py::test_chat_mode_refuses_bridge_runs_but_not_the_author",
+        "tests/mcp/test_bridge_runs.py::test_chat_mode_and_unknown_action_are_refused"
+      ]
+    },
+    {
+      "id": "MCP-BRIDGE-S50",
+      "requirement": "MCP-BRIDGE",
+      "scope": "get_run: стан, дія, спроби, пропозиції; скасування власного запуску; чужий — 403 без зміни стану. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/mcp/test_bridge_runs.py::test_start_run_with_confirm_queues_a_marked_run",
+        "tests/mcp/test_bridge_runs.py::test_get_run_cannot_cancel_authors_run",
+        "tests/web/test_bridge_runs.py::test_bridge_cancels_only_its_own_run_and_never_pauses"
+      ]
+    },
+    {
+      "id": "MCP-BRIDGE-S51",
+      "requirement": "MCP-BRIDGE",
+      "scope": "Інші режими запуску й шляхи керування від моста — 403; переклад відмов. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/web/test_bridge_runs.py::test_bridge_may_not_start_other_run_kinds",
+        "tests/web/test_bridge_runs.py::test_bridge_cancels_only_its_own_run_and_never_pauses",
+        "tests/web/test_bridge_runs.py::test_run_refusals_are_translated"
       ]
     },
     {

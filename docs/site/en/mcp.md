@@ -6,7 +6,7 @@ The link is `storygen-mcp`, a small program the chat client starts by itself. It
 
 ## What the chat can do
 
-The chat gets twenty-three tools:
+The chat gets twenty-five tools:
 
 - **story list** and **story overview**: scenes, their order and their state, in the same words as the scene list, plus the story's rating, target length and characters;
 - **new story**: a title, a language, a target length, the story mode and, optionally, an age rating;
@@ -28,7 +28,9 @@ The chat gets twenty-three tools:
 - **settings changes**: chosen fields of the writing profile or of one role, over what the chat has read;
 - **role preset**: a preview and, with your consent in the chat, applying a saved preset;
 - **stage task**: the instructions and material for the scene brief, editing or memory — the same as an Obscura model would get;
-- **stage result**: the chat's answer to a stage task, which Obscura checks the same way as its own model's answer.
+- **stage result**: the chat's answer to a stage task, which Obscura checks the same way as its own model's answer;
+- **run**: in an "Obscura writes" story, a preview and, with your consent in the chat, an Obscura model run of one scene stage or a publication card suggestion;
+- **run status**: what is happening with a run now, its result, and cancelling a run the chat started.
 
 The chat cannot delete stories or scenes, move them to the trash, reorder scenes, run generation, synopsis suggestions or the evaluator, or change prompts, the evaluator, the budget and keys.
 
@@ -135,8 +137,20 @@ The chat can change the genre, tone, point of view, style rules and story length
 Each story has a mode: **The chat writes** or **Obscura writes**. A story created by the chat has the **The chat writes** mode by default; the new story form in Obscura has **Obscura writes** selected by default. The story list and the story details in the chat show the mode.
 
 - **The chat writes**: the chat writes drafts and goes through the scene stages itself, as described below.
-- **Obscura writes**: Obscura models write the texts. The chat still reads the story, imports the plan and characters, changes the settings and the publication, but Obscura refuses a draft or a stage result from it with the message: The story is in the "Obscura writes" mode: the chat does not write texts — start the stage in Obscura.
+- **Obscura writes**: Obscura models write the texts. The chat still reads the story, imports the plan and characters, changes the settings and the publication, but Obscura refuses a draft or a stage result from it with the message: The story is in the "Obscura writes" mode: start the stage with start_run. Instead, the chat can start the stage with an Obscura model (see below).
+- In the **The chat writes** mode it is the other way round: the chat cannot start Obscura models, it writes itself.
 - Only you change the mode: in the story settings, **Writing** section, the **Who writes the texts** field. The chat cannot change it. Changing the mode does not touch texts already written or stages already started.
+
+## Obscura runs from the chat
+
+In a story with the **Obscura writes** mode the chat can ask Obscura to run one scene stage — the scene brief, the draft, editing or memory — or to suggest a publication card. This is an ordinary Obscura run: your role models, the story budget and the same readiness check as for the buttons.
+
+- First the chat shows a preview: which models will work, how many calls there will be, warnings and the remaining story budget. It starts the run only after your consent in the chat.
+- **A run costs money** at the rates of the role models. Cloud providers need a story budget limit, as for the buttons. The chat can pass a limit for one run. Obscura does not estimate the amount in advance: the preview shows the models and the budget.
+- The run goes in the background. The chat checks its status with a separate request; it reads the finished text like other scene texts, and card suggestions come with the run status.
+- The chat can cancel only a run it started itself. Pausing, resuming, your runs, a whole scene, the rest of the story, preparation, evaluation, the impact check and the book review stay with you: Obscura refuses such requests from the chat.
+- If the previous memory needs your confirmation, the memory stage does not start: the chat advises you to confirm it in Obscura.
+- You accept changes that wait for your decision in Obscura, as after a run started with a button.
 
 ## Scene stages from the chat
 

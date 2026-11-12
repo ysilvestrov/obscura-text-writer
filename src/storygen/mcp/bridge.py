@@ -10,6 +10,7 @@ import json
 import os
 import re
 import stat
+import uuid
 from typing import Any, Literal
 from urllib.parse import urlsplit
 
@@ -25,9 +26,12 @@ FALLBACK_CLIENT = 'MCP client'
 TOOLS = ('list_stories', 'get_story', 'get_scene_context', 'get_scene_text', 'import_plan_and_characters', 'save_draft', 'next_steps',
          'create_story', 'get_templates', 'update_story', 'add_scene', 'update_scene', 'open_ghost_mode',
          'get_publication', 'update_publication', 'add_signature', 'upload_cover', 'export_book',
-         'get_settings', 'update_settings', 'apply_role_preset', 'get_stage_task', 'save_stage_result')
+         'get_settings', 'update_settings', 'apply_role_preset', 'get_stage_task', 'save_stage_result', 'start_run', 'get_run')
 MATERIALS = ('plan', 'brief', 'draft', 'prose', 'memory')
 STAGES = ('brief', 'edit', 'memory')
+RUN_ACTIONS = ('brief', 'draft', 'edit', 'memory', 'publication_suggest')
+CHAT_WRITES = 'Твір у режимі «пише чат»: напишіть текст самі (get_stage_task, save_draft)'
+MEMORY_APPROVAL = 'Попередня пам’ять потребує вашого підтвердження в Obscura: відкрийте сцену й підтвердьте використання пам’яті'
 LANGUAGES = ('uk', 'en')
 PUBLICATION_FIELDS = tuple(PublicationData.model_fields)
 EXPORT_FORMATS = ('fb2', 'epub', 'pdf', 'md', 'txt')
@@ -59,7 +63,8 @@ INSTRUCTIONS = ('Obscura — локальний редактор історій.
                 'Етапи brief, edit і memory: get_stage_task (інструкції й матеріал, як для моделі Obscura) → відповідь у форматі '
                 'result_format → save_stage_result з task_fingerprint; інструкції чернетки — поле instructions у get_scene_context. '
                 'Режим твору (writing_mode у get_story): «chat» — тексти пише чат; «obscura» — тексти пишуть моделі Obscura, '
-                'і save_draft та етапи з чату відхиляються. Режим змінює лише автор у налаштуваннях твору.')
+                'і save_draft та етапи з чату відхиляються, а етап чи пропозицію картки запускає start_run (спершу перегляд без confirm, '
+                'запуск — лише після згоди автора; стан — get_run). Режим змінює лише автор у налаштуваннях твору.')
 
 
 def check_url(url: str) -> str:
@@ -696,18 +701,92 @@ def build_server(http: httpx.Client, client_name: str | None = None) -> MCPServe
             raise ToolError(f'Obscura відповіла {response.status_code}: {_detail(response)}')
         return response.json()
 
+    def usd(nanos: Any) -> str | None:
+        return None if nanos is None else f'{int(nanos) / 1_000_000_000:.4f}'
+
+    @server.tool()
+    def start_run(story_id: str, action: str, scene_id: str | None = None, confirm: bool = False,
+                  budget_limit_usd: str | None = None) -> dict[str, Any]:
+        """Запустити моделлю Obscura один етап сцени (brief, draft, edit, memory) або пропозицію картки публікації
+        (publication_suggest, без scene_id). Лише у творі з режимом «пише Obscura». КОШТУЄ ГРОШЕЙ за тарифами моделей ролей.
+        Без confirm нічого не запускає й повертає перегляд: готовність, моделі, кількість викликів, попередження й бюджет твору.
+        Покажіть перегляд авторові й дочекайтеся його згоди в чаті; лише тоді викличте з confirm=true. budget_limit_usd — ліміт
+        цього запуску в доларах (рядок, напр. "0.50"). Запуск іде у фоні: стан і результат — get_run(run_id); результат
+        етапу читайте get_scene_text, пропозиції картки — у get_run. Кожен виклик з confirm=true створює новий запуск."""
+        if action not in RUN_ACTIONS:
+            raise ToolError('Невідома дія; можливі: ' + ', '.join(RUN_ACTIONS))
+        story = identifier(story_id)
+        if action == 'publication_suggest':
+            if scene_id is not None:
+                raise ToolError('publication_suggest стосується твору: не передавайте scene_id')
+        elif scene_id is None:
+            raise ToolError('Для етапу сцени потрібен scene_id')
+        if request('GET', f'/api/stories/{story}')['story'].get('writing_mode', 'chat') != 'obscura':
+            raise ToolError(CHAT_WRITES)
+        if action == 'publication_suggest':
+            ready = request('GET', f'/api/stories/{story}/publication/suggestions/readiness')
+        else:
+            ready = request('GET', f'/api/stories/{story}/readiness',
+                            params={'scene_id': identifier(scene_id), 'operation': action})['operations'][action]
+        budget = request('GET', f'/api/stories/{story}/budget')
+        policy = budget.get('policy') or {}
+        preview = {'ready': ready.get('ready'), 'reason': ready.get('reason'), 'roles': ready.get('roles') or {},
+                   'calls': ready.get('calls'), 'warnings': ready.get('warnings') or [],
+                   'budget': {'limit_usd': usd(budget.get('limit_nanos')), 'spent_usd': usd(budget.get('exposure_nanos')),
+                              'available_usd': usd(budget.get('available_nanos')),
+                              'default_run_limit_usd': usd(policy.get('default_run_limit_nanos'))}}
+        if not confirm:
+            return {'started': False, 'preview': preview,
+                    'message': 'Покажіть перегляд авторові; запуск — лише після його згоди, викликом з confirm=true'}
+        if not ready.get('ready'):
+            raise ToolError(MEMORY_APPROVAL if ready.get('can_confirm') else f"Запуск не готовий: {ready.get('reason')}")
+        if action == 'publication_suggest':
+            body: dict[str, Any] = {'story_id': story, 'mode': 'publication_suggest'}
+        else:
+            body = {'story_id': story, 'scene_id': identifier(scene_id), 'mode': 'stage', 'stage': action}
+        if budget_limit_usd is not None:
+            body['budget_limit_usd'] = budget_limit_usd
+        run = request('POST', '/api/runs', json={'request_id': 'mcp-' + uuid.uuid4().hex, 'request': body})
+        return {'started': True, 'run_id': run['id'], 'state': run['state'], 'preview': preview}
+
+    @server.tool()
+    def get_run(run_id: str, cancel: bool = False) -> dict[str, Any]:
+        """Стан запуску Obscura: state (queued, running, completed, failed, cancelled…), помилка, спроби (state, error,
+        result_version_id), для publication_suggest — актуальні пропозиції картки. Грошей не коштує. Довгий запуск не чекайте в
+        одному виклику: перевіряйте стан повторно. cancel=true спершу скасовує запуск — лише той, що почав чат."""
+        run_path = f'/api/runs/{identifier(run_id)}'
+        if cancel:
+            request('POST', f'{run_path}/cancel', json={})
+        data = request('GET', run_path)
+        run = data['run']
+        mode = run['request'].get('mode')
+        result: dict[str, Any] = {
+            'run_id': run['id'], 'story_id': run['story_id'], 'state': run['state'], 'error': run.get('error'),
+            'warning': run.get('warning'), 'action': run['request'].get('stage') if mode == 'stage' else mode,
+            'scene_id': run['request'].get('scene_id'), 'origin': run.get('origin'),
+            'attempts': [{'stage': a.get('stage'), 'state': a.get('state'), 'error': a.get('error'),
+                          'result_version_id': a.get('result_version_id')} for a in data.get('attempts') or []]}
+        if mode == 'publication_suggest':
+            suggestions = request('GET', f"/api/stories/{identifier(run['story_id'])}/publication/suggestions")
+            result['suggestions'] = {'proposals': suggestions.get('proposals') or [], 'history': suggestions.get('history') or []}
+        return result
+
     @server.tool()
     def next_steps(scene_id: str) -> str:
         """Що робити далі в Obscura після збереження чернетки."""
         context = request('GET', f'/api/scenes/{identifier(scene_id)}/writing-context')
-        url = f"{base}/stories/{identifier(context['story_id'])}?scene={scene_id}&material=draft"
+        story_id = identifier(context['story_id'])
+        url = f"{base}/stories/{story_id}?scene={scene_id}&material=draft"
+        obscura_writes = request('GET', f'/api/stories/{story_id}')['story'].get('writing_mode') == 'obscura'
+        stages = ("4. Твір у режимі «пише Obscura»: етапи запускає start_run(action='brief'|'draft'|'edit'|'memory') — спершу "
+                  "перегляд без confirm, запуск лише після згоди автора (коштує грошей); стан і результат — get_run.") if obscura_writes else (
+                  "4. Етапи можна пройти й з чату: get_stage_task(stage='brief') — завдання, get_stage_task(stage='edit') — редактура "
+                  "чернетки, get_stage_task(stage='memory') — пам’ять затвердженої прози; відповідь зберігає save_stage_result.")
         return (f'Відкрийте сцену в Obscura: {url}\n'
                 '0. Щоб доопрацювати чернетку з чату, спершу прочитайте її (get_scene_text) і пишіть поверх прочитаного.\n'
                 '1. Перегляньте чернетку в редакторі; попередня версія лишається в історії версій.\n'
                 '2. За потреби доопрацюйте текст у режимі Ghost Mode: open_ghost_mode дасть посилання, що відкриє його одразу.\n'
-                '3. Коли текст готовий, затвердіть прозу й оновіть пам’ять сцени, щоб наступні сцени її бачили.\n'
-                "4. Етапи можна пройти й з чату: get_stage_task(stage='brief') — завдання, get_stage_task(stage='edit') — редактура "
-                "чернетки, get_stage_task(stage='memory') — пам’ять затвердженої прози; відповідь зберігає save_stage_result.")
+                '3. Коли текст готовий, затвердіть прозу й оновіть пам’ять сцени, щоб наступні сцени її бачили.\n' + stages)
 
     return server
 
