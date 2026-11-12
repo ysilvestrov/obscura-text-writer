@@ -11,7 +11,9 @@ UK_ONLY = frozenset({'uk'})
 PROMPTS: dict[str, tuple[str, str, frozenset]] = {
     'prepare_v1': ('storygen.generation', 'prepare', BOTH),
     'brief_v2': ('storygen.generation', 'brief', BOTH),
+    'brief_v3': ('storygen.generation', 'brief', BOTH),
     'writer_v1': ('storygen.generation', 'writer', BOTH),
+    'writer_v2': ('storygen.generation', 'writer', BOTH),
     'editor_v1': ('storygen.generation', 'editor', BOTH),
     'copyeditor_v1': ('storygen.generation', 'copyeditor', BOTH),
     'rewrite_editor_v1': ('storygen.generation', 'rewrite_editor', BOTH),

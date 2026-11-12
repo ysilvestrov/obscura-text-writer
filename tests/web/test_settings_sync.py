@@ -1,4 +1,4 @@
-"""MCP-BRIDGE package 5: the open settings page notices changes made elsewhere (S37)."""
+"""MCP-BRIDGE package 5: the open settings page notices changes made elsewhere (S38)."""
 import shutil
 import subprocess
 from pathlib import Path

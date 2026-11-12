@@ -375,6 +375,32 @@
       ]
     },
     {
+      "id": "CONTEXT-002-S04",
+      "requirement": "CONTEXT-002",
+      "scope": "Примітка «ЗМІНИВСЯ ДЕНЬ» після пам’яті в brief/draft, англійська мітка, відсутність без переходу чи героя. Перевірка зазначеного сценарію; не є доказом літературного допуску.",
+      "tests": [
+        "tests/generation/test_writer_day_change.py::test_day_change_note_follows_memory_in_brief_and_draft",
+        "tests/generation/test_writer_day_change.py::test_no_day_change_note_without_change_or_hero",
+        "tests/generation/test_writer_day_change.py::test_day_change_note_in_english_story"
+      ]
+    },
+    {
+      "id": "CONTEXT-002-S05",
+      "requirement": "CONTEXT-002",
+      "scope": "Селектори дня в знімках brief/draft і застарілість лише за зміни дня сцени порівняння. Перевірка зазначеного сценарію.",
+      "tests": [
+        "tests/generation/test_writer_day_change.py::test_brief_and_draft_go_stale_on_comparison_day_change_only"
+      ]
+    },
+    {
+      "id": "CONTEXT-002-S06",
+      "requirement": "CONTEXT-002",
+      "scope": "Правила ядра у стандартних промптах uk/en, старі версії доступні, промпт не є залежністю. Перевіряє наявність інструкцій, а не якість прози.",
+      "tests": [
+        "tests/generation/test_writer_day_change.py::test_rules_in_builtin_writer_and_brief_prompts"
+      ]
+    },
+    {
       "id": "CONTEXT-003-S01",
       "requirement": "CONTEXT-003",
       "scope": "Застарілість перед початком. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
@@ -2869,7 +2895,8 @@
       "manual": {
         "procedure": "docs/verification/manual.md#r28-preview-wait",
         "reason": "Конкретні автоматизовані desktop/mobile процедури у tests/web/browser/impact.spec.mjs виконуються окремим Playwright runner; фактичний результат у журналі, цей зв’язок не є доказом виконання."
-      }
+      },
+      "tests": []
     },
     {
       "id": "IMPACT-LOCAL-S01",
@@ -4679,6 +4706,14 @@
     {
       "id": "MCP-BRIDGE-S32",
       "requirement": "MCP-BRIDGE",
+      "scope": "Поле day_change у writing-context і селектори дня в MCP-чернетці, без них у ручній. Перевірка зазначеного сценарію.",
+      "tests": [
+        "tests/generation/test_writer_day_change.py::test_mcp_writing_context_has_day_change_and_external_draft_selectors"
+      ]
+    },
+    {
+      "id": "MCP-BRIDGE-S33",
+      "requirement": "MCP-BRIDGE",
       "scope": "get_settings: розділи з відбитками, стан ключа без значення, промпти лише з include_prompts, пресети. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
       "tests": [
         "tests/mcp/test_bridge_settings.py::test_get_settings_of_a_new_story",
@@ -4687,7 +4722,7 @@
       ]
     },
     {
-      "id": "MCP-BRIDGE-S33",
+      "id": "MCP-BRIDGE-S34",
       "requirement": "MCP-BRIDGE",
       "scope": "update_settings: лише названі поля, changed; нова сцена не блокує; зміна розділу після читання без PUT. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
       "tests": [
@@ -4697,7 +4732,7 @@
       ]
     },
     {
-      "id": "MCP-BRIDGE-S34",
+      "id": "MCP-BRIDGE-S35",
       "requirement": "MCP-BRIDGE",
       "scope": "key_env, промпти, classification, невідомі поля без запиту; зміна провайдера зі стандартними ключем і адресою. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
       "tests": [
@@ -4706,7 +4741,7 @@
       ]
     },
     {
-      "id": "MCP-BRIDGE-S35",
+      "id": "MCP-BRIDGE-S36",
       "requirement": "MCP-BRIDGE",
       "scope": "Нова роль без provider/model відхиляється, з ними створюється. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
       "tests": [
@@ -4714,7 +4749,7 @@
       ]
     },
     {
-      "id": "MCP-BRIDGE-S36",
+      "id": "MCP-BRIDGE-S37",
       "requirement": "MCP-BRIDGE",
       "scope": "Пресет: перегляд без змін, застосування з confirm; чужа назва ключа й зміна оцінювача після читання відхиляються. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
       "tests": [
@@ -4724,7 +4759,7 @@
       ]
     },
     {
-      "id": "MCP-BRIDGE-S37",
+      "id": "MCP-BRIDGE-S38",
       "requirement": "MCP-BRIDGE",
       "scope": "Рішення сторінки налаштувань про зміни ззовні й читання вмісту без налаштованого оцінювача. Підключення обробників на сторінці перевірено вручну в браузері. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
       "tests": [
@@ -4732,7 +4767,7 @@
       ]
     },
     {
-      "id": "MCP-BRIDGE-S38",
+      "id": "MCP-BRIDGE-S39",
       "requirement": "MCP-BRIDGE",
       "scope": "Список моделей ролі: фільтр, межа 200, сортування; роль поза переліком чи ненастроєна відхиляється. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
       "tests": [

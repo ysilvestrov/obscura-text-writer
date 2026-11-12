@@ -1,4 +1,4 @@
-"""MCP-BRIDGE package 5: writing and model settings from the chat through the real Obscura app (S32-S36, S38)."""
+"""MCP-BRIDGE package 5: writing and model settings from the chat through the real Obscura app (S33-S37, S39)."""
 import httpx
 import pytest
 

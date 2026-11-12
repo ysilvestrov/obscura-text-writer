@@ -81,7 +81,7 @@ if(root){
   draw();
   watchOutsideChanges();
 }
-// MCP-BRIDGE-S37: on return to the page, pick up settings changed elsewhere (a chat, another window) without touching edits.
+// MCP-BRIDGE-S38: on return to the page, pick up settings changed elsewhere (a chat, another window) without touching edits.
 function watchOutsideChanges(){
   const storyId=document.querySelector('[data-story-id]')?.dataset.storyId;
   if(!storyId)return;

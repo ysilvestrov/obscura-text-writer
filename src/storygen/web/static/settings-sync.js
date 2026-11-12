@@ -1,4 +1,4 @@
-// MCP-BRIDGE-S37: what the open settings page does when it finds changes made elsewhere (a chat, another window).
+// MCP-BRIDGE-S38: what the open settings page does when it finds changes made elsewhere (a chat, another window).
 // Pure: the page reads the settings and the evaluator on return and asks these functions.
 import {settingsSignature} from './settings-state.js';
 

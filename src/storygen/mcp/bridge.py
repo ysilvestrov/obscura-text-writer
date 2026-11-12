@@ -136,7 +136,7 @@ def _detail(response: httpx.Response) -> str:
 
 
 def fingerprint(value) -> str:
-    """MCP-BRIDGE-S33: the content of one settings section, the same way for reading and for the check before a write."""
+    """MCP-BRIDGE-S34: the content of one settings section, the same way for reading and for the check before a write."""
     return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(',', ':'), ensure_ascii=False).encode('utf-8')).hexdigest()
 
 

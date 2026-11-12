@@ -7,7 +7,7 @@ const settings={story:{revision:3,config_revision:1,target_words:7000,language:'
   prepare_prompt:'q',prompt_contracts:{writer:{stage:'draft'}},prepare_prompt_contract:null};
 const evaluator={config:{model:'e'},block:{reason:'x'},revision:4};
 const base=key(settings,evaluator);
-// MCP-BRIDGE-S37: a new scene or a title change moves the story revision but not the settings.
+// MCP-BRIDGE-S38: a new scene or a title change moves the story revision but not the settings.
 assert.equal(key({...settings,story:{...settings.story,revision:9,title:'Other'}},{...evaluator,block:null,revision:5}),base,'revision, title and evaluator block are not settings');
 const reversed=Object.fromEntries(Object.entries(settings).reverse().map(([k,v])=>[k,v&&typeof v==='object'?Object.fromEntries(Object.entries(v).reverse()):v]));
 assert.equal(key(reversed,evaluator),base,'key order does not matter');

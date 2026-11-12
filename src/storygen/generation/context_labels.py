@@ -21,6 +21,11 @@ LABELS: dict[str, dict[str, str]] = {
                           'Одяг, речі при собі й тілесний стан могли застаріти: якщо проза їх не підтверджує, познач unknown із причиною.',
                     'en': 'DAY CHANGED: {before} → {after} ({name})\n'
                           'Clothing, items carried and bodily state may be out of date: if the prose does not confirm them, mark them unknown with a reason.'},
+    # Brief, draft, full edit, rewrite and MCP writing-context: the day change is data, the rules live in the prompts.
+    'writer_day_changed': {'uk': 'ЗМІНИВСЯ ДЕНЬ: {before} → {after} ({name})\n'
+                                 'Одяг, речі при собі й тілесний стан у «ЯДРО СТАНУ» — з попереднього дня й можуть бути вже не чинні.',
+                           'en': 'DAY CHANGED: {before} → {after} ({name})\n'
+                                 'Clothing, items carried and bodily state in "CORE STATE" are from the previous day and may no longer hold.'},
     'allowed_ids': {'uk': 'ДОЗВОЛЕНІ CHARACTER_IDS ДЛЯ НОВИХ СТАНІВ', 'en': 'ALLOWED CHARACTER_IDS FOR NEW STATES'},
     'prose_fragments': {'uk': 'ПОТОЧНА ПРОЗА [version_id={id}] — НУМЕРОВАНІ ФРАГМЕНТИ',
                         'en': 'CURRENT PROSE [version_id={id}] — NUMBERED FRAGMENTS'},
