@@ -213,6 +213,8 @@ def reorder_scenes(repo,story_id: str,scene_ids: list[str],expected_revision: in
         scenes={s.id:s for s in all_scenes if not s.trashed_at}
         if len(scene_ids)!=len(scenes) or set(scene_ids)!=set(scenes):
             raise ValueError("Потрібні всі сцени цього твору рівно один раз")
+        from .book_structure import require_order
+        require_order(story,[scenes[id] for id in scene_ids])
         for scene in scenes.values():
             scene.revision+=1
             scene.needs_review=True
@@ -265,7 +267,7 @@ def _invalidate_later(repo,db,scenes):
 def set_scene_trashed(repo,story_id,scene_id,expected_revision,restore):
     with repo.db.connection() as db:
         db.execute('BEGIN IMMEDIATE')
-        repo._active_story(db,story_id)
+        story=repo._active_story(db,story_id)
         scene=repo._get(db,'scenes',scene_id,Scene)
         if scene.story_id!=story_id:
             raise ValueError('Сцена належить іншому твору')
@@ -293,6 +295,10 @@ def set_scene_trashed(repo,story_id,scene_id,expected_revision,restore):
         if not restore:
             from .invalidation import invalidate_in_transaction
             invalidate_in_transaction(repo,db,list(scene.heads.values()))
+        else:
+            from .book_structure import bind_restored_scene
+            # BOOK-STRUCTURE: a restored scene keeps or re-takes an arc so the sequence holds; restore never fails on it.
+            repo._save_story(db,bind_restored_scene(repo._get(db,'stories',story_id,Story),active,scene))
         repo._touch_story(db,story_id)
         return repo._get(db,'scenes',scene_id,Scene)
 

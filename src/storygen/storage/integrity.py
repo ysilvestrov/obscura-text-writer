@@ -206,6 +206,8 @@ def check_integrity(root: Path) -> IntegrityReport:
                     ref = versions.get(version_id)
                     if version_id and (not ref or ref.story_id != story.id or ref.scene_id is not None or ref.kind != kind):
                         report.add('invalid_head', story.id, 'Невірний матеріал твору')
+            from .book_checks import check_book_structure
+            check_book_structure(report,stories,scenes)
             for story_id, payload in db.execute('SELECT story_id,payload FROM source_files'):
                 try:
                     source = json.loads(payload)
