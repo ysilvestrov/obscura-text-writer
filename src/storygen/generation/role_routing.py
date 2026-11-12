@@ -7,7 +7,7 @@ VARIANT_WRITER_ONLY = 'Окрема модель для сцен 0–1 дост�
 
 
 def uses_low_rating_variant(settings: RoleSettings, story, scene) -> bool:
-    """True when a variant is set and no axis of the scene's effective rating is 2; an unset rating keeps the main model."""
+    """True when a variant is set and no axis of the scene's effective rating is 2; an unset rating keeps the main model (defensive: enforce_rating blocks generation before the story has a rating)."""
     if settings.low_rating_variant is None or scene is None:
         return False
     rating = effective_rating(story, scene)

@@ -52,7 +52,10 @@ def scene_statistics(repo,scene_id,stage,editor_source_head=None,editor_source_v
     role=roles.get({'brief':'planner','draft':'writer','edit':'editor','memory':'memory'}[stage])
     context={'available':False,'reason':'Роль не налаштована'}
     if role:
-        context.update(reason=None,model=role.provider.model,provider=role.provider.provider)
+        from ..generation.role_routing import WRITER_STAGES,settings_for
+        # MODEL-001: the model shown is the one the request goes to (the writer's variant for scenes rated 0–1), also on overflow.
+        shown=settings_for(role,'writer',view.get_story(scene.story_id),scene) if stage in WRITER_STAGES else role
+        context.update(reason=None,model=shown.provider.model,provider=shown.provider.provider)
         try:
             if stage=='edit':
                 from ..generation.editor_loop import source

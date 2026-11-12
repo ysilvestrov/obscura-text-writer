@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {pathToFileURL} from 'node:url';
 globalThis.document={querySelector:()=>null,addEventListener:()=>{}};
-const {variantPayload}=await import(pathToFileURL(process.argv[2]+'/src/storygen/web/static/writer-variant.js'));
+const {variantPayload,variantBase}=await import(pathToFileURL(process.argv[2]+'/src/storygen/web/static/writer-variant.js'));
 const {t,setLocale}=await import(pathToFileURL(process.argv[2]+'/src/storygen/web/static/i18n.js'));
 const form=(enabled,values={},base=null)=>({writerVariantBase:base,elements:Object.fromEntries(Object.entries({
   variant_enabled:{checked:enabled},response_mode:'json_schema',variant_provider:'venice',variant_base_url:'https://api.venice.ai/api/v1',variant_model:'e2ee-glm',
@@ -22,6 +22,12 @@ const kept=variantPayload(form(true,{},base)).provider;
 assert.equal(kept.key_env,'MY_VENICE');assert.equal(kept.venice_disable_thinking,true);assert.equal(kept.include_usage,true);assert.equal(kept.model,'e2ee-glm');assert.equal(kept.response_mode,'json_schema');
 const other=variantPayload(form(true,{variant_provider:'openrouter',variant_base_url:'https://openrouter.ai/api/v1'},base)).provider;
 assert.equal(other.key_env,null);assert.equal(other.venice_disable_thinking,undefined);
+// No stored variant: a variant of the main provider keeps its connection options (Venice flags, key name); another provider starts clean.
+const main={provider:'venice',model:'main',base_url:'https://api.venice.ai/api/v1',key_env:'MAIN_VENICE',timeout:180,include_usage:true,response_mode:'json_schema',venice_disable_thinking:true,venice_reasoning_effort:'low'};
+const fresh=variantPayload(form(true,{},variantBase({provider:main}))).provider;
+assert.equal(fresh.key_env,'MAIN_VENICE');assert.equal(fresh.include_usage,true);assert.equal(fresh.venice_disable_thinking,true);assert.equal(fresh.venice_reasoning_effort,'low');assert.equal(fresh.model,'e2ee-glm');
+assert.equal(variantPayload(form(true,{variant_provider:'openrouter'},variantBase({provider:main}))).provider.key_env,null);
+assert.deepEqual(variantBase({provider:main,low_rating_variant:base}),base);
 assert.equal(t('writer.variant.toggle'),'Окрема модель для сцен рівня 0–1');
 assert.equal(t('writer.variant.hint'),'Необов’язково. Якщо не задано, всі сцени пише основна модель. Сцени, де хоч одна вісь рейтингу дорівнює 2, завжди пише основна модель.');
 assert.equal(t('writer.variant.main_hint'),'Основна модель пише всі сцени, включно з рівнем 2.');

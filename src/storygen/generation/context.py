@@ -213,7 +213,7 @@ def _finish_context(repo,story,scene,stage,settings,sections,refs,fragments,syst
     if not fits(measured):
         raise ContextOverflow(estimate,limit,chars,memory_metrics.get('projection_chars',memory_metrics.get('catalog_chars',0)),breakdown,max_input_chars=settings.max_input_chars)
     accepted_stale=[id for id in dict.fromkeys(accepted_prose_ids) if id in refs and (ref:=repo.get_version(id)).stale and ref.kind in {'edited','manual'}]
-    fingerprint=hashlib.sha256(json.dumps({'system':system,'user':user,'settings':settings.model_dump(),'refs':refs,'accepted_stale_prose_ids':accepted_stale,'order':build_dependency_snapshot(repo,scene.id if scene else None,stage,settings,refs).scene_order},ensure_ascii=False,sort_keys=True).encode()).hexdigest()
+    fingerprint=hashlib.sha256(json.dumps({'system':system,'user':user,'settings':settings.model_dump(exclude={'low_rating_variant'}),'refs':refs,'accepted_stale_prose_ids':accepted_stale,'order':build_dependency_snapshot(repo,scene.id if scene else None,stage,settings,refs).scene_order},ensure_ascii=False,sort_keys=True).encode()).hexdigest()
     snapshot=build_dependency_snapshot(repo,scene.id if scene else None,stage,settings,refs)
     from ..dependency_models import MemoryReuseApproval
     snapshot.memory_provenance=[MemoryReuseApproval.model_validate(p) for p in memory_provenance]

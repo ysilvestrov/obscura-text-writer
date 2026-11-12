@@ -22,8 +22,11 @@ export function variantPayload(form){
 function el(tag,props={},...children){const node=document.createElement(tag);for(const[k,v]of Object.entries(props))if(k in node&&!k.includes('-'))node[k]=v;else node.setAttribute(k,v);node.append(...children);return node}
 const text=key=>{const span=el('span');uiText(span,'textContent',()=>t(key));return span};
 
+// Options a variant of the same provider starts from: its own stored ones, else the main connection's (key name, vendor flags).
+export const variantBase=config=>config.low_rating_variant||{provider:config.provider};
+
 export function mountWriterVariant(form,config){
-  const stored=config.low_rating_variant||null;form.writerVariantBase=stored;
+  const stored=config.low_rating_variant||null;form.writerVariantBase=variantBase(config);
   // A new variant starts from the main model's connection and limits; the author picks the model.
   const start=stored||{provider:{...config.provider,model:''},context_tokens:config.context_tokens,max_output_tokens:config.max_output_tokens,max_input_chars:config.max_input_chars,temperature:config.temperature,timeout:null};
   const toggle=el('input',{type:'checkbox',name:'variant_enabled'}),strong=el('b',{},text('writer.variant.toggle'));

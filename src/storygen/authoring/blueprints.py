@@ -10,6 +10,9 @@ ROLES={'planner','writer','editor','memory'}
 def save_shared_provider(repo,story_id,provider,expected_revision,current_role=None,current_settings=None):
     if current_role is not None and (current_role not in ROLES or current_settings is None):
         raise ValueError('Невідома роль для спільного збереження')
+    if current_role and current_role!='writer' and current_settings.low_rating_variant is not None:
+        from ..generation.role_routing import VARIANT_WRITER_ONLY
+        raise ValueError(VARIANT_WRITER_ONLY)
     rows=get_role_settings(repo,story_id)
     if current_role:rows[current_role]=current_settings
     updates={role:rows.get(role,RoleSettings(provider=provider)).model_copy(update={'provider':provider}).model_dump() for role in sorted(ROLES)}

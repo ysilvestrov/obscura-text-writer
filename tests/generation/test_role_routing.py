@@ -178,3 +178,58 @@ def test_variant_is_rejected_for_other_roles(tmp_path):
         assert saved.status_code == 200
         roles = c.get(f'/api/stories/{sid}/settings').json()['roles']
         assert roles['writer']['low_rating_variant']['provider']['model'] == 'low'
+
+
+@pytest.mark.req('MODEL-001')
+def test_routed_fingerprint_matches_an_equivalent_plain_writer(tmp_path):
+    repo, item = make_repo(tmp_path, R(0, 1, 1))
+    routed = build_context(repo, item.id, 'draft', writer_with_variant(main='local/main', low='local/low'))
+    plain = RoleSettings(provider=provider('local/low'), context_tokens=16384, max_output_tokens=1024, max_input_chars=50000, temperature=0.3)
+    assert routed.fingerprint == build_context(repo, item.id, 'draft', plain).fingerprint  # Only the routed fields count.
+    assert routed.fingerprint != build_context(repo, item.id, 'draft', writer_without_variant('local/main')).fingerprint
+
+
+@pytest.mark.req('MODEL-001')
+def test_main_model_fingerprint_ignores_the_variant(tmp_path):
+    repo, item = make_repo(tmp_path, R(0, 2, 0))  # An axis at 2: the main model writes.
+    base = build_context(repo, item.id, 'draft', writer_without_variant('local/main')).fingerprint
+    for role in (writer_with_variant(main='local/main', low='local/low'), writer_with_variant(main='local/main', low='openrouter/y', timeout=5)):
+        assert build_context(repo, item.id, 'draft', role).fingerprint == base  # Adding or changing the variant keeps the reuse.
+
+
+@pytest.mark.req('MODEL-001')
+def test_fingerprint_settings_have_no_variant_key(tmp_path, monkeypatch):
+    from storygen.generation import context as module
+    repo, item = make_repo(tmp_path, R(0, 1, 1))
+    seen = []
+    real = module.json.dumps
+    monkeypatch.setattr(module.json, 'dumps', lambda obj, *a, **k: (seen.append(obj), real(obj, *a, **k))[1])
+    for role in (writer_with_variant(), writer_without_variant()):
+        build_context(repo, item.id, 'draft', role)
+    payloads = [o['settings'] for o in seen if isinstance(o, dict) and 'settings' in o and 'system' in o]
+    assert len(payloads) == 2 and all('low_rating_variant' not in p for p in payloads)  # Stored fingerprints keep the pre-variant form.
+
+
+@pytest.mark.req('MODEL-001')
+def test_scene_statistics_show_the_routed_writer(tmp_path):
+    from storygen.application.statistics import scene_statistics
+    repo, item = make_repo(tmp_path, R(0, 1, 1))
+    repo.write_role_settings(item.story_id, {'writer': writer_with_variant(main='local/main', low='local/low').model_dump()}, repo.get_story(item.story_id).revision)
+    shown = scene_statistics(repo, item.id, 'draft')['context']
+    assert shown['model'] == 'local/low' and shown['provider'] == 'local'
+    repo.update_story_rating(item.story_id, R(0, 2, 0), repo.get_story(item.story_id).revision)
+    assert scene_statistics(repo, item.id, 'draft')['context']['model'] == 'local/main'
+
+
+@pytest.mark.req('MODEL-001')
+def test_shared_provider_rejects_variant_for_other_roles(tmp_path):
+    app = create_app(AppSettings(data_dir=tmp_path))
+    with TestClient(app, base_url='http://127.0.0.1:8765') as c:
+        sid = c.post('/api/stories', json={'title': 'Спільний'}).json()['id']
+        revision = c.get(f'/api/stories/{sid}/settings').json()['story']['revision']
+        body = {'expected_revision': revision, 'provider': {'model': 'shared'},
+            'settings': {'provider': {'model': 'main'}, 'low_rating_variant': {'provider': {'model': 'low'}}}}
+        response = c.put(f'/api/stories/{sid}/settings/shared-provider', json={**body, 'role': 'editor'})
+        assert response.status_code == 400 and VARIANT_WRITER_ONLY in response.text
+        assert c.get(f'/api/stories/{sid}/settings').json()['story']['revision'] == revision  # Nothing written.
+        assert c.put(f'/api/stories/{sid}/settings/shared-provider', json={**body, 'role': 'writer'}).status_code == 200
