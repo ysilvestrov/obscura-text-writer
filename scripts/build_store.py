@@ -37,7 +37,7 @@ class Refused(Exception):
 def parse(argv):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--out', type=Path, required=True, help='empty or absent output folder')
-    parser.add_argument('--edition', default='store', choices=['store', 'full'])
+    parser.add_argument('--edition', default='store', choices=['store', 'full', 'paid'])
     parser.add_argument('--report-url', default='')
     parser.add_argument('--support-url', default='')
     parser.add_argument('--waitlist-url', default='')

@@ -44,6 +44,10 @@ def effective_structure(story, scenes) -> EffectiveStructure:
     return EffectiveStructure(list(parts), arc_of, kind, True, {a.id: p.id for p in parts for a in p.arcs})
 
 
+def structure_kind(story, scenes) -> Literal['flat', 'structured']:
+    return effective_structure(story, scenes).kind
+
+
 def validate_shape(structure: BookStructure) -> None:
     if len(structure.parts) > MAX_PARTS:
         raise ValueError(f'Забагато частин: до {MAX_PARTS}')

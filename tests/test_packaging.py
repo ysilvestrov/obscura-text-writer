@@ -289,6 +289,7 @@ def run_script(*arguments, cwd=None):
 def test_build_script_help_runs_without_side_effects(tmp_path):
     result = run_script('--help', cwd=tmp_path)
     assert result.returncode == 0 and '--report-url' in result.stdout and list(tmp_path.iterdir()) == []
+    assert 'paid' in result.stdout
 
 
 def test_build_script_refuses_a_non_empty_output_folder(tmp_path):
