@@ -15,5 +15,5 @@ def default_prompt(stage: str, language='uk') -> str:
     name={'draft':'writer','edit':'editor'}.get(stage,stage)
     if name not in {'prepare','brief','writer','editor','memory','memory_delta','copyeditor','rewrite_editor'}:
         raise ValueError('Невідомий етап')
-    version={'brief':'v2','memory_delta':'v4'}.get(name,'v1')
+    version={'brief':'v3','writer':'v2','memory_delta':'v4'}.get(name,'v1')
     return load_prompt(f'{name}_{version}',language)

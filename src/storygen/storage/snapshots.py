@@ -91,6 +91,8 @@ def build_dependency_snapshot(
             head(previous[-1], 'memory')
         for name in {'brief': [], 'draft': ['brief'], 'prose_edit': ['brief', 'draft'], 'author_text': [],'author_rewrite': []}[scope]:
             head(scene, name)
+        # CONTEXT-002-S05: these stages see «ЗМІНИВСЯ ДЕНЬ», so a change of the parsed day is a change of their input.
+        memory_core_selectors(view,story,scene,scenes,select)
     if scope in RATING_SCOPES:
         select('scene', scene.id, 'content_rating', to_wire(effective_rating(story, scene)))
     if scope in PROSE_LANGUAGE_SCOPES:

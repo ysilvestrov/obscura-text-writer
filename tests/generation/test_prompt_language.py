@@ -21,8 +21,12 @@ CYRILLIC = re.compile('[Ѐ-ӿ]')
 # SHA-256 prefixes of the Ukrainian prompts before #32; Ukrainian requests must not change.
 UK_BASELINE = {
     'role:prepare': 'd33418790b6a0bb6',
-    'role:brief': '3bbf05d8d1f606c2',
-    'role:draft': 'ee176d3435113848',
+    # CONTEXT-002-S06: the standard brief and draft prompts are now brief_v3/writer_v2 (core state rules);
+    # the previous texts stay pinned under their own keys.
+    'role:brief': '62689cc18f4538fb',
+    'role:draft': '529d616e36b657dc',
+    'brief_v2': '3bbf05d8d1f606c2',
+    'writer_v1': 'ee176d3435113848',
     'role:edit:prose': '0fd7011ddea46d25',
     'role:edit:patches': '9cf2ba66dc672561',
     'role:edit:diff': 'fb0f6047d99b0aaf',
@@ -117,7 +121,7 @@ def role(**values):
 def test_english_story_gets_english_brief_prompt(tmp_path):
     repo, story, scene = english_story(tmp_path)
     context = build_context(repo, scene.id, 'brief', role())
-    assert context.system_text.startswith(load_prompt('brief_v2', 'en'))
+    assert context.system_text.startswith(load_prompt('brief_v3', 'en'))
     assert not CYRILLIC.search(context.system_text)
 
 
@@ -134,7 +138,8 @@ def test_custom_prompt_kept_in_english_story(tmp_path):
 
 
 # SHA-256 prefixes of composed Ukrainian system messages, computed on 3d53405 (before #32) for this exact world.
-UK_COMPOSED = {'brief': '461f1aa546cab9e0', 'draft': '5bd57f88e17b751b', 'edit:prose': 'eb3907d342e2fdfb',
+# brief and draft: brief_v3/writer_v2 (CONTEXT-002-S06).
+UK_COMPOSED = {'brief': 'ac7c79fe465e7738', 'draft': '06f123331f73a056', 'edit:prose': 'eb3907d342e2fdfb',
                'edit:patches': 'f9f7d19f0998e104', 'edit:diff': 'f578ce5c8435b0e8', 'memory': 'eb1dc2403f01490f',
                'rewrite': 'e1fc4a0a52f7ad36'}
 

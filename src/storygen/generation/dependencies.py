@@ -66,7 +66,7 @@ def save_manual_draft(repo,scene_id: str,text: str,expected_revision: int,conten
     content_format=_author_format(repo,scene,'draft',content_format)
     from ..memory.forwarding import projection_policy
     policy=projection_policy(repo.context_view(scene.story_id),scene.id)
-    snapshot=_manual_snapshot(repo,scene,'draft')
+    snapshot=_manual_snapshot(repo,scene,'draft',day_selectors=external_origin is not None)
     ref=repo.save_version(scene.story_id,scene.id,'draft',text,list(snapshot.refs),dependency_snapshot=snapshot,manual_projection_policy=policy,content_format=content_format,author_lineage=author_lineage or _lineage(scene,'draft'),ghost_rewrite=ghost_rewrite,external_origin=external_origin)
     repo.set_head(scene.id,'draft',ref.id,expected_revision)
     return ref
@@ -86,7 +86,7 @@ def _author_format(repo,scene,head,requested):
     return repo.get_version(current).content_format if current else 'plain'
 
 
-def _manual_snapshot(repo,scene,head):
+def _manual_snapshot(repo,scene,head,*,day_selectors=False):
     from ..dependency_models import DependencySelector,DependencySnapshot
     view=repo.context_view(scene.story_id);story=view.story
     previous=[s for s in view.list_scenes(scene.story_id) if s.position<scene.position]
@@ -110,4 +110,8 @@ def _manual_snapshot(repo,scene,head):
     if previous:bindings.append((previous[-1],'memory'))
     for item,name in bindings:
         id=item.heads.get(name);select('head',item.id,name,id);source(id)
+    if day_selectors:
+        # An MCP draft was written from writing-context with its day_change note; the author's own text was not.
+        from ..storage.snapshots import memory_core_selectors
+        memory_core_selectors(view,story,scene,view.list_scenes(scene.story_id),select)
     return DependencySnapshot(scope='author_text',selectors=selectors,refs=refs,ref_baselines=baselines,scene_order=[s.id for s in previous]+[scene.id])
