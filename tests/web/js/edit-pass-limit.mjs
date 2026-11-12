@@ -12,4 +12,6 @@ values.set('obscura.edit-pass-limit.v1.storyA','junk');assert.equal(readEditPass
 const denied={getItem(){throw Error('denied')},setItem(){throw Error('denied')}};
 assert.equal(readEditPassLimit('storyA',denied),5);assert.equal(rememberEditPassLimit('storyA',4,denied),false);
 assert.equal(readEditPassLimit('storyA',null),5);
+for(const edge of [1,10]){assert.equal(rememberEditPassLimit('storyC',edge,storage),true);assert.equal(readEditPassLimit('storyC',storage),edge)}
+for(const id of ['',null,undefined]){values.set('obscura.edit-pass-limit.v1.'+id,'7');assert.equal(readEditPassLimit(id,storage),5);assert.equal(rememberEditPassLimit(id,4,storage),false)}
 console.log('Edit pass limit per-story memory passed');
