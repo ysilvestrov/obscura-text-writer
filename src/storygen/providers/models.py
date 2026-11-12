@@ -86,7 +86,11 @@ class RoleSettings(DomainModel):
 
 class ModelOption(DomainModel):
     id: str
+    name: str | None = None
     context_tokens: int | None = None
     uncensored: bool | None = None
     max_output_tokens: int | None = None
     tariff: Tariff | None = None
+    privacy: Literal['anonymized','private','unknown'] = 'unknown'
+    tee: bool = False
+    supports_schema: bool | None = None

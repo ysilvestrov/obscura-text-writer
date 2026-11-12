@@ -31,7 +31,7 @@ def test_venice_uses_only_its_official_endpoint_and_environment_key(monkeypatch)
         ProviderSettings(provider='venice', model='x', base_url='https://example.com/api/v1')
 
 
-def test_venice_discovery_requires_true_boolean_not_name_or_description(monkeypatch):
+def test_venice_discovery_marks_uncensored_only_for_true_boolean(monkeypatch):
     monkeypatch.setenv('VENICE_API_KEY', 'test')
     missing = model('uncensored-in-name'); del missing['model_spec']['uncensored']
     rows = [model(), model('censored', False), missing, model('string-true', 'true'), model('offline', True, offline=True)]
@@ -41,8 +41,9 @@ def test_venice_discovery_requires_true_boolean_not_name_or_description(monkeypa
         return httpx.Response(200, json={'data': rows})
     with httpx.Client(transport=httpx.MockTransport(handler)) as client:
         found = discover_models(ProviderSettings(provider='venice', model='discovery'), client)
-    assert [m.id for m in found] == ['qwen-test']
-    assert found[0].context_tokens == 128000 and found[0].uncensored is True
+    assert [m.id for m in found] == ['qwen-test', 'censored', 'uncensored-in-name', 'string-true']
+    assert {m.id: m.uncensored for m in found} == {'qwen-test': True, 'censored': False, 'uncensored-in-name': False, 'string-true': False}
+    assert found[0].context_tokens == 128000
     assert len(requests) == 1 and requests[0].method == 'GET'
     assert requests[0].url.params['type'] == 'text'
 
