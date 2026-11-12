@@ -1,8 +1,8 @@
 # MCP, пакет 6: режим «пише Obscura»
 
 Дата: 2026-11-12
-Статус: чернетка
-Spec-review: —
+Статус: чекає на затвердження
+Spec-review: failed (author: claude; codex: You’ve hit your usage limit. Upgrade to Pro (https://chatgpt.com/explore/pro), visit https://chatgpt.com/settings/usage to purchase more credits or try again at Nov 15th, 2026 3:17 PM.; agy: canary failed, review not run: Individual quota reached. Please upgrade your subscription to increase your limits. Resets in 38h15m34s.)
 
 Пакет 6 загального дизайну [MCP як пульт Obscura](2026-11-11-mcp-full-toolset-design.md), останній. Спирається на пакети 1–5 і 7 (23 інструменти після пакета 3).
 
@@ -154,4 +154,4 @@ Spec-review: —
 
 ## Рев'ю спеки
 
-—
+Перехресне рецензування не відбулося: codex вичерпав ліміт використання до 15.11.2026, у agy вичерпано квоту (оновлення приблизно за 38 год). Специфікацію перевірив лише автор (self-review) за чинним кодом: маршрути запусків, готовність, бюджет, зберігання творів і запусків, перевірка `Origin` звірено з пробами П1–П5.
