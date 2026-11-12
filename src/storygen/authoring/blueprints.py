@@ -25,6 +25,9 @@ def get_role_settings(repo,story_id: str) -> dict[str,RoleSettings]:
 
 
 def save_role_settings(repo,story_id: str,role: str,settings: RoleSettings,expected_revision: int) -> Story:
+    if role!='writer' and settings.low_rating_variant is not None:
+        from ..generation.role_routing import VARIANT_WRITER_ONLY
+        raise ValueError(VARIANT_WRITER_ONLY)
     return repo.write_role_settings(story_id,{role:settings.model_dump()},expected_revision)
 
 

@@ -55,6 +55,22 @@ class ClassificationSettings(DomainModel):
         return self
 
 
+class RoleVariant(DomainModel):
+    """MODEL-001: the writer's own model for scenes whose effective rating has no axis at 2; the prompt stays shared."""
+    provider: ProviderSettings
+    context_tokens: int = Field(default=8192,ge=512)
+    max_output_tokens: int = Field(default=2048,ge=1)
+    max_input_chars: int = Field(default=80000,ge=1)
+    temperature: float | int = Field(default=0.7,ge=0,le=2)
+    timeout: float | int | None = Field(default=None,gt=0)
+
+    @model_validator(mode='after')
+    def reserve(self):
+        if self.max_output_tokens>=self.context_tokens:
+            raise ValueError('Вихід має лишати місце для вхідного контексту')
+        return self
+
+
 class RoleSettings(DomainModel):
     provider: ProviderSettings
     future_plan_mode: Literal['all','next_n','current'] = 'all'
@@ -70,6 +86,7 @@ class RoleSettings(DomainModel):
     edit_review: Literal['auto', 'review'] = 'auto'
     classification: ClassificationSettings | None = None
     stop_sequences: list[Annotated[str,Field(min_length=1,max_length=200)]] = Field(default_factory=list,max_length=4)
+    low_rating_variant: RoleVariant | None = None
 
     @field_validator('memory_mode',mode='before')
     @classmethod
