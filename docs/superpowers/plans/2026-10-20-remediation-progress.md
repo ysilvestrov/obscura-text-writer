@@ -1810,3 +1810,4 @@ Playwright `memory-kind.spec.mjs` і `core-review.spec.mjs` пройшли вр�
 - SPEC.MD: IMPORT-NUMBER-S02, IMPORT-ADDITIVE-S03 і уточнення з усуненим відхиленням; traceability; `docs/site/{uk,en}/imports.md`.
 - Невідповідність `active_sources.source_plan` і `version_id` після доімпорту з #103 — задумана поведінка (активним стає об’єднаний план); пояснено в issue.
 - Рев’ю специфікації: codex і agy Argon недоступні через ліміти; agy/gemini-3.8-flash — 3 зауваження, 1 виправлено, 2 відхилено (рецензент не знайшов у SPEC.MD наявних вимог IMPORT-NUMBER та IMPORT-ADDITIVE).
+- Cross-review змін (agy/gemini-3.8-flash): 2 зауваження до тестів, обидва виправлено (`0e5090c`). `verify.py` на `0e5090c`: passed 2897, failed 0, skipped 1.
