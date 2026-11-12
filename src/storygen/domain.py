@@ -43,6 +43,22 @@ class StoryCreate(DomainModel):
     writing_mode: Literal['chat','obscura'] = 'chat'
 
 
+class Arc(DomainModel):
+    id: str
+    title: str = ''
+
+
+class Part(DomainModel):
+    id: str
+    title: str = ''
+    arcs: list[Arc] = Field(default_factory=list)
+
+
+class BookStructure(DomainModel):
+    # BOOK-STRUCTURE: limits are checked by book.structure.validate_shape, so a stored payload always reads back.
+    parts: list[Part] = Field(default_factory=list)
+
+
 class Story(StoryCreate):
     trashed_at: str | None = None
     initial_content_rating: ContentRating | None = None
@@ -54,6 +70,9 @@ class Story(StoryCreate):
     characters_version_id: str | None = None
     # Author marks for memory selection (#60, MEMORY-SELECT-S08); act only when selection runs.
     memory_kind_overrides: dict[str,Literal['core','atmosphere']] = Field(default_factory=dict,max_length=10000)
+    # BOOK-STRUCTURE: parts and arcs, and the arc of each scene; None is one implicit part and arc.
+    book_structure: BookStructure | None = None
+    scene_arcs: dict[str,str] = Field(default_factory=dict,max_length=100000)
     created_at: str = Field(default_factory=now)
 
 

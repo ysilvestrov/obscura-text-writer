@@ -80,3 +80,15 @@ def test_link_must_be_a_clean_https_url(tmp_path, url):
 def test_clean_https_url_with_path_and_query_is_kept(tmp_path):
     url = 'https://example.test/form?src=obscura#top'
     assert load_build_edition(write(tmp_path, {'edition': 'store', 'report_url': url})).report_url == url
+
+
+def test_paid_edition_has_long_prose_without_report_url(tmp_path):
+    # BUILD-EDITION-001-S09: the paid build needs no complaint channel and keeps the full rating limit.
+    loaded = load_build_edition(write(tmp_path, {'edition': 'paid'}))
+    assert loaded.edition == 'paid' and loaded.long_prose
+    assert loaded.max_rating == ContentRating(sexual=2, violence=2, themes=2)
+
+
+def test_long_prose_only_outside_store(tmp_path):
+    assert BuildEdition().long_prose
+    assert not load_build_edition(write(tmp_path, {'edition': 'store', 'report_url': REPORT})).long_prose
