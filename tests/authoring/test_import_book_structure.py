@@ -6,7 +6,6 @@ from storygen.domain import SceneCreate, StoryCreate
 from storygen.plan_sections import split_book_plan
 from storygen.storage.repository import Repository
 
-pytestmark = pytest.mark.req('BOOK-STRUCTURE')
 
 PLAN = '''# План
 

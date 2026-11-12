@@ -5,7 +5,6 @@ from storygen.application.settings import AppSettings
 from storygen.domain import SceneCreate, StoryCreate
 from storygen.web.app import create_app
 
-pytestmark = pytest.mark.req('BOOK-STRUCTURE')
 
 
 def setup(tmp_path, n=3):
