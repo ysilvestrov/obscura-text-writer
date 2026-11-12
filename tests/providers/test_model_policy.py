@@ -29,10 +29,18 @@ def test_local_model_never_needs_consent():  # MODEL-003-S04
 
 
 @pytest.mark.req('MODEL-003')
+def test_local_provider_with_non_loopback_host_is_not_local():
+    s = ProviderSettings.model_construct(provider='local', model='m', base_url='http://example.com/v1')
+    assert is_local(s) is False
+    assert needs_consent(s, None, (1, 0, 0)) is True
+
+
+@pytest.mark.req('MODEL-003')
 def test_consent_is_keyed_by_role_endpoint_and_exact_model(repo):  # MODEL-003-S03, S04
     s = ProviderSettings(provider='openrouter', model='x/y')
     repo.model_policy('set_consent', role='writer', provider='openrouter', base_url=s.base_url, model='x/y')
     check_consent(repo, 'writer', s, (2, 0, 0), None)
+    assert repo.model_policy('get_consent', role='writer', provider='openrouter', base_url=s.base_url, model='x/y')['consented_at']
     with pytest.raises(ModelPolicyBlocked) as e:
         check_consent(repo, 'editor', s, (2, 0, 0), None)
     assert e.value.kind == 'consent'

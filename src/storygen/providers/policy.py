@@ -34,7 +34,7 @@ def endpoint(settings: ProviderSettings) -> str:
 
 
 def is_local(settings: ProviderSettings) -> bool:
-    return settings.provider == 'local'
+    return settings.provider == 'local' and urlsplit(settings.base_url or '').hostname in {'localhost', '127.0.0.1', '::1'}
 
 
 def _max_rating(ratings) -> tuple[int, int, int]:

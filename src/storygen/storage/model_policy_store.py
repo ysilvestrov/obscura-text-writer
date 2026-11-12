@@ -30,7 +30,7 @@ def operation(repo, action, *, role, provider, base_url, model, entry=None):
             return read(db, key)
         if action == 'set_consent':
             value = {'role': role, 'provider': provider, 'base_url': normalize_endpoint(base_url), 'model': model,
-                'at': datetime.now(timezone.utc).isoformat()}
+                'consented_at': datetime.now(timezone.utc).isoformat()}
             write(db, key, value)
             return value
         if action == 'add_refusal':
