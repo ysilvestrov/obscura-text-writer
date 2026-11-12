@@ -1,7 +1,7 @@
 # Вибір моделі за приватністю й рейтингом: каталог Venice, згода, блокування після відмови, модель письменника для сцен 0–1
 
 Дата: 2026-11-12
-Статус: чекає на затвердження
+Статус: затверджено 2026-11-12
 Spec-review: failed (author: claude; codex: You’ve hit your usage limit. Upgrade to Pro (https://chatgpt.com/explore/pro), visit https://chatgpt.com/settings/usage to purchase more credits or try again at Nov 15th, 2026 3:17 PM.; agy: canary failed, review not run: Individual quota reached. Please upgrade your subscription to increase your limits. Resets in 39h21m39s.)
 
 ## Для власника
