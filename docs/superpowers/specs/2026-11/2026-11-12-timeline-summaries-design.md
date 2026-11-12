@@ -1,7 +1,7 @@
 # Підсумки старої хронології пам'яті (#68)
 
 Дата: 2026-11-12
-Статус: чекає на затвердження
+Статус: затверджено 2026-11-12
 Spec-review: agy/gemini-3.8-flash @ 4f1c618 (author: claude) — 7 findings: 7 fixed, 0 rejected
 
 Задача #68 із загального дизайну довгої прози (`docs/superpowers/specs/2026-11/2026-11-12-long-prose-design.md`): робиться між проєктами 1 і 2. Спирається на структуру книги з проєкту 1 (`docs/superpowers/specs/2026-11/2026-11-12-book-structure-design.md`) і на відбір пам'яті MEMORY-SELECT.
