@@ -143,4 +143,6 @@ def create_app(settings: AppSettings, *, gateway_factory=None,evaluator_factory=
     app.include_router(impact_router)
     from .routes_review import router as review_router
     app.include_router(review_router)
+    from .routes_model_policy import router as model_policy_router
+    app.include_router(model_policy_router)
     return app
