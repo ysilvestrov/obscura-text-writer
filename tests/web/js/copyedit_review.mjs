@@ -156,3 +156,16 @@ assert.equal(groupInputs[0].indeterminate,true);
 assert.equal(groupNodes.find(e=>e.textContent==='Застосувати вибрані правки').disabled,true);
 await historicalPanel.reload();
 assert.equal(descendants(historicalHost).find(e=>e.tagName==='input').indeterminate,true);
+// A new editing pass becomes the selected proposal; a manual choice of an older pass survives a plain reload.
+{
+  const passHost=new Element('div'),passState={scene:{id:'p'},dirty:false,saving:false,bufferEpoch:0};
+  const attempts=[{id:'a1',created_at:'2026-11-11T13:19:50',state:'completed'}];
+  const passApi=async url=>url.endsWith('/copyedits')?{attempts:[...attempts]}:{...preview,attempt_id:url.split('/').at(-1)};
+  const passes=mountCopyeditReview({host:passHost,state:passState,api:passApi,json:()=>({}),notice:()=>{},onApplied:async()=>{}});
+  const picker=()=>descendants(passHost).find(e=>e.tagName==='select');
+  await passes.reload();assert.equal(picker().value,'a1');
+  attempts.push({id:'a2',created_at:'2026-11-12T18:34:56',state:'needs_review'});
+  await passes.reload();assert.equal(picker().value,'a2','a new pass replaces the previously shown one');
+  picker().value='a1';await passes.reload();assert.equal(picker().value,'a1','an older pass chosen by the author stays selected');
+  passState.scene={id:'q'};await passes.reload();assert.equal(picker().value,'a2','another scene starts from its latest pass');
+}
