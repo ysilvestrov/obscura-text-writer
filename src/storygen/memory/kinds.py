@@ -20,7 +20,8 @@ def kind_overrides(view,scene_id) -> dict[str,str]:
     scene=view.peek_scene(scene_id)
     marks=view.peek_story(scene.story_id).memory_kind_overrides
     if not marks:return {}
-    previous=[s for s in view.peek_scenes(scene.story_id) if s.position<scene.position]
+    from ..book.lineage import earlier_scenes
+    previous=earlier_scenes(view,scene,peek=True)
     memory_id=previous[-1].heads.get('memory') if previous else None
     journal=_journal(view,memory_id) if memory_id else None
     if journal is None:return {}

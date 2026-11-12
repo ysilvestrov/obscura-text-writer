@@ -4215,6 +4215,28 @@
       }
     },
     {
+      "id": "BOOK-LINEAGE-S01",
+      "requirement": "BOOK-LINEAGE",
+      "scope": "Родовід пласкої книги й послідовних арок — усі сцени вище; тест-охоронець виразу позицій поза родоводом. Незмінність запитів і застарілості доводять наявні тести пакета, що проходять без змін.",
+      "tests": [
+        "tests/book/test_lineage.py::test_flat_book_is_every_scene_above",
+        "tests/book/test_lineage.py::test_sequential_arcs_and_parts_are_every_scene_above",
+        "tests/book/test_lineage_guard.py::test_no_position_prefix_outside_lineage"
+      ]
+    },
+    {
+      "id": "BOOK-LINEAGE-S02",
+      "requirement": "BOOK-LINEAGE",
+      "scope": "Перемішані арки, перша сцена арки після закінчених, початок частини з кількома головами, порожня й невідома арка, селектор order/prefix.",
+      "tests": [
+        "tests/book/test_lineage.py::test_interleaved_arcs_isolate_streams",
+        "tests/book/test_lineage.py::test_first_scene_of_an_arc_after_ended_arcs",
+        "tests/book/test_lineage.py::test_part_start_merges_heads_of_the_previous_part",
+        "tests/book/test_lineage.py::test_empty_arc_and_unknown_arc_fall_back",
+        "tests/book/test_lineage_guard.py::test_snapshot_order_of_an_interleaved_book_follows_the_lineage"
+      ]
+    },
+    {
       "id": "BUILD-EDITION-001-S08",
       "requirement": "BUILD-EDITION-001",
       "scope": "Обхід таблиці маршрутів: кожен маршрут запису під запобіжником або в списку дозволених; пласка книга й видання з довгою прозою працюють; читання й експорт дозволені.",

@@ -46,7 +46,8 @@ def scene_statistics(repo,scene_id,stage,editor_source_head=None,editor_source_v
         else:
             ref=view.get_version(id)
             materials[kind]={'version_id':id,'stale':ref.stale,'complete':ref.complete,**text_statistics(view.read_text(id))}
-    previous=[s for s in view.list_scenes(scene.story_id) if s.position<scene.position]
+    from ..book.lineage import earlier_scenes
+    previous=earlier_scenes(view,scene)
     prior=memory_statistics(view,previous[-1],previous[-1].heads.get('memory')) if previous else memory_statistics(view,scene,None,first=True)
     current=memory_statistics(view,scene,scene.heads.get('memory'))
     role=roles.get({'brief':'planner','draft':'writer','edit':'editor','memory':'memory'}[stage])

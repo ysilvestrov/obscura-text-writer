@@ -29,6 +29,8 @@ def _chain(active):
 
 def lineage_map(story, scenes) -> dict:
     active = _active(scenes)
+    if getattr(story, 'book_structure', None) is None:  # no structure, or a pure helper called without a story
+        return _chain(active)
     structure = effective_structure(story, active)
     if structure.kind == 'flat' or any(s.id not in structure.arc_of for s in active):
         return _chain(active)
@@ -77,3 +79,10 @@ def previous_scenes(story, scenes, scene) -> list:
         return [s for s in active if s.position < scene.position]
     wanted = set(item.ancestors)
     return [s for s in active if s.id in wanted]
+
+
+def earlier_scenes(view, scene, *, peek: bool = False) -> list:
+    """previous_scenes read through a repository or context view; `peek` reads without recording dependencies."""
+    story = (view.peek_story if peek and hasattr(view, 'peek_story') else view.get_story)(scene.story_id)
+    scenes = (view.peek_scenes if peek else view.list_scenes)(scene.story_id)
+    return previous_scenes(story, scenes, scene)

@@ -12,7 +12,8 @@ class MemoryApprovalRequired(ValueError):
 
 def _candidate(view,scene_id):
     scene=view.get_scene(scene_id)
-    previous=[s for s in view.list_scenes(scene.story_id) if s.position<scene.position]
+    from ..book.lineage import earlier_scenes
+    previous=earlier_scenes(view,scene)
     if not previous:return MemoryJournal(),None,[],False
     memory_id=previous[-1].heads.get('memory')
     if not memory_id:raise ValueError('Спершу оновіть пам’ять попередньої сцени')
@@ -86,7 +87,8 @@ def approved_source_pairs(provenance):
 
 def provenance_before(view,scene_id):
     scene=view.get_scene(scene_id)
-    previous=[s for s in view.list_scenes(scene.story_id) if s.position<scene.position]
+    from ..book.lineage import earlier_scenes
+    previous=earlier_scenes(view,scene)
     if not previous or not previous[-1].heads.get('memory'):return []
     ref=view.get_version(previous[-1].heads['memory'])
     return list(ref.dependency_snapshot.memory_provenance) if ref.dependency_snapshot else []

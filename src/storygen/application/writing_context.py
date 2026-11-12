@@ -18,7 +18,7 @@ def _content(view,story,scene,writer) -> dict:
     instructions,instructions_error=_draft_instructions(view,story,scene,writer)
     return {'instructions':instructions,'instructions_error':instructions_error,'story_id':story.id,'scene_id':scene.id,'title':scene.title,'position':scene.position,'scene_count':len(scenes),
             'plan':plan,'brief':brief,'characters':characters,'character_warnings':list(character_warnings),'memory':projection.text,
-            'day_change':writer_day_change(scene,scenes,tracked,names,story.language),
+            'day_change':writer_day_change(scene,scenes,tracked,names,story.language,story),
             'rating':rating.model_dump() if rating else None,'language':scene.prose_language or story.language,
             'story_language':story.language,'target_words':scene.target_words}
 

@@ -32,13 +32,15 @@ def day_label(key, language='uk'):
     return f'day {value}' if language=='en' else f'день {value}'
 
 
-def comparison_scene(scenes,scene,character_id):
-    before=[item for item in scenes if not item.trashed_at and item.position<scene.position and character_id in item.character_ids]
-    return max(before,key=lambda item:item.position) if before else None
+def comparison_scene(scenes,scene,character_id,story=None):
+    """The latest scene of the lineage (BOOK-LINEAGE) with this character; production callers pass the story."""
+    from ..book.lineage import previous_scenes
+    before=[item for item in previous_scenes(story,scenes,scene) if character_id in item.character_ids]
+    return before[-1] if before else None
 
 
-def day_change(scenes,scene,character_id):
-    previous=comparison_scene(scenes,scene,character_id)
+def day_change(scenes,scene,character_id,story=None):
+    previous=comparison_scene(scenes,scene,character_id,story)
     if previous is None:return False
     old,new=day_key(previous),day_key(scene)
     return bool(old and new and old.split(':')[0]==new.split(':')[0] and old!=new)
