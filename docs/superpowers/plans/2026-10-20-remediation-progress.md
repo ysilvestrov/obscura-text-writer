@@ -1811,3 +1811,11 @@ Playwright `memory-kind.spec.mjs` і `core-review.spec.mjs` пройшли вр�
 - Невідповідність `active_sources.source_plan` і `version_id` після доімпорту з #103 — задумана поведінка (активним стає об’єднаний план); пояснено в issue.
 - Рев’ю специфікації: codex і agy Argon недоступні через ліміти; agy/gemini-3.8-flash — 3 зауваження, 1 виправлено, 2 відхилено (рецензент не знайшов у SPEC.MD наявних вимог IMPORT-NUMBER та IMPORT-ADDITIVE).
 - Cross-review змін (agy/gemini-3.8-flash): 2 зауваження до тестів, обидва виправлено (`0e5090c`). `verify.py` на `0e5090c`: passed 2897, failed 0, skipped 1.
+
+## 12.11.2026 — Максимум проходів редактури не скидається до 5 (EDIT-LOOP-REVIEW-S02)
+
+- Дефект від власника: після зміни моделі редактора поле «Максимум проходів редактури» поверталося до 5. Причина: модель змінюють на окремій сторінці налаштувань, повернення перезавантажує робочу область, а поле завжди створювалося зі значенням 5 і ніде не зберігалося.
+- Виправлення: `static/edit-pass-limit.js` зберігає вибране значення в браузері окремо для кожного твору (ціле 1..10, ключ `obscura.edit-pass-limit.v1.<story_id>`), `runs.js` відновлює його при завантаженні. Недоступне чи пошкоджене сховище дає 5.
+- SPEC.MD: Scenario EDIT-LOOP-REVIEW-S02; traceability; ручна процедура `manual.md#edit-pass-limit-browser` (Playwright `edit-pass-limit.spec.mjs`). Інструкції сайту цього поля не описують — оновлення не потрібне.
+- Cross-review (agy/gemini-3.8-flash; codex і agy Argon — ліміти): 3 знахідки, усі виправлено (`bd15be0`).
+- `verify.py` на `bd15be0` (з `C:/tmp/epl`): passed 2898, failed 0, skipped 1.
