@@ -130,6 +130,17 @@ def make_context(repo,story,scene,stage,settings,sections,refs,fragments=None,ac
     from ..rating.guard import enforce_rating
     enforce_rating(repo,story,scene,stage)
     prompt_id=settings.prepare_prompt_version_id if stage=='prepare' else settings.prompt_version_id
+    fragments=dict(fragments or {})
+    system=stage_system_text(repo,story,scene,stage,settings,fragments,refs)
+    warnings=list(context_warnings or [])
+    if prompt_id and stage in {'brief','draft','edit'} and OTHER_MATERIAL_WARNING not in warnings:
+        warnings.append(OTHER_MATERIAL_WARNING)
+    return _finish_context(repo,story,scene,stage,settings,sections,refs,fragments,system,warnings,accepted_prose_ids,memory_metrics,memory_provenance,accepted_memory_ids,memory_selector,memory_narrower)
+
+
+def stage_system_text(repo,story,scene,stage,settings,fragments: dict,refs: list) -> str:
+    """The system text of a stage request as the model receives it; MCP-BRIDGE package 3 hands the same text to a chat.
+    Mutates `fragments` (`output_content_format`) and `refs` (the custom prompt version) as the request build does."""
     ref=None if stage=='rewrite' else validate_role_prompt(repo,story.id,stage,settings)
     if ref:
         system=repo.read_text(ref.id)
@@ -143,7 +154,6 @@ def make_context(repo,story,scene,stage,settings,sections,refs,fragments=None,ac
             from ..language import load_prompt
             system=load_prompt('assisted_writer_v1',story.language)
         else:system=role_prompt(stage,settings,story.language)
-    fragments=dict(fragments or {})
     if stage in {'draft','edit','rewrite'}:
         source_id=fragments.get('copyedit_draft_id') or fragments.get('rewrite_source_id')
         content_format='markdown' if stage=='draft' else repo.get_version(source_id).content_format if source_id else 'plain'
@@ -158,9 +168,10 @@ def make_context(repo,story,scene,stage,settings,sections,refs,fragments=None,ac
         if directive:system+='\n\n'+directive
     rating_text=rating_instructions(repo,story,scene,stage,settings)
     if rating_text:system+='\n\n'+rating_text
-    warnings=list(context_warnings or [])
-    if prompt_id and stage in {'brief','draft','edit'} and OTHER_MATERIAL_WARNING not in warnings:
-        warnings.append(OTHER_MATERIAL_WARNING)
+    return system
+
+
+def _finish_context(repo,story,scene,stage,settings,sections,refs,fragments,system,warnings,accepted_prose_ids,memory_metrics,memory_provenance,accepted_memory_ids,memory_selector,memory_narrower):
     from ..providers.requests import generation_request
     from ..token_budget.service import token_estimate
     from .context_metrics import request_breakdown
