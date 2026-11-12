@@ -88,3 +88,12 @@ def test_structured_book_reads_and_exports_in_store(tmp_path, store_edition):
 def test_structured_book_is_writable_with_long_prose(tmp_path):
     client, _, repo, story, _ = setup(tmp_path)
     assert client.patch(f'/api/stories/{story.id}', json={'title': 'Нова', 'expected_revision': story.revision}).status_code == 200
+
+
+def test_body_read_by_the_guard_still_reaches_the_route(tmp_path, store_edition):
+    client, _, repo, story, scene = setup(tmp_path, structured=False)
+    body = {'request_id': 'guard-body', 'request': {'story_id': story.id, 'mode': 'scene', 'scene_id': scene.id}}
+    response = client.post('/api/runs', json=body)
+    # The route saw the whole body: a run was created (or refused for a model reason), never a validation error.
+    assert response.status_code != 422, response.text
+    assert READ_ONLY not in response.text
