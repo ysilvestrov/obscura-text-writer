@@ -4142,7 +4142,8 @@
       "tests": [
         "tests/book/test_structure_invariants.py::test_flat_book_context_unchanged_by_structure_round_trip",
         "tests/web/test_structure_api.py::test_story_view_of_flat_book_has_implicit_structure",
-        "tests/mcp/test_bridge.py::test_get_story_names_part_and_arc_of_each_scene"
+        "tests/mcp/test_bridge.py::test_get_story_names_part_and_arc_of_each_scene",
+        "tests/mcp/test_bridge.py::test_get_story_of_a_flat_book_names_the_implicit_part_and_arc"
       ]
     },
     {
@@ -4181,7 +4182,9 @@
         "tests/authoring/test_import_book_structure.py::test_additive_import_continues_the_last_part_by_title",
         "tests/authoring/test_import_book_structure.py::test_flat_book_with_scenes_gets_them_in_the_first_part",
         "tests/authoring/test_import_book_structure.py::test_plan_without_markers_keeps_implicit_structure",
-        "tests/authoring/test_import_book_structure.py::test_store_edition_imports_markers_as_text"
+        "tests/authoring/test_import_book_structure.py::test_store_edition_imports_markers_as_text",
+        "tests/authoring/test_import_book_structure.py::test_parts_with_equal_or_empty_titles_stay_separate",
+        "tests/authoring/test_import_book_structure.py::test_first_structured_import_keeps_no_markers_in_the_source_plan"
       ]
     },
     {

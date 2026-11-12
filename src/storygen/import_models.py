@@ -9,6 +9,7 @@ class ImportedScene(DomainModel):
     # BOOK-STRUCTURE: part and arc titles from the plan; None continues the book's current part or arc.
     part_title: str | None=Field(default=None,max_length=200)
     arc_title: str | None=Field(default=None,max_length=200)
+    part_index: int | None=Field(default=None,ge=0,le=10000)
 
 class ImportPublication(DomainModel):
     metadata: dict

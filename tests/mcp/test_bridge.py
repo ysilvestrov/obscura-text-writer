@@ -146,6 +146,18 @@ def test_get_story_names_part_and_arc_of_each_scene(tmp_path):
         ('p1', 'Початок', 'a1', 'Ранок'), ('p2', '', 'b1', '')]
 
 
+@pytest.mark.req('BOOK-STRUCTURE')
+def test_get_story_of_a_flat_book_names_the_implicit_part_and_arc(tmp_path):
+    app, http = obscura(tmp_path)
+    repo = app.state.repo
+    story = repo.create_story(StoryCreate(title='Книга'))
+    repo.create_scene(story.id, SceneCreate(title='Перша'))
+    result = call(build_server(http), 'get_story', {'story_id': story.id})
+    assert not result.is_error, text(result)
+    assert [(s['part_id'], s['part_title'], s['arc_id'], s['arc_title']) for s in result.structured_content['scenes']] == [
+        ('implicit-part', '', 'implicit-arc', '')]
+
+
 @pytest.mark.req('MCP-BRIDGE')
 def test_next_steps_points_to_the_scene_in_obscura(tmp_path):
     app, http = obscura(tmp_path)

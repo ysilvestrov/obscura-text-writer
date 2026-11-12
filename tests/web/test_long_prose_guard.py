@@ -79,10 +79,19 @@ def test_one_named_part_and_arc_is_writable_in_store(tmp_path, store_edition):
 
 
 def test_structured_book_reads_and_exports_in_store(tmp_path, store_edition):
+    from storygen.generation.dependencies import save_manual_prose
+    from storygen.publication_models import PublicationData
     client, _, repo, story, _ = setup(tmp_path)
+    for scene in repo.list_scenes(story.id):
+        save_manual_prose(repo, scene.id, f'Текст сцени {scene.title}.\n', repo.get_scene(scene.id).revision)
+    author = repo.publication('create_signature', display_name='Автор')
+    repo.publication('save_card', story_id=story.id, data=PublicationData(title='Книга', author_ids=[author.id], genres=['short_story']),
+                     expected_revision=0, expected_signature_revisions={author.id: 0})
     assert client.get(f'/api/stories/{story.id}').status_code == 200
-    response = client.post(f'/api/stories/{story.id}/export', json={'format': 'md', 'allow_incomplete': True})
-    assert response.status_code != 400 or READ_ONLY not in response.text
+    response = client.post(f'/api/stories/{story.id}/export', json={'format': 'md'})
+    assert response.status_code == 200, response.text
+    download = client.get(response.json()['download_url'])
+    assert download.status_code == 200 and 'Текст сцени Перша.' in download.content.decode('utf-8')
 
 
 def test_structured_book_is_writable_with_long_prose(tmp_path):

@@ -104,13 +104,14 @@ def _plan(repo,view,story,text,version,item,publication):
         plan=repo.save_version(story.id,None,'scene_plan',section.text,[version.id])
         place=places.get(id(section))
         publication.scenes.append(ImportedScene(data=data,plan_version_id=plan.id,part_title=place.part_title if place else None,
-                                                arc_title=place.arc_title if place else None));proposals.append(data)
+                                                arc_title=place.arc_title if place else None,part_index=place.part_index if place else None));proposals.append(data)
     previous=view.active_source(story.id,'source_plan')
     if previous:
         combined=view.read_text(previous.id)+'\n\n'+''.join(s.text for s in accepted)
         active=repo.save_version(story.id,None,'source_plan',combined,[previous.id,version.id])
         publication.active_plan_version_id=active.id
-    elif len(accepted)==len(sections):publication.active_plan_version_id=version.id
+    # A structured plan is never kept as is: its part headings and arc lines must not reach the source plan.
+    elif len(accepted)==len(sections) and not publication.structured:publication.active_plan_version_id=version.id
     else:
         active=repo.save_version(story.id,None,'source_plan',preamble+''.join(s.text for s in accepted),[version.id])
         publication.active_plan_version_id=active.id

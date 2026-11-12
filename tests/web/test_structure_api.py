@@ -53,7 +53,8 @@ def test_put_structure_conflict_and_sequence_errors(tmp_path):
 
 def test_assign_arc_and_dissolve(tmp_path):
     client, repo, story, scenes = setup(tmp_path)
-    story = repo.get_story(story.id) if put(client, story, scenes, ['a1', 'a2', 'b1']).status_code == 200 else None
+    assert put(client, story, scenes, ['a1', 'a2', 'b1']).status_code == 200
+    story = repo.get_story(story.id)
     response = client.put(f'/api/stories/{story.id}/scenes/{scenes[1].id}/arc', json={'arc_id': 'a1', 'expected_revision': story.revision})
     assert response.status_code == 200, response.text
     assert response.json()['scene_arcs'][scenes[1].id] == 'a1'

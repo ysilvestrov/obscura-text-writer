@@ -125,23 +125,31 @@ def bind_restored_scene(story, ordered_active: list[Scene], scene: Scene):
     return story.model_copy(update={'scene_arcs': {**story.scene_arcs, scene.id: arc}})
 
 
-def place_imported(story, active: list[Scene], created: list[tuple[Scene, str | None, str | None]], structured: bool):
+def place_imported(story, active: list[Scene], created: list[tuple[Scene, str | None, str | None, int | None]], structured: bool):
     """publish_import hook: parts and arcs from the plan for the new scenes (all at the end of the book).
 
-    A part continues the book's last part when the titles match (or the title is None); otherwise a new part follows.
+    Every part heading of the plan starts a new part, except the plan's first heading when its title matches the book's
+    last part (a continued import); a scene before any heading (title None) continues the book's last part.
     An arc is found by title in its part; None continues the part's last arc. A flat book that already has scenes keeps
     them in a first part. A sequence violation raises ValueError and the whole publication rolls back."""
     if not created or story.book_structure is None and not structured:
         return story
     parts = [part.model_copy(deep=True) for part in story.book_structure.parts] if story.book_structure else []
     bindings = dict(story.scene_arcs)
-    new = {scene.id for scene, _, _ in created}
+    new = {scene.id for scene, *_ in created}
     earlier = [s for s in active if s.id not in new]
     if story.book_structure is None and earlier:
         parts.append(Part(id=new_id(), arcs=[Arc(id=new_id())]))
         bindings.update({s.id: parts[0].arcs[0].id for s in earlier})
-    for scene, part_title, arc_title in created:
-        if not parts or part_title is not None and parts[-1].title != part_title:
+    book_parts = len(parts)
+    current = None
+    for scene, part_title, arc_title, part_index in created:
+        if part_index is not None and part_index != current:
+            continues = current is None and len(parts) == book_parts and parts and parts[-1].title == (part_title or '')
+            if not continues:
+                parts.append(Part(id=new_id(), title=part_title or ''))
+            current = part_index
+        elif not parts:
             parts.append(Part(id=new_id(), title=part_title or ''))
         part = parts[-1]
         arc = next((a for a in reversed(part.arcs) if a.title == arc_title), None) if arc_title is not None else (part.arcs[-1] if part.arcs else None)

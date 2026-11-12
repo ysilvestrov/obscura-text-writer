@@ -1,6 +1,6 @@
 import pytest
 
-from storygen.authoring.imports import SourceFile, import_sources
+from storygen.authoring.imports import ImportBatchFailure, SourceFile, import_sources
 from storygen.book.structure import effective_structure
 from storygen.domain import SceneCreate, StoryCreate
 from storygen.plan_sections import split_book_plan
@@ -137,10 +137,48 @@ def test_import_that_would_mix_arcs_writes_nothing(tmp_path):
     run(repo, story, PLAN)
     before = repo.get_story(story.id)
     mixed = '# Частина 2: Дорога\n\n## Сцена 5: А\nАрка: Ліс\nТекст.\n\n## Сцена 6: Б\nАрка: \nТекст.\n'
-    try:
+    with pytest.raises(ImportBatchFailure):
         run(repo, before, mixed)
-    except ValueError:
-        pass
     after = repo.get_story(story.id)
     assert after.book_structure == before.book_structure and after.scene_arcs == before.scene_arcs
     assert len(repo.list_scenes(story.id)) == 3
+
+
+def test_parts_with_equal_or_empty_titles_stay_separate(tmp_path):
+    repo = Repository(tmp_path)
+    story = repo.create_story(StoryCreate(title='Книга'))
+    text = '''# План
+
+# Частина 1: Інтерлюдія
+
+## Сцена 1: А
+Текст.
+
+# Частина 2: Інтерлюдія
+
+## Сцена 2: Б
+Текст.
+
+# Частина 3:
+
+## Сцена 3: В
+Текст.
+
+# Частина 4:
+
+## Сцена 4: Г
+Текст.
+'''
+    run(repo, story, text)
+    story, scenes, structure = book(repo, story.id)
+    assert [p.title for p in structure.parts] == ['Інтерлюдія', 'Інтерлюдія', '', '']
+    assert len({structure.part_of_arc[structure.arc_of[s.id]] for s in scenes}) == 4
+
+
+def test_first_structured_import_keeps_no_markers_in_the_source_plan(tmp_path):
+    repo = Repository(tmp_path)
+    story = repo.create_story(StoryCreate(title='Книга'))
+    run(repo, story, PLAN)
+    view = repo.context_view(story.id)
+    text = view.read_text(view.active_source(story.id, 'source_plan').id)
+    assert 'Герой прокидається' in text and 'Частина' not in text and 'Арка' not in text

@@ -54,6 +54,7 @@ class BookSection:
     section: PlanSection
     part_title: str | None
     arc_title: str | None
+    part_index: int | None = None  # ordinal of the part heading in this plan; equal titles stay separate parts
 
 
 def _plain(line):
@@ -99,12 +100,12 @@ def split_book_plan(text,default_title='Сцена'):
         marks.append((start-(removed-(end-start)),title))
     stripped.append(text[cursor:])
     preamble,sections=split_plan(''.join(stripped),default_title)
-    found=bool(parts);result=[];offset=len(preamble);part=None;arc=None;mark=0
+    found=bool(parts);result=[];offset=len(preamble);part=None;arc=None;mark=0;index=None
     for section in sections:
         while mark<len(marks) and marks[mark][0]<=offset:
-            part=marks[mark][1];arc=None;mark+=1
+            part=marks[mark][1];arc=None;index=mark;mark+=1
         body,line_arc=_cut_arc_lines(section.text)
         if line_arc is not None:arc=line_arc;found=True
-        result.append(BookSection(PlanSection(section.title,body,section.author_scene_number),part,arc))
+        result.append(BookSection(PlanSection(section.title,body,section.author_scene_number),part,arc,index))
         offset+=len(section.text)
     return preamble,result,found
