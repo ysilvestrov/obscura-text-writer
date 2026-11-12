@@ -2,7 +2,7 @@ import {confirmDialog} from './dialogs.js';
 import {t,msg,labelEntries,getLocale,uiText,uiAttr,uiHTML,diagnostic} from './i18n.js';
 import {SettingsDrafts,settingsRoute} from './settings-state.js';
 import {api,notice} from './api.js';
-import {settingsContentKey,externalSettingsChange} from './settings-sync.js';
+import {readSettingsContent,externalSettingsChange} from './settings-sync.js';
 
 export const settingsDrafts=new SettingsDrafts();
 const forms=new Map(),root=document.querySelector('.settings-page');
@@ -86,10 +86,7 @@ function watchOutsideChanges(){
   const storyId=document.querySelector('[data-story-id]')?.dataset.storyId;
   if(!storyId)return;
   let loadedKey=null,lastSync=0,syncing=false;
-  const readKey=async()=>{
-    const [settings,evaluator]=await Promise.all([api(`/api/stories/${storyId}/settings`),api(`/api/stories/${storyId}/evaluator`)]);
-    return settingsContentKey(settings,evaluator);
-  };
+  const readKey=()=>readSettingsContent(api,storyId);
   // What the page now shows: after loading and after every own save (the language select saves outside withSettingsSave).
   const rebase=async()=>{try{loadedKey=await readKey()}catch{/* the next own action rebases again */}};
   document.addEventListener?.('workspace-settings-loaded',()=>void rebase());

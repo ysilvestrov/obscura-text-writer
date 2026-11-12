@@ -18,3 +18,10 @@ export function externalSettingsChange({loadedKey,freshKey,unsaved,busy}){
   const reload=changed&&!unsaved&&!busy;
   return {reload,warn:changed&&!reload};
 }
+
+// A story whose evaluator is not configured answers 400; that is "no evaluator", not a failed check.
+export async function readSettingsContent(api,storyId){
+  const [settings,evaluator]=await Promise.all([api(`/api/stories/${storyId}/settings`),
+    api(`/api/stories/${storyId}/evaluator`).catch(error=>{if(error?.status===400)return null;throw error})]);
+  return settingsContentKey(settings,evaluator);
+}

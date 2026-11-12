@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 const root=new URL('../../../src/storygen/web/static/',import.meta.url);
-const {settingsContentKey:key,externalSettingsChange:decide}=await import(new URL('settings-sync.js',root));
+const {settingsContentKey:key,externalSettingsChange:decide,readSettingsContent}=await import(new URL('settings-sync.js',root));
 
 const settings={story:{revision:3,config_revision:1,target_words:7000,language:'uk',content_rating:{sexual:0,violence:1,dark:0},title:'T'},
   roles:{writer:{provider:{provider:'local',model:'m'},temperature:0.7}},profile:{genre:'mystery',tone:''},prompts:{writer:'p'},
@@ -27,4 +27,10 @@ assert.deepEqual(decide({loadedKey:base,freshKey:'x',unsaved:false,busy:false}),
 assert.deepEqual(decide({loadedKey:base,freshKey:'x',unsaved:true,busy:false}),{reload:false,warn:true},'unsaved edits are kept');
 assert.deepEqual(decide({loadedKey:base,freshKey:'x',unsaved:false,busy:true}),{reload:false,warn:true},'a save in progress is not interrupted');
 assert.deepEqual(decide({loadedKey:null,freshKey:'x',unsaved:false,busy:false}),none,'nothing loaded yet');
+// A story without an evaluator answers 400 "not configured": the page still watches its settings.
+const failing=status=>Object.assign(new Error('x'),{status});
+const fake=evaluatorAnswer=>async url=>{if(url.endsWith('/settings'))return settings;if(evaluatorAnswer instanceof Error)throw evaluatorAnswer;return evaluatorAnswer};
+assert.equal(await readSettingsContent(fake(failing(400)),'S1'),key(settings,null),'no evaluator yet');
+assert.equal(await readSettingsContent(fake(evaluator),'S1'),base);
+await assert.rejects(readSettingsContent(fake(failing(500)),'S1'),'other failures are not hidden');
 console.log('settings sync ok');
