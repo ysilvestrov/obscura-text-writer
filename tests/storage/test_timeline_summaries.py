@@ -35,10 +35,10 @@ def test_publish_refuses_a_foreign_block_or_kind(tmp_path):
     repo, story = long_story(tmp_path, 12)
     block = summary_blocks(story, repo.list_scenes(story.id))[0]
     ref = model_summary(repo, story, block)
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match='^Підсумок належить іншому блоку$'):
         publish_summary(repo, story.id, 'range:11-20', ref.id, story.revision)
     memory_id = repo.list_scenes(story.id)[0].heads['memory']
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match='^Версія не є підсумком цього твору$'):
         publish_summary(repo, story.id, block.key, memory_id, story.revision)
 
 
@@ -63,7 +63,7 @@ def test_author_correction_is_a_new_version_with_cas_on_the_head(tmp_path):
         save_author_summary(repo, story.id, block.key, 'Виправлено.', 'other-version', story.revision)
     with pytest.raises(ValueError, match='1200'):
         save_author_summary(repo, story.id, block.key, 'а' * 1201, ref.id, story.revision)
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match='^Підсумок не може бути порожнім$'):
         save_author_summary(repo, story.id, block.key, '   ', ref.id, story.revision)
     story = save_author_summary(repo, story.id, block.key, 'Виправлено автором.', ref.id, story.revision)
     head = story.timeline_summary_heads[block.key]

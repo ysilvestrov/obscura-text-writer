@@ -45,11 +45,11 @@ def run(repo, story, text=GOOD, before=None, key='range:1-10', request_id='summa
 
 
 def test_request_validation():
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match='Блок підсумку задається лише для підсумку хронології'):
         RunRequest(story_id='s', mode='timeline_summary')
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match='належить блоку твору, не окремій сцені'):
         RunRequest(story_id='s', scene_id='x', mode='timeline_summary', summary_block_key='range:1-10')
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match='Блок підсумку задається лише для підсумку хронології'):
         RunRequest(story_id='s', scene_id='x', mode='scene', summary_block_key='range:1-10')
     assert STAGE_POLICY_ROLE['timeline_summary'] == 'memory' and 'timeline_summary' in MULTI_SCENE_STAGES
 
@@ -123,12 +123,28 @@ def test_rating_of_any_block_scene_blocks_the_store_edition(tmp_path, monkeypatc
     build_summary_context(repo, story.id, 'range:1-10')
     edition = build_edition.BuildEdition(edition='store', report_url='https://example.test/report')
     monkeypatch.setattr(build_edition, 'current', lambda: edition)
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match='Генерацію заблоковано: рейтинг «сексуальний зміст» тут 2'):
         build_summary_context(repo, story.id, 'range:1-10')
 
 
 def test_validate_summary_language():
     assert validate_summary('  ' + GOOD + ' ', 1200, 'uk') == GOOD
     assert validate_summary('Anna came to the city.', 1200, 'en') == 'Anna came to the city.'
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match='^Підсумок написано не англійською$'):
         validate_summary(GOOD, 1200, 'en')
+
+
+def test_block_timeline_skips_sources_from_a_trashed_scene(tmp_path):
+    # Cross-review #1: a cumulative journal still names the prose of a scene moved to the trash; the block timeline
+    # leaves that entry out instead of failing on the trashed scene.
+    from storygen.generation.timeline_summary import _timeline
+    from storygen.memory.summary_blocks import summary_blocks
+    repo, story = long_story(tmp_path, 22, 21)
+    scenes = repo.list_scenes(story.id)
+    memory_id = scenes[11].heads['memory']  # scene 12 remembers scenes 1-12
+    repo.set_scene_trashed(story.id, scenes[2].id, repo.get_scene(scenes[2].id).revision, False)
+    view = repo.context_view(story.id)
+    active = view.list_scenes(story.id)
+    block = summary_blocks(view.get_story(story.id), active)[0]
+    lines = _timeline(view, active, block, memory_id, 'uk')
+    assert len(lines) == 10 and not any('вулицю номер 3' in line for line in lines)

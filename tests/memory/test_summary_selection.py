@@ -48,7 +48,7 @@ def test_tight_budget_takes_the_later_block_first_and_an_unfit_summary_returns_i
     result = select_memory(inp(scene=33, summaries=[FIRST, SECOND], count=32), budget)
     assert result.summaries == (('range:11-20', 'v2'),)
     # The first summary did not fit: its block lies beyond the window, so its entries are counted by the note, never shown.
-    assert result.timeline_note.startswith('Не показано записів:') and '1–10' in result.timeline_note
+    assert result.timeline_note == 'Не показано записів: 22 (сцени 1–10, 21–32).'  # block 1-10 and what the budget cut
     assert 'Сцена 3:' not in result.text and result.dropped['summary'] == 1
 
 
@@ -56,8 +56,10 @@ def test_trimmed_summary_counts_its_block_once():
     long_first = SummaryCandidate('range:1-10', 'v1', 1, 10, '— Підсумок сцен 1–10: ' + 'дуже довгий опис ' * 60)
     result = select_memory(inp(summaries=[long_first]), 900)
     assert result.summaries == ()
-    total = sum(result.layers.values()) - result.layers['core'] + sum(result.dropped.values())
-    assert total == 22 + 1  # every timeline entry once, plus the summary itself
+    # The trimmed summary counts once; its 10 entries and the 12 recent ones each land in exactly one counter.
+    assert result.dropped['summary'] == 1 and result.layers['summary'] == 0
+    assert result.layers['timeline'] + result.dropped['timeline'] == 22
+    assert result.dropped['timeline'] == sum(1 for n in range(1, 23) if f't{n}' not in result.selected_claim_ids)
 
 
 def test_stale_head_with_dropped_entries_warns():

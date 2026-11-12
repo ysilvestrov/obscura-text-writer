@@ -58,3 +58,17 @@ def test_old_story_payload_reads_without_heads():
     payload = json.loads(Story(id='s', title='Т').model_dump_json())
     payload.pop('timeline_summary_heads')
     assert Story.model_validate(payload).timeline_summary_heads == {}
+
+
+def test_a_part_with_a_gap_has_no_block(tmp_path):
+    # Cross-review #2: a part whose scenes are not contiguous (an invalid transient structure) gets no block, so a
+    # summary never claims the scenes of another part in between.
+    repo, story = flat(tmp_path, 4)
+    scenes = repo.list_scenes(story.id)
+    structure = BookStructure(parts=[Part(id='p1', arcs=[Arc(id='a1')]), Part(id='p2', arcs=[Arc(id='b1')])])
+    arcs = dict(zip([s.id for s in scenes], ['a1', 'b1', 'a1', 'b1']))
+    story = story.model_copy(update={'book_structure': structure, 'scene_arcs': arcs})
+    assert summary_blocks(story, scenes) == []
+    arcs[scenes[1].id] = 'a1'
+    story = story.model_copy(update={'scene_arcs': arcs})
+    assert [(b.key, b.first_number, b.last_number) for b in summary_blocks(story, scenes)] == [('part:p1', 1, 3), ('part:p2', 4, 4)]

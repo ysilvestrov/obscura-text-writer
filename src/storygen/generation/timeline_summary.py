@@ -41,7 +41,12 @@ def _timeline(view, scenes, block, memory_id, language):
     from .context_labels import label
     journal = load_memory(view.read_text(memory_id))
     numbers = {s.id: n for n, s in enumerate(sorted(scenes, key=lambda s: s.position), 1)}
-    source = {id: numbers.get(view.get_version(id).scene_id) for id in journal.source_prose_ids}
+    def scene_number(version_id):
+        try:
+            return numbers.get(view.get_version(version_id).scene_id)
+        except KeyError:  # the prose of a scene in the trash: not part of any block
+            return None
+    source = {id: scene_number(id) for id in journal.source_prose_ids}
     lines = []
     for event in _timeline_events(journal):
         number = source.get(event.source_version_id)

@@ -30,7 +30,8 @@ def summary_blocks(story, scenes) -> list[SummaryBlock]:
         blocks = []
         for index, part in enumerate(structure.parts, 1):
             numbers = [(n, s.id) for n, s in enumerate(active, 1) if structure.part_of_arc.get(structure.arc_of.get(s.id)) == part.id]
-            if numbers:
+            # A part with a gap (an invalid transient structure) gets no block: a summary covers a contiguous range.
+            if numbers and numbers[-1][0] - numbers[0][0] + 1 == len(numbers):
                 blocks.append(SummaryBlock(f'part:{part.id}', part.title or f'{word} {index}', tuple(i for _, i in numbers),
                                            numbers[0][0], numbers[-1][0], True))
         return blocks

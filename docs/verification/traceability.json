@@ -4519,7 +4519,8 @@
         "tests/memory/test_summary_blocks.py::test_trashed_scenes_do_not_count",
         "tests/memory/test_summary_blocks.py::test_structured_book_has_a_block_per_part",
         "tests/memory/test_summary_blocks.py::test_recommendation_and_replacement_thresholds",
-        "tests/memory/test_summary_blocks.py::test_old_story_payload_reads_without_heads"
+        "tests/memory/test_summary_blocks.py::test_old_story_payload_reads_without_heads",
+        "tests/memory/test_summary_blocks.py::test_a_part_with_a_gap_has_no_block"
       ]
     },
     {
@@ -4572,7 +4573,8 @@
         "tests/generation/test_timeline_summary_run.py::test_rating_of_any_block_scene_blocks_the_store_edition",
         "tests/generation/test_timeline_summary_run.py::test_validate_summary_language",
         "tests/web/test_timeline_summaries_api.py::test_readiness_route",
-        "tests/web/test_timeline_summaries_api.py::test_not_ready_block_names_the_scene"
+        "tests/web/test_timeline_summaries_api.py::test_not_ready_block_names_the_scene",
+        "tests/generation/test_timeline_summary_run.py::test_block_timeline_skips_sources_from_a_trashed_scene"
       ]
     },
     {
