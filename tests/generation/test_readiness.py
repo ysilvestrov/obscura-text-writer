@@ -175,3 +175,20 @@ def test_readiness_skips_variant_for_level_two_targets(tmp_path):
     from storygen.generation.readiness import preview
     result=preview(repo,RunRequest(story_id=story.id,scene_id=scene.id,mode='scene'))
     assert 'writer_low_rating' not in result['roles']
+
+
+@pytest.mark.req('MODEL-001')
+def test_resume_preview_lists_variant_and_checks_its_budget(tmp_path):
+    from storygen.domain import ContentRating
+    from storygen.generation.readiness import pending_preview
+    from storygen.providers.policy import endpoint
+    repo,story,scene,worker=setup_story(tmp_path)
+    repo.update_story_rating(story.id,ContentRating(sexual=0,violence=1,themes=0),repo.get_story(story.id).revision)
+    run=worker.enqueue(RunRequest(story_id=story.id,scene_id=scene.id,mode='scene'),'resume-variant')
+    run.state='paused';worker._save(run)
+    writer=_variant_writer()  # local main writer, paid variant
+    save_role_settings(repo,story.id,'writer',writer,repo.get_story(story.id).revision)
+    repo.model_policy('set_consent',role='writer',provider='openrouter',base_url=endpoint(writer.low_rating_variant.provider),model='venice/free')
+    result=pending_preview(repo,worker.get_run(run.id))
+    assert result['roles']['writer_low_rating']=={'provider':'openrouter','model':'venice/free'}
+    assert not result['ready'] and result['reason']=='Спершу задайте явний ліміт бюджету в налаштуваннях'

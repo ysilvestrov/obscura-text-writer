@@ -235,6 +235,8 @@ def pending_preview(repo,run):
                     prompt=repo.get_version(prompt_id)
                     if prompt.story_id!=run.story_id or prompt.kind!='prompt' or prompt.stale or not prompt.complete:raise ValueError('Промпт ролі потребує оновлення: '+name)
                 result['roles'][name]=role.provider.model_dump(include={'provider','model'})
+                if name=='writer' and task['stage'] in WRITER_STAGES and role.low_rating_variant is not None and task.get('scene_id') and uses_low_rating_variant(role,repo.get_story(run.story_id),repo.get_scene(task['scene_id'])):
+                    result['roles']['writer_low_rating']=role.low_rating_variant.provider.model_dump(include={'provider','model'})
             if task.get('editor_loop'):
                 from .editor_loop import model_attempts
                 result['calls']+=max(0,run.request.edit_pass_limit-len(model_attempts(repo,run))) if task is first else run.request.edit_pass_limit
