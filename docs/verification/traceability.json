@@ -159,6 +159,37 @@
       ]
     },
     {
+      "id": "MODEL-005-S01",
+      "requirement": "MODEL-005",
+      "scope": "Позначки й ціна каталогу з полів провайдера; відсутнє поле — «невідомо». Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/providers/test_catalog_metadata.py::test_venice_catalog_fields_become_badges",
+        "tests/providers/test_catalog_metadata.py::test_missing_fields_stay_unknown",
+        "tests/providers/test_catalog_metadata.py::test_missing_capabilities_stay_unknown",
+        "tests/providers/test_catalog_metadata.py::test_either_e2ee_or_tee_attestation_marks_tee",
+        "tests/providers/test_catalog_metadata.py::test_openrouter_schema_from_supported_parameters",
+        "tests/providers/test_catalog_metadata.py::test_local_catalog_fields_are_unknown",
+        "tests/web/test_model_picker.py::test_model_picker_badges_filters_and_selectability"
+      ]
+    },
+    {
+      "id": "MODEL-005-S02",
+      "requirement": "MODEL-005",
+      "scope": "JSON Schema у режимі відповіді ролі: фільтр заблокований, модель з явною відмовою в підтримці не вибирається й не зберігається (HTTP 400); невідома підтримка дозволена з підказкою. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/web/test_model_schema_save.py::test_save_rejects_known_non_schema_model_in_schema_mode",
+        "tests/web/test_model_schema_save.py::test_save_allows_when_catalog_unavailable",
+        "tests/web/test_model_schema_save.py::test_save_allows_prompt_json_mode",
+        "tests/web/test_model_schema_save.py::test_save_allows_supported_unknown_and_local",
+        "tests/web/test_model_schema_save.py::test_schema_mismatch_ignores_unexpected_catalog_errors",
+        "tests/web/test_model_schema_save.py::test_rejected_save_writes_no_prompt_version"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#model-picker-browser",
+        "reason": "check_docs.py індексує лише pytest; Playwright cases tests/web/browser/model-picker.spec.mjs виконуються окремим runner, цей зв’язок не є доказом виконання."
+      }
+    },
+    {
       "id": "BUDGET-001-S01",
       "requirement": "BUDGET-001",
       "scope": "Конкурентні резерви. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",

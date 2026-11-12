@@ -16,6 +16,24 @@ Providers:
 
 The input limit in characters is a safeguard, not a token count. Before sending, the application estimates the tokens of the whole request and adds the response reserve; the sum must fit the context. Raising the numbers in the form does not increase the model's real context. Text is never silently cut: a request that does not fit is not sent.
 
+## Model list
+
+Instead of a field with suggestions, the role form and the connection block show the provider's catalog. At the top is the chosen model: its ID, badges, context, price and a **Change** button. Below are a search box, filters and a sortable table; the footer "Showing N of M" tells you how many models the filters hide.
+
+Badges come only from catalog fields, never from the model name:
+
+- **Uncensored** — the provider explicitly marked the model as uncensored.
+- **TEE**, **Private**, **Anonymous** — the Venice privacy level. "Privacy unknown" means the catalog did not report the field, as with OpenRouter.
+- **JSON Schema** — the catalog says the model supports structured output by schema.
+
+Filters: search by name or ID, **Uncensored only**, **Privacy** (default "Private and above"; you can choose "any" or "TEE only") and **JSON Schema**. For providers that do not report privacy (OpenRouter, local) the privacy filter is inactive and models are shown with "privacy unknown". A missing field always means "unknown", never "yes" or "no".
+
+Venice lists all online models, including those without Uncensored, but such a model cannot be chosen yet: a note beside it says the choice becomes available after the call rules are updated. An ID that is not in the catalog can be typed manually; it is kept and marked "not in catalog".
+
+### JSON Schema mode
+
+If a role or connection uses the **JSON Schema** response mode, the JSON Schema filter is on and locked, and models the catalog marks as lacking schema support are visible but cannot be chosen. Models with unknown support (for example, all local ones) can be chosen and saved; a hint beside them says "JSON Schema support is unknown: check the model yourself." Changing the response mode rebuilds the list at once. If the already chosen model does not support JSON Schema, the form will not save, and the server also rejects such a save with an explanation: choose another model or the "JSON by prompt" mode. If the catalog is unavailable or support is unknown, saving is allowed. Before a call the app checks the model against the catalog only for Venice; for OpenRouter and local models check schema support yourself. In "JSON by prompt" mode the filter is ordinary and optional.
+
 ## Call budget
 
 For Venice and OpenRouter open the story settings → **Call budget**:

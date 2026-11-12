@@ -11,7 +11,9 @@ test('selected model shows tariff units, caps and unknown without changing other
   await page.locator('[data-ui-locale=en]').click();
   await form.locator('.discover').click();await model.fill('synthetic-priced');
   await expect(info).toContainText('0.07');await expect(info).toContainText('0.4');await expect(info).toContainText('USD');await expect(info).toContainText('1,000,000');await expect(info).toContainText('24000');
-  await expect(form.locator('datalist option').first()).toContainText('USD');
+  // The synthetic rows report no privacy level, so the default «Private and above» filter hides them.
+  await form.locator('.model-picker-privacy select').selectOption('any');
+  await expect(form.locator('.model-picker tbody tr[data-model-id="synthetic-priced"]')).toContainText('0.07');
   const max=await form.locator('[name=max_output_tokens]').inputValue();
   await page.locator('[data-ui-locale=uk]').click();await expect(info).toContainText('Вхід');await expect(model).toHaveValue('synthetic-priced');await expect(form.locator('[name=max_output_tokens]')).toHaveValue(max);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBeTruthy();
