@@ -6,7 +6,7 @@ The link is `storygen-mcp`, a small program the chat client starts by itself. It
 
 ## What the chat can do
 
-The chat gets thirteen tools:
+The chat gets eighteen tools:
 
 - **story list** and **story overview**: scenes, their order and their state, in the same words as the scene list, plus the story's rating, target length and characters;
 - **new story**: a title, a language, a target length and, optionally, an age rating;
@@ -19,9 +19,13 @@ The chat gets thirteen tools:
 - **import a plan and characters**: the same as the [import](imports.md) form;
 - **save a draft**: a new version of the scene's draft, only over the draft the chat has read;
 - **link to rewriting from memory**: a link that opens [Ghost Mode](ghost-mode.md) for the scene's current draft;
-- **next steps**: a link to the scene in Obscura.
+- **next steps**: a link to the scene in Obscura;
+- **publication card**: reading the [card](publication.md) and changing chosen fields over the card the chat has read, with the FB2 genre catalogue;
+- **new signature** in the shared author and pen-name directory;
+- **cover** from a file on your computer;
+- **book export** to FB2, EPUB, PDF, MD or TXT: the chat gives a link to the finished file.
 
-The chat cannot delete stories or scenes, move them to the trash, reorder scenes, publish, run generation or the evaluator, or change writing settings, models and keys.
+The chat cannot delete stories or scenes, move them to the trash, reorder scenes, run generation, synopsis suggestions or the evaluator, or change writing settings, models and keys.
 
 ## Installation
 
@@ -99,6 +103,16 @@ Ask the chat to create a story: a title, a language (Ukrainian or English) and, 
 A draft from the chat is labelled "External client: <name>" in the version history and in the status row above the editor. If the chat named its model, the model is shown too. This is the client's claim: Obscura cannot check which model actually wrote the text. Once you save your own edit, the label leaves the status row; in the history it stays next to the chat's version.
 
 You can keep Obscura open next to the chat. When you return to the Obscura window, the page checks on its own whether the chat wrote anything. If the editor has no unsaved edits, you see the new draft right away. If it has, your text stays, and "The scene was changed elsewhere" appears above the editor with an "Open the newer version" button; it asks for confirmation before replacing the text.
+
+## Publishing from the chat
+
+The chat can fill in the publication card, add an author signature, set a cover and export the book.
+
+- The chat changes only the card fields you named; the rest stays. If the card was changed after the chat read it, the write is refused with code 409, and the chat has to read the card again.
+- The chat takes FB2 genres from the same catalogue as the card page.
+- The chat reads the cover from a file on a local disk: give the full path, for example `C:\Users\…\cover.png`. PNG and JPEG up to 10 MiB work. Copy a file from a network drive or a shared folder to your own disk first. An uploaded cover becomes part of the card only when the chat writes it there.
+- Export returns a link to the file in Obscura. The chat exports an unfinished story only with your explicit permission, and FB2 needs an author and a genre in the card.
+- If the card page is open, you will see the chat's changes when you return to it. Unsaved edits in the form stay, and the page says the card was changed elsewhere.
 
 ## Limitations
 

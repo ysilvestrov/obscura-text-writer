@@ -1,6 +1,7 @@
 import {confirmDialog} from './dialogs.js';
 import {live,t,msg,labelEntries,getLocale,uiText,uiAttr,uiHTML,diagnostic} from './i18n.js';
 import {api,json,notice} from './api.js';
+import {externalPublicationChange,withLibraryRevisions} from './publication-sync.js';
 
 const page=document.querySelector('#publication-page');
 const storyId=page.dataset.storyId;
@@ -89,7 +90,7 @@ function collect(){
 async function refreshLibrary(){
   const response=await api('/api/publication-signatures?include_archived=true');
   library=response.signatures;
-  for(const item of library)signatureRevisions[item.id]=item.revision;
+  signatureRevisions=withLibraryRevisions(signatureRevisions,library);
   renderLibrary();renderPeople();
 }
 function renderLibrary(){
@@ -255,4 +256,22 @@ if(suggest){
     finally{suggestionBusy=false;suggestionControls();}
   };
 }
+// MCP-BRIDGE-S31: on return to the page, pick up changes made elsewhere (a chat, another window) without touching edits.
+let lastSync=0,syncing=false;
+async function syncFromOutside(){
+  if(!view||syncing||loading||Date.now()-lastSync<2000)return;
+  syncing=true;lastSync=Date.now();
+  try{
+    const [current,people]=await Promise.all([api(base),api('/api/publication-signatures?include_archived=true')]);
+    if(!view)return;
+    const decision=externalPublicationChange({loadedRevision:view.card.revision,freshRevision:current.card.revision,formDirty:dirty,busy,
+      loadedLibrary:library,freshLibrary:people.signatures,libraryDirty:libraryDirty()});
+    if(decision.reloadCard){await load();return;}
+    if(decision.reloadLibrary){library=people.signatures;signatureRevisions=withLibraryRevisions(signatureRevisions,library);renderLibrary();renderPeople();}
+    if(decision.warnCard)notice(t('publication.changed_elsewhere'),'error');
+  }catch{/* A failed check stays quiet; the next return tries again. */}
+  finally{syncing=false;}
+}
+document.addEventListener?.('visibilitychange',()=>{if(!document.hidden)void syncFromOutside();});
+window.addEventListener?.('focus',()=>void syncFromOutside());
 void load();
