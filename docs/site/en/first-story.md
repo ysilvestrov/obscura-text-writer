@@ -4,7 +4,9 @@ Before you start, [install the application and set up the models](install.md#mod
 
 ## Create a story
 
-In the library enter the **New story title**, a target word count and the **Story language**, then press **Create story**. The language can be changed until a model has produced any material in the story.
+In the library enter the **New story title**, a target word count and the **Story language**, choose **Who writes the texts**, then press **Create story**. The language can be changed until a model has produced any material in the story.
+
+**Who writes the texts** is **Obscura writes** by default: Obscura models write the texts, and a chat client over MCP only helps. Choose **The chat writes** if the chat itself will write the texts ([Chat clients (MCP)](mcp.md)). You can change the mode at any time in the story settings, **Writing** section; texts already written do not change.
 
 ## Add an outline and characters
 

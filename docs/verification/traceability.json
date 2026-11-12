@@ -4845,6 +4845,48 @@
         "tests/mcp/test_bridge_chat_stages.py::test_scene_context_carries_instructions",
         "tests/mcp/test_bridge_chat_stages.py::test_next_steps_suggests_memory_after_prose"
       ]
+    },
+    {
+      "id": "WRITING-MODE-S01",
+      "requirement": "WRITING-MODE",
+      "scope": "Режим під час створення з форми й моста, типове значення форми, чинний запис без поля, невідомий режим. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/web/test_writing_mode.py::test_story_mode_defaults_to_chat_and_is_set_at_creation",
+        "tests/web/test_writing_mode.py::test_stored_story_without_the_field_reads_as_chat",
+        "tests/web/test_writing_mode.py::test_new_story_form_offers_mode_with_obscura_by_default",
+        "tests/mcp/test_bridge_writing_mode.py::test_create_story_defaults_to_chat_and_story_tools_show_mode"
+      ]
+    },
+    {
+      "id": "WRITING-MODE-S02",
+      "requirement": "WRITING-MODE",
+      "scope": "Зміна режиму з ревізією, застаріла ревізія, відмова мосту 403 з локалізацією, перемикач у налаштуваннях, режим у підписі вмісту сторінки. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/web/test_writing_mode.py::test_author_changes_mode_with_revision",
+        "tests/web/test_writing_mode.py::test_bridge_cannot_change_mode",
+        "tests/web/test_writing_mode.py::test_refusals_are_translated_for_english_locale",
+        "tests/web/test_writing_mode.py::test_settings_page_has_mode_toggle",
+        "tests/web/test_settings_sync.py::test_settings_page_decides_on_outside_changes"
+      ]
+    },
+    {
+      "id": "WRITING-MODE-S03",
+      "requirement": "WRITING-MODE",
+      "scope": "Відмови записів моста в режимі obscura, запис автора й читання контексту проходять, режим chat без змін, заголовок на кожному запиті моста. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/web/test_writing_mode.py::test_obscura_mode_refuses_bridge_texts_but_not_the_author",
+        "tests/web/test_writing_mode.py::test_chat_mode_keeps_bridge_writes",
+        "tests/mcp/test_bridge_writing_mode.py::test_save_draft_in_obscura_mode_is_refused",
+        "tests/mcp/test_bridge_writing_mode.py::test_bridge_client_marks_every_request"
+      ]
+    },
+    {
+      "id": "WRITING-MODE-S04",
+      "requirement": "WRITING-MODE",
+      "scope": "Голови, версії й стан запуску після зміни режиму. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/web/test_writing_mode.py::test_switching_mode_keeps_texts_and_running_runs"
+      ]
     }
   ]
 }

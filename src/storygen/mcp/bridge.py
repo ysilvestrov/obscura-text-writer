@@ -10,7 +10,7 @@ import json
 import os
 import re
 import stat
-from typing import Any
+from typing import Any, Literal
 from urllib.parse import urlsplit
 
 import httpx
@@ -45,6 +45,8 @@ DEFAULT_KEYS = ('OPENROUTER_API_KEY', 'VENICE_API_KEY')
 MODELS_LIMIT = 200
 # update_scene: null is a real plan_version_id (the scene has no plan version yet), so "not given" needs its own value.
 NOT_GIVEN = ''
+# WRITING-MODE: the server limits only requests that carry this header; the bridge sends it on every request.
+BRIDGE_HEADERS = {'X-Obscura-Client': 'mcp'}
 STORY_STEPS = (('title', 'PATCH', ''), ('language', 'PUT', '/language'), ('content_rating', 'PUT', '/content-rating'))
 INSTRUCTIONS = ('Obscura — локальний редактор історій. Прочитайте контекст сцени (get_scene_context) і поточну чернетку '
                 '(get_scene_text з material=draft), напишіть чернетку мовою сцени й збережіть її через save_draft з revision і '
@@ -55,7 +57,9 @@ INSTRUCTIONS = ('Obscura — локальний редактор історій.
                 'Публікація: get_publication → update_publication (лише змінені поля, revision з прочитаного) → export_book. '
                 'Налаштування: get_settings → update_settings (один розділ, fingerprint з прочитаного). '
                 'Етапи brief, edit і memory: get_stage_task (інструкції й матеріал, як для моделі Obscura) → відповідь у форматі '
-                'result_format → save_stage_result з task_fingerprint; інструкції чернетки — поле instructions у get_scene_context.')
+                'result_format → save_stage_result з task_fingerprint; інструкції чернетки — поле instructions у get_scene_context. '
+                'Режим твору (writing_mode у get_story): «chat» — тексти пише чат; «obscura» — тексти пишуть моделі Obscura, '
+                'і save_draft та етапи з чату відхиляються. Режим змінює лише автор у налаштуваннях твору.')
 
 
 def check_url(url: str) -> str:
@@ -208,7 +212,7 @@ def build_server(http: httpx.Client, client_name: str | None = None) -> MCPServe
 
     @server.tool()
     def list_stories() -> list[dict[str, Any]]:
-        """Історії в Obscura (без кошика): id, назва, мова, рейтинг, кількість сцен."""
+        """Історії в Obscura (без кошика): id, назва, мова, рейтинг, режим твору (writing_mode: chat чи obscura), кількість сцен."""
         return request('GET', '/api/stories')
 
     @server.tool()
@@ -223,6 +227,7 @@ def build_server(http: httpx.Client, client_name: str | None = None) -> MCPServe
         return {'id': story['id'], 'title': story['title'], 'language': story.get('language'),
                 'language_locked': data.get('language_locked'), 'revision': story.get('revision'),
                 'content_rating': story.get('content_rating'), 'target_words': story.get('target_words'),
+                'writing_mode': story.get('writing_mode', 'chat'),
                 'characters': [{'id': key, 'name': value} for key, value in names.items()], 'scenes': scenes}
 
     @server.tool()
@@ -271,15 +276,17 @@ def build_server(http: httpx.Client, client_name: str | None = None) -> MCPServe
         return {'version_id': version.get('id'), 'revision': scene.get('revision'), 'external_origin': version.get('external_origin')}
 
     @server.tool()
-    def create_story(title: str, language: str = 'uk', target_words: int = 7000, content_rating: dict[str, int] | None = None) -> dict[str, Any]:
+    def create_story(title: str, language: str = 'uk', target_words: int = 7000, content_rating: dict[str, int] | None = None,
+                     writing_mode: Literal['chat', 'obscura'] = 'chat') -> dict[str, Any]:
         """Створити новий твір в Obscura. Грошей не коштує; видалити твір можна лише в Obscura. language — uk або en
         (мову можна змінити до першого тексту від моделі чи чату); content_rating — {sexual, violence, themes} з рівнями 0–2.
-        Якщо рейтинг перевищує межу цього видання Obscura, твір не створюється."""
-        body: dict[str, Any] = {'title': title, 'language': language, 'target_words': target_words}
+        Якщо рейтинг перевищує межу цього видання Obscura, твір не створюється. writing_mode — хто пише тексти: chat (типово,
+        чат) або obscura (моделі Obscura; тоді чат не зберігає чернеток і етапів)."""
+        body: dict[str, Any] = {'title': title, 'language': language, 'target_words': target_words, 'writing_mode': writing_mode}
         if content_rating is not None:
             body['content_rating'] = content_rating
         story = request('POST', '/api/stories', json=body)
-        return {key: story.get(key) for key in ('id', 'title', 'revision', 'language', 'content_rating', 'target_words')}
+        return {key: story.get(key) for key in ('id', 'title', 'revision', 'language', 'content_rating', 'target_words', 'writing_mode')}
 
     @server.tool()
     def get_templates(language: str) -> dict[str, str]:
@@ -705,13 +712,17 @@ def build_server(http: httpx.Client, client_name: str | None = None) -> MCPServe
     return server
 
 
+def build_client(url: str) -> httpx.Client:
+    return httpx.Client(base_url=url, timeout=30, headers=BRIDGE_HEADERS)
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(prog='storygen-mcp', description='MCP-сервер (stdio) для локальної Obscura')
     parser.add_argument('--url', default=DEFAULT_URL, help=f'адреса запущеної Obscura (типово {DEFAULT_URL})')
     parser.add_argument('--client-name', default=None, help='назва клієнта для позначки версій (типово з clientInfo)')
     args = parser.parse_args(argv)
     url = check_url(args.url)
-    with httpx.Client(base_url=url, timeout=30) as http:
+    with build_client(url) as http:
         build_server(http, args.client_name).run('stdio')
 
 

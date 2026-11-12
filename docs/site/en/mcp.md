@@ -9,7 +9,7 @@ The link is `storygen-mcp`, a small program the chat client starts by itself. It
 The chat gets twenty-three tools:
 
 - **story list** and **story overview**: scenes, their order and their state, in the same words as the scene list, plus the story's rating, target length and characters;
-- **new story**: a title, a language, a target length and, optionally, an age rating;
+- **new story**: a title, a language, a target length, the story mode and, optionally, an age rating;
 - **plan and character templates**: the same files the story page offers;
 - **story properties**: the title, the language and the age rating;
 - **new scene** at the chosen place in the story, with a plan or modelled on the previous scene;
@@ -129,6 +129,14 @@ The chat can change the genre, tone, point of view, style rules and story length
 - These tools do not call models, but the chosen model sets the cost of your next runs in Obscura. The chat does not change the story budget.
 - Role settings have no version history. The chat sees what changed in the tool's answer: ask it to show you. You can save a preset before a big change.
 - If the settings page is open, you will see the chat's changes when you return to it. Unsaved edits stay, and the page says the settings were changed elsewhere.
+
+## Who writes the texts
+
+Each story has a mode: **The chat writes** or **Obscura writes**. A story created by the chat has the **The chat writes** mode by default; the new story form in Obscura has **Obscura writes** selected by default. The story list and the story details in the chat show the mode.
+
+- **The chat writes**: the chat writes drafts and goes through the scene stages itself, as described below.
+- **Obscura writes**: Obscura models write the texts. The chat still reads the story, imports the plan and characters, changes the settings and the publication, but Obscura refuses a draft or a stage result from it with the message: The story is in the "Obscura writes" mode: the chat does not write texts — start the stage in Obscura.
+- Only you change the mode: in the story settings, **Writing** section, the **Who writes the texts** field. The chat cannot change it. Changing the mode does not touch texts already written or stages already started.
 
 ## Scene stages from the chat
 

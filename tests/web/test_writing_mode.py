@@ -110,3 +110,17 @@ def test_settings_page_has_mode_toggle(tmp_path):
     page = client.get(f'/stories/{story.id}/settings').text
     assert 'id="story-mode-form"' in page and 'name="writing_mode"' in page
     assert '/static/story-mode.js' in page
+
+
+def test_switching_mode_keeps_texts_and_running_runs(tmp_path):
+    """WRITING-MODE-S04: no text changes, an active run keeps its state."""
+    from storygen.domain import new_id
+    from storygen.run_models import Run, RunRequest
+    app, repo, story, scene, client = app_with_scene(tmp_path, prose=True)
+    run = Run(id=new_id(), story_id=story.id, request_id=new_id(), request=RunRequest(story_id=story.id, mode='prepare'), tasks=[], state='running')
+    repo.enqueue_run(run)
+    heads = dict(repo.get_scene(scene.id).heads)
+    versions = len(repo.list_versions(story.id, scene.id))
+    assert set_mode(client, repo.get_story(story.id), 'obscura').status_code == 200
+    assert repo.get_scene(scene.id).heads == heads and len(repo.list_versions(story.id, scene.id)) == versions
+    assert repo.get_run(run.id).state == 'running'
