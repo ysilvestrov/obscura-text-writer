@@ -375,6 +375,32 @@
       ]
     },
     {
+      "id": "CONTEXT-002-S04",
+      "requirement": "CONTEXT-002",
+      "scope": "Примітка «ЗМІНИВСЯ ДЕНЬ» після пам’яті в brief/draft, англійська мітка, відсутність без переходу чи героя. Перевірка зазначеного сценарію; не є доказом літературного допуску.",
+      "tests": [
+        "tests/generation/test_writer_day_change.py::test_day_change_note_follows_memory_in_brief_and_draft",
+        "tests/generation/test_writer_day_change.py::test_no_day_change_note_without_change_or_hero",
+        "tests/generation/test_writer_day_change.py::test_day_change_note_in_english_story"
+      ]
+    },
+    {
+      "id": "CONTEXT-002-S05",
+      "requirement": "CONTEXT-002",
+      "scope": "Селектори дня в знімках brief/draft і застарілість лише за зміни дня сцени порівняння. Перевірка зазначеного сценарію.",
+      "tests": [
+        "tests/generation/test_writer_day_change.py::test_brief_and_draft_go_stale_on_comparison_day_change_only"
+      ]
+    },
+    {
+      "id": "CONTEXT-002-S06",
+      "requirement": "CONTEXT-002",
+      "scope": "Правила ядра у стандартних промптах uk/en, старі версії доступні, промпт не є залежністю. Перевіряє наявність інструкцій, а не якість прози.",
+      "tests": [
+        "tests/generation/test_writer_day_change.py::test_rules_in_builtin_writer_and_brief_prompts"
+      ]
+    },
+    {
       "id": "CONTEXT-003-S01",
       "requirement": "CONTEXT-003",
       "scope": "Застарілість перед початком. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
@@ -4674,6 +4700,14 @@
       "scope": "Рішення сторінки публікації про зміни ззовні (externalPublicationChange). Підключення обробників на сторінці перевірено вручну в браузері. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
       "tests": [
         "tests/web/test_publication_genres.py::test_publication_page_decides_on_outside_changes"
+      ]
+    },
+    {
+      "id": "MCP-BRIDGE-S32",
+      "requirement": "MCP-BRIDGE",
+      "scope": "Поле day_change у writing-context і селектори дня в MCP-чернетці, без них у ручній. Перевірка зазначеного сценарію.",
+      "tests": [
+        "tests/generation/test_writer_day_change.py::test_mcp_writing_context_has_day_change_and_external_draft_selectors"
       ]
     }
   ]

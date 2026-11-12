@@ -231,6 +231,16 @@ def memory_projection(repo,story,scene,scenes,language):
     return past,source_numbers,hidden,forwarded,tracked,names,projection
 
 
+def writer_day_change(scene,scenes,tracked,names,language):
+    """«ЗМІНИВСЯ ДЕНЬ» for the writing stages: tracked characters in the scene's cast whose day differs from their last scene
+    (the same day_change as the memory stage); None when there is none."""
+    from ..memory.story_time import comparison_scene, day_change, day_key, day_label
+    notes=[label('writer_day_changed',language,before=day_label(day_key(comparison_scene(scenes,scene,cid)),language),
+        after=day_label(day_key(scene),language),name=names.get(cid) or label('memory_protagonist',language))
+        for cid in tracked if cid in scene.character_ids and day_change(scenes,scene,cid)]
+    return '\n\n'.join(notes) or None
+
+
 def build_context(repo,scene_id: str,stage: str,settings: RoleSettings,*,editor_source_id: str | None=None,memory_approval: str | None=None,view=None) -> ContextBundle:
     if memory_approval is not None and stage!='memory':
         raise ValueError('Підтвердження пам’яті дозволено лише для її оновлення')
@@ -371,6 +381,9 @@ def build_context(repo,scene_id: str,stage: str,settings: RoleSettings,*,editor_
     memory_header=label('memory_header',language)+'\n'
     memory_index=len(sections)
     sections.append(memory_header+projection.text)
+    # A section of its own after the memory: MEMORY-SELECT replaces only sections[memory_index].
+    day_note=writer_day_change(scene,scenes,tracked,names,language)
+    if day_note:sections.append(day_note)
     def selection_input():
         from ..memory.story_time import day_key
         items,_=memory_items(past,scene.character_ids,source_numbers,hidden_claim_ids=hidden,forwarded_claim_ids=forwarded,tracked=tracked,names=names,language=language)
