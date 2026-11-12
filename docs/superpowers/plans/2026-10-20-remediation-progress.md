@@ -1838,3 +1838,4 @@ Playwright `memory-kind.spec.mjs` і `core-review.spec.mjs` пройшли вр�
 - SPEC.MD: MODEL-005 і MODEL-005-S03; traceability; `manual.md#model-limits-browser`; `docs/site/{uk,en}/models.md`, пару підтверджено.
 - Cross-review (agy/gemini-3.8-flash): 5 знахідок, усі виправлено (`35f1187`) — головна: спільний провайдер не перевіряв типові ліміти ще не збережених ролей.
 - `verify.py` на `35f1187` (з `C:/tmp/epl`): passed 2903, failed 0, skipped 1.
+- Після злиття `origin/main` (#149, #152) у гілку: `verify.py` на `a5fdc79`: passed 2903, failed 0, skipped 1.
