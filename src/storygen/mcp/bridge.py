@@ -1,4 +1,4 @@
-"""MCP-BRIDGE stdio server: twelve tools mapped onto the loopback HTTP API of a running Obscura.
+"""MCP-BRIDGE stdio server: thirteen tools mapped onto the loopback HTTP API of a running Obscura.
 
 The bridge holds no data, keys or prompts of its own. Every tool is one HTTP request; Obscura's own checks
 (revision, context fingerprint, language lock, import limits) decide, and their messages reach the chat as tool errors.
@@ -17,7 +17,7 @@ DEFAULT_URL = 'http://127.0.0.1:8765'
 LOOPBACK = {'127.0.0.1', 'localhost', '::1'}
 FALLBACK_CLIENT = 'MCP client'
 TOOLS = ('list_stories', 'get_story', 'get_scene_context', 'get_scene_text', 'import_plan_and_characters', 'save_draft', 'next_steps',
-         'create_story', 'get_templates', 'update_story', 'add_scene', 'update_scene')
+         'create_story', 'get_templates', 'update_story', 'add_scene', 'update_scene', 'open_ghost_mode')
 MATERIALS = ('plan', 'brief', 'draft', 'prose', 'memory')
 LANGUAGES = ('uk', 'en')
 # update_scene: null is a real plan_version_id (the scene has no plan version yet), so "not given" needs its own value.
@@ -272,6 +272,26 @@ def build_server(http: httpx.Client, client_name: str | None = None) -> MCPServe
         return result
 
     @server.tool()
+    def open_ghost_mode(story_id: str, scene_id: str, draft_version_id: str | None = None) -> dict[str, Any]:
+        """Посилання, що відкриває в Obscura переписування по пам’яті (Ghost Mode) поточної чернетки сцени. Нічого не
+        змінює й не коштує грошей; браузер відкриває автор кліком. draft_version_id (з get_scene_text чи save_draft)
+        перевіряється: якщо чернетку вже змінено, посилання не видається, а сторінка й сама не відкриє режим."""
+        identifier(story_id), identifier(scene_id)
+        if draft_version_id:
+            identifier(draft_version_id)
+        data = request('GET', f'/api/stories/{story_id}')
+        scene = next((item for item in data.get('scenes') or [] if item.get('id') == scene_id), None)
+        if scene is None:
+            raise ToolError('Сцени немає в цьому творі: перевірте story_id і scene_id (get_story)')
+        head = (scene.get('heads') or {}).get('draft')
+        if not head:
+            raise ToolError('У сцени немає чернетки: спершу збережіть її (save_draft)')
+        if draft_version_id and draft_version_id != head:
+            raise ToolError('Чернетку змінено після того, як її прочитали — прочитайте її знову (get_scene_text)')
+        suffix = f'&draft={draft_version_id}' if draft_version_id else ''
+        return {'url': f'{base}/stories/{story_id}?scene={scene_id}&material=draft&ghost=1{suffix}', 'draft_version_id': head}
+
+    @server.tool()
     def next_steps(scene_id: str) -> str:
         """Що робити далі в Obscura після збереження чернетки."""
         context = request('GET', f'/api/scenes/{identifier(scene_id)}/writing-context')
@@ -279,7 +299,7 @@ def build_server(http: httpx.Client, client_name: str | None = None) -> MCPServe
         return (f'Відкрийте сцену в Obscura: {url}\n'
                 '0. Щоб доопрацювати чернетку з чату, спершу прочитайте її (get_scene_text) і пишіть поверх прочитаного.\n'
                 '1. Перегляньте чернетку в редакторі; попередня версія лишається в історії версій.\n'
-                '2. За потреби доопрацюйте текст у режимі Ghost Mode.\n'
+                '2. За потреби доопрацюйте текст у режимі Ghost Mode: open_ghost_mode дасть посилання, що відкриє його одразу.\n'
                 '3. Коли текст готовий, затвердіть прозу й оновіть пам’ять сцени, щоб наступні сцени її бачили.')
 
     return server

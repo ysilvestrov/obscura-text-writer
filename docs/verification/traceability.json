@@ -4403,7 +4403,7 @@
       "requirement": "MCP-BRIDGE",
       "scope": "Рівно сім інструментів; стан сцен тим самим словником, що список сцен; посилання на сцену в next_steps. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
       "tests": [
-        "tests/mcp/test_bridge.py::test_tool_list_is_exactly_the_twelve_tools",
+        "tests/mcp/test_bridge.py::test_tool_list_is_exactly_the_thirteen_tools",
         "tests/mcp/test_bridge.py::test_get_story_reports_scene_states_with_the_ui_vocabulary",
         "tests/mcp/test_bridge.py::test_next_steps_points_to_the_scene_in_obscura",
         "tests/mcp/test_bridge.py::test_identifiers_cannot_reach_other_endpoints",
@@ -4586,6 +4586,36 @@
       "tests": [
         "tests/web/test_story_start.py::test_plan_from_chat_does_not_lock_language",
         "tests/mcp/test_bridge_story_start.py::test_plan_from_chat_keeps_language_unlocked"
+      ]
+    },
+    {
+      "id": "MCP-BRIDGE-S23",
+      "requirement": "MCP-BRIDGE",
+      "scope": "Розбір посилання, умови відкриття й очищення адреси (node); інструмент будує адресу. Відкриття режиму на сторінці перевірено вручну в браузері 12.11.2026. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/web/test_ghost_mode_ui.py::test_ghost_link_parsing_and_refusals",
+        "tests/mcp/test_bridge_ghost_link.py::test_link_for_the_current_draft"
+      ]
+    },
+    {
+      "id": "MCP-BRIDGE-S24",
+      "requirement": "MCP-BRIDGE",
+      "scope": "Причини відмови stale_link і old_session (node). Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/web/test_ghost_mode_ui.py::test_ghost_link_parsing_and_refusals"
+      ]
+    },
+    {
+      "id": "MCP-BRIDGE-S25",
+      "requirement": "MCP-BRIDGE",
+      "scope": "open_ghost_mode відмовляє без посилання; ідентифікатори до запиту; Store-збірка посилання видає. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/mcp/test_bridge_ghost_link.py::test_scene_without_draft_gets_no_link",
+        "tests/mcp/test_bridge_ghost_link.py::test_stale_draft_id_gets_no_link",
+        "tests/mcp/test_bridge_ghost_link.py::test_scene_of_another_story_gets_no_link",
+        "tests/mcp/test_bridge_ghost_link.py::test_store_edition_still_gets_a_link",
+        "tests/mcp/test_bridge_ghost_link.py::test_identifiers_are_checked_before_the_request",
+        "tests/mcp/test_bridge_ghost_link.py::test_next_steps_suggests_open_ghost_mode"
       ]
     }
   ]

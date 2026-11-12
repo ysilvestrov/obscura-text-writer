@@ -7,6 +7,8 @@ This mode helps you rewrite a scene's AI draft in your own words instead of edit
 1. Open the scene and the **Draft** stage. The draft must be saved.
 2. Click **Rewrite from memory**. A full-screen mode opens.
 
+You can also open the mode with a link from a [chat client](mcp.md). The link opens in a new tab and starts the mode for the scene's current draft, the same as the button. If the draft was changed after the chat gave the link, or the scene has an unfinished rewrite of an older draft, the mode does not open and the page explains why: continue or cancel the old rewrite with the button.
+
 The draft is split into blocks of about two lines: a paragraph, with short paragraphs such as dialogue lines joined to the following ones. Scene separators (`***`) are carried into the result as they are.
 
 ## Writing
