@@ -7,6 +7,7 @@ import {api,json,notice} from './api.js';
 import {state,refresh,loadBuffer,textEditor} from './editor.js';
 import {registerWorkspaceCommand} from './workspace-commands.js';
 import {assertReadyDispatch} from './workspace-state.js';
+import {readEditPassLimit,rememberEditPassLimit} from './edit-pass-limit.js';
 import {operationReason,confirmationText,runKind,controlReason,materialReason,editorLoopOperation} from './run-readiness.js';
 const controls=document.querySelector('#generation-controls'),status=document.querySelector('#run-status'),live=document.querySelector('#live-text');
 const terminal=new Set(['completed','failed','cancelled','interrupted','needs_review','alternative','paused']);
@@ -183,6 +184,7 @@ for(const [stage,label] of labelEntries({get brief(){return t("m_27e8e3278f1a")}
   if(stage==='edit'){
     const editorAction=button(label,()=>start('edit_loop'),'edit_loop');
     const passLabel=document.createElement('label');uiHTML(passLabel,"<span data-i18n=\"m_6c1316f99476\">Максимум проходів редактури</span><input id=\"edit-pass-limit\" type=\"number\" min=\"1\" max=\"10\" step=\"1\" value=\"5\">",{});editorAction.append(passLabel);
+    const passInput=document.querySelector('#edit-pass-limit');passInput.value=String(readEditPassLimit(state.storyId));passInput.addEventListener('input',()=>rememberEditPassLimit(state.storyId,Number(passInput.value)));
   }
   else button(label,()=>start('stage',stage),stage);
 }

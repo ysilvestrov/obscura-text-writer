@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import {readEditPassLimit,rememberEditPassLimit} from '../../../src/storygen/web/static/edit-pass-limit.js';
+const values=new Map(),storage={getItem:k=>values.get(k)??null,setItem:(k,v)=>values.set(k,v)};
+assert.equal(readEditPassLimit('storyA',storage),5);
+assert.equal(rememberEditPassLimit('storyA',3,storage),true);
+assert.equal(readEditPassLimit('storyA',storage),3);
+assert.equal(readEditPassLimit('storyB',storage),5);
+for(const bad of [0,11,2.5,NaN,'7'])assert.equal(rememberEditPassLimit('storyA',bad,storage),false);
+assert.equal(readEditPassLimit('storyA',storage),3);
+values.set('obscura.edit-pass-limit.v1.storyA','42');assert.equal(readEditPassLimit('storyA',storage),5);
+values.set('obscura.edit-pass-limit.v1.storyA','junk');assert.equal(readEditPassLimit('storyA',storage),5);
+const denied={getItem(){throw Error('denied')},setItem(){throw Error('denied')}};
+assert.equal(readEditPassLimit('storyA',denied),5);assert.equal(rememberEditPassLimit('storyA',4,denied),false);
+assert.equal(readEditPassLimit('storyA',null),5);
+console.log('Edit pass limit per-story memory passed');
