@@ -226,8 +226,15 @@ def build_server(http: httpx.Client, client_name: str | None = None) -> MCPServe
         data = request('GET', f'/api/stories/{identifier(story_id)}')
         impact = data.get('impact_status') or {}
         story = data['story']
+        # BOOK-STRUCTURE: part and arc of each scene (one implicit part and arc for a flat book).
+        arcs = {a['id']: (p, a) for p in (data.get('book_structure') or {}).get('parts', []) for a in p['arcs']}
+        none = ({'id': None, 'title': ''}, {'id': None, 'title': ''})
+
+        def place(scene):
+            part, arc = arcs.get(scene.get('arc_id'), none)
+            return {'part_id': part['id'], 'part_title': part['title'], 'arc_id': arc['id'], 'arc_title': arc['title']}
         scenes = [{'id': s['id'], 'position': s['position'], 'title': s['title'], 'revision': s['revision'],
-                   'state': scene_state(s, (impact.get(s['id']) or {}).get('prose'))} for s in data['scenes']]
+                   'state': scene_state(s, (impact.get(s['id']) or {}).get('prose')), **place(s)} for s in data['scenes']]
         names = data.get('character_names') or {}
         return {'id': story['id'], 'title': story['title'], 'language': story.get('language'),
                 'language_locked': data.get('language_locked'), 'revision': story.get('revision'),
