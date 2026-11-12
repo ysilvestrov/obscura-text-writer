@@ -1,6 +1,8 @@
 import {confirmDialog} from './dialogs.js';
 import {t,msg,labelEntries,getLocale,uiText,uiAttr,uiHTML,diagnostic} from './i18n.js';
 import {SettingsDrafts,settingsRoute} from './settings-state.js';
+import {api,notice} from './api.js';
+import {readSettingsContent,externalSettingsChange} from './settings-sync.js';
 
 export const settingsDrafts=new SettingsDrafts();
 const forms=new Map(),root=document.querySelector('.settings-page');
@@ -77,4 +79,29 @@ if(root){
   document.addEventListener('settings-show-role',event=>showSettingsRole(event.detail));
   globalThis.addEventListener('beforeunload',event=>{if(!navigationAllowed&&hasUnsavedSettings()){event.preventDefault();event.returnValue=''}});
   draw();
+  watchOutsideChanges();
+}
+// MCP-BRIDGE-S38: on return to the page, pick up settings changed elsewhere (a chat, another window) without touching edits.
+function watchOutsideChanges(){
+  const storyId=document.querySelector('[data-story-id]')?.dataset.storyId;
+  if(!storyId)return;
+  let loadedKey=null,lastSync=0,syncing=false;
+  const readKey=()=>readSettingsContent(api,storyId);
+  // What the page now shows: after loading and after every own save (the language select saves outside withSettingsSave).
+  const rebase=async()=>{try{loadedKey=await readKey()}catch{/* the next own action rebases again */}};
+  document.addEventListener?.('workspace-settings-loaded',()=>void rebase());
+  document.addEventListener?.('story-language-changed',()=>void rebase());
+  document.addEventListener?.('settings-save-state',()=>{if(!settingsBusy())void rebase()});
+  const sync=async()=>{
+    if(loadedKey===null||syncing||Date.now()-lastSync<2000)return;
+    syncing=true;lastSync=Date.now();
+    try{
+      const decision=externalSettingsChange({loadedKey,freshKey:await readKey(),unsaved:hasUnsavedSettings(),busy:settingsBusy()});
+      if(decision.reload){allowSettingsNavigation();globalThis.location.reload();}
+      else if(decision.warn)notice(t('settings.changed_elsewhere'),'error');
+    }catch{/* A failed check stays quiet; the next return tries again. */}
+    finally{syncing=false}
+  };
+  document.addEventListener?.('visibilitychange',()=>{if(!document.hidden)void sync()});
+  globalThis.addEventListener?.('focus',()=>void sync());
 }

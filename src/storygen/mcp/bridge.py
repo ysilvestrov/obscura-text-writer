@@ -1,9 +1,11 @@
-"""MCP-BRIDGE stdio server: eighteen tools mapped onto the loopback HTTP API of a running Obscura.
+"""MCP-BRIDGE stdio server: twenty-one tools mapped onto the loopback HTTP API of a running Obscura.
 
 The bridge holds no data, keys or prompts of its own. Every tool is one HTTP request; Obscura's own checks
 (revision, context fingerprint, language lock, import limits) decide, and their messages reach the chat as tool errors.
 """
 import argparse
+import copy
+import hashlib
 import json
 import os
 import re
@@ -22,7 +24,8 @@ LOOPBACK = {'127.0.0.1', 'localhost', '::1'}
 FALLBACK_CLIENT = 'MCP client'
 TOOLS = ('list_stories', 'get_story', 'get_scene_context', 'get_scene_text', 'import_plan_and_characters', 'save_draft', 'next_steps',
          'create_story', 'get_templates', 'update_story', 'add_scene', 'update_scene', 'open_ghost_mode',
-         'get_publication', 'update_publication', 'add_signature', 'upload_cover', 'export_book')
+         'get_publication', 'update_publication', 'add_signature', 'upload_cover', 'export_book',
+         'get_settings', 'update_settings', 'apply_role_preset')
 MATERIALS = ('plan', 'brief', 'draft', 'prose', 'memory')
 LANGUAGES = ('uk', 'en')
 PUBLICATION_FIELDS = tuple(PublicationData.model_fields)
@@ -30,6 +33,15 @@ EXPORT_FORMATS = ('fb2', 'epub', 'pdf', 'md', 'txt')
 COVER_EXTENSIONS = ('.png', '.jpg', '.jpeg')
 COVER_MAX_BYTES = 10 * 1024 * 1024
 DRIVE_REMOTE = 4
+ROLES = ('planner', 'writer', 'editor', 'memory')
+SETTINGS_SECTIONS = ('writing',) + ROLES
+WRITING_FIELDS = ('target_words', 'ending_goal', 'genre', 'tone', 'point_of_view', 'tense', 'rules', 'previous_tail_chars')
+PROVIDER_FIELDS = ('provider', 'model', 'base_url', 'timeout', 'response_mode', 'include_usage', 'local_disable_thinking',
+                   'venice_include_system_prompt', 'venice_disable_thinking', 'venice_reasoning_effort')
+ROLE_FIELDS = ('context_tokens', 'max_output_tokens', 'max_input_chars', 'temperature', 'future_plan_mode', 'future_plan_count', 'stop_sequences')
+EDITOR_FIELDS = ('edit_mode', 'edit_review')
+DEFAULT_KEYS = ('OPENROUTER_API_KEY', 'VENICE_API_KEY')
+MODELS_LIMIT = 200
 # update_scene: null is a real plan_version_id (the scene has no plan version yet), so "not given" needs its own value.
 NOT_GIVEN = ''
 STORY_STEPS = (('title', 'PATCH', ''), ('language', 'PUT', '/language'), ('content_rating', 'PUT', '/content-rating'))
@@ -39,7 +51,8 @@ INSTRUCTIONS = ('Obscura — локальний редактор історій.
                 'прочитаний текст: у ньому можуть бути правки автора. Конфлікт 409 означає, що сцена чи чернетка змінилася: '
                 'прочитайте їх знову. Новий твір: create_story → get_templates → import_plan_and_characters (план і персонажі за шаблоном) '
                 '→ get_story. План сцени переписуйте лише поверх прочитаного: plan_version_id з get_scene_text(material=plan). '
-                'Публікація: get_publication → update_publication (лише змінені поля, revision з прочитаного) → export_book.')
+                'Публікація: get_publication → update_publication (лише змінені поля, revision з прочитаного) → export_book. '
+                'Налаштування: get_settings → update_settings (один розділ, fingerprint з прочитаного).')
 
 
 def check_url(url: str) -> str:
@@ -120,6 +133,50 @@ def _detail(response: httpx.Response) -> str:
         detail = body['detail']
         return detail if isinstance(detail, str) else json.dumps(detail, ensure_ascii=False)
     return json.dumps(body, ensure_ascii=False)[:4000]
+
+
+def fingerprint(value) -> str:
+    """MCP-BRIDGE-S34: the content of one settings section, the same way for reading and for the check before a write."""
+    return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(',', ':'), ensure_ascii=False).encode('utf-8')).hexdigest()
+
+
+def role_scope(data: dict, role: str) -> dict:
+    return {'settings': (data.get('roles') or {}).get(role), 'prompt': (data.get('prompts') or {}).get(role, ''),
+            'prepare': data.get('prepare_prompt') if role == 'planner' else None, 'contract': (data.get('prompt_contracts') or {}).get(role)}
+
+
+def writing_scope(data: dict) -> dict:
+    return {'profile': data.get('profile'), 'target_words': (data.get('story') or {}).get('target_words')}
+
+
+def section_fingerprint(data: dict, section: str) -> str:
+    return fingerprint(writing_scope(data) if section == 'writing' else role_scope(data, section))
+
+
+def preset_fingerprint(data: dict, evaluator: dict | None) -> str:
+    """A preset replaces all four roles and, when it carries one, the evaluator: both are in the check."""
+    return fingerprint({'roles': {role: role_scope(data, role) for role in ROLES},
+                        'evaluator': {key: value for key, value in evaluator.items() if key != 'block'} if evaluator else None})
+
+
+def role_fields(role: str) -> tuple[str, ...]:
+    return PROVIDER_FIELDS + ROLE_FIELDS + (EDITOR_FIELDS if role == 'editor' else ())
+
+
+def role_view(settings: dict, role: str) -> dict:
+    provider = settings.get('provider') or {}
+    return {name: provider.get(name) if name in PROVIDER_FIELDS else settings.get(name) for name in role_fields(role)}
+
+
+def writing_view(data: dict) -> dict:
+    return {'target_words': (data.get('story') or {}).get('target_words'), **{name: (data.get('profile') or {}).get(name) for name in WRITING_FIELDS[1:]}}
+
+
+def preset_keys(settings: dict) -> list[str]:
+    keys = [(settings.get('provider') or {}).get('key_env')]
+    classification = settings.get('classification') or {}
+    keys.append((classification.get('provider') or {}).get('key_env'))
+    return [key for key in keys if key]
 
 
 def build_server(http: httpx.Client, client_name: str | None = None) -> MCPServer:
@@ -432,6 +489,163 @@ def build_server(http: httpx.Client, client_name: str | None = None) -> MCPServe
         manifest = request('GET', links['manifest_url'])
         return {'download_url': f'{base}{links["download_url"]}', 'format': manifest['format'], 'complete': manifest['complete'],
                 'warnings': manifest['warnings'], 'word_count': manifest['word_count'], 'age_rating': manifest['age_rating']}
+
+    def read_settings(story_id: str) -> dict:
+        return request('GET', f'/api/stories/{story_id}/settings')
+
+    def read_evaluator(story_id: str) -> dict | None:
+        response = send('GET', f'/api/stories/{story_id}/evaluator')
+        if response.status_code == 400:
+            return None  # "Оцінювач не налаштовано"
+        if response.status_code >= 400:
+            raise ToolError(f'Obscura відповіла {response.status_code}: {_detail(response)}')
+        return response.json()
+
+    def key_state(name: str | None) -> dict | None:
+        if not name:
+            return None
+        state = request('GET', f'/api/provider-keys/{identifier(name)}')
+        return {'name': state['name'], 'source': state['source']}
+
+    def settings_view(data: dict, section: str) -> dict:
+        if section == 'writing':
+            return {'settings': writing_view(data), 'fingerprint': section_fingerprint(data, 'writing')}
+        settings = (data.get('roles') or {}).get(section)
+        return {'configured': settings is not None, 'settings': role_view(settings, section) if settings else None,
+                'fingerprint': section_fingerprint(data, section)}
+
+    def changed_fields(before: dict | None, after: dict | None) -> dict[str, list]:
+        before, after = before or {}, after or {}
+        return {name: [before.get(name), after.get(name)] for name in after if before.get(name) != after.get(name)}
+
+    @server.tool()
+    def get_settings(story_id: str, include_prompts: bool = False, models_for_role: str | None = None,
+                     models_query: str | None = None) -> dict[str, Any]:
+        """Налаштування твору: профіль письма й обсяг (writing), чотири ролі (planner, writer, editor, memory) з
+        fingerprint кожного розділу для update_settings, стан ключа провайдера (без значення), пресети ролей і
+        preset_fingerprint для apply_role_preset. include_prompts додає тексти промптів; models_for_role — список моделей
+        провайдера цієї ролі (models_query фільтрує за підрядком). Нічого не змінює й моделі не викликає."""
+        identifier(story_id)
+        if models_for_role is not None and models_for_role not in ROLES:
+            raise ToolError(f'models_for_role: одна з {", ".join(ROLES)}')
+        data = read_settings(story_id)
+        roles = {}
+        for role in ROLES:
+            settings = (data.get('roles') or {}).get(role)
+            entry = {'configured': settings is not None, 'fingerprint': section_fingerprint(data, role)}
+            if settings:
+                provider = settings.get('provider') or {}
+                entry |= role_view(settings, role)
+                entry['key'] = None if provider.get('provider') == 'local' else key_state(provider.get('key_env'))
+                entry['custom_prompt'] = bool(settings.get('prompt_version_id'))
+            roles[role] = entry
+        result = {'writing': {**writing_view(data), 'fingerprint': section_fingerprint(data, 'writing')}, 'roles': roles,
+                  'preset_fingerprint': preset_fingerprint(data, read_evaluator(story_id)),
+                  'presets': request('GET', '/api/role-profiles')['profiles']}
+        if include_prompts:
+            result['prompts'] = {role: text for role, text in (data.get('prompts') or {}).items() if role in ROLES}
+            if (data.get('roles') or {}).get('planner'):
+                result['prepare_prompt'] = data.get('prepare_prompt')
+        if models_for_role:
+            settings = (data.get('roles') or {}).get(models_for_role)
+            if not settings:
+                raise ToolError(f'Роль {models_for_role} ще не налаштовано: спершу задайте провайдера й модель (update_settings)')
+            models = request('POST', '/api/providers/discover', json=settings['provider'])['models']
+            if models_query:
+                models = [item for item in models if models_query.lower() in str(item.get('id', '')).lower()]
+            models.sort(key=lambda item: str(item.get('id', '')))
+            result['models'] = [{key: item.get(key) for key in ('id', 'context_tokens', 'max_output_tokens', 'tariff', 'uncensored')}
+                                for item in models[:MODELS_LIMIT]]
+            result['models_total'] = len(models)
+        return result
+
+    @server.tool()
+    def update_settings(story_id: str, section: str, expected_fingerprint: str, fields: dict[str, Any]) -> dict[str, Any]:
+        """Змінює лише передані поля одного розділу налаштувань поверх прочитаного (fingerprint розділу з get_settings).
+        section: writing (target_words, ending_goal, genre, tone, point_of_view, tense, rules, previous_tail_chars) або
+        роль planner/writer/editor/memory (provider, model, base_url лише для local, timeout, response_mode, include_usage,
+        local_disable_thinking, venice_include_system_prompt, venice_disable_thinking, venice_reasoning_effort,
+        context_tokens, max_output_tokens, max_input_chars, temperature, future_plan_mode, future_plan_count,
+        stop_sequences; для editor ще edit_mode, edit_review). Нова роль потребує provider і model. Назву ключа, промпти,
+        оцінювача й бюджет змінює лише автор. Моделі не викликає, але від моделі залежить вартість наступних запусків."""
+        identifier(story_id)
+        if section not in SETTINGS_SECTIONS:
+            raise ToolError(f'section: одне з {", ".join(SETTINGS_SECTIONS)}')
+        if not isinstance(fields, dict) or not fields:
+            raise ToolError('Передайте хоча б одне поле розділу (fields)')
+        if 'key_env' in fields:
+            raise ToolError('Назву змінної ключа змінює лише автор на сторінці налаштувань')
+        allowed = WRITING_FIELDS if section == 'writing' else role_fields(section)
+        unknown = sorted(set(fields) - set(allowed))
+        if unknown:
+            raise ToolError(f'Поля поза розділом {section}: {", ".join(unknown)}. Допустимі: {", ".join(allowed)}')
+        data = read_settings(story_id)
+        if section_fingerprint(data, section) != expected_fingerprint:
+            raise ToolError(f'Obscura відповіла 409: розділ {section} змінено після того, як його прочитали — прочитайте його знову (get_settings)')
+        before = settings_view(data, section)['settings']
+        revision = data['story']['revision']
+        if section == 'writing':
+            body = {'expected_revision': revision,
+                    'profile': (data.get('profile') or {}) | {name: value for name, value in fields.items() if name != 'target_words'}}
+            if 'target_words' in fields:
+                body['target_words'] = fields['target_words']
+        else:
+            current = (data.get('roles') or {}).get(section)
+            if current is None and not {'provider', 'model'} <= set(fields):
+                raise ToolError(f'Роль {section} ще не налаштовано: передайте provider і model')
+            settings = copy.deepcopy(current) if current else {'provider': {}}
+            provider = settings.setdefault('provider', {})
+            previous = provider.get('provider')
+            for name, value in fields.items():
+                (provider if name in PROVIDER_FIELDS else settings)[name] = value
+            if provider.get('provider') != previous:
+                # The new provider's own key and address: the stored ones belong to the old provider (SECURITY-002).
+                provider.pop('key_env', None)
+                if 'base_url' not in fields:
+                    provider.pop('base_url', None)
+            if 'base_url' in fields and provider.get('provider') != 'local':
+                raise ToolError('base_url задається лише для локального провайдера; хмарні мають офіційну адресу')
+            body = {'expected_revision': revision, 'role': section, 'settings': settings}
+        response = send('PUT', f'/api/stories/{story_id}/settings', json=body)
+        if response.status_code == 422:
+            raise ToolError(f'Obscura відповіла 422: {_detail(response)}. Перевірте значення полів: числа в межах форми '
+                            '(max_output_tokens менше за context_tokens, temperature 0–2), provider — local, openrouter чи venice')
+        if response.status_code >= 400:
+            raise ToolError(f'Obscura відповіла {response.status_code}: {_detail(response)}')
+        after = settings_view(read_settings(story_id), section)
+        return {'section': section, **after, 'changed': changed_fields(before, after['settings'])}
+
+    @server.tool()
+    def apply_role_preset(story_id: str, profile_id: str, version: int, expected_fingerprint: str, confirm: bool = False) -> dict[str, Any]:
+        """Застосовує збережений пресет ролей (id і version з get_settings.presets). Без confirm лише показує, що
+        зміниться; confirm=true застосовує всі чотири ролі й, якщо пресет його містить, оцінювача — як кнопка на сторінці.
+        expected_fingerprint — preset_fingerprint з get_settings. Моделі не викликає."""
+        identifier(story_id), identifier(profile_id)
+        if not isinstance(version, int) or version < 1:
+            raise ToolError('version: ціле число від 1')
+        data = read_settings(story_id)
+        if preset_fingerprint(data, read_evaluator(story_id)) != expected_fingerprint:
+            raise ToolError('Obscura відповіла 409: ролі чи оцінювача змінено після того, як їх прочитали — прочитайте знову (get_settings)')
+        preview = request('POST', f'/api/stories/{story_id}/role-profiles/preview',
+                          json={'profile_id': profile_id, 'version': version, 'expected_revision': data['story']['revision']})
+        current = data.get('roles') or {}
+        allowed_keys = set(DEFAULT_KEYS) | {key for settings in current.values() if settings for key in preset_keys(settings)}
+        roles, foreign = {}, []
+        for role, settings in (preview.get('roles') or {}).items():
+            keys = preset_keys(settings)
+            foreign += [key for key in keys if key not in allowed_keys]
+            roles[role] = {'changed': changed_fields(role_view(current[role], role) if current.get(role) else None, role_view(settings, role)),
+                           'keys': keys}
+        result = {'profile_id': profile_id, 'version': version, 'name': preview.get('name'), 'roles': roles,
+                  'evaluator': preview.get('evaluator') is not None, 'applied': False}
+        if not confirm:
+            return result
+        if foreign:
+            raise ToolError(f'Пресет ставить назву ключа, якої немає серед ролей твору: {", ".join(sorted(set(foreign)))}. '
+                            'Такий пресет застосовує автор на сторінці налаштувань')
+        request('POST', f'/api/stories/{story_id}/role-profiles/apply',
+                json={'profile_id': profile_id, 'version': version, 'expected_revision': preview['expected_revision']})
+        return result | {'applied': True}
 
     @server.tool()
     def next_steps(scene_id: str) -> str:

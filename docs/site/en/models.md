@@ -45,6 +45,8 @@ The **Saved model presets** block stores the settings of the four roles together
 
 **Export JSON** and file import work without model calls. The JSON contains no keys, only environment variable names: on another computer add the key to `.env` separately. Do not put a key in a model name or a prompt. The evaluator can be added to a preset, but not its calibration.
 
+Role settings and the writing profile can also be changed from a [chat client](mcp.md#settings-from-the-chat). When you return to an open settings page, it checks for changes from the chat or another tab by itself: without unsaved edits the page refreshes, and with edits it stays and says "Settings were changed elsewhere".
+
 ## Local models
 
 A local model costs nothing, but large books need many calls and time. Tested profile for an 8 GB GPU: **Huihui-Qwen3.5-9B-abliterated Q4_K_M** with a 131072 context in Bionic, the **Planner** role, address `http://localhost:1235/v1`, response reserve 12288, temperature 0.1, JSON Schema and **Disable thinking (reasoning_effort=none)** enabled. This profile was tested for [impact review](revision.md); other roles can keep using cloud models.

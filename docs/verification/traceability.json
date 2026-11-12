@@ -2895,7 +2895,8 @@
       "manual": {
         "procedure": "docs/verification/manual.md#r28-preview-wait",
         "reason": "Конкретні автоматизовані desktop/mobile процедури у tests/web/browser/impact.spec.mjs виконуються окремим Playwright runner; фактичний результат у журналі, цей зв’язок не є доказом виконання."
-      }
+      },
+      "tests": []
     },
     {
       "id": "IMPACT-LOCAL-S01",
@@ -4429,7 +4430,7 @@
       "requirement": "MCP-BRIDGE",
       "scope": "Рівно сім інструментів; стан сцен тим самим словником, що список сцен; посилання на сцену в next_steps. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
       "tests": [
-        "tests/mcp/test_bridge.py::test_tool_list_is_exactly_the_eighteen_tools",
+        "tests/mcp/test_bridge.py::test_tool_list_is_exactly_the_twenty_one_tools",
         "tests/mcp/test_bridge.py::test_get_story_reports_scene_states_with_the_ui_vocabulary",
         "tests/mcp/test_bridge.py::test_next_steps_points_to_the_scene_in_obscura",
         "tests/mcp/test_bridge.py::test_identifiers_cannot_reach_other_endpoints",
@@ -4708,6 +4709,69 @@
       "scope": "Поле day_change у writing-context і селектори дня в MCP-чернетці, без них у ручній. Перевірка зазначеного сценарію.",
       "tests": [
         "tests/generation/test_writer_day_change.py::test_mcp_writing_context_has_day_change_and_external_draft_selectors"
+      ]
+    },
+    {
+      "id": "MCP-BRIDGE-S33",
+      "requirement": "MCP-BRIDGE",
+      "scope": "get_settings: розділи з відбитками, стан ключа без значення, промпти лише з include_prompts, пресети. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/mcp/test_bridge_settings.py::test_get_settings_of_a_new_story",
+        "tests/mcp/test_bridge_settings.py::test_get_settings_shows_key_state_but_never_a_value",
+        "tests/mcp/test_bridge_settings.py::test_identifiers_are_checked_before_the_request"
+      ]
+    },
+    {
+      "id": "MCP-BRIDGE-S34",
+      "requirement": "MCP-BRIDGE",
+      "scope": "update_settings: лише названі поля, changed; нова сцена не блокує; зміна розділу після читання без PUT. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/mcp/test_bridge_settings.py::test_update_creates_a_role_and_then_changes_only_named_fields",
+        "tests/mcp/test_bridge_settings.py::test_update_writing_profile_keeps_other_fields",
+        "tests/mcp/test_bridge_settings.py::test_section_changed_after_reading_is_refused_without_put"
+      ]
+    },
+    {
+      "id": "MCP-BRIDGE-S35",
+      "requirement": "MCP-BRIDGE",
+      "scope": "key_env, промпти, classification, невідомі поля без запиту; зміна провайдера зі стандартними ключем і адресою. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/mcp/test_bridge_settings.py::test_forbidden_or_unknown_fields_are_refused_without_request",
+        "tests/mcp/test_bridge_settings.py::test_switching_provider_takes_the_new_providers_key_and_address"
+      ]
+    },
+    {
+      "id": "MCP-BRIDGE-S36",
+      "requirement": "MCP-BRIDGE",
+      "scope": "Нова роль без provider/model відхиляється, з ними створюється. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/mcp/test_bridge_settings.py::test_update_creates_a_role_and_then_changes_only_named_fields"
+      ]
+    },
+    {
+      "id": "MCP-BRIDGE-S37",
+      "requirement": "MCP-BRIDGE",
+      "scope": "Пресет: перегляд без змін, застосування з confirm; чужа назва ключа й зміна оцінювача після читання відхиляються. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/mcp/test_bridge_settings.py::test_preset_is_previewed_then_applied",
+        "tests/mcp/test_bridge_settings.py::test_preset_with_a_foreign_key_name_is_not_applied",
+        "tests/mcp/test_bridge_settings.py::test_evaluator_changed_after_reading_blocks_the_preset"
+      ]
+    },
+    {
+      "id": "MCP-BRIDGE-S38",
+      "requirement": "MCP-BRIDGE",
+      "scope": "Рішення сторінки налаштувань про зміни ззовні й читання вмісту без налаштованого оцінювача. Підключення обробників на сторінці перевірено вручну в браузері. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/web/test_settings_sync.py::test_settings_page_decides_on_outside_changes"
+      ]
+    },
+    {
+      "id": "MCP-BRIDGE-S39",
+      "requirement": "MCP-BRIDGE",
+      "scope": "Список моделей ролі: фільтр, межа 200, сортування; роль поза переліком чи ненастроєна відхиляється. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/mcp/test_bridge_settings.py::test_model_list_is_filtered_and_capped"
       ]
     }
   ]

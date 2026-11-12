@@ -6,7 +6,7 @@ The link is `storygen-mcp`, a small program the chat client starts by itself. It
 
 ## What the chat can do
 
-The chat gets eighteen tools:
+The chat gets twenty-one tools:
 
 - **story list** and **story overview**: scenes, their order and their state, in the same words as the scene list, plus the story's rating, target length and characters;
 - **new story**: a title, a language, a target length and, optionally, an age rating;
@@ -23,9 +23,12 @@ The chat gets eighteen tools:
 - **publication card**: reading the [card](publication.md) and changing chosen fields over the card the chat has read, with the FB2 genre catalogue;
 - **new signature** in the shared author and pen-name directory;
 - **cover** from a file on your computer;
-- **book export** to FB2, EPUB, PDF, MD or TXT: the chat gives a link to the finished file.
+- **book export** to FB2, EPUB, PDF, MD or TXT: the chat gives a link to the finished file;
+- **story settings**: reading the writing profile, [role models](models.md), key state and presets, and on request the prompts and the provider's model list;
+- **settings changes**: chosen fields of the writing profile or of one role, over what the chat has read;
+- **role preset**: a preview and, with your consent in the chat, applying a saved preset.
 
-The chat cannot delete stories or scenes, move them to the trash, reorder scenes, run generation, synopsis suggestions or the evaluator, or change writing settings, models and keys.
+The chat cannot delete stories or scenes, move them to the trash, reorder scenes, run generation, synopsis suggestions or the evaluator, or change prompts, the evaluator, the budget and keys.
 
 ## Installation
 
@@ -113,6 +116,17 @@ The chat can fill in the publication card, add an author signature, set a cover 
 - The chat reads the cover from a file on a local disk: give the full path, for example `C:\Users\…\cover.png`. PNG and JPEG up to 10 MiB work. Copy a file from a network drive or a shared folder to your own disk first. An uploaded cover becomes part of the card only when the chat writes it there.
 - Export returns a link to the file in Obscura. The chat exports an unfinished story only with your explicit permission, and FB2 needs an author and a genre in the card.
 - If the card page is open, you will see the chat's changes when you return to it. Unsaved edits in the form stay, and the page says the card was changed elsewhere.
+
+## Settings from the chat
+
+The chat can change the genre, tone, point of view, style rules and story length, choose a provider and a model for a role, change the context, temperature or editor mode, and apply a saved role preset.
+
+- The chat changes only the named fields of one section: the writing profile or one role. If you changed that section after the chat read it, the write is refused with code 409, and the chat has to read the settings again. New scenes or a title change do not get in the way.
+- The chat does not see keys: only whether a key exists and where it is (an environment variable or the key store). Only you change the key variable name. When the chat switches the provider, the role takes the new provider's standard key and address.
+- The chat shows a preset first and applies it only after confirmation. You apply a preset whose key name is not among the story's roles yourself on the settings page.
+- These tools do not call models, but the chosen model sets the cost of your next runs in Obscura. The chat does not change the story budget.
+- Role settings have no version history. The chat sees what changed in the tool's answer: ask it to show you. You can save a preset before a big change.
+- If the settings page is open, you will see the chat's changes when you return to it. Unsaved edits stay, and the page says the settings were changed elsewhere.
 
 ## Limitations
 
