@@ -2,7 +2,7 @@
 import pytest
 
 from storygen.application.writing_context import writing_context
-from storygen.domain import ExternalOrigin, SceneCreate, StoryCreate
+from storygen.domain import ExternalOrigin, RevisionConflict, SceneCreate, StoryCreate
 from storygen.generation.context import build_context
 from storygen.generation.dependencies import save_manual_draft, writing_fingerprint
 from storygen.generation.prompts import default_prompt
@@ -84,13 +84,15 @@ def test_brief_and_draft_go_stale_on_comparison_day_change_only(tmp_path):
     repo, story, s1, s2 = two_scenes(tmp_path, first='Початок: 1.3.2024, 20:00', second='Початок: 2.3.2024, 08:00')
     bundle = build_context(repo, s2.id, 'brief', role())
     assert {s.field for s in bundle.dependency_snapshot.selectors} >= DAY_FIELDS
-    ref = saved(repo, story, s2, 'brief', bundle)
+    brief = saved(repo, story, s2, 'brief', bundle)
     draft_bundle = build_context(repo, with_brief(repo, story, s2).id, 'draft', role())
     assert {s.field for s in draft_bundle.dependency_snapshot.selectors} >= DAY_FIELDS
+    draft = saved(repo, story, s2, 'draft', draft_bundle)
     repo.update_scene_plan(s1.id, 'Початок: 01.03.24, 20:00', repo.get_scene(s1.id).revision)
-    assert ('selector_changed', 'memory_day_key') not in reasons(repo, story, ref)
+    assert reasons(repo, story, brief) == [] and reasons(repo, story, draft) == []
     repo.update_scene_plan(s1.id, 'Початок: 29.2.2024, 20:00', repo.get_scene(s1.id).revision)
-    assert ('selector_changed', 'memory_day_key') in reasons(repo, story, ref)
+    for ref in (brief, draft):
+        assert ('selector_changed', 'memory_day_key') in reasons(repo, story, ref)
 
 
 @pytest.mark.req('CONTEXT-002')
@@ -116,11 +118,20 @@ def test_mcp_writing_context_has_day_change_and_external_draft_selectors(tmp_pat
     assert data['day_change'] in build_context(repo, s2.id, 'brief', role()).user_text
     plain = writing_context(repo, s1.id)
     assert plain['day_change'] is None
+    # A client holding the context from before a day change is rejected without a new version.
+    old_fingerprint = data['context_fingerprint']
+    repo.update_scene_plan(s1.id, 'Початок: день 0, 20:00', repo.get_scene(s1.id).revision)
+    with pytest.raises(RevisionConflict, match='Контекст сцени змінився'):
+        save_manual_draft(repo, s2.id, 'Анна в пальті.', repo.get_scene(s2.id).revision, external_origin=ExternalOrigin(client='test'),
+            expected_context_fingerprint=old_fingerprint, expected_draft_version_id=None)
+    assert repo.get_scene(s2.id).heads.get('draft') is None
+    fresh = writing_context(repo, s2.id)
+    assert fresh['day_change'].startswith('ЗМІНИВСЯ ДЕНЬ: день 0 → день 2 (')
     external = save_manual_draft(repo, s2.id, 'Анна в пальті.', repo.get_scene(s2.id).revision,
-        external_origin=ExternalOrigin(client='test'), expected_context_fingerprint=writing_fingerprint(repo, repo.get_scene(s2.id)),
+        external_origin=ExternalOrigin(client='test'), expected_context_fingerprint=fresh['context_fingerprint'],
         expected_draft_version_id=None)
     assert {s.field for s in external.dependency_snapshot.selectors} >= DAY_FIELDS
     own = save_manual_draft(repo, s1.id, 'Анна вдома.', repo.get_scene(s1.id).revision)
     assert not {s.field for s in own.dependency_snapshot.selectors} & DAY_FIELDS
-    repo.update_scene_plan(s1.id, 'Початок: день 0, 20:00', repo.get_scene(s1.id).revision)
+    repo.update_scene_plan(s1.id, 'Початок: день 1, 20:00', repo.get_scene(s1.id).revision)
     assert ('selector_changed', 'memory_day_key') in reasons(repo, story, external)
