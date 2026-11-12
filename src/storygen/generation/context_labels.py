@@ -59,6 +59,8 @@ LABELS: dict[str, dict[str, str]] = {
     'memory_none': {'uk': 'Немає.', 'en': 'None.'},
     'memory_dropped': {'uk': 'Не показано записів: {count}{scenes}.', 'en': 'Entries not shown: {count}{scenes}.'},
     'memory_dropped_scenes': {'uk': ' (сцени {ranges})', 'en': ' (scenes {ranges})'},
+    'summary_scenes': {'uk': 'Підсумок сцен {first}–{last}: {text}', 'en': 'Summary of scenes {first}–{last}: {text}'},
+    'summary_part': {'uk': 'Підсумок частини «{title}» (сцени {first}–{last}): {text}', 'en': 'Summary of part “{title}” (scenes {first}–{last}): {text}'},
     # Characters (characters/projection.py, characters/context.py, characters/acquaintance.py).
     'characters': {'uk': 'КАРТКИ ПЕРСОНАЖІВ', 'en': 'CHARACTER CARDS'},
     'character': {'uk': 'ПЕРСОНАЖ: ', 'en': 'CHARACTER: '},

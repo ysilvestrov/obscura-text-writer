@@ -10,7 +10,7 @@ from typing import Mapping
 from .projection import MemoryItem, render_memory
 from ..generation.context_labels import label
 
-LAYERS=('core','hero_recent','threads','present','general','facts','timeline','atmosphere','fts')
+LAYERS=('core','hero_recent','threads','present','general','facts','summary','timeline','atmosphere','fts')
 TIMELINE_WINDOW=20
 RECENT_SCENES=3
 ATMOSPHERE_SHARE=0.10
@@ -36,6 +36,8 @@ class SelectionInput:
     scene_day: str | None = None
     day_keys: Mapping[int,str|None] = field(default_factory=dict)  # scene number -> day key
     language: str = 'uk'           # story language of the rendered section (#32)
+    summaries: tuple = ()          # MEMORY-SUMMARY: usable SummaryCandidate of blocks that left the window
+    stale_summaries: tuple = ()    # MEMORY-SUMMARY: unusable heads (StaleSummary) of earlier blocks
 
 
 @dataclass(frozen=True)
@@ -46,6 +48,8 @@ class MemorySelection:
     dropped: dict[str,int]
     timeline_note: str | None
     char_budget: int
+    summaries: tuple[tuple[str,str],...] = ()   # (block_key, version_id) of the summaries in the section
+    warnings: tuple[str,...] = ()
 
 
 _WORD=re.compile(r"[\w'’ʼ]+")
@@ -134,8 +138,12 @@ def timeline_note(dropped: list[MemoryItem], language='uk') -> str | None:
     return label('memory_dropped',language,count=len(dropped),scenes=scenes)
 
 
-def _render(inp: SelectionInput, chosen: set[str], note: str | None) -> str:
-    return render_memory([item for item in inp.items if item.claim_id in chosen],list(inp.tracked),dict(inp.names),timeline_note=note,language=inp.language)
+SUMMARY_STALE_WARNING='Підсумок сцен {first}–{last} застарів: перебудуйте його в панелі пам’яті.'
+
+
+def _render(inp: SelectionInput, chosen: set[str], note: str | None, summaries=()) -> str:
+    lines=[c.line for c in sorted(summaries,key=lambda c:c.first_number)]
+    return render_memory([item for item in inp.items if item.claim_id in chosen],list(inp.tracked),dict(inp.names),timeline_note=note,language=inp.language,summary_lines=lines)
 
 
 def minimal_chars(inp: SelectionInput) -> int:
@@ -166,8 +174,18 @@ def select_memory(inp: SelectionInput, char_budget: int) -> MemorySelection:
 
     for layer in ('hero_recent','threads','present','general','facts'):
         for item in layers[layer]:take(layer,item)
+    # MEMORY-SUMMARY: a summary replaces its whole block, the entries inside the window too; latest block first.
+    summaries={}
+    for candidate in sorted(inp.summaries,key=lambda c:-c.last_number):
+        cost=len(candidate.line)+1
+        if cost<=left:
+            left-=cost;summaries[candidate.block_key]=candidate;taken['summary']+=1;added.append(('summary',candidate))
+        else:dropped['summary']+=1
+    def covered(item):
+        return item.source_scene is not None and any(c.first_number<=item.source_scene<=c.last_number for c in summaries.values())
     window=inp.scene_number-TIMELINE_WINDOW
     for item in layers['timeline']:
+        if covered(item):continue
         if item.source_scene is not None and item.source_scene<window:dropped['timeline']+=1
         else:take('timeline',item)
     quota=int(ATMOSPHERE_SHARE*char_budget)
@@ -179,13 +197,22 @@ def select_memory(inp: SelectionInput, char_budget: int) -> MemorySelection:
     # Exact render: the greedy pass is approximate ('Немає.' lines, the timeline note), so the last additions go back
     # until the section fits. Every removed line is counted as dropped in its layer.
     def note():
-        return timeline_note([item for item in layers['timeline'] if item.claim_id not in chosen],inp.language)
-    text=_render(inp,chosen,note())
+        return timeline_note([item for item in layers['timeline'] if item.claim_id not in chosen and not covered(item)],inp.language)
+    text=_render(inp,chosen,note(),summaries.values())
     while len(text)>char_budget:
         layer,item=added.pop()
-        chosen.discard(item.claim_id);taken[layer]-=1;dropped[layer]+=1
-        text=_render(inp,chosen,note())
-    return MemorySelection(text,tuple(item.claim_id for item in inp.items if item.claim_id in chosen),taken,dropped,note(),char_budget)
+        taken[layer]-=1;dropped[layer]+=1
+        if layer=='summary':
+            # Its block's entries were neither taken nor counted: beyond the window they join the note, inside it they
+            # are dropped by the budget.
+            del summaries[item.block_key]
+            dropped['timeline']+=sum(1 for entry in layers['timeline'] if entry.source_scene is not None and item.first_number<=entry.source_scene<=item.last_number)
+        else:chosen.discard(item.claim_id)
+        text=_render(inp,chosen,note(),summaries.values())
+    warnings=tuple(SUMMARY_STALE_WARNING.format(first=s.first_number,last=s.last_number) for s in inp.stale_summaries
+        if any(e.claim_id not in chosen and e.source_scene is not None and s.first_number<=e.source_scene<=s.last_number for e in layers['timeline']))
+    used=tuple((c.block_key,c.version_id) for c in sorted(summaries.values(),key=lambda c:c.first_number))
+    return MemorySelection(text,tuple(item.claim_id for item in inp.items if item.claim_id in chosen),taken,dropped,note(),char_budget,used,warnings)
 
 
 NARROW_FTS_STATES=20

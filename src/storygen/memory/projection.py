@@ -122,7 +122,7 @@ def memory_items(journal: MemoryJournal, character_ids: list[str], source_scene_
         'omitted_state_count':omitted,'core_line_count':core_lines,'hidden_claim_count':len(hidden&{e.claim_id for e in journal.events})}
 
 
-def render_memory(items, tracked, names=None, *, timeline_note: str | None = None, language='uk') -> str:
+def render_memory(items, tracked, names=None, *, timeline_note: str | None = None, language='uk', summary_lines=()) -> str:
     sections=[]
     for cid in tracked:
         lines=[i.line for i in items if i.section=='core' and i.owner==cid]
@@ -132,7 +132,10 @@ def render_memory(items, tracked, names=None, *, timeline_note: str | None = Non
             sections.append(label('memory_core_owner',language,name=owner)+'\n'+'\n'.join(lines))
     for category in CATEGORIES:
         lines=[i.line for i in items if i.section==category]
-        if category=='timeline' and timeline_note:lines.insert(0,'— '+timeline_note)
+        if category=='timeline':
+            # MEMORY-SUMMARY: the note first, then the summaries of replaced blocks, then the entries.
+            lines=list(summary_lines)+lines
+            if timeline_note:lines.insert(0,'— '+timeline_note)
         sections.append(label('memory_'+category,language)+'\n'+('\n'.join(lines) if lines else label('memory_none',language)))
     return '\n\n'.join(sections)
 

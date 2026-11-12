@@ -88,6 +88,7 @@ class MemorySelector:
 
 SELECTION_STEPS=12
 SELECTED_PROJECTION='memory-uk-v3-selected'
+SUMMARY_PROJECTION='memory-uk-v3-selected-summary'
 
 
 def _select_memory_section(selector,sections,measured,measure,fits,settings):
@@ -198,10 +199,15 @@ def _finish_context(repo,story,scene,stage,settings,sections,refs,fragments,syst
         if selected:
             sections,selection,steps,measured=selected
             total=sum(selection.layers.values())+sum(selection.dropped.values())
-            memory_metrics.update({'projection_version':SELECTED_PROJECTION,'projection_chars':len(selection.text),
+            memory_metrics.update({'projection_version':SUMMARY_PROJECTION if selection.summaries else SELECTED_PROJECTION,'projection_chars':len(selection.text),
                 'selection':{'layers':selection.layers,'dropped':selection.dropped,'selected_claim_ids':list(selection.selected_claim_ids),
                     'timeline_note':selection.timeline_note,'char_budget':selection.char_budget,'steps':steps}})
+            if selection.summaries:
+                # MEMORY-SUMMARY: the request depends on the summary versions it shows.
+                memory_metrics['selection']['summaries']=[{'block_key':key,'version_id':id} for key,id in selection.summaries]
+                refs.extend(id for _,id in selection.summaries)
             warnings.append(MEMORY_SELECTED_WARNING.format(shown=len(selection.selected_claim_ids),total=total))
+            warnings.extend(selection.warnings)
     if not fits(measured) and memory_narrower is not None:
         # MEMORY-SELECT-S07: one narrowed memory-stage catalog with matching schema bounds; no search, no further cuts.
         sections,updates,metrics,warning=memory_narrower()
@@ -224,6 +230,11 @@ def _finish_context(repo,story,scene,stage,settings,sections,refs,fragments,syst
         # Computed here, not via memory_selector: a rewrite re-enters make_context with the base metrics and no selector.
         from ..memory.kinds import kind_overrides
         snapshot.selectors.append(DependencySelector(kind='scene',owner_id=scene.id,field='memory_kind_overrides',expected=kind_overrides(repo,scene.id)))
+        used=memory_metrics['selection'].get('summaries')
+        if used:
+            # MEMORY-SUMMARY: a new head of a used block makes this text stale even when the old version is not.
+            snapshot.selectors.append(DependencySelector(kind='story',owner_id=story.id,field='timeline_summary_heads',
+                expected={item['block_key']:item['version_id'] for item in used}))
     if memory_provenance:
         fingerprint=hashlib.sha256((fingerprint+snapshot.model_dump_json()).encode()).hexdigest()
     head={'brief':'brief','draft':'draft','edit':'prose','memory':'memory','rewrite':'draft'}.get(stage)
@@ -407,8 +418,10 @@ def build_context(repo,scene_id: str,stage: str,settings: RoleSettings,*,editor_
         # FTS query: the scene's own plan (already in refs) and, where it is a required input, its brief.
         query=[repo.read_text(scene.heads['plan']) if scene.heads.get('plan') else scene.beats]
         if stage in {'draft','edit'} and scene.heads.get('brief'):query.append(repo.read_text(scene.heads['brief']))
+        from ..memory.summaries import usable_summaries
+        summaries,stale=usable_summaries(repo,story,scenes,scene.position+1,language)
         return SelectionInput(tuple(items),scene.id,scene.position+1,tuple(scene.character_ids),tuple(tracked),names,'\n'.join(query),kinds(),
-            day_key(scene),{s.position+1:day_key(s) for s in scenes if s.position<scene.position},language)
+            day_key(scene),{s.position+1:day_key(s) for s in scenes if s.position<scene.position},language,tuple(summaries),tuple(stale))
     def kinds():
         from ..memory.kinds import kind_overrides
         return kind_overrides(repo if hasattr(repo,'peek_scene') else repo.context_view(story.id),scene.id)
