@@ -36,3 +36,37 @@ def test_unnumbered_markdown_before_txt_number_is_a_scene():
     preamble,sections=split_plan(text)
     assert preamble==''
     assert [s.author_scene_number for s in sections]==[None,2]
+
+
+@pytest.mark.parametrize('title',['# План: Маяк на пристані','# Маяк на пристані','#\tMy story'])
+@pytest.mark.parametrize('ending',['\n','\r\n'])
+def test_opening_title_before_txt_scenes_is_preamble(title,ending):
+    raw=ending.join(['',title,'','Робоча назва: Маяк','Сцена 1: Лист','Опис','','Scene 2. Pier','Text',''])
+    preamble,sections=split_plan(raw)
+    assert preamble==ending.join(['',title,'','Робоча назва: Маяк',''])
+    assert [s.author_scene_number for s in sections]==[1,2]
+    assert preamble+''.join(s.text for s in sections)==raw
+
+
+def test_opening_title_does_not_change_the_level_of_other_headings():
+    preamble,sections=split_plan('# Маяк\n## Інтерлюдія\nТиша\nСцена 2: Зустріч\nРозмова\n### Спогад\nТекст')
+    assert preamble=='# Маяк\n'
+    assert [(s.title,s.author_scene_number) for s in sections]==[('Інтерлюдія',None),('Зустріч',2)]
+
+
+@pytest.mark.parametrize('text',[
+    '# Пролог\nТиша\nСцена 1: Лист\nОпис\n# Епілог\nКінець',   # two level-1 headings: both are scenes
+    'Вступ\n# Пролог\nТиша\nСцена 1: Лист\nОпис',               # not the first line of the file
+])
+def test_level_one_heading_that_is_not_a_lone_opening_title_stays_a_scene(text):
+    sections=split_plan(text)[1]
+    assert sections[0].title=='Пролог' and sections[0].author_scene_number is None
+
+
+def test_opening_title_without_numbered_scenes_stays_a_scene():
+    assert [s.title for s in split_plan('# Маяк\nОпис\n## Деталі\nТекст')[1]]==['Маяк']
+
+
+def test_numbered_markdown_scenes_keep_the_level_rule():
+    preamble,sections=split_plan('# Пролог\nТиша\n# Сцена 1: Лист\nОпис')
+    assert preamble=='' and [s.author_scene_number for s in sections]==[None,1]

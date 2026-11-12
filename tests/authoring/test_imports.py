@@ -47,3 +47,43 @@ def test_reorder_rejects_foreign_or_duplicate_ids(tmp_path):
     assert repo.list_scenes(story.id)[0].id==scenes[1].id
     with pytest.raises(ValueError):
         reorder_scenes(repo,story.id,[scenes[0].id,scenes[0].id],repo.get_story(story.id).revision)
+
+
+TITLED_PLAN="""# План: Маяк на пристані
+
+Сцена 1: Лист у скриньці
+Хто бере участь: Анна.
+Анна знаходить лист без зворотної адреси.
+
+Сцена 2: Пристань уночі
+Хто бере участь: Анна.
+Анна йде з ліхтарем до старої пристані.
+"""
+ONE_CARD="# Персонажі\n\n## Анна\nДоглядачка маяка, 34 роки.\n"
+
+
+def _plan_and_cards(order):
+    files={'plan':SourceFile(name='plan.md',raw=TITLED_PLAN.encode('utf-8')),
+           'cards':SourceFile(name='characters.md',raw=ONE_CARD.encode('utf-8'),kind='source_characters')}
+    return [files[key] for key in order]
+
+
+def test_plan_title_before_plain_scene_lines_is_not_imported_as_a_scene(tmp_path):
+    repo=Repository(tmp_path)
+    story=repo.create_story(StoryCreate(title='Маяк',target_words=7000))
+    result=import_sources(repo,story.id,_plan_and_cards(['plan']))
+    scenes=repo.list_scenes(story.id)
+    assert [(s.author_scene_number,s.title,s.target_words) for s in scenes]==[(1,'Лист у скриньці',3500),(2,'Пристань уночі',3500)]
+    assert not any('без номера' in warning for warning in result.warnings)
+    again=import_sources(repo,story.id,_plan_and_cards(['plan']))
+    assert again.created_scene_ids==[] and len(repo.list_scenes(story.id))==2
+
+
+@pytest.mark.parametrize('order',[['plan','cards'],['cards','plan']])
+def test_import_report_shows_the_stored_cast(tmp_path,order):
+    repo=Repository(tmp_path)
+    story=repo.create_story(StoryCreate(title='Маяк'))
+    result=import_sources(repo,story.id,_plan_and_cards(order))
+    stored=[scene.character_ids for scene in repo.list_scenes(story.id)]
+    assert all(len(ids)==1 for ids in stored)
+    assert [scene.character_ids for scene in result.proposed_scenes]==stored

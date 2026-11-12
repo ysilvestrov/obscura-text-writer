@@ -121,6 +121,7 @@ def import_sources(repo: Repository,story_id: str,files: list[SourceFile]) -> Im
         if not text.strip():raise ValueError('Матеріал порожній')
         prepared.append((file,text))
     result=ImportResult(files=[ImportFileResult(client_index=i,name=f.name,kind=f.kind) for i,f in enumerate(files)])
+    created=[]
     for index,(file,text) in enumerate(prepared):
         item=result.files[index]
         try:
@@ -147,9 +148,13 @@ def import_sources(repo: Repository,story_id: str,files: list[SourceFile]) -> Im
             break
         item.status='imported';item.source_id=id;item.version_id=version.id;item.created_scene_ids=published.created_scene_ids
         result.sources.append(metadata);result.version_ids.append(version.id)
+        created.extend(zip(item.created_scene_ids,proposals,strict=True))
         result.proposed_scenes.extend(proposals);result.created_scene_ids.extend(item.created_scene_ids)
         result.created_character_cards+=item.created_character_cards
         result.skipped_character_names.extend(item.skipped_character_names);result.skipped_scene_numbers.extend(item.skipped_scene_numbers)
     result.warnings=[message for item in result.files for message in item.warnings+([item.error] if item.error else [])]
-    result.active_sources=dict(repo.context_view(story_id).sources)
+    view=repo.context_view(story_id)
+    # The cast is resolved at publication, also against cards a later file of the same batch created (#103).
+    for scene_id,proposal in created:proposal.character_ids=list(view.get_scene(scene_id).character_ids)
+    result.active_sources=dict(view.sources)
     return result

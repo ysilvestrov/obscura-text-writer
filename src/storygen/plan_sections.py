@@ -26,6 +26,11 @@ def split_plan(text,default_title='Сцена'):
         if heading or number is not None:records.append((offset,content,heading,number))
         offset+=len(line)
     numbered_levels=[len(h[1]) for _,_,h,n in records if h and n is not None]
+    if not numbered_levels and any(n is not None for _,_,_,n in records):
+        # Scenes are plain «Сцена N:» lines: a lone level-1 heading that opens the file is the plan title (#103).
+        first=records[0]
+        lone=sum(1 for _,_,h,_ in records if h and len(h[1])==1)==1
+        if first[2] and len(first[2][1])==1 and lone and not text[:first[0]].strip():records=records[1:]
     levels=numbered_levels or [len(h[1]) for start,_,h,_ in records if h and not _container(h[2])]
     level=min(levels) if levels else None
     boundaries=[r for r in records if r[3] is not None or r[2] and len(r[2][1])==level and not _container(r[2][2])]

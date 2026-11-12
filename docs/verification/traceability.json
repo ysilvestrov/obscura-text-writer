@@ -3442,6 +3442,25 @@
       ]
     },
     {
+      "id": "IMPORT-NUMBER-S02",
+      "requirement": "IMPORT-NUMBER",
+      "scope": "Назва плану рівня 1 перед текстовими сценами є преамбулою; інші ненумеровані заголовки лишаються секціями.",
+      "tests": [
+        "tests/authoring/test_import_sections.py::test_opening_title_before_txt_scenes_is_preamble",
+        "tests/authoring/test_import_sections.py::test_opening_title_does_not_change_the_level_of_other_headings",
+        "tests/authoring/test_import_sections.py::test_level_one_heading_that_is_not_a_lone_opening_title_stays_a_scene",
+        "tests/authoring/test_imports.py::test_plan_title_before_plain_scene_lines_is_not_imported_as_a_scene"
+      ]
+    },
+    {
+      "id": "IMPORT-ADDITIVE-S03",
+      "requirement": "IMPORT-ADDITIVE",
+      "scope": "proposed_scenes у відповіді імпорту показує збережений склад сцен в обох порядках файлів.",
+      "tests": [
+        "tests/authoring/test_imports.py::test_import_report_shows_the_stored_cast"
+      ]
+    },
+    {
       "id": "IMPORT-PUBLISH-S01",
       "requirement": "IMPORT-PUBLISH",
       "scope": "CAS, atomic rollback і migration active source.",
