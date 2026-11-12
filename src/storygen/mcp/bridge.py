@@ -1,4 +1,4 @@
-"""MCP-BRIDGE stdio server: twenty-one tools mapped onto the loopback HTTP API of a running Obscura.
+"""MCP-BRIDGE stdio server: twenty-three tools mapped onto the loopback HTTP API of a running Obscura.
 
 The bridge holds no data, keys or prompts of its own. Every tool is one HTTP request; Obscura's own checks
 (revision, context fingerprint, language lock, import limits) decide, and their messages reach the chat as tool errors.
@@ -25,8 +25,9 @@ FALLBACK_CLIENT = 'MCP client'
 TOOLS = ('list_stories', 'get_story', 'get_scene_context', 'get_scene_text', 'import_plan_and_characters', 'save_draft', 'next_steps',
          'create_story', 'get_templates', 'update_story', 'add_scene', 'update_scene', 'open_ghost_mode',
          'get_publication', 'update_publication', 'add_signature', 'upload_cover', 'export_book',
-         'get_settings', 'update_settings', 'apply_role_preset')
+         'get_settings', 'update_settings', 'apply_role_preset', 'get_stage_task', 'save_stage_result')
 MATERIALS = ('plan', 'brief', 'draft', 'prose', 'memory')
+STAGES = ('brief', 'edit', 'memory')
 LANGUAGES = ('uk', 'en')
 PUBLICATION_FIELDS = tuple(PublicationData.model_fields)
 EXPORT_FORMATS = ('fb2', 'epub', 'pdf', 'md', 'txt')
@@ -52,7 +53,9 @@ INSTRUCTIONS = ('Obscura — локальний редактор історій.
                 'прочитайте їх знову. Новий твір: create_story → get_templates → import_plan_and_characters (план і персонажі за шаблоном) '
                 '→ get_story. План сцени переписуйте лише поверх прочитаного: plan_version_id з get_scene_text(material=plan). '
                 'Публікація: get_publication → update_publication (лише змінені поля, revision з прочитаного) → export_book. '
-                'Налаштування: get_settings → update_settings (один розділ, fingerprint з прочитаного).')
+                'Налаштування: get_settings → update_settings (один розділ, fingerprint з прочитаного). '
+                'Етапи brief, edit і memory: get_stage_task (інструкції й матеріал, як для моделі Obscura) → відповідь у форматі '
+                'result_format → save_stage_result з task_fingerprint; інструкції чернетки — поле instructions у get_scene_context.')
 
 
 def check_url(url: str) -> str:
@@ -647,6 +650,45 @@ def build_server(http: httpx.Client, client_name: str | None = None) -> MCPServe
                 json={'profile_id': profile_id, 'version': version, 'expected_revision': preview['expected_revision']})
         return result | {'applied': True}
 
+    def known_stage(stage: str) -> str:
+        if stage not in STAGES:
+            raise ToolError(f'Невідомий етап {str(stage)[:40]!r}: оберіть один із {", ".join(STAGES)}')
+        return stage
+
+    @server.tool()
+    def get_stage_task(scene_id: str, stage: str, offset: int = 0, max_chars: int = 20000) -> dict[str, Any]:
+        """Завдання етапу сцени — brief, edit або memory — таким, яким його отримала б модель Obscura: instructions (системний
+        текст ролі) і material (матеріал). Нічого не змінює й не коштує грошей. Довгий матеріал приходить частинами: читайте далі з
+        next_offset, доки він не стане null; content_sha256 однаковий для всіх частин одного завдання. Відповідайте у форматі
+        result_format (json; для edit — prose, patches або diff) і передайте task_fingerprint у save_stage_result."""
+        return request('GET', f'/api/scenes/{identifier(scene_id)}/chat-task/{known_stage(stage)}',
+                       params={'offset': offset, 'max_chars': max_chars})
+
+    @server.tool()
+    def save_stage_result(scene_id: str, stage: str, task_fingerprint: str, result: str | dict[str, Any], model: str | None = None,
+                          ctx: Context | None = None) -> dict[str, Any]:
+        """Зберегти відповідь чату на завдання етапу (get_stage_task). Obscura розбирає її так само, як відповідь своєї моделі, і
+        зберігає новою версією з позначкою зовнішнього клієнта; грошей не коштує. result — JSON-об'єкт або рядок (для edit — у
+        форматі result_format). Неправильну відповідь Obscura не зберігає й повертає всі порушення разом: виправте їх і збережіть
+        знову з тим самим task_fingerprint. Після трьох відмов поспіль зупиніться й покажіть порушення авторові. 409 — завдання
+        застаріло або потрібне підтвердження автора: візьміть завдання знову. state=needs_review — результат чекає рішення автора."""
+        known_stage(stage)
+        text = result if isinstance(result, str) else json.dumps(result, ensure_ascii=False)
+        body = {'task_fingerprint': task_fingerprint, 'text': text,
+                'external_origin': {'client': origin_client(ctx), 'model': (model or '')[:128] or None}}
+        response = send('POST', f'/api/scenes/{identifier(scene_id)}/chat-result/{stage}', json=body)
+        if response.status_code == 422:
+            try:
+                details = response.json()
+            except ValueError:
+                details = {}
+            if isinstance(details, dict) and isinstance(details.get('detail'), str):
+                listed = {key: details[key] for key in ('memory_violations', 'editor_failure', 'planner_failure', 'warnings') if details.get(key)}
+                raise ToolError(f"Obscura відповіла 422: {details['detail']}\n{json.dumps(listed, ensure_ascii=False)}")
+        if response.status_code >= 400:
+            raise ToolError(f'Obscura відповіла {response.status_code}: {_detail(response)}')
+        return response.json()
+
     @server.tool()
     def next_steps(scene_id: str) -> str:
         """Що робити далі в Obscura після збереження чернетки."""
@@ -656,7 +698,9 @@ def build_server(http: httpx.Client, client_name: str | None = None) -> MCPServe
                 '0. Щоб доопрацювати чернетку з чату, спершу прочитайте її (get_scene_text) і пишіть поверх прочитаного.\n'
                 '1. Перегляньте чернетку в редакторі; попередня версія лишається в історії версій.\n'
                 '2. За потреби доопрацюйте текст у режимі Ghost Mode: open_ghost_mode дасть посилання, що відкриє його одразу.\n'
-                '3. Коли текст готовий, затвердіть прозу й оновіть пам’ять сцени, щоб наступні сцени її бачили.')
+                '3. Коли текст готовий, затвердіть прозу й оновіть пам’ять сцени, щоб наступні сцени її бачили.\n'
+                "4. Етапи можна пройти й з чату: get_stage_task(stage='brief') — завдання, get_stage_task(stage='edit') — редактура "
+                "чернетки, get_stage_task(stage='memory') — пам’ять затвердженої прози; відповідь зберігає save_stage_result.")
 
     return server
 

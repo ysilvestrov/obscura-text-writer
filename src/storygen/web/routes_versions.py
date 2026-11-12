@@ -161,6 +161,31 @@ def scene_material_text(scene_id: str,material: Literal['plan','brief','draft','
     return scene_text(request.app.state.repo,scene_id,material,offset,max_chars)
 
 
+class ChatStageResult(DomainModel):
+    task_fingerprint: str = Field(pattern=r'^[0-9a-f]{64}$')
+    text: str = Field(min_length=1)
+    external_origin: ExternalOrigin
+
+
+@router.get('/api/scenes/{scene_id}/chat-task/{stage}')
+def chat_stage_task(scene_id: str,stage: Literal['brief','edit','memory'],request: Request,
+                    offset: int=Query(default=0,ge=0),max_chars: int=Query(default=20000,ge=1000,le=50000)):
+    """MCP-BRIDGE-S40: a stage's instructions and material as the model sees them, for a chat client."""
+    from ..application.chat_stages import stage_task
+    return stage_task(request.app.state.repo,scene_id,stage,offset,max_chars)
+
+
+@router.post('/api/scenes/{scene_id}/chat-result/{stage}')
+def chat_stage_result(scene_id: str,stage: Literal['brief','edit','memory'],body: ChatStageResult,request: Request):
+    """MCP-BRIDGE-S41–S44: the chat's answer through the pipeline's own parsing and commit; 422 lists every violation."""
+    from fastapi.responses import JSONResponse
+    from ..application.chat_stages import ChatStageRejected, stage_result
+    try:
+        return stage_result(request.app.state.repo,scene_id,stage,body.task_fingerprint,body.text,body.external_origin)
+    except ChatStageRejected as exc:
+        return JSONResponse({'detail':str(exc),**exc.details},status_code=422)
+
+
 @router.post('/api/scenes/{scene_id}/draft')
 def manual_draft(scene_id: str,body: DraftChange,request: Request):
     if body.comment_set is not None:

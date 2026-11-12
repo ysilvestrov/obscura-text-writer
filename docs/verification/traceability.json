@@ -4430,7 +4430,7 @@
       "requirement": "MCP-BRIDGE",
       "scope": "Рівно сім інструментів; стан сцен тим самим словником, що список сцен; посилання на сцену в next_steps. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
       "tests": [
-        "tests/mcp/test_bridge.py::test_tool_list_is_exactly_the_twenty_one_tools",
+        "tests/mcp/test_bridge.py::test_tool_list_is_exactly_the_twenty_three_tools",
         "tests/mcp/test_bridge.py::test_get_story_reports_scene_states_with_the_ui_vocabulary",
         "tests/mcp/test_bridge.py::test_next_steps_points_to_the_scene_in_obscura",
         "tests/mcp/test_bridge.py::test_identifiers_cannot_reach_other_endpoints",
@@ -4772,6 +4772,78 @@
       "scope": "Список моделей ролі: фільтр, межа 200, сортування; роль поза переліком чи ненастроєна відхиляється. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
       "tests": [
         "tests/mcp/test_bridge_settings.py::test_model_list_is_filtered_and_capped"
+      ]
+    },
+    {
+      "id": "MCP-BRIDGE-S40",
+      "requirement": "MCP-BRIDGE",
+      "scope": "Завдання етапу: інструкції й матеріал = контекст конвеєра, частини, відбиток; типові налаштування ролі. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/web/test_chat_stage_routes.py::test_memory_task_matches_pipeline_context",
+        "tests/generation/test_chat_stages.py::test_chat_role_settings_defaults_and_configured",
+        "tests/generation/test_chat_stages.py::test_make_context_system_text_is_stage_system_text"
+      ]
+    },
+    {
+      "id": "MCP-BRIDGE-S41",
+      "requirement": "MCP-BRIDGE",
+      "scope": "Пам’ять від чату: поточна версія з походженням, обгортка, 422 з усіма порушеннями без версії. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/web/test_chat_stage_routes.py::test_memory_result_becomes_head_with_origin",
+        "tests/web/test_chat_stage_routes.py::test_memory_result_with_violations_saves_nothing",
+        "tests/web/test_chat_stage_routes.py::test_fenced_json_is_unwrapped_with_warning",
+        "tests/mcp/test_bridge_chat_stages.py::test_memory_round_trip_through_bridge",
+        "tests/mcp/test_bridge_chat_stages.py::test_violations_reach_the_chat",
+        "tests/web/test_chat_stage_routes.py::test_no_provider_call_and_no_token_observation"
+      ]
+    },
+    {
+      "id": "MCP-BRIDGE-S42",
+      "requirement": "MCP-BRIDGE",
+      "scope": "Бриф від чату: поточний без запропонованих змін, needs_review із ними. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/web/test_chat_stage_routes.py::test_brief_without_proposed_changes_becomes_head",
+        "tests/web/test_chat_stage_routes.py::test_brief_with_proposed_changes_needs_review"
+      ]
+    },
+    {
+      "id": "MCP-BRIDGE-S43",
+      "requirement": "MCP-BRIDGE",
+      "scope": "Редактура від чату: prose — edited-версія; patches/review — «Правки редактора». Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/web/test_chat_stage_routes.py::test_edit_prose_mode_saves_edited_version",
+        "tests/web/test_chat_stage_routes.py::test_edit_patches_review_goes_to_editor_proposals"
+      ]
+    },
+    {
+      "id": "MCP-BRIDGE-S44",
+      "requirement": "MCP-BRIDGE",
+      "scope": "Застаріле завдання: зміна налаштувань ролі чи повтор із тим самим відбитком → 409 без версії. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/web/test_chat_stage_routes.py::test_stale_task_is_rejected",
+        "tests/web/test_chat_stage_routes.py::test_same_fingerprint_twice_is_rejected",
+        "tests/mcp/test_bridge_chat_stages.py::test_unknown_stage_is_refused_without_request"
+      ]
+    },
+    {
+      "id": "MCP-BRIDGE-S45",
+      "requirement": "MCP-BRIDGE",
+      "scope": "Пам’ять, що потребує підтвердження автора (MEMORY-REUSE), → 409; без попереднього етапу → 400. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/web/test_chat_stage_routes.py::test_memory_reuse_approval_is_required",
+        "tests/web/test_chat_stage_routes.py::test_missing_previous_stage_is_400"
+      ]
+    },
+    {
+      "id": "MCP-BRIDGE-S46",
+      "requirement": "MCP-BRIDGE",
+      "scope": "Інструкції чернетки в writing-context; зміна промпту письменника змінює відбиток; відхилений промпт не ламає контекст; next_steps радить етапи з чату. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/generation/test_chat_stages.py::test_writing_context_has_draft_instructions",
+        "tests/generation/test_chat_stages.py::test_writer_prompt_change_changes_context_fingerprint",
+        "tests/generation/test_chat_stages.py::test_incompatible_writer_prompt_does_not_break_writing_context",
+        "tests/mcp/test_bridge_chat_stages.py::test_scene_context_carries_instructions",
+        "tests/mcp/test_bridge_chat_stages.py::test_next_steps_suggests_memory_after_prose"
       ]
     }
   ]

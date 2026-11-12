@@ -17,7 +17,10 @@ def execute_stage(
     on_delta,
     run_id: str | None = None,
     task_cursor: int | None = None,
+    external_origin=None,
 ) -> StageAttempt:
+    """`external_origin` (MCP-BRIDGE package 3): the answer came from a chat client through `ExternalTextGateway`;
+    the version and the attempt carry the client's claim."""
     id=new_id()
     attempt=StageAttempt(
         id=id,
@@ -40,6 +43,8 @@ def execute_stage(
         attempt.context['classification_identity']=identity(context.settings.provider)
     if task_cursor is not None:
         attempt.context['run_cursor']=task_cursor
+    if external_origin is not None:
+        attempt.context['external_origin']=external_origin.model_dump()
     repo.save_attempt(attempt)  # Persist exact inputs before a model can receive anything.
     if hasattr(gateway,'bind_accounting'):
         from ..providers.accounting import CallAccounting
@@ -312,7 +317,8 @@ def execute_stage(
             context.input_refs,
             run_id,
             dependency_snapshot=context.dependency_snapshot,
-            content_format=context.fragments.get('output_content_format','plain') if stage in {'draft','edit'} else 'plain'
+            content_format=context.fragments.get('output_content_format','plain') if stage in {'draft','edit'} else 'plain',
+            external_origin=external_origin
         )
         attempt.result_version_id=ref.id
         if proposed:
