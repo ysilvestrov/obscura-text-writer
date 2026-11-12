@@ -14,7 +14,7 @@ def merge_warnings(existing: str | None,messages: list[str]) -> str | None:
 class RunRequest(DomainModel):
     story_id: str
     scene_id: str | None = None
-    mode: Literal['stage','scene','remaining','prepare','rebuild_memory','evaluate','classify','edit_loop','publication_suggest','rewrite','impact'] = 'scene'
+    mode: Literal['stage','scene','remaining','prepare','rebuild_memory','evaluate','classify','edit_loop','publication_suggest','rewrite','impact','timeline_summary'] = 'scene'
     impact_plan_fingerprint: str | None = Field(default=None,pattern=r'^[a-f0-9]{64}$')
     impact_protocol: Literal[3] | None = None
     review_contract_version: Literal[3,4] | None = None
@@ -32,6 +32,7 @@ class RunRequest(DomainModel):
     evaluation_mode: Literal['scene','edit_pair','story'] = 'scene'
     budget_limit_usd: str | None = None
     memory_approval: str | None = Field(default=None,pattern=r'^[a-f0-9]{64}$')
+    summary_block_key: str | None = Field(default=None,min_length=1,max_length=80)  # MEMORY-SUMMARY
 
     @model_validator(mode='after')
     def valid(self):
@@ -50,6 +51,10 @@ class RunRequest(DomainModel):
             raise ValueError('Вкажіть вид і конкретну версію джерела редактури разом')
         if self.editor_source_head and self.mode != 'edit_loop':
             raise ValueError('Явне джерело дозволено лише для окремої редактури')
+        if (self.mode=='timeline_summary')!=(self.summary_block_key is not None):
+            raise ValueError('Блок підсумку задається лише для підсумку хронології, і там він обов’язковий')
+        if self.mode=='timeline_summary' and self.scene_id is not None:
+            raise ValueError('Підсумок хронології належить блоку твору, не окремій сцені')
         if self.mode=='publication_suggest' and self.scene_id is not None:
             raise ValueError('Пропозиція публікації належить усьому твору, не окремій сцені')
         if self.budget_limit_usd is not None:

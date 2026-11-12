@@ -96,6 +96,10 @@ class RunCoordinator:
             tasks=[{'scene_id':request.scene_id,'stage':'rewrite'}]
         elif request.mode=='publication_suggest':
             tasks=[{'scene_id':None,'stage':'publication_suggest'}]
+        elif request.mode=='timeline_summary':
+            from .timeline_summary import build_summary_context
+            build_summary_context(self.repo,request.story_id,request.summary_block_key)  # refuse before the queue
+            tasks=[{'scene_id':None,'stage':'timeline_summary'}]
         elif request.mode=='prepare':
             tasks=[{'scene_id':None,'stage':'prepare'}]
         elif request.mode=='evaluate':
@@ -144,6 +148,12 @@ class RunCoordinator:
                 for r in self.list_runs(request.story_id)
             ):
                 raise ValueError('Пропозиція картки публікації вже виконується')
+            if request.mode=='timeline_summary' and any(
+                r.request.mode=='timeline_summary' and r.request.summary_block_key==request.summary_block_key
+                and r.state in {'queued','running','pause_requested','cancellation_requested'}
+                for r in self.list_runs(request.story_id)
+            ):
+                raise ValueError('Підсумок цього блоку вже створюється')
             if request.mode == 'classify' and any(
                 r.request.mode == 'classify'
                 and r.request.proposal_attempt_id == request.proposal_attempt_id
@@ -412,7 +422,7 @@ class RunCoordinator:
         if isinstance(exc,(ContextOverflow,ModelPolicyBlocked)):  # MODEL-003/MODEL-004: the author sees why the call is blocked.
             return str(exc)
         task=run.tasks[run.cursor] if run.cursor<len(run.tasks) else None
-        if task and task.get('stage')=='publication_suggest':
+        if task and task.get('stage') in {'publication_suggest','timeline_summary'}:
             attempts=self.repo.list_attempts(run.story_id,run.id)
             if attempts:return attempts[-1].error
             return str(exc) if isinstance(exc,ValueError) else 'Технічна помилка пропозиції; автоматичного повтору немає.'
@@ -506,13 +516,16 @@ class RunCoordinator:
                 if self.get_run(id).state=='running':
                     continue
                 return
-            if stage in {'classify','publication_suggest','rewrite'}:
+            if stage in {'classify','publication_suggest','rewrite','timeline_summary'}:
                 if stage=='rewrite':
                     from .assisted_writing import build_rewrite_context
                     context=build_rewrite_context(self.repo,run.request)
                 elif stage=='publication_suggest':
                     from .publication_metadata import build_publication_context
                     context=build_publication_context(self.repo,run.story_id)
+                elif stage=='timeline_summary':
+                    from .timeline_summary import build_summary_context
+                    context=build_summary_context(self.repo,run.story_id,run.request.summary_block_key)
                 else:
                     from .edit_classification import build_classification_context
                     context=build_classification_context(self.repo,run.request)
@@ -535,7 +548,7 @@ class RunCoordinator:
                 )
                 with self.condition:
                     current=self.get_run(id)
-                    current.state='cancelled' if stage in {'publication_suggest','rewrite'} and (self.cancel_event.is_set() or current.state in {'cancellation_requested','cancelled'}) else attempt.state
+                    current.state='cancelled' if stage in {'publication_suggest','rewrite','timeline_summary'} and (self.cancel_event.is_set() or current.state in {'cancellation_requested','cancelled'}) else attempt.state
                     current.error=attempt.error
                     warnings=attempt.context.get('publication_warnings',[])
                     if warnings:
