@@ -2,7 +2,7 @@ import {installDialogFixture} from './dialog-fixture.mjs';
 import assert from 'node:assert/strict';
 import {pathToFileURL} from 'node:url';
 const elements=new Map(),listeners=new Map();
-class Element {dataset={};addEventListener(){}setAttribute(name,value){this[name]=value}children=[];textContent='';disabled=false;hidden=false;append(...items){this.children.push(...items)}replaceChildren(){this.children=[]}}
+class Element {dataset={};after(...items){this.placed=items}remove(){this.removed=true}addEventListener(){}setAttribute(name,value){this[name]=value}children=[];textContent='';disabled=false;hidden=false;append(...items){this.children.push(...items)}replaceChildren(){this.children=[]}}
 const element=id=>{if(!elements.has(id))elements.set(id,new Element());return elements.get(id)};
 globalThis.document={querySelector:element,createElement:()=>new Element(),dispatchEvent:()=>{},addEventListener:(name,fn)=>listeners.set(name,fn)};
 globalThis.confirm=()=>true;
@@ -16,6 +16,15 @@ const button=element('#workspace-scene-actions').children[0];
 await button.onclick();assert.equal(calls,0,'unsaved text blocks trash');
 state.dirty=false;state.saving=true;await button.onclick();assert.equal(calls,0,'saving blocks trash');
 state.saving=false;await button.onclick();assert.equal(calls,1);assert.equal(cleared,1);assert.equal(refreshed,1);
+// #104: an icon button next to the selected scene in the list shares the same guards.
+const activeRow=element('#scene-list .scene-item.active'),holder=activeRow.placed[0],listButton=holder.children[0];
+assert.equal(listButton['aria-label'],'Видалити сцену');assert.equal(listButton.title,listButton['aria-label']);
+assert.equal(button.textContent,listButton['aria-label'],'the toolbar button carries the same name');
+assert.equal(listButton.children[0].className,'icon icon-trash');
+state.scene={id:'d',revision:1};state.dirty=true;await listButton.onclick();assert.equal(calls,1,'unsaved text blocks the list button');assert.equal(listButton.disabled,false);
+state.dirty=false;state.saving=true;await listButton.onclick();assert.equal(calls,1,'saving blocks the list button');
+state.saving=false;await listButton.onclick();assert.equal(calls,2);assert.equal(cleared,2);
+state.scene=null;holder.removed=false;listeners.get('scene-selected')();assert.equal(holder.removed,true,'no selected scene: the list button is taken out');
 const {installLibraryTrash}=await import(pathToFileURL(process.argv[2]+'/src/storygen/web/static/trash.js'));
 const storyButton=new Element();storyButton.dataset={trashStory:'story',revision:'8'};
 document.querySelectorAll=()=>[storyButton];
