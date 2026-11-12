@@ -1,3 +1,4 @@
+import {pickerMessage} from './model-picker.js';
 import {t,msg,labelEntries,getLocale,uiText,uiAttr,uiHTML} from './i18n.js';
 import {mountConnection} from './settings-connection.js';
 import {mountModelPolicy} from './model-policy.js';
@@ -13,8 +14,9 @@ export function mountClassification(form,initial){
   for(const[name,label,min]of [['context_tokens',msg("m_526a85b7766b"),512],['max_output_tokens',msg("m_11de327806c2"),1],['max_input_chars',msg("m_a1adc1cec8e7"),1],['temperature',msg("m_56f7653b8834"),0]]){
     const l=document.createElement('label'),input=document.createElement('input');uiText(l,"textContent",()=>(label));input.name='classification_'+name;input.type='number';input.min=String(min);input.step=name==='temperature'?'any':'1';input.required=true;input.value=String(original[name]);l.append(input);numeric.append(l);
   }body.append(numeric);
+  connection.picker.bindLimits({context_tokens:numeric.querySelector('[name="classification_context_tokens"]'),max_output_tokens:numeric.querySelector('[name="classification_max_output_tokens"]')});
   const usageLabel=document.createElement('label');usageLabel.className='checkbox';uiHTML(usageLabel,"<input type=\"checkbox\" name=\"classification_include_usage\"> <span data-i18n=\"m_ad56436592fd\">Запитувати usage</span>",{});body.append(usageLabel);form.elements.classification_include_usage.checked=!!original.provider.include_usage;
   function update(){body.hidden=!toggle.checked;body.disabled=!toggle.checked;connection.update()}
   toggle.addEventListener('change',update);form.addEventListener('settings-reset',update);update();
-  return {read(){if(!toggle.checked)return null;const blocked=connection.validate();if(blocked)throw new Error(t(blocked));const result={...original,provider:{...connection.read(),include_usage:form.elements.classification_include_usage.checked}};for(const name of ['context_tokens','max_output_tokens','max_input_chars','temperature'])result[name]=Number(form.elements['classification_'+name].value);if(result.max_output_tokens>=result.context_tokens)throw new Error(t("m_da61ca0b1811"));return result}};
+  return {read(){if(!toggle.checked)return null;const blocked=connection.validate();if(blocked)throw new Error(pickerMessage(blocked));const result={...original,provider:{...connection.read(),include_usage:form.elements.classification_include_usage.checked}};for(const name of ['context_tokens','max_output_tokens','max_input_chars','temperature'])result[name]=Number(form.elements['classification_'+name].value);if(result.max_output_tokens>=result.context_tokens)throw new Error(t("m_da61ca0b1811"));return result}};
 }

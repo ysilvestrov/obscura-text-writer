@@ -38,6 +38,18 @@ export function selectable(model,{provider,responseMode}={}){
   return {ok:true,reason:null};
 }
 
+// A value above a cap the catalog reports would fail at call time; unknown caps never block.
+export function limitsProblem(model,values={}){
+  if(!model)return null;
+  for(const [name,key] of [['context_tokens','models.context_exceeded'],['max_output_tokens','models.output_exceeded']]){
+    const cap=model[name],value=values[name];
+    if(Number.isInteger(cap)&&cap>0&&Number.isFinite(value)&&value>cap)return {key,params:{p0:value,p1:cap}};
+  }
+  return null;
+}
+// validate() yields a message key or {key,params}; callers show it through this.
+export const pickerMessage=problem=>!problem?'':typeof problem==='string'?t(problem):t(problem.key,problem.params);
+
 export const schemaUnknown=(model,{responseMode}={})=>Boolean(model)&&schemaLocked(responseMode)&&(model.supports_schema===null||model.supports_schema===undefined);
 
 export function formatPrice(usd){
@@ -59,7 +71,7 @@ let pickerCount=0;
 function el(tag,props={},...children){const node=document.createElement(tag);for(const[k,v]of Object.entries(props))if(k in node&&!k.includes('-'))node[k]=v;else node.setAttribute(k,v);node.append(...children);return node}
 const badgeList=model=>el('span',{className:'model-badges'},...modelBadges(model).map(b=>el('span',{className:`model-badge model-badge-${b.kind}`},t(b.key))));
 
-export function mountModelPicker({host,modelInput,providerInput,baseUrlInput,responseModeInput=null}){
+export function mountModelPicker({host,modelInput,providerInput,baseUrlInput,responseModeInput=null,limitInputs={}}){
   const uid=`model-picker-${++pickerCount}`;host.classList.add('model-picker');
   const caption=modelInput.parentElement.firstChild;
   uiAttr(modelInput,'aria-label',()=>{getLocale();return caption?.textContent||t('m_f1f1eed62cda')});
@@ -91,7 +103,13 @@ export function mountModelPicker({host,modelInput,providerInput,baseUrlInput,res
   const context=()=>({provider:providerInput.value,responseMode:responseModeInput?.value});
   const bound=()=>binding!==null&&binding===identity();
   const current=()=>bound()?catalog.get(modelInput.value)??null:null;
-  function validate(){const check=selectable(current(),context());return check.ok?null:`models.blocked_${check.reason}`}
+  let limits={};
+  const limitValues=()=>Object.fromEntries(Object.entries(limits).filter(([,input])=>input).map(([name,input])=>[name,input.value===''?NaN:Number(input.value)]));
+  function validate(){const check=selectable(current(),context());return check.ok?limitsProblem(current(),limitValues()):`models.blocked_${check.reason}`}
+  // Known caps also become the inputs' max, so the number field itself shows the bound.
+  function syncLimitBounds(){const model=current();for(const [name,input] of Object.entries(limits)){if(!input)continue;const cap=model?.[name];if(Number.isInteger(cap)&&cap>0)input.max=String(cap);else input.removeAttribute('max')}}
+  // Limit fields may be built after the picker (classifier, evaluator); they are bound when they exist.
+  function bindLimits(map){limits={...map};for(const input of Object.values(limits))input?.addEventListener('input',()=>{message=null;renderChosen()});renderChosen()}
   function choose(model){
     // While a settings save is running the form controls are disabled; the list must not change the model either.
     if(modelInput.disabled)return;
@@ -102,7 +120,7 @@ export function mountModelPicker({host,modelInput,providerInput,baseUrlInput,res
   function renderChosen(){
     const model=current();code.textContent=modelInput.value||'—';badges.replaceChildren(...(model?[badgeList(model)]:[]));
     uiText(info,'textContent',()=>bound()&&!model&&modelInput.value?t('models.not_in_catalog'):modelMetadataLabel(model));
-    const key=message||validate();uiText(blocked,'textContent',()=>key?t(key):'');blocked.hidden=!key;
+    syncLimitBounds();const key=message||validate();uiText(blocked,'textContent',()=>pickerMessage(key));blocked.hidden=!key;
     const unknown=!key&&schemaUnknown(model,context());uiText(schemaHint,'textContent',()=>unknown?t('models.schema_unknown'):'');schemaHint.hidden=!unknown;
   }
   function row(model){
@@ -142,8 +160,8 @@ export function mountModelPicker({host,modelInput,providerInput,baseUrlInput,res
   modelInput.form?.addEventListener('settings-reset',()=>{message=null;render()});
   // Forms are rebuilt on reload; a picker that was shown and then detached stops listening for locale changes.
   let attached=false;const onLocale=()=>{if(host.isConnected){attached=true;render()}else if(attached)document.removeEventListener('ui-locale-changed',onLocale)};document.addEventListener('ui-locale-changed',onLocale);
-  render();
-  return {capture:identity,clear,validate,update:render,selected:current,loaded:bound,open(){panel.hidden=false;render();toggle.focus()},setModels(models,captured){
+  render();bindLimits(limitInputs);
+  return {capture:identity,bindLimits,clear,validate,update:render,selected:current,loaded:bound,open(){panel.hidden=false;render();toggle.focus()},setModels(models,captured){
     if(captured!==identity())return false;
     catalog=new Map(models.map(model=>[model.id,model]));binding=captured;message=null;panel.hidden=false;render();catalogChanged();return true;
   }};

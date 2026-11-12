@@ -5,7 +5,7 @@ import {settingsSignature,expectedPromptContract} from './settings-state.js';
 import {mountClassification} from './classification-settings.js';
 import {groupRoleFields} from './settings-role-layout.js';
 import {mountHorizonControls} from './horizon-controls.js';
-import {mountModelPicker} from './model-picker.js';
+import {mountModelPicker,pickerMessage} from './model-picker.js';
 import {mountModelPolicy} from './model-policy.js';
 import {mountProviderKey} from './provider-key.js';
 import {mountWriterVariant} from './writer-variant.js';
@@ -74,7 +74,7 @@ async function load(onlyRole=null){
     vendorVisibility();
     form.elements.provider.onchange=()=>{const selected=form.elements.provider.value;form.elements.base_url.value={local:'http://localhost:1235/v1',openrouter:'https://openrouter.ai/api/v1',venice:'https://api.venice.ai/api/v1'}[selected];form.elements.timeout.value=selected==='local'?3600:180;form.elements.key_env.value=selected==='venice'?'VENICE_API_KEY':'OPENROUTER_API_KEY';vendorVisibility()};
     const provider=()=>({...config.provider,provider:form.elements.provider.value,key_env:form.elements.key_env.value||null,local_disable_thinking:form.elements.local_disable_thinking.checked,venice_include_system_prompt:form.elements.venice_include_system_prompt.checked,venice_disable_thinking:form.elements.venice_disable_thinking.checked,venice_reasoning_effort:form.elements.venice_reasoning_effort.value||null,model:form.elements.model.value||'discovery-only',base_url:form.elements.base_url.value,timeout:form.elements.timeout.value===''?null:Number(form.elements.timeout.value),response_mode:form.elements.response_mode.value,include_usage:form.elements.include_usage.checked});
-    const catalog=mountModelPicker({host:form.querySelector('.model-picker'),modelInput:form.elements.model,providerInput:form.elements.provider,baseUrlInput:form.elements.base_url,responseModeInput:form.elements.response_mode});
+    const catalog=mountModelPicker({host:form.querySelector('.model-picker'),modelInput:form.elements.model,providerInput:form.elements.provider,baseUrlInput:form.elements.base_url,responseModeInput:form.elements.response_mode,limitInputs:{context_tokens:form.elements.context_tokens,max_output_tokens:form.elements.max_output_tokens}});
     // MODEL-003/MODEL-004: consent and refusal mark sit under the chosen model and travel with the picker in the layout.
     const policyHost=document.createElement('div');form.querySelector('.model-picker').append(policyHost);
     mountModelPolicy({host:policyHost,role,modelInput:form.elements.model,providerInput:form.elements.provider,baseUrlInput:form.elements.base_url,picker:catalog});
@@ -86,7 +86,7 @@ async function load(onlyRole=null){
     form.onsubmit=async event=>{
       event.preventDefault();
       try{
-        const blocked=catalog.validate();if(blocked)throw new Error(t(blocked));
+        const blocked=catalog.validate();if(blocked)throw new Error(pickerMessage(blocked));
         const settings={...config,...horizonControls.read(),provider:provider(),stop_sequences:form.elements.stop_sequences.value.split(/\r?\n/).filter(value=>value.length>0)};for(const field of ['context_tokens','max_output_tokens','max_input_chars','temperature'])settings[field]=Number(form.elements[field].value);
         if(role==='editor')settings.edit_mode=form.elements.edit_mode.value;
         if(role==='editor')settings.edit_review=form.elements.edit_review.value;
