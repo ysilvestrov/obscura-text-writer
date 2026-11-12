@@ -1774,6 +1774,14 @@ Playwright `memory-kind.spec.mjs` і `core-review.spec.mjs` пройшли вр�
 - Cross-review коду не відбувся: codex вичерпав ліміт використання (до 15.11.2026), agy — квоту. Фінальне рев'ю — самоперегляд автора.
 - Приймання пакетів 3 і 6 зі справжнім чат-клієнтом (зокрема платний запуск з чату) — дія власника.
 
+## 12.11.2026 — MCP: cross-review пакетів 3 і 6 після злиття (agy, Gemini 3.8 Flash)
+
+- Власник підказав, що в agy вичерпано лише квоту Argon; Flash доступний. Рев'ю злитих PR #137, #139 і #141 проведено заднім числом окремо для кожного діапазону (`--reviewer agy --model gemini-3.8-flash`): 4, 4 і 6 знахідок.
+- Дефект (#141): `start_run` перевіряв `scene_id` на алфавіт ідентифікаторів лише після першого запиту — порушення MCP-BRIDGE-S06; виправлено, тест на `start_run` і `get_run` у `test_identifiers_cannot_reach_other_endpoints` (RED→GREEN).
+- SPEC (#141): у переліку інструментів `start_run`/`get_run` названо інструментами етапів, а речення «запуску конвеєра… немає» суперечило `start_run`; виправлено.
+- Тести посилено: справжній несумісний промпт письменника замість підміни функції, порівняння інструкцій з `build_context`, мертвий spy у `next_steps`, точні коди порушень пам'яті, точні англійські тексти відмов, заголовок у справжньому запиті `build_client`, `chat-result` у режимі «пише чат», відмова `get_stage_task`/`save_stage_result` у режимі «пише Obscura», точні стани скасування й ключі бюджету, тексти помилок `start_run`/`get_run`.
+- Відхилено: #139-1 (`next_steps` не залежить від режиму) — виправлено вже в PR #141.
+- `verify.py` на `26fd585`: passed 2822, failed 0, skipped 1.
 ## 12.11.2026 — Фільтри моделей Venice, PR 2 з 3: згода й блокування після відмови (специфікація `docs/superpowers/specs/2026-11/2026-11-12-venice-model-filters-design.md`)
 
 - Зроблено: `providers/policy.py` і `storage/model_policy_store.py` (згода й позначка відмови в `app_settings` за ключем «роль + endpoint + модель»); Venice для генерації перевіряє каталог і згоду, а не `uncensored` (`validate_model(require_uncensored=False)`, оцінювач без змін); `execute_stage` — єдина точка перевірки й запису позначки (`content_filter` → `refusal_content`, `terminal.refusal` → `refusal_unknown`), шлюз перевіряє згоду Venice до резервування бюджету; readiness показує блокування офлайн; API `/api/model-policy`; галочка згоди й червоне повідомлення про відмову у формах ролей і налаштуваннях класифікації. SPEC: MODEL-003 (S01–S05), нова MODEL-004 (S01–S03), MODEL-005-S01; сайт `models` і `content-rating` uk/en.

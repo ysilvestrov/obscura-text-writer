@@ -7,7 +7,7 @@ pytest.importorskip('mcp')
 from storygen.domain import ContentRating, SceneCreate, StoryCreate  # noqa: E402
 from storygen.generation import readiness  # noqa: E402
 from storygen.mcp.bridge import BRIDGE_HEADERS, build_server  # noqa: E402
-from storygen.web.bridge_marker import CHAT_WRITES  # noqa: E402
+from storygen.web.bridge_marker import CHAT_WRITES, RUN_OWNER_ONLY  # noqa: E402
 
 from tests.mcp.test_bridge import call, obscura, text  # noqa: E402
 from tests.mcp.test_bridge_settings import ok  # noqa: E402
@@ -35,7 +35,7 @@ def test_start_run_without_confirm_only_previews(tmp_path, ready):
     data = ok(call(server, 'start_run', {'story_id': story.id, 'action': 'brief', 'scene_id': scene.id}))
     assert data['started'] is False
     assert data['preview']['ready'] is True and data['preview']['calls'] == 1 and data['preview']['roles']
-    assert set(data['preview']['budget']) >= {'limit_usd', 'spent_usd', 'available_usd', 'default_run_limit_usd'}
+    assert set(data['preview']['budget']) == {'limit_usd', 'spent_usd', 'available_usd', 'default_run_limit_usd'}
     assert app.state.coordinator.list_runs() == []
 
 
@@ -49,7 +49,7 @@ def test_start_run_with_confirm_queues_a_marked_run(tmp_path, ready):
     state = ok(call(server, 'get_run', {'run_id': run.id}))
     assert state['state'] == 'queued' and state['action'] == 'brief' and state['attempts'] == []
     cancelled = ok(call(server, 'get_run', {'run_id': run.id, 'cancel': True}))
-    assert cancelled['state'] in {'cancelled', 'cancellation_requested'}
+    assert cancelled['state'] == 'cancelled'
 
 
 @pytest.mark.req('MCP-BRIDGE')
@@ -78,7 +78,7 @@ def test_publication_suggestion_run_and_result(tmp_path, monkeypatch):
     monkeypatch.setattr(publication_metadata, 'readiness', lambda *_a, **_k: dict(READY))
     app, repo, story, scene, server = setup(tmp_path)
     refused = call(server, 'start_run', {'story_id': story.id, 'action': 'publication_suggest', 'scene_id': scene.id})
-    assert refused.is_error
+    assert refused.is_error and 'publication_suggest стосується твору' in text(refused)
     data = ok(call(server, 'start_run', {'story_id': story.id, 'action': 'publication_suggest', 'confirm': True}))
     run = app.state.coordinator.get_run(data['run_id'])
     assert run.request.mode == 'publication_suggest' and run.origin == 'mcp'
@@ -102,7 +102,7 @@ def test_get_run_cannot_cancel_authors_run(tmp_path, ready):
     app, repo, story, scene, server = setup(tmp_path)
     run = app.state.coordinator.enqueue(RunRequest(story_id=story.id, scene_id=scene.id, mode='stage', stage='brief'), 'ui')
     refused = call(server, 'get_run', {'run_id': run.id, 'cancel': True})
-    assert refused.is_error and '403' in text(refused)
+    assert refused.is_error and '403' in text(refused) and RUN_OWNER_ONLY in text(refused)
     assert app.state.coordinator.get_run(run.id).state == 'queued'
     assert ok(call(server, 'get_run', {'run_id': run.id}))['state'] == 'queued'
 

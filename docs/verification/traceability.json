@@ -5048,7 +5048,8 @@
         "tests/web/test_writing_mode.py::test_obscura_mode_refuses_bridge_texts_but_not_the_author",
         "tests/web/test_writing_mode.py::test_chat_mode_keeps_bridge_writes",
         "tests/mcp/test_bridge_writing_mode.py::test_save_draft_in_obscura_mode_is_refused",
-        "tests/mcp/test_bridge_writing_mode.py::test_bridge_client_marks_every_request"
+        "tests/mcp/test_bridge_writing_mode.py::test_bridge_client_marks_every_request",
+        "tests/mcp/test_bridge_writing_mode.py::test_stage_tools_in_obscura_mode_are_refused"
       ]
     },
     {

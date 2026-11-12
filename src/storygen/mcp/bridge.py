@@ -721,13 +721,14 @@ def build_server(http: httpx.Client, client_name: str | None = None) -> MCPServe
                 raise ToolError('publication_suggest стосується твору: не передавайте scene_id')
         elif scene_id is None:
             raise ToolError('Для етапу сцени потрібен scene_id')
+        scene = identifier(scene_id) if scene_id is not None else None
         if request('GET', f'/api/stories/{story}')['story'].get('writing_mode', 'chat') != 'obscura':
             raise ToolError(CHAT_WRITES)
         if action == 'publication_suggest':
             ready = request('GET', f'/api/stories/{story}/publication/suggestions/readiness')
         else:
             ready = request('GET', f'/api/stories/{story}/readiness',
-                            params={'scene_id': identifier(scene_id), 'operation': action})['operations'][action]
+                            params={'scene_id': scene, 'operation': action})['operations'][action]
         budget = request('GET', f'/api/stories/{story}/budget')
         policy = budget.get('policy') or {}
         preview = {'ready': ready.get('ready'), 'reason': ready.get('reason'), 'roles': ready.get('roles') or {},
@@ -743,7 +744,7 @@ def build_server(http: httpx.Client, client_name: str | None = None) -> MCPServe
         if action == 'publication_suggest':
             body: dict[str, Any] = {'story_id': story, 'mode': 'publication_suggest'}
         else:
-            body = {'story_id': story, 'scene_id': identifier(scene_id), 'mode': 'stage', 'stage': action}
+            body = {'story_id': story, 'scene_id': scene, 'mode': 'stage', 'stage': action}
         if budget_limit_usd is not None:
             body['budget_limit_usd'] = budget_limit_usd
         run = request('POST', '/api/runs', json={'request_id': 'mcp-' + uuid.uuid4().hex, 'request': body})

@@ -187,7 +187,9 @@ def test_save_draft_takes_the_client_name_from_client_info(tmp_path):
     ('add_scene', {'story_id': 'ID/scene-order', 'title': 'x'}),
     ('add_scene', {'story_id': 'S1', 'title': 'x', 'character_ids': ['../x']}),
     ('update_scene', {'story_id': 'S1', 'scene_id': '../trash', 'expected_revision': 1, 'title': 'x'}),
-    ('update_scene', {'story_id': 'S1', 'scene_id': 'C1', 'expected_revision': 1, 'plan_markdown': 'x', 'plan_version_id': '../v'}),
+    ('update_scene', {'story_id': 'S1', 'scene_id': 'C1', 'expected_revision': 1, 'plan_markdown': 'x', 'plan_version_id': '../v'}),    ('start_run', {'story_id': '../trash', 'action': 'brief', 'scene_id': 'C1'}),
+    ('start_run', {'story_id': 'S1', 'action': 'draft', 'scene_id': '../../cancel'}),
+    ('get_run', {'run_id': '../RID/cancel?'}),
 ])
 def test_identifiers_cannot_reach_other_endpoints(tool, arguments):
     seen = []
