@@ -21,7 +21,8 @@ assert.deepEqual(filterModels([unk],{query:'',uncensoredOnly:false,minPrivacy:'p
 assert.deepEqual(filterModels([pri,anon],{query:'private o',uncensoredOnly:false,minPrivacy:'any',schemaOnly:false},'venice').map(m=>m.id),['p']);
 assert.deepEqual(filterModels([tee],{query:'',uncensoredOnly:true,minPrivacy:'any',schemaOnly:false},'venice'),[]);
 assert.deepEqual(filterModels([tee,pri],{query:'',uncensoredOnly:false,minPrivacy:'any',schemaOnly:true},'venice').map(m=>m.id),['p']);
-assert.deepEqual(selectable(tee,{provider:'venice',responseMode:'prompt_json'}),{ok:false,reason:'venice_uncensored_pending'});
+// MODEL-003: a Venice model without Uncensored is selectable; consent is asked under the chosen model.
+assert.deepEqual(selectable(tee,{provider:'venice',responseMode:'prompt_json'}),{ok:true,reason:null});
 assert.deepEqual(selectable(anon,{provider:'venice',responseMode:'json_schema'}),{ok:true,reason:null});
 assert.deepEqual(selectable({...pri,supports_schema:false},{provider:'venice',responseMode:'json_schema'}),{ok:false,reason:'schema_required'});
 // Unknown support is not "no": in JSON Schema mode only an explicit false blocks, unknown gets a hint.
@@ -48,7 +49,8 @@ assert.equal(formatPrice('0.0001'),'<0.01');
 assert.equal(formatPrice(0.01),'0.01');
 assert.equal(formatPrice(0),'0');
 for(const b of modelBadges(pri))assert.notEqual(t(b.key),b.key);
-for(const key of ['models.blocked_venice_uncensored_pending','models.blocked_schema_required','models.privacy_not_reported','models.no_match','models.badge_unknown','models.badge_anonymized','models.schema_unknown'])assert.notEqual(t(key),key);
+for(const key of ['models.blocked_schema_required','models.privacy_not_reported','models.no_match','models.badge_unknown','models.badge_anonymized','models.schema_unknown'])assert.notEqual(t(key),key);
 setLocale('en'); for(const b of [...modelBadges(tee),...modelBadges(unk),...modelBadges(anon)])assert.notEqual(t(b.key),b.key);
 assert.notEqual(t('models.no_match'),'models.no_match');
 assert.equal(t('models.schema_unknown'),'JSON Schema support is unknown: check the model yourself.');
+assert.equal(t('models.blocked_venice_uncensored_pending'),'models.blocked_venice_uncensored_pending');

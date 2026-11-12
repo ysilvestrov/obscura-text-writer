@@ -36,5 +36,5 @@ export function mountConnection(host,{value,kind='role',prefix='',onChange=()=>{
   function write(next){catalog.clear();original=structuredClone(next);const values={...next,timeout:next[kind==='evaluator'?'timeout_seconds':'timeout'],key_env:next[kind==='evaluator'?'api_key_env':'key_env']};for(const name of names){const el=field(name);if(el.type==='checkbox')el.checked=!!values[name];else el.value=values[name]??(name==='base_url'?providerEndpoints[next.provider]:'')}update();catalog.update();keyBlock.refresh()}
   field('provider').addEventListener('change',()=>{const p=field('provider').value;field('base_url').value=providerEndpoints[p];field('timeout').value=p==='local'?3600:180;field('key_env').value=p==='venice'?'VENICE_API_KEY':'OPENROUTER_API_KEY';update();onChange()});
   group.addEventListener('input',()=>{update();onChange()});group.addEventListener('change',()=>{update();onChange()});write(value);
-  return {group,validate:catalog.validate,read:()=>readConnection(original,Object.fromEntries(names.map(n=>[n,field(n).type==='checkbox'?field(n).checked:field(n).value])),kind),write,update};
+  return {group,picker:catalog,pickerHost,validate:catalog.validate,read:()=>readConnection(original,Object.fromEntries(names.map(n=>[n,field(n).type==='checkbox'?field(n).checked:field(n).value])),kind),write,update};
 }

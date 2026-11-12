@@ -8,6 +8,7 @@ from ..domain import DomainModel
 from ..generation.context import ContextBundle
 from .client import build_openai_client, ProviderConfigurationError
 from .models import ProviderSettings
+from .policy import check_consent, ModelPolicyBlocked
 from .venice import validate_model, VeniceModelUnavailable
 from .catalog import ModelLimitsError, validate_limits
 from .requests import generation_request, sdk_arguments, strict_schema
@@ -93,7 +94,9 @@ class OpenAIGenerationGateway:
                 output_limit=body.get('max_completion_tokens',body.get('max_tokens'))
                 request_context=context.estimated_tokens+(output_limit if type(output_limit) is int and output_limit>0 else context.settings.max_output_tokens)
                 if self.settings.provider=='venice':
-                    validate_model(client,self.settings.model,'response_format' in body,context_tokens=request_context,max_output_tokens=output_limit)
+                    spec=validate_model(client,self.settings.model,'response_format' in body,context_tokens=request_context,max_output_tokens=output_limit,require_uncensored=False)
+                    if context.policy_role and self.accounting is not None:
+                        check_consent(self.accounting.repo,context.policy_role,self.settings,context.policy_rating,spec.get('uncensored') is True)
                 elif self.settings.provider=='openrouter':
                     row=next((m.model_dump() for m in client.models.list() if m.id==self.settings.model),None)
                     if row:
@@ -152,6 +155,8 @@ class OpenAIGenerationGateway:
                     yield GenerationEvent(type='error',finish_reason=finish,usage=usage,refusal=refusal,message='Відповідь відхилено моделлю' if refusal else 'Немає повної відповіді з finish_reason=stop')
         except BudgetError as exc:
             yield GenerationEvent(type='error',usage=usage,message=str(exc),failure={'category':'budget','message':str(exc)})
+        except ModelPolicyBlocked as exc:
+            yield GenerationEvent(type='error',usage=usage,message=str(exc),failure={'category':'model_policy','message':str(exc)})
         except (VeniceModelUnavailable,ModelLimitsError,ProviderConfigurationError) as exc:
             yield GenerationEvent(type='error',usage=usage,message=str(exc),failure={'category':'configuration','message':str(exc)})
         except Exception as exc:

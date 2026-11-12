@@ -159,6 +159,96 @@
       ]
     },
     {
+      "id": "MODEL-003-S02",
+      "requirement": "MODEL-003",
+      "scope": "Модель без Uncensored і без згоди блокується з поясненням до запиту. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/generation/test_model_policy_stages.py::test_draft_without_consent_is_blocked_with_author_text",
+        "tests/providers/test_streaming_policy.py::test_gateway_blocks_venice_model_without_consent_before_sending",
+        "tests/generation/test_readiness.py::test_readiness_reports_missing_consent_before_run",
+        "tests/providers/test_model_policy.py::test_cloud_model_without_uncensored_needs_consent_only_above_zero",
+        "tests/providers/test_venice.py::test_generation_accepts_catalog_model_without_uncensored",
+        "tests/providers/test_streaming_policy.py::test_gateway_lets_uncensored_venice_model_through",
+        "tests/providers/test_streaming_policy.py::test_gateway_catalog_failure_does_not_bypass_check",
+        "tests/generation/test_model_policy_stages.py::test_chat_answer_is_never_checked_or_recorded",
+        "tests/web/test_localization.py::test_model_policy_block_texts_are_translated_with_role_and_parameters"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#model-policy-browser",
+        "reason": "check_docs.py індексує лише pytest; Playwright cases tests/web/browser/model-policy.spec.mjs виконуються окремим runner, цей зв’язок не є доказом виконання."
+      }
+    },
+    {
+      "id": "MODEL-003-S03",
+      "requirement": "MODEL-003",
+      "scope": "Згода для пари «роль + модель» пропускає виклик у будь-якому творі; зміна моделі скидає її. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/generation/test_model_policy_stages.py::test_consent_lets_any_story_through_and_model_change_resets_it",
+        "tests/providers/test_model_policy.py::test_consent_is_keyed_by_role_endpoint_and_exact_model",
+        "tests/providers/test_streaming_policy.py::test_gateway_lets_consented_venice_model_through",
+        "tests/web/test_model_policy_api.py::test_consent_roundtrip",
+        "tests/web/test_model_policy_ui.py::test_model_policy_consent_visibility_and_texts"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#model-policy-browser",
+        "reason": "check_docs.py індексує лише pytest; Playwright cases tests/web/browser/model-policy.spec.mjs виконуються окремим runner, цей зв’язок не є доказом виконання."
+      }
+    },
+    {
+      "id": "MODEL-003-S04",
+      "requirement": "MODEL-003",
+      "scope": "Локальна модель без згоди; ключ згоди містить endpoint (локальний провайдер завжди loopback, тому гілка з не-loopback недосяжна й перевіряється через is_local). Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/providers/test_model_policy.py::test_local_model_never_needs_consent",
+        "tests/providers/test_model_policy.py::test_local_provider_with_non_loopback_host_is_not_local",
+        "tests/providers/test_model_policy.py::test_consent_is_keyed_by_role_endpoint_and_exact_model"
+      ]
+    },
+    {
+      "id": "MODEL-003-S05",
+      "requirement": "MODEL-003",
+      "scope": "Сцена з рейтингом вище за твір блокується, інші сцени — ні. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/generation/test_model_policy_stages.py::test_scene_rated_above_zero_story_needs_consent_only_for_that_scene",
+        "tests/providers/test_model_policy.py::test_unset_story_rating_counts_as_zero",
+        "tests/providers/test_model_policy.py::test_scene_stage_rates_its_scene_and_multi_scene_stage_rates_input_refs"
+      ]
+    },
+    {
+      "id": "MODEL-004-S01",
+      "requirement": "MODEL-004",
+      "scope": "Відмова через зміст записує позначку; нижчий рейтинг не блокується; зняття відновлює виклики. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/generation/test_model_policy_stages.py::test_content_filter_records_refusal_and_blocks_same_or_higher",
+        "tests/generation/test_model_policy_stages.py::test_refusal_flag_on_completed_draft_still_records",
+        "tests/generation/test_model_policy_stages.py::test_refusal_record_failure_does_not_break_the_attempt",
+        "tests/generation/test_model_policy_stages.py::test_refusal_on_rated_scene_does_not_block_the_next_plain_scene",
+        "tests/integration/test_prototype_flow.py::test_refusal_mid_run_blocks_next_scene_with_explanation",
+        "tests/web/test_model_policy_api.py::test_refusal_is_listed_and_cleared"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#model-policy-browser",
+        "reason": "check_docs.py індексує лише pytest; Playwright cases tests/web/browser/model-policy.spec.mjs виконуються окремим runner, цей зв’язок не є доказом виконання."
+      }
+    },
+    {
+      "id": "MODEL-004-S02",
+      "requirement": "MODEL-004",
+      "scope": "Набір векторів відмов: блокування за кожною віссю й мінімальність набору. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/providers/test_model_policy.py::test_refusal_vectors_block_per_axis",
+        "tests/providers/test_model_policy.py::test_new_refusal_keeps_the_set_minimal"
+      ]
+    },
+    {
+      "id": "MODEL-004-S03",
+      "requirement": "MODEL-004",
+      "scope": "Відмова на шляху impact записує позначку для planner з максимальним рейтингом. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/generation/test_model_policy_stages.py::test_impact_refusal_records_planner_with_max_scene_rating"
+      ]
+    },
+    {
       "id": "MODEL-005-S01",
       "requirement": "MODEL-005",
       "scope": "Позначки й ціна каталогу з полів провайдера; відсутнє поле — «невідомо». Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",

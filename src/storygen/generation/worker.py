@@ -408,7 +408,8 @@ class RunCoordinator:
             self.lock.__exit__()
 
     def _failure_message(self,run,exc):
-        if isinstance(exc,ContextOverflow):
+        from ..providers.policy import ModelPolicyBlocked
+        if isinstance(exc,(ContextOverflow,ModelPolicyBlocked)):  # MODEL-003/MODEL-004: the author sees why the call is blocked.
             return str(exc)
         task=run.tasks[run.cursor] if run.cursor<len(run.tasks) else None
         if task and task.get('stage')=='publication_suggest':

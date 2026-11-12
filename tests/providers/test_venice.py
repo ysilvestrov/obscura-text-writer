@@ -9,6 +9,7 @@ from storygen.providers.client import build_openai_client
 from storygen.providers.discovery import discover_models
 from storygen.providers.models import ProviderSettings, RoleSettings
 from storygen.providers.streaming import build_generation_gateway
+from storygen.providers.venice import VeniceModelUnavailable, validate_model
 
 
 def model(id='qwen-test', uncensored=True, schema=True, offline=False):
@@ -68,7 +69,8 @@ def context(schema=False):
     return ContextBundle(story_id='s', scene_id='c', stage='memory' if schema else 'draft', scene_revision=0, story_revision=0, settings=settings, system_text='Наш промпт', user_text='Точний авторський текст.', input_refs=[], fingerprint='f', estimated_tokens=10)
 
 
-@pytest.mark.parametrize('available,schema', [(model(uncensored=False), False), (model(schema=False), True)])
+@pytest.mark.req('MODEL-003')
+@pytest.mark.parametrize('available,schema', [(model(offline=True), False), (model(id='other'), False), (model(schema=False), True)])
 def test_venice_generation_cannot_bypass_catalog_filter_or_schema_support(monkeypatch, available, schema, accounted_call):
     monkeypatch.setenv('VENICE_API_KEY', 'test')
     requests = []
@@ -80,6 +82,22 @@ def test_venice_generation_cannot_bypass_catalog_filter_or_schema_support(monkey
         events = list(build_generation_gateway(ctx.settings.provider, client, accounted_call('venice','qwen-test')).stream(ctx, threading.Event()))
     assert events[-1].type == 'error'
     assert all(r.method == 'GET' for r in requests) and len(requests) == 1
+
+
+@pytest.mark.req('MODEL-003')
+def test_generation_accepts_catalog_model_without_uncensored():
+    spec = validate_model(fake_client([model('plain', uncensored=False)]), 'plain', False, require_uncensored=False)
+    assert spec['uncensored'] is False
+
+
+def test_evaluator_still_requires_uncensored():
+    with pytest.raises(VeniceModelUnavailable):
+        validate_model(fake_client([model('plain', uncensored=False)]), 'plain', False)
+
+
+def fake_client(rows):
+    from types import SimpleNamespace
+    return SimpleNamespace(models=SimpleNamespace(list=lambda **kw: [SimpleNamespace(id=r['id'], model_spec=r['model_spec']) for r in rows]))
 
 
 def test_venice_stream_preserves_cost_and_explicit_vendor_options(monkeypatch, accounted_call):

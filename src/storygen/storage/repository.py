@@ -125,6 +125,10 @@ class Repository:
         from .billing_store import operation
         return operation(self, action, **data)
 
+    def model_policy(self, action, **data):
+        from .model_policy_store import operation
+        return operation(self, action, **data)
+
     def record_token_observation(self, item):
         from .token_store import record
         return record(self, item)

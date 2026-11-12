@@ -58,14 +58,14 @@ test('json schema mode locks the filter and blocks a non-schema model',async({pa
   await row(picker,'syn-noschema').click();await expect(model).toHaveValue('syn-noschema');
 });
 
-test('venice model without uncensored is visible but cannot be chosen yet',async({page,request})=>{
+test('venice model without uncensored is selectable',async({page,request})=>{
+  // MODEL-003: it is chosen like any other model; consent is asked under the chosen model.
   const {form,picker,model}=await openWriter(page,request);
   await form.locator('.discover').click();
-  const before=await model.inputValue(),tee=row(picker,'syn-tee');
-  await expect(tee).toBeVisible();await expect(tee).toHaveAttribute('aria-disabled','true');
-  await tee.click({force:true});// aria-disabled rows still receive clicks; Playwright treats them as disabled.
-  await expect(model).toHaveValue(before);
-  await expect(picker.locator('[data-model-blocked]')).toHaveText('Моделі Venice без позначки Uncensored стануть доступні після оновлення правил виклику.');
+  const tee=row(picker,'syn-tee');
+  await expect(tee).toBeVisible();await expect(tee).not.toHaveAttribute('aria-disabled','true');
+  await tee.click();await expect(model).toHaveValue('syn-tee');
+  await expect(picker.locator('[data-model-blocked]')).toBeHidden();
 });
 
 test('manual id outside the catalog is kept and marked',async({page,request})=>{
@@ -98,9 +98,10 @@ test('rows are selectable from the keyboard',async({page,request})=>{
   const focusedId=()=>page.evaluate(()=>document.activeElement?.dataset?.modelId??null);
   expect(await focusedId()).toBe('syn-private');
   // Enter on a blocked row shows the reason and keeps focus on that row.
-  await row(picker,'syn-tee').focus();await page.keyboard.press('Enter');
-  await expect(picker.locator('[data-model-blocked]')).toContainText('Uncensored');await expect(model).toHaveValue('syn-private');
-  expect(await focusedId()).toBe('syn-tee');
+  await setMode(form,'json_schema');
+  await row(picker,'syn-noschema').focus();await page.keyboard.press('Enter');
+  await expect(picker.locator('[data-model-blocked]')).toContainText('JSON Schema');await expect(model).toHaveValue('syn-private');
+  expect(await focusedId()).toBe('syn-noschema');
   await expect(picker.locator('[data-model-chosen] .model-badge')).toHaveText(['Uncensored','Private','JSON Schema']);
   await page.locator('[data-ui-locale=en]').click();
   await expect(picker.locator('.model-picker-foot')).toContainText('Showing 3 of 4');

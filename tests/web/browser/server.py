@@ -270,6 +270,16 @@ def main():
                 db.execute('UPDATE stories SET payload=? WHERE id=?',(json.dumps(raw),story_id))
             return {'ok': True}
 
+        @app.post('/test-model-refusal')
+        def model_refusal(body: dict):
+            # MODEL-004: a refusal mark as the gateway records it, for the consent and refusal block spec.
+            from storygen.providers.models import ProviderSettings
+            from storygen.providers.policy import endpoint
+            settings=ProviderSettings(provider=body['provider'],model=body['model'],base_url=body.get('base_url'))
+            entry={'rating':body['rating'],'at':'2026-11-12T10:00:00+00:00','story_id':initial['story_id'],'scene_id':initial['scene_id'],'attempt_id':None,'category':'refusal_content'}
+            repo.model_policy('add_refusal',entry=entry,role=body['role'],provider=settings.provider,base_url=endpoint(settings),model=settings.model)
+            return {'ok': True}
+
         @app.post('/test-unrated')
         def unrated_story():
             # Unrated like a story created through the application; used by the rating settings spec.
