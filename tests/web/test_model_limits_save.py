@@ -55,7 +55,9 @@ def test_role_limits_above_catalog_caps_are_rejected(client, story_id, monkeypat
     assert response.status_code == 400 and CONTEXT in response.text
     assert save(client, story_id, RoleSettings(provider=venice(), context_tokens=32768, max_output_tokens=8192)).status_code == 200
     # An offline catalog must not stall a save for the provider's long generation timeout.
-    assert seen and all(item.timeout <= schema_support.CATALOG_TIMEOUT for item in seen)
+    assert len(seen) == 3
+    for item in seen:
+        assert item.timeout == schema_support.CATALOG_TIMEOUT
 
 
 @pytest.mark.req('MODEL-005')
@@ -94,3 +96,26 @@ def test_unknown_caps_unknown_model_local_and_offline_catalog_do_not_block(clien
     assert seen == []
     catalog(monkeypatch, fail=True)
     assert save(client, story_id, RoleSettings(provider=venice(), **big)).status_code == 200
+
+
+@pytest.mark.req('MODEL-005')
+def test_shared_provider_checks_defaults_of_unsaved_roles_and_the_ui_payload(client, story_id, monkeypatch):
+    # A new story: only writer is sent; the other roles would be written with RoleSettings defaults (8192 / 2048).
+    catalog(monkeypatch, context=8192, output=1024)
+    repo = client.app.state.repo
+    writer = RoleSettings(provider=venice(), context_tokens=4096, max_output_tokens=512).model_dump()
+    body = {'expected_revision': revision(client, story_id), 'role': 'writer', 'settings': writer, 'provider': venice().model_dump()}
+    response = client.put(f'/api/stories/{story_id}/settings/shared-provider', json=body)
+    assert response.status_code == 400 and 'Вихідний ліміт 2048 перевищує ліміт вибраної моделі 1024 токенів' in response.text
+    assert repo.read_role_settings(story_id) == {}
+    catalog(monkeypatch, context=4096, output=4096)
+    response = client.put(f'/api/stories/{story_id}/settings/shared-provider', json={**body, 'expected_revision': revision(client, story_id)})
+    assert response.status_code == 400 and 'Контекст 8192 перевищує ліміт вибраної моделі 4096 токенів' in response.text
+
+
+@pytest.mark.req('MODEL-005')
+def test_openrouter_limits_are_checked_too(client, story_id, monkeypatch):
+    catalog(monkeypatch)
+    openrouter = ProviderSettings(provider='openrouter', model='m', response_mode='prompt_json')
+    response = save(client, story_id, RoleSettings(provider=openrouter, context_tokens=32768, max_output_tokens=16000))
+    assert response.status_code == 400 and OUTPUT in response.text

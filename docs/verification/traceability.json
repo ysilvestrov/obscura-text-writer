@@ -327,6 +327,8 @@
         "tests/web/test_model_limits_save.py::test_variant_and_classifier_limits_are_checked_against_their_own_model",
         "tests/web/test_model_limits_save.py::test_shared_provider_checks_every_role_limits",
         "tests/web/test_model_limits_save.py::test_unknown_caps_unknown_model_local_and_offline_catalog_do_not_block",
+        "tests/web/test_model_limits_save.py::test_shared_provider_checks_defaults_of_unsaved_roles_and_the_ui_payload",
+        "tests/web/test_model_limits_save.py::test_openrouter_limits_are_checked_too",
         "tests/web/test_model_picker.py::test_model_picker_badges_filters_and_selectability"
       ],
       "manual": {

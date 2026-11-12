@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Request
 from pydantic import Field
 
-from ..authoring.blueprints import apply_blueprint, get_role_settings, save_role_settings, update_story_profile, save_shared_provider
+from ..authoring.blueprints import ROLES, apply_blueprint, get_role_settings, save_role_settings, update_story_profile, save_shared_provider
 from ..domain import DomainModel
 from ..generation.models import StoryBlueprint, StyleProfile
 from ..generation.prompts import default_prompt, role_prompt, expected_contract
@@ -40,8 +40,10 @@ def shared_provider(story_id: str,change: SharedProviderChange,request: Request)
     settings=change.settings
     # Catalog lookup is a network call: do it before any write (configure_prompts stores prompt versions).
     # The shared model is written into every role: each role's limits must fit it.
+    # Roles not saved yet get RoleSettings defaults in save_shared_provider: check those limits too.
     rows=get_role_settings(repo,story_id)
     if change.role and settings is not None:rows[change.role]=settings
+    rows={role:rows.get(role,RoleSettings(provider=change.provider)) for role in ROLES}
     message=catalog_problem(change.provider,[(row.context_tokens,row.max_output_tokens) for row in rows.values()])
     if not message and change.role and settings is not None:message=role_problem(settings.model_copy(update={'provider':change.provider}))
     if message:raise ValueError(message)

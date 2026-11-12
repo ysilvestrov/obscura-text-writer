@@ -159,10 +159,11 @@ test('limits above the chosen model caps block the save until fixed',async({page
   await expect(output).toHaveAttribute('max','16000');
   await output.fill('20000');
   await expect(picker.locator('[data-model-blocked]')).toHaveText('Вихідний ліміт 20000 перевищує ліміт вибраної моделі 16000 токенів. Змініть налаштування; автоматичного повтору немає.');
-  let puts=0;page.on('request',r=>{if(r.method()==='PUT'&&/\/api\/stories\/[^/]+\/settings$/.test(r.url()))puts++});
+  // Native validation stops the form before its submit handler, so no save request can start.
+  await form.evaluate(f=>{f.dataset.submits='0';f.addEventListener('submit',()=>{f.dataset.submits=String(Number(f.dataset.submits)+1)},{capture:true})});
   await page.locator('#settings-save').click();
   expect(await output.evaluate(e=>e.validity.rangeOverflow)).toBe(true);
-  await page.waitForTimeout(300);expect(puts).toBe(0);
+  await expect(form).toHaveAttribute('data-submits','0');
   await output.fill('4096');await expect(picker.locator('[data-model-blocked]')).toBeHidden();
   const put=page.waitForResponse(r=>r.request().method()==='PUT'&&/\/api\/stories\/[^/]+\/settings$/.test(r.url()));
   await page.locator('#settings-save').click();expect((await put).ok()).toBeTruthy();

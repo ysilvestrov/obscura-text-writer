@@ -69,7 +69,7 @@ def test_save_allows_prompt_json_mode(client, story_id, monkeypatch):
     assert save_role(client, story_id, mode='prompt_json').status_code == 200
     assert save_shared(client, story_id, mode='prompt_json').status_code == 200
     # The catalog is still read for the limits check (MODEL-005-S03); its schema flag no longer matters.
-    assert calls
+    assert len(calls) == 2
 
 
 @pytest.mark.req('MODEL-005')
