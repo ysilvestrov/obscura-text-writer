@@ -102,3 +102,32 @@ def test_resume_preflight_checks_pending_roles_only(tmp_path):
     with pytest.raises(ValueError,match='memory'):
         worker.resume(run.id)
     assert worker.get_run(run.id).state=='paused'
+
+
+@pytest.mark.req('MODEL-003')
+def test_readiness_reports_missing_consent_before_run(tmp_path):
+    from storygen.domain import ContentRating
+    from storygen.providers.policy import endpoint
+    import json
+    repo,story,scene,worker=setup_story(tmp_path)
+    cards={'schema_version':2,'id':'A','name':'Анна','entries':[{'id':'A0','text':'Вік: 30','availability':'timeless',
+        'available_from_scene_id':None,'origin':'author','sources':[]}]}
+    ref=repo.save_version(story.id,None,'character_cards',json.dumps([cards],ensure_ascii=False),[])
+    repo.publish_story_material(story.id,'characters_version_id',ref.id,repo.get_story(story.id).revision)
+    repo.update_story_rating(story.id,ContentRating(sexual=0,violence=1,themes=0),repo.get_story(story.id).revision)
+    for role in ['planner','writer']:
+        save_role_settings(repo,story.id,role,RoleSettings(provider=ProviderSettings(provider='openrouter',model='x/y')),repo.get_story(story.id).revision)
+    prepare=worker.readiness(story.id,scene.id,operation='prepare')['operations']['prepare']
+    brief=worker.readiness(story.id,scene.id,operation='brief')['operations']['brief']
+    for result,label in [(prepare,'Планувальник'),(brief,'Планувальник')]:
+        assert not result['ready'] and 'не має позначки Uncensored' in result['reason'] and '0/1/0' in result['reason']
+        assert label in result['reason']
+    with pytest.raises(ValueError,match='не має позначки Uncensored'):
+        worker.enqueue(RunRequest(story_id=story.id,scene_id=scene.id,mode='scene'),'consent')
+    assert worker.list_runs()==[]
+    s=ProviderSettings(provider='openrouter',model='x/y')
+    repo.model_policy('set_consent',role='planner',provider='openrouter',base_url=endpoint(s),model='x/y')
+    brief=worker.readiness(story.id,scene.id,operation='brief')['operations']['brief']
+    assert 'Uncensored' not in (brief['reason'] or '')
+    whole=worker.readiness(story.id,scene.id,operation='scene')['operations']['scene']
+    assert 'Письменник' in whole['reason']  # writer still needs its own consent
