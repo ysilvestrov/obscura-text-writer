@@ -27,7 +27,9 @@ class Prepare(DomainModel):
 
 @router.post('/api/runs')
 def enqueue(body: Enqueue,request: Request):
-    return request.app.state.coordinator.enqueue(body.request,body.request_id)
+    from .bridge_marker import from_bridge, guard_bridge_run
+    guard_bridge_run(request,body.request)
+    return request.app.state.coordinator.enqueue(body.request,body.request_id,origin='mcp' if from_bridge(request) else None)
 
 
 @router.post('/api/runs/cancel-request')
@@ -85,6 +87,8 @@ def pause(id: str,request: Request):
 
 @router.post('/api/runs/{id}/cancel')
 def cancel(id: str,request: Request):
+    from .bridge_marker import guard_bridge_cancel
+    guard_bridge_cancel(request,request.app.state.coordinator.get_run(id))
     return request.app.state.coordinator.cancel(id)
 
 

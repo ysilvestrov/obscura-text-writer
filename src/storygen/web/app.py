@@ -13,7 +13,7 @@ from fastapi.templating import Jinja2Templates
 
 from ..application.settings import AppSettings
 from ..domain import RevisionConflict, StorageCorruption
-from .bridge_marker import BridgeForbidden
+from .bridge_marker import RUN_OWNER_ONLY, BridgeForbidden, author_only_path, from_bridge
 from ..storage.repository import Repository
 from ..generation.worker import RunCoordinator
 
@@ -67,6 +67,8 @@ def create_app(settings: AppSettings, *, gateway_factory=None,evaluator_factory=
             parsed=urlparse(origin)
             if parsed.netloc!=request.headers.get("host") or parsed.scheme!=request.url.scheme:
                 return error_response(request,"Запит з іншого сайту відхилено",403)
+        if from_bridge(request) and author_only_path(request.method,request.url.path):
+            return error_response(request,RUN_OWNER_ONLY,403)
         response=await call_next(request)
         # Relative ES module imports must be refreshed together with the document.
         response.headers['Cache-Control']='no-store'
