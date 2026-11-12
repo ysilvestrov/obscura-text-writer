@@ -7,6 +7,7 @@ from ..generation.models import StoryBlueprint, StyleProfile
 from ..generation.prompts import default_prompt, role_prompt, expected_contract
 from ..providers.discovery import discover_models
 from ..providers.models import ProviderSettings, RoleSettings
+from ..providers.schema_support import schema_mismatch
 
 router=APIRouter()
 
@@ -43,6 +44,9 @@ def shared_provider(story_id: str,change: SharedProviderChange,request: Request)
         settings=configure_prompts(repo,story_id,change,settings)
     elif settings is not None or change.prompt_text is not None or change.prepare_prompt_text is not None:
         raise ValueError('Оберіть роль для налаштувань промпту')
+    # Catalog lookup is a network call: do it before any write.
+    message=schema_mismatch(change.provider)
+    if message:raise ValueError(message)
     return save_shared_provider(repo,story_id,change.provider,change.expected_revision,change.role,settings)
 
 
@@ -76,6 +80,9 @@ def write_settings(story_id: str,change: SettingsChange,request: Request):
     if not change.role or change.settings is None or change.profile is not None:
         raise ValueError('Збережіть окремо профіль або одну роль')
     settings=configure_prompts(repo,story_id,change,change.settings)
+    # Catalog lookup is a network call: do it before any write.
+    message=schema_mismatch(settings.provider)
+    if message:raise ValueError(message)
     return save_role_settings(repo,story_id,change.role,settings,change.expected_revision)
 
 
