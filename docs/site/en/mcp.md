@@ -6,7 +6,7 @@ The link is `storygen-mcp`, a small program the chat client starts by itself. It
 
 ## What the chat can do
 
-The chat gets twenty-one tools:
+The chat gets twenty-three tools:
 
 - **story list** and **story overview**: scenes, their order and their state, in the same words as the scene list, plus the story's rating, target length and characters;
 - **new story**: a title, a language, a target length and, optionally, an age rating;
@@ -26,7 +26,9 @@ The chat gets twenty-one tools:
 - **book export** to FB2, EPUB, PDF, MD or TXT: the chat gives a link to the finished file;
 - **story settings**: reading the writing profile, [role models](models.md), key state and presets, and on request the prompts and the provider's model list;
 - **settings changes**: chosen fields of the writing profile or of one role, over what the chat has read;
-- **role preset**: a preview and, with your consent in the chat, applying a saved preset.
+- **role preset**: a preview and, with your consent in the chat, applying a saved preset;
+- **stage task**: the instructions and material for the scene brief, editing or memory — the same as an Obscura model would get;
+- **stage result**: the chat's answer to a stage task, which Obscura checks the same way as its own model's answer.
 
 The chat cannot delete stories or scenes, move them to the trash, reorder scenes, run generation, synopsis suggestions or the evaluator, or change prompts, the evaluator, the budget and keys.
 
@@ -127,6 +129,17 @@ The chat can change the genre, tone, point of view, style rules and story length
 - These tools do not call models, but the chosen model sets the cost of your next runs in Obscura. The chat does not change the story budget.
 - Role settings have no version history. The chat sees what changed in the tool's answer: ask it to show you. You can save a preset before a big change.
 - If the settings page is open, you will see the chat's changes when you return to it. Unsaved edits stay, and the page says the settings were changed elsewhere.
+
+## Scene stages from the chat
+
+The chat can go through every stage of a scene itself: write the scene brief, write the draft, edit it and update the memory. For each stage it gets the same instructions as an Obscura model: the standard prompts or your own, the role settings, the story language, the rating and the memory of earlier scenes. For the draft, the writer's instructions come with the scene context.
+
+- Obscura checks the chat's answer with the same code as its own model's answer. It does not save a wrong answer even in part, and returns all the violations to the chat at once. After three refusals in a row the chat should stop and show you the violations.
+- If the scene, the role settings or the prompt changed between the task and the answer, the answer is refused, and the chat takes the task again.
+- A result from the chat behaves like a model result: a brief with significant changes waits for your decision, editing in the edit-selection mode goes to "Editor changes", and the memory becomes current. You confirm the memory core, as for a model.
+- If the previous prose changed after its memory, the chat does not get the memory task: you confirm the use of the previous memory in Obscura.
+- In the version history such versions are marked "External client: <name>". Prose edited by the chat is an editing version with this mark.
+- These tools cost no money and are not counted in the budget. If a role is not configured, Obscura uses the chat's typical context limits; it does not know the chat's own window.
 
 ## Limitations
 
