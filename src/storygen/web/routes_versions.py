@@ -36,6 +36,8 @@ class DraftChange(AuthorTextChange):
     expected_context_fingerprint: str | None = Field(default=None,pattern=r'^[0-9a-f]{64}$')
     expected_comments_revision: int | None = Field(default=None,ge=0)
     expected_source_version_id: str | None = None
+    # MCP-BRIDGE (#108): the draft head the external client read with get_scene_text; null — there was no draft.
+    expected_draft_version_id: str | None = Field(default=None,max_length=64)
 
     @model_validator(mode='after')
     def notes_cas(self):
@@ -45,6 +47,8 @@ class DraftChange(AuthorTextChange):
             raise ValueError('Немає набору коментарів')
         if self.comment_set is not None and (self.external_origin is not None or self.expected_context_fingerprint is not None):
             raise ValueError('Чернетка із зовнішнього клієнта не зберігається разом із коментарями')
+        if 'expected_draft_version_id' in self.model_fields_set and self.external_origin is None:
+            raise ValueError('Ідентифікатор прочитаної чернетки передає лише зовнішній клієнт')
         return self
 
 
@@ -149,13 +153,22 @@ def scene_writing_context(scene_id: str,request: Request):
     return writing_context(request.app.state.repo,scene_id)
 
 
+@router.get('/api/scenes/{scene_id}/text/{material}')
+def scene_material_text(scene_id: str,material: Literal['plan','brief','draft','prose','memory'],request: Request,
+                        offset: int=Query(default=0),max_chars: int=Query(default=20000,ge=1000,le=50000)):
+    """MCP-BRIDGE (#108): one material of a scene with its head version, in parts."""
+    from ..application.writing_context import scene_text
+    return scene_text(request.app.state.repo,scene_id,material,offset,max_chars)
+
+
 @router.post('/api/scenes/{scene_id}/draft')
 def manual_draft(scene_id: str,body: DraftChange,request: Request):
     if body.comment_set is not None:
         repo=request.app.state.repo
         format=body.content_format or (repo.get_version(body.expected_source_version_id).content_format if body.expected_source_version_id else 'plain')
         return repo.save_draft_with_comments(scene_id,body.text,format,body.expected_revision,body.expected_comments_revision,body.comment_set,expected_source_version_id=body.expected_source_version_id)
-    ref=save_manual_draft(request.app.state.repo,scene_id,body.text,body.expected_revision,body.content_format,external_origin=body.external_origin,expected_context_fingerprint=body.expected_context_fingerprint)
+    read={'expected_draft_version_id':body.expected_draft_version_id} if 'expected_draft_version_id' in body.model_fields_set else {}
+    ref=save_manual_draft(request.app.state.repo,scene_id,body.text,body.expected_revision,body.content_format,external_origin=body.external_origin,expected_context_fingerprint=body.expected_context_fingerprint,**read)
     return {'version':ref,'scene':request.app.state.repo.get_scene(scene_id)}
 
 

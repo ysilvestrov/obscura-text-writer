@@ -4401,12 +4401,13 @@
     {
       "id": "MCP-BRIDGE-S06",
       "requirement": "MCP-BRIDGE",
-      "scope": "Рівно шість інструментів; стан сцен тим самим словником, що список сцен; посилання на сцену в next_steps. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "scope": "Рівно сім інструментів; стан сцен тим самим словником, що список сцен; посилання на сцену в next_steps. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
       "tests": [
-        "tests/mcp/test_bridge.py::test_tool_list_is_exactly_the_six_tools",
+        "tests/mcp/test_bridge.py::test_tool_list_is_exactly_the_seven_tools",
         "tests/mcp/test_bridge.py::test_get_story_reports_scene_states_with_the_ui_vocabulary",
         "tests/mcp/test_bridge.py::test_next_steps_points_to_the_scene_in_obscura",
-        "tests/mcp/test_bridge.py::test_identifiers_cannot_reach_other_endpoints"
+        "tests/mcp/test_bridge.py::test_identifiers_cannot_reach_other_endpoints",
+        "tests/mcp/test_bridge.py::test_material_outside_the_list_is_refused_without_request"
       ]
     },
     {
@@ -4464,6 +4465,58 @@
         "tests/web/test_scene_sync_ui.py::test_review_fixes_for_clean_buffers_and_saves",
         "tests/web/test_scene_revisions_api.py::test_scene_revisions_read_old_payloads_without_revision_as_zero",
         "tests/web/test_scene_sync_ui.py::test_cross_review_fixes_for_stale_buffers"
+      ]
+    },
+    {
+      "id": "MCP-BRIDGE-S12",
+      "requirement": "MCP-BRIDGE",
+      "scope": "Кожен матеріал з головою й ревізією, порожній матеріал без 404, план без голови, відсутність шляхів у відповіді, читання через інструмент. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/web/test_scene_text.py::test_each_material_returns_text_and_current_version",
+        "tests/web/test_scene_text.py::test_missing_material_is_empty_not_404",
+        "tests/web/test_scene_text.py::test_plan_without_head_falls_back_to_beats",
+        "tests/web/test_scene_text.py::test_response_has_no_paths_or_snapshots",
+        "tests/web/test_scene_text.py::test_memory_rows_match_the_memory_table",
+        "tests/web/test_scene_text.py::test_existing_empty_memory_is_an_empty_json_array",
+        "tests/mcp/test_bridge.py::test_get_scene_text_reads_the_current_draft"
+      ]
+    },
+    {
+      "id": "MCP-BRIDGE-S13",
+      "requirement": "MCP-BRIDGE",
+      "scope": "Сценарій #108 на сервері й через інструмент: свіжі ревізія й відбиток, застаріла чернетка → 409, голова й кількість версій не змінюються. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/web/test_external_draft.py::test_external_draft_over_stale_draft_is_409",
+        "tests/mcp/test_bridge.py::test_save_draft_over_stale_draft_reaches_the_chat_as_409"
+      ]
+    },
+    {
+      "id": "MCP-BRIDGE-S14",
+      "requirement": "MCP-BRIDGE",
+      "scope": "Без поля → 400, явний null на сцені без чернетки, поле в записі автора відхиляється; інструмент без draft_version_id не робить запиту. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/web/test_external_draft.py::test_external_draft_without_draft_id_is_400",
+        "tests/web/test_external_draft.py::test_external_draft_with_null_on_scene_without_draft",
+        "tests/web/test_external_draft.py::test_author_draft_with_draft_id_is_400",
+        "tests/mcp/test_bridge.py::test_save_draft_requires_draft_version_id"
+      ]
+    },
+    {
+      "id": "MCP-BRIDGE-S15",
+      "requirement": "MCP-BRIDGE",
+      "scope": "Частини з кирилицею й емодзі склеюються в цілий текст з одним хешем; хеш пам’яті змінюється від вибору передачі; межі offset і max_chars. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/web/test_scene_text.py::test_long_text_comes_in_parts_with_one_hash",
+        "tests/web/test_scene_text.py::test_memory_hash_changes_with_forwarding_choice",
+        "tests/web/test_scene_text.py::test_bad_offset_or_size_is_refused"
+      ]
+    },
+    {
+      "id": "MCP-BRIDGE-S16",
+      "requirement": "MCP-BRIDGE",
+      "scope": "Збірка store відмовляє в читанні чернетки, пам’яті й плану твору понад межу. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/web/test_scene_text.py::test_store_edition_blocks_text_above_limit"
       ]
     }
   ]

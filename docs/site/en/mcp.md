@@ -1,17 +1,18 @@
 # Chat clients (MCP)
 
-You can connect Obscura to a chat client you already use: Claude Desktop, Claude Code or Codex. The chat reads a scene's plan, cards and memory, writes a draft with its own model and saves it in Obscura. You need no API key of your own: the model runs under the chat client's account, and Obscura calls no model itself.
+You can connect Obscura to a chat client you already use: Claude Desktop, Claude Code or Codex. The chat reads a scene's plan, cards, memory and texts, writes a draft with its own model and saves it in Obscura. You need no API key of your own: the model runs under the chat client's account, and Obscura calls no model itself.
 
 The link is `storygen-mcp`, a small program the chat client starts by itself. It talks to the Obscura running on your computer and nowhere else.
 
 ## What the chat can do
 
-The chat gets six tools:
+The chat gets seven tools:
 
 - **story list** and **story overview**: scenes, their order and their state, in the same words as the scene list;
 - **scene context**: the plan, the brief, the cast's cards, the memory of earlier scenes, the age rating, the language and the target length;
+- **scene text**: the scene's current plan, brief, draft, prose or memory together with the ID of the current version; the chat reads a long text in parts;
 - **import a plan and characters**: the same as the [import](imports.md) form;
-- **save a draft**: a new version of the scene's draft;
+- **save a draft**: a new version of the scene's draft, only over the draft the chat has read;
 - **next steps**: a link to the scene in Obscura.
 
 The chat cannot delete, publish, run generation or the evaluator, or change settings and keys.
@@ -73,9 +74,10 @@ Browser chat clients (claude.ai, chatgpt.com) do not support local servers.
 1. Discuss the idea, the plan and the characters with the chat.
 2. Ask it to import the plan and the characters into the story. You can create an empty story in Obscura beforehand. The import adds materials the same way as the form and is never retried on its own.
 3. Ask it to read the first scene's context and write a draft. The chat saves it as the scene's current draft.
-4. Open the scene in Obscura from the link in the chat. The previous draft, if there was one, stays in the version history.
-5. Rewrite the draft in your own words in [rewriting from memory](ghost-mode.md), approve the prose and update the scene's [memory](memory.md).
-6. Move on to the next scene.
+4. To extend or rewrite an existing draft, ask the chat to read it first. The chat writes over the text it has read, so the edits you made in Obscura are not lost.
+5. Open the scene in Obscura from the link in the chat. The previous draft, if there was one, stays in the version history.
+6. Rewrite the draft in your own words in [rewriting from memory](ghost-mode.md), approve the prose and update the scene's [memory](memory.md).
+7. Move on to the next scene.
 
 A draft from the chat is labelled "External client: <name>" in the version history and in the status row above the editor. If the chat named its model, the model is shown too. This is the client's claim: Obscura cannot check which model actually wrote the text. Once you save your own edit, the label leaves the status row; in the history it stays next to the chat's version.
 
@@ -86,6 +88,8 @@ You can keep Obscura open next to the chat. When you return to the Obscura windo
 - Obscura must be running. Otherwise the chat gets the error "Obscura не запущено за адресою …" (Obscura is not running at …).
 - The next scene's context can be read only after the previous scene's memory is updated, just as for generation in Obscura.
 - If the scene was changed after the context was read, the save is refused with "Сцену вже змінено" (the scene has already been changed). If the cards, the rating, the story language or the memory of earlier scenes changed, it is refused with "Контекст сцени змінився — прочитайте його знову" (the scene context changed, read it again). Either way, ask the chat to read the context again.
+- If the draft was changed after the chat read it (by you in Obscura or by another conversation), the save is refused with "Чернетку змінено після того, як її прочитали" (the draft was changed after it was read). Ask the chat to read the draft again and repeat its change over it.
+- The chat sees only saved texts. It does not see unsaved edits in an open editor: save them before asking the chat to change anything.
 - The chat sees Obscura's errors with the prefix "Error executing tool …", followed by Obscura's code and explanation.
 - A draft from the chat counts as model-made material: after it, the story language can no longer be changed.
 - Obscura does not evaluate a draft from the chat automatically and does not count it in the [budget](models.md). The cost falls on the chat client's account.

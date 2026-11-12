@@ -33,7 +33,11 @@ def writing_fingerprint(repo,scene) -> str:
 CONTEXT_CHANGED='Контекст сцени змінився — прочитайте його знову'
 
 
-def save_manual_draft(repo,scene_id: str,text: str,expected_revision: int,content_format=None,*,author_lineage=None,ghost_rewrite=None,external_origin=None,expected_context_fingerprint=None) -> VersionRef:
+_NOT_READ=object()
+STALE_DRAFT='Чернетку змінено після того, як її прочитали — прочитайте її знову (get_scene_text)'
+
+
+def save_manual_draft(repo,scene_id: str,text: str,expected_revision: int,content_format=None,*,author_lineage=None,ghost_rewrite=None,external_origin=None,expected_context_fingerprint=None,expected_draft_version_id=_NOT_READ) -> VersionRef:
     """`author_lineage` overrides the previous draft head as the parent; a Ghost Mode save always creates a version (#55).
 
     MCP-BRIDGE: a draft with `external_origin` must name the context fingerprint it was written from and always creates a version."""
@@ -46,10 +50,14 @@ def save_manual_draft(repo,scene_id: str,text: str,expected_revision: int,conten
         enforce_edition_limit(repo.get_story(target.story_id),target)
     if external_origin is not None and expected_context_fingerprint is None:
         raise ValueError('Чернетка із зовнішнього клієнта потребує відбитка контексту')
+    if external_origin is not None and expected_draft_version_id is _NOT_READ:
+        raise ValueError('Чернетка із зовнішнього клієнта потребує ідентифікатора прочитаної чернетки')
     if expected_context_fingerprint is not None:
         from ..domain import RevisionConflict
         current=repo.get_scene(scene_id)
         if current.revision!=expected_revision:raise RevisionConflict('Сцену вже змінено')
+        # #108: a fresh revision does not prove the client rewrote the current draft rather than its own old copy.
+        if expected_draft_version_id is not _NOT_READ and current.heads.get('draft')!=expected_draft_version_id:raise RevisionConflict(STALE_DRAFT)
         if writing_fingerprint(repo,current)!=expected_context_fingerprint:raise RevisionConflict(CONTEXT_CHANGED)
     if ghost_rewrite is None and external_origin is None:
         unchanged=repo.unchanged_scene_text(scene_id,'draft',text,expected_revision,content_format)

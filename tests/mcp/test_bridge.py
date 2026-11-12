@@ -1,4 +1,6 @@
 """MCP-BRIDGE: the stdio client translates tool calls into HTTP requests to a running Obscura."""
+import json
+
 import anyio
 import httpx
 import pytest
@@ -34,14 +36,14 @@ def text(result):
 
 
 @pytest.mark.req('MCP-BRIDGE')
-def test_tool_list_is_exactly_the_six_tools(tmp_path):
+def test_tool_list_is_exactly_the_seven_tools(tmp_path):
     app, http = obscura(tmp_path)
 
     async def run():
         async with Client(build_server(http)) as client:
             return [tool.name for tool in (await client.list_tools()).tools]
     names = anyio.run(run)
-    assert sorted(names) == sorted(TOOLS) == sorted(['list_stories', 'get_story', 'get_scene_context', 'import_plan_and_characters', 'save_draft', 'next_steps'])
+    assert sorted(names) == sorted(TOOLS) == sorted(['list_stories', 'get_story', 'get_scene_context', 'import_plan_and_characters', 'save_draft', 'next_steps', 'get_scene_text'])
 
 
 @pytest.mark.req('MCP-BRIDGE')
@@ -94,13 +96,14 @@ def test_save_draft_marks_the_external_client_and_conflicts_reach_the_chat(tmp_p
     scene = repo.create_scene(story.id, SceneCreate(title='Лист', beats='Анна знаходить лист.'))
     server = build_server(http, client_name='Claude Code')
     context = http.get(f'/api/scenes/{scene.id}/writing-context').json()
+    draft = json.loads(text(call(server, 'get_scene_text', {'scene_id': scene.id, 'material': 'draft'})))
     ok = call(server, 'save_draft', {'scene_id': scene.id, 'text': 'Анна відчинила скриньку.', 'expected_revision': context['revision'],
-                                     'context_fingerprint': context['context_fingerprint'], 'model': 'sonnet'})
+                                     'context_fingerprint': context['context_fingerprint'], 'draft_version_id': draft['version_id'], 'model': 'sonnet'})
     assert not ok.is_error, text(ok)
     head = repo.get_version(repo.get_scene(scene.id).heads['draft'])
     assert head.external_origin.client == 'Claude Code' and head.external_origin.model == 'sonnet'
     stale = call(server, 'save_draft', {'scene_id': scene.id, 'text': 'Інше.', 'expected_revision': context['revision'],
-                                        'context_fingerprint': context['context_fingerprint']})
+                                        'context_fingerprint': context['context_fingerprint'], 'draft_version_id': head.id})
     assert stale.is_error and '409' in text(stale)
     assert repo.get_scene(scene.id).heads['draft'] == head.id
 
@@ -158,7 +161,7 @@ def test_save_draft_takes_the_client_name_from_client_info(tmp_path):
         async with Client(server, client_info=Implementation(name='Claude <Desktop>', version='1')) as client:
             schema = next(t for t in (await client.list_tools()).tools if t.name == 'save_draft').input_schema
             result = await client.call_tool('save_draft', {'scene_id': scene.id, 'text': 'Текст.', 'expected_revision': context['revision'],
-                                                           'context_fingerprint': context['context_fingerprint']})
+                                                           'context_fingerprint': context['context_fingerprint'], 'draft_version_id': None})
             return schema, result
     schema, result = anyio.run(run)
     assert not result.is_error, text(result)
@@ -169,7 +172,9 @@ def test_save_draft_takes_the_client_name_from_client_info(tmp_path):
 
 @pytest.mark.req('MCP-BRIDGE')
 @pytest.mark.parametrize('tool,arguments', [
-    ('save_draft', {'scene_id': '../runs/RID/cancel?', 'text': 'x', 'expected_revision': 1, 'context_fingerprint': '0' * 64}),
+    ('save_draft', {'scene_id': '../runs/RID/cancel?', 'text': 'x', 'expected_revision': 1, 'context_fingerprint': '0' * 64, 'draft_version_id': None}),
+    ('save_draft', {'scene_id': 'S1', 'text': 'x', 'expected_revision': 1, 'context_fingerprint': '0' * 64, 'draft_version_id': '../trash'}),
+    ('get_scene_text', {'scene_id': '../versions/X', 'material': 'draft'}),
     ('import_plan_and_characters', {'story_id': 'ID/impact/preview?', 'plan_markdown': PLAN}),
     ('get_story', {'story_id': '..'}),
     ('get_scene_context', {'scene_id': 'a/b'}),
@@ -184,3 +189,68 @@ def test_identifiers_cannot_reach_other_endpoints(tool, arguments):
     result = call(build_server(httpx.Client(base_url='http://127.0.0.1:8765', transport=httpx.MockTransport(record))), tool, arguments)
     assert result.is_error and 'ідентифікатор' in text(result)
     assert seen == []
+
+
+def read_text(server, scene_id, material='draft', **extra):
+    result = call(server, 'get_scene_text', {'scene_id': scene_id, 'material': material, **extra})
+    assert not result.is_error, text(result)
+    return json.loads(text(result))
+
+
+def fresh_save(server, http, scene_id, body, draft_version_id):
+    context = http.get(f'/api/scenes/{scene_id}/writing-context').json()
+    return call(server, 'save_draft', {'scene_id': scene_id, 'text': body, 'expected_revision': context['revision'],
+                                       'context_fingerprint': context['context_fingerprint'], 'draft_version_id': draft_version_id})
+
+
+@pytest.mark.req('MCP-BRIDGE')
+def test_get_scene_text_reads_the_current_draft(tmp_path):
+    app, http = obscura(tmp_path)
+    repo = app.state.repo
+    story = repo.create_story(StoryCreate(title='Маяк'))
+    scene = repo.create_scene(story.id, SceneCreate(title='Лист', beats='Анна знаходить лист.'))
+    server = build_server(http, client_name='Codex')
+    assert read_text(server, scene.id)['version_id'] is None
+    assert not fresh_save(server, http, scene.id, 'Анна відчинила скриньку.', None).is_error
+    data = read_text(server, scene.id)
+    assert data['version_id'] == repo.get_scene(scene.id).heads['draft'] and data['text'] == 'Анна відчинила скриньку.'
+    assert data['external_origin']['client'] == 'Codex'
+    assert read_text(server, scene.id, 'plan')['text'] == 'Анна знаходить лист.'
+
+
+@pytest.mark.req('MCP-BRIDGE')
+def test_save_draft_over_stale_draft_reaches_the_chat_as_409(tmp_path):
+    # #108: fresh revision and fingerprint, but the chat rewrites the draft it read before the author's edit.
+    app, http = obscura(tmp_path)
+    repo = app.state.repo
+    story = repo.create_story(StoryCreate(title='Маяк'))
+    scene = repo.create_scene(story.id, SceneCreate(title='Лист', beats='Анна знаходить лист.'))
+    server = build_server(http, client_name='Claude Code')
+    assert not fresh_save(server, http, scene.id, 'Перша чернетка.', None).is_error
+    seen = read_text(server, scene.id)
+    author = http.post(f'/api/scenes/{scene.id}/draft', json={'text': 'Правка автора.', 'expected_revision': repo.get_scene(scene.id).revision})
+    assert author.status_code == 200
+    stale = fresh_save(server, http, scene.id, 'Перша чернетка з доданою фразою.', seen['version_id'])
+    assert stale.is_error and '409' in text(stale) and 'get_scene_text' in text(stale)
+    assert repo.get_scene(scene.id).heads['draft'] == author.json()['version']['id']
+
+
+def _recording_server(seen):
+    def record(request):
+        seen.append(request.url.path)
+        return httpx.Response(200, json={})
+    return build_server(httpx.Client(base_url='http://127.0.0.1:8765', transport=httpx.MockTransport(record)))
+
+
+@pytest.mark.req('MCP-BRIDGE')
+def test_save_draft_requires_draft_version_id():
+    seen = []
+    result = call(_recording_server(seen), 'save_draft', {'scene_id': 'S1', 'text': 'x', 'expected_revision': 1, 'context_fingerprint': '0' * 64})
+    assert result.is_error and seen == []
+
+
+@pytest.mark.req('MCP-BRIDGE')
+def test_material_outside_the_list_is_refused_without_request():
+    seen = []
+    result = call(_recording_server(seen), 'get_scene_text', {'scene_id': 'S1', 'material': '../../trash'})
+    assert result.is_error and seen == []
