@@ -99,6 +99,26 @@ def test_missing_fields_stay_unknown(monkeypatch):
 
 
 @pytest.mark.req('MODEL-005')
+def test_missing_capabilities_stay_unknown(monkeypatch):
+    monkeypatch.setenv('VENICE_API_KEY','synthetic-key')
+    # No supportsResponseSchema key: schema support is unknown, not "no".
+    no_schema_key=venice_row('s'); del no_schema_key['model_spec']['capabilities']['supportsResponseSchema']
+    # No capabilities object at all: no TEE claim and unknown schema support.
+    no_caps=venice_row('c'); del no_caps['model_spec']['capabilities']
+    found={m.id:m for m in discover([no_schema_key,no_caps],'venice')}
+    assert found['s'].supports_schema is None and found['s'].tee is False
+    assert found['c'].supports_schema is None and found['c'].tee is False
+
+
+@pytest.mark.req('MODEL-005')
+def test_either_e2ee_or_tee_attestation_marks_tee(monkeypatch):
+    monkeypatch.setenv('VENICE_API_KEY','synthetic-key')
+    rows=[venice_row('e',e2ee=True),venice_row('t',tee=True),venice_row('n')]
+    found={m.id:m for m in discover(rows,'venice')}
+    assert (found['e'].tee,found['t'].tee,found['n'].tee)==(True,True,False)
+
+
+@pytest.mark.req('MODEL-005')
 def test_openrouter_schema_from_supported_parameters(monkeypatch):
     monkeypatch.setenv('OPENROUTER_API_KEY','synthetic-key')
     rows=[or_row('s',['response_format','structured_outputs']),or_row('j',['response_format']),or_row('n',None)]
