@@ -6,7 +6,7 @@ The link is `storygen-mcp`, a small program the chat client starts by itself. It
 
 ## What the chat can do
 
-The chat gets twelve tools:
+The chat gets thirteen tools:
 
 - **story list** and **story overview**: scenes, their order and their state, in the same words as the scene list, plus the story's rating, target length and characters;
 - **new story**: a title, a language, a target length and, optionally, an age rating;
@@ -18,6 +18,7 @@ The chat gets twelve tools:
 - **scene text**: the scene's current plan, brief, draft, prose or memory together with the ID of the current version; the chat reads a long text in parts;
 - **import a plan and characters**: the same as the [import](imports.md) form;
 - **save a draft**: a new version of the scene's draft, only over the draft the chat has read;
+- **link to rewriting from memory**: a link that opens [Ghost Mode](ghost-mode.md) for the scene's current draft;
 - **next steps**: a link to the scene in Obscura.
 
 The chat cannot delete stories or scenes, move them to the trash, reorder scenes, publish, run generation or the evaluator, or change writing settings, models and keys.
@@ -81,7 +82,7 @@ Browser chat clients (claude.ai, chatgpt.com) do not support local servers.
 3. Ask it to read the first scene's context and write a draft. The chat saves it as the scene's current draft.
 4. To extend or rewrite an existing draft, ask the chat to read it first. The chat writes over the text it has read, so the edits you made in Obscura are not lost.
 5. Open the scene in Obscura from the link in the chat. The previous draft, if there was one, stays in the version history.
-6. Rewrite the draft in your own words in [rewriting from memory](ghost-mode.md), approve the prose and update the scene's [memory](memory.md).
+6. Rewrite the draft in your own words in [rewriting from memory](ghost-mode.md), approve the prose and update the scene's [memory](memory.md). Ask the chat for a rewriting link: it opens the mode right away, without looking for the scene and the button.
 7. Move on to the next scene.
 
 ## Start a story from the chat

@@ -1,3 +1,5 @@
+// First import: captures a Ghost Mode link before the initial refresh rewrites the address (MCP-BRIDGE-S23).
+import './ghost-link.js';
 import {renderOriginInto} from './external-origin.js';
 import {confirmDialog,promptDialog} from './dialogs.js';
 import {live,t,msg,labelEntries,getLocale,uiText,uiAttr,uiHTML} from './i18n.js';

@@ -7,6 +7,7 @@ import {confirmDialog} from './dialogs.js';
 import {createTextEditor} from './text-editor.js';
 import {invokeWorkspaceCommand} from './workspace-commands.js';
 import * as model from './ghost-session.js';
+import {startGhostLink,ghostLinkRefusal,clearGhostLink,sameDraftBuffer} from './ghost-link.js';
 
 const entry=document.querySelector('#ghost-entry'),root=document.querySelector('#ghost-mode');
 const storage=(()=>{try{return globalThis.localStorage;}catch{return null;}})();
@@ -160,6 +161,8 @@ if(entry&&root){
       const resumeId=model.findSession(storage,scene.id);
       const draftId=resumeId||scene.heads.draft;
       const material=await api('/api/versions/'+draftId);
+      // The author may have moved to another scene or started editing while the version loaded.
+      if(!sameDraftBuffer(scene.id,state)||state.scene.heads?.draft!==scene.heads.draft)return;
       if(!material.version.complete||material.version.kind!=='draft')throw new Error(t('ghost.invalid_source'));
       session=(resumeId&&model.loadSession(storage,scene.id,resumeId))||model.createSession({sceneId:scene.id,draftId,format:material.version.content_format,text:material.text});
       if(!session.blocks.some(b=>b.kind==='text'))throw new Error(t('ghost.empty_draft'));
@@ -205,4 +208,21 @@ if(entry&&root){
 
   globalThis.addEventListener?.('beforeunload',event=>{if(session&&model.hasWork(session)){persist();event.preventDefault();event.returnValue='';}});
   syncEntry();
+
+  // MCP-BRIDGE-S23/S24: a link from the chat opens the mode once the draft tab of its scene is loaded, as the button would.
+  const link=startGhostLink();
+  if(link){
+    clearGhostLink();
+    const waitForDraft=()=>{
+      if(state.scene&&state.scene.id!==link.sceneId){document.removeEventListener('editor-state-changed',waitForDraft);return;}
+      if(state.scene?.id!==link.sceneId||state.mode!=='draft'||state.saving)return;
+      document.removeEventListener('editor-state-changed',waitForDraft);
+      const headDraft=state.scene.heads?.draft||null;
+      const reason=ghostLinkRefusal({hasDraft:!!headDraft,history:state.bufferOrigin==='history',dirty:state.dirty,saving:state.saving,
+        headDraft,expectedDraftId:link.draftId,resumeDraftId:model.findSession(storage,state.scene.id)});
+      if(reason)notice(t('ghost.link_refused',{p0:t('ghost.link_'+reason)}),'error');
+      else void open();
+    };
+    document.addEventListener('editor-state-changed',waitForDraft);
+  }
 }
