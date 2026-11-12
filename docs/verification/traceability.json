@@ -4864,7 +4864,7 @@
         "tests/mcp/test_bridge_runs.py::test_memory_needing_author_approval_is_refused_with_advice",
         "tests/mcp/test_bridge_runs.py::test_publication_suggestion_run_and_result",
         "tests/mcp/test_bridge_runs.py::test_next_steps_follow_the_story_mode",
-        "tests/web/test_bridge_runs.py::test_bridge_stage_run_in_obscura_mode_is_marked"
+        "tests/web/test_bridge_run_routes.py::test_bridge_stage_run_in_obscura_mode_is_marked"
       ]
     },
     {
@@ -4872,7 +4872,7 @@
       "requirement": "MCP-BRIDGE",
       "scope": "Режим chat: відмова мосту 409 у сервері й інструменті, запуск автора проходить; невідома дія без запиту. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
       "tests": [
-        "tests/web/test_bridge_runs.py::test_chat_mode_refuses_bridge_runs_but_not_the_author",
+        "tests/web/test_bridge_run_routes.py::test_chat_mode_refuses_bridge_runs_but_not_the_author",
         "tests/mcp/test_bridge_runs.py::test_chat_mode_and_unknown_action_are_refused"
       ]
     },
@@ -4883,7 +4883,7 @@
       "tests": [
         "tests/mcp/test_bridge_runs.py::test_start_run_with_confirm_queues_a_marked_run",
         "tests/mcp/test_bridge_runs.py::test_get_run_cannot_cancel_authors_run",
-        "tests/web/test_bridge_runs.py::test_bridge_cancels_only_its_own_run_and_never_pauses"
+        "tests/web/test_bridge_run_routes.py::test_bridge_cancels_only_its_own_run_and_never_pauses"
       ]
     },
     {
@@ -4891,9 +4891,9 @@
       "requirement": "MCP-BRIDGE",
       "scope": "Інші режими запуску й шляхи керування від моста — 403; переклад відмов. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
       "tests": [
-        "tests/web/test_bridge_runs.py::test_bridge_may_not_start_other_run_kinds",
-        "tests/web/test_bridge_runs.py::test_bridge_cancels_only_its_own_run_and_never_pauses",
-        "tests/web/test_bridge_runs.py::test_run_refusals_are_translated"
+        "tests/web/test_bridge_run_routes.py::test_bridge_may_not_start_other_run_kinds",
+        "tests/web/test_bridge_run_routes.py::test_bridge_cancels_only_its_own_run_and_never_pauses",
+        "tests/web/test_bridge_run_routes.py::test_run_refusals_are_translated"
       ]
     },
     {
