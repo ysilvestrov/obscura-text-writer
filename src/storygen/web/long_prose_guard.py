@@ -55,21 +55,21 @@ def _route(app, scope):
     return None, {}
 
 
-def _story_id(db, path, params, body):
+def _target(path, params, body):
+    """Keyword arguments naming the story: a story, scene or run id from the path, else story_id from the JSON body."""
     if 'story_id' in params:
-        return params['story_id']
+        return {'story_id': params['story_id']}
     if 'scene_id' in params or path.startswith('/api/scenes/{id}'):
-        row = db.execute('SELECT story_id FROM scenes WHERE id=?', (params.get('scene_id') or params.get('id'),)).fetchone()
-        return row[0] if row else None
+        return {'scene_id': params.get('scene_id') or params.get('id')}
     if path.startswith('/api/stories/{id}'):
-        return params.get('id')
+        return {'story_id': params.get('id')}
     if path.startswith('/api/runs/{id}'):
-        row = db.execute('SELECT story_id FROM runs WHERE id=?', (params.get('id'),)).fetchone()
-        return row[0] if row else None
+        return {'run_id': params.get('id')}
     if isinstance(body, dict):
         nested = body.get('request')
-        return body.get('story_id') or (nested.get('story_id') if isinstance(nested, dict) else None)
-    return None
+        story_id = body.get('story_id') or (nested.get('story_id') if isinstance(nested, dict) else None)
+        return {'story_id': story_id} if isinstance(story_id, str) else {}
+    return {}
 
 
 async def blocked(app, request) -> str | None:
@@ -87,19 +87,11 @@ async def blocked(app, request) -> str | None:
             body = json.loads(await request.body() or b'null')
         except ValueError:
             body = None
-    repo = app.state.repo
+    target = _target(route.path, params, body)
+    if not target:
+        return None
     from ..book.guard import READ_ONLY
     from ..book.structure import structure_kind
-    from ..domain import Scene, Story
-    with repo.db.connection() as db:
-        story_id = _story_id(db, route.path, params, body)
-        if not story_id:
-            return None
-        row = db.execute('SELECT payload FROM stories WHERE id=?', (story_id,)).fetchone()
-        if row is None:
-            return None
-        story = Story.model_validate_json(row[0])
-        if story.book_structure is None:
-            return None
-        scenes = [Scene.model_validate_json(r[0]) for r in db.execute('SELECT payload FROM scenes WHERE story_id=?', (story_id,))]
-    return READ_ONLY if structure_kind(story, scenes) == 'structured' else None
+    from ..storage.book_structure import structured_story
+    found = structured_story(app.state.repo, **target)
+    return READ_ONLY if found and structure_kind(*found) == 'structured' else None

@@ -153,3 +153,25 @@ def place_imported(story, active: list[Scene], created: list[tuple[Scene, str | 
     validate_shape(structure)
     _require_sequence(structure, bindings, [s.model_copy(update={'position': i}) for i, s in enumerate(active)])
     return story.model_copy(update={'book_structure': structure, 'scene_arcs': bindings})
+
+
+def structured_story(repo, *, story_id=None, scene_id=None, run_id=None):
+    """BUILD-EDITION-001-S08 guard lookup: (story, scenes) of the story named by a story, scene or run id, or None when
+    there is no such story or it has no explicit structure. One read transaction; never raises for unknown ids."""
+    from ..domain import Story
+    with repo.db.connection() as db:
+        if story_id is None and scene_id is not None:
+            row = db.execute('SELECT story_id FROM scenes WHERE id=?', (scene_id,)).fetchone()
+            story_id = row[0] if row else None
+        if story_id is None and run_id is not None:
+            row = db.execute('SELECT story_id FROM runs WHERE id=?', (run_id,)).fetchone()
+            story_id = row[0] if row else None
+        if not story_id:
+            return None
+        row = db.execute('SELECT payload FROM stories WHERE id=?', (story_id,)).fetchone()
+        if row is None:
+            return None
+        story = Story.model_validate_json(row[0])
+        if story.book_structure is None:
+            return None
+        return story, _scenes(db, story_id)
