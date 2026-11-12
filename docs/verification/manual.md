@@ -271,6 +271,11 @@ MODEL-001-S02. Автоматична частина — Playwright `tests/web/b
 
 WORKSPACE-TOOLS-S05. Автоматична частина — Playwright `tests/web/browser/scene-delete.spec.mjs` (три cases: на desktop іконка стоїть у правому краї рядка обраної сцени, переходить за вибором, після підтвердження сцена зникає зі списку й з’являється в кошику сцен; з незбереженим текстом клік показує причину й не відкриває підтвердження; на mobile лишається підписана кнопка під редактором, а іконки не видно). Запуск: `cd frontend; ./node_modules/.bin/playwright test ../tests/web/browser/scene-delete.spec.mjs`. Прогін 12.11.2026 на гілці `claude/scene-delete-button`: 3 passed, 3 skipped (cases іншого проєкту).
 
+<a id="model-limits-browser"></a>
+## Межі моделі з каталогу у формі налаштувань
+
+MODEL-005-S03. Автоматична частина — Playwright case «limits above the chosen model caps block the save until fixed» у `tests/web/browser/model-picker.spec.mjs` (поле резерву відповіді отримує `max` з каталогу, значення понад межу показує пояснення й не надсилає PUT, допустиме значення зберігається): `node frontend/node_modules/@playwright/test/cli.js test tests/web/browser/model-picker.spec.mjs --config frontend/playwright.config.mjs`. Цей зв’язок не є доказом виконання; фактичний запуск фіксується окремо.
+
 <a id="model-policy-browser"></a>
 ## Згода й позначка відмови в браузері
 

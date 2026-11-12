@@ -149,3 +149,22 @@ test('rows do not change the model while the form is save-locked',async({page,re
   await model.evaluate(e=>{e.disabled=false});
   await row(picker,'syn-private').click();await expect(model).toHaveValue('syn-private');
 });
+
+// MODEL-005-S03: limits above what the catalog reports for the chosen model cannot be saved.
+test('limits above the chosen model caps block the save until fixed',async({page,request})=>{
+  const {form,picker}=await openWriter(page,request);
+  await form.locator('.discover').click();await row(picker,'syn-private').click();
+  const output=form.locator('[name=max_output_tokens]');
+  await output.evaluate(e=>{const d=e.closest('details');if(d)d.open=true});
+  await expect(output).toHaveAttribute('max','16000');
+  await output.fill('20000');
+  await expect(picker.locator('[data-model-blocked]')).toHaveText('Вихідний ліміт 20000 перевищує ліміт вибраної моделі 16000 токенів. Змініть налаштування; автоматичного повтору немає.');
+  // Native validation stops the form before its submit handler, so no save request can start.
+  await form.evaluate(f=>{f.dataset.submits='0';f.addEventListener('submit',()=>{f.dataset.submits=String(Number(f.dataset.submits)+1)},{capture:true})});
+  await page.locator('#settings-save').click();
+  expect(await output.evaluate(e=>e.validity.rangeOverflow)).toBe(true);
+  await expect(form).toHaveAttribute('data-submits','0');
+  await output.fill('4096');await expect(picker.locator('[data-model-blocked]')).toBeHidden();
+  const put=page.waitForResponse(r=>r.request().method()==='PUT'&&/\/api\/stories\/[^/]+\/settings$/.test(r.url()));
+  await page.locator('#settings-save').click();expect((await put).ok()).toBeTruthy();
+});

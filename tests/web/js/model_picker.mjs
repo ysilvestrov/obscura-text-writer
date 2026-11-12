@@ -54,3 +54,17 @@ setLocale('en'); for(const b of [...modelBadges(tee),...modelBadges(unk),...mode
 assert.notEqual(t('models.no_match'),'models.no_match');
 assert.equal(t('models.schema_unknown'),'JSON Schema support is unknown: check the model yourself.');
 assert.equal(t('models.blocked_venice_uncensored_pending'),'models.blocked_venice_uncensored_pending');
+// Limits the catalog reports block saving values above them; unknown caps never block.
+const {limitsProblem,pickerMessage}=await import(pathToFileURL(process.argv[2]+'/src/storygen/web/static/model-picker.js'));
+const capped={id:'m',context_tokens:32768,max_output_tokens:8192};
+assert.equal(limitsProblem(capped,{context_tokens:32768,max_output_tokens:8192}),null);
+assert.deepEqual(limitsProblem(capped,{context_tokens:32768,max_output_tokens:16000}),{key:'models.output_exceeded',params:{p0:16000,p1:8192}});
+assert.deepEqual(limitsProblem(capped,{context_tokens:65536,max_output_tokens:16000}),{key:'models.context_exceeded',params:{p0:65536,p1:32768}});
+assert.equal(limitsProblem({id:'u',context_tokens:null,max_output_tokens:null},{context_tokens:999999,max_output_tokens:999999}),null);
+assert.equal(limitsProblem(null,{max_output_tokens:16000}),null);
+assert.equal(limitsProblem(capped,{}),null);
+setLocale('en');
+assert.equal(pickerMessage({key:'models.output_exceeded',params:{p0:16000,p1:8192}}),'Output limit 16000 exceeds the selected model limit of 8192 tokens. Change the settings; no automatic retry.');
+assert.equal(pickerMessage('models.blocked_schema_required'),t('models.blocked_schema_required'));
+assert.equal(pickerMessage(null),'');
+console.log('model limits check passed');
