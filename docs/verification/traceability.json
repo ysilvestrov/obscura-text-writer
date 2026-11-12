@@ -4645,7 +4645,7 @@
       ]
     },
     {
-      "id": "MCP-BRIDGE-S26",
+      "id": "MCP-BRIDGE-S32",
       "requirement": "MCP-BRIDGE",
       "scope": "Поле day_change у writing-context і селектори дня в MCP-чернетці, без них у ручній. Перевірка зазначеного сценарію.",
       "tests": [

@@ -1,4 +1,4 @@
-"""Core state and day change for the writer and the brief (CONTEXT-002-S04…S06, MCP-BRIDGE-S26)."""
+"""Core state and day change for the writer and the brief (CONTEXT-002-S04…S06, MCP-BRIDGE-S32)."""
 import pytest
 
 from storygen.application.writing_context import writing_context
