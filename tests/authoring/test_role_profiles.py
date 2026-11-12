@@ -169,3 +169,59 @@ def test_custom_v4_memory_prompt_keeps_contract_through_profile(tmp_path):
     apply_profile(repo,target.id,saved['id'],1,target.revision)
     local=repo.read_role_settings(target.id)['memory']['prompt_version_id']
     assert repo.get_version(local).prompt_contract==v2
+
+
+def _with_variant(repo,source):
+    from storygen.providers.models import RoleVariant
+    role=RoleSettings(provider=ProviderSettings(model='local-test'),
+        low_rating_variant=RoleVariant(provider=ProviderSettings(provider='openrouter',model='x/y')))
+    repo.write_role_settings(source.id,{'writer':role.model_dump()},repo.get_story(source.id).revision)
+    return repo.get_story(source.id)
+
+
+@pytest.mark.req('MODEL-001')
+def test_profile_v1_imports_unchanged(tmp_path):
+    repo,source,_=seeded(tmp_path)
+    saved=capture_profile(repo,source.id,'Профіль',source.revision)
+    data=json.loads(export_profile(repo,saved['id'],1))
+    assert data['schema_version']==1 and data['roles']['writer']['settings']['low_rating_variant'] is None
+    assert parse_profile(json.dumps(data)).schema_version==1
+
+
+@pytest.mark.req('MODEL-001')
+def test_profile_export_writes_v2_only_with_variant(tmp_path):
+    repo,source,_=seeded(tmp_path)
+    source=_with_variant(repo,source)
+    saved=capture_profile(repo,source.id,'З варіантом',source.revision)
+    data=json.loads(export_profile(repo,saved['id'],1))
+    assert data['schema_version']==2
+    assert parse_profile(json.dumps(data)).roles['writer'].settings.low_rating_variant.provider.model=='x/y'
+    target=repo.create_story(StoryCreate(title='Ціль'))
+    apply_profile(repo,target.id,saved['id'],1,target.revision)
+    assert repo.read_role_settings(target.id)['writer']['low_rating_variant']['provider']['model']=='x/y'
+
+
+@pytest.mark.req('MODEL-001')
+def test_profile_v1_with_variant_is_rejected(tmp_path):
+    from storygen.role_profiles import ProfileDocument
+    repo,source,_=seeded(tmp_path)
+    source=_with_variant(repo,source)
+    saved=capture_profile(repo,source.id,'З варіантом',source.revision)
+    data=json.loads(export_profile(repo,saved['id'],1))
+    data['schema_version']=1
+    with pytest.raises(ValueError,match='Комплект версії 1 не може містити окрему модель письменника.'):
+        ProfileDocument.model_validate(data)
+    with pytest.raises(ValueError):parse_profile(json.dumps(data))
+
+
+@pytest.mark.req('MODEL-001')
+def test_profile_variant_on_other_role_is_rejected(tmp_path):
+    from storygen.role_profiles import ProfileDocument
+    from storygen.generation.role_routing import VARIANT_WRITER_ONLY
+    repo,source,_=seeded(tmp_path)
+    source=_with_variant(repo,source)
+    saved=capture_profile(repo,source.id,'З варіантом',source.revision)
+    data=json.loads(export_profile(repo,saved['id'],1))
+    data['roles']['editor']['settings']['low_rating_variant']=data['roles']['writer']['settings']['low_rating_variant']
+    with pytest.raises(ValueError,match=VARIANT_WRITER_ONLY):
+        ProfileDocument.model_validate(data)

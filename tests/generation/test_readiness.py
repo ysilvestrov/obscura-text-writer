@@ -131,3 +131,47 @@ def test_readiness_reports_missing_consent_before_run(tmp_path):
     assert 'Uncensored' not in (brief['reason'] or '')
     whole=worker.readiness(story.id,scene.id,operation='scene')['operations']['scene']
     assert 'Письменник' in whole['reason']  # writer still needs its own consent
+
+
+def _variant_writer(model='venice/free'):
+    from storygen.providers.models import RoleVariant
+    return RoleSettings(provider=ProviderSettings(model='writer'),
+        low_rating_variant=RoleVariant(provider=ProviderSettings(provider='openrouter',model=model)))
+
+
+@pytest.mark.req('MODEL-001')
+def test_readiness_lists_variant_and_checks_its_budget(tmp_path):
+    from storygen.domain import ContentRating
+    from storygen.providers.policy import endpoint
+    repo,story,scene,worker=setup_story(tmp_path)
+    repo.update_story_rating(story.id,ContentRating(sexual=0,violence=1,themes=0),repo.get_story(story.id).revision)
+    writer=_variant_writer()
+    save_role_settings(repo,story.id,'writer',writer,repo.get_story(story.id).revision)
+    variant=writer.low_rating_variant.provider
+    repo.model_policy('set_consent',role='writer',provider='openrouter',base_url=endpoint(variant),model='venice/free')
+    from storygen.generation.readiness import preview
+    result=preview(repo,RunRequest(story_id=story.id,scene_id=scene.id,mode='scene'))
+    assert result['roles']['writer_low_rating']=={'provider':'openrouter','model':'venice/free'}
+    assert result['roles']['writer']['model']=='writer'
+    assert not result['ready'] and result['reason']=='Спершу задайте явний ліміт бюджету в налаштуваннях'
+    assert preview(repo,RunRequest(story_id=story.id,scene_id=scene.id,mode='stage',stage='edit'))['roles'].get('writer_low_rating') is None
+
+
+@pytest.mark.req('MODEL-001')
+def test_readiness_rejects_empty_variant_model(tmp_path):
+    repo,story,scene,worker=setup_story(tmp_path)
+    save_role_settings(repo,story.id,'writer',_variant_writer(' '),repo.get_story(story.id).revision)
+    from storygen.generation.readiness import preview
+    result=preview(repo,RunRequest(story_id=story.id,scene_id=scene.id,mode='scene'))
+    assert not result['ready'] and 'сцен 0–1' in result['reason']
+
+
+@pytest.mark.req('MODEL-001')
+def test_readiness_skips_variant_for_level_two_targets(tmp_path):
+    from storygen.domain import ContentRating
+    repo,story,scene,worker=setup_story(tmp_path)
+    repo.update_story_rating(story.id,ContentRating(sexual=0,violence=2,themes=0),repo.get_story(story.id).revision)
+    save_role_settings(repo,story.id,'writer',_variant_writer(),repo.get_story(story.id).revision)
+    from storygen.generation.readiness import preview
+    result=preview(repo,RunRequest(story_id=story.id,scene_id=scene.id,mode='scene'))
+    assert 'writer_low_rating' not in result['roles']

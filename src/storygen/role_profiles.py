@@ -6,6 +6,7 @@ from typing import Literal
 from pydantic import Field, model_validator
 
 from .domain import DomainModel, PromptContract, RevisionConflict
+from .generation.role_routing import VARIANT_WRITER_ONLY
 from .providers.models import RoleSettings
 from .prompt_contracts import compatible_contract, expected_contract, validate_role_prompt
 from .evaluation.story_adapter import EvaluationSettings, validate_evaluation_settings
@@ -34,7 +35,8 @@ class PortableRole(DomainModel):
 
 class ProfileDocument(DomainModel):
     format: Literal['obscura-role-profile']='obscura-role-profile'
-    schema_version: Literal[1]=1
+    # 2 only when the writer carries a low-rating model (MODEL-001); version 1 stays importable unchanged.
+    schema_version: Literal[1,2]=1
     name: str = Field(min_length=1,max_length=100)
     # Story language the prompts were written for; None for profiles exported before #32.
     language: Literal['uk','en'] | None = None
@@ -49,6 +51,10 @@ class ProfileDocument(DomainModel):
         providers=[]
         for name,role in self.roles.items():
             settings=role.settings
+            if settings.low_rating_variant is not None:
+                if name!='writer':raise ValueError(VARIANT_WRITER_ONLY)
+                if self.schema_version<2:raise ValueError('Комплект версії 1 не може містити окрему модель письменника.')
+                providers.append(settings.low_rating_variant.provider.key_env)
             if settings.prompt_version_id is not None or settings.prepare_prompt_version_id is not None:
                 raise ValueError('UUID промптів не переноситься між творами')
             if not compatible_contract(expected_contract(STAGES[name],settings),role.prompt.contract):
@@ -115,7 +121,8 @@ def capture_profile(repo,story_id,name,expected_revision,include_evaluator=False
         if evaluator is None:raise ValueError('Оцінювач не налаштовано')
         evaluator=EvaluationSettings.model_validate(evaluator).model_dump()
         evaluator['profile'].update(calibrated=False,evaluator_fingerprint=None,calibration_fingerprint=None)
-    document=_document(dict(name=name,language=story.language,roles=roles,evaluator=evaluator))
+    version=2 if roles['writer']['settings'].get('low_rating_variant') else 1
+    document=_document(dict(schema_version=version,name=name,language=story.language,roles=roles,evaluator=evaluator))
     return repo.role_profiles('save',document=document.model_dump(),profile_id=profile_id,expected_version=expected_version,
                               source_story_id=story_id,source_revision=expected_revision)
 
