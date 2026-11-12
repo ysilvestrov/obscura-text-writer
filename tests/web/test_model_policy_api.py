@@ -24,6 +24,7 @@ def add_refusal(client, **extra):
         base_url=endpoint(s), model='x/y')
 
 
+@pytest.mark.req('MODEL-003')
 def test_consent_roundtrip(client):
     assert client.get('/api/model-policy', params=Q).json() == {'consent': None, 'refusals': []}
     assert client.put('/api/model-policy/consent', json=Q).json()['consent']['consented_at']
@@ -31,6 +32,7 @@ def test_consent_roundtrip(client):
     assert client.delete('/api/model-policy/consent', params=Q).json()['consent'] is None
 
 
+@pytest.mark.req('MODEL-004')
 def test_refusal_is_listed_and_cleared(client):
     add_refusal(client)
     body = client.get('/api/model-policy', params=Q).json()

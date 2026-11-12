@@ -10,7 +10,7 @@ Open the story settings → **Models** and choose a role. Enter the provider, AP
 
 Providers:
 
-- **Venice** and **OpenRouter** are cloud providers: they need a key, either in `.env` or in the "Provider key" block under the model field (see [Installation](install.md#provider-keys)), and a call budget. Venice accepts only models with `uncensored=true`.
+- **Venice** and **OpenRouter** are cloud providers: they need a key, either in `.env` or in the "Provider key" block under the model field (see [Installation](install.md#provider-keys)), and a call budget. Models without the Uncensored mark need [consent](#consent-for-a-model-without-uncensored).
 - **Local** is a server on your computer, such as LM Studio or Bionic; the default address is `http://localhost:1235/v1`. No key or budget is needed.
 - **Codex CLI** uses your existing Codex sign-in; the text is sent to the Codex service.
 
@@ -28,11 +28,25 @@ Badges come only from catalog fields, never from the model name:
 
 Filters: search by name or ID, **Uncensored only**, **Privacy** (default "Private and above"; you can choose "any" or "TEE only") and **JSON Schema**. For providers that do not report privacy (OpenRouter, local) the privacy filter is inactive and models are shown with "privacy unknown". A missing field always means "unknown", never "yes" or "no".
 
-Venice lists all online models, including those without Uncensored, but such a model cannot be chosen yet: a note beside it says the choice becomes available after the call rules are updated. An ID that is not in the catalog can be typed manually; it is kept and marked "not in catalog".
+Venice lists all online models, including those without Uncensored, and they can be chosen. An ID that is not in the catalog can be typed manually; it is kept and marked "not in catalog".
 
 ### JSON Schema mode
 
 If a role or connection uses the **JSON Schema** response mode, the JSON Schema filter is on and locked, and models the catalog marks as lacking schema support are visible but cannot be chosen. Models with unknown support (for example, all local ones) can be chosen and saved; a hint beside them says "JSON Schema support is unknown: check the model yourself." Changing the response mode rebuilds the list at once. If the already chosen model does not support JSON Schema, the form will not save, and the server also rejects such a save with an explanation: choose another model or the "JSON by prompt" mode. If the catalog is unavailable or support is unknown, saving is allowed. Before a call the app checks the model against the catalog only for Venice; for OpenRouter and local models check schema support yourself. In "JSON by prompt" mode the filter is ordinary and optional.
+
+## Consent for a model without Uncensored
+
+A cloud model (Venice, OpenRouter) that the provider has not marked as Uncensored may refuse explicit text. So when the request rating is above 0 on at least one axis, the application does not call such a model until you agree. The request rating is the highest level on each axis among the story rating and the scenes whose material goes into the request. For a 0/0/0 story with one 2/0/0 scene, consent is needed only for that scene.
+
+Under the chosen model in the role settings (and in the evaluation classification settings for the Editor role) a warning with an "I agree…" checkbox appears. The checkbox acts at once, without the **Save:** button. Consent belongs to the "role + model + API address" pair and applies in all stories; another role, model or address needs its own consent. Clearing the checkbox blocks calls again. Local models need no consent.
+
+Without consent the stage stops with an explanation of which model, role and rating are involved, and no request is sent to the provider. For Venice the Uncensored state comes from the catalog, so a saved model shows the warning until the model list is loaded.
+
+## Refusal mark
+
+If a model refused to write because of the content (the provider returned a content-policy refusal), the application remembers the rating at which it happened for that role and model. From then on calls with the same or a higher rating on every axis are blocked, and lower ones are not: after a refusal at 2/0/0 a 1/1/0 scene is allowed, a 2/1/0 scene is not. A red notice appears under the model with the refusal ratings and the buttons **Clear the mark** and **Choose another model**.
+
+The application never switches the model by itself: you clear the mark yourself (for example after changing the prompt) or choose another model. A refusal the model expresses in plain text ("I can't write about this") is not recognized and leaves no mark.
 
 ## Call budget
 

@@ -38,6 +38,10 @@ Age: adult
 
 Generation is blocked by an empty scene cast, missing cards, a minor participant or a participant without a stated age. The message names the characters and offers three ways out: add an `Age:` line to the card (a number from 18 or "adult"), remove the character from the scene cast, or mark the scene with "sexual content 0". In the last case the age check does not apply to this scene, and the rating is your responsibility. The application never lowers a rating itself.
 
+## Rating and models without Uncensored
+
+The request rating (the highest level on each axis among the story and the scenes that go into the request) decides whether a model without the Uncensored mark needs consent: at 0/0/0 it does not, with any axis above 0 it does. If a model refused because of the content, the application blocks that model at the same or a higher rating until you clear the mark. See [Models](models.md#consent-for-a-model-without-uncensored) and [Refusal mark](models.md#refusal-mark) for details. There is no automatic switch to another model.
+
 ## Label in FB2 and EPUB
 
 When exporting FB2 or EPUB, the highest level among the story rating and the exported scenes is used: 0 gives `0+`, 1 gives `16+`, 2 gives `18+`. The label goes into the file metadata, not the text. MD, TXT and PDF carry no label. If the story rating is not set, there is no label and the export manifest contains a warning.

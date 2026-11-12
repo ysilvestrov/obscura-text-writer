@@ -34,7 +34,8 @@ Storygen автоматизує створення українського оп
 - [MODEL-001 — Чотири незалежні ролі](#model-001)
 - [ROLE-PROFILES — Переносимі комплекти ролей](#role-profiles)
 - [MODEL-002 — Явний виклик провайдера](#model-002)
-- [MODEL-003 — Каталог Venice](#model-003)
+- [MODEL-003 — Каталожна перевірка й згода на модель](#model-003)
+- [MODEL-004 — Блокування після відмови моделі](#model-004)
 - [MODEL-005 — Каталог моделей у налаштуваннях](#model-005)
 - [BUDGET-001 — Явні ліміти й резерв виклику](#budget-001)
 - [BUDGET-002 — Достовірне завершення обліку](#budget-002)
@@ -341,15 +342,69 @@ PATCH `/api/stories/{id}` SHALL приймати лише title/expected_revisio
 - AND інша модель не викликається автоматично.
 
 <a id="model-003"></a>
-### Requirement: MODEL-003 — Каталог Venice
+### Requirement: MODEL-003 — Каталожна перевірка й згода на модель
 
-Генерація через Venice SHALL дозволяти лише текстові моделі з явним `uncensored=true` і без `offline=true`. Ця перевірка SHALL діяти також для вручну введеного ID. Список моделей у налаштуваннях SHALL показувати й моделі без `uncensored=true`; до оновлення правил виклику їх вибір для Venice заблоковано.
+Генерація через Venice SHALL дозволяти лише текстові моделі, що є в каталозі провайдера, підтримують потрібний режим відповіді й не мають `offline=true`; наявність `uncensored=true` для цього не потрібна. Ця перевірка SHALL діяти також для вручну введеного ID. Виклик моделі, яка не локальна й не має явного `uncensored=true`, SHALL бути заблокований, якщо рейтинг запиту має хоча б одну вісь вище 0, доки автор не підтвердив згоду для пари «роль + модель + endpoint». Рейтинг запиту — максимум за кожною віссю серед рейтингу твору й ефективних рейтингів сцен, матеріал яких входить у запит. Згода діє в усіх творах, не переноситься на іншу роль, модель чи Base URL і знімається автором. Моделі без `uncensored=true` SHALL бути видимі й вибираємі в списку для всіх провайдерів. Оцінювач цією вимогою не охоплено: він і далі вимагає `uncensored=true`.
 
 <a id="model-003-s01"></a>
 #### Scenario: MODEL-003-S01 — Невідповідна модель Venice
 - GIVEN вибраний ID не проходить перевірку каталогу
 - WHEN готується генерація
 - THEN платний запит завершення не надсилається.
+
+<a id="model-003-s02"></a>
+#### Scenario: MODEL-003-S02 — Модель без Uncensored і без згоди
+- GIVEN модель не локальна, `uncensored` не `true`, рейтинг запиту має вісь вище 0, згоди для ролі й моделі немає
+- WHEN запускається етап
+- THEN виклик блокується з поясненням, що називає модель, рейтинг запиту й роль
+- AND платний запит не надсилається.
+
+<a id="model-003-s03"></a>
+#### Scenario: MODEL-003-S03 — Згода для ролі й моделі
+- GIVEN автор підтвердив згоду для пари «роль + модель»
+- WHEN запускається етап у будь-якому творі
+- THEN виклик проходить
+- AND зміна моделі чи ролі скидає згоду, а зняття згоди повертає блокування.
+
+<a id="model-003-s04"></a>
+#### Scenario: MODEL-003-S04 — Локальна модель і ключ згоди
+- GIVEN модель локального провайдера (завжди loopback)
+- WHEN рейтинг запиту має вісь вище 0
+- THEN згода не потрібна
+- AND згода для одного Base URL не діє для іншого, бо ключ згоди містить endpoint.
+
+<a id="model-003-s05"></a>
+#### Scenario: MODEL-003-S05 — Сцена з вищим рейтингом, ніж у твору
+- GIVEN твір 0/0/0, сцена з власним рейтингом 2/0/0, модель без Uncensored і без згоди
+- WHEN запускається етап для цієї сцени
+- THEN виклик блокується
+- AND етапи інших сцен твору не блокуються.
+
+<a id="model-004"></a>
+### Requirement: MODEL-004 — Блокування після відмови моделі
+
+Відмова моделі через зміст (`finish_reason == 'content_filter'` з категорією `refusal_content` або `terminal.refusal` з категорією `refusal_unknown`) SHALL записувати позначку для пари «роль + модель + endpoint» з рейтингом запиту. Виклик SHALL бути заблокований, якщо хоча б один збережений вектор за кожною віссю не вищий за рейтинг запиту; новий вектор прибирає з набору вектори, не нижчі за нього за кожною віссю. Автор знімає позначку в налаштуваннях ролі; автоматичного перемикання на іншу модель немає. Текстові відмови («я не можу…») не розпізнаються.
+
+<a id="model-004-s01"></a>
+#### Scenario: MODEL-004-S01 — Позначка після відмови через зміст
+- GIVEN модель відмовила через зміст на сцені з рейтингом R
+- WHEN запускається етап для сцени з таким самим або вищим рейтингом
+- THEN виклик блокується з поясненням
+- AND сцена з нижчим за якоюсь віссю рейтингом не блокується
+- AND зняття позначки відновлює виклики.
+
+<a id="model-004-s02"></a>
+#### Scenario: MODEL-004-S02 — Набір векторів відмов
+- GIVEN збережено відмови на 2/0/0 і 0/2/0
+- WHEN перевіряється запит 1/1/0, 2/1/0 або 0/2/2
+- THEN 1/1/0 не блокується, а 2/1/0 і 0/2/2 блокуються
+- AND відмова на 0/0/0 блокує всі запити.
+
+<a id="model-004-s03"></a>
+#### Scenario: MODEL-004-S03 — Відмова на шляху impact
+- GIVEN етап impact отримує відмову через зміст
+- WHEN відмову записано
+- THEN позначка записується для ролі `planner` з максимальним рейтингом сцен запиту.
 
 <a id="model-005"></a>
 ### Requirement: MODEL-005 — Каталог моделей у налаштуваннях
@@ -362,7 +417,7 @@ PATCH `/api/stories/{id}` SHALL приймати лише title/expected_revisio
 - WHEN автор відкриває список моделей
 - THEN рядки показують позначки Uncensored, TEE, Private, Anonymous, JSON Schema, контекст і ціну лише з наявних полів
 - AND відсутнє поле дає «приватність невідома» або «не Uncensored», а не вигадане значення
-- AND модель Venice без Uncensored видно, але вибрати її до оновлення правил виклику не можна.
+- AND модель Venice без Uncensored видно й можна вибрати; під вибраною моделлю з’являється попередження про згоду (MODEL-003).
 
 <a id="model-005-s02"></a>
 #### Scenario: MODEL-005-S02 — JSON Schema у режимі відповіді ролі
@@ -2037,7 +2092,9 @@ URL із credentials/query/fragment відхиляються. Ім’я змін
 
 OpenAI SDK використовується через окремі клієнти з `max_retries=0`, потоковим Chat Completions, max_tokens, temperature та stop. Структурована відповідь за потреби отримує strict JSON schema: прибираються defaults, усі properties стають required, додаткові властивості заборонені. Автоматичного fallback або модельного ремонту JSON немає.
 
-Venice перевіряє `GET /models?type=text` перед кожним completion: `uncensored` має бути саме boolean true, offline — не true. Для json_schema потрібна підтримка response schema. Vendor-параметри: вебпошук off, scraping false, X false; `venice_include_system_prompt` і `venice_disable_thinking` — окремі прапорці, типово false. Скасування ще раз перевіряється після каталогу до completion.
+Venice перевіряє `GET /models?type=text` перед кожним completion: модель має бути в каталозі, offline — не true; `uncensored` має бути саме boolean true лише для оцінювача, для генераційних ролей його відсутність вирішує згода (MODEL-003). Для json_schema потрібна підтримка response schema. Vendor-параметри: вебпошук off, scraping false, X false; `venice_include_system_prompt` і `venice_disable_thinking` — окремі прапорці, типово false. Скасування ще раз перевіряється після каталогу до completion.
+
+Згода й блокування після відмови (MODEL-003, MODEL-004). `providers/policy.py` — єдине місце правил: `POLICY_ROLES` (`planner`, `writer`, `editor`, `memory`), `STAGE_POLICY_ROLE` (етап → роль: `prepare`, `brief`, `impact_*`, `review_part`, `publication_suggest` → planner; `draft`, `rewrite` → writer; `edit`, `classify` → editor; `memory` → memory), `is_local` (`provider == 'local'` плюс захисна перевірка loopback-хоста), `request_rating`/`context_rating` (максимум за рейтингом твору, сценою `context.scene_id` і сценами версій з `context.input_refs`; нерозпізнана сцена ігнорується), `needs_consent` (не локальна, `uncensored is not True`, вісь > 0), `check_consent`, `check_refusal`, `record_refusal`, `blocking_refusal` і авторські тексти блокувань; `ModelPolicyBlocked` (`ValueError` з `kind` consent або refusal) несе пояснення. Сховище `storage/model_policy_store.py` тримає в `app_settings` ключі `model_consent:<role>:<endpoint>:<model>` і `model_refusal:<role>:<endpoint>:<model>`; `endpoint` — `base_url` без кінцевого `/`, схема й хост у нижньому регістрі. Згода: `{role, provider, base_url, model, consented_at}`; позначка: `{role, provider, base_url, model, refusals:[{rating:[s,v,t], scene_id|null, story_id, attempt_id|null, at, category}]}`; запис вектора мінімізує набір у транзакції `BEGIN IMMEDIATE`. Міграції SQLite немає (схема 2). `validate_model(require_uncensored=True)` у `providers/venice.py` лишає перевірку `uncensored` для оцінювача; генерація передає `False` і перевіряє лише каталог, `offline`, схему й ліміти. Шлюз `providers/streaming.py` перед резервуванням бюджету викликає `check_consent` для Venice (лише тут відомий `uncensored` з каталогу), а помилку віддає з категорією `model_policy` і текстом пояснення. `generation/stages.py::execute_stage` — єдина точка перевірки позначки відмови перед викликом і запису позначки після `refusal_content`/`refusal_unknown` (відповідь чату з `external_origin` не перевіряється й не записується; збій запису позначки не ламає спробу). `generation/readiness.py` офлайн (без звернення до каталогу) перевіряє позначку відмови для всіх провайдерів і згоду для не-Venice моделей; `generation/worker.py::_failure_message` пропускає текст політики без обгортки. API `web/routes_model_policy.py`: `GET /api/model-policy`, `PUT`/`DELETE /api/model-policy/consent`, `DELETE /api/model-policy/refusal`; відповідь містить `consented_at` і для кожної відмови рейтинг, час, категорію, `story_id`, `scene_id`, без значень ключів і тексту твору; невідома роль — 400, недійсні налаштування провайдера (зокрема чужий `base_url`) — 400. Інтерфейс: `static/model-policy.js` (форми ролей і налаштування класифікації для ролі `editor`; галочка діє одразу через API без збереження форми, відповідь для іншої моделі ніколи не показується) і `static/model-picker.js` (Venice без Uncensored вибираємий). Відомі обмеження: (1) текстові відмови не розпізнаються, позначку дає лише `content_filter`/`terminal.refusal`; (2) readiness не перевіряє згоду для Venice: модель без Uncensored і без згоди зупиняється на першому етапі перевіркою в шлюзі до будь-якого платного запиту; (3) readiness оцінює лише цільову сцену, а виконання враховує й сцени за `input_refs`, тому блокування може вперше з’явитися посеред запуску, з поясненням; (4) збережена модель Venice показує попередження про згоду, доки не завантажено список моделей (`uncensored` невідомий); (5) оцінювач, як і раніше, вимагає `uncensored=true`.
 
 Потік нормалізується до delta/terminal/error/cancelled; зберігаються finish reason,
 usage та надані провайдером cost/USD/DiEM. Спільний client builder задає keys,

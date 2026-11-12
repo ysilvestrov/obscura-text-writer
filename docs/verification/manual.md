@@ -261,6 +261,11 @@ SECURITY-002-S06. Автоматична частина — Playwright `tests/we
 
 MODEL-005-S01, MODEL-005-S02. Автоматична частина — Playwright `tests/web/browser/model-picker.spec.mjs` (дев’ять cases на desktop і mobile: позначки й типовий фільтр приватності, режим JSON Schema із заблокованим фільтром, Venice-модель без Uncensored, ручний ID поза каталогом, очищення списку після зміни провайдера, вибір рядка з клавіатури, локальна модель із невідомою підтримкою в режимі JSON Schema вибирається й зберігається, сортування з `aria-sort`, рядки не змінюють модель під час збереження форми): `node frontend/node_modules/@playwright/test/cli.js test tests/web/browser/model-picker.spec.mjs --config frontend/playwright.config.mjs`. Цей зв’язок не є доказом виконання; фактичний запуск фіксується окремо.
 
+<a id="model-policy-browser"></a>
+## Згода й позначка відмови в браузері
+
+MODEL-003-S02, MODEL-003-S03, MODEL-004-S01. Автоматична частина — Playwright `tests/web/browser/model-policy.spec.mjs` (п’ять cases на desktop і mobile: згода для моделі OpenRouter записується одразу й не переходить на іншу модель, Venice без Uncensored показує галочку, а локальна модель — ні, збій запиту згоди лишає попередній стан із помилкою, записана відмова показує червоне повідомлення зі зняттям і вибором іншої моделі, налаштування класифікації мають блок згоди для ролі редактора): `node frontend/node_modules/@playwright/test/cli.js test tests/web/browser/model-policy.spec.mjs --config frontend/playwright.config.mjs`. Цей зв’язок не є доказом виконання; фактичний запуск фіксується окремо.
+
 <a id="desktop-launcher"></a>
 ## Запуск без консолі та значок у треї
 
