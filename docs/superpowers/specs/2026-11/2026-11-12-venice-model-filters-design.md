@@ -1,7 +1,8 @@
 # Вибір моделі за приватністю й рейтингом: каталог Venice, згода, блокування після відмови, модель письменника для сцен 0–1
 
 Дата: 2026-11-12
-Статус: чернетка
+Статус: чекає на затвердження
+Spec-review: failed (author: claude; codex: You’ve hit your usage limit. Upgrade to Pro (https://chatgpt.com/explore/pro), visit https://chatgpt.com/settings/usage to purchase more credits or try again at Nov 15th, 2026 3:17 PM.; agy: canary failed, review not run: Individual quota reached. Please upgrade your subscription to increase your limits. Resets in 39h21m39s.)
 
 ## Для власника
 
@@ -172,4 +173,4 @@ Venice приймає відкритий запит і обробляє його
 
 ## Рев'ю спеки
 
-(заповнюється після cross-review)
+Перехресне рев'ю не відбулося: обидва рецензенти іншої родини (codex, agy) вичерпали квоти 12.11.2026. Зауважень немає. Замість нього специфікацію перевірив виконавець-агент (builder check); п'ять його питань вирішено в тексті: згода й для сцени з рейтингом вище твору (п. 2), набір векторів відмови (ключове рішення 5), фільтр приватності для OpenRouter, ролі й рейтинг для шляхів поза основним конвеєром, Base URL у ключі згоди.
