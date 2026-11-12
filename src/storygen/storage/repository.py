@@ -49,9 +49,9 @@ class Repository:
         from .copyedit_store import commit_copyedit_selection
         return commit_copyedit_selection(self,attempt_id,result_ref,indices,expected_revision,fingerprint,warnings)
 
-    def update_scene_plan(self, scene_id, text, expected_revision):
+    def update_scene_plan(self, scene_id, text, expected_revision, **read):
         from .authoring import update_scene_plan
-        return update_scene_plan(self, scene_id, text, expected_revision)
+        return update_scene_plan(self, scene_id, text, expected_revision, **read)
 
     def update_scene_metadata(self, scene_id, changes, expected_revision):
         from .authoring import update_scene_metadata
@@ -393,7 +393,9 @@ class Repository:
         return story
 
     def create_story(self,data: StoryCreate) -> Story:
-        story=Story(id=new_id(),**data.model_dump())
+        from .authoring import _require_edition_limit
+        _require_edition_limit(data.content_rating)
+        story=Story(id=new_id(),**data.model_dump(),initial_content_rating=data.content_rating)
         with self.db.connection() as db:
             db.execute("INSERT INTO stories VALUES(?,?)",(story.id,story.model_dump_json()))
         return story

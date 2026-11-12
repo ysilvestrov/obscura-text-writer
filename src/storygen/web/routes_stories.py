@@ -1,11 +1,12 @@
 from typing import Literal
 
 from fastapi import APIRouter, Request
+from pydantic import Field
 from fastapi.responses import JSONResponse
 
 from ..authoring.imports import SourceFile, import_sources, ImportBatchConflict, ImportBatchFailure, ImportTooLarge
 from ..authoring.service import reorder_scenes, update_scene, update_scene_plan, rename_story
-from ..domain import DomainModel, SceneCreate, StoryCreate
+from ..domain import DomainModel, RevisionConflict, Scene, SceneCreate, StoryCreate
 
 router=APIRouter()
 
@@ -24,6 +25,8 @@ class ScenePatch(DomainModel):
     character_ids: list[str] | None=None
     # 'story' resets the override so the scene follows the story language again; None leaves it unchanged.
     prose_language: Literal['uk','en','story'] | None=None
+    # MCP-BRIDGE-S19: the plan head the external client read; null means it read a scene without a plan version.
+    expected_plan_version_id: str | None=Field(default=None,max_length=64)
 
 
 class StoryLanguageChange(DomainModel):
@@ -118,14 +121,24 @@ def patch_scene(id: str,data: ScenePatch,request: Request):
     repo=request.app.state.repo
     if repo.get_scene(id).story_id!=data.story_id:
         raise ValueError("Сцена належить іншому твору")
+    if 'expected_plan_version_id' in data.model_fields_set and data.beats is None:
+        raise ValueError('Ідентифікатор прочитаного плану передається лише разом із планом')
     scene=repo.get_scene(id)
     revision=data.expected_revision
-    if data.beats is not None:
-        scene=update_scene_plan(repo,id,data.beats,revision)
-        revision=scene.revision
     changes={key:value for key,value in data.model_dump().items() if key in {"title","target_words","character_ids"} and value is not None}
     if data.prose_language is not None:
         changes['prose_language']=None if data.prose_language=='story' else data.prose_language
+    # The whole patch is validated before the first change, so a bad field leaves neither plan nor properties written.
+    Scene.model_validate({**scene.model_dump(),**changes})
+    if data.beats is not None:
+        read={'expected_plan_version_id':data.expected_plan_version_id} if 'expected_plan_version_id' in data.model_fields_set else {}
+        scene=update_scene_plan(repo,id,data.beats,revision,**read)
+        revision=scene.revision
+        if changes:
+            try:return update_scene(repo,id,changes,revision)
+            except RevisionConflict as error:
+                return JSONResponse(status_code=409,content={'detail':f'{error} План записано, властивості сцени — ні: перечитайте сцену.',
+                                                             'detail_original':str(error),'plan_applied':True,'revision':scene.revision})
     return update_scene(repo,id,changes,revision) if changes else scene
 
 

@@ -4403,7 +4403,7 @@
       "requirement": "MCP-BRIDGE",
       "scope": "Рівно сім інструментів; стан сцен тим самим словником, що список сцен; посилання на сцену в next_steps. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
       "tests": [
-        "tests/mcp/test_bridge.py::test_tool_list_is_exactly_the_seven_tools",
+        "tests/mcp/test_bridge.py::test_tool_list_is_exactly_the_twelve_tools",
         "tests/mcp/test_bridge.py::test_get_story_reports_scene_states_with_the_ui_vocabulary",
         "tests/mcp/test_bridge.py::test_next_steps_points_to_the_scene_in_obscura",
         "tests/mcp/test_bridge.py::test_identifiers_cannot_reach_other_endpoints",
@@ -4517,6 +4517,75 @@
       "scope": "Збірка store відмовляє в читанні чернетки, пам’яті й плану твору понад межу. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
       "tests": [
         "tests/web/test_scene_text.py::test_store_edition_blocks_text_above_limit"
+      ]
+    },
+    {
+      "id": "MCP-BRIDGE-S17",
+      "requirement": "MCP-BRIDGE",
+      "scope": "Створення твору з рейтингом через сервер і через create_story; межа store не створює твору. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/web/test_story_start.py::test_create_story_with_rating_sets_current_and_initial",
+        "tests/web/test_story_start.py::test_create_story_without_rating_stays_unrated",
+        "tests/web/test_story_start.py::test_store_edition_refuses_rating_over_limit_and_creates_nothing",
+        "tests/mcp/test_bridge_story_start.py::test_create_story_returns_id_revision_language_rating",
+        "tests/mcp/test_bridge_story_start.py::test_create_story_over_store_limit_is_error_and_nothing_created"
+      ]
+    },
+    {
+      "id": "MCP-BRIDGE-S18",
+      "requirement": "MCP-BRIDGE",
+      "scope": "get_templates віддає файли шаблонів сторінки твору; невідома мова — без запиту. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/mcp/test_bridge_story_start.py::test_templates_match_static_files",
+        "tests/mcp/test_bridge_story_start.py::test_templates_unknown_language_is_refused_without_request"
+      ]
+    },
+    {
+      "id": "MCP-BRIDGE-S19",
+      "requirement": "MCP-BRIDGE",
+      "scope": "Запис плану поверх застарілого відхиляється 409 без нової версії; перевірка всього патча до першої зміни; plan_applied при гонитві. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/web/test_story_start.py::test_stale_plan_is_409_and_saves_no_version",
+        "tests/web/test_story_start.py::test_identical_plan_with_stale_id_is_409",
+        "tests/web/test_story_start.py::test_plan_with_current_id_is_saved",
+        "tests/web/test_story_start.py::test_plan_with_null_id_when_no_plan_version",
+        "tests/web/test_story_start.py::test_plan_version_id_without_beats_is_400",
+        "tests/web/test_story_start.py::test_bad_field_with_plan_changes_nothing",
+        "tests/web/test_story_start.py::test_race_after_plan_reports_plan_applied",
+        "tests/mcp/test_bridge_story_start.py::test_update_scene_stale_plan_is_error",
+        "tests/mcp/test_bridge_story_start.py::test_update_scene_plan_and_title",
+        "tests/mcp/test_bridge_story_start.py::test_update_scene_plan_needs_version_id_and_vice_versa",
+        "tests/mcp/test_bridge_story_start.py::test_update_scene_bad_character_id_is_refused",
+        "tests/mcp/test_bridge_story_start.py::test_metadata_only_update_does_not_reveal_the_plan_id"
+      ]
+    },
+    {
+      "id": "MCP-BRIDGE-S20",
+      "requirement": "MCP-BRIDGE",
+      "scope": "update_story по черзі; відмова мови зупиняє решту; таймаут — unknown. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/mcp/test_bridge_story_start.py::test_update_story_applies_title_language_rating_in_order",
+        "tests/mcp/test_bridge_story_start.py::test_update_story_stops_on_locked_language",
+        "tests/mcp/test_bridge_story_start.py::test_update_story_timeout_is_unknown",
+        "tests/mcp/test_bridge_story_start.py::test_update_story_needs_a_field",
+        "tests/mcp/test_bridge_story_start.py::test_get_story_has_revision_rating_target_and_characters"
+      ]
+    },
+    {
+      "id": "MCP-BRIDGE-S21",
+      "requirement": "MCP-BRIDGE",
+      "scope": "add_scene без плану отримує план попередньої сцени й персонажа за id. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/mcp/test_bridge_story_start.py::test_add_scene_without_plan_gets_previous_plan_and_characters"
+      ]
+    },
+    {
+      "id": "MCP-BRIDGE-S22",
+      "requirement": "MCP-BRIDGE",
+      "scope": "План із чату не фіксує мову твору. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/web/test_story_start.py::test_plan_from_chat_does_not_lock_language",
+        "tests/mcp/test_bridge_story_start.py::test_plan_from_chat_keeps_language_unlocked"
       ]
     }
   ]

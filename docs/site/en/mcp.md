@@ -6,16 +6,21 @@ The link is `storygen-mcp`, a small program the chat client starts by itself. It
 
 ## What the chat can do
 
-The chat gets seven tools:
+The chat gets twelve tools:
 
-- **story list** and **story overview**: scenes, their order and their state, in the same words as the scene list;
+- **story list** and **story overview**: scenes, their order and their state, in the same words as the scene list, plus the story's rating, target length and characters;
+- **new story**: a title, a language, a target length and, optionally, an age rating;
+- **plan and character templates**: the same files the story page offers;
+- **story properties**: the title, the language and the age rating;
+- **new scene** at the chosen place in the story, with a plan or modelled on the previous scene;
+- **scene plan and properties**: the plan (only over the plan the chat has read), the title, the length, the cast and the prose language;
 - **scene context**: the plan, the brief, the cast's cards, the memory of earlier scenes, the age rating, the language and the target length;
 - **scene text**: the scene's current plan, brief, draft, prose or memory together with the ID of the current version; the chat reads a long text in parts;
 - **import a plan and characters**: the same as the [import](imports.md) form;
 - **save a draft**: a new version of the scene's draft, only over the draft the chat has read;
 - **next steps**: a link to the scene in Obscura.
 
-The chat cannot delete, publish, run generation or the evaluator, or change settings and keys.
+The chat cannot delete stories or scenes, move them to the trash, reorder scenes, publish, run generation or the evaluator, or change writing settings, models and keys.
 
 ## Installation
 
@@ -72,12 +77,23 @@ Browser chat clients (claude.ai, chatgpt.com) do not support local servers.
 ## Writing with the chat
 
 1. Discuss the idea, the plan and the characters with the chat.
-2. Ask it to import the plan and the characters into the story. You can create an empty story in Obscura beforehand. The import adds materials the same way as the form and is never retried on its own.
+2. Ask it to import the plan and the characters into the story. The chat can create the story itself (see below), or you create it in Obscura beforehand. The import adds materials the same way as the form and is never retried on its own.
 3. Ask it to read the first scene's context and write a draft. The chat saves it as the scene's current draft.
 4. To extend or rewrite an existing draft, ask the chat to read it first. The chat writes over the text it has read, so the edits you made in Obscura are not lost.
 5. Open the scene in Obscura from the link in the chat. The previous draft, if there was one, stays in the version history.
 6. Rewrite the draft in your own words in [rewriting from memory](ghost-mode.md), approve the prose and update the scene's [memory](memory.md).
 7. Move on to the next scene.
+
+## Start a story from the chat
+
+Ask the chat to create a story: a title, a language (Ukrainian or English) and, if you like, an age rating. The chat then takes the plan and character templates, fills them in with you and imports them. After that it can add scenes, rewrite a scene plan, and change the story's title, language or rating.
+
+- Creating a story does not fix its language. The language can be changed while the story has no text from a model or the chat. Plans, titles and characters written from the chat do not fix it either.
+- In the Microsoft Store edition a rating above the edition limit is refused, and the story is then not created.
+- The chat rewrites a scene plan only over the plan it has read. If you changed the plan after the chat read it, the write is refused with "План сцени змінено після того, як його прочитали" (the scene plan was changed after it was read) and nothing is saved.
+- The previous plan stays in the scene's version history. A plan from the chat is not marked separately there: it is your authored material.
+- The chat changes several story properties one after another. If one of them is refused (for example, the language is already fixed), the rest are not changed, and the chat reports what it managed to apply.
+- You delete unneeded stories in Obscura: the chat cannot do that.
 
 A draft from the chat is labelled "External client: <name>" in the version history and in the status row above the editor. If the chat named its model, the model is shown too. This is the client's claim: Obscura cannot check which model actually wrote the text. Once you save your own edit, the label leaves the status row; in the history it stays next to the chat's version.
 

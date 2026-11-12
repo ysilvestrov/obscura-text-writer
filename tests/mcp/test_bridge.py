@@ -36,14 +36,16 @@ def text(result):
 
 
 @pytest.mark.req('MCP-BRIDGE')
-def test_tool_list_is_exactly_the_seven_tools(tmp_path):
+def test_tool_list_is_exactly_the_twelve_tools(tmp_path):
     app, http = obscura(tmp_path)
 
     async def run():
         async with Client(build_server(http)) as client:
             return [tool.name for tool in (await client.list_tools()).tools]
     names = anyio.run(run)
-    assert sorted(names) == sorted(TOOLS) == sorted(['list_stories', 'get_story', 'get_scene_context', 'import_plan_and_characters', 'save_draft', 'next_steps', 'get_scene_text'])
+    assert sorted(names) == sorted(TOOLS) == sorted(['list_stories', 'get_story', 'get_scene_context', 'import_plan_and_characters', 'save_draft', 'next_steps', 'get_scene_text',
+                                                    'create_story', 'get_templates', 'update_story', 'add_scene', 'update_scene'])
+    assert not [name for name in names if any(word in name for word in ('delete', 'trash', 'order', 'move'))]
 
 
 @pytest.mark.req('MCP-BRIDGE')
@@ -179,6 +181,11 @@ def test_save_draft_takes_the_client_name_from_client_info(tmp_path):
     ('get_story', {'story_id': '..'}),
     ('get_scene_context', {'scene_id': 'a/b'}),
     ('next_steps', {'scene_id': 'a?b'}),
+    ('update_story', {'story_id': '../trash', 'expected_revision': 1, 'title': 'x'}),
+    ('add_scene', {'story_id': 'ID/scene-order', 'title': 'x'}),
+    ('add_scene', {'story_id': 'S1', 'title': 'x', 'character_ids': ['../x']}),
+    ('update_scene', {'story_id': 'S1', 'scene_id': '../trash', 'expected_revision': 1, 'title': 'x'}),
+    ('update_scene', {'story_id': 'S1', 'scene_id': 'C1', 'expected_revision': 1, 'plan_markdown': 'x', 'plan_version_id': '../v'}),
 ])
 def test_identifiers_cannot_reach_other_endpoints(tool, arguments):
     seen = []
