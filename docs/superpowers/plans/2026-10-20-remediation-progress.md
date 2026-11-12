@@ -1836,3 +1836,4 @@ Playwright `memory-kind.spec.mjs` і `core-review.spec.mjs` пройшли вр�
 - SPEC.MD: Scenario EDIT-LOOP-REVIEW-S02; traceability; ручна процедура `manual.md#edit-pass-limit-browser` (Playwright `edit-pass-limit.spec.mjs`). Інструкції сайту цього поля не описують — оновлення не потрібне.
 - Cross-review (agy/gemini-3.8-flash; codex і agy Argon — ліміти): 3 знахідки, усі виправлено (`bd15be0`).
 - `verify.py` на `bd15be0` (з `C:/tmp/epl`): passed 2898, failed 0, skipped 1.
+- Після злиття `origin/main` (#149, #152) у гілку: `verify.py` на `c994de4`: passed 2898, failed 0, skipped 1.
