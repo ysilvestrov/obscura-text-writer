@@ -50,6 +50,7 @@ export function installSceneStatistics({state,api,document}){
       body.append(node('p',msg("m_a57ab6439f85")));
       const s=c.memory_selection;
       if(s)body.append(node('p',live(()=>{const layers=Object.entries(s.dropped_layers||{}).map(([k,v])=>`${t('memory.layer.'+k)}: ${v}`).join(', ');return t('stats.memory_selection',{p0:s.selected,p1:s.total,p2:s.dropped,p3:layers?` (${layers})`:''});})));
+      if(s?.summaries)body.append(node('p',live(()=>t('stats.memory_summaries',{p0:s.summaries}))));
       if(c.memory_narrow)body.append(node('p',live(()=>t('stats.memory_narrow',{p0:c.memory_narrow.hidden}))));
     }
     if(c.reason)body.append(node('p',live(()=>(diagnostic(c.reason)))));

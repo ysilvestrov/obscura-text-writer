@@ -8,7 +8,11 @@ def long_story(root, count, memory_until=None, *, timeline_text=None, language='
     """`count` scenes with manual prose; scenes 1..memory_until (default: all) get memory whose journal holds one timeline
     entry per scene so far. `timeline_text(n)` sets the entry of scene n."""
     repo = Repository(root)
-    story = repo.create_story(StoryCreate(title='Довга книга', language=language))
+    return repo, seed_long_story(repo, count, memory_until, timeline_text=timeline_text, language=language)
+
+
+def seed_long_story(repo, count, memory_until=None, *, timeline_text=None, language='uk', title='Довга книга'):
+    story = repo.create_story(StoryCreate(title=title, language=language))
     prose_ids, events, previous = [], [], None
     for n in range(1, count + 1):
         scene = repo.create_scene(story.id, SceneCreate(title=f'Сцена {n}', beats='Анна йде містом.'))
@@ -24,4 +28,4 @@ def long_story(root, count, memory_until=None, *, timeline_text=None, language='
         memory = repo.save_version(story.id, scene.id, 'memory', journal.model_dump_json(), refs)
         repo.set_head(scene.id, 'memory', memory.id, repo.get_scene(scene.id).revision)
         previous = memory.id
-    return repo, repo.get_story(story.id)
+    return repo.get_story(story.id)

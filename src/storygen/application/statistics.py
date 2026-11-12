@@ -83,6 +83,7 @@ def memory_summary(metrics) -> dict:
     if metrics.get('selection'):
         sel=metrics['selection'];selected=sum(sel['layers'].values());dropped=sum(sel['dropped'].values())
         return {'memory_selection':{'selected':selected,'total':selected+dropped,'dropped':dropped,
-            'layers':{k:v for k,v in sel['layers'].items() if v},'dropped_layers':{k:v for k,v in sel['dropped'].items() if v}}}
+            'layers':{k:v for k,v in sel['layers'].items() if v},'dropped_layers':{k:v for k,v in sel['dropped'].items() if v},
+            'summaries':len(sel.get('summaries',[]))}}
     if metrics.get('narrow'):return {'memory_narrow':dict(metrics['narrow'])}
     return {}
