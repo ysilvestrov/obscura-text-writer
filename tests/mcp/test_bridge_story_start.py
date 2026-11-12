@@ -141,11 +141,19 @@ def test_add_scene_without_plan_gets_previous_plan_and_characters(tmp_path):
     story = imported_story(app, http)
     first = app.state.repo.list_scenes(story.id)[0]
     anna = next(iter(http.get(f'/api/stories/{story.id}').json()['character_names']))
-    data = ok(call(build_server(http), 'add_scene', {'story_id': story.id, 'title': 'Маяк уночі', 'position': 1, 'character_ids': [anna]}))
+    server = build_server(http)
+    previous = ok(call(server, 'add_scene', {'story_id': story.id, 'title': 'Скеля', 'position': 1, 'plan_markdown':
+                                            'Локація: Маяк на скелі\nКінець: опівночі\nХто бере участь: Анна\nЩо відбувається: Анна чує дзвін.\n'}))
+    data = ok(call(server, 'add_scene', {'story_id': story.id, 'title': 'Маяк уночі', 'position': 2, 'character_ids': [anna]}))
     scene = app.state.repo.get_scene(data['id'])
-    assert data == {'id': scene.id, 'position': 1, 'revision': scene.revision, 'title': 'Маяк уночі'}
+    assert data == {'id': scene.id, 'position': 2, 'revision': scene.revision, 'title': 'Маяк уночі'}
+    assert previous['position'] == 1 and first.id != previous['id']
     assert scene.character_ids == [anna]
-    assert scene.beats.strip(), 'SCENE-PLAN-TEMPLATE: a scene added without a plan starts from the previous plan'
+    header, *lines = scene.beats.splitlines()
+    assert header.startswith('## Сцена ') and header.endswith(': Маяк уночі')
+    assert lines == ['Локація: Маяк на скелі', 'Початок: опівночі', 'Кінець:', 'Хто бере участь: Анна',
+                     'Що було в попередніх сценах: Анна чує дзвін.', 'Що відбувається:', 'Дії:', '1.', '2.', '3.',
+                     'Ключове усвідомлення:', 'Емоційний акцент:']
 
 
 @pytest.mark.req('MCP-BRIDGE')
@@ -208,3 +216,17 @@ def test_plan_from_chat_keeps_language_unlocked(tmp_path):
     assert ok(call(server, 'get_story', {'story_id': story.id}))['language_locked'] is False
     ok(call(server, 'update_story', {'story_id': story.id, 'expected_revision': repo.get_story(story.id).revision, 'language': 'en'}))
     assert repo.get_story(story.id).language == 'en'
+
+
+@pytest.mark.req('MCP-BRIDGE')
+def test_metadata_only_update_does_not_reveal_the_plan_id(tmp_path):
+    # Cross-review: a title-only update must not hand out the id of a plan the chat has not read.
+    app, http = obscura(tmp_path)
+    repo = app.state.repo
+    story = repo.create_story(StoryCreate(title='Маяк'))
+    scene = repo.create_scene(story.id, SceneCreate(title='Лист'))
+    author = http.patch(f'/api/scenes/{scene.id}', json={'story_id': story.id, 'expected_revision': scene.revision, 'beats': 'План автора.'})
+    assert author.status_code == 200, author.text
+    data = ok(call(build_server(http), 'update_scene', {'story_id': story.id, 'scene_id': scene.id,
+                                                        'expected_revision': repo.get_scene(scene.id).revision, 'title': 'Лист у шухляді'}))
+    assert 'plan_version_id' not in data and repo.get_scene(scene.id).heads['plan'] not in json.dumps(data)

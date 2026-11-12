@@ -265,7 +265,11 @@ def build_server(http: httpx.Client, client_name: str | None = None) -> MCPServe
             note = ' План записано, властивості — ні: перечитайте сцену (get_scene_text, get_story).' if applied else ''
             raise ToolError(f'Obscura відповіла {response.status_code}: {_detail(response)}{note}')
         scene = response.json()
-        return {'id': scene['id'], 'revision': scene['revision'], 'title': scene['title'], 'plan_version_id': (scene.get('heads') or {}).get('plan')}
+        result = {'id': scene['id'], 'revision': scene['revision'], 'title': scene['title']}
+        if plan_markdown is not None:
+            # Only the plan the chat itself wrote: a metadata-only update must not hand out the id of an unread plan.
+            result['plan_version_id'] = (scene.get('heads') or {}).get('plan')
+        return result
 
     @server.tool()
     def next_steps(scene_id: str) -> str:
