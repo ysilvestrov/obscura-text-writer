@@ -15,6 +15,8 @@ Open the **☰ Story actions → Card and publication** menu item. The card is a
 
 All changes, the cover included, apply only with **Save card**. The card does not make prose, memory or evaluations outdated. If the card was changed in another tab, your edits stay in the form, and **Refresh data** first asks whether to discard unsaved changes.
 
+The card can also be filled in from a [chat client](mcp.md#publishing-from-the-chat). When you return to an open card page, it checks for changes from the chat or another tab by itself: a clean form is refreshed, while a form with unsaved edits stays and the page says "The publication card was changed elsewhere". A new signature appears in the directory at once unless you are editing a directory row.
+
 ## Synopsis and genre suggestions
 
 **Suggest** asks the planner model to fill in an empty synopsis, genres and keywords from all of the story's prose. Accepted prose for every scene is required, and a cloud model also needs a budget. Review the suggestion, press **Fill empty fields**, edit and **Save card**. Fields you have already filled in are not replaced. If the prose changed, an outdated suggestion is not saved, and the form stays.

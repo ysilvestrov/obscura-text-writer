@@ -1,11 +1,13 @@
-"""MCP-BRIDGE stdio server: thirteen tools mapped onto the loopback HTTP API of a running Obscura.
+"""MCP-BRIDGE stdio server: eighteen tools mapped onto the loopback HTTP API of a running Obscura.
 
 The bridge holds no data, keys or prompts of its own. Every tool is one HTTP request; Obscura's own checks
 (revision, context fingerprint, language lock, import limits) decide, and their messages reach the chat as tool errors.
 """
 import argparse
 import json
+import os
 import re
+import stat
 from typing import Any
 from urllib.parse import urlsplit
 
@@ -13,13 +15,21 @@ import httpx
 from mcp.server.mcpserver import Context, MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 
+from ..publication_models import PublicationData
+
 DEFAULT_URL = 'http://127.0.0.1:8765'
 LOOPBACK = {'127.0.0.1', 'localhost', '::1'}
 FALLBACK_CLIENT = 'MCP client'
 TOOLS = ('list_stories', 'get_story', 'get_scene_context', 'get_scene_text', 'import_plan_and_characters', 'save_draft', 'next_steps',
-         'create_story', 'get_templates', 'update_story', 'add_scene', 'update_scene', 'open_ghost_mode')
+         'create_story', 'get_templates', 'update_story', 'add_scene', 'update_scene', 'open_ghost_mode',
+         'get_publication', 'update_publication', 'add_signature', 'upload_cover', 'export_book')
 MATERIALS = ('plan', 'brief', 'draft', 'prose', 'memory')
 LANGUAGES = ('uk', 'en')
+PUBLICATION_FIELDS = tuple(PublicationData.model_fields)
+EXPORT_FORMATS = ('fb2', 'epub', 'pdf', 'md', 'txt')
+COVER_EXTENSIONS = ('.png', '.jpg', '.jpeg')
+COVER_MAX_BYTES = 10 * 1024 * 1024
+DRIVE_REMOTE = 4
 # update_scene: null is a real plan_version_id (the scene has no plan version yet), so "not given" needs its own value.
 NOT_GIVEN = ''
 STORY_STEPS = (('title', 'PATCH', ''), ('language', 'PUT', '/language'), ('content_rating', 'PUT', '/content-rating'))
@@ -28,7 +38,8 @@ INSTRUCTIONS = ('Obscura — локальний редактор історій.
                 'context_fingerprint з контексту та draft_version_id з прочитаної чернетки. Переписуючи чернетку, беріть саме '
                 'прочитаний текст: у ньому можуть бути правки автора. Конфлікт 409 означає, що сцена чи чернетка змінилася: '
                 'прочитайте їх знову. Новий твір: create_story → get_templates → import_plan_and_characters (план і персонажі за шаблоном) '
-                '→ get_story. План сцени переписуйте лише поверх прочитаного: plan_version_id з get_scene_text(material=plan).')
+                '→ get_story. План сцени переписуйте лише поверх прочитаного: plan_version_id з get_scene_text(material=plan). '
+                'Публікація: get_publication → update_publication (лише змінені поля, revision з прочитаного) → export_book.')
 
 
 def check_url(url: str) -> str:
@@ -65,6 +76,39 @@ def identifier(value: str) -> str:
     if not isinstance(value, str) or not IDENTIFIER.fullmatch(value):
         raise ToolError(f'Недопустимий ідентифікатор: {str(value)[:80]!r}')
     return value
+
+
+def _remote_drive(path: str) -> bool:
+    if os.name != 'nt':
+        return False
+    import ctypes
+    drive = os.path.splitdrive(path)[0]
+    return ctypes.windll.kernel32.GetDriveTypeW(drive + '\\') == DRIVE_REMOTE
+
+
+def local_cover_path(file_path: str) -> str:
+    """MCP-BRIDGE-S29: a cover is read only from a local disk; network and device paths are refused before any file access."""
+    raw = file_path if isinstance(file_path, str) else ''
+    network = ToolError('Обкладинка має лежати на локальному диску: мережеві шляхи й шляхи пристроїв не приймаються')
+    if raw.replace('/', '\\').startswith('\\\\'):
+        raise network
+    if not os.path.splitext(raw)[1].lower() in COVER_EXTENSIONS:
+        raise ToolError('Обкладинка — файл .png, .jpg або .jpeg')
+    absolute = re.match(r'[A-Za-z]:[\\/]', raw) if os.name == 'nt' else os.path.isabs(raw)
+    if not absolute:
+        raise ToolError('Вкажіть повний шлях до файла обкладинки' + (' з літерою диска' if os.name == 'nt' else ''))
+    real = os.path.realpath(raw)
+    if real.replace('/', '\\').startswith('\\\\') or _remote_drive(real):
+        raise network
+    try:
+        info = os.stat(real)
+    except OSError as error:
+        raise ToolError(f'Файл обкладинки не знайдено: {raw}') from error
+    if not stat.S_ISREG(info.st_mode):
+        raise ToolError(f'Обкладинка має бути звичайним файлом: {raw}')
+    if info.st_size > COVER_MAX_BYTES:
+        raise ToolError('Обкладинка має бути до 10 MiB')
+    return real
 
 
 def _detail(response: httpx.Response) -> str:
@@ -290,6 +334,104 @@ def build_server(http: httpx.Client, client_name: str | None = None) -> MCPServe
             raise ToolError('Чернетку змінено після того, як її прочитали — прочитайте її знову (get_scene_text)')
         suffix = f'&draft={draft_version_id}' if draft_version_id else ''
         return {'url': f'{base}/stories/{story_id}?scene={scene_id}&material=draft&ghost=1{suffix}', 'draft_version_id': head}
+
+    def publication_view(card_response: dict, signatures: list[dict]) -> dict[str, Any]:
+        card = {name: card_response['card'].get(name) for name in PUBLICATION_FIELDS}
+        card['revision'] = card_response['card']['revision']
+        cover = card_response.get('cover')
+        return {'card': card, 'revision': card['revision'], 'effective_title': card_response.get('effective_title'),
+                'cover': {key: cover.get(key) for key in ('id', 'width', 'height', 'mime_type')} if cover else None,
+                'signatures': [{'id': item['id'], 'display_name': item['display_name'], 'revision': item['revision'],
+                                'archived': bool(item.get('archived_at'))} for item in signatures]}
+
+    def read_publication(story_id: str) -> tuple[dict, list[dict]]:
+        card = request('GET', f'/api/stories/{story_id}/publication')
+        signatures = request('GET', '/api/publication-signatures', params={'include_archived': 'true'})['signatures']
+        return card, signatures
+
+    @server.tool()
+    def get_publication(story_id: str, genres_language: str | None = None) -> dict[str, Any]:
+        """Картка публікації твору (назва, автори, жанри, анотація, обкладинка…) з її revision і довідник підписів
+        (авторів і перекладачів). genres_language (uk чи en) додає каталог жанрів FB2: коди однакові для обох мов."""
+        identifier(story_id)
+        if genres_language is not None and genres_language not in LANGUAGES:
+            raise ToolError(f'genres_language: одне з {", ".join(LANGUAGES)}')
+        result = publication_view(*read_publication(story_id))
+        if genres_language:
+            result['genres'] = request('GET', '/api/publication/genres', params={'language': genres_language})['genres']
+        return result
+
+    @server.tool()
+    def update_publication(story_id: str, expected_revision: int, fields: dict[str, Any]) -> dict[str, Any]:
+        """Змінює лише передані поля картки публікації поверх прочитаної (revision з get_publication); інші поля лишаються.
+        Поля: title, author_ids, language, genres, annotation, keywords, cover_id, cycle_title, cycle_number,
+        publication_date, publisher, isbn, rights, translator_ids, source_language. author_ids/translator_ids — id з
+        довідника підписів (add_signature), cover_id — з upload_cover, genres — коди з get_publication(genres_language)."""
+        identifier(story_id)
+        unknown = sorted(set(fields) - set(PUBLICATION_FIELDS))
+        if not fields or unknown:
+            raise ToolError(f'Невідомі поля картки: {", ".join(unknown)}' if unknown else 'Передайте хоча б одне поле картки (fields)')
+        for name in ('author_ids', 'translator_ids'):
+            if name in fields:
+                if not isinstance(fields[name], list):
+                    raise ToolError(f'{name}: список id підписів')
+                for value in fields[name]:
+                    identifier(value)
+        if fields.get('cover_id') is not None:
+            identifier(fields['cover_id'])
+        current, signatures = read_publication(story_id)
+        if current['card']['revision'] != expected_revision:
+            raise ToolError(f'Obscura відповіла 409: картку публікації змінено (revision {current["card"]["revision"]}, а не '
+                            f'{expected_revision}) — прочитайте її знову (get_publication)')
+        data = {name: current['card'].get(name) for name in PUBLICATION_FIELDS} | fields
+        revisions = {item['id']: item['revision'] for item in signatures}
+        people = list(dict.fromkeys([*(data.get('author_ids') or []), *(data.get('translator_ids') or [])]))
+        missing = [person for person in people if person not in revisions]
+        if missing:
+            raise ToolError(f'Немає підписів {", ".join(missing)}: додайте їх (add_signature) або візьміть id з get_publication')
+        response = send('PUT', f'/api/stories/{story_id}/publication', json={
+            'expected_revision': expected_revision, 'data': data,
+            'expected_signature_revisions': {person: revisions[person] for person in people}})
+        if response.status_code == 422:
+            # The server names no field: point the chat at the vocabularies it can read.
+            raise ToolError(f'Obscura відповіла 422: {_detail(response)}. Перевірте значення полів: коди жанрів — з '
+                            'get_publication(genres_language), мова — код на кшталт uk чи en, дата — РРРР-ММ-ДД, ключові слова й '
+                            'списки без повторів і порожніх значень')
+        if response.status_code >= 400:
+            raise ToolError(f'Obscura відповіла {response.status_code}: {_detail(response)}')
+        return publication_view(response.json(), signatures)
+
+    @server.tool()
+    def add_signature(display_name: str) -> dict[str, Any]:
+        """Додає підпис (ім'я автора чи перекладача) до спільного довідника; його id ставлять в author_ids/translator_ids."""
+        data = request('POST', '/api/publication-signatures', json={'display_name': display_name})
+        return {'id': data['id'], 'display_name': data['display_name'], 'revision': data['revision']}
+
+    @server.tool()
+    def upload_cover(story_id: str, file_path: str) -> dict[str, Any]:
+        """Завантажує обкладинку з локального файла (абсолютний шлях, PNG чи JPEG до 10 MiB). Картку не змінює: щоб
+        поставити обкладинку, передайте cover_id в update_publication."""
+        identifier(story_id)
+        path = local_cover_path(file_path)
+        with open(path, 'rb') as handle:
+            content = handle.read(COVER_MAX_BYTES + 1)
+        if len(content) > COVER_MAX_BYTES:
+            raise ToolError('Обкладинка має бути до 10 MiB')
+        mime = 'image/png' if path.lower().endswith('.png') else 'image/jpeg'
+        data = request('POST', f'/api/stories/{story_id}/publication/cover', files={'file': (os.path.basename(path), content, mime)})
+        return {'cover_id': data['id'], 'width': data['width'], 'height': data['height'], 'mime_type': data['mime_type']}
+
+    @server.tool()
+    def export_book(story_id: str, format: str, allow_incomplete: bool = False) -> dict[str, Any]:
+        """Експортує книгу (fb2, epub, pdf, md чи txt) з картки публікації й затвердженої прози; повертає посилання на файл.
+        Незавершений твір (сцени без прози) експортується лише з allow_incomplete=true. FB2 потребує автора й жанру в картці."""
+        identifier(story_id)
+        if format not in EXPORT_FORMATS:
+            raise ToolError(f'format: одне з {", ".join(EXPORT_FORMATS)}')
+        links = request('POST', f'/api/stories/{story_id}/export', json={'format': format, 'allow_incomplete': allow_incomplete})
+        manifest = request('GET', links['manifest_url'])
+        return {'download_url': f'{base}{links["download_url"]}', 'format': manifest['format'], 'complete': manifest['complete'],
+                'warnings': manifest['warnings'], 'word_count': manifest['word_count'], 'age_rating': manifest['age_rating']}
 
     @server.tool()
     def next_steps(scene_id: str) -> str:

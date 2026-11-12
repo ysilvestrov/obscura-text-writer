@@ -4403,7 +4403,7 @@
       "requirement": "MCP-BRIDGE",
       "scope": "Рівно сім інструментів; стан сцен тим самим словником, що список сцен; посилання на сцену в next_steps. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
       "tests": [
-        "tests/mcp/test_bridge.py::test_tool_list_is_exactly_the_thirteen_tools",
+        "tests/mcp/test_bridge.py::test_tool_list_is_exactly_the_eighteen_tools",
         "tests/mcp/test_bridge.py::test_get_story_reports_scene_states_with_the_ui_vocabulary",
         "tests/mcp/test_bridge.py::test_next_steps_points_to_the_scene_in_obscura",
         "tests/mcp/test_bridge.py::test_identifiers_cannot_reach_other_endpoints",
@@ -4616,6 +4616,64 @@
         "tests/mcp/test_bridge_ghost_link.py::test_store_edition_still_gets_a_link",
         "tests/mcp/test_bridge_ghost_link.py::test_identifiers_are_checked_before_the_request",
         "tests/mcp/test_bridge_ghost_link.py::test_next_steps_suggests_open_ghost_mode"
+      ]
+    },
+    {
+      "id": "MCP-BRIDGE-S26",
+      "requirement": "MCP-BRIDGE",
+      "scope": "get_publication: картка з revision, підписи, обкладинка без relative_path, каталог жанрів за genres_language. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/mcp/test_bridge_publication.py::test_get_publication_reads_card_signatures_and_genres",
+        "tests/mcp/test_bridge_publication.py::test_cover_from_a_local_png_and_bound_through_the_card",
+        "tests/web/test_publication_genres.py::test_genres_route_matches_the_catalogue",
+        "tests/web/test_publication_genres.py::test_genres_route_refuses_unknown_language"
+      ]
+    },
+    {
+      "id": "MCP-BRIDGE-S27",
+      "requirement": "MCP-BRIDGE",
+      "scope": "update_publication: лише передані поля; застаріла ревізія без PUT; порожні чи невідомі поля без запиту; ідентифікатори до запиту. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/mcp/test_bridge_publication.py::test_update_publication_changes_only_named_fields",
+        "tests/mcp/test_bridge_publication.py::test_stale_revision_is_refused_without_put",
+        "tests/mcp/test_bridge_publication.py::test_unknown_or_empty_fields_are_refused_without_request",
+        "tests/mcp/test_bridge_publication.py::test_identifiers_are_checked_before_the_request"
+      ]
+    },
+    {
+      "id": "MCP-BRIDGE-S28",
+      "requirement": "MCP-BRIDGE",
+      "scope": "add_signature і FB2: без жанру відмова, з автором і жанром download_url, що завантажується; підказка для 422. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/mcp/test_bridge_publication.py::test_fb2_needs_author_and_genre"
+      ]
+    },
+    {
+      "id": "MCP-BRIDGE-S29",
+      "requirement": "MCP-BRIDGE",
+      "scope": "upload_cover: мережеві й пристроєві шляхи без звернення до файлової системи; погані файли без запиту; не-зображення відхиляє сервер; PNG і прив’язка. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/mcp/test_bridge_publication.py::test_network_and_device_paths_are_refused_before_touching_files",
+        "tests/mcp/test_bridge_publication.py::test_bad_cover_files_are_refused",
+        "tests/mcp/test_bridge_publication.py::test_not_an_image_is_refused_by_obscura",
+        "tests/mcp/test_bridge_publication.py::test_cover_from_a_local_png_and_bound_through_the_card"
+      ]
+    },
+    {
+      "id": "MCP-BRIDGE-S30",
+      "requirement": "MCP-BRIDGE",
+      "scope": "export_book: незавершений твір лише з allow_incomplete; формат перевіряється до запиту. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/mcp/test_bridge_publication.py::test_export_of_unfinished_story_needs_permission",
+        "tests/mcp/test_bridge_publication.py::test_export_format_is_checked_before_request"
+      ]
+    },
+    {
+      "id": "MCP-BRIDGE-S31",
+      "requirement": "MCP-BRIDGE",
+      "scope": "Рішення сторінки публікації про зміни ззовні (externalPublicationChange). Підключення обробників на сторінці перевірено вручну в браузері. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/web/test_publication_genres.py::test_publication_page_decides_on_outside_changes"
       ]
     }
   ]

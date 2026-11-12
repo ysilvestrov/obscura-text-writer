@@ -1,4 +1,6 @@
 """Local publication card and public signatures; no model dispatch."""
+from typing import Literal
+
 from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import Response
 from pydantic import Field
@@ -37,6 +39,12 @@ def page(story_id: str,request: Request):
     story=request.app.state.repo.get_story(story_id)
     return request.app.state.templates.TemplateResponse(request=request,name='publication.html',
         context={'story':story,'genres':sorted(genre_catalog(request_locale(request)),key=lambda g:g[1])})
+
+
+@router.get('/api/publication/genres')
+def genres(language: Literal['uk','en']='uk'):
+    """MCP-BRIDGE: the same FB2 genre catalogue the publication page shows; codes are the same in both languages."""
+    return {'genres':[{'code':code,'label':label} for code,label in genre_catalog(language)]}
 
 
 @router.get('/api/publication-signatures')
