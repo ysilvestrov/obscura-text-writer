@@ -582,3 +582,9 @@ body.ghost-open #notice { z-index: 70; }
 .model-policy-consent input { flex: none; margin: 4px 0 0; }
 .model-policy-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
 .model-policy-error { margin: 6px 0 0; font-size: 13px; color: var(--error); }
+/* MODEL-001: the writer's optional model for scenes rated 0–1, under the main model. */
+.writer-variant { border-top: 1px solid var(--border-color); margin-top: 18px; padding-top: 14px; }
+.writer-variant-toggle { display: inline-flex; gap: 6px; align-items: center; color: var(--text-primary); }
+.writer-variant > .settings-hint { margin: 4px 0 0; }
+.writer-variant-fields { border: 0; padding: 0; margin: 12px 0 0; }
+.writer-variant-fields[hidden] { display: none; }

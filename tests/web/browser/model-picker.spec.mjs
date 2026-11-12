@@ -17,7 +17,7 @@ async function openWriter(page,request,{provider='venice',catalog=models}={}){
   await page.goto(`/stories/${f.story_id}/settings`);await page.locator('[data-settings-role=writer]').click();
   const form=page.locator('form[data-role=writer]');
   await form.locator('[name=provider]').selectOption(provider);
-  return {form,picker:form.locator('.model-picker'),model:form.locator('[name=model]')};
+  return {form,picker:form.locator('.model-picker').first(),model:form.locator('[name=model]')};
 }
 const row=(picker,id)=>picker.locator(`tbody tr[data-model-id="${id}"]`);
 const rows=picker=>picker.locator('tbody tr[data-model-id]');
