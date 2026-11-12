@@ -208,6 +208,8 @@ def check_integrity(root: Path) -> IntegrityReport:
                         report.add('invalid_head', story.id, 'Невірний матеріал твору')
             from .book_checks import check_book_structure
             check_book_structure(report,stories,scenes)
+            from .summary_checks import check_summary_heads
+            check_summary_heads(report,root,stories,versions)
             for story_id, payload in db.execute('SELECT story_id,payload FROM source_files'):
                 try:
                     source = json.loads(payload)
