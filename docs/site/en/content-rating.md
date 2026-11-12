@@ -42,6 +42,10 @@ Generation is blocked by an empty scene cast, missing cards, a minor participant
 
 The request rating (the highest level on each axis among the story and the scenes that go into the request) decides whether a model without the Uncensored mark needs consent: at 0/0/0 it does not, with any axis above 0 it does. If a model refused because of the content, the application blocks that model at the same or a higher rating until you clear the mark. See [Models](models.md#consent-for-a-model-without-uncensored) and [Refusal mark](models.md#refusal-mark) for details. There is no automatic switch to another model.
 
+## Scene rating and the writer model
+
+The rating of a scene (or of the story, when the scene has none of its own) also picks the writer model. If you set a [separate model for scenes 0-1](models.md#a-separate-writer-model-for-scenes-0-1), it writes scenes where no axis is 2; scenes with an axis at 2 are written by the main model.
+
 ## Label in FB2 and EPUB
 
 When exporting FB2 or EPUB, the highest level among the story rating and the exported scenes is used: 0 gives `0+`, 1 gives `16+`, 2 gives `18+`. The label goes into the file metadata, not the text. MD, TXT and PDF carry no label. If the story rating is not set, there is no label and the export manifest contains a warning.

@@ -16,6 +16,12 @@ Providers:
 
 The input limit in characters is a safeguard, not a token count. Before sending, the application estimates the tokens of the whole request and adds the response reserve; the sum must fit the context. Raising the numbers in the form does not increase the model's real context. Text is never silently cut: a request that does not fit is not sent.
 
+## A separate writer model for scenes 0-1
+
+In the **Writer** settings, the **Separate model for scenes rated 0-1** checkbox opens its own provider, API address, model, limits, temperature and timeout. The prompt and response mode stay shared with the main model. The variant is used when no axis of the scene's [rating](content-rating.md) (its own, or the story's when the scene has none) is 2; for level 2 scenes the main model writes. Generation cannot start until the story has a rating, so a scene without its own rating is always judged by the story's. The variant applies to the Draft and Rewrite stages.
+
+The variant model has its own [consent](#consent-for-a-model-without-uncensored) and its own [refusal mark](#refusal-mark), like any other writer model. The pre-run check lists the variant model among the roles and counts its provider in the budget limit. Unchecking the box and saving returns every scene to the main model. The variant is part of [saved presets](#saved-presets) (such a preset uses format version 2), while the shared provider button changes only the main model. Limitations: the variant form does not check in advance that the reply reserve is smaller than the context (the server rejects the save), and the variant has no separate key field: on the same provider it uses the main model's key, on another provider that provider's default key name.
+
 ## Model list
 
 Instead of a field with suggestions, the role form and the connection block show the provider's catalog. At the top is the chosen model: its ID, badges, context, price and a **Change** button. Below are a search box, filters and a sortable table; the footer "Showing N of M" tells you how many models the filters hide.

@@ -143,6 +143,45 @@
       ]
     },
     {
+      "id": "MODEL-001-S02",
+      "requirement": "MODEL-001",
+      "scope": "Окрема модель письменника для сцен 0–1: маршрут, ліміти, згода, readiness, комплекти ролей версії 2, MCP і форма. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/generation/test_role_routing.py::test_writer_scene_without_level_two_goes_to_variant",
+        "tests/generation/test_role_routing.py::test_unset_rating_uses_main_model",
+        "tests/generation/test_role_routing.py::test_routed_settings_take_variant_limits_and_timeout",
+        "tests/generation/test_role_routing.py::test_routing_is_idempotent_and_only_for_writer",
+        "tests/generation/test_role_routing.py::test_variant_limits_are_validated",
+        "tests/generation/test_role_routing.py::test_draft_context_uses_variant_limits_and_changes_fingerprint",
+        "tests/generation/test_role_routing.py::test_pipeline_calls_variant_model_for_low_scene",
+        "tests/generation/test_role_routing.py::test_variant_model_needs_its_own_consent",
+        "tests/generation/test_role_routing.py::test_variant_is_rejected_for_other_roles",
+        "tests/generation/test_role_routing.py::test_routed_fingerprint_matches_an_equivalent_plain_writer",
+        "tests/generation/test_role_routing.py::test_main_model_fingerprint_ignores_the_variant",
+        "tests/generation/test_role_routing.py::test_fingerprint_settings_have_no_variant_key",
+        "tests/generation/test_role_routing.py::test_scene_statistics_show_the_routed_writer",
+        "tests/generation/test_role_routing.py::test_shared_provider_rejects_variant_for_other_roles",
+        "tests/generation/test_readiness.py::test_readiness_lists_variant_and_checks_its_budget",
+        "tests/generation/test_readiness.py::test_readiness_rejects_empty_variant_model",
+        "tests/generation/test_readiness.py::test_readiness_skips_variant_for_level_two_targets",
+        "tests/generation/test_readiness.py::test_resume_preview_lists_variant_and_checks_its_budget",
+        "tests/authoring/test_role_profiles.py::test_profile_v1_imports_unchanged",
+        "tests/authoring/test_role_profiles.py::test_profile_export_writes_v2_only_with_variant",
+        "tests/authoring/test_role_profiles.py::test_profile_v1_with_variant_is_rejected",
+        "tests/authoring/test_role_profiles.py::test_profile_variant_on_other_role_is_rejected",
+        "tests/mcp/test_bridge_settings.py::test_update_settings_keeps_the_writer_low_rating_variant",
+        "tests/web/test_writer_variant_ui.py::test_writer_variant_payload_and_texts",
+        "tests/generation/test_role_routing.py::test_routed_provider_keeps_the_main_response_mode",
+        "tests/generation/test_role_routing.py::test_rewrite_context_routes_to_the_variant",
+        "tests/generation/test_role_routing.py::test_fingerprint_settings_of_an_unrouted_variant_writer_have_no_variant_key",
+        "tests/generation/test_readiness.py::test_resume_preview_rejects_empty_variant_model_for_a_later_draft_task"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#writer-variant-browser",
+        "reason": "check_docs.py індексує лише pytest; Playwright cases tests/web/browser/writer-variant.spec.mjs виконуються окремим runner, цей зв’язок не є доказом виконання."
+      }
+    },
+    {
       "id": "MODEL-002-S01",
       "requirement": "MODEL-002",
       "scope": "Відмова провайдера. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",

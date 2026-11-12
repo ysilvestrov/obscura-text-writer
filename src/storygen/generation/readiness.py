@@ -7,6 +7,7 @@ from ..memory.journal import load_memory
 from .context import build_context, make_context
 from .pipeline import STAGES, STAGE_ROLES
 from .prompts import validate_role_prompt
+from .role_routing import WRITER_STAGES, settings_for, uses_low_rating_variant
 from ..providers.policy import STAGE_POLICY_ROLE, check_consent, check_refusal, request_rating
 
 
@@ -82,6 +83,8 @@ def preview(repo, request, view=None):
             if name not in settings or not settings[name].provider.model.strip():
                 raise ValueError('Роль не налаштовано: '+name)
             role=settings[name]
+            if name=='writer' and role.low_rating_variant is not None and stage in WRITER_STAGES and not role.low_rating_variant.provider.model.strip():
+                raise ValueError('Не задано модель письменника для сцен 0–1')
             validate_role_prompt(repo,story.id,stage,role)
             prompt_id=role.prepare_prompt_version_id if stage=='prepare' else role.prompt_version_id
             if prompt_id:
@@ -133,11 +136,14 @@ def preview(repo, request, view=None):
             # Every target scene passes the rating guard before the run starts, not only the first.
             from ..rating.guard import enforce_rating
             rated_story=view.get_story(story.id)
+            writer=settings.get('writer')
+            if writer is not None and any(stage in WRITER_STAGES for stage in stages) and any(uses_low_rating_variant(writer,rated_story,view.get_scene(t.id)) for t in targets):
+                result['roles']['writer_low_rating']=writer.low_rating_variant.provider.model_dump(include={'provider','model'})
             for target in targets:
                 for stage in stages:
                     enforce_rating(view,rated_story,target,stage)
                     policy_role=STAGE_POLICY_ROLE[stage]
-                    _check_model_policy(repo,policy_role,settings[policy_role].provider,request_rating(view,rated_story,[target.id]))
+                    _check_model_policy(repo,policy_role,settings_for(settings[policy_role],policy_role,rated_story,view.get_scene(target.id)).provider,request_rating(view,rated_story,[target.id]))
             # Later tasks may consume outputs that this run has not generated yet.
             from ..memory.reuse import MemoryApprovalRequired
             try:
@@ -223,12 +229,16 @@ def pending_preview(repo,run):
                 name=STAGE_ROLES[task['stage']]
                 if name not in settings or not settings[name].provider.model.strip():raise ValueError('Роль не налаштовано: '+name)
                 role=settings[name]
+                if name=='writer' and task['stage'] in WRITER_STAGES and role.low_rating_variant is not None and not role.low_rating_variant.provider.model.strip():
+                    raise ValueError('Не задано модель письменника для сцен 0–1')
                 validate_role_prompt(repo,run.story_id,task['stage'],role)
                 prompt_id=role.prepare_prompt_version_id if task['stage']=='prepare' else role.prompt_version_id
                 if prompt_id:
                     prompt=repo.get_version(prompt_id)
                     if prompt.story_id!=run.story_id or prompt.kind!='prompt' or prompt.stale or not prompt.complete:raise ValueError('Промпт ролі потребує оновлення: '+name)
                 result['roles'][name]=role.provider.model_dump(include={'provider','model'})
+                if name=='writer' and task['stage'] in WRITER_STAGES and role.low_rating_variant is not None and task.get('scene_id') and uses_low_rating_variant(role,repo.get_story(run.story_id),repo.get_scene(task['scene_id'])):
+                    result['roles']['writer_low_rating']=role.low_rating_variant.provider.model_dump(include={'provider','model'})
             if task.get('editor_loop'):
                 from .editor_loop import model_attempts
                 result['calls']+=max(0,run.request.edit_pass_limit-len(model_attempts(repo,run))) if task is first else run.request.edit_pass_limit

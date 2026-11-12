@@ -29,6 +29,8 @@ def task_payload(manifest,task,results,planning=False):
 
 def settings_for_manifest(manifest):
     data=manifest.settings.model_dump()
+    # The writer-only variant field came later; stored manifests were stamped without it.
+    if data.get('low_rating_variant') is None:data.pop('low_rating_variant',None)
     if manifest.wire_schema_version==1 and not data['provider']['local_disable_thinking']:
         data['provider'].pop('local_disable_thinking')
     return data

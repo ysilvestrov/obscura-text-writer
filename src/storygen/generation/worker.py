@@ -618,14 +618,14 @@ class RunCoordinator:
             self.event(
                 id,
                 'stage_started',
-                {'stage':stage,'scene_id':scene_id,'model':role.provider.model,'provider':role.provider.provider,'estimated_tokens':context.estimated_tokens}
+                {'stage':stage,'scene_id':scene_id,'model':context.settings.provider.model,'provider':context.settings.provider.provider,'estimated_tokens':context.estimated_tokens}
             )
             attempt=execute_stage(
                 self.repo,
                 scene_id,
                 stage,
                 context,
-                self.gateway_factory(role.provider),
+                self.gateway_factory(context.settings.provider),
                 self.cancel_event,
                 lambda text:self.event(id,'delta',{'text':text,'stage':stage,'scene_id':scene_id}),
                 id,

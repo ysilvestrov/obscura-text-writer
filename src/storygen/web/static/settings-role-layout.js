@@ -23,4 +23,5 @@ export function groupRoleFields(form,role){
   const shared=form.elements.shared_provider?.closest('label');if(shared){const group=document.createElement('details');uiHTML(group,"<summary><span data-i18n=\"m_f92138dded91\">Підключення для всіх чотирьох ролей</span></summary>",{});group.append(shared);const hint=document.createElement('p');hint.className='settings-hint';uiText(hint,"textContent",()=>(t("m_4ead690f330a")));group.append(hint);form.append(group)}
   const extra=[...form.querySelectorAll(':scope > details')].filter(d=>d!==details&&d!==prompts);for(const d of extra)form.append(d);
   form.addEventListener('settings-reset',capacity);
+  return reserve;
 }

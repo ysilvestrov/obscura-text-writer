@@ -8,6 +8,7 @@ import {mountHorizonControls} from './horizon-controls.js';
 import {mountModelPicker} from './model-picker.js';
 import {mountModelPolicy} from './model-policy.js';
 import {mountProviderKey} from './provider-key.js';
+import {mountWriterVariant} from './writer-variant.js';
 const root=document.querySelector('[data-story-id]'),id=root.dataset.storyId;
 const names={get planner(){return t("m_38c94c25c4af")},get writer(){return t("m_75515c07207a")},get editor(){return t("m_19e99ed8f039")},get memory(){return t("m_aa1cfb48cc30")}};
 const defaults={provider:{provider:'local',base_url:'http://localhost:1235/v1',model:'',timeout:3600,key_env:'OPENROUTER_API_KEY',include_usage:false,response_mode:'prompt_json'},context_tokens:8192,max_output_tokens:2048,max_input_chars:80000,temperature:0.7,prompt_version_id:null,prepare_prompt_version_id:null};
@@ -91,6 +92,7 @@ async function load(onlyRole=null){
         if(role==='editor')settings.edit_review=form.elements.edit_review.value;
         if(role==='editor')settings.classification=classification.read();
         if(role==='memory')settings.memory_mode=form.elements.memory_mode.value;
+        if(role==='writer')settings.low_rating_variant=variant.read();
         const body={expected_revision:snapshot.story.revision,role,settings};
         body.confirm_prompt_contract=form.elements.confirm_prompt_contract.checked;
         if(upgradeInput.checked&&!upgradeWrap.hidden){body.upgrade_memory_wire=true;body.confirm_prompt_contract=true}
@@ -112,10 +114,13 @@ async function load(onlyRole=null){
     };
     form.addEventListener('settings-reset',()=>{vendorVisibility();updateEffort();horizonControls.update();updateContract()});
     form.addEventListener('settings-unlocked',()=>{vendorVisibility();updateEffort();horizonControls.update()});
-    groupRoleFields(form,role);
+    const reserve=groupRoleFields(form,role);
     // SECURITY-002: the key block sits right under the main fields, outside the collapsed details.
     const keyHost=document.createElement('div');form.querySelector(':scope > .settings-fields').after(keyHost);
     form.providerKey=mountProviderKey(keyHost,{nameField:form.elements.key_env,providerField:form.elements.provider,i18n:{t,uiText,diagnostic},request:api});
+    // MODEL-001: the optional model for scenes rated 0–1 sits under the main model; the main hint names who writes level 2.
+    let variant=null;
+    if(role==='writer'){const mainHint=document.createElement('p');mainHint.className='settings-hint';uiText(mainHint,'textContent',()=>t('writer.variant.main_hint'));form.querySelector('h2').after(mainHint);variant=mountWriterVariant(form,config);reserve.after(variant.block)}
     form.providerKey.refresh();for(const type of ['settings-reset','settings-unlocked'])form.addEventListener(type,()=>form.providerKey.refresh());
     horizonControls.update();
     const previous=target.querySelector(`[data-role="${role}"]`);if(previous)previous.replaceWith(form);else target.append(form);registerSettingsForm(role,{form,label:name,section:'models',reset:()=>load(role)});

@@ -243,3 +243,19 @@ def test_identifiers_are_checked_before_the_request(tool, arguments):
         return httpx.Response(200, json={})
     result = call(build_server(httpx.Client(base_url='http://127.0.0.1:8765', transport=httpx.MockTransport(record))), tool, arguments)
     assert result.is_error and seen == []
+
+
+@pytest.mark.req('MODEL-001')
+def test_update_settings_keeps_the_writer_low_rating_variant(tmp_path):
+    from storygen.providers.models import ProviderSettings, RoleSettings, RoleVariant
+    app, http = obscura(tmp_path)
+    created = story(app)
+    role = RoleSettings(provider=ProviderSettings(model='m1'),
+                        low_rating_variant=RoleVariant(provider=ProviderSettings(provider='openrouter', model='x/y')))
+    app.state.repo.write_role_settings(created.id, {'writer': role.model_dump()}, app.state.repo.get_story(created.id).revision)
+    server = build_server(http)
+    fingerprint = ok(call(server, 'get_settings', {'story_id': created.id}))['roles']['writer']['fingerprint']
+    ok(call(server, 'update_settings', {'story_id': created.id, 'section': 'writer', 'expected_fingerprint': fingerprint, 'fields': {'temperature': 0.9}}))
+    stored = app.state.repo.read_role_settings(created.id)['writer']
+    assert stored['temperature'] == 0.9
+    assert stored['low_rating_variant']['provider']['model'] == 'x/y'

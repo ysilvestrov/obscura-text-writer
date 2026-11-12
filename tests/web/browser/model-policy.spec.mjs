@@ -11,7 +11,7 @@ const LABEL='Я погоджуюся, що ця модель отримуват�
 async function openWriter(page,{storyId,provider='openrouter',catalog}){
   await page.route('**/api/providers/discover',route=>route.fulfill({json:{models:catalog}}));
   await page.goto(`/stories/${storyId}/settings`);await page.locator('[data-settings-role=writer]').click();
-  const form=page.locator('form[data-role=writer]'),picker=form.locator('.model-picker');
+  const form=page.locator('form[data-role=writer]'),picker=form.locator('.model-picker').first();
   await form.locator('[name=provider]').selectOption(provider);
   await form.locator('.discover').click();
   return {form,picker,model:form.locator('[name=model]'),consent:picker.getByLabel(LABEL),warn:picker.locator('[data-model-consent]'),refusal:picker.locator('[data-model-refusal]'),
@@ -58,7 +58,7 @@ test('a saved Venice model shows no consent warning before the model list is loa
   expect(saved.ok()).toBeTruthy();
   await page.route('**/api/providers/discover',route=>route.fulfill({json:{models:[option(plain,false)]}}));
   await page.goto(`/stories/${storyId}/settings`);await page.locator('[data-settings-role=writer]').click();
-  const form=page.locator('form[data-role=writer]'),warn=form.locator('.model-picker [data-model-consent]');
+  const form=page.locator('form[data-role=writer]'),warn=form.locator('.model-picker').first().locator('[data-model-consent]');
   await expect(form.locator('[name=model]')).toHaveValue(plain);
   // Uncensored is unknown until the catalog is loaded: no false warning for the saved model.
   await expect(warn).toBeHidden();

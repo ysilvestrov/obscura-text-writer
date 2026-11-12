@@ -14,6 +14,7 @@ from ..memory.projection import project_memory, memory_catalog_v4, memory_items
 from ..memory.selection import SelectionInput, minimal_chars, select_memory
 from ..providers.models import RoleSettings
 from .models import StyleProfile
+from .role_routing import WRITER_STAGES, settings_for
 from .prompts import role_prompt, validate_role_prompt
 from .context_labels import label, prose_language_directive
 from ..prompt_contracts import memory_wire_version
@@ -129,6 +130,7 @@ def make_context(repo,story,scene,stage,settings,sections,refs,fragments=None,ac
         repo=repo.context_view(story.id)
         story=repo.get_story(story.id)
         scene=repo.get_scene(scene.id) if scene else None
+    if stage in WRITER_STAGES:settings=settings_for(settings,'writer',story,scene)  # MODEL-001; idempotent after build_context.
     from ..rating.guard import enforce_rating
     enforce_rating(repo,story,scene,stage)
     prompt_id=settings.prepare_prompt_version_id if stage=='prepare' else settings.prompt_version_id
@@ -211,7 +213,7 @@ def _finish_context(repo,story,scene,stage,settings,sections,refs,fragments,syst
     if not fits(measured):
         raise ContextOverflow(estimate,limit,chars,memory_metrics.get('projection_chars',memory_metrics.get('catalog_chars',0)),breakdown,max_input_chars=settings.max_input_chars)
     accepted_stale=[id for id in dict.fromkeys(accepted_prose_ids) if id in refs and (ref:=repo.get_version(id)).stale and ref.kind in {'edited','manual'}]
-    fingerprint=hashlib.sha256(json.dumps({'system':system,'user':user,'settings':settings.model_dump(),'refs':refs,'accepted_stale_prose_ids':accepted_stale,'order':build_dependency_snapshot(repo,scene.id if scene else None,stage,settings,refs).scene_order},ensure_ascii=False,sort_keys=True).encode()).hexdigest()
+    fingerprint=hashlib.sha256(json.dumps({'system':system,'user':user,'settings':settings.model_dump(exclude={'low_rating_variant'}),'refs':refs,'accepted_stale_prose_ids':accepted_stale,'order':build_dependency_snapshot(repo,scene.id if scene else None,stage,settings,refs).scene_order},ensure_ascii=False,sort_keys=True).encode()).hexdigest()
     snapshot=build_dependency_snapshot(repo,scene.id if scene else None,stage,settings,refs)
     from ..dependency_models import MemoryReuseApproval
     snapshot.memory_provenance=[MemoryReuseApproval.model_validate(p) for p in memory_provenance]
@@ -268,6 +270,8 @@ def build_context(repo,scene_id: str,stage: str,settings: RoleSettings,*,editor_
             repo=repo.context_view(scene.story_id)
             scene=repo.get_scene(scene_id)
     story=repo.get_story(scene.story_id)
+    # MODEL-001: route before the memory and context budgets below are computed from the settings.
+    if stage in WRITER_STAGES:settings=settings_for(settings,'writer',story,scene)
     from ..characters.context import validate_scene_participants
     validate_scene_participants(repo,story,scene)
     scenes=repo.list_scenes(story.id)
