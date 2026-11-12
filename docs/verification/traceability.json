@@ -946,6 +946,14 @@
       ]
     },
     {
+      "id": "EDIT-REVIEW-S04",
+      "requirement": "EDIT-REVIEW",
+      "scope": "Список пропозицій: новий прохід стає вибраним, вибір автора зберігається без нового проходу, інша сцена починає з найновішої.",
+      "tests": [
+        "tests/web/test_copyedit_review_ui.py::test_copyedit_panel_selection_and_dirty_guards"
+      ]
+    },
+    {
       "id": "LANGUAGE-WARNINGS-S01",
       "requirement": "LANGUAGE-WARNINGS",
       "scope": "Контекстний дефект і чистий приклад. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
@@ -3653,6 +3661,18 @@
       "manual": {
         "procedure": "docs/verification/manual.md#workspace-layout",
         "reason": "Playwright workspace-layout/impact/sequential-review/review-evidence запускаються вручну; check_docs.py індексує лише pytest IDs."
+      }
+    },
+    {
+      "id": "WORKSPACE-TOOLS-S05",
+      "requirement": "WORKSPACE-TOOLS",
+      "scope": "Кнопка-іконка видалення біля обраної сцени: спільні запобіжники з кнопкою під редактором, доступна назва, прибирання без обраної сцени; розміщення й видалення — у браузері.",
+      "tests": [
+        "tests/web/test_trash_api.py::test_trash_ui_preserves_unsaved_buffers"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#scene-delete-browser",
+        "reason": "check_docs.py індексує лише pytest; Playwright cases tests/web/browser/scene-delete.spec.mjs виконуються окремим runner, цей зв’язок не є доказом виконання."
       }
     },
     {

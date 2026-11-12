@@ -20,7 +20,7 @@ export function mountChangeReview({host,state,api,json,notice,onApplied,onQueued
   const classify=document.createElement('button');classify.type='button';classify.className='secondary';uiText(classify,"textContent",()=>(t("m_ea091064bccc")));
   const classificationInfo=document.createElement('p');classificationInfo.className='muted';
   panel.append(help,label,open,info,warnings,selectAll,edits,showSelection,selectedText,apply,classify,classificationInfo);
-  let current=null,choices=[],busy=false,previewLoading=false,sceneId=null,listEpoch=0,previewEpoch=0;
+  let current=null,choices=[],busy=false,previewLoading=false,sceneId=null,latestId=null,listEpoch=0,previewEpoch=0;
   let assembled=null,selectionLoading=false,selectionEpoch=0;
   function clearSelection(){assembled=null;selectionEpoch++;selectionLoading=false;uiText(selectedText,"textContent",()=>(''));uiText(warnings,"textContent",()=>(''));uiText(classificationInfo,"textContent",()=>(''))}
   const indices=()=>choices.flatMap(c=>c.checked?c.editIndices:[]).sort((a,b)=>a-b);
@@ -90,14 +90,16 @@ export function mountChangeReview({host,state,api,json,notice,onApplied,onQueued
   }
   async function reload(){
     const epoch=++listEpoch,scene=state.scene?.id;
-    if(scene!==sceneId){adapter.onReview?.(null);sceneId=scene;current=null;choices=[];clearSelection();previewLoading=false;edits.replaceChildren();select.replaceChildren();previewEpoch++}
+    if(scene!==sceneId){adapter.onReview?.(null);sceneId=scene;latestId=null;current=null;choices=[];clearSelection();previewLoading=false;edits.replaceChildren();select.replaceChildren();previewEpoch++}
     if(!scene){updateAvailability();return}
     try{
       const data=await api(url(scene));
       if(epoch!==listEpoch||scene!==state.scene?.id)return;
       const previous=select.value;select.replaceChildren();
       for(const attempt of [...data.attempts].reverse()){const option=document.createElement('option');option.value=attempt.id;option.dataset.createdAt=attempt.created_at.slice(0,19);uiText(option,"textContent",()=>(attempt.created_at.slice(0,19)+(attempt.state==='needs_review'?t("m_3e50d5900f81"):'')));select.append(option)}
-      select.value=data.attempts.some(a=>a.id===previous)?previous:data.attempts.at(-1)?.id||'';
+      // A pass that appeared since the last list becomes the shown one; otherwise the author's choice stays.
+      const latest=data.attempts.at(-1)?.id||'',fresh=latest!==latestId;latestId=latest;
+      select.value=!fresh&&data.attempts.some(a=>a.id===previous)?previous:latest;
       await loadPreview();
     }catch(error){if(epoch===listEpoch){current=null;updateAvailability();uiText(info,"textContent",()=>(diagnostic(error.message)))}}
   }

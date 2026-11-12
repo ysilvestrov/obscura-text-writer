@@ -266,6 +266,11 @@ MODEL-005-S01, MODEL-005-S02. Автоматична частина — Playwrig
 
 MODEL-001-S02. Автоматична частина — Playwright `tests/web/browser/writer-variant.spec.mjs` (два cases: перемикач «Окрема модель для сцен рівня 0–1» відкриває власні поля, збереження пише `low_rating_variant` з лімітами, відновлення після reload, зняття перемикача зберігає `null`; модель варіанта без Uncensored отримує власний блок згоди для ролі письменника): `node frontend/node_modules/@playwright/test/cli.js test tests/web/browser/writer-variant.spec.mjs --config frontend/playwright.config.mjs`. Цей зв’язок не є доказом виконання; фактичний запуск фіксується окремо.
 
+<a id="scene-delete-browser"></a>
+## Видалення сцени зі списку в браузері
+
+WORKSPACE-TOOLS-S05. Автоматична частина — Playwright `tests/web/browser/scene-delete.spec.mjs` (три cases: на desktop іконка стоїть у правому краї рядка обраної сцени, переходить за вибором, після підтвердження сцена зникає зі списку й з’являється в кошику сцен; з незбереженим текстом клік показує причину й не відкриває підтвердження; на mobile лишається підписана кнопка під редактором, а іконки не видно). Запуск: `cd frontend; ./node_modules/.bin/playwright test ../tests/web/browser/scene-delete.spec.mjs`. Прогін 12.11.2026 на гілці `claude/scene-delete-button`: 3 passed, 3 skipped (cases іншого проєкту).
+
 <a id="edit-pass-limit-browser"></a>
 ## Максимум проходів редактури після перезавантаження
 
