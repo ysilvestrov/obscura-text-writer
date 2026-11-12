@@ -72,6 +72,8 @@ class ContextBundle(DomainModel):
     memory_metrics: dict = Field(default_factory=dict)
     context_warnings: list[str] = Field(default_factory=list)
     context_breakdown: dict = Field(default_factory=dict)
+    policy_role: str | None = None
+    policy_rating: tuple[int,int,int] | None = None
 
 
 @dataclass(frozen=True)
