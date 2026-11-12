@@ -11,12 +11,12 @@ const models=[
   {id:'syn-noschema',name:'Syn No Schema',context_tokens:32768,max_output_tokens:4096,tariff:null,uncensored:true,privacy:'private',tee:false,supports_schema:false},
 ];
 
-async function openWriter(page,request){
+async function openWriter(page,request,{provider='venice',catalog=models}={}){
   const f=await(await request.post('/test-fixture')).json();
-  await page.route('**/api/providers/discover',route=>route.fulfill({json:{models}}));
+  await page.route('**/api/providers/discover',route=>route.fulfill({json:{models:catalog}}));
   await page.goto(`/stories/${f.story_id}/settings`);await page.locator('[data-settings-role=writer]').click();
   const form=page.locator('form[data-role=writer]');
-  await form.locator('[name=provider]').selectOption('venice');
+  await form.locator('[name=provider]').selectOption(provider);
   return {form,picker:form.locator('.model-picker'),model:form.locator('[name=model]')};
 }
 const row=(picker,id)=>picker.locator(`tbody tr[data-model-id="${id}"]`);
@@ -104,4 +104,47 @@ test('rows are selectable from the keyboard',async({page,request})=>{
   await expect(picker.locator('[data-model-chosen] .model-badge')).toHaveText(['Uncensored','Private','JSON Schema']);
   await page.locator('[data-ui-locale=en]').click();
   await expect(picker.locator('.model-picker-foot')).toContainText('Showing 3 of 4');
+});
+
+test('json schema mode keeps a local model with unknown support selectable and saveable',async({page,request})=>{
+  // The local provider never reports JSON Schema support: unknown is not "no".
+  const local=[{id:'syn-local',name:'Syn Local',context_tokens:8192,max_output_tokens:2048,tariff:null,uncensored:null,privacy:'unknown',tee:false,supports_schema:null}];
+  const {form,picker,model}=await openWriter(page,request,{provider:'local',catalog:local});
+  await setMode(form,'json_schema');await form.locator('.discover').click();
+  const item=row(picker,'syn-local');
+  await expect(item).toBeVisible();await expect(item).not.toHaveAttribute('aria-disabled','true');
+  await item.click();await expect(model).toHaveValue('syn-local');
+  await expect(picker.locator('[data-model-blocked]')).toBeHidden();
+  await expect(picker.locator('[data-schema-unknown]')).toHaveText('Підтримка JSON Schema невідома: перевірте модель самостійно.');
+  await page.locator('#settings-save').click();
+  await expect(page.locator('#notice')).toContainText('Роль збережено');
+  await expect(form.locator('[name=model]')).toHaveValue('syn-local');
+});
+
+test('sort buttons reorder rows and update aria-sort',async({page,request})=>{
+  const {form,picker}=await openWriter(page,request);
+  await form.locator('.discover').click();
+  const ids=()=>rows(picker).evaluateAll(trs=>trs.map(tr=>tr.dataset.modelId));
+  const head=key=>picker.locator(`th[data-sort="${key}"]`);
+  // Default: input price ascending, rows without a price last.
+  await expect(head('input')).toHaveAttribute('aria-sort','ascending');await expect(head('name')).toHaveAttribute('aria-sort','none');
+  expect(await ids()).toEqual(['syn-private','syn-tee','syn-noschema']);
+  await head('name').getByRole('button').click();
+  await expect(head('name')).toHaveAttribute('aria-sort','ascending');await expect(head('input')).toHaveAttribute('aria-sort','none');
+  expect(await ids()).toEqual(['syn-noschema','syn-private','syn-tee']);
+  await head('name').getByRole('button').click();
+  await expect(head('name')).toHaveAttribute('aria-sort','descending');
+  expect(await ids()).toEqual(['syn-tee','syn-private','syn-noschema']);
+});
+
+test('rows do not change the model while the form is save-locked',async({page,request})=>{
+  const {form,picker,model}=await openWriter(page,request);
+  await form.locator('.discover').click();
+  const before=await model.inputValue();
+  // withSettingsSave disables every form control while a save runs; simulate that lock.
+  await model.evaluate(e=>{e.disabled=true});
+  await row(picker,'syn-private').click();await expect(model).toHaveValue(before);
+  await row(picker,'syn-private').focus();await page.keyboard.press('Enter');await expect(model).toHaveValue(before);
+  await model.evaluate(e=>{e.disabled=false});
+  await row(picker,'syn-private').click();await expect(model).toHaveValue('syn-private');
 });

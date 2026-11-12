@@ -34,14 +34,19 @@ export function filterModels(models,{query='',uncensoredOnly=false,minPrivacy='a
 export function selectable(model,{provider,responseMode}={}){
   if(model===null||model===undefined)return {ok:true,reason:null};
   if(provider==='venice'&&model.uncensored!==true)return {ok:false,reason:'venice_uncensored_pending'};
-  if(schemaLocked(responseMode)&&model.supports_schema!==true)return {ok:false,reason:'schema_required'};
+  // Only an explicit "no" blocks; unknown support (local, rows without the field) stays selectable with a hint.
+  if(schemaLocked(responseMode)&&model.supports_schema===false)return {ok:false,reason:'schema_required'};
   return {ok:true,reason:null};
 }
+
+export const schemaUnknown=(model,{responseMode}={})=>Boolean(model)&&schemaLocked(responseMode)&&(model.supports_schema===null||model.supports_schema===undefined);
 
 export function formatPrice(usd){
   if(usd===null||usd===undefined||usd==='')return '—';
   const value=Number(usd);
   if(!Number.isFinite(value))return '—';
+  // A tiny positive rate is not free: never round it down to "0".
+  if(value>0&&value<0.01)return '<0.01';
   const digits=value<10?2:1;
   return String(Number(value.toFixed(digits)));
 }
@@ -62,6 +67,7 @@ export function mountModelPicker({host,modelInput,providerInput,baseUrlInput,res
   const code=el('code'),badges=el('span'),info=el('small',{className:'settings-hint',id:`${uid}-info`,'data-model-info':'true'});
   const toggle=el('button',{type:'button',className:'secondary','aria-controls':`${uid}-panel`,'aria-expanded':'false'});
   const blocked=el('p',{className:'model-picker-blocked',role:'status','data-model-blocked':'true'});
+  const schemaHint=el('small',{className:'settings-hint','data-schema-unknown':'true',hidden:true});
   const query=el('input',{type:'search'}),uncensored=el('input',{type:'checkbox'}),schema=el('input',{type:'checkbox'});
   const privacy=el('select',{'aria-describedby':`${uid}-privacy`},...['any','private','tee'].map(value=>el('option',{value})));privacy.value='private';
   const privacyNote=el('small',{className:'settings-hint',id:`${uid}-privacy`,'data-privacy-note':'true'});
@@ -76,7 +82,7 @@ export function mountModelPicker({host,modelInput,providerInput,baseUrlInput,res
     el('div',{className:'model-picker-filters'},query,el('label',{className:'checkbox'},uncensored,' ',textSpan('models.filter_uncensored')),
       el('label',{className:'model-picker-privacy'},textSpan('models.filter_privacy'),privacy),el('label',{className:'checkbox'},schema,' ',textSpan('models.filter_schema')),privacyNote),
     el('div',{className:'model-picker-list'},el('table',{},el('thead',{},el('tr',{},...heads)),tbody)),foot);
-  host.replaceChildren(el('div',{className:'model-picker-chosen','data-model-chosen':'true'},code,badges,info,toggle),blocked,panel);
+  host.replaceChildren(el('div',{className:'model-picker-chosen','data-model-chosen':'true'},code,badges,info,toggle),blocked,schemaHint,panel);
   uiText(toggle,'textContent',()=>t('models.change'));uiAttr(query,'placeholder',()=>t('models.search'));uiAttr(query,'aria-label',()=>t('models.search'));
   uiText(privacyNote,'textContent',()=>t('models.privacy_not_reported'));
   for(const option of privacy.options)uiText(option,'textContent',()=>t(`models.privacy_${option.value}`));
@@ -88,6 +94,8 @@ export function mountModelPicker({host,modelInput,providerInput,baseUrlInput,res
   const current=()=>bound()?catalog.get(modelInput.value)??null:null;
   function validate(){const check=selectable(current(),context());return check.ok?null:`models.blocked_${check.reason}`}
   function choose(model){
+    // While a settings save is running the form controls are disabled; the list must not change the model either.
+    if(modelInput.disabled)return;
     const check=selectable(model,context());
     if(!check.ok){message=`models.blocked_${check.reason}`;render();return}
     modelInput.value=model.id;for(const type of ['input','change'])modelInput.dispatchEvent(new Event(type,{bubbles:true}));
@@ -96,10 +104,12 @@ export function mountModelPicker({host,modelInput,providerInput,baseUrlInput,res
     const model=current();code.textContent=modelInput.value||'—';badges.replaceChildren(...(model?[badgeList(model)]:[]));
     uiText(info,'textContent',()=>bound()&&!model&&modelInput.value?t('models.not_in_catalog'):modelMetadataLabel(model));
     const key=message||validate();uiText(blocked,'textContent',()=>key?t(key):'');blocked.hidden=!key;
+    const unknown=!key&&schemaUnknown(model,context());uiText(schemaHint,'textContent',()=>unknown?t('models.schema_unknown'):'');schemaHint.hidden=!unknown;
   }
   function row(model){
     const check=selectable(model,context()),tr=el('tr',{role:'button',tabIndex:0,'data-model-id':model.id,'aria-pressed':String(model.id===modelInput.value)});
     if(!check.ok){tr.setAttribute('aria-disabled','true');tr.title=t(`models.blocked_${check.reason}`)}
+    else if(schemaUnknown(model,context()))tr.title=t('models.schema_unknown');
     tr.append(el('td',{},el('span',{},model.name||model.id),el('small',{className:'model-picker-id'},model.id)),el('td',{},badgeList(model)),
       el('td',{className:'num'},formatContext(model.context_tokens)),el('td',{className:'num'},formatPrice(rate(model,'input'))),el('td',{className:'num'},formatPrice(rate(model,'output'))));
     tr.onclick=()=>choose(model);tr.onkeydown=event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();choose(model)}};

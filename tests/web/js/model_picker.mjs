@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {pathToFileURL} from 'node:url';
 globalThis.document={querySelector:()=>null,addEventListener:()=>{}};
-const {modelBadges,filterModels,selectable,formatPrice,privacyLevel,providerReportsPrivacy,schemaLocked}=await import(pathToFileURL(process.argv[2]+'/src/storygen/web/static/model-picker.js'));
+const {modelBadges,filterModels,selectable,schemaUnknown,formatPrice,privacyLevel,providerReportsPrivacy,schemaLocked}=await import(pathToFileURL(process.argv[2]+'/src/storygen/web/static/model-picker.js'));
 const {t,setLocale}=await import(pathToFileURL(process.argv[2]+'/src/storygen/web/static/i18n.js'));
 const tee={id:'t',tee:true,privacy:'private',uncensored:false,supports_schema:false};
 const pri={id:'p',name:'Private One',privacy:'private',uncensored:true,supports_schema:true};
@@ -24,14 +24,31 @@ assert.deepEqual(filterModels([tee,pri],{query:'',uncensoredOnly:false,minPrivac
 assert.deepEqual(selectable(tee,{provider:'venice',responseMode:'prompt_json'}),{ok:false,reason:'venice_uncensored_pending'});
 assert.deepEqual(selectable(anon,{provider:'venice',responseMode:'json_schema'}),{ok:true,reason:null});
 assert.deepEqual(selectable({...pri,supports_schema:false},{provider:'venice',responseMode:'json_schema'}),{ok:false,reason:'schema_required'});
-assert.deepEqual(selectable(unk,{provider:'openrouter',responseMode:'json_schema'}),{ok:false,reason:'schema_required'});
+// Unknown support is not "no": in JSON Schema mode only an explicit false blocks, unknown gets a hint.
+assert.deepEqual(selectable(unk,{provider:'openrouter',responseMode:'json_schema'}),{ok:true,reason:null});
+const local={id:'l',privacy:'unknown',uncensored:null,supports_schema:null};
+assert.deepEqual(selectable(local,{provider:'local',responseMode:'json_schema'}),{ok:true,reason:null});
+assert.deepEqual(selectable({id:'x'},{provider:'local',responseMode:'json_schema'}),{ok:true,reason:null});
+assert.equal(schemaUnknown(local,{responseMode:'json_schema'}),true);
+assert.equal(schemaUnknown({id:'x'},{responseMode:'json_schema'}),true);
+assert.equal(schemaUnknown(local,{responseMode:'prompt_json'}),false);
+assert.equal(schemaUnknown(pri,{responseMode:'json_schema'}),false);
+assert.equal(schemaUnknown({...pri,supports_schema:false},{responseMode:'json_schema'}),false);
+assert.equal(schemaUnknown(null,{responseMode:'json_schema'}),false);
+// The optional JSON Schema filter still shows only explicit support.
+assert.deepEqual(filterModels([unk,pri],{schemaOnly:true},'openrouter').map(m=>m.id),['p']);
 assert.deepEqual(selectable(null,{provider:'venice',responseMode:'json_schema'}),{ok:true,reason:null});
 assert.equal(formatPrice(undefined),'—');
 assert.equal(formatPrice(null),'—');
 assert.equal(formatPrice('0.4'),'0.4');
 assert.equal(formatPrice(0.07),'0.07');
 assert.equal(formatPrice(12.34),'12.3');
+assert.equal(formatPrice(0.004),'<0.01');
+assert.equal(formatPrice('0.0001'),'<0.01');
+assert.equal(formatPrice(0.01),'0.01');
+assert.equal(formatPrice(0),'0');
 for(const b of modelBadges(pri))assert.notEqual(t(b.key),b.key);
-for(const key of ['models.blocked_venice_uncensored_pending','models.blocked_schema_required','models.privacy_not_reported','models.no_match','models.badge_unknown','models.badge_anonymized'])assert.notEqual(t(key),key);
+for(const key of ['models.blocked_venice_uncensored_pending','models.blocked_schema_required','models.privacy_not_reported','models.no_match','models.badge_unknown','models.badge_anonymized','models.schema_unknown'])assert.notEqual(t(key),key);
 setLocale('en'); for(const b of [...modelBadges(tee),...modelBadges(unk),...modelBadges(anon)])assert.notEqual(t(b.key),b.key);
 assert.notEqual(t('models.no_match'),'models.no_match');
+assert.equal(t('models.schema_unknown'),'JSON Schema support is unknown: check the model yourself.');
