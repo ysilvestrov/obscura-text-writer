@@ -4403,7 +4403,7 @@
       "requirement": "MCP-BRIDGE",
       "scope": "Рівно сім інструментів; стан сцен тим самим словником, що список сцен; посилання на сцену в next_steps. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
       "tests": [
-        "tests/mcp/test_bridge.py::test_tool_list_is_exactly_the_twelve_tools",
+        "tests/mcp/test_bridge.py::test_tool_list_is_exactly_the_thirteen_tools",
         "tests/mcp/test_bridge.py::test_get_story_reports_scene_states_with_the_ui_vocabulary",
         "tests/mcp/test_bridge.py::test_next_steps_points_to_the_scene_in_obscura",
         "tests/mcp/test_bridge.py::test_identifiers_cannot_reach_other_endpoints",
