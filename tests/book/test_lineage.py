@@ -1,5 +1,5 @@
 """BOOK-LINEAGE-S01/S02: scene lineage — heads, ancestors in reading order and the need for a merge (neutral examples)."""
-from storygen.book.lineage import lineage, lineage_map, previous_scenes
+from storygen.book.lineage import Lineage, earlier_scenes, lineage, lineage_map, previous_scenes
 from storygen.domain import Arc, BookStructure, Part, Scene, Story
 
 
@@ -21,24 +21,30 @@ def ids(*numbers):
 def test_flat_book_is_every_scene_above():
     scenes = [Scene(id=f's{n}', story_id='b', title='С', position=n - 1) for n in range(1, 5)]
     story = Story(id='b', title='Книга')
-    assert lineage(story, scenes, 's1') == lineage_map(story, scenes)['s1']
-    assert lineage(story, scenes, 's1').heads == () and lineage(story, scenes, 's1').ancestors == ()
-    assert lineage(story, scenes, 's4').heads == ids(3) and lineage(story, scenes, 's4').ancestors == ids(1, 2, 3)
+    assert lineage_map(story, scenes) == {'s1': Lineage((), (), False), 's2': Lineage(ids(1), ids(1), False),
+                                          's3': Lineage(ids(2), ids(1, 2), False), 's4': Lineage(ids(3), ids(1, 2, 3), False)}
     assert [s.id for s in previous_scenes(story, scenes, scenes[3])] == ['s1', 's2', 's3']
 
 
 def test_sequential_arcs_and_parts_are_every_scene_above():
     story, scenes = book('A A B B C C', parts=[['A', 'B'], ['C']])
-    for n, scene in enumerate(scenes, 1):
-        item = lineage(story, scenes, scene.id)
-        assert item.ancestors == ids(*range(1, n)) and item.heads == (ids(n - 1) if n > 1 else ()) and not item.needs_merge
+    assert lineage_map(story, scenes) == {
+        's1': Lineage((), (), False), 's2': Lineage(ids(1), ids(1), False), 's3': Lineage(ids(2), ids(1, 2), False),
+        's4': Lineage(ids(3), ids(1, 2, 3), False), 's5': Lineage(ids(4), ids(1, 2, 3, 4), False),
+        's6': Lineage(ids(5), ids(1, 2, 3, 4, 5), False)}
+
+
+def test_an_empty_part_between_parts_keeps_the_chain():
+    # Cross-review: a part without scenes must not cut the stream; the next part starts from the nearest earlier one.
+    story, scenes = book('A A C C', parts=[['A'], ['B'], ['C']])
+    assert lineage(story, scenes, 's3') == Lineage(ids(2), ids(1, 2), False)
+    assert lineage(story, scenes, 's4') == Lineage(ids(3), ids(1, 2, 3), False)
 
 
 def test_interleaved_arcs_isolate_streams():
     story, scenes = book('A B A B')
-    assert lineage(story, scenes, 's2').heads == () and lineage(story, scenes, 's2').ancestors == ()
-    assert lineage(story, scenes, 's3').heads == ids(1) and lineage(story, scenes, 's3').ancestors == ids(1)
-    assert lineage(story, scenes, 's4').heads == ids(2) and lineage(story, scenes, 's4').ancestors == ids(2)
+    assert lineage_map(story, scenes) == {'s1': Lineage((), (), False), 's2': Lineage((), (), False),
+                                          's3': Lineage(ids(1), ids(1), False), 's4': Lineage(ids(2), ids(2), False)}
     assert [s.id for s in previous_scenes(story, scenes, scenes[3])] == ['s2']
 
 
@@ -65,8 +71,19 @@ def test_part_start_merges_heads_of_the_previous_part():
 
 def test_empty_arc_and_unknown_arc_fall_back():
     story, scenes = book('A A B', parts=[['A', 'X'], ['B']])  # arc X has no scenes
-    assert lineage(story, scenes, 's3').heads == ids(2) and lineage(story, scenes, 's3').ancestors == ids(1, 2)
+    assert lineage(story, scenes, 's3') == Lineage(ids(2), ids(1, 2), False)
     story.scene_arcs.pop('s2')  # a scene without a known arc follows the reading order, and so does the scene after it
-    assert lineage(story, scenes, 's2').ancestors == ids(1) and lineage(story, scenes, 's3').ancestors == ids(1, 2)
+    assert lineage(story, scenes, 's2') == Lineage(ids(1), ids(1), False)
+    assert lineage(story, scenes, 's3') == Lineage(ids(2), ids(1, 2), False)
     trashed = Scene(id='t', story_id='b', title='Кошик', position=1, trashed_at='2026-11-13T00:00:00Z')
     assert [s.id for s in previous_scenes(story, scenes, trashed)] == ['s1']
+
+
+def test_earlier_scenes_peeks_through_a_repository(tmp_path):
+    # Cross-review: peek=True on a Repository (no peek_* methods) reads the same scenes instead of failing.
+    from storygen.domain import SceneCreate, StoryCreate
+    from storygen.storage.repository import Repository
+    repo = Repository(tmp_path)
+    story = repo.create_story(StoryCreate(title='Книга'))
+    first, second = (repo.create_scene(story.id, SceneCreate(title=t)) for t in ('Перша', 'Друга'))
+    assert [s.id for s in earlier_scenes(repo, second, peek=True)] == [first.id]

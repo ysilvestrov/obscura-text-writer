@@ -3,7 +3,7 @@
 Direct predecessors of a scene in a structured book:
 - the previous scene of the same arc;
 - the first scene of an arc: the heads of the arcs of the same part that ended above it, or else the start of the part;
-- the start of a part: the heads of all arcs of the previous part (none for the first part).
+- the start of a part: the heads of all arcs of the nearest earlier part with scenes (none for the first part).
 Ancestors are the transitive closure in reading order; heads are the predecessors that are not ancestors of one another.
 For a flat book, a book with sequential arcs, and a book where some active scene has no known arc, the lineage is the
 reading-order chain: every active scene above, and the previous one as the only head."""
@@ -51,9 +51,11 @@ def lineage_map(story, scenes) -> dict:
             part = structure.parts[part_index[part_of[arc]]]
             ended = [last_of_arc[a.id] for a in part.arcs
                      if a.id != arc and a.id in last_of_arc and index[last_of_arc[a.id]] < i]
-            if not ended and part_index[part.id] > 0:
-                earlier = structure.parts[part_index[part.id] - 1]
-                ended = [last_of_arc[a.id] for a in earlier.arcs if a.id in last_of_arc]
+            # The start of a part: the heads of the nearest earlier part that has scenes (an empty part is skipped).
+            back = part_index[part.id] - 1
+            while not ended and back >= 0:
+                ended = [last_of_arc[a.id] for a in structure.parts[back].arcs if a.id in last_of_arc]
+                back -= 1
             predecessors = ended
         closure = set(predecessors)
         for p in predecessors:
@@ -84,5 +86,5 @@ def previous_scenes(story, scenes, scene) -> list:
 def earlier_scenes(view, scene, *, peek: bool = False) -> list:
     """previous_scenes read through a repository or context view; `peek` reads without recording dependencies."""
     story = (view.peek_story if peek and hasattr(view, 'peek_story') else view.get_story)(scene.story_id)
-    scenes = (view.peek_scenes if peek else view.list_scenes)(scene.story_id)
+    scenes = (view.peek_scenes if peek and hasattr(view, 'peek_scenes') else view.list_scenes)(scene.story_id)
     return previous_scenes(story, scenes, scene)

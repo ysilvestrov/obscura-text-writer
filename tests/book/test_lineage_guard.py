@@ -36,3 +36,6 @@ def test_snapshot_order_of_an_interleaved_book_follows_the_lineage(tmp_path):
     view = repo.context_view(story.id)
     prefix = selector_value(view, DependencySelector(kind='order', owner_id=scenes[3].id, field='prefix', expected=[]))
     assert prefix == [scenes[1].id, scenes[3].id]
+    window = selector_value(view, DependencySelector(kind='order', owner_id=scenes[2].id, field='narrative_window', expected=[],
+                                                     future_count=1))
+    assert window == [scenes[0].id, scenes[2].id, scenes[3].id]  # lineage of A2, then A2 and one scene ahead

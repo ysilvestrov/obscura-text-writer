@@ -4221,7 +4221,8 @@
       "tests": [
         "tests/book/test_lineage.py::test_flat_book_is_every_scene_above",
         "tests/book/test_lineage.py::test_sequential_arcs_and_parts_are_every_scene_above",
-        "tests/book/test_lineage_guard.py::test_no_position_prefix_outside_lineage"
+        "tests/book/test_lineage_guard.py::test_no_position_prefix_outside_lineage",
+        "tests/book/test_lineage.py::test_an_empty_part_between_parts_keeps_the_chain"
       ]
     },
     {
@@ -4233,7 +4234,8 @@
         "tests/book/test_lineage.py::test_first_scene_of_an_arc_after_ended_arcs",
         "tests/book/test_lineage.py::test_part_start_merges_heads_of_the_previous_part",
         "tests/book/test_lineage.py::test_empty_arc_and_unknown_arc_fall_back",
-        "tests/book/test_lineage_guard.py::test_snapshot_order_of_an_interleaved_book_follows_the_lineage"
+        "tests/book/test_lineage_guard.py::test_snapshot_order_of_an_interleaved_book_follows_the_lineage",
+        "tests/book/test_lineage.py::test_earlier_scenes_peeks_through_a_repository"
       ]
     },
     {
