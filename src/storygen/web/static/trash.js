@@ -26,7 +26,7 @@ export function installSceneTrash(state,refresh,clear){
   holder.className='scene-row-actions';listButton.type='button';listButton.className='scene-delete';icon.className='icon icon-trash';icon.setAttribute('aria-hidden','true');
   uiAttr(listButton,'aria-label',()=>t("scenes.delete"));uiText(listButton,'title',()=>t("scenes.delete"));
   listButton.append(icon);listButton.onclick=moveToTrash;holder.append(listButton);
-  function place(){const row=state.scene&&document.querySelector('#scene-list .scene-item.active');if(row)row.after(holder);else holder.remove()}
+  function place(){const row=state.scene&&document.querySelector('#scene-list .scene-item.active');if(row?.after)row.after(holder);else holder.remove?.()}
   (document.querySelector('#workspace-scene-actions')||document.querySelector('.editor-toolbar')).append(trash);
   function availability(){const reason=!state.scene?t("m_f0f1417db6de"):state.saving?t("m_1705600b6470"):state.dirty?t("m_a4c2e86ecc1a"):'';trash.disabled=!!reason;uiText(trash,"title",()=>(diagnostic(reason)));place()}
   for(const event of ['scene-selected','story-refreshed','editor-state-changed'])document.addEventListener(event,availability);availability();
