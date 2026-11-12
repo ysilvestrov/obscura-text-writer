@@ -20,8 +20,6 @@ from storygen.web.app import create_app
 from tests.generation.test_model_policy_stages import ADULTS, BRIEF, FakeGateway
 from tests.generation.test_scene_pipeline import FakeGateway as PipelineGateway
 
-pytestmark = pytest.mark.req('MODEL-001')
-
 
 def R(s, v, t):
     return ContentRating(sexual=s, violence=v, themes=t)
@@ -53,6 +51,7 @@ def writer_without_variant(main='venice/unc'):
     return RoleSettings(provider=provider(main))
 
 
+@pytest.mark.req('MODEL-001')
 def test_writer_scene_without_level_two_goes_to_variant():  # MODEL-001-S02
     s = writer_with_variant(main='venice/unc', low='openrouter/x')
     assert settings_for(s, 'writer', story(0, 1, 1), scene(None)).provider.model == 'openrouter/x'
@@ -61,12 +60,14 @@ def test_writer_scene_without_level_two_goes_to_variant():  # MODEL-001-S02
     assert settings_for(writer_without_variant(), 'writer', story(0, 1, 1), scene(None)).provider.model == 'venice/unc'
 
 
+@pytest.mark.req('MODEL-001')
 def test_unset_rating_uses_main_model():
     s = writer_with_variant()
     assert not uses_low_rating_variant(s, story(), scene(None))
     assert settings_for(s, 'writer', story(), scene(None)) is s
 
 
+@pytest.mark.req('MODEL-001')
 def test_routed_settings_take_variant_limits_and_timeout():
     s = writer_with_variant(timeout=42)
     routed = settings_for(s, 'writer', story(0, 0, 0), scene(None))
@@ -76,6 +77,7 @@ def test_routed_settings_take_variant_limits_and_timeout():
     assert routed.prompt_version_id == s.prompt_version_id  # The prompt is shared.
 
 
+@pytest.mark.req('MODEL-001')
 def test_routing_is_idempotent_and_only_for_writer():
     s = writer_with_variant()
     routed = settings_for(s, 'writer', story(0, 0, 0), scene(None))
@@ -84,6 +86,7 @@ def test_routing_is_idempotent_and_only_for_writer():
     assert WRITER_STAGES == frozenset({'draft', 'rewrite'})
 
 
+@pytest.mark.req('MODEL-001')
 def test_variant_limits_are_validated():
     with pytest.raises(ValueError):
         RoleVariant(provider=provider('openrouter/x'), context_tokens=1024, max_output_tokens=1024)
@@ -106,6 +109,7 @@ def make_repo(tmp_path, story_rating, scene_rating=None):
     return repo, repo.get_scene(item.id)
 
 
+@pytest.mark.req('MODEL-001')
 def test_draft_context_uses_variant_limits_and_changes_fingerprint(tmp_path):
     repo, item = make_repo(tmp_path, R(0, 1, 1))
     role = writer_with_variant(main='local/main', low='local/low')
@@ -136,6 +140,7 @@ def run_pipeline(tmp_path, rating):
     return providers, [c.stage for c in gateway.contexts]
 
 
+@pytest.mark.req('MODEL-001')
 def test_pipeline_calls_variant_model_for_low_scene(tmp_path):
     providers, stages = run_pipeline(tmp_path / 'low', R(0, 1, 0))
     assert providers[stages.index('draft')] == 'local/low'
@@ -144,6 +149,7 @@ def test_pipeline_calls_variant_model_for_low_scene(tmp_path):
     assert providers[stages.index('draft')] == 'local/main'
 
 
+@pytest.mark.req('MODEL-001')
 def test_variant_model_needs_its_own_consent(tmp_path):
     repo, item = make_repo(tmp_path, R(0, 1, 0))
     role = writer_with_variant(main='local/main', low='openrouter/x')
@@ -158,6 +164,7 @@ def test_variant_model_needs_its_own_consent(tmp_path):
     assert attempt.state == 'completed'
 
 
+@pytest.mark.req('MODEL-001')
 def test_variant_is_rejected_for_other_roles(tmp_path):
     app = create_app(AppSettings(data_dir=tmp_path))
     with TestClient(app, base_url='http://127.0.0.1:8765') as c:
