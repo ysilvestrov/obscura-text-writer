@@ -83,3 +83,16 @@ def test_schema_mismatch_ignores_unexpected_catalog_errors(monkeypatch):
         raise RuntimeError('boom')
     monkeypatch.setattr(schema_support, 'discover_models', boom)
     assert schema_support.schema_mismatch(ProviderSettings(provider='venice', model='m', response_mode='json_schema')) is None
+
+
+def test_rejected_save_writes_no_prompt_version(client, story_id, monkeypatch):
+    catalog(monkeypatch, supports=False)
+    repo = client.app.state.repo
+    before = len(repo.list_versions(story_id, kind='prompt'))
+    revision = client.get(f'/api/stories/{story_id}/settings').json()['story']['revision']
+    settings = RoleSettings(provider=ProviderSettings(provider='venice', model='m', response_mode='json_schema')).model_dump()
+    body = {'expected_revision': revision, 'role': 'writer', 'settings': settings, 'prompt_text': 'Власний промпт для перевірки.'}
+    assert client.put(f'/api/stories/{story_id}/settings', json=body).status_code == 400
+    shared = client.put(f'/api/stories/{story_id}/settings/shared-provider', json={**body, 'provider': provider()})
+    assert shared.status_code == 400
+    assert len(repo.list_versions(story_id, kind='prompt')) == before

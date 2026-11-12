@@ -38,15 +38,15 @@ class SharedProviderChange(SettingsChange):
 def shared_provider(story_id: str,change: SharedProviderChange,request: Request):
     repo=request.app.state.repo
     settings=change.settings
+    # Catalog lookup is a network call: do it before any write (configure_prompts stores prompt versions).
+    message=schema_mismatch(change.provider)
+    if message:raise ValueError(message)
     if change.profile is not None or change.target_words is not None:raise ValueError('Профіль і обсяг зберігаються окремо')
     if change.role:
         if settings is None:raise ValueError('Потрібні налаштування ролі')
         settings=configure_prompts(repo,story_id,change,settings)
     elif settings is not None or change.prompt_text is not None or change.prepare_prompt_text is not None:
         raise ValueError('Оберіть роль для налаштувань промпту')
-    # Catalog lookup is a network call: do it before any write.
-    message=schema_mismatch(change.provider)
-    if message:raise ValueError(message)
     return save_shared_provider(repo,story_id,change.provider,change.expected_revision,change.role,settings)
 
 
@@ -79,10 +79,10 @@ def write_settings(story_id: str,change: SettingsChange,request: Request):
     if change.target_words is not None:raise ValueError('Обсяг зберігається у розділі Письмо')
     if not change.role or change.settings is None or change.profile is not None:
         raise ValueError('Збережіть окремо профіль або одну роль')
-    settings=configure_prompts(repo,story_id,change,change.settings)
-    # Catalog lookup is a network call: do it before any write.
-    message=schema_mismatch(settings.provider)
+    # Catalog lookup is a network call: do it before any write (configure_prompts stores prompt versions).
+    message=schema_mismatch(change.settings.provider)
     if message:raise ValueError(message)
+    settings=configure_prompts(repo,story_id,change,change.settings)
     return save_role_settings(repo,story_id,change.role,settings,change.expected_revision)
 
 
