@@ -77,6 +77,7 @@ def discover(rows,provider):
         return discover_models(ProviderSettings(provider=provider,model='test'),client)
 
 
+@pytest.mark.req('MODEL-005')
 def test_venice_catalog_fields_become_badges(monkeypatch):
     monkeypatch.setenv('VENICE_API_KEY','synthetic-key')
     # anonymized uncensored, private schema, tee: all three are returned, offline is not
@@ -89,6 +90,7 @@ def test_venice_catalog_fields_become_badges(monkeypatch):
     assert found['t'].tee is True and found['t'].privacy=='private' and found['t'].name=='T'
 
 
+@pytest.mark.req('MODEL-005')
 def test_missing_fields_stay_unknown(monkeypatch):
     monkeypatch.setenv('VENICE_API_KEY','synthetic-key')
     row=venice_row('x'); del row['model_spec']['privacy']; del row['model_spec']['pricing']
@@ -96,6 +98,7 @@ def test_missing_fields_stay_unknown(monkeypatch):
     assert m.privacy=='unknown' and m.tariff is None
 
 
+@pytest.mark.req('MODEL-005')
 def test_openrouter_schema_from_supported_parameters(monkeypatch):
     monkeypatch.setenv('OPENROUTER_API_KEY','synthetic-key')
     rows=[or_row('s',['response_format','structured_outputs']),or_row('j',['response_format']),or_row('n',None)]
@@ -105,6 +108,7 @@ def test_openrouter_schema_from_supported_parameters(monkeypatch):
     assert found['s'].name=='S'
 
 
+@pytest.mark.req('MODEL-005')
 def test_local_catalog_fields_are_unknown():
     m=discover([{'id':'l','object':'model'}],'local')[0]
     assert (m.privacy,m.tee,m.supports_schema,m.uncensored,m.name)==('unknown',False,None,None,None)

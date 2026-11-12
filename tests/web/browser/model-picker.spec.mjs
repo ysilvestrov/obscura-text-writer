@@ -1,3 +1,4 @@
+// MODEL-005-S01/S02: catalog badges, filters and JSON Schema mode of the model picker.
 import {test,expect} from '../../../frontend/browser-test.mjs';
 
 test.use({locale:'uk-UA'});

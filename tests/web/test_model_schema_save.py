@@ -48,6 +48,7 @@ def save_shared(client, story_id, mode='json_schema'):
     return client.put(f'/api/stories/{story_id}/settings/shared-provider', json={'expected_revision': revision, 'provider': provider(mode)})
 
 
+@pytest.mark.req('MODEL-005')
 def test_save_rejects_known_non_schema_model_in_schema_mode(client, story_id, monkeypatch):
     catalog(monkeypatch, supports=False)
     for response in (save_role(client, story_id), save_shared(client, story_id)):
@@ -55,12 +56,14 @@ def test_save_rejects_known_non_schema_model_in_schema_mode(client, story_id, mo
         assert MESSAGE in response.text
 
 
+@pytest.mark.req('MODEL-005')
 def test_save_allows_when_catalog_unavailable(client, story_id, monkeypatch):
     catalog(monkeypatch, fail=True)
     assert save_role(client, story_id).status_code == 200
     assert save_shared(client, story_id).status_code == 200
 
 
+@pytest.mark.req('MODEL-005')
 def test_save_allows_prompt_json_mode(client, story_id, monkeypatch):
     calls = catalog(monkeypatch, supports=False)
     assert save_role(client, story_id, mode='prompt_json').status_code == 200
@@ -68,6 +71,7 @@ def test_save_allows_prompt_json_mode(client, story_id, monkeypatch):
     assert calls == []
 
 
+@pytest.mark.req('MODEL-005')
 def test_save_allows_supported_unknown_and_local(client, story_id, monkeypatch):
     catalog(monkeypatch, supports=True)
     assert save_role(client, story_id).status_code == 200
@@ -78,6 +82,7 @@ def test_save_allows_supported_unknown_and_local(client, story_id, monkeypatch):
     assert calls == []
 
 
+@pytest.mark.req('MODEL-005')
 def test_schema_mismatch_ignores_unexpected_catalog_errors(monkeypatch):
     def boom(*args, **kwargs):
         raise RuntimeError('boom')
@@ -85,6 +90,7 @@ def test_schema_mismatch_ignores_unexpected_catalog_errors(monkeypatch):
     assert schema_support.schema_mismatch(ProviderSettings(provider='venice', model='m', response_mode='json_schema')) is None
 
 
+@pytest.mark.req('MODEL-005')
 def test_rejected_save_writes_no_prompt_version(client, story_id, monkeypatch):
     catalog(monkeypatch, supports=False)
     repo = client.app.state.repo
