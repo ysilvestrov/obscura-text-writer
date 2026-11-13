@@ -81,9 +81,9 @@ def publish_memory_journal(repo,scene_id,journal,expected_revision,context=None)
     view,scene=ctx.view,ctx.scene
     validate_memory_journal(journal,ctx.sources,ctx.previous)
     refs=list(ctx.sources)
-    from ..book.lineage import earlier_scenes
-    earlier=earlier_scenes(view,scene)
-    if earlier:refs.append(earlier[-1].heads['memory'])
+    from .previous import previous_memory
+    before=previous_memory(view,scene)
+    if before.memory_id:refs.append(before.memory_id)
     snapshot=build_dependency_snapshot(view,scene_id,'memory',RoleSettings(provider=ProviderSettings(model='manual-memory')),refs)
     snapshot.memory_provenance=ctx.provenance
     snapshot.accepted_stale_memory_ids=ctx.accepted_memory_ids

@@ -128,3 +128,11 @@ def earlier_scenes(view, scene, *, peek: bool = False) -> list:
     story = (view.peek_story if peek and hasattr(view, 'peek_story') else view.get_story)(scene.story_id)
     scenes = (view.peek_scenes if peek and hasattr(view, 'peek_scenes') else view.list_scenes)(scene.story_id)
     return previous_scenes(story, scenes, scene)
+
+
+def lineage_numbers(story, scenes, scene) -> dict[int, int]:
+    """Book scene number -> number in the scene's lineage (the scene itself last); empty when they are equal, so a flat
+    book and sequential arcs keep their selection windows byte for byte (BOOK-LINEAGE-S01/S03)."""
+    chain = previous_scenes(story, scenes, scene) + [scene]
+    numbers = {s.position + 1: i for i, s in enumerate(chain, 1)}
+    return {} if all(book == own for book, own in numbers.items()) else numbers

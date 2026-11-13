@@ -48,7 +48,7 @@ def build_dependency_snapshot(
         for item in prefix:
             head(item, 'prose')
         if len(prefix) > 1:
-            head(prefix[-2], 'memory')
+            previous_memory_selector(view, story, scene, select, head)
     else:
         plans=selected_plan_scenes(scenes,scene,settings)
         count=horizon_future_count(settings)
@@ -90,7 +90,7 @@ def build_dependency_snapshot(
             elif item.id in earlier_ids:
                 head(item, 'prose')
         if previous:
-            head(previous[-1], 'memory')
+            previous_memory_selector(view, story, scene, select, head)
         for name in {'brief': [], 'draft': ['brief'], 'prose_edit': ['brief', 'draft'], 'author_text': [],'author_rewrite': []}[scope]:
             head(scene, name)
         # CONTEXT-002-S05: these stages see «ЗМІНИВСЯ ДЕНЬ», so a change of the parsed day is a change of their input.
@@ -135,6 +135,18 @@ def memory_core_selectors(view,story,scene,scenes,select):
     owners=[scene]+[item for item in (comparison_scene(scenes,scene,hero,story) for hero in tracked) if item]
     for item in dict((item.id,item) for item in owners).values():
         select('scene',item.id,'memory_day_key',day_key(item))
+
+
+def previous_memory_selector(view, story, scene, select, head):
+    """The selector of the memory a scene extends: the memory head of its one head scene, or for a scene after a merge
+    point story/memory_merge_heads of its key (MEMORY-MERGE). Returns the version id (or None)."""
+    from ..memory.previous import previous_memory
+    before = previous_memory(view, scene, require=False)
+    if before.merge_key:
+        select('story', story.id, 'memory_merge_heads', {before.merge_key: before.memory_id or ''})
+    elif before.ancestors:
+        head(before.ancestors[-1], 'memory')
+    return before.memory_id
 
 
 def selector_value(view, selector: DependencySelector):
@@ -447,7 +459,9 @@ def build_author_baseline(view, scene_id: str) -> DependencySnapshot:
     from ..memory.forwarding import projection_policy
     select('scene',scene.id,'memory_projection_policy',projection_policy(view,scene.id))
     previous=previous_scenes(story,scenes,scene)
-    for item,name in [(item,'prose') for item in previous]+([(previous[-1],'memory')] if previous else []):
-        id=item.heads.get(name);select('head',item.id,name,id);include(id)
+    for item in previous:
+        id=item.heads.get('prose');select('head',item.id,'prose',id);include(id)
+    if previous:
+        include(previous_memory_selector(view,story,scene,select,lambda item,name:select('head',item.id,name,item.heads.get(name))))
     return DependencySnapshot(scope='author_text',selectors=selectors,refs=refs,scene_order=order,
         ref_baselines={id:view.acceptances[id].id if id in view.acceptances else None for id in refs})

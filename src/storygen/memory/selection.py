@@ -38,6 +38,15 @@ class SelectionInput:
     language: str = 'uk'           # story language of the rendered section (#32)
     summaries: tuple = ()          # MEMORY-SUMMARY: usable SummaryCandidate of blocks that left the window
     stale_summaries: tuple = ()    # MEMORY-SUMMARY: unusable heads (StaleSummary) of earlier blocks
+    # BOOK-LINEAGE-S03: book scene number -> number in the scene's lineage; empty when they are equal (a chain).
+    lineage_numbers: Mapping[int,int] = field(default_factory=dict)
+
+
+def scenes_back(scene_number: int, source_number: int, lineage_numbers: Mapping[int,int] | None = None) -> int:
+    """How many scenes of the lineage lie between a source scene and the current one (book numbers for a chain)."""
+    if not lineage_numbers:
+        return scene_number-source_number
+    return lineage_numbers.get(scene_number,scene_number)-lineage_numbers.get(source_number,source_number)
 
 
 @dataclass(frozen=True)
@@ -79,7 +88,7 @@ def _recent(inp: SelectionInput, item: MemoryItem) -> bool:
     if item.source_scene is None:return False
     source_day=inp.day_keys.get(item.source_scene)
     same_day=bool(inp.scene_day and source_day and source_day==inp.scene_day)
-    return same_day or item.source_scene>=inp.scene_number-RECENT_SCENES
+    return same_day or scenes_back(inp.scene_number,item.source_scene,inp.lineage_numbers)<=RECENT_SCENES
 
 
 def classify(inp: SelectionInput) -> dict[str,list[MemoryItem]]:
@@ -183,10 +192,9 @@ def select_memory(inp: SelectionInput, char_budget: int) -> MemorySelection:
         else:dropped['summary']+=1
     def covered(item):
         return item.source_scene is not None and any(c.first_number<=item.source_scene<=c.last_number for c in summaries.values())
-    window=inp.scene_number-TIMELINE_WINDOW
     for item in layers['timeline']:
         if covered(item):continue
-        if item.source_scene is not None and item.source_scene<window:dropped['timeline']+=1
+        if item.source_scene is not None and scenes_back(inp.scene_number,item.source_scene,inp.lineage_numbers)>TIMELINE_WINDOW:dropped['timeline']+=1
         else:take('timeline',item)
     quota=int(ATMOSPHERE_SHARE*char_budget)
     for item in layers['atmosphere']:quota-=take('atmosphere',item,quota)
@@ -226,7 +234,7 @@ class NarrowCatalog:
     immutable_shown: int
 
 
-def narrow_catalog(journal, cast, tracked, names, prose: str, scene_number: int, source_numbers: Mapping[str,int]) -> NarrowCatalog:
+def narrow_catalog(journal, cast, tracked, names, prose: str, scene_number: int, source_numbers: Mapping[str,int], lineage_numbers: Mapping[int,int] | None = None) -> NarrowCatalog:
     """Claims the memory stage still sees when its full catalog overflows (MEMORY-SELECT-S07): the core and every thread,
     states of the cast and general states, up to NARROW_FTS_STATES other states ranked by the scene prose, facts that
     mention a participant and the timeline of the last TIMELINE_WINDOW scenes."""
@@ -249,7 +257,7 @@ def narrow_catalog(journal, cast, tracked, names, prose: str, scene_number: int,
             if mentions(event.text,stems):keep.add(event.claim_id);immutable+=1
         elif event.category=='timeline':
             number=source_numbers.get(event.source_version_id)
-            if number is None or number>=scene_number-TIMELINE_WINDOW:keep.add(event.claim_id);immutable+=1
+            if number is None or scenes_back(scene_number,number,lineage_numbers)<=TIMELINE_WINDOW:keep.add(event.claim_id);immutable+=1
     ranked=fts_rank(pool,prose)[:NARROW_FTS_STATES]
     keep.update(event.claim_id for event in ranked);mutable+=len(ranked)
     return NarrowCatalog(frozenset(keep),len(active)-absent-len(keep),mutable,immutable)

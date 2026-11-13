@@ -12,15 +12,17 @@ class MemoryApprovalRequired(ValueError):
 
 def _candidate(view,scene_id):
     scene=view.get_scene(scene_id)
-    from ..book.lineage import earlier_scenes
-    previous=earlier_scenes(view,scene)
+    from .previous import previous_memory, read_previous_journal
+    before=previous_memory(view,scene)  # MergeRequired (a ValueError) when a merge point has no usable merge
+    previous=before.ancestors
     if not previous:return MemoryJournal(),None,[],False
-    memory_id=previous[-1].heads.get('memory')
+    memory_id=before.memory_id
     if not memory_id:raise ValueError('Спершу оновіть пам’ять попередньої сцени')
     ref=view.get_version(memory_id)
-    if ref.kind!='memory' or ref.scene_id!=previous[-1].id or ref.story_id!=scene.story_id or not ref.complete:
+    owner_ok=ref.kind=='memory_merge' and ref.scene_id is None if before.merge_key else ref.kind=='memory' and ref.scene_id==previous[-1].id
+    if not owner_ok or ref.story_id!=scene.story_id or not ref.complete:
         raise ValueError('Попередня пам’ять незавершена або належить іншій сцені')
-    journal=load_memory(view.read_text(memory_id))
+    journal=read_previous_journal(view,before)
     if len(journal.source_prose_ids)!=len(previous):
         raise ValueError('Попередня пам’ять не відповідає порядку попередніх сцен')
     # Only kind/scene_id/story_id/complete/sha256 are read below; a Repository (execute_stage) has no peek_version.
@@ -87,10 +89,10 @@ def approved_source_pairs(provenance):
 
 def provenance_before(view,scene_id):
     scene=view.get_scene(scene_id)
-    from ..book.lineage import earlier_scenes
-    previous=earlier_scenes(view,scene)
-    if not previous or not previous[-1].heads.get('memory'):return []
-    ref=view.get_version(previous[-1].heads['memory'])
+    from .previous import previous_memory
+    before=previous_memory(view,scene,require=False)
+    if not before.memory_id:return []
+    ref=view.get_version(before.memory_id)
     return list(ref.dependency_snapshot.memory_provenance) if ref.dependency_snapshot else []
 
 

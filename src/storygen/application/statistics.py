@@ -9,14 +9,17 @@ def text_statistics(text):
     return {'characters':len(text),'words':len(words)}
 
 
-def memory_statistics(view,scene,memory_id,*,first=False):
+def memory_statistics(view,scene,memory_id,*,first=False,merged=False):
     empty={key:0 for key in CATEGORIES}
     if not memory_id:
         return {'available':True,'version_id':None,'stale':False,'active':empty,'events':empty.copy(),
             'event_count':0,'current_scene_events':0,'operations':{'add':0,'update':0,'retire':0}} if first else {'available':False,'reason':'Пам’ять ще не створена'}
     ref=view.get_version(memory_id)
     try:
-        journal=load_memory(view.read_text(memory_id))
+        if merged:  # MEMORY-MERGE: the memory before a scene after a merge point is the merged journal
+            from ..storage.memory_merges import merge_journal
+            journal=merge_journal(view,memory_id)
+        else:journal=load_memory(view.read_text(memory_id))
         source_scenes={id:view.scenes[v.scene_id] for id,v in view.versions.items()
             if v.kind in {'manual','edited'} and v.scene_id in view.scenes and not view.scenes[v.scene_id].trashed_at}
         if any(id not in source_scenes or source_scenes[id].position>scene.position for id in journal.source_prose_ids):
@@ -46,9 +49,10 @@ def scene_statistics(repo,scene_id,stage,editor_source_head=None,editor_source_v
         else:
             ref=view.get_version(id)
             materials[kind]={'version_id':id,'stale':ref.stale,'complete':ref.complete,**text_statistics(view.read_text(id))}
-    from ..book.lineage import earlier_scenes
-    previous=earlier_scenes(view,scene)
-    prior=memory_statistics(view,previous[-1],previous[-1].heads.get('memory')) if previous else memory_statistics(view,scene,None,first=True)
+    from ..memory.previous import previous_memory
+    before=previous_memory(view,scene,require=False)
+    previous=before.ancestors
+    prior=memory_statistics(view,previous[-1],before.memory_id,merged=bool(before.merge_key)) if previous else memory_statistics(view,scene,None,first=True)
     current=memory_statistics(view,scene,scene.heads.get('memory'))
     role=roles.get({'brief':'planner','draft':'writer','edit':'editor','memory':'memory'}[stage])
     context={'available':False,'reason':'Роль не налаштована'}

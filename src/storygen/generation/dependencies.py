@@ -107,10 +107,11 @@ def _manual_snapshot(repo,scene,head,*,day_selectors=False):
     if not scene.heads.get('plan'):select('scene',scene.id,'beats',scene.beats)
     from ..memory.forwarding import projection_policy
     select('scene',scene.id,'memory_projection_policy',projection_policy(view,scene.id))
-    bindings=[(s,'prose') for s in previous]
-    if previous:bindings.append((previous[-1],'memory'))
-    for item,name in bindings:
-        id=item.heads.get(name);select('head',item.id,name,id);source(id)
+    for item in previous:
+        id=item.heads.get('prose');select('head',item.id,'prose',id);source(id)
+    if previous:
+        from ..storage.snapshots import previous_memory_selector
+        source(previous_memory_selector(view,story,scene,select,lambda item,name:select('head',item.id,name,item.heads.get(name))))
     if day_selectors:
         # An MCP draft was written from writing-context with its day_change note; the author's own text was not.
         from ..storage.snapshots import memory_core_selectors

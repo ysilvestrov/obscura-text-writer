@@ -1,5 +1,5 @@
 from ..scene_description import SCENE_HEADING
-from ..book.lineage import previous_scenes
+from ..book.lineage import lineage_numbers, previous_scenes
 import hashlib
 import json
 from dataclasses import dataclass
@@ -306,7 +306,9 @@ def build_context(repo,scene_id: str,stage: str,settings: RoleSettings,*,editor_
         if repo.get_version(prose_id).kind not in {'edited','manual'}:
             raise ValueError('Пам’ять може спиратися лише на вибрану прозу')
         refs.extend(past.source_prose_ids)
-        if previous:refs.append(previous[-1].heads['memory'])
+        from ..memory.previous import previous_memory
+        before=previous_memory(repo,scene)
+        if before.memory_id:refs.append(before.memory_id)
         expected=past.source_prose_ids+[prose_id]
         from .evidence import render_fragments
         from ..characters.models import load_characters
@@ -343,8 +345,9 @@ def build_context(repo,scene_id: str,stage: str,settings: RoleSettings,*,editor_
         def narrower():
             from ..memory.selection import narrow_catalog
             numbers={s.id:s.position+1 for s in scenes}
+            from ..book.lineage import lineage_numbers
             narrow=narrow_catalog(past,scene.character_ids,everyone,names,prose_text,scene.position+1,
-                {id:numbers[repo.get_version(id).scene_id] for id in past.source_prose_ids})
+                {id:numbers[repo.get_version(id).scene_id] for id in past.source_prose_ids},lineage_numbers(story,scenes,scene))
             small,_,small_bounds,small_sections=catalog_sections(set(narrow.keep))
             return (small_sections,{'memory_schema_bounds':json.dumps(small_bounds,ensure_ascii=False)},
                 {'projection_version':f'memory-catalog-v{wire}-narrow','catalog_chars':len(small),
@@ -422,7 +425,8 @@ def build_context(repo,scene_id: str,stage: str,settings: RoleSettings,*,editor_
         from ..memory.summaries import usable_summaries
         summaries,stale=usable_summaries(repo,story,scenes,scene.position+1,language)
         return SelectionInput(tuple(items),scene.id,scene.position+1,tuple(scene.character_ids),tuple(tracked),names,'\n'.join(query),kinds(),
-            day_key(scene),{s.position+1:day_key(s) for s in previous_scenes(story,scenes,scene)},language,tuple(summaries),tuple(stale))
+            day_key(scene),{s.position+1:day_key(s) for s in previous_scenes(story,scenes,scene)},language,tuple(summaries),tuple(stale),
+            lineage_numbers(story,scenes,scene))
     def kinds():
         from ..memory.kinds import kind_overrides
         return kind_overrides(repo if hasattr(repo,'peek_scene') else repo.context_view(story.id),scene.id)
@@ -431,7 +435,8 @@ def build_context(repo,scene_id: str,stage: str,settings: RoleSettings,*,editor_
     fragments={}
     if previous:
         refs.extend(past.source_prose_ids)
-        refs.append(previous[-1].heads['memory'])
+        from ..memory.previous import previous_memory
+        refs.append(previous_memory(repo,scene).memory_id)
         tail=repo.read_text(previous[-1].heads['prose'])[-profile.previous_tail_chars:] if profile.previous_tail_chars else ''
         fragments['previous_prose_tail']=tail
         sections.append(label('previous_tail',language)+'\n'+tail)
