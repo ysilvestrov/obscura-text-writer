@@ -5588,6 +5588,32 @@
       "tests": [
         "tests/web/test_writing_mode.py::test_switching_mode_keeps_texts_and_running_runs"
       ]
+    },
+    {
+      "id": "STORY-TIME-S01",
+      "requirement": "STORY-TIME",
+      "scope": "Розбір позначок: старі ключі незмінні, відносні форми в будь-якому порядку, «невідомо», позначка спогаду, неправильні рядки.",
+      "tests": [
+        "tests/memory/test_story_time.py::test_legacy_keys_are_unchanged",
+        "tests/memory/test_story_time.py::test_relative_forms_in_any_order",
+        "tests/memory/test_story_time.py::test_day_only_keeps_the_day_key",
+        "tests/memory/test_story_time.py::test_unknown_and_flashback_marks",
+        "tests/memory/test_story_time.py::test_malformed_lines_are_not_moments"
+      ]
+    },
+    {
+      "id": "STORY-TIME-S02",
+      "requirement": "STORY-TIME",
+      "scope": "Порядок моментів одного виду, зміна дня між формами, початок арки без спогадів і кошика.",
+      "tests": [
+        "tests/memory/test_story_time.py::test_before_compares_one_kind_only",
+        "tests/memory/test_story_time.py::test_relative_day_label",
+        "tests/memory/test_story_time.py::test_day_change_between_day_and_relative_forms",
+        "tests/book/test_arc_start.py::test_arc_start_is_the_first_scene_that_is_not_a_flashback",
+        "tests/book/test_arc_start.py::test_arc_start_skips_trashed_scenes",
+        "tests/book/test_arc_start.py::test_a_meeting_scene_can_open_its_arcs",
+        "tests/book/test_arc_start.py::test_arc_start_without_a_present_scene_is_unknown"
+      ]
     }
   ]
 }
