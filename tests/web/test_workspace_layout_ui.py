@@ -34,11 +34,29 @@ def test_run_controls_and_limit_live_in_the_status_row(tmp_path):
     tree,html=page(tmp_path)
     for id in ['run-status','run-actions','workspace-error-settings','run-options','workspace-scene-status']:
         assert id in tree.ancestors,id
-        assert {'.workspace-sticky','#workspace-status-row'}<=tree.ancestors[id],id
-    # A waiting review card can be long: it sits right under the sticky block, never inside it (final review #1).
+        assert '#workspace-status-row' in tree.ancestors[id],id
     assert '.workspace-sticky' not in tree.ancestors['review-attention']
     assert '#workspace' in tree.ancestors['review-attention']
     assert 'workspace-status"' not in html.split('class="context-panel"')[1]
+
+
+@pytest.mark.req('R20-WORKSPACE')
+def test_pinned_area_keeps_only_tabs_toolbar_and_notes(tmp_path):
+    tree,html=page(tmp_path)
+    # Status row, run controls and the waiting review card scroll with the page under the material.
+    for id in ['workspace-status-row','review-attention','workspace-hint-info']:
+        assert '.workspace-sticky' not in tree.ancestors[id],id
+    material=html.index('id="workspace-material"')
+    assert material<html.index('id="workspace-hint-info"')<html.index('id="workspace-status-row"')<html.index('id="review-attention"')
+    assert tree.attrs['review-attention'].get('tabindex')=='-1'
+    # What must stay in view while typing: the blocked-action reason, the external origin and change notices.
+    for id in ['workspace-hint','workspace-origin','external-change']:
+        assert {'.workspace-sticky','.workspace-pinned-notes'}<=tree.ancestors[id],id
+    for id in ['run-jump','workspace-focus']:
+        assert {'.workspace-sticky','.editor-toolbar'}<=tree.ancestors[id],id
+    assert 'hidden' in tree.attrs['run-jump'] and tree.attrs['run-jump'].get('href')=='#workspace-status-row'
+    focus=tree.attrs['workspace-focus']
+    assert focus.get('aria-pressed')=='false' and focus.get('aria-label')==focus.get('title')=='На весь екран'
 
 
 @pytest.mark.req('WORKSPACE-TOOLS')
