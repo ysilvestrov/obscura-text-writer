@@ -1849,3 +1849,12 @@ Playwright `memory-kind.spec.mjs` і `core-review.spec.mjs` пройшли вр�
 - `verify.py` на `bd15be0` (з `C:/tmp/epl`): passed 2898, failed 0, skipped 1.
 - Після злиття `origin/main` (#149, #152) у гілку: `verify.py` на `c994de4`: passed 2898, failed 0, skipped 1.
 - Після злиття #151 у `main` і повторного злиття в гілку: `verify.py` на `5302c74`: passed 2904, failed 0, skipped 1.
+
+## 13.11.2026 — Компактна закріплена область і режим «На весь екран» (R20-WORKSPACE-S03/S05)
+
+- Запит власника: закріплена область над редактором займала до двох третин вікна навіть згорнутою. Специфікація `docs/superpowers/specs/2026-11/2026-11-12-workspace-focus-layout-design.md` затверджена 13.11.2026 (оцінка S/S).
+- Рядок стану, керування запуском, «Параметри запуску», пояснення до основної дії й картка послідовної перевірки перенесено в шаблоні під `#workspace-material`; вгорі лишилися вкладки, рядок Save/основна дія з моделлю й примітки (причина недоступності, походження версії, зовнішня зміна). Посилання «Потрібне рішення ↓» (`run-jump.js`) і режим «На весь екран» усередині вікна (`workspace-focus.js`, Esc у фазі захоплення через прив'язку Esc у ProseMirror).
+- SPEC.MD: R20-WORKSPACE (текст, S03 переписано, S04 — «під редактором», новий S05), RUN-RECOVERY-UI, WORKSPACE-TELEMETRY, опис `#workspace-origin`; traceability; `manual.md#workspace-layout`; `docs/site/{uk,en}/workspace.md` і знімки `workspace-*`, `story-menu-*`, пару підтверджено.
+- Cross-review (agy/gemini-3.8-flash; codex і agy Argon — ліміти): специфікація — 7 знахідок, усі виправлено; код — 4 знахідки, усі виправлено (`0aa7da6`), головна: фіксована панель режиму перекривала `#notice`.
+- Playwright повністю (desktop+mobile) на `06b2d04`: 309 passed, 3 skipped; `workspace-layout.spec.mjs` після виправлень на `0aa7da6`: 22 passed.
+- `verify.py` на `0aa7da6` (з `C:/tmp/epl`): passed 2906, failed 0, skipped 1.

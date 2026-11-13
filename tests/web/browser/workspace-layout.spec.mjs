@@ -1,10 +1,11 @@
 import {test,expect} from '../../../frontend/browser-test.mjs';
 
-// #89 R20-WORKSPACE: run controls, the scene status and the next-run limit sit in the status row above the editor.
+// R20-WORKSPACE-S03: run controls, the scene status and the next-run limit sit in the status row under the material.
 test('status row holds run controls and the next-run limit',async({page,request})=>{
   const fixture=await(await request.post('/test-editor-no-changes')).json();
   await page.goto(`/stories/${fixture.story_id}?scene=${fixture.scene_id}&material=draft`);
-  const row=page.locator('.workspace-sticky #workspace-status-row');
+  const row=page.locator('#workspace-material ~ #workspace-status-row');
+  await expect(page.locator('.workspace-sticky #workspace-status-row')).toHaveCount(0);
   await expect(row.locator('#workspace-scene-status')).not.toBeEmpty();
   // Which run actions are visible for which run state is unchanged (runs.js / run-readiness.js); here only their place.
   await expect(row.locator('#run-actions button',{hasText:/^(Скасувати|Cancel)$/})).toHaveCount(1);
@@ -13,6 +14,57 @@ test('status row holds run controls and the next-run limit',async({page,request}
   await row.locator('#run-options summary').click();
   await expect(row.locator('#run-options #run-budget')).toBeVisible();
   await expect(page.locator('.context-panel .budget-panel')).toHaveCount(0);
+});
+
+// R20-WORKSPACE-S03: a run waiting for the author keeps the pinned area small and offers a jump to its controls.
+test('waiting run shows a decision link and the pinned area stays small',async({page,request})=>{
+  await page.setViewportSize({width:1280,height:800});
+  const f=await(await request.post('/test-impact')).json();
+  const run={id:'layout-failed-run',story_id:f.story_id,state:'failed',error:'Synthetic saved failure',created_at:new Date().toISOString(),cursor:0,tasks:[{stage:'impact_part',phase:'check',scene_id:f.scene_id}],request:{mode:'impact',stage:null},impact:{protocol:2}};
+  await page.route(`**/api/stories/${f.story_id}/runs`,route=>route.fulfill({json:{runs:[run]}}));
+  await page.route('**/api/runs/layout-failed-run',route=>route.fulfill({json:{run,attempts:[],partial:''}}));
+  await page.route('**/api/runs/layout-failed-run/readiness',route=>route.fulfill({json:{ready:true}}));
+  try{
+    await page.goto(`/stories/${f.story_id}?scene=${f.scene_id}&material=prose`);
+    await expect(page.locator('#run-status')).toContainText('Synthetic saved failure');
+    const jump=page.locator('.workspace-sticky #run-jump');
+    await expect(jump).toBeVisible();await expect(jump).toHaveText(/Потрібне рішення|Decision needed/);
+    const sticky=await page.locator('.workspace-sticky').boundingBox();
+    expect(sticky.height).toBeLessThanOrEqual(800/3);
+    await jump.click();
+    await expect(page.locator('#workspace-status-row')).toBeInViewport();
+    expect(await page.evaluate(()=>!!document.activeElement?.matches('#workspace-status-row #run-actions button:enabled'))).toBe(true);
+  }finally{await page.unrouteAll({behavior:'wait'});}
+});
+
+// R20-WORKSPACE-S05: full screen spreads the editor over the window and Escape restores the page.
+test('full screen mode spreads the editor and exits on Escape',async({page,request})=>{
+  await page.setViewportSize({width:1280,height:800});
+  const fixture=await(await request.post('/test-editor-no-changes')).json();
+  await page.goto(`/stories/${fixture.story_id}?scene=${fixture.scene_id}&material=draft`);
+  const toggle=page.locator('#workspace-focus');
+  await expect(toggle).toHaveAttribute('aria-pressed','false');
+  await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-pressed','true');
+  await expect(toggle).toHaveAttribute('aria-label',/Згорнути|Exit full screen/);
+  // Notices (save errors) stay above the fixed editor panel.
+  await page.evaluate(()=>{const n=document.querySelector('#notice');n.textContent='Synthetic notice';n.hidden=false;n.className='error'});
+  const notice=await page.locator('#notice').boundingBox();
+  expect(await page.evaluate(([x,y])=>document.elementFromPoint(x,y)?.closest('#notice')!==null,[notice.x+notice.width/2,notice.y+notice.height/2])).toBe(true);
+  for(const hidden of ['.scene-panel','.context-panel','.storybar','#mode-tabs','#workspace-status-row','#workspace-primary','.topbar'])await expect(page.locator(hidden).first()).toBeHidden();
+  await expect(page.locator('#save-text')).toBeVisible();
+  const box=await page.locator('.ProseMirror').boundingBox();
+  expect(box.height).toBeGreaterThanOrEqual(800*0.8);
+  await expect(page.locator('.ProseMirror')).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(toggle).toHaveAttribute('aria-pressed','false');
+  await expect(page.locator('.scene-panel')).toBeVisible();await expect(page.locator('#mode-tabs')).toBeVisible();
+  // Plain materials (plan, brief) use the textarea and spread the same way.
+  await page.goto(`/stories/${fixture.story_id}?scene=${fixture.scene_id}&material=plan`);
+  await toggle.click();
+  const area=await page.locator('textarea#editor').boundingBox();
+  expect(area.height).toBeGreaterThanOrEqual(800*0.8);
+  await toggle.click();await expect(page.locator('.scene-panel')).toBeVisible();
 });
 
 // #89 WORKSPACE-TOOLS: three icon actions, story actions behind a keyboard-operable disclosure menu.

@@ -3616,9 +3616,11 @@
     {
       "id": "R20-WORKSPACE-S03",
       "requirement": "R20-WORKSPACE",
-      "scope": "Розташування рядка стану й керування запуском (#89); не доказ набору дій для станів запуску.",
+      "scope": "Розташування рядка стану під матеріалом, закріплені примітки й посилання «Потрібне рішення ↓»; не доказ набору дій для станів запуску.",
       "tests": [
-        "tests/web/test_workspace_layout_ui.py::test_run_controls_and_limit_live_in_the_status_row"
+        "tests/web/test_workspace_layout_ui.py::test_run_controls_and_limit_live_in_the_status_row",
+        "tests/web/test_workspace_layout_ui.py::test_pinned_area_keeps_only_tabs_toolbar_and_notes",
+        "tests/web/test_run_jump.py::test_run_jump_link_follows_waiting_runs_and_review_card"
       ],
       "manual": {
         "procedure": "docs/verification/manual.md#workspace-layout",
@@ -3636,6 +3638,18 @@
       "manual": {
         "procedure": "docs/verification/manual.md#run-status-collapse",
         "reason": "Playwright run-status-collapse запускається вручну; check_docs.py індексує лише pytest IDs."
+      }
+    },
+    {
+      "id": "R20-WORKSPACE-S05",
+      "requirement": "R20-WORKSPACE",
+      "scope": "Структура кнопки режиму в шаблоні; поведінку режиму (приховування, висота, фокус, Esc) перевіряє браузерний тест у ручній процедурі.",
+      "tests": [
+        "tests/web/test_workspace_layout_ui.py::test_pinned_area_keeps_only_tabs_toolbar_and_notes"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#workspace-layout",
+        "reason": "Playwright workspace-layout запускається вручну; check_docs.py індексує лише pytest IDs."
       }
     },
     {

@@ -23,7 +23,7 @@ def test_external_origin_label():
 @pytest.mark.req('MCP-BRIDGE')
 def test_history_and_status_row_show_the_label():
     template = (ROOT / 'src/storygen/web/templates/story.html').read_text(encoding='utf-8')
-    row = re.search(r'<section id="workspace-status-row".*?</section>', template, re.S).group(0)
+    row = re.search(r'<div class="workspace-pinned-notes".*?</div>', template, re.S).group(0)
     assert re.search(r'<p id="workspace-origin"[^>]*\bhidden\b', row)
     editor = (STATIC / 'editor.js').read_text(encoding='utf-8')
     versions = (STATIC / 'versions.js').read_text(encoding='utf-8')
