@@ -35,7 +35,7 @@ const newId=prefix=>`${prefix}-${Date.now().toString(36)}-${(counter++).toString
 
 // The panel edits a copy; nothing reaches the server until save sends the whole structure in one PUT.
 export function createBuffer(book,scenes){
-  const parts=(book?.parts||[]).map(part=>({id:part.id,title:part.title||'',arcs:part.arcs.map(arc=>({id:arc.id,title:arc.title||''}))}));
+  const parts=(book?.parts||[]).map(part=>({id:part.id,title:part.title||'',arcs:part.arcs.map(arc=>({id:arc.id,title:arc.title||'',protagonist_id:arc.protagonist_id||null}))}));
   const used=new Map();for(const scene of scenes)used.set(scene.arc_id,(used.get(scene.arc_id)||0)+1);
   return {parts,used,scene_arcs:Object.fromEntries(scenes.filter(s=>s.arc_id).map(s=>[s.id,s.arc_id]))};
 }
@@ -68,5 +68,5 @@ export function remove(buffer,p,a){
 }
 
 export function payload(buffer,expected_revision){
-  return {expected_revision,parts:buffer.parts.map(part=>({id:part.id,title:part.title,arcs:part.arcs.map(arc=>({id:arc.id,title:arc.title}))})),scene_arcs:buffer.scene_arcs};
+  return {expected_revision,parts:buffer.parts.map(part=>({id:part.id,title:part.title,arcs:part.arcs.map(arc=>({id:arc.id,title:arc.title,protagonist_id:arc.protagonist_id||null}))})),scene_arcs:buffer.scene_arcs};
 }

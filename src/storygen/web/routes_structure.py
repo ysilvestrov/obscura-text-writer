@@ -11,6 +11,7 @@ router = APIRouter()
 class ArcIn(DomainModel):
     id: str | None = Field(default=None, max_length=64)
     title: str = Field(default='', max_length=200)
+    protagonist_id: str | None = Field(default=None, min_length=1, max_length=64)
 
 
 class PartIn(DomainModel):

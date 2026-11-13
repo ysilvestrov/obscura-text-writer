@@ -21,11 +21,29 @@ def _id(value):
     return value
 
 
+def _protagonist(value):
+    if value is None or isinstance(value, str) and value and len(value) <= MAX_ID:
+        return value
+    raise ValueError('Некоректний ID протагоніста арки')
+
+
+def _require_cards(repo, db, story, structure):
+    """BOOK-LINEAGE-S04: an explicit protagonist names a card of the current character set."""
+    wanted = {arc.protagonist_id for part in structure.parts for arc in part.arcs if arc.protagonist_id}
+    if not wanted:
+        return
+    from .context_view import ContextView
+    from .snapshots import core_cards
+    if wanted - {card.id for card in core_cards(ContextView(repo, db, story.id), story)}:
+        raise ValueError('Протагоніст арки — картка, якої немає серед персонажів')
+
+
 def build_structure(parts: list[dict]) -> BookStructure:
     """Parts from the request; a null id gets a new one. A client may name ids itself to bind scenes to new arcs."""
     try:
         structure = BookStructure(parts=[Part(id=_id(p.get('id')), title=p.get('title') or '',
-                                              arcs=[Arc(id=_id(a.get('id')), title=a.get('title') or '') for a in p.get('arcs') or []])
+                                              arcs=[Arc(id=_id(a.get('id')), title=a.get('title') or '',
+                                                        protagonist_id=_protagonist(a.get('protagonist_id'))) for a in p.get('arcs') or []])
                                          for p in parts])
     except (AttributeError, TypeError) as exc:
         raise ValueError('Некоректна структура книги') from exc
@@ -58,6 +76,7 @@ def put_structure(repo, story_id: str, parts: list[dict], scene_arcs: dict, expe
     known = arc_order(structure)
     with repo.db.connection() as db:
         story = _begin(repo, db, story_id, expected_revision)
+        _require_cards(repo, db, story, structure)
         scenes = _scenes(db, story_id)
         active = [s for s in scenes if not s.trashed_at]
         ids = {s.id for s in scenes}
