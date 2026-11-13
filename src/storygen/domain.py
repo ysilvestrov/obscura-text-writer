@@ -74,7 +74,8 @@ class Story(StoryCreate):
     memory_kind_overrides: dict[str,Literal['core','atmosphere']] = Field(default_factory=dict,max_length=10000)
     # BOOK-STRUCTURE: parts and arcs, and the arc of each scene; None is one implicit part and arc.
     book_structure: BookStructure | None = None
-    scene_arcs: dict[str,str] = Field(default_factory=dict,max_length=100000)
+    # A string is one arc; a list of two or more arcs of one part is a meeting scene (read via book.structure.scene_arc_list).
+    scene_arcs: dict[str,str|list[str]] = Field(default_factory=dict,max_length=100000)
     # MEMORY-SUMMARY: block key -> current timeline_summary version; CAS on the story revision.
     timeline_summary_heads: dict[str,str] = Field(default_factory=dict,max_length=1000)
     created_at: str = Field(default_factory=now)

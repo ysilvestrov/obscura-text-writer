@@ -46,7 +46,7 @@ def test_put_structure_and_story_view(tmp_path):
 def test_put_structure_conflict_and_sequence_errors(tmp_path):
     client, repo, story, scenes = setup(tmp_path)
     assert put(client, story, scenes, ['a1', 'a2', 'b1'], story.revision - 1).status_code == 409
-    mixed = put(client, story, scenes, ['a2', 'a1', 'b1'])
+    mixed = put(client, story, scenes, ['b1', 'a1', 'a2'])
     assert mixed.status_code == 400 and 'Scene 2' in mixed.text
     assert repo.get_story(story.id).book_structure is None
 

@@ -1,6 +1,6 @@
 """BOOK-STRUCTURE API: parts and arcs of a book, the arc of a scene. CAS on the story revision."""
 from fastapi import APIRouter, Request
-from pydantic import Field
+from pydantic import Field, model_validator
 
 from ..book.guard import require_long_prose
 from ..domain import DomainModel
@@ -23,7 +23,7 @@ class PartIn(DomainModel):
 class StructureChange(DomainModel):
     expected_revision: int
     parts: list[PartIn] = Field(max_length=200)
-    scene_arcs: dict[str, str] = Field(default_factory=dict, max_length=100000)
+    scene_arcs: dict[str, str | list[str]] = Field(default_factory=dict, max_length=100000)
 
 
 class Revision(DomainModel):
@@ -31,8 +31,16 @@ class Revision(DomainModel):
 
 
 class ArcAssignment(DomainModel):
-    arc_id: str = Field(min_length=1, max_length=64)
+    """One arc (`arc_id`) or the arcs of a meeting scene (`arc_ids`): exactly one of the two."""
+    arc_id: str | None = Field(default=None, min_length=1, max_length=64)
+    arc_ids: list[str] | None = Field(default=None, min_length=1, max_length=20)
     expected_revision: int
+
+    @model_validator(mode='after')
+    def one_form(self):
+        if (self.arc_id is None) == (self.arc_ids is None):
+            raise ValueError('Потрібне одне з полів: arc_id або arc_ids')
+        return self
 
 
 @router.put('/api/stories/{story_id}/structure')
@@ -53,4 +61,4 @@ def delete_structure(story_id: str, change: Revision, request: Request):
 def put_scene_arc(story_id: str, scene_id: str, change: ArcAssignment, request: Request):
     require_long_prose()
     from ..storage.book_structure import assign_scene
-    return assign_scene(request.app.state.repo, story_id, scene_id, change.arc_id, change.expected_revision)
+    return assign_scene(request.app.state.repo, story_id, scene_id, change.arc_ids if change.arc_ids is not None else change.arc_id, change.expected_revision)

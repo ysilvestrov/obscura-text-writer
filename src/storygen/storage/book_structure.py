@@ -2,7 +2,7 @@
 
 Never touches versions, dependency edges or scene revisions: the structure is not part of any context.
 """
-from ..book.structure import arc_before, arc_order, check_sequential, validate_shape
+from ..book.structure import arc_before, arc_order, canonical_arcs, check_order, scene_arc_list, validate_shape
 from ..domain import Arc, BookStructure, Part, RevisionConflict, Scene, new_id
 
 CONFLICT = 'Твір уже змінено. Оновіть сторінку; структуру книги не збережено.'
@@ -51,8 +51,21 @@ def build_structure(parts: list[dict]) -> BookStructure:
     return structure
 
 
+def _binding(value):
+    """A request binding: an arc id or a list of arc ids (a meeting scene); stored in canonical form."""
+    arcs = [value] if isinstance(value, str) else value
+    if not isinstance(arcs, list) or not arcs or len(arcs) > 20 or any(not isinstance(a, str) or not a or len(a) > MAX_ID for a in arcs):
+        raise ValueError('Некоректна прив’язка сцени до арки')
+    return canonical_arcs(arcs)
+
+
+def _known(scene_arcs, scene_id, known):
+    arcs = scene_arc_list(scene_arcs, scene_id)
+    return bool(arcs) and all(a in known for a in arcs)
+
+
 def _require_sequence(structure, scene_arcs, active):
-    problems = check_sequential(structure, scene_arcs, active)
+    problems = check_order(structure, scene_arcs, active)
     if problems:
         raise ValueError('; '.join(problems[:10]) + (f' (і ще {len(problems) - 10})' if len(problems) > 10 else ''))
 
@@ -82,8 +95,8 @@ def put_structure(repo, story_id: str, parts: list[dict], scene_arcs: dict, expe
         ids = {s.id for s in scenes}
         if any(key not in ids for key in scene_arcs):
             raise ValueError('Прив’язка до сцени, якої немає у творі')
-        bindings = {s.id: story.scene_arcs[s.id] for s in scenes if s.trashed_at and story.scene_arcs.get(s.id) in known}
-        bindings.update({key: value for key, value in scene_arcs.items() if key in {s.id for s in active}})
+        bindings = {s.id: story.scene_arcs[s.id] for s in scenes if s.trashed_at and _known(story.scene_arcs, s.id, known)}
+        bindings.update({key: _binding(value) for key, value in scene_arcs.items() if key in {s.id for s in active}})
         if len(known) == 1:
             # One arc for the whole book: unbound scenes can only belong to it.
             only = next(iter(known))
@@ -92,7 +105,7 @@ def put_structure(repo, story_id: str, parts: list[dict], scene_arcs: dict, expe
         return _save(repo, db, story, book_structure=structure, scene_arcs=bindings)
 
 
-def assign_scene(repo, story_id: str, scene_id: str, arc_id: str, expected_revision: int):
+def assign_scene(repo, story_id: str, scene_id: str, arc_ids: list[str] | str, expected_revision: int):
     with repo.db.connection() as db:
         story = _begin(repo, db, story_id, expected_revision)
         if story.book_structure is None:
@@ -101,9 +114,10 @@ def assign_scene(repo, story_id: str, scene_id: str, arc_id: str, expected_revis
         active = [s for s in scenes if not s.trashed_at]
         if scene_id not in {s.id for s in active}:
             raise KeyError('Сцену не знайдено')
-        if arc_id not in arc_order(story.book_structure):
+        binding = _binding(arc_ids)
+        if any(arc not in arc_order(story.book_structure) for arc in scene_arc_list({scene_id: binding}, scene_id)):
             raise ValueError('Такої арки немає в структурі книги')
-        bindings = {**story.scene_arcs, scene_id: arc_id}
+        bindings = {**story.scene_arcs, scene_id: binding}
         _require_sequence(story.book_structure, bindings, active)
         return _save(repo, db, story, scene_arcs=bindings)
 
@@ -136,8 +150,7 @@ def bind_restored_scene(story, ordered_active: list[Scene], scene: Scene):
     if story.book_structure is None:
         return story
     placed = [s.model_copy(update={'position': i}) for i, s in enumerate(ordered_active)]
-    current = story.scene_arcs.get(scene.id)
-    if current in arc_order(story.book_structure) and not check_sequential(story.book_structure, story.scene_arcs, placed):
+    if _known(story.scene_arcs, scene.id, arc_order(story.book_structure)) and not check_order(story.book_structure, story.scene_arcs, placed):
         return story
     position = next(i for i, s in enumerate(ordered_active) if s.id == scene.id)
     arc = arc_before(story.book_structure, story.scene_arcs, [s for s in placed if s.id != scene.id], position)
