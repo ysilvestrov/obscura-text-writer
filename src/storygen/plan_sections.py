@@ -51,6 +51,21 @@ ARC_LINE=re.compile(r'^(?:арка|arc)\s*:\s*(.*)$',re.IGNORECASE)
 PROTAGONIST_LINE=re.compile(r'^(?:протагоніст|protagonist)\s*:\s*(.*)$',re.IGNORECASE)
 # MEMORY-MERGE harness: «Арки: А, Б» — a meeting scene of several arcs of its part (comma or semicolon separated).
 ARCS_LINE=re.compile(r'^(?:арки|arcs)\s*:\s*(.*)$',re.IGNORECASE)
+# STORY-TIME: «Спогад: так|ні» sets the scene's flashback flag in every edition and is cut from the scene plan.
+FLASHBACK_LINE=re.compile(r'^(?:спогад|flashback)\s*:\s*(.*)$',re.IGNORECASE)
+FLASHBACK_VALUES={'так':True,'yes':True,'true':True,'ні':False,'no':False,'false':False}
+
+
+def cut_flashback_line(text):
+    """(text without «Спогад:» lines, the last valid value or None, whether a line had another value)."""
+    kept=[];value=None;invalid=False
+    for line in text.splitlines(keepends=True):
+        match=FLASHBACK_LINE.fullmatch(_plain(line.rstrip('\r\n')))
+        if not match:kept.append(line);continue
+        word=_plain(match[1]).strip().casefold()
+        if word in FLASHBACK_VALUES:value=FLASHBACK_VALUES[word]
+        else:invalid=True
+    return ''.join(kept),value,invalid
 
 
 @dataclass(frozen=True)

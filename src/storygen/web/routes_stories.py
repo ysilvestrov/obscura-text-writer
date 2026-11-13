@@ -25,6 +25,8 @@ class ScenePatch(DomainModel):
     character_ids: list[str] | None=None
     # 'story' resets the override so the scene follows the story language again; None leaves it unchanged.
     prose_language: Literal['uk','en','story'] | None=None
+    # STORY-TIME: the flashback flag; None leaves it unchanged.
+    flashback: bool | None=None
     # MCP-BRIDGE-S19: the plan head the external client read; null means it read a scene without a plan version.
     expected_plan_version_id: str | None=Field(default=None,max_length=64)
 
@@ -102,8 +104,10 @@ def story_view(id: str,request: Request):
     book={"kind":structure.kind,"explicit":structure.explicit,"parts":[part.model_dump() for part in structure.parts]}
     # arc_id stays the first arc for old clients; arc_ids lists every arc of a meeting scene (MEMORY-MERGE harness).
     from ..storage.memory_merges import merge_markers
+    from ..memory.story_time import flashback_marked
     marks=merge_markers(view,story,listed) if story.book_structure is not None else {}
-    scenes=[{**view.effective_scene(scene.id).model_dump(),"arc_id":structure.arc_of.get(scene.id),"arc_ids":list(structure.arcs_of.get(scene.id,())),"memory_merge":marks.get(scene.id)} for scene in listed]
+    scenes=[{**view.effective_scene(scene.id).model_dump(),"arc_id":structure.arc_of.get(scene.id),"arc_ids":list(structure.arcs_of.get(scene.id,())),"memory_merge":marks.get(scene.id),
+        "flashback_marked":flashback_marked(scene.beats)} for scene in listed]
     return {"impact_status":scene_status(view),"language_locked":request.app.state.repo.story_language_locked(id),"story":story,"book_structure":book,"scenes":scenes,"scene_ratings":ratings,"sources":[view.get_version(v.id) for v in view.versions.values() if v.kind in {"source_plan","source_characters"}],"character_names":names,"source_files":view.source_files,"active_sources":view.sources}
 
 
@@ -147,7 +151,7 @@ def patch_scene(id: str,data: ScenePatch,request: Request):
         raise ValueError('Ідентифікатор прочитаного плану передається лише разом із планом')
     scene=repo.get_scene(id)
     revision=data.expected_revision
-    changes={key:value for key,value in data.model_dump().items() if key in {"title","target_words","character_ids"} and value is not None}
+    changes={key:value for key,value in data.model_dump().items() if key in {"title","target_words","character_ids","flashback"} and value is not None}
     if data.prose_language is not None:
         changes['prose_language']=None if data.prose_language=='story' else data.prose_language
     # The whole patch is validated before the first change, so a bad field leaves neither plan nor properties written.

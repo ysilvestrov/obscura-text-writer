@@ -98,24 +98,31 @@ def _plan(repo,view,story,text,version,item,publication):
         item.warnings.append('Дублікати сцен за номером пропущено; наявні сцени не змінено.')
         return []
     base,remainder=divmod(story.target_words,len(accepted))
-    proposals=[]
+    proposals=[];cut=False;invalid_flashback=False
+    from ..plan_sections import cut_flashback_line
     for index,section in enumerate(accepted):
-        data=SceneCreate(title=section.title,beats=section.text,author_scene_number=section.author_scene_number,target_words=1000 if existing else max(1,base+(index<remainder)))
-        plan=repo.save_version(story.id,None,'scene_plan',section.text,[version.id])
+        # STORY-TIME: «Спогад: так|ні» is cut from the scene plan and sets the flag in every edition.
+        beats,flashback,invalid=cut_flashback_line(section.text)
+        cut=cut or beats!=section.text;invalid_flashback=invalid_flashback or invalid
+        data=SceneCreate(title=section.title,beats=beats,author_scene_number=section.author_scene_number,target_words=1000 if existing else max(1,base+(index<remainder)),
+                         flashback=bool(flashback))
+        plan=repo.save_version(story.id,None,'scene_plan',beats,[version.id])
         place=places.get(id(section))
         publication.scenes.append(ImportedScene(data=data,plan_version_id=plan.id,part_title=place.part_title if place else None,
                                                 arc_title=place.arc_title if place else None,part_index=place.part_index if place else None,
                                                 protagonist_name=place.protagonist_name if place else None,
                                                 arc_titles=list(place.arc_titles) if place and place.arc_titles else None));proposals.append(data)
+    if invalid_flashback:item.warnings.append('Рядок «Спогад:» має бути «так» або «ні»; прапорець не поставлено.')
+    texts=[cut_flashback_line(s.text)[0] for s in accepted]
     previous=view.active_source(story.id,'source_plan')
     if previous:
-        combined=view.read_text(previous.id)+'\n\n'+''.join(s.text for s in accepted)
+        combined=view.read_text(previous.id)+'\n\n'+''.join(texts)
         active=repo.save_version(story.id,None,'source_plan',combined,[previous.id,version.id])
         publication.active_plan_version_id=active.id
     # A structured plan is never kept as is: its part headings and arc lines must not reach the source plan.
-    elif len(accepted)==len(sections) and not publication.structured:publication.active_plan_version_id=version.id
+    elif len(accepted)==len(sections) and not publication.structured and not cut:publication.active_plan_version_id=version.id
     else:
-        active=repo.save_version(story.id,None,'source_plan',preamble+''.join(s.text for s in accepted),[version.id])
+        active=repo.save_version(story.id,None,'source_plan',preamble+''.join(texts),[version.id])
         publication.active_plan_version_id=active.id
     if any(s.author_scene_number is None for s in accepted):
         item.warnings.append('Сцени без номера завжди додаються як нові, зокрема при повторному імпорті. Перегляньте поділ плану.')
