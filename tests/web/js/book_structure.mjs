@@ -58,3 +58,9 @@ console.log('ok');
   assert.deepEqual(m.payload(meeting,1).scene_arcs,{s1:'A',s3:['A','B']});
   assert.equal(m.remove(meeting,0,1),'book.error.has_scenes');
 }
+
+// MEMORY-MERGE harness H3: meeting options are the other arcs of the part of the scene's first arc.
+assert.deepEqual(m.meetingOptions(book,['a1','a2'],label),[{value:'a2',label:'Сад',checked:true}]);
+assert.deepEqual(m.meetingOptions(book,['a1'],label),[{value:'a2',label:'Сад',checked:false}]);
+assert.deepEqual(m.meetingOptions(book,['b1'],label),[]);
+assert.deepEqual(m.meetingOptions(book,[],label),[]);

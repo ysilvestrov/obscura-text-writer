@@ -30,6 +30,15 @@ export function arcOptions(book,label){
   return options;
 }
 
+// MEMORY-MERGE harness: checkboxes of a meeting scene — the other arcs of the part of its first arc, in structure order.
+export function meetingOptions(book,arcIds,label){
+  const first=arcIds?.[0];
+  const part=(book?.parts||[]).find(item=>item.arcs.some(arc=>arc.id===first));
+  if(!part||part.arcs.length<2)return [];
+  return part.arcs.map((arc,a)=>({arc,a})).filter(({arc})=>arc.id!==first)
+    .map(({arc,a})=>({value:arc.id,label:arcTitle(arc,a+1,label),checked:arcIds.includes(arc.id)}));
+}
+
 let counter=0;
 const newId=prefix=>`${prefix}-${Date.now().toString(36)}-${(counter++).toString(36)}`;
 
