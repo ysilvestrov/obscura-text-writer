@@ -153,8 +153,8 @@ def selector_value(view, selector: DependencySelector):
     if kind=='scene' and field=='memory_projection_policy':
         from ..memory.forwarding import projection_policy
         return projection_policy(view,owner)
-    if kind=='story' and owner==view.story.id and field=='timeline_summary_heads':
-        heads=view.peek_story(owner).timeline_summary_heads
+    if kind=='story' and owner==view.story.id and field in {'timeline_summary_heads','memory_merge_heads'}:
+        heads=getattr(view.peek_story(owner),field)
         return {key:heads.get(key,'') for key in sorted(selector.expected or {})}
     if kind=='scene' and field=='memory_kind_overrides':
         from ..memory.kinds import kind_overrides

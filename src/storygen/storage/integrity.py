@@ -210,6 +210,8 @@ def check_integrity(root: Path) -> IntegrityReport:
             check_book_structure(report,stories,scenes)
             from .summary_checks import check_summary_heads
             check_summary_heads(report,root,stories,versions)
+            from .merge_checks import check_merge_heads
+            check_merge_heads(report,root,stories,versions)
             for story_id, payload in db.execute('SELECT story_id,payload FROM source_files'):
                 try:
                     source = json.loads(payload)
