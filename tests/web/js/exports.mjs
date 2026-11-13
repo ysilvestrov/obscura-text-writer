@@ -24,8 +24,18 @@ state.saving=false;events['editor-state-changed']();let done;release=new Promise
 state.saving=true;events['editor-state-changed']();assert.match(nodes['export-status'].textContent,/збереження|Saving/i);
 state.saving=false;events['editor-state-changed']();assert.equal(nodes['export-status'].textContent,'');assert.equal(nodes['export-submit'].disabled,false);
 // A result of the last export survives later availability checks.
-fail=false;release=null;await submit();const success=nodes['export-status'].textContent;assert.notEqual(success,'');
+fail=false;release=null;await submit();const success=nodes['export-status'].textContent;
+assert.match(success,/Файл готовий|File ready/);assert.equal(nodes['export-status'].className,'success');
 events['editor-state-changed']();assert.equal(nodes['export-status'].textContent,success);
+// A new reason replaces the result, and clears once it is gone.
+state.dirty=true;events['editor-state-changed']();assert.notEqual(nodes['export-status'].textContent,success);assert.equal(nodes['export-status'].className,'muted');
+state.dirty=false;events['editor-state-changed']();assert.equal(nodes['export-status'].textContent,'');
+// A failed export keeps its error through later checks.
+fail=true;await submit();const failure=nodes['export-status'].textContent;assert.match(failure,/автора/);assert.equal(nodes['export-status'].className,'error');
+events['story-refreshed']();assert.equal(nodes['export-status'].textContent,failure);
+// No prose: the reason shows, and clears when prose appears.
+fail=false;state.view.scenes[0].heads={};events['story-refreshed']();assert.equal(nodes['export-submit'].disabled,true);assert.notEqual(nodes['export-status'].textContent,failure);
+state.view.scenes[0].heads={prose:'id'};events['story-refreshed']();assert.equal(nodes['export-status'].textContent,'');assert.equal(nodes['export-submit'].disabled,false);
 // The FB2 requirement note shows only for FB2.
 const format=nodes['export-format'],note=nodes['export-fb2-note'];
 format.value='epub';format.onchange();assert.equal(note.hidden,true);
