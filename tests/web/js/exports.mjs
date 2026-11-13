@@ -41,4 +41,17 @@ const format=nodes['export-format'],note=nodes['export-fb2-note'];
 format.value='epub';format.onchange();assert.equal(note.hidden,true);
 format.value='fb2';format.onchange();assert.equal(note.hidden,false);
 format.value='md';format.onchange();assert.equal(note.hidden,true);
+// EXPORT-001-S06: without prose the dialog still opens; book formats show the reason, the plan file does not need prose.
+format.value='epub';format.onchange();
+state.view.scenes[0].heads={};events['story-refreshed']();
+assert.equal(nodes['export-story'].disabled,false);assert.equal(nodes['export-submit'].disabled,true);assert.notEqual(nodes['export-status'].textContent,'');
+format.value='plan';format.onchange();
+assert.equal(nodes['export-submit'].disabled,false);assert.equal(nodes['export-status'].textContent,'');assert.equal(nodes['export-incomplete'].hidden,true);
+const before=calls;await submit();assert.equal(calls,before);
+const link=nodes['publication-links'].children[0];assert.equal(link.href,'/api/stories/story/plan.md');assert.equal(nodes['export-status'].className,'success');
+// Unsaved edits still block the plan file.
+state.dirty=true;events['editor-state-changed']();assert.equal(nodes['export-submit'].disabled,true);assert.equal(nodes['export-story'].disabled,true);
+state.dirty=false;events['editor-state-changed']();
+format.value='md';format.onchange();assert.equal(nodes['export-incomplete'].hidden,false);assert.equal(nodes['export-submit'].disabled,true);
+state.view.scenes[0].heads={prose:'id'};events['story-refreshed']();
 console.log('export explicit form, cancellation, dirty/saving, duplicate and failure preservation passed');

@@ -6,9 +6,13 @@ export function installExportForm({state,api,json,notice,document}){
   // reasonShown: the status line currently shows a blocking reason, not the result of the last export.
   let busy=false,reasonShown=false;
   button.hidden=false;
+  const format=get('export-format'),fb2Note=get('export-fb2-note'),incomplete=get('export-incomplete');
+  // EXPORT-001-S06: the plan and characters file needs no prose; the format is chosen inside the dialog.
+  const isPlan=()=>format.value==='plan';
   function availability(){
-    const reason=state.dirty?t("m_a4c2e86ecc1a"):state.saving?t("m_51204171ac66"):!state.view?.scenes.some(scene=>scene.heads.prose)?t("m_1b19cb3ea4ae"):'';
-    button.disabled=busy||!!reason;submit.disabled=busy||!!reason;uiText(button,"title",()=>(diagnostic(reason)));uiText(submit,"title",()=>(diagnostic(reason)));
+    const editing=state.dirty?t("m_a4c2e86ecc1a"):state.saving?t("m_51204171ac66"):'';
+    const reason=editing||(!isPlan()&&!state.view?.scenes.some(scene=>scene.heads.prose)?t("m_1b19cb3ea4ae"):'');
+    button.disabled=busy||!!editing;submit.disabled=busy||!!reason;uiText(button,"title",()=>(diagnostic(editing)));uiText(submit,"title",()=>(diagnostic(reason)));
     if(reason){uiText(status,"textContent",()=>(diagnostic(reason)));status.className='muted';reasonShown=true;}
     else if(reasonShown){uiText(status,'textContent',()=>'');status.className='';reasonShown=false;}
   }
@@ -21,7 +25,14 @@ export function installExportForm({state,api,json,notice,document}){
     event.preventDefault();availability();if(submit.disabled)return;
     busy=true;availability();form.setAttribute('aria-busy','true');uiText(status,"textContent",()=>(t("m_74a8c1872ac9")));status.className='muted';reasonShown=false;
     try{
-      const format=get('export-format').value,allow_incomplete=get('export-incomplete').checked;
+      if(isPlan()){
+        // Built on request from the current plan: a download link, no stored file and no manifest.
+        const link=document.createElement('a');link.href=`/api/stories/${state.storyId}/plan.md`;link.download='';
+        uiText(link,'textContent',()=>t('export.plan_download'));
+        get('publication-links').replaceChildren(link);uiText(status,'textContent',()=>t('export.plan_ready'));status.className='success';
+        return;
+      }
+      const format=get('export-format').value,allow_incomplete=incomplete.checked;
       const result=await api(`/api/stories/${state.storyId}/export`,json('POST',{format,allow_incomplete}));
       const box=document.createElement('div');
       for(const [url,label]of[[result.download_url,t("m_c5cec41d8b00",{p0:(format.toUpperCase())})],[result.manifest_url,msg("m_d328f5580f1f")]]){
@@ -32,9 +43,8 @@ export function installExportForm({state,api,json,notice,document}){
     }catch(error){uiText(status,"textContent",()=>(diagnostic(error.message)));status.className='error';notice(error.message,'error');}
     finally{busy=false;form.setAttribute('aria-busy','false');availability();}
   };
-  // The FB2 note names FB2-only requirements: show it only while FB2 is selected.
-  const format=get('export-format'),fb2Note=get('export-fb2-note');
-  const noteVisibility=()=>{if(fb2Note)fb2Note.hidden=format.value!=='fb2'};
-  format.onchange=noteVisibility;noteVisibility();
+  // The FB2 note names FB2-only requirements; the incomplete-story option means nothing for the plan file.
+  const noteVisibility=()=>{if(fb2Note)fb2Note.hidden=format.value!=='fb2';const row=incomplete?.closest?.('label')||incomplete;if(row)row.hidden=isPlan();};
+  format.onchange=()=>{noteVisibility();availability();};noteVisibility();
   document.addEventListener('story-refreshed',availability);document.addEventListener('editor-state-changed',availability);availability();
 }

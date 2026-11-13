@@ -32,4 +32,6 @@ Open **☰ Story actions → Export…** and choose a format: MD, TXT, FB2, EPUB
 
 A finished file does not change when you edit the text: create a new export.
 
+The same list has a **Plan and characters (.md)** item. It gives you one readable file with the general plan notes, the plan of each scene in reading order and the character cards. It needs no prose, but save unsaved edits first. The file is built from the current state when you download it and is not kept among the exports. It cannot be imported back: importing uses the separate plan and character templates.
+
 FB2, EPUB, PDF and covers need the `publication` extras; the installer includes them. For an installation from source, see [Installation](install.md).

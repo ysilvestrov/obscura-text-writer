@@ -1222,6 +1222,20 @@
       ]
     },
     {
+      "id": "EXPORT-001-S06",
+      "requirement": "EXPORT-001",
+      "scope": "Збір Markdown-файлу плану й персонажів (plan_export.py), маршрут GET plan.md і пункт діалогу експорту (export-form.js).",
+      "tests": [
+        "tests/authoring/test_plan_export.py::test_plan_and_characters_in_reading_order",
+        "tests/authoring/test_plan_export.py::test_empty_plan_and_no_characters_are_marked",
+        "tests/authoring/test_plan_export.py::test_imported_characters_text_without_cards",
+        "tests/authoring/test_plan_export.py::test_english_story_uses_english_labels",
+        "tests/authoring/test_plan_export.py::test_english_availability_notes",
+        "tests/authoring/test_plan_export.py::test_route_serves_markdown_attachment",
+        "tests/web/test_exports_ui.py::test_export_form_explicit_options_dirty_and_failure"
+      ]
+    },
+    {
       "id": "SECURITY-001-S01",
       "requirement": "SECURITY-001",
       "scope": "Чужий сайт змінює локальні дані. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
