@@ -27,7 +27,10 @@ function box(create){
 function radio(row,value,label,group){
   const item=node('label',null,'memory-merge-choice'),input=document.createElement('input');
   input.type='radio';input.name=group;input.value=value;input.checked=row.choice===value;
-  input.onchange=()=>{row.choice=value;draw()};
+  input.onchange=()=>{  // a redraw replaces the inputs: keep keyboard focus on the chosen value
+    row.choice=value;draw();
+    [...(box(false)?.querySelectorAll('input[type=radio]')||[])].find(other=>other.name===group&&other.value===value)?.focus();
+  };
   item.append(input,node('span',label));return item;
 }
 

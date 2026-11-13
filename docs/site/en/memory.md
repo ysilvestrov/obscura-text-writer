@@ -32,6 +32,16 @@ A selected request leaves out the timeline older than 20 scenes. To keep the mod
 
 A summary is used only when memory does not fit: it replaces all timeline entries of its block with one line. If the prose or memory of a scene in the block changes, or the block's scenes change, the summary is marked "stale" and is not sent until you rebuild it.
 
+## Memory merge
+
+In a book with [arcs](book-structure.md) each arc keeps its own memory. Where arcs come together — in a meeting scene, in the first scene of the next part, in the first scene of an arc after several arcs have ended, and at the end of the book — the memory has to be merged. What changed in one arc only carries over without questions, and so does the same result in both arcs. When the arcs changed the same record differently (say, Anna put on a jacket in one and a raincoat in the other), that is a conflict, and you decide it.
+
+The **Memory merge** section in the memory tab of such a scene shows the arcs that meet and one row per conflict: the value of each arc and **Own value**. Choose a value in every row and press **Confirm merge**. If the book or the arc memory changed while you were choosing, the app warns you, reads the merge again and keeps your choice wherever the conflict is the same.
+
+Until the merge is confirmed, writing this scene does not start: a run stops before it, and an **Open memory merge** button appears next to the run status. After confirming, press **Continue** — the run goes on from the same scene.
+
+If the memory of one of the arcs changes later, the merge becomes out of date and has to be confirmed again; decisions for the same conflicts with the same values are filled in by themselves and marked as carried over. The end-of-book merge appears in the memory tab of the last scene: it does not stop writing, but the summary of the last part needs it.
+
 ## Confirming earlier memory
 
 If updating a scene's memory relies on an old journal of the previous scene, the application asks for confirmation. The dialog shows the memory scene, the number of new versions and of changed texts; **Cancel** does not start the model. Confirmation keeps the old sources and quotations; it does not verify the facts. If the sources change again, confirm again.

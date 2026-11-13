@@ -77,3 +77,13 @@ test('a scene waiting for the merge links to it',async({page,request})=>{
   await expect(page.locator('#memory-merge')).toBeVisible();
   await expect(page.locator('#memory-merge')).toBeFocused();
 });
+
+test('arrow keys move between values without losing focus',async({page,request})=>{
+  const {section}=await openMerge(page,request);
+  const radios=section.locator('.memory-merge-row').getByRole('radio');
+  await radios.nth(0).check();
+  await radios.nth(0).focus();
+  await page.keyboard.press('ArrowDown');
+  await expect(radios.nth(1)).toBeChecked();
+  await expect(radios.nth(1)).toBeFocused();
+});

@@ -10,6 +10,7 @@ When you [import an outline](imports.md), Obscura recognises:
 
 - a **part** — a heading one level above the scene headings that starts with the word “Part”;
 - an **arc** — an `Arc: Name` line in a scene outline;
+- **meeting scene** — an `Arcs: Road, Town` line in a scene outline: the scene belongs to every listed arc of its part;
 - an **arc protagonist** — a `Protagonist: Name` line in a scene outline (see [below](#arc-protagonist)).
 
 ```text
@@ -48,7 +49,13 @@ A part keeps at least one arc, and a book keeps at least one part.
 
 In the scene parameters, the **Arc** field lists “Part › Arc”. The choice is saved at once.
 
-Arcs follow one another: the scenes of an arc stand together, and parts come in order. Obscura refuses a change that would mix arcs or split a part, and names the scene in the way. A new scene joins the arc of the scene before it.
+Scenes of the arcs of one part may alternate: Road, Town, Road, Town. Parts still come in order: Obscura refuses a change that would take a scene back to an earlier part, and names the scene in the way. A new scene joins the arc of the scene before it.
+
+## Meeting scenes
+
+When the heroes of different arcs meet, the scene belongs to several arcs. Mark it with the **Meeting scene with arcs** checkboxes under the **Arc** field — they list the other arcs of the same part. Changing the main arc to an arc of another part ends the meeting.
+
+In an outline, an `Arcs: Road, Town` line does the same (titles separated by commas). The next scene without a line goes back to the arc that stood before the meeting when it is one of the listed arcs, otherwise to the first of them. One title in an `Arcs:` line is an ordinary arc.
 
 ## Arc protagonist
 
@@ -68,7 +75,11 @@ If you set a protagonist for an arc whose scenes are already written, only the w
 
 In a book with parts the scene list is grouped: a part heading, and under it the arcs when the part has several or the arc has a title. Scene numbers run through the whole book. On a phone, parts become groups in the scene picker.
 
+A meeting scene is marked “arcs meet” under its title, and a scene that waits for a memory merge is marked “memory merge needed”.
+
 ## Memory and texts
+
+Each arc keeps its own memory: the model writing a scene of the Town arc does not see the events of the Road arc, even when they stand side by side in the book. Where arcs come together — in a meeting scene, at the start of the next part, at the end of the book — their memory has to be merged, and the author confirms it: see [Memory](memory.md), “Memory merge”.
 
 The titles and order of parts and arcs never go into model requests. Renaming or dissolving the structure does not make any text stale. The exception is the [arc protagonist](#arc-protagonist): moving a scene to an arc with another protagonist, or changing the protagonist, changes the core state of its requests.
 
@@ -78,6 +89,6 @@ In book files parts become higher-level sections: in Markdown a `##` heading wit
 
 ## In a build without parts and arcs
 
-The Microsoft Store build has no panel and no “Arc” field, and an outline is imported as usual: part headings and `Arc:` lines stay in the text.
+The Microsoft Store build has no panel and no “Arc” field, and an outline is imported as usual: part headings and `Arc:` and `Arcs:` lines stay in the text.
 
 A book with several parts or arcs made in another build can be read and exported here, but not changed: the workspace shows a message about it.
