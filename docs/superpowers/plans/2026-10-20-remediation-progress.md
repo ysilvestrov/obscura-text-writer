@@ -1958,3 +1958,5 @@ Playwright `memory-kind.spec.mjs` і `core-review.spec.mjs` пройшли вр�
 - План ядра `docs/superpowers/plans/2026-11/2026-11-13-story-time-core.md` виконано inline: `Moment`, `scene_moment`, `before`, `flashback_marked`, ключ `rel:Р.М.Д`, `day:N` для позначки лише з днем, `day_change` за моментами, `arc_start`.
 - SPEC.MD: нова вимога STORY-TIME (S01, S02), оновлено MEMORY-003 і опис шаблонів; traceability; сайт `memory` uk/en.
 - Далі: план обв'язки (поле й прапорець спогаду, пам'ять лише з фактами, два режими, «Минуле інших арок», застарілість між арками, інтерфейс, сайт).
+- Фінальне рев'ю — самоперевірка автором: Critical/Important немає; відкладено дрібницю (подвійна кома між складовими). Крос-рев'ю agy/gemini-3.8-flash (codex і agy Argon без квоти, перший запуск Flash упав на canary): 5 знахідок про повноту тестів, усі виправлено; стара форма `день N, ГГ:ХХ` години не перевіряє, як і раніше. PR #162.
+- `verify.py` на `774a57a` (з `C:/tmp/stv`): passed 3140, failed 0, skipped 1.
