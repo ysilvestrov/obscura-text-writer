@@ -10,7 +10,8 @@ from pydantic import Field, model_validator
 from ..domain import DomainModel, RevisionConflict
 
 from ..evidence import fragment_text
-from .core import SLOTS, tracked_characters
+from ..book.protagonists import scene_tracked
+from .core import SLOTS
 from .journal import MemoryJournal, _add_event, _change_event, decode_memory, load_memory, replay_memory
 from .replay import strip_wrapper
 from .story_time import day_change
@@ -82,7 +83,7 @@ def core_review(repo, scene_id: str, locale: str = 'uk') -> dict:
     wire,bounds=captured if captured else (None,None)
     scenes=view.list_scenes(scene.story_id)
     cards=core_cards(view,view.get_story(scene.story_id))
-    tracked=list(bounds['tracked']) if bounds else tracked_characters(cards,scenes)
+    tracked=list(bounds['tracked']) if bounds else scene_tracked(view.get_story(scene.story_id),cards,scenes,scene)
     if bounds:
         signal=bounds.get('day_change')
         changed=any(signal.values()) if isinstance(signal,dict) else bool(signal)

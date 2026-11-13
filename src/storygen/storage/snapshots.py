@@ -126,10 +126,12 @@ def core_cards(view,story):
 
 
 def memory_core_selectors(view,story,scene,scenes,select):
-    from ..memory.core import tracked_characters
+    from ..book.protagonists import has_explicit_protagonists, scene_tracked
     from ..memory.story_time import comparison_scene,day_key
-    tracked=tracked_characters(core_cards(view,story),scenes)
-    select('story',story.id,'tracked_characters',tracked)
+    tracked=scene_tracked(story,core_cards(view,story),scenes,scene)
+    # BOOK-LINEAGE-S04: a book without an explicit arc protagonist keeps the story selector (same snapshots as before).
+    if has_explicit_protagonists(story):select('scene',scene.id,'tracked_characters',tracked)
+    else:select('story',story.id,'tracked_characters',tracked)
     owners=[scene]+[item for item in (comparison_scene(scenes,scene,hero,story) for hero in tracked) if item]
     for item in dict((item.id,item) for item in owners).values():
         select('scene',item.id,'memory_day_key',day_key(item))
@@ -143,6 +145,11 @@ def selector_value(view, selector: DependencySelector):
     if kind=='story' and owner==view.story.id and field=='tracked_characters':
         from ..memory.core import tracked_characters
         return tracked_characters(core_cards(view,view.peek_story(owner)),view.peek_scenes(owner))
+    if kind=='scene' and field=='tracked_characters':
+        from ..book.protagonists import scene_tracked
+        scene=view.peek_scene(owner)
+        story=view.peek_story(scene.story_id)
+        return scene_tracked(story,core_cards(view,story),view.peek_scenes(story.id),scene)
     if kind=='scene' and field=='memory_projection_policy':
         from ..memory.forwarding import projection_policy
         return projection_policy(view,owner)
@@ -215,6 +222,21 @@ def legacy_selectors(snapshot: DependencySnapshot, selectors: list) -> list:
     return selectors
 
 
+def snapshot_scene(selectors: list) -> str | None:
+    """The scene a snapshot was built for: the owner of scene/title or of the order prefix/narrative_window selector."""
+    return next((s.owner_id for s in selectors if s.kind=='scene' and s.field=='title'),None) or next(
+        (s.owner_id for s in selectors if s.kind=='order' and s.field in {'prefix','narrative_window'}),None)
+
+
+def current_value(view, selector: DependencySelector, owner_scene: str | None):
+    """BOOK-LINEAGE-S04: the story tracked-characters selector compares with the tracked characters of the snapshot's
+    own scene, so a protagonist given to a later arc stales only that arc's written scenes. The stored selector stays
+    as it is (a book without explicit protagonists gets the same value and the same report as before)."""
+    if selector.kind=='story' and selector.field=='tracked_characters' and owner_scene and owner_scene in getattr(view,'scenes',()):
+        return selector_value(view,DependencySelector(kind='scene',owner_id=owner_scene,field='tracked_characters',expected=None))
+    return selector_value(view,selector)
+
+
 def language_only(result) -> bool:
     """Stale only because the scene now wants prose in another language: its facts did not change."""
     return bool(result.reasons) and all(r.reason=='selector_changed' and r.selector is not None
@@ -232,9 +254,10 @@ def compare_snapshot(view, snapshot: DependencySnapshot | dict) -> list[Dependen
     replace,fallback=rating_fallback(view,snapshot)
     if replace:
         selectors=[s for s in selectors if s.field!='content_rating']+([fallback] if fallback else [])
+    owner_scene=snapshot_scene(selectors)
     for selector in selectors:
         try:
-            current = selector_value(view, selector)
+            current = current_value(view, selector, owner_scene)
             if selector.field=='content_rating':
                 # Asymmetric: only a rating lower than expected on some axis changes the input.
                 changed=is_lower(from_wire(current),from_wire(selector.expected))

@@ -81,7 +81,7 @@ def memory_view_from_view(view,scene_id):
     labels={'facts':'Факт','character_states':'Стан персонажа','open_threads':'Сюжетна лінія','timeline':'Хронологія'}
     hidden=effective_hidden(journal,{id for id,enabled in choices.items() if not enabled},forwarded={id for id in choices if choices[id]})
     from .kinds import is_core_slot, tracked_ids
-    story=view.get_story(scene.story_id);marks=story.memory_kind_overrides;tracked=tracked_ids(view,story)
+    story=view.get_story(scene.story_id);marks=story.memory_kind_overrides;tracked=tracked_ids(view,story,scene)
     result['story_revision']=story.revision
     for event in entries.values():
         # The title and scene follow the version the quote was taken from.

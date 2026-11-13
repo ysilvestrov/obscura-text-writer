@@ -21,11 +21,29 @@ def _id(value):
     return value
 
 
+def _protagonist(value):
+    if value is None or isinstance(value, str) and value and len(value) <= MAX_ID:
+        return value
+    raise ValueError('Некоректний ID протагоніста арки')
+
+
+def _require_cards(repo, db, story, structure):
+    """BOOK-LINEAGE-S04: an explicit protagonist names a card of the current character set."""
+    wanted = {arc.protagonist_id for part in structure.parts for arc in part.arcs if arc.protagonist_id}
+    if not wanted:
+        return
+    from .context_view import ContextView
+    from .snapshots import core_cards
+    if wanted - {card.id for card in core_cards(ContextView(repo, db, story.id), story)}:
+        raise ValueError('Протагоніст арки — картка, якої немає серед персонажів')
+
+
 def build_structure(parts: list[dict]) -> BookStructure:
     """Parts from the request; a null id gets a new one. A client may name ids itself to bind scenes to new arcs."""
     try:
         structure = BookStructure(parts=[Part(id=_id(p.get('id')), title=p.get('title') or '',
-                                              arcs=[Arc(id=_id(a.get('id')), title=a.get('title') or '') for a in p.get('arcs') or []])
+                                              arcs=[Arc(id=_id(a.get('id')), title=a.get('title') or '',
+                                                        protagonist_id=_protagonist(a.get('protagonist_id'))) for a in p.get('arcs') or []])
                                          for p in parts])
     except (AttributeError, TypeError) as exc:
         raise ValueError('Некоректна структура книги') from exc
@@ -58,6 +76,7 @@ def put_structure(repo, story_id: str, parts: list[dict], scene_arcs: dict, expe
     known = arc_order(structure)
     with repo.db.connection() as db:
         story = _begin(repo, db, story_id, expected_revision)
+        _require_cards(repo, db, story, structure)
         scenes = _scenes(db, story_id)
         active = [s for s in scenes if not s.trashed_at]
         ids = {s.id for s in scenes}
@@ -125,15 +144,67 @@ def bind_restored_scene(story, ordered_active: list[Scene], scene: Scene):
     return story.model_copy(update={'scene_arcs': {**story.scene_arcs, scene.id: arc}})
 
 
-def place_imported(story, active: list[Scene], created: list[tuple[Scene, str | None, str | None, int | None]], structured: bool):
+PROTAGONIST_TAKEN = 'Арка вже має протагоніста; рядок «Протагоніст: {name}» пропущено.'
+PROTAGONIST_UNKNOWN = 'Протагоніст «{name}» не знайдений серед карток; протагоніста арки не задано.'
+
+
+def _card_by_name(cards):
+    from ..scene_description import name_key
+    return {name_key(card.name): card.id for card in cards}
+
+
+def _apply_protagonists(structure, wanted, cards):
+    """wanted: [(arc_id, name)] in plan order. Sets the protagonist of arcs without one; returns (pending, warnings)."""
+    from ..scene_description import name_key
+    by_name = _card_by_name(cards)
+    arcs = {arc.id: arc for part in structure.parts for arc in part.arcs}
+    pending, warnings = [], []
+    for arc_id, name in wanted:
+        arc = arcs.get(arc_id)
+        if arc is None:
+            continue
+        found = by_name.get(name_key(name))
+        if arc.protagonist_id:
+            if found != arc.protagonist_id:
+                warnings.append(PROTAGONIST_TAKEN.format(name=name))
+        elif found:
+            arc.protagonist_id = found
+        elif (arc_id, name) not in pending:
+            pending.append((arc_id, name))
+    return pending, warnings
+
+
+def bind_pending_protagonists(repo, story_id: str, pending: list[tuple[str, str]]) -> list[str]:
+    """End of an import batch: names a later card file of the same batch may have created (as the cast, #103).
+    One transaction on the current revision; unknown names become warnings and nothing is written for them."""
+    if not pending:
+        return []
+    from .context_view import ContextView
+    from .snapshots import core_cards
+    with repo.db.connection() as db:
+        db.execute('BEGIN IMMEDIATE')
+        story = repo._active_story(db, story_id)
+        if story.book_structure is None:
+            return []
+        structure = story.book_structure.model_copy(deep=True)
+        left, warnings = _apply_protagonists(structure, pending, core_cards(ContextView(repo, db, story_id), story))
+        if structure != story.book_structure:
+            _save(repo, db, story, book_structure=structure)
+    return warnings + [PROTAGONIST_UNKNOWN.format(name=name) for _, name in left]
+
+
+def place_imported(story, active: list[Scene], created: list[tuple], structured: bool, cards=()):
     """publish_import hook: parts and arcs from the plan for the new scenes (all at the end of the book).
 
     Every part heading of the plan starts a new part, except the plan's first heading when its title matches the book's
     last part (a continued import); a scene before any heading (title None) continues the book's last part.
     An arc is found by title in its part; None continues the part's last arc. A flat book that already has scenes keeps
-    them in a first part. A sequence violation raises ValueError and the whole publication rolls back."""
+    them in a first part. A sequence violation raises ValueError and the whole publication rolls back.
+
+    BOOK-LINEAGE-S04: a fifth tuple member is the scene's «Протагоніст:» name; it sets the protagonist of the scene's
+    arc when the arc has none. Returns (story, pending [(arc_id, name)] not found among `cards`, warnings)."""
     if not created or story.book_structure is None and not structured:
-        return story
+        return story, [], []
     parts = [part.model_copy(deep=True) for part in story.book_structure.parts] if story.book_structure else []
     bindings = dict(story.scene_arcs)
     new = {scene.id for scene, *_ in created}
@@ -143,7 +214,8 @@ def place_imported(story, active: list[Scene], created: list[tuple[Scene, str | 
         bindings.update({s.id: parts[0].arcs[0].id for s in earlier})
     book_parts = len(parts)
     current = None
-    for scene, part_title, arc_title, part_index in created:
+    wanted = []
+    for scene, part_title, arc_title, part_index, *rest in created:
         if part_index is not None and part_index != current:
             continues = current is None and len(parts) == book_parts and parts and parts[-1].title == (part_title or '')
             if not continues:
@@ -157,10 +229,13 @@ def place_imported(story, active: list[Scene], created: list[tuple[Scene, str | 
             arc = Arc(id=new_id(), title=arc_title or '')
             part.arcs.append(arc)
         bindings[scene.id] = arc.id
+        if rest and rest[0]:
+            wanted.append((arc.id, rest[0]))
     structure = BookStructure(parts=parts)
     validate_shape(structure)
     _require_sequence(structure, bindings, [s.model_copy(update={'position': i}) for i, s in enumerate(active)])
-    return story.model_copy(update={'book_structure': structure, 'scene_arcs': bindings})
+    pending, warnings = _apply_protagonists(structure, wanted, cards)
+    return story.model_copy(update={'book_structure': structure, 'scene_arcs': bindings}), pending, warnings
 
 
 def structured_story(repo, *, story_id=None, scene_id=None, run_id=None):

@@ -67,6 +67,29 @@ test('the structure panel renames a part with one save',async({page,request})=>{
   expect((await view(request,story_id)).book_structure.parts.map(part=>part.title)).toEqual(['Дім','Дорога']);
 });
 
+test('the structure panel saves an arc protagonist',async({page,request})=>{
+  // BOOK-LINEAGE-S04: the arc field lists the cards and «Герой книги»; the choice survives a reload.
+  const {story_id}=await structuredBook(request);
+  const cards=['Анна','Богдан'].map(name=>({schema_version:2,id:null,name,entries:[{id:null,text:'Опис',availability:'timeless',origin:'author'}]}));
+  const saved=await request.put(`/api/stories/${story_id}/characters`,{data:{cards,expected_revision:(await view(request,story_id)).story.revision}});
+  expect(saved.ok(),await saved.text()).toBeTruthy();
+  const bohdan=Object.entries((await view(request,story_id)).character_names).find(([,name])=>name==='Богдан')[0];
+  await page.goto(`/stories/${story_id}/settings`);
+  if(test.info().project.name==='mobile')await page.locator('#settings-section-mobile').selectOption('writing');
+  else await page.locator('[data-settings-nav="writing"]').click();
+  const field=page.locator('#book-structure').getByRole('combobox',{name:'Протагоніст арки «Арка 1»',exact:true});
+  await expect(field.locator('option')).toHaveText(['Герой книги','Анна','Богдан']);
+  await field.selectOption({label:'Богдан'});
+  await page.locator('#book-structure').getByRole('button',{name:'Зберегти структуру'}).click();
+  await expect(page.locator('#notice')).toContainText('Структуру книги збережено');
+  const ids=(await view(request,story_id)).book_structure.parts.map(part=>part.arcs.map(arc=>arc.protagonist_id));
+  expect(ids).toEqual([[null,null],[bohdan]]);
+  await page.reload();
+  if(test.info().project.name==='mobile')await page.locator('#settings-section-mobile').selectOption('writing');
+  else await page.locator('[data-settings-nav="writing"]').click();
+  await expect(page.locator('#book-structure').getByRole('combobox',{name:'Протагоніст арки «Арка 1»',exact:true})).toHaveValue(bohdan);
+});
+
 test.describe('store edition',()=>{
   test.afterEach(async({request})=>{await request.post('/test-build-edition',{data:{edition:'full'}})});
   test('a structured book is read-only and has no structure panel',async({page,request})=>{

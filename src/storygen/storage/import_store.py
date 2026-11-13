@@ -79,10 +79,16 @@ def publish_import(repo,story_id,expected_revision,publication):
             # BOOK-STRUCTURE: parts, arcs and bindings of the new scenes, in the same transaction as the scenes.
             from .book_structure import place_imported
             by_id={scene.id:scene for scene in active}
-            placed=[(by_id[id],item.part_title,item.arc_title,item.part_index) for id,item in zip(created,publication.scenes)]
-            repo._save_story(db,place_imported(repo._get(db,'stories',story_id,Story),active,placed,publication.structured))
+            placed=[(by_id[id],item.part_title,item.arc_title,item.part_index,item.protagonist_name) for id,item in zip(created,publication.scenes)]
+            from .context_view import ContextView
+            from .snapshots import core_cards
+            current=repo._get(db,'stories',story_id,Story)
+            known=core_cards(ContextView(repo,db,story_id),current)
+            placed_story,pending,structure_warnings=place_imported(current,active,placed,publication.structured,known)
+            repo._save_story(db,placed_story)
+        else:pending,structure_warnings=[],[]
         metadata.update(created_scene_count=len(created),created_character_count=created_cards)
         db.execute('INSERT INTO source_files VALUES(?,?,?)',(metadata['id'],story_id,json.dumps(metadata,ensure_ascii=False)))
         if cards:sync_story_cast(repo,db,story_id)
         story=repo._touch_story(db,story_id)
-        return ImportPublicationResult(revision=story.revision,created_scene_ids=created)
+        return ImportPublicationResult(revision=story.revision,created_scene_ids=created,pending_protagonists=pending,warnings=structure_warnings)

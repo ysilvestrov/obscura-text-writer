@@ -47,6 +47,8 @@ def split_plan(text,default_title='Сцена'):
 # BOOK-STRUCTURE: parts and arcs in a plan. A part heading sits above the scene level; an arc line is cut from the scene plan.
 PART_TITLE=re.compile(r'^(?:частина|part)\b[^:]*(?::\s*(.*))?$',re.IGNORECASE)
 ARC_LINE=re.compile(r'^(?:арка|arc)\s*:\s*(.*)$',re.IGNORECASE)
+# BOOK-LINEAGE-S04: the arc protagonist by card name, cut from the scene plan like an arc line.
+PROTAGONIST_LINE=re.compile(r'^(?:протагоніст|protagonist)\s*:\s*(.*)$',re.IGNORECASE)
 
 
 @dataclass(frozen=True)
@@ -55,6 +57,7 @@ class BookSection:
     part_title: str | None
     arc_title: str | None
     part_index: int | None = None  # ordinal of the part heading in this plan; equal titles stay separate parts
+    protagonist_name: str | None = None
 
 
 def _plain(line):
@@ -79,13 +82,16 @@ def _part_headings(text):
 
 
 def _cut_arc_lines(text):
-    """The section text without arc lines, and the last arc title found in it (None when there is none)."""
-    kept=[];arc=None
+    """The section text without arc and protagonist lines, the last arc title and the last protagonist name in it."""
+    kept=[];arc=None;protagonist=None
     for line in text.splitlines(keepends=True):
-        match=ARC_LINE.fullmatch(_plain(line.rstrip('\r\n')))
+        plain=_plain(line.rstrip('\r\n'))
+        match=ARC_LINE.fullmatch(plain)
         if match:arc=match[1].strip()[:200];continue
+        match=PROTAGONIST_LINE.fullmatch(plain)
+        if match:protagonist=_plain(match[1]).strip()[:200] or None;continue
         kept.append(line)
-    return ''.join(kept),arc
+    return ''.join(kept),arc,protagonist
 
 
 def split_book_plan(text,default_title='Сцена'):
@@ -104,8 +110,9 @@ def split_book_plan(text,default_title='Сцена'):
     for section in sections:
         while mark<len(marks) and marks[mark][0]<=offset:
             part=marks[mark][1];arc=None;index=mark;mark+=1
-        body,line_arc=_cut_arc_lines(section.text)
+        body,line_arc,protagonist=_cut_arc_lines(section.text)
         if line_arc is not None:arc=line_arc;found=True
-        result.append(BookSection(PlanSection(section.title,body,section.author_scene_number),part,arc,index))
+        if protagonist is not None:found=True
+        result.append(BookSection(PlanSection(section.title,body,section.author_scene_number),part,arc,index,protagonist))
         offset+=len(section.text)
     return preamble,result,found

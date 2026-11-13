@@ -2,7 +2,8 @@
 from pydantic import Field
 from ..domain import DomainModel
 from ..generation.models import WritersBrief
-from .acquaintance import lineage_source,protagonist
+from ..book.protagonists import scene_hero
+from .acquaintance import lineage_source
 from .models import load_characters
 
 
@@ -21,8 +22,12 @@ def _brief_data(view,ref_id):
 def _context(view,story):
     cards=load_characters(view.read_text(story.characters_version_id)) if story.characters_version_id else []
     scenes=[item for item in view.list_scenes(story.id) if not item.trashed_at]
-    hero,_=protagonist(cards,scenes) if cards else (None,[])
-    return cards,scenes,hero
+    return cards,scenes
+
+
+def _hero(story,cards,scenes,scene):
+    """BOOK-LINEAGE-S04: each scene confirms acquaintances of its own arc's protagonist."""
+    return scene_hero(story,cards,scenes,scene)
 
 
 def _scene_state(view,scene,hero):
@@ -40,7 +45,8 @@ def _scene_state(view,scene,hero):
 
 
 def brief_link_state(view,story,scene):
-    cards,scenes,hero=_context(view,story)
+    cards,scenes=_context(view,story)
+    hero=_hero(story,cards,scenes,scene)
     needed,source,lineage_introduced=_scene_state(view,scene,hero)
     names={card.id:card.name for card in cards}
     others=[cid for cid in scene.character_ids if cid!=hero]
@@ -60,7 +66,7 @@ def brief_link_state(view,story,scene):
     elif lineage_introduced is not None:checked=set(lineage_introduced)
     else:checked=set()
     ordered=sorted(scenes,key=lambda item:item.position)
-    pending=[item for item in ordered if item.id!=scene.id and _scene_state(view,item,hero)[0]]
+    pending=[item for item in ordered if item.id!=scene.id and _scene_state(view,item,_hero(story,cards,scenes,item))[0]]
     after=[item for item in pending if item.position>scene.position]
     next_scene=(after or pending or [None])[0]
     return {'needed':needed,'source':source,'hero_id':hero,'hero_name':names.get(hero) if hero else None,
@@ -73,7 +79,9 @@ def confirm_brief_link(repo,scene_id,body: BriefLinkBody):
     scene=repo.get_scene(scene_id)
     view=repo.context_view(scene.story_id)
     story=view.get_story(scene.story_id)
-    _,_,hero=_context(view,story)
-    allowed={cid for cid in view.get_scene(scene_id).character_ids if cid!=hero}
+    cards,scenes=_context(view,story)
+    current=view.get_scene(scene_id)
+    hero=_hero(story,cards,scenes,current)
+    allowed={cid for cid in current.character_ids if cid!=hero}
     ref=repo.confirm_brief_link(scene_id,body.prose_version_id,body.brief_version_id,body.introduced,body.expected_revision,allowed=allowed)
     return {'version':ref,'scene':repo.get_scene(scene_id)}

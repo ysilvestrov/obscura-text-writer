@@ -10,6 +10,8 @@ class ImportedScene(DomainModel):
     part_title: str | None=Field(default=None,max_length=200)
     arc_title: str | None=Field(default=None,max_length=200)
     part_index: int | None=Field(default=None,ge=0,le=10000)
+    # BOOK-LINEAGE-S04: «Протагоніст:» of the scene plan, resolved by card name at publication.
+    protagonist_name: str | None=Field(default=None,max_length=200)
 
 class ImportPublication(DomainModel):
     metadata: dict
@@ -22,6 +24,9 @@ class ImportPublication(DomainModel):
 class ImportPublicationResult(DomainModel):
     revision: int
     created_scene_ids: list[str]=Field(default_factory=list)
+    # BOOK-LINEAGE-S04: (arc_id, name) not resolved at publication — retried at the end of the batch.
+    pending_protagonists: list[tuple[str,str]]=Field(default_factory=list)
+    warnings: list[str]=Field(default_factory=list)
 
 
 class ImportFileResult(DomainModel):

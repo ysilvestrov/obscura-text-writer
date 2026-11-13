@@ -5,8 +5,10 @@ from .context_view import ContextView
 MAX_MARKS=10000
 
 
-def update_memory_kind(repo,story_id: str,claim_id: str,kind: str | None,expected_revision: int) -> Story:
-    from ..memory.kinds import KINDS, find_claim, is_core_slot, tracked_ids
+def update_memory_kind(repo,story_id: str,claim_id: str,kind: str | None,expected_revision: int,scene_id: str | None = None) -> Story:
+    """BOOK-LINEAGE-S04: with scene_id a core slot is refused only where it is core in that scene; without it — where it
+    is core in any active scene (an older client)."""
+    from ..memory.kinds import KINDS, find_claim, is_core_slot, tracked_anywhere, tracked_ids
     if kind is not None and kind not in KINDS:raise ValueError('Невідомий тип запису пам’яті')
     with repo.db.connection() as db:
         db.execute('BEGIN IMMEDIATE')
@@ -19,7 +21,12 @@ def update_memory_kind(repo,story_id: str,claim_id: str,kind: str | None,expecte
             view=ContextView(repo,db,story_id)
             event=find_claim(view,story_id,claim_id)
             if event is None:raise ValueError('Запису немає в пам’яті твору')
-            if is_core_slot(event,tracked_ids(view,view.story)):raise ValueError('Слот ядра завжди показується; тип не змінюється')
+            if scene_id is None:tracked=tracked_anywhere(view,view.story)
+            else:
+                scene=view.peek_scene(scene_id)
+                if scene.story_id!=story_id:raise KeyError('Сцену не знайдено')
+                tracked=tracked_ids(view,view.story,scene)
+            if is_core_slot(event,tracked):raise ValueError('Слот ядра завжди показується; тип не змінюється')
             if claim_id not in marks and len(marks)>=MAX_MARKS:raise ValueError('Забагато позначок типу запису')
             marks[claim_id]=kind
         else:marks.pop(claim_id,None)

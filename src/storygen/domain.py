@@ -46,6 +46,8 @@ class StoryCreate(DomainModel):
 class Arc(DomainModel):
     id: str
     title: str = ''
+    # BOOK-LINEAGE-S04: ID of the arc protagonist's card; None means the inferred protagonist of the book.
+    protagonist_id: str | None = None
 
 
 class Part(DomainModel):

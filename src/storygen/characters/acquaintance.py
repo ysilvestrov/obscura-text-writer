@@ -130,7 +130,9 @@ def acquaintances(view,story,scene):
     if not cards:return Acquaintances(None,{},[])
     scenes=view.list_scenes(story.id)
     active=[item for item in scenes if not item.trashed_at]
-    hero,warnings=protagonist(cards,active)
+    from ..book.protagonists import scene_hero
+    _,warnings=protagonist(cards,active)
+    hero=scene_hero(story,cards,active,scene)
     if hero is None:return Acquaintances(None,{},warnings)
     known={}
     for past in sorted(active,key=lambda item:item.position):
@@ -160,7 +162,10 @@ def acquaintance_material(view,story,scene,stage):
     if stage not in WRITING_STAGES:return '',[]
     if not story.characters_version_id:return '',[]
     cards=load_characters(view.read_text(story.characters_version_id))
-    hero,warnings=protagonist(cards,view.list_scenes(story.id)) if cards else (None,[])
+    from ..book.protagonists import scene_hero
+    scenes=view.list_scenes(story.id)
+    _,warnings=protagonist(cards,scenes) if cards else (None,[])
+    hero=scene_hero(story,cards,scenes,scene)
     if hero is None or hero not in scene.character_ids:return '',warnings
     others=[cid for cid in scene.character_ids if cid!=hero]
     if not others:return '',warnings

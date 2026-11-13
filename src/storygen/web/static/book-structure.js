@@ -35,7 +35,7 @@ const newId=prefix=>`${prefix}-${Date.now().toString(36)}-${(counter++).toString
 
 // The panel edits a copy; nothing reaches the server until save sends the whole structure in one PUT.
 export function createBuffer(book,scenes){
-  const parts=(book?.parts||[]).map(part=>({id:part.id,title:part.title||'',arcs:part.arcs.map(arc=>({id:arc.id,title:arc.title||''}))}));
+  const parts=(book?.parts||[]).map(part=>({id:part.id,title:part.title||'',arcs:part.arcs.map(arc=>({id:arc.id,title:arc.title||'',protagonist_id:arc.protagonist_id||null}))}));
   const used=new Map();for(const scene of scenes)used.set(scene.arc_id,(used.get(scene.arc_id)||0)+1);
   return {parts,used,scene_arcs:Object.fromEntries(scenes.filter(s=>s.arc_id).map(s=>[s.id,s.arc_id]))};
 }
@@ -45,6 +45,8 @@ const partScenes=(buffer,part)=>part.arcs.reduce((sum,arc)=>sum+arcScenes(buffer
 
 export function addPart(buffer){buffer.parts.push({id:newId('part'),title:'',arcs:[{id:newId('arc'),title:''}]});return null}
 export function addArc(buffer,p){buffer.parts[p].arcs.push({id:newId('arc'),title:''});return null}
+// BOOK-LINEAGE-S04: '' or null means the book's inferred protagonist.
+export function setProtagonist(buffer,p,a,id){buffer.parts[p].arcs[a].protagonist_id=id||null;return null}
 export function rename(buffer,p,a,title){(a==null?buffer.parts[p]:buffer.parts[p].arcs[a]).title=title.slice(0,200);return null}
 
 // Moving keeps scenes where they are; the server refuses an order that would mix arcs or parts.
@@ -68,5 +70,5 @@ export function remove(buffer,p,a){
 }
 
 export function payload(buffer,expected_revision){
-  return {expected_revision,parts:buffer.parts.map(part=>({id:part.id,title:part.title,arcs:part.arcs.map(arc=>({id:arc.id,title:arc.title}))})),scene_arcs:buffer.scene_arcs};
+  return {expected_revision,parts:buffer.parts.map(part=>({id:part.id,title:part.title,arcs:part.arcs.map(arc=>({id:arc.id,title:arc.title,protagonist_id:arc.protagonist_id||null}))})),scene_arcs:buffer.scene_arcs};
 }
