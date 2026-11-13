@@ -4254,7 +4254,8 @@
       "tests": [
         "tests/web/test_book_structure_ui.py::test_group_rows_arc_options_and_panel_buffer",
         "tests/web/test_book_structure_ui.py::test_pages_load_the_structure_modules",
-        "tests/web/test_structure_api.py::test_story_lists_all_arcs_of_a_meeting_scene"
+        "tests/web/test_structure_api.py::test_story_lists_all_arcs_of_a_meeting_scene",
+        "tests/storage/test_memory_merges.py::test_merge_markers_follow_the_merge"
       ],
       "manual": {
         "procedure": "docs/verification/manual.md#book-structure-browser",

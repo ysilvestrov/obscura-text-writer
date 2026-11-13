@@ -64,3 +64,13 @@ assert.deepEqual(m.meetingOptions(book,['a1','a2'],label),[{value:'a2',label:'С
 assert.deepEqual(m.meetingOptions(book,['a1'],label),[{value:'a2',label:'Сад',checked:false}]);
 assert.deepEqual(m.meetingOptions(book,['b1'],label),[]);
 assert.deepEqual(m.meetingOptions(book,[],label),[]);
+
+// MEMORY-MERGE harness H4: scene rows carry the meeting and merge marks.
+{
+  const meetingBook={kind:'structured',explicit:true,parts:[{id:'p1',title:'',arcs:[{id:'A',title:''},{id:'B',title:''}]}]};
+  const rows=m.groupScenes(meetingBook,[{id:'s1',arc_id:'A',arc_ids:['A']},{id:'s2',arc_id:'A',arc_ids:['A','B'],memory_merge:'required'}],label).filter(r=>r.type==='scene');
+  assert.deepEqual(rows.map(r=>[r.meeting,r.merge]),[[false,null],[true,'required']]);
+  assert.deepEqual(m.sceneMarks(rows[1]),['book.badge.meeting','book.badge.merge']);
+  assert.deepEqual(m.sceneMarks({...rows[1],merge:'fresh'}),['book.badge.meeting']);
+  assert.deepEqual(m.sceneMarks(rows[0]),[]);
+}

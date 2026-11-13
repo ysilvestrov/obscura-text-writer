@@ -101,7 +101,9 @@ def story_view(id: str,request: Request):
     structure=effective_structure(story,listed)
     book={"kind":structure.kind,"explicit":structure.explicit,"parts":[part.model_dump() for part in structure.parts]}
     # arc_id stays the first arc for old clients; arc_ids lists every arc of a meeting scene (MEMORY-MERGE harness).
-    scenes=[{**view.effective_scene(scene.id).model_dump(),"arc_id":structure.arc_of.get(scene.id),"arc_ids":list(structure.arcs_of.get(scene.id,()))} for scene in listed]
+    from ..storage.memory_merges import merge_markers
+    marks=merge_markers(view,story,listed) if story.book_structure is not None else {}
+    scenes=[{**view.effective_scene(scene.id).model_dump(),"arc_id":structure.arc_of.get(scene.id),"arc_ids":list(structure.arcs_of.get(scene.id,())),"memory_merge":marks.get(scene.id)} for scene in listed]
     return {"impact_status":scene_status(view),"language_locked":request.app.state.repo.story_language_locked(id),"story":story,"book_structure":book,"scenes":scenes,"scene_ratings":ratings,"sources":[view.get_version(v.id) for v in view.versions.values() if v.kind in {"source_plan","source_characters"}],"character_names":names,"source_files":view.source_files,"active_sources":view.sources}
 
 

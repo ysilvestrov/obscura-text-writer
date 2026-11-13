@@ -115,3 +115,15 @@ def test_fsck_reports_foreign_merge_head(tmp_path):
     db.commit()
     db.close()
     assert any(issue.code == 'invalid_memory_merge_head' for issue in check_integrity(tmp_path).issues)
+
+
+def test_merge_markers_follow_the_merge(tmp_path):
+    # MEMORY-MERGE harness: the scene list marks the target scene of a point until its merge is confirmed.
+    from storygen.storage.memory_merges import merge_markers
+    repo, story, scenes = meeting_book(tmp_path)
+    assert merge_markers(repo.context_view(story.id), story, scenes) == {scenes[3].id: 'required'}
+    found = point(repo, story, 4)
+    save_merge(repo, story.id, found.key, {'slot:c1:clothing': {'choice': scenes[1].id}}, story.revision,
+               [repo.get_scene(h).heads['memory'] for h in found.heads])
+    story = repo.get_story(story.id)
+    assert merge_markers(repo.context_view(story.id), story, repo.list_scenes(story.id)) == {scenes[3].id: 'fresh'}

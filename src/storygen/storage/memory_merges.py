@@ -38,6 +38,21 @@ def merge_point(story, scenes, *, scene_id=None, book_end=False) -> MergePoint |
     return MergePoint(key, tuple(heads), targets, bool(book_end))
 
 
+def merge_markers(view, story, scenes) -> dict[str, str]:
+    """Scene list marks (MEMORY-MERGE harness): {target scene id: 'fresh' | 'required'} for every merge point of a scene;
+    one lineage map, one usable_merge per point. A book without merge points gives {}."""
+    from ..book.lineage import lineage_map, merge_key
+    marks, cache = {}, {}
+    for scene_id, item in lineage_map(story, scenes).items():
+        if not item.needs_merge:
+            continue
+        key = merge_key(item.heads)
+        if key not in cache:
+            cache[key] = 'fresh' if usable_merge(view, story, scenes, MergePoint(key, tuple(item.heads), ())) else 'required'
+        marks[scene_id] = cache[key]
+    return marks
+
+
 def point_by_key(story, scenes, key: str) -> MergePoint | None:
     from ..book.lineage import lineage_map, merge_key
     for scene_id, item in lineage_map(story, scenes).items():
