@@ -3,12 +3,14 @@ import {t,msg,labelEntries,getLocale,uiText,uiAttr,uiHTML,diagnostic} from './i1
 export function installExportForm({state,api,json,notice,document}){
   const get=id=>document.querySelector('#'+id);
   const button=get('export-story'),form=get('export-form'),submit=get('export-submit'),status=get('export-status');
-  let busy=false;
+  // reasonShown: the status line currently shows a blocking reason, not the result of the last export.
+  let busy=false,reasonShown=false;
   button.hidden=false;
   function availability(){
     const reason=state.dirty?t("m_a4c2e86ecc1a"):state.saving?t("m_51204171ac66"):!state.view?.scenes.some(scene=>scene.heads.prose)?t("m_1b19cb3ea4ae"):'';
     button.disabled=busy||!!reason;submit.disabled=busy||!!reason;uiText(button,"title",()=>(diagnostic(reason)));uiText(submit,"title",()=>(diagnostic(reason)));
-    if(reason){uiText(status,"textContent",()=>(diagnostic(reason)));status.className='muted';}
+    if(reason){uiText(status,"textContent",()=>(diagnostic(reason)));status.className='muted';reasonShown=true;}
+    else if(reasonShown){uiText(status,'textContent',()=>'');status.className='';reasonShown=false;}
   }
   // #89: in the workspace the form lives in a dialog opened from the story menu.
   const dialog=form.closest?.('dialog');
@@ -17,7 +19,7 @@ export function installExportForm({state,api,json,notice,document}){
   get('export-cancel').onclick=()=>{if(dialog){dialog.close();return}form.hidden=true;button.setAttribute('aria-expanded','false');button.focus();};
   form.onsubmit=async event=>{
     event.preventDefault();availability();if(submit.disabled)return;
-    busy=true;availability();form.setAttribute('aria-busy','true');uiText(status,"textContent",()=>(t("m_74a8c1872ac9")));status.className='muted';
+    busy=true;availability();form.setAttribute('aria-busy','true');uiText(status,"textContent",()=>(t("m_74a8c1872ac9")));status.className='muted';reasonShown=false;
     try{
       const format=get('export-format').value,allow_incomplete=get('export-incomplete').checked;
       const result=await api(`/api/stories/${state.storyId}/export`,json('POST',{format,allow_incomplete}));
@@ -30,5 +32,9 @@ export function installExportForm({state,api,json,notice,document}){
     }catch(error){uiText(status,"textContent",()=>(diagnostic(error.message)));status.className='error';notice(error.message,'error');}
     finally{busy=false;form.setAttribute('aria-busy','false');availability();}
   };
+  // The FB2 note names FB2-only requirements: show it only while FB2 is selected.
+  const format=get('export-format'),fb2Note=get('export-fb2-note');
+  const noteVisibility=()=>{if(fb2Note)fb2Note.hidden=format.value!=='fb2'};
+  format.onchange=noteVisibility;noteVisibility();
   document.addEventListener('story-refreshed',availability);document.addEventListener('editor-state-changed',availability);availability();
 }
