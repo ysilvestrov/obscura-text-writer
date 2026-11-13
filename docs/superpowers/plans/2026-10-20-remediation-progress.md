@@ -1949,3 +1949,5 @@ Playwright `memory-kind.spec.mjs` і `core-review.spec.mjs` пройшли вр�
 - Перевірка в браузері (Playwright, тимчасовий сценарій): завантаження `<назва>-план.md` з очікуваним вмістом.
 - Cross-review (agy/gemini-3.8-flash; codex і agy Argon — ліміти): 4 знахідки про тести, усі виправлено (`57a181f`): точні імена файлів і `Content-Disposition`, тест запасного тексту `source_characters`, англійські позначки доступності.
 - `verify.py` на `57a181f` (з `C:/tmp/epl`): passed 3061, failed 0, skipped 1.
+- Фінальне рев'ю — самоперевірка автором: перемикання значення у вікні злиття губило фокус клавіатури; виправлено (Playwright, RED→GREEN). Cross-review agy/gemini-3.8-flash (codex і agy Argon без квоти): 6 знахідок про якість тестів, усі виправлено. PR #161.
+- `verify.py` на `77d409e` (з `C:/tmp/mmv`; із теки worktree частина тестів падає на довжині шляху Windows): passed 3128, failed 0, skipped 1.
