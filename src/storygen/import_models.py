@@ -12,6 +12,8 @@ class ImportedScene(DomainModel):
     part_index: int | None=Field(default=None,ge=0,le=10000)
     # BOOK-LINEAGE-S04: «Протагоніст:» of the scene plan, resolved by card name at publication.
     protagonist_name: str | None=Field(default=None,max_length=200)
+    # MEMORY-MERGE harness: «Арки:» of a meeting scene (two or more arc titles of its part).
+    arc_titles: list[str] | None=Field(default=None,max_length=20)
 
 class ImportPublication(DomainModel):
     metadata: dict

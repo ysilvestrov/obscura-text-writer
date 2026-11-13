@@ -4224,7 +4224,13 @@
         "tests/authoring/test_import_book_structure.py::test_first_structured_import_keeps_no_markers_in_the_source_plan",
         "tests/storage/test_import_protagonist.py::test_protagonist_line_is_cut_from_the_plan",
         "tests/storage/test_import_protagonist.py::test_import_sets_the_protagonist_of_a_new_arc",
-        "tests/storage/test_import_protagonist.py::test_edition_without_long_prose_keeps_the_line"
+        "tests/storage/test_import_protagonist.py::test_edition_without_long_prose_keeps_the_line",
+        "tests/authoring/test_import_meeting.py::test_arcs_line_makes_a_meeting_scene",
+        "tests/authoring/test_import_meeting.py::test_scene_after_meeting_returns_to_the_arc_before_it",
+        "tests/authoring/test_import_meeting.py::test_scene_after_meeting_takes_the_first_listed_arc",
+        "tests/authoring/test_import_meeting.py::test_single_title_in_arcs_line_is_one_arc",
+        "tests/authoring/test_import_meeting.py::test_arcs_line_is_not_an_arc_line",
+        "tests/authoring/test_import_meeting.py::test_edition_without_long_prose_keeps_the_arcs_line"
       ]
     },
     {

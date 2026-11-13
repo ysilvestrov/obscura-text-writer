@@ -237,11 +237,16 @@ def place_imported(story, active: list[Scene], created: list[tuple], structured:
         elif not parts:
             parts.append(Part(id=new_id(), title=part_title or ''))
         part = parts[-1]
-        arc = next((a for a in reversed(part.arcs) if a.title == arc_title), None) if arc_title is not None else (part.arcs[-1] if part.arcs else None)
-        if arc is None:
-            arc = Arc(id=new_id(), title=arc_title or '')
-            part.arcs.append(arc)
-        bindings[scene.id] = arc.id
+        meeting = rest[1] if len(rest) > 1 and rest[1] else None
+        if meeting:
+            # MEMORY-MERGE harness: a meeting scene belongs to every listed arc of its part, in structure order.
+            arcs = [_arc_in_part(part, title) for title in meeting]
+            order = {a.id: i for i, a in enumerate(part.arcs)}
+            bindings[scene.id] = canonical_arcs(sorted({a.id for a in arcs}, key=order.get))
+            arc = arcs[0]
+        else:
+            arc = _arc_in_part(part, arc_title) if arc_title is not None else (part.arcs[-1] if part.arcs else _arc_in_part(part, ''))
+            bindings[scene.id] = arc.id
         if rest and rest[0]:
             wanted.append((arc.id, rest[0]))
     structure = BookStructure(parts=parts)
@@ -249,6 +254,15 @@ def place_imported(story, active: list[Scene], created: list[tuple], structured:
     _require_sequence(structure, bindings, [s.model_copy(update={'position': i}) for i, s in enumerate(active)])
     pending, warnings = _apply_protagonists(structure, wanted, cards)
     return story.model_copy(update={'book_structure': structure, 'scene_arcs': bindings}), pending, warnings
+
+
+def _arc_in_part(part, title: str):
+    """The latest arc of the part with this title, created at the end of the part when there is none."""
+    arc = next((a for a in reversed(part.arcs) if a.title == title), None)
+    if arc is None:
+        arc = Arc(id=new_id(), title=title or '')
+        part.arcs.append(arc)
+    return arc
 
 
 def structured_story(repo, *, story_id=None, scene_id=None, run_id=None):

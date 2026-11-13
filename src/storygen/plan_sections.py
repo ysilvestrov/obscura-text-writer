@@ -49,6 +49,8 @@ PART_TITLE=re.compile(r'^(?:частина|part)\b[^:]*(?::\s*(.*))?$',re.IGNORE
 ARC_LINE=re.compile(r'^(?:арка|arc)\s*:\s*(.*)$',re.IGNORECASE)
 # BOOK-LINEAGE-S04: the arc protagonist by card name, cut from the scene plan like an arc line.
 PROTAGONIST_LINE=re.compile(r'^(?:протагоніст|protagonist)\s*:\s*(.*)$',re.IGNORECASE)
+# MEMORY-MERGE harness: «Арки: А, Б» — a meeting scene of several arcs of its part (comma or semicolon separated).
+ARCS_LINE=re.compile(r'^(?:арки|arcs)\s*:\s*(.*)$',re.IGNORECASE)
 
 
 @dataclass(frozen=True)
@@ -58,6 +60,8 @@ class BookSection:
     arc_title: str | None
     part_index: int | None = None  # ordinal of the part heading in this plan; equal titles stay separate parts
     protagonist_name: str | None = None
+    # Two or more titles: a meeting scene; arc_title is then the arc the next section without a line continues.
+    arc_titles: tuple[str, ...] | None = None
 
 
 def _plain(line):
@@ -82,16 +86,21 @@ def _part_headings(text):
 
 
 def _cut_arc_lines(text):
-    """The section text without arc and protagonist lines, the last arc title and the last protagonist name in it."""
-    kept=[];arc=None;protagonist=None
+    """The section text without arc, arcs and protagonist lines, the last arc title, the last protagonist name and the
+    titles of the last arcs line (None without one) in it."""
+    kept=[];arc=None;protagonist=None;arcs=None
     for line in text.splitlines(keepends=True):
         plain=_plain(line.rstrip('\r\n'))
         match=ARC_LINE.fullmatch(plain)
         if match:arc=match[1].strip()[:200];continue
+        match=ARCS_LINE.fullmatch(plain)
+        if match:
+            titles=[_plain(t).strip()[:200] for t in re.split(r'[,;]',match[1])]
+            arcs=tuple(dict.fromkeys(t for t in titles if t))[:20];continue
         match=PROTAGONIST_LINE.fullmatch(plain)
         if match:protagonist=_plain(match[1]).strip()[:200] or None;continue
         kept.append(line)
-    return ''.join(kept),arc,protagonist
+    return ''.join(kept),arc,protagonist,arcs
 
 
 def split_book_plan(text,default_title='Сцена'):
@@ -110,9 +119,16 @@ def split_book_plan(text,default_title='Сцена'):
     for section in sections:
         while mark<len(marks) and marks[mark][0]<=offset:
             part=marks[mark][1];arc=None;index=mark;mark+=1
-        body,line_arc,protagonist=_cut_arc_lines(section.text)
+        body,line_arc,protagonist,line_arcs=_cut_arc_lines(section.text)
         if line_arc is not None:arc=line_arc;found=True
         if protagonist is not None:found=True
-        result.append(BookSection(PlanSection(section.title,body,section.author_scene_number),part,arc,index,protagonist))
+        meeting=None
+        if line_arcs:
+            found=True
+            if len(line_arcs)==1:arc=line_arcs[0]
+            else:
+                # The next section without a line goes back to the arc before the meeting when it is a meeting arc.
+                meeting=line_arcs;arc=arc if arc in line_arcs else line_arcs[0]
+        result.append(BookSection(PlanSection(section.title,body,section.author_scene_number),part,arc,index,protagonist,meeting))
         offset+=len(section.text)
     return preamble,result,found
