@@ -55,10 +55,10 @@ def test_put_structure_conflict_writes_nothing(tmp_path):
     assert repo.get_story(story.id) == story
 
 
-def test_put_structure_rejects_mixed_arcs(tmp_path):
+def test_put_structure_rejects_mixed_parts(tmp_path):
     repo, story, scenes = setup(tmp_path)
-    with pytest.raises(ValueError, match='Scene 3'):
-        put_structure(repo, story.id, two_parts(), {scenes[0].id: 'a1', scenes[1].id: 'a2', scenes[2].id: 'a1'}, story.revision)
+    with pytest.raises(ValueError, match='Scene 2'):
+        put_structure(repo, story.id, two_parts(), {scenes[0].id: 'b1', scenes[1].id: 'a1', scenes[2].id: 'a2'}, story.revision)
     assert repo.get_story(story.id) == story
 
 
@@ -124,7 +124,8 @@ def test_restore_never_breaks_sequence(tmp_path):
     trashed = repo.get_scene(scenes[1].id, include_trashed=True)
     repo.set_scene_trashed(story.id, scenes[1].id, trashed.revision, restore=True)
     after = repo.get_story(story.id)
-    assert after.scene_arcs[scenes[1].id] == 'a1'
+    # Arcs of a part may interleave (project 2): the restored scene keeps its arc a2 between two a1 scenes.
+    assert after.scene_arcs[scenes[1].id] == 'a2'
 
 
 def test_trash_keeps_binding(tmp_path):
@@ -159,5 +160,5 @@ def test_fsck_reports_broken_structure_as_limitation(tmp_path):
     db.close()
     report = check_integrity(tmp_path)
     assert not report.issues
-    assert any('book_structure_not_sequential' in item for item in report.limitations)
+    assert any('book_structure_parts_mixed' in item for item in report.limitations)
     assert any('book_structure_unknown_arc' in item for item in report.limitations)

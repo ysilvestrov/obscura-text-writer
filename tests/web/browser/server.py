@@ -249,6 +249,20 @@ def main():
             publish_summary(repo, story.id, block.key, ref.id, story.revision)
             return {'story_id': story.id, 'scene_id': scenes[21].id}
 
+        @app.post('/test-memory-merge')
+        def memory_merge_fixture():
+            # MEMORY-MERGE-S04: part 1 — arc Z; part 2 — arcs A and B interleave, scene 4 is their meeting. Scenes 2 and 3
+            # dress Anna differently, so the merge has one conflict (neutral text).
+            from storygen.authoring.blueprints import save_role_settings
+            from storygen.domain import ContentRating
+            from storygen.providers.models import ProviderSettings, RoleSettings
+            from tests.memory.merge_helpers import arc_book
+            from tests.storage.test_memory_merges import coat_events
+            _, story, scenes = arc_book(None, 'Z A B A+B', [['Z'], ['A', 'B']], coat_events, repo=repo)
+            story = repo.update_story_rating(story.id, ContentRating(sexual=0, violence=0, themes=0), story.revision)
+            save_role_settings(repo, story.id, 'planner', RoleSettings(provider=ProviderSettings(model='planner')), story.revision)
+            return {'story_id': story.id, 'scene_ids': [s.id for s in scenes]}
+
         @app.post('/test-core-review')
         def core_review_scene():
             return core_review_fixture(repo,rated_story('Ключ і пальто'))

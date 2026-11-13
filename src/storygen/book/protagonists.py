@@ -3,7 +3,7 @@
 An arc without an explicit protagonist, or with one whose card is gone, takes the inferred protagonist of the book;
 a book without an explicit structure and a scene without a known arc track the inferred protagonist, as before arcs.
 """
-from ..book.structure import arc_order
+from ..book.structure import arc_order, scene_arc_list
 
 
 def has_explicit_protagonists(story) -> bool:
@@ -12,12 +12,12 @@ def has_explicit_protagonists(story) -> bool:
 
 
 def arcs_of(story, scene) -> list[str]:
-    """Arcs of the scene from the explicit structure: zero or one for now, a list once meeting scenes exist."""
+    """Known arcs of the scene from the explicit structure: two or more for a meeting scene."""
     structure = getattr(story, 'book_structure', None)
     if structure is None or getattr(scene, 'trashed_at', None):
         return []  # the trash keeps the binding, but a trashed scene tracks the inferred protagonist
-    arc = story.scene_arcs.get(scene.id)
-    return [arc] if arc in arc_order(structure) else []
+    known = arc_order(structure)
+    return [arc for arc in scene_arc_list(story.scene_arcs, scene.id) if arc in known]
 
 
 def scene_tracked(story, cards, scenes, scene) -> list[str]:

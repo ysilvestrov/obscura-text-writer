@@ -20,10 +20,10 @@ def kind_overrides(view,scene_id) -> dict[str,str]:
     scene=view.peek_scene(scene_id)
     marks=view.peek_story(scene.story_id).memory_kind_overrides
     if not marks:return {}
-    from ..book.lineage import earlier_scenes
-    previous=earlier_scenes(view,scene,peek=True)
-    memory_id=previous[-1].heads.get('memory') if previous else None
-    journal=_journal(view,memory_id) if memory_id else None
+    from .previous import previous_memory, read_previous_journal
+    before=previous_memory(view,scene,peek=True,require=False)
+    try:journal=read_previous_journal(view,before,peek=True) if before.memory_id else None
+    except (ValueError,KeyError,OSError):journal=None
     if journal is None:return {}
     from .projection import candidate_claim_ids
     try:candidates=candidate_claim_ids(journal)

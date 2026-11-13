@@ -4,7 +4,7 @@ import {t,msg,uiText} from './i18n.js';
 import {api,json,notice} from './api.js';
 import {state,refresh} from './editor.js';
 import {appInfo} from './app-info.js';
-import {arcOptions} from './book-structure.js';
+import {arcOptions,meetingOptions} from './book-structure.js';
 
 let longProse=null;
 const label=(key,n)=>t(key,{p0:n});
@@ -28,15 +28,34 @@ function arcField(){
   const field=document.createElement('label'),caption=document.createElement('span'),select=document.createElement('select');
   select.name='arc_id';uiText(caption,'textContent',()=>t('book.scene_arc'));
   for(const option of arcOptions(book,label)){const item=document.createElement('option');item.value=option.value;item.textContent=option.label;select.append(item)}
-  select.value=current?.arc_id||'';field.append(caption,select);form.append(field);
-  // The change is saved at once: one PUT with the story revision; a refused change restores the shown value.
-  select.onchange=async()=>{
-    const previous=current?.arc_id||'';
+  const arcIds=current?.arc_ids?.length?current.arc_ids:current?.arc_id?[current.arc_id]:[];
+  select.value=arcIds[0]||'';field.append(caption,select);form.append(field);
+  // Every change is saved at once: one PUT with the story revision; a refused change restores the shown value.
+  const save=async(body,restore)=>{
     try{
-      await api(`/api/stories/${state.storyId}/scenes/${state.scene.id}/arc`,json('PUT',{arc_id:select.value,expected_revision:state.view.story.revision}));
+      await api(`/api/stories/${state.storyId}/scenes/${state.scene.id}/arc`,json('PUT',{...body,expected_revision:state.view.story.revision}));
       await refresh();notice(msg('book.scene_arc_saved'));
-    }catch(e){select.value=previous;notice(e.message,'error')}
+    }catch(e){restore();notice(e.message,'error')}
   };
+  // A new main arc ends a meeting: the scene keeps one arc.
+  select.onchange=()=>save({arc_id:select.value},()=>{select.value=arcIds[0]||''});
+  // MEMORY-MERGE harness: the other arcs of the part make the scene a meeting scene.
+  const options=meetingOptions(book,arcIds,label);
+  if(options.length){
+    const group=document.createElement('fieldset'),legend=document.createElement('legend');
+    group.className='scene-meeting';uiText(legend,'textContent',()=>t('book.scene_meeting'));group.append(legend);
+    const boxes=[];
+    for(const option of options){
+      const item=document.createElement('label'),box=document.createElement('input'),text=document.createElement('span');
+      box.type='checkbox';box.value=option.value;box.checked=option.checked;text.textContent=option.label;
+      box.onchange=()=>{
+        const ids=[select.value,...boxes.filter(b=>b.checked).map(b=>b.value)];
+        save(ids.length>1?{arc_ids:ids}:{arc_id:ids[0]},()=>{box.checked=!box.checked});
+      };
+      boxes.push(box);item.append(box,text);group.append(item);
+    }
+    form.append(group);
+  }
   settings.after(form);
 }
 

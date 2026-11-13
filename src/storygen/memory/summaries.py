@@ -42,11 +42,11 @@ def block_state(view, story, scenes, block):
         payload = json.loads(view.read_text(head))
     except (KeyError, ValueError, OSError):
         return 'stale', 'stale', None
-    by_id = {s.id: s for s in scenes}
-    memory_id = by_id[block.scene_ids[-1]].heads.get('memory') if block.scene_ids[-1] in by_id else None
+    from ..generation.timeline_summary import end_of_part_memory
+    memory_id = end_of_part_memory(view, story, scenes, block, require=False)
     if tuple(payload.get('scene_ids', ())) != block.scene_ids:
         return 'stale', 'blocks_changed', payload
-    if payload.get('memory_version_id') != memory_id:
+    if not memory_id or payload.get('memory_version_id') != memory_id:
         return 'stale', 'memory_changed', payload
     if ref.stale or view.get_version(memory_id).stale:
         return 'stale', 'stale', payload

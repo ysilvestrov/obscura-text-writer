@@ -79,7 +79,7 @@ def publish_import(repo,story_id,expected_revision,publication):
             # BOOK-STRUCTURE: parts, arcs and bindings of the new scenes, in the same transaction as the scenes.
             from .book_structure import place_imported
             by_id={scene.id:scene for scene in active}
-            placed=[(by_id[id],item.part_title,item.arc_title,item.part_index,item.protagonist_name) for id,item in zip(created,publication.scenes)]
+            placed=[(by_id[id],item.part_title,item.arc_title,item.part_index,item.protagonist_name,item.arc_titles) for id,item in zip(created,publication.scenes)]
             from .context_view import ContextView
             from .snapshots import core_cards
             current=repo._get(db,'stories',story_id,Story)

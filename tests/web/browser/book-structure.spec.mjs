@@ -54,6 +54,29 @@ test('the arc field in scene parameters saves at once',async({page,request})=>{
   expect((await view(request,story_id)).scenes.find(scene=>scene.id===second).arc_id).toBe('a2');
 });
 
+test('meeting arcs are ticked and saved',async({page,request})=>{
+  // MEMORY-MERGE harness: the other arcs of the scene's part are checkboxes; a tick saves arc_ids at once.
+  const {story_id,second}=await structuredBook(request);
+  await page.goto(`/stories/${story_id}`);
+  if(test.info().project.name==='mobile')await page.locator('#scene-select-mobile').selectOption(second);
+  else await page.locator('#scene-list .scene-item').nth(1).click();
+  await expect(page.locator('#scene-title')).toHaveText('Друга сцена');
+  await page.locator('.tool-section[data-section=scene]').evaluate(details=>{details.open=true});
+  const group=page.getByRole('group',{name:'Сцена зустрічі з арками'});
+  await group.getByRole('checkbox',{name:'Арка 2'}).check();
+  await expect(page.locator('#notice')).toContainText('Арку сцени змінено');
+  expect((await view(request,story_id)).scenes.find(scene=>scene.id===second).arc_ids).toEqual(['a1','a2']);
+  await page.reload();
+  if(test.info().project.name==='mobile')await page.locator('#scene-select-mobile').selectOption(second);
+  else await page.locator('#scene-list .scene-item').nth(1).click();
+  await page.locator('.tool-section[data-section=scene]').evaluate(details=>{details.open=true});
+  await expect(page.getByRole('group',{name:'Сцена зустрічі з арками'}).getByRole('checkbox',{name:'Арка 2'})).toBeChecked();
+  // A main arc of another part ends the meeting: one arc, no checkboxes left.
+  await page.locator('#scene-arc select[name="arc_id"]').selectOption('b1');
+  await expect.poll(async()=>(await view(request,story_id)).scenes.find(scene=>scene.id===second).arc_ids).toEqual(['b1']);
+  await expect(page.getByRole('group',{name:'Сцена зустрічі з арками'})).toHaveCount(0);
+});
+
 test('the structure panel renames a part with one save',async({page,request})=>{
   const {story_id}=await structuredBook(request);
   await page.goto(`/stories/${story_id}/settings`);

@@ -17,14 +17,28 @@ MAX_TITLE = 200
 @dataclass(frozen=True)
 class EffectiveStructure:
     parts: list[Part]
-    arc_of: dict[str, str]
+    arc_of: dict[str, str]  # the first known arc of each scene
     kind: Literal['flat', 'structured']
     explicit: bool
     part_of_arc: dict[str, str] = field(default_factory=dict)
+    arcs_of: dict[str, tuple[str, ...]] = field(default_factory=dict)  # every known arc; two or more for a meeting scene
 
 
 def _active(scenes):
     return sorted((s for s in scenes if not s.trashed_at), key=lambda s: s.position)
+
+
+def scene_arc_list(scene_arcs: dict, scene_id: str) -> list[str]:
+    """Arcs of a scene binding: a string is one arc, a list a meeting scene; the only way to read `Story.scene_arcs`."""
+    value = scene_arcs.get(scene_id)
+    if value is None:
+        return []
+    return [value] if isinstance(value, str) else list(value)
+
+
+def canonical_arcs(arcs: list[str]) -> str | list[str]:
+    """Stored form of a binding: one arc stays a string, so payloads of books without meeting scenes never change."""
+    return arcs[0] if len(arcs) == 1 else list(arcs)
 
 
 def arc_order(structure: BookStructure) -> dict[str, tuple[int, int]]:
@@ -35,13 +49,19 @@ def effective_structure(story, scenes) -> EffectiveStructure:
     active = _active(scenes)
     if story.book_structure is None:
         part = Part(id=IMPLICIT_PART, arcs=[Arc(id=IMPLICIT_ARC)])
-        return EffectiveStructure([part], {s.id: IMPLICIT_ARC for s in active}, 'flat', False, {IMPLICIT_ARC: IMPLICIT_PART})
+        return EffectiveStructure([part], {s.id: IMPLICIT_ARC for s in active}, 'flat', False, {IMPLICIT_ARC: IMPLICIT_PART},
+                                  {s.id: (IMPLICIT_ARC,) for s in active})
     parts = story.book_structure.parts
     arcs = sum(len(p.arcs) for p in parts)
     kind = 'structured' if len(parts) > 1 or arcs > 1 else 'flat'
     known = arc_order(story.book_structure)
-    arc_of = {s.id: story.scene_arcs[s.id] for s in active if story.scene_arcs.get(s.id) in known}
-    return EffectiveStructure(list(parts), arc_of, kind, True, {a.id: p.id for p in parts for a in p.arcs})
+    arcs_of = {}
+    for s in active:
+        arcs = tuple(a for a in scene_arc_list(story.scene_arcs, s.id) if a in known)
+        if arcs:
+            arcs_of[s.id] = arcs
+    arc_of = {scene_id: arcs[0] for scene_id, arcs in arcs_of.items()}
+    return EffectiveStructure(list(parts), arc_of, kind, True, {a.id: p.id for p in parts for a in p.arcs}, arcs_of)
 
 
 def structure_kind(story, scenes) -> Literal['flat', 'structured']:
@@ -70,30 +90,49 @@ def _scene_label(scene, number):
     return f'сцена {number} «{scene.title}»'
 
 
-def check_sequential(structure: BookStructure, scene_arcs: dict, active_scenes) -> list[str]:
-    """Violations, empty when every active scene has a known arc and arcs never go back in structure order."""
+def check_order(structure: BookStructure, scene_arcs: dict, active_scenes) -> list[str]:
+    """Violations, empty when every active scene has a known arc, a meeting scene has two or more different arcs of one
+    part, and parts never go back in structure order. Arcs of a part may interleave (BOOK-STRUCTURE, project 2)."""
     order = arc_order(structure)
-    titles = {a.id: a.title or f'Арка {i}' for i, a in enumerate((a for p in structure.parts for a in p.arcs), 1)}
+    part_of = {arc.id: p for p, part in enumerate(structure.parts) for arc in part.arcs}
+    part_titles = [p.title or f'Частина {i}' for i, p in enumerate(structure.parts, 1)]
     problems = []
     last = None
     last_label = None
     for number, scene in enumerate(_active(active_scenes), 1):
-        arc = scene_arcs.get(scene.id)
+        arcs = scene_arc_list(scene_arcs, scene.id)
         label = _scene_label(scene, number)
-        if arc not in order:
-            problems.append(f'{label[0].upper()}{label[1:]} не має арки зі структури книги')
+        capital = f'{label[0].upper()}{label[1:]}'
+        if not arcs or any(arc not in order for arc in arcs):
+            problems.append(f'{capital} не має арки зі структури книги')
             continue
-        if last is not None and order[arc] < order[last]:
-            problems.append(f'{label[0].upper()}{label[1:]} в арці «{titles[arc]}» стоїть після {last_label} з арки «{titles[last]}»: '
-                            'арки й частини мають іти по черзі')
-        if last is None or order[arc] >= order[last]:
-            last, last_label = arc, label
+        if len(arcs) > 1 and (len(set(arcs)) != len(arcs) or len({part_of[a] for a in arcs}) != 1):
+            problems.append(f'{capital} — сцена зустрічі: її арки мають бути різними й належати одній частині')
+            continue
+        part = part_of[arcs[0]]
+        if last is not None and part < last:
+            problems.append(f'{capital} з частини «{part_titles[part]}» стоїть після {last_label} з частини «{part_titles[last]}»: '
+                            'частини мають іти по черзі')
+        if last is None or part >= last:
+            last, last_label = part, label
     return problems
+
+
+def arc_after_meeting(arcs: list[str], before: str | None) -> str:
+    """The arc a scene after a meeting scene continues: the arc that stood before the meeting when it is among the
+    meeting's arcs, otherwise the first listed one."""
+    return before if before in arcs else arcs[0]
 
 
 def arc_before(structure: BookStructure, scene_arcs: dict, active_scenes, position: int) -> str:
     order = arc_order(structure)
-    earlier = [s for s in _active(active_scenes) if s.position < position and scene_arcs.get(s.id) in order]
-    if earlier:
-        return scene_arcs[earlier[-1].id]
-    return structure.parts[0].arcs[0].id
+    earlier = [s for s in _active(active_scenes)
+               if s.position < position and scene_arc_list(scene_arcs, s.id) and all(a in order for a in scene_arc_list(scene_arcs, s.id))]
+    if not earlier:
+        return structure.parts[0].arcs[0].id
+    arcs = scene_arc_list(scene_arcs, earlier[-1].id)
+    if len(arcs) == 1:
+        return arcs[0]
+    single = [scene_arc_list(scene_arcs, s.id) for s in earlier[:-1]]
+    before = next((a[0] for a in reversed(single) if len(a) == 1), None)
+    return arc_after_meeting(arcs, before)

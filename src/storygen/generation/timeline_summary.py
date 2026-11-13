@@ -20,8 +20,28 @@ def _block(story, scenes, block_key):
     return block
 
 
+def end_of_part_memory(view, story, scenes, block, *, require=True):
+    """The memory at the end of the block (MEMORY-MERGE-S05): the memory of its last scene, or for a part that ends with
+    several heads the usable merge the next part (or the end of the book) starts from. Without it: ValueError, or None
+    when `require` is false."""
+    by_id = {s.id: s for s in scenes}
+    last = by_id[block.scene_ids[-1]].heads.get('memory') if block.scene_ids[-1] in by_id else None
+    if not block.part:
+        return last
+    from ..book.lineage import merge_key, part_end_heads
+    heads = part_end_heads(story, scenes, block.key[len('part:'):])
+    if len(heads) < 2:
+        return last
+    from ..storage.memory_merges import MergePoint, usable_merge
+    version_id = usable_merge(view, story, scenes, MergePoint(merge_key(heads), heads, ()))
+    if version_id is None and require:
+        raise ValueError(f'Спершу підтвердіть злиття пам’яті в кінці частини «{block.title}»')
+    return version_id
+
+
 def block_inputs(view, story, scenes, block):
-    """Memory version of every scene of the block; ValueError names the first scene without fresh memory."""
+    """Memory version of every scene of the block, then the end-of-part merge when the part ends with several heads;
+    ValueError names the first scene without fresh memory or the missing merge."""
     by_id = {s.id: s for s in scenes}
     memory_ids = []
     for number, scene_id in enumerate(block.scene_ids, block.first_number):
@@ -32,14 +52,19 @@ def block_inputs(view, story, scenes, block):
         if view.get_version(memory_id).stale:
             raise ValueError(f'Пам’ять сцени {number} «{scene.title}» застаріла; оновіть її')
         memory_ids.append(memory_id)
-    return memory_ids
+    end = end_of_part_memory(view, story, scenes, block)
+    return memory_ids if end == memory_ids[-1] else memory_ids + [end]
 
 
 def _timeline(view, scenes, block, memory_id, language):
     from ..memory.journal import load_memory
     from ..memory.projection import _timeline_events
     from .context_labels import label
-    journal = load_memory(view.read_text(memory_id))
+    if view.get_version(memory_id).kind == 'memory_merge':
+        from ..storage.memory_merges import merge_journal
+        journal = merge_journal(view, memory_id)
+    else:
+        journal = load_memory(view.read_text(memory_id))
     numbers = {s.id: n for n, s in enumerate(sorted(scenes, key=lambda s: s.position), 1)}
     def scene_number(version_id):
         try:

@@ -7,7 +7,7 @@ export const arcTitle=(arc,number,label)=>arc.title||label('book.arc.untitled',n
 // Rows for the scene list: a part heading before the first scene of each part and an arc heading before the first scene
 // of an arc when its part has several arcs or the arc has a title. A flat book gets scene rows only.
 export function groupScenes(book,scenes,label){
-  if(!book||book.kind!=='structured')return scenes.map(scene=>({type:'scene',scene}));
+  if(!book||book.kind!=='structured')return scenes.map(sceneRow);
   const place=new Map();
   book.parts.forEach((part,p)=>part.arcs.forEach((arc,a)=>place.set(arc.id,{part,p,arc,a})));
   const rows=[];let lastPart=null,lastArc=null;
@@ -18,9 +18,17 @@ export function groupScenes(book,scenes,label){
       if(found.part.arcs.length>1||found.arc.title)rows.push({type:'arc',id:found.arc.id,title:arcTitle(found.arc,found.a+1,label)});
       lastArc=found.arc.id;
     }
-    rows.push({type:'scene',scene});
+    rows.push(sceneRow(scene));
   }
   return rows;
+}
+
+// MEMORY-MERGE harness: a scene row knows whether it is a meeting scene and whether its merge point waits for the author.
+const sceneRow=scene=>({type:'scene',scene,meeting:(scene.arc_ids?.length||0)>1,merge:scene.memory_merge||null});
+
+// i18n keys of the marks shown in the scene's status line.
+export function sceneMarks(row){
+  return [row.meeting&&'book.badge.meeting',row.merge==='required'&&'book.badge.merge'].filter(Boolean);
 }
 
 // Options «Part › Arc» for the scene arc field, in structure order.
@@ -30,14 +38,25 @@ export function arcOptions(book,label){
   return options;
 }
 
+// MEMORY-MERGE harness: checkboxes of a meeting scene — the other arcs of the part of its first arc, in structure order.
+export function meetingOptions(book,arcIds,label){
+  const first=arcIds?.[0];
+  const part=(book?.parts||[]).find(item=>item.arcs.some(arc=>arc.id===first));
+  if(!part||part.arcs.length<2)return [];
+  return part.arcs.map((arc,a)=>({arc,a})).filter(({arc})=>arc.id!==first)
+    .map(({arc,a})=>({value:arc.id,label:arcTitle(arc,a+1,label),checked:arcIds.includes(arc.id)}));
+}
+
 let counter=0;
 const newId=prefix=>`${prefix}-${Date.now().toString(36)}-${(counter++).toString(36)}`;
 
 // The panel edits a copy; nothing reaches the server until save sends the whole structure in one PUT.
 export function createBuffer(book,scenes){
   const parts=(book?.parts||[]).map(part=>({id:part.id,title:part.title||'',arcs:part.arcs.map(arc=>({id:arc.id,title:arc.title||'',protagonist_id:arc.protagonist_id||null}))}));
-  const used=new Map();for(const scene of scenes)used.set(scene.arc_id,(used.get(scene.arc_id)||0)+1);
-  return {parts,used,scene_arcs:Object.fromEntries(scenes.filter(s=>s.arc_id).map(s=>[s.id,s.arc_id]))};
+  // A meeting scene (several arc_ids) keeps every arc and counts in each of them; one arc stays a string.
+  const arcsOf=scene=>scene.arc_ids?.length?scene.arc_ids:scene.arc_id?[scene.arc_id]:[];
+  const used=new Map();for(const scene of scenes)for(const arc of arcsOf(scene))used.set(arc,(used.get(arc)||0)+1);
+  return {parts,used,scene_arcs:Object.fromEntries(scenes.filter(s=>arcsOf(s).length).map(s=>[s.id,arcsOf(s).length===1?arcsOf(s)[0]:[...arcsOf(s)]]))};
 }
 
 const arcScenes=(buffer,arc)=>buffer.used.get(arc.id)||0;

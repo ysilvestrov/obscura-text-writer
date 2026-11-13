@@ -44,14 +44,11 @@ def projection_policy(view,scene_id):
     hidden={id for id,enabled in choices.items() if not enabled}
     if not hidden:return []
     scene=view.peek_scene(scene_id)
-    from ..book.lineage import earlier_scenes
-    previous=earlier_scenes(view,scene,peek=True)
-    memory_id=previous[-1].heads.get('memory') if previous else None
-    if memory_id:
+    from .previous import previous_memory, read_previous_journal
+    before=previous_memory(view,scene,peek=True,require=False)
+    if before.memory_id:
         # Resolution links only; quotes and prefix are validated where the journal is used for content.
-        try:
-            ref=view.peek_version(memory_id)  # no freshness recomputation inside selector evaluation
-            journal=load_memory(view.read_blob(ref.relative_path,ref.sha256).decode('utf-8'))
+        try:journal=read_previous_journal(view,before,peek=True)  # peek: no freshness recomputation in a selector
         except (ValueError,KeyError,OSError):journal=None
         if journal is not None:
             hidden=effective_hidden(journal,hidden,forwarded={id for id,enabled in choices.items() if enabled})

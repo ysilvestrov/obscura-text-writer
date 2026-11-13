@@ -105,7 +105,8 @@ def _plan(repo,view,story,text,version,item,publication):
         place=places.get(id(section))
         publication.scenes.append(ImportedScene(data=data,plan_version_id=plan.id,part_title=place.part_title if place else None,
                                                 arc_title=place.arc_title if place else None,part_index=place.part_index if place else None,
-                                                protagonist_name=place.protagonist_name if place else None));proposals.append(data)
+                                                protagonist_name=place.protagonist_name if place else None,
+                                                arc_titles=list(place.arc_titles) if place and place.arc_titles else None));proposals.append(data)
     previous=view.active_source(story.id,'source_plan')
     if previous:
         combined=view.read_text(previous.id)+'\n\n'+''.join(s.text for s in accepted)

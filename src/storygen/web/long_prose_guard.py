@@ -19,6 +19,7 @@ ALLOWED = {
     ('PUT', '/api/stories/{story_id}/structure'): 'маршрути структури відмовляють у будь-якій книзі власною перевіркою',
     ('DELETE', '/api/stories/{story_id}/structure'): 'маршрути структури відмовляють у будь-якій книзі власною перевіркою',
     ('PUT', '/api/stories/{story_id}/scenes/{scene_id}/arc'): 'маршрути структури відмовляють у будь-якій книзі власною перевіркою',
+    ('PUT', '/api/stories/{story_id}/memory-merges/{merge_key}'): 'злиття пам’яті відмовляє в будь-якій книзі власною перевіркою',
     ('POST', '/api/runs/{id}/pause'): 'зупинка запуску нічого не створює',
     ('POST', '/api/runs/{id}/cancel'): 'скасування запуску нічого не створює',
     ('POST', '/api/runs/cancel-request'): 'скасування запуску нічого не створює',

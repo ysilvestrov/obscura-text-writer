@@ -46,7 +46,7 @@ def test_put_structure_and_story_view(tmp_path):
 def test_put_structure_conflict_and_sequence_errors(tmp_path):
     client, repo, story, scenes = setup(tmp_path)
     assert put(client, story, scenes, ['a1', 'a2', 'b1'], story.revision - 1).status_code == 409
-    mixed = put(client, story, scenes, ['a2', 'a1', 'b1'])
+    mixed = put(client, story, scenes, ['b1', 'a1', 'a2'])
     assert mixed.status_code == 400 and 'Scene 2' in mixed.text
     assert repo.get_story(story.id).book_structure is None
 
@@ -72,3 +72,14 @@ def test_structure_routes_refused_without_long_prose(tmp_path, store_edition):
     assert client.put(f'/api/stories/{story.id}/scenes/{scenes[0].id}/arc', json={'arc_id': 'a1', 'expected_revision': story.revision}).status_code == 400
     assert client.request('DELETE', f'/api/stories/{story.id}/structure', json={'expected_revision': story.revision}).status_code == 400
     assert repo.get_story(story.id).revision == story.revision
+
+
+def test_story_lists_all_arcs_of_a_meeting_scene(tmp_path):
+    # MEMORY-MERGE harness H1: a meeting scene keeps every arc in the story view; arc_id stays the first one.
+    from tests.memory.merge_helpers import arc_book
+    app = create_app(AppSettings(data_dir=tmp_path / 'data', env_file=tmp_path / 'absent.env'))
+    _, story, scenes = arc_book(None, 'A B A+B', [['A', 'B']], repo=app.state.repo)
+    data = TestClient(app, base_url='http://127.0.0.1').get(f'/api/stories/{story.id}').json()
+    by_id = {s['id']: s for s in data['scenes']}
+    assert (by_id[scenes[2].id]['arc_ids'], by_id[scenes[2].id]['arc_id']) == (['A', 'B'], 'A')
+    assert by_id[scenes[0].id]['arc_ids'] == ['A']

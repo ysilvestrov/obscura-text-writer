@@ -13,7 +13,7 @@ import {confirmUnsaved} from './core-review.js';
 import {readWorkspacePosition,rememberWorkspacePosition,resolveWorkspacePosition,updateWorkspaceUrl} from './workspace-position.js';
 import {registerWorkspaceCommand,invokeWorkspaceCommand} from './workspace-commands.js';
 import {externalNotice} from './scene-sync.js';
-import {groupScenes} from './book-structure.js';
+import {groupScenes,sceneMarks} from './book-structure.js';
 
 export const state={storyId:document.querySelector('#workspace')?.dataset.storyId,scene:null,view:null,mode:'plan',dirty:false,saving:false,bufferEpoch:0};
 export const initialWorkspacePosition=readWorkspacePosition(state.storyId,globalThis.location?.search||'');
@@ -108,7 +108,7 @@ async function loadView(options){
     const scene=row.scene;
     const button=document.createElement('button');button.className='scene-item'+(state.scene?.id===scene.id?' active':'');uiText(button,"textContent",()=>((scene.position+1)+'. '+displaySceneTitle(scene.title)));
     button.setAttribute('aria-current',state.scene?.id===scene.id?'true':'false');
-    const small=document.createElement('small');uiText(small,"textContent",()=>sceneStatus(scene,state.view.impact_status).label);button.append(small);button.onclick=()=>selectScene(scene);list.append(button);
+    const small=document.createElement('small');uiText(small,"textContent",()=>[sceneStatus(scene,state.view.impact_status).label,...sceneMarks(row).map(key=>t(key))].join(' · '));button.append(small);button.onclick=()=>selectScene(scene);list.append(button);
   }
   if(!state.scene&&state.view.scenes.length)await selectScene(resolveWorkspacePosition(state.view.scenes,initialWorkspacePosition).scene);
   renderImportJournal(document.querySelector('#import-journal')||document.querySelector('#context-content'),state.view.source_files||[],state.view.active_sources||{});

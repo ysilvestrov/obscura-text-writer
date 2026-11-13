@@ -131,17 +131,18 @@ def test_store_edition_imports_markers_as_text(tmp_path, store_edition):
     assert 'Арка: Ранок' in texts and 'Частина 2' in texts
 
 
-def test_import_that_would_mix_arcs_writes_nothing(tmp_path):
+def test_import_may_interleave_arcs_of_a_part(tmp_path):
+    # Project 2: arcs of a part may interleave, so going back to an earlier arc of the continued part is accepted.
     repo = Repository(tmp_path)
     story = repo.create_story(StoryCreate(title='Книга'))
     run(repo, story, PLAN)
     before = repo.get_story(story.id)
     mixed = '# Частина 2: Дорога\n\n## Сцена 5: А\nАрка: Ліс\nТекст.\n\n## Сцена 6: Б\nАрка: \nТекст.\n'
-    with pytest.raises(ImportBatchFailure):
-        run(repo, before, mixed)
-    after = repo.get_story(story.id)
-    assert after.book_structure == before.book_structure and after.scene_arcs == before.scene_arcs
-    assert len(repo.list_scenes(story.id)) == 3
+    run(repo, before, mixed)
+    story, scenes, structure = book(repo, story.id)
+    titles = {arc.id: arc.title for part in story.book_structure.parts for arc in part.arcs}
+    assert [titles[structure.arc_of[scene.id]] for scene in scenes] == ['Ранок', 'Ранок', '', 'Ліс', '']
+    assert structure.arc_of[scenes[4].id] == structure.arc_of[scenes[2].id]
 
 
 def test_parts_with_equal_or_empty_titles_stay_separate(tmp_path):

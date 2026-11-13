@@ -32,40 +32,92 @@ def lineage_map(story, scenes) -> dict:
     if getattr(story, 'book_structure', None) is None:  # no structure, or a pure helper called without a story
         return _chain(active)
     structure = effective_structure(story, active)
-    if structure.kind == 'flat' or any(s.id not in structure.arc_of for s in active):
+    if structure.kind == 'flat' or any(s.id not in structure.arcs_of for s in active):
         return _chain(active)
-    arc_of, part_of = structure.arc_of, structure.part_of_arc
+    arcs_of, part_of = structure.arcs_of, structure.part_of_arc
     index = {s.id: i for i, s in enumerate(active)}
     last_of_arc = {}
     for s in active:
-        last_of_arc[arc_of[s.id]] = s.id
+        for arc in arcs_of[s.id]:
+            last_of_arc[arc] = s.id
     part_index = {p.id: i for i, p in enumerate(structure.parts)}
     ancestors: dict[str, set[str]] = {}
     result = {}
     previous_in_arc: dict[str, str] = {}
     for i, s in enumerate(active):
-        arc = arc_of[s.id]
-        if arc in previous_in_arc:
-            predecessors = [previous_in_arc[arc]]
-        else:
-            part = structure.parts[part_index[part_of[arc]]]
-            ended = [last_of_arc[a.id] for a in part.arcs
-                     if a.id != arc and a.id in last_of_arc and index[last_of_arc[a.id]] < i]
-            # The start of a part: the heads of the nearest earlier part that has scenes (an empty part is skipped).
-            back = part_index[part.id] - 1
-            while not ended and back >= 0:
-                ended = [last_of_arc[a.id] for a in structure.parts[back].arcs if a.id in last_of_arc]
-                back -= 1
-            predecessors = ended
+        predecessors = []
+        for arc in arcs_of[s.id]:
+            for p in _arc_predecessors(arc, i, structure, part_of, part_index, previous_in_arc, last_of_arc, index):
+                if p not in predecessors:
+                    predecessors.append(p)
         closure = set(predecessors)
         for p in predecessors:
             closure |= ancestors[p]
-        heads = tuple(sorted((p for p in predecessors if not any(p in ancestors[q] for q in predecessors if q != p)),
-                             key=index.__getitem__))
+        heads = _heads(predecessors, ancestors, index)
         ancestors[s.id] = closure
         result[s.id] = Lineage(heads, tuple(sorted(closure, key=index.__getitem__)), len(heads) > 1)
-        previous_in_arc[arc] = s.id
+        for arc in arcs_of[s.id]:
+            previous_in_arc[arc] = s.id
     return result
+
+
+def _heads(predecessors, ancestors, index) -> tuple[str, ...]:
+    return tuple(sorted((p for p in predecessors if not any(p in ancestors[q] for q in predecessors if q != p)),
+                        key=index.__getitem__))
+
+
+def _arc_predecessors(arc, i, structure, part_of, part_index, previous_in_arc, last_of_arc, index) -> list[str]:
+    """Direct predecessors through one arc of the scene at reading index `i`."""
+    if arc in previous_in_arc:
+        return [previous_in_arc[arc]]
+    part = structure.parts[part_index[part_of[arc]]]
+    ended = [last_of_arc[a.id] for a in part.arcs
+             if a.id != arc and a.id in last_of_arc and index[last_of_arc[a.id]] < i]
+    # The start of a part: the heads of the nearest earlier part that has scenes (an empty part is skipped).
+    back = part_index[part.id] - 1
+    while not ended and back >= 0:
+        ended = [last_of_arc[a.id] for a in structure.parts[back].arcs if a.id in last_of_arc]
+        back -= 1
+    return ended
+
+
+def merge_key(heads) -> str:
+    """Key of a merge point: every scene with the same set of heads shares one merge (MEMORY-MERGE)."""
+    return 'heads:' + ','.join(sorted(heads))
+
+
+def book_end_heads(story, scenes) -> tuple[str, ...]:
+    """Heads at the end of the book: the heads at the end of its last part with scenes; one element means the book ends
+    without a merge."""
+    active = _active(scenes)
+    if not active:
+        return ()
+    structure = effective_structure(story, active) if getattr(story, 'book_structure', None) is not None else None
+    if structure is None or structure.kind == 'flat' or any(s.id not in structure.arcs_of for s in active):
+        return (active[-1].id,)
+    return part_end_heads(story, active, structure.part_of_arc[structure.arc_of[active[-1].id]])
+
+
+def part_end_heads(story, scenes, part_id: str) -> tuple[str, ...]:
+    """Heads at the end of a part: the last scenes of its arcs that are not ancestors of one another, in reading order
+    (the heads the next part starts from). A book without arcs or with a scene outside the structure: its last scene."""
+    active = _active(scenes)
+    if not active:
+        return ()
+    structure = effective_structure(story, active) if getattr(story, 'book_structure', None) is not None else None
+    if structure is None or structure.kind == 'flat' or any(s.id not in structure.arcs_of for s in active):
+        return (active[-1].id,)
+    items = lineage_map(story, active)
+    last_part = part_id
+    last_of_arc = {}
+    for s in active:
+        for arc in structure.arcs_of[s.id]:
+            if structure.part_of_arc[arc] == last_part:
+                last_of_arc[arc] = s.id
+    index = {s.id: i for i, s in enumerate(active)}
+    candidates = list(dict.fromkeys(last_of_arc.values()))
+    ancestors = {scene_id: set(items[scene_id].ancestors) for scene_id in candidates}
+    return _heads(candidates, ancestors, index)
 
 
 def lineage(story, scenes, scene_id: str) -> Lineage:
@@ -88,3 +140,11 @@ def earlier_scenes(view, scene, *, peek: bool = False) -> list:
     story = (view.peek_story if peek and hasattr(view, 'peek_story') else view.get_story)(scene.story_id)
     scenes = (view.peek_scenes if peek and hasattr(view, 'peek_scenes') else view.list_scenes)(scene.story_id)
     return previous_scenes(story, scenes, scene)
+
+
+def lineage_numbers(story, scenes, scene) -> dict[int, int]:
+    """Book scene number -> number in the scene's lineage (the scene itself last); empty when they are equal, so a flat
+    book and sequential arcs keep their selection windows byte for byte (BOOK-LINEAGE-S01/S03)."""
+    chain = previous_scenes(story, scenes, scene) + [scene]
+    numbers = {s.position + 1: i for i, s in enumerate(chain, 1)}
+    return {} if all(book == own for book, own in numbers.items()) else numbers
