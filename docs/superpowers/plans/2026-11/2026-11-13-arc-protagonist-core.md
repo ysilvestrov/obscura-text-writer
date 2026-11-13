@@ -96,6 +96,8 @@
 - [ ] **Step 4:** запуск → PASS; `pytest tests/storage/test_memory_core_selectors.py tests/generation/test_writer_day_change.py -q` без змін тестів → PASS.
 - [ ] **Step 5:** коміт `feat(memory): tracked characters selector per scene`.
 
+> **Відхилення під час виконання (журнал, Task 3–4).** `compare_snapshot` не отримав параметра `scene_id`: сцену-власника знімка визначає `snapshots.snapshot_scene` із самих селекторів, а поточне значення селектора твору рахує `snapshots.current_value` (його ж використовує огляд впливу). Підміна селектора на селектор сцени змінювала звіт огляду впливу пласкої книги, тому від неї відмовились.
+
 ### Task 4: місця, що читають відстежуваних, і ядро щодо сцени
 
 **Files:**

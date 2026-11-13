@@ -51,6 +51,13 @@ def test_scene_without_a_known_arc_and_trashed_scene():
     assert scene_tracked(story, cards(), items, trashed) == ['A']
 
 
+def test_trashed_scene_keeps_its_arc_but_tracks_the_book_hero():
+    # Cross-review: the trash keeps the arc binding; a trashed scene still tracks the inferred hero (spec).
+    story, items = book('B')
+    items[3] = items[3].model_copy(update={'trashed_at': '2026-11-13T00:00:00Z'})
+    assert story.scene_arcs['s4'] == 'Y' and scene_tracked(story, cards(), items, items[3]) == ['A']
+
+
 def test_explicit_flag():
     assert not has_explicit_protagonists(Story(id='b', title='Книга'))
     assert not has_explicit_protagonists(book()[0])

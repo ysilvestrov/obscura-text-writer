@@ -14,8 +14,8 @@ def has_explicit_protagonists(story) -> bool:
 def arcs_of(story, scene) -> list[str]:
     """Arcs of the scene from the explicit structure: zero or one for now, a list once meeting scenes exist."""
     structure = getattr(story, 'book_structure', None)
-    if structure is None:
-        return []
+    if structure is None or getattr(scene, 'trashed_at', None):
+        return []  # the trash keeps the binding, but a trashed scene tracks the inferred protagonist
     arc = story.scene_arcs.get(scene.id)
     return [arc] if arc in arc_order(structure) else []
 

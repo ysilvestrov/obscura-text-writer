@@ -53,6 +53,21 @@ def test_late_protagonist_stales_only_written_scenes_of_its_arc(tmp_path):
     assert changed(repo, story, second) and not changed(repo, story, first)
 
 
+def test_late_protagonist_stales_only_the_brief_of_its_arc(tmp_path):
+    # Cross-review: a writing-stage snapshot finds its scene through scene/title, not order/prefix.
+    from storygen.providers.models import ProviderSettings, RoleSettings
+    from storygen.storage.snapshots import build_dependency_snapshot
+    repo, story, (s1, s2) = setup(tmp_path)
+    structure(repo, story, s1, s2)
+    def brief(scene):
+        snap = build_dependency_snapshot(repo.context_view(story.id), scene.id, 'brief', RoleSettings(provider=ProviderSettings(model='fake')), [])
+        assert not any(s.kind == 'order' and s.field == 'prefix' for s in snap.selectors)
+        return repo.save_version(story.id, scene.id, 'brief', 'Бриф.', [], dependency_snapshot=snap)
+    first, second = brief(s1), brief(s2)
+    structure(repo, story, s1, s2, 'B')
+    assert changed(repo, story, second) and not changed(repo, story, first)
+
+
 def test_removing_explicit_protagonists_keeps_matching_scene_snapshots(tmp_path):
     repo, story, (s1, s2) = setup(tmp_path)
     structure(repo, story, s1, s2, 'B')

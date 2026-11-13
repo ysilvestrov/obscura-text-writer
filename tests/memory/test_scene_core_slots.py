@@ -60,6 +60,17 @@ def test_mark_is_refused_only_where_the_slot_is_core(tmp_path):
 
 
 def test_memory_stage_tracks_the_scene_protagonist(tmp_path):
+    # Cross-review: the memory stage itself (catalog, bounds, memory_tracked), not only the writer's projection.
+    import json
+    from storygen.generation.context import build_context
+    from tests.generation.test_memory_v4_pipeline import role
+    repo, _, first, second, _ = arcs_book(tmp_path)
+    context = build_context(repo, second.id, 'memory', role())
+    assert json.loads(context.fragments['memory_tracked']) == ['B']
+    assert list(json.loads(context.fragments['memory_schema_bounds'])['tracked']) == ['B']
+
+
+def test_writer_projection_tracks_the_scene_protagonist(tmp_path):
     from storygen.generation.context import memory_projection
     repo, story_id, first, second, _ = arcs_book(tmp_path)
     view = repo.context_view(story_id)
