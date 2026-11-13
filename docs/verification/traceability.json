@@ -1487,7 +1487,7 @@
     {
       "id": "PLANNER-ACQUAINTANCE-S05",
       "requirement": "PLANNER-ACQUAINTANCE",
-      "scope": "Визначення протагоніста та розпізнавання позначок. Знайомства головного героя. Перевірка зазначеного сценарію; не є доказом літературної якості чи фактичного представлення в прозі.",
+      "scope": "Визначення протагоніста та розпізнавання позначок. Знайомства головного героя. Перевірка зазначеного сценарію; не є доказом літературної якості чи фактичного представлення в прозі. Герой сцени арки з явним протагоністом — цей протагоніст.",
       "tests": [
         "tests/characters/test_acquaintance_markers.py::test_protagonist_line_variants",
         "tests/characters/test_acquaintance_markers.py::test_role_line_from_template_marks_protagonist",
@@ -1500,7 +1500,9 @@
         "tests/characters/test_acquaintance_markers.py::test_protagonist_marker_ignores_availability",
         "tests/characters/test_acquaintance_markers.py::test_italic_markers_recognised",
         "tests/characters/test_acquaintance_markers.py::test_unrelated_card_with_bad_anchor_does_not_abort",
-        "tests/characters/test_acquaintance_history.py::test_no_cards_returns_empty"
+        "tests/characters/test_acquaintance_history.py::test_no_cards_returns_empty",
+        "tests/characters/test_arc_hero_acquaintance.py::test_acquaintance_block_names_the_arc_protagonist",
+        "tests/characters/test_arc_hero_acquaintance.py::test_flat_book_acquaintance_is_unchanged"
       ]
     },
     {
@@ -4189,7 +4191,7 @@
     {
       "id": "BOOK-STRUCTURE-S04",
       "requirement": "BOOK-STRUCTURE",
-      "scope": "Імпорт частин і арок: структура, чисті плани сцен, продовження частини, перша частина для наявних сцен, без маркерів — неявна, store — як раніше.",
+      "scope": "Імпорт частин і арок: структура, чисті плани сцен, продовження частини, перша частина для наявних сцен, без маркерів — неявна, store — як раніше. Рядок «Протагоніст:» вирізається й задає протагоніста арки.",
       "tests": [
         "tests/authoring/test_import_book_structure.py::test_split_book_plan_finds_parts_and_arc_lines",
         "tests/authoring/test_import_book_structure.py::test_import_creates_parts_arcs_and_clean_plans",
@@ -4198,7 +4200,10 @@
         "tests/authoring/test_import_book_structure.py::test_plan_without_markers_keeps_implicit_structure",
         "tests/authoring/test_import_book_structure.py::test_store_edition_imports_markers_as_text",
         "tests/authoring/test_import_book_structure.py::test_parts_with_equal_or_empty_titles_stay_separate",
-        "tests/authoring/test_import_book_structure.py::test_first_structured_import_keeps_no_markers_in_the_source_plan"
+        "tests/authoring/test_import_book_structure.py::test_first_structured_import_keeps_no_markers_in_the_source_plan",
+        "tests/storage/test_import_protagonist.py::test_protagonist_line_is_cut_from_the_plan",
+        "tests/storage/test_import_protagonist.py::test_import_sets_the_protagonist_of_a_new_arc",
+        "tests/storage/test_import_protagonist.py::test_edition_without_long_prose_keeps_the_line"
       ]
     },
     {
@@ -4218,7 +4223,7 @@
     {
       "id": "BOOK-STRUCTURE-S06",
       "requirement": "BOOK-STRUCTURE",
-      "scope": "Групування списку, варіанти арки, правила буфера панелі (node); підключення сторінок; браузер: групи, поле «Арка», панель, пласка книга.",
+      "scope": "Групування списку, варіанти арки, правила буфера панелі (node); підключення сторінок; браузер: групи, поле «Арка», панель, пласка книга. Поле «Протагоніст арки» в буфері панелі (node) і в браузері.",
       "tests": [
         "tests/web/test_book_structure_ui.py::test_group_rows_arc_options_and_panel_buffer",
         "tests/web/test_book_structure_ui.py::test_pages_load_the_structure_modules"
@@ -4255,7 +4260,7 @@
     {
       "id": "BOOK-LINEAGE-S04",
       "requirement": "BOOK-LINEAGE",
-      "scope": "Протагоніст арки: відстежувані персонажі сцени, збереження й перевірка картки, селектор сцени й переклад селектора твору, ядро щодо сцени в таблиці пам'яті й позначках типу, тест-охоронець викликів.",
+      "scope": "Протагоніст арки: відстежувані персонажі сцени, збереження й перевірка картки, селектор сцени й переклад селектора твору, ядро щодо сцени в таблиці пам'яті й позначках типу, тест-охоронець викликів. Обв’язка: рядок імпорту «Протагоніст:», поле панелі, герой знайомств і brief-link сцени.",
       "tests": [
         "tests/book/test_protagonists.py::test_flat_book_tracks_the_book_hero",
         "tests/book/test_protagonists.py::test_arc_protagonist_overrides_the_book_hero",
@@ -4277,7 +4282,18 @@
         "tests/memory/test_scene_core_slots.py::test_other_arc_protagonist_slot_is_an_ordinary_state",
         "tests/memory/test_scene_core_slots.py::test_mark_is_refused_only_where_the_slot_is_core",
         "tests/memory/test_scene_core_slots.py::test_memory_stage_tracks_the_scene_protagonist",
-        "tests/book/test_protagonist_guard.py::test_tracked_characters_is_called_only_by_the_protagonist_module"
+        "tests/book/test_protagonist_guard.py::test_tracked_characters_is_called_only_by_the_protagonist_module",
+        "tests/storage/test_import_protagonist.py::test_protagonist_line_is_cut_from_the_plan",
+        "tests/storage/test_import_protagonist.py::test_import_sets_the_protagonist_of_a_new_arc",
+        "tests/storage/test_import_protagonist.py::test_unknown_name_warns_and_sets_nothing",
+        "tests/storage/test_import_protagonist.py::test_cards_file_after_the_plan_resolves_at_the_end",
+        "tests/storage/test_import_protagonist.py::test_other_name_for_an_arc_with_a_protagonist_warns",
+        "tests/storage/test_import_protagonist.py::test_same_name_again_is_silent",
+        "tests/storage/test_import_protagonist.py::test_edition_without_long_prose_keeps_the_line",
+        "tests/characters/test_arc_hero_acquaintance.py::test_acquaintance_block_names_the_arc_protagonist",
+        "tests/characters/test_arc_hero_acquaintance.py::test_flat_book_acquaintance_is_unchanged",
+        "tests/characters/test_arc_hero_acquaintance.py::test_brief_link_state_uses_the_scene_hero",
+        "tests/characters/test_arc_hero_acquaintance.py::test_planner_warning_uses_the_scene_hero"
       ]
     },
     {
