@@ -46,4 +46,7 @@ assert.match(m.payload(buffer,7).parts[2].id,/^part-/);
 // BOOK-LINEAGE-S04: an arc protagonist survives a save from the panel; an arc without one sends null.
 const kept=m.createBuffer({kind:'structured',explicit:true,parts:[{id:'p1',title:'',arcs:[{id:'a1',title:'',protagonist_id:'B'},{id:'a2',title:''}]}]},[]);
 assert.deepEqual(m.payload(kept,1).parts[0].arcs.map(a=>a.protagonist_id),['B',null]);
+assert.equal(m.setProtagonist(kept,0,1,'A'),null);
+assert.equal(m.setProtagonist(kept,0,0,''),null);
+assert.deepEqual(m.payload(kept,1).parts[0].arcs.map(a=>a.protagonist_id),[null,'A']);
 console.log('ok');

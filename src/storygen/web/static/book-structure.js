@@ -45,6 +45,8 @@ const partScenes=(buffer,part)=>part.arcs.reduce((sum,arc)=>sum+arcScenes(buffer
 
 export function addPart(buffer){buffer.parts.push({id:newId('part'),title:'',arcs:[{id:newId('arc'),title:''}]});return null}
 export function addArc(buffer,p){buffer.parts[p].arcs.push({id:newId('arc'),title:''});return null}
+// BOOK-LINEAGE-S04: '' or null means the book's inferred protagonist.
+export function setProtagonist(buffer,p,a,id){buffer.parts[p].arcs[a].protagonist_id=id||null;return null}
 export function rename(buffer,p,a,title){(a==null?buffer.parts[p]:buffer.parts[p].arcs[a]).title=title.slice(0,200);return null}
 
 // Moving keeps scenes where they are; the server refuses an order that would mix arcs or parts.

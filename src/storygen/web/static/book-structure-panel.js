@@ -4,7 +4,7 @@ import {t,msg,uiText} from './i18n.js';
 import {api,json,notice} from './api.js';
 import {appInfo} from './app-info.js';
 import {confirmDialog} from './dialogs.js';
-import {addArc,addPart,arcTitle,createBuffer,move,partTitle,payload,remove,rename} from './book-structure.js';
+import {addArc,addPart,arcTitle,createBuffer,move,partTitle,payload,remove,rename,setProtagonist} from './book-structure.js';
 
 const page=document.querySelector('.settings-page');
 const storyId=page?.dataset.storyId;
@@ -27,9 +27,25 @@ function row(kind,p,a,item,number){
   input.placeholder=kind==='part'?partTitle({title:''},number,label):arcTitle({title:''},number,label);
   input.setAttribute('aria-label',input.placeholder);
   input.oninput=()=>rename(buffer,p,a,input.value);
-  line.append(input,button('book.panel.up',()=>apply(move(buffer,p,a,-1))),button('book.panel.down',()=>apply(move(buffer,p,a,1))),
+  line.append(input);
+  if(kind==='arc')line.append(protagonistField(p,a,item,input.placeholder));
+  line.append(button('book.panel.up',()=>apply(move(buffer,p,a,-1))),button('book.panel.down',()=>apply(move(buffer,p,a,1))),
     button('book.panel.delete',()=>apply(remove(buffer,p,a))));
   return line;
+}
+
+// BOOK-LINEAGE-S04: «Герой книги» or a card; a protagonist whose card is gone stays as an option, so a save keeps it.
+function protagonistField(p,a,arc,name){
+  const select=document.createElement('select');select.className='book-structure-protagonist';
+  select.setAttribute('aria-label',t('book.panel.protagonist',{p0:arc.title||name}));
+  const names=view.character_names||{};
+  const option=(value,text)=>{const item=document.createElement('option');item.value=value;item.textContent=text;select.append(item)};
+  option('',t('book.panel.protagonist_auto'));
+  for(const [id,text] of Object.entries(names).sort((x,y)=>x[1].localeCompare(y[1])))option(id,text);
+  if(arc.protagonist_id&&!(arc.protagonist_id in names))option(arc.protagonist_id,arc.protagonist_id);
+  select.value=arc.protagonist_id||'';
+  select.onchange=()=>setProtagonist(buffer,p,a,select.value);
+  return select;
 }
 
 function render(){
