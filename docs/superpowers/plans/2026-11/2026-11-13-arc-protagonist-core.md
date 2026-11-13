@@ -41,7 +41,6 @@
   - `Arc.protagonist_id: str | None = None` (старі payload читаються без змін);
   - `has_explicit_protagonists(story) -> bool` — у явній структурі є арка з непорожнім `protagonist_id`;
   - `scene_tracked(story, cards, scenes, scene) -> list[str]` — правило з Global Constraints; виведений герой — `memory.core.tracked_characters(cards, scenes)`; явний `protagonist_id`, якого немає серед `cards`, вважається відсутнім; без явної структури або без відомої арки сцени — виведений герой;
-  - `story_tracked_value(story, cards, scenes) -> list[str] | None` — `tracked_characters(cards, scenes)`, якщо `has_explicit_protagonists(story)` хибне, інакше `None`;
   - `arcs_of(story, scene) -> list[str]` — арки сцени зі структури (зараз 0 або 1; у PR 3 — список).
 
 - [ ] **Step 1: тести** (книги будуються прямо в `Story`, як у `tests/book/test_lineage.py::book`; картки — `characters.models.load_characters` над JSON із `tests/storage/test_memory_core_selectors.py::cards`, герой книги A позначений рядком `HERO`):
@@ -49,7 +48,7 @@
   - `test_arc_protagonist_overrides_the_book_hero` — частини `[['X'], ['Y']]`, `Y.protagonist_id='B'`: сцени X → `['A']`, сцени Y → `['B']`;
   - `test_missing_card_falls_back_to_the_book_hero` — `protagonist_id='Z'` без картки → `['A']`;
   - `test_scene_without_a_known_arc_and_trashed_scene` — обидві → `['A']`;
-  - `test_story_value_is_none_once_a_protagonist_is_explicit` — `story_tracked_value` дає `['A']` без явних і `None` з одним явним.
+  - `test_explicit_flag` — `has_explicit_protagonists` хибне без явних і для пласкої книги, істинне з одним явним.
 - [ ] **Step 2:** `pytest tests/book/test_protagonists.py -q` → FAIL (модуля немає).
 - [ ] **Step 3:** реалізація.
 - [ ] **Step 4:** той самий запуск → PASS; `pytest tests/book tests/storage -q` → PASS.
@@ -77,21 +76,23 @@
 ### Task 3: селектор відстежуваних персонажів сцени
 
 **Files:**
-- Modify: `src/storygen/dependency_models.py` (дозволені поля `scene`), `src/storygen/storage/snapshots.py` (`memory_core_selectors`, `selector_value`)
+- Modify: `src/storygen/dependency_models.py` (дозволені поля `scene`), `src/storygen/storage/snapshots.py` (`memory_core_selectors`, `selector_value`, `compare_snapshot`, `freshness`)
 - Test: `tests/storage/test_scene_tracked_selector.py`
 
 **Interfaces:**
-- Consumes: `has_explicit_protagonists`, `scene_tracked`, `story_tracked_value` (Task 1).
-- Produces: селектор `scene/<id>/tracked_characters`; `memory_core_selectors` рахує `tracked=scene_tracked(...)` і пише селектор сцени, якщо `has_explicit_protagonists(story)`, інакше селектор твору зі значенням `tracked`, як зараз. Сцени порівняння дня (`comparison_scene`) беруться для цього `tracked`.
+- Consumes: `has_explicit_protagonists`, `scene_tracked` (Task 1).
+- Produces:
+  - селектор `scene/<id>/tracked_characters`; `memory_core_selectors` рахує `tracked=scene_tracked(...)` і пише селектор сцени, якщо `has_explicit_protagonists(story)`, інакше селектор твору зі значенням `tracked`, як зараз. Сцени порівняння дня (`comparison_scene`) беруться для цього `tracked`;
+  - `compare_snapshot(view, snapshot, scene_id: str | None = None)`; `freshness` передає `ref.scene_id`. З `scene_id` селектор `story/tracked_characters` порівнюється зі `scene_tracked` цієї сцени (переклад поруч із `legacy_selectors`); без нього — з `tracked_characters(cards, scenes)`, як зараз.
 
 - [ ] **Step 1: тести** (helpers `setup`/`cards`/`memory_version`/`reasons` — з `tests/storage/test_memory_core_selectors.py`; структура дві частини по одній арці, сцени С1 в арці X, С2 в арці Y):
   - `test_without_explicit_protagonists_the_story_selector_stays` — знімок С2 має `('story', story.id, 'tracked_characters'): ['A']` і не має селектора сцени;
   - `test_explicit_protagonist_records_the_scene_selector` — `Y.protagonist_id='B'`: знімок С2 має `('scene', s2.id, 'tracked_characters'): ['B']`, без селектора твору;
   - `test_arc_protagonist_change_stales_only_its_arc` — знімки С1 і С2 після першого явного протагоніста; зміна `Y.protagonist_id` на `'A'` → `('selector_changed','tracked_characters') in reasons(С2)` і не в `reasons(С1)`;
-  - `test_first_explicit_protagonist_stales_story_selector_snapshots` — знімок до явного протагоніста; після → `('selector_changed','tracked_characters')`;
+  - `test_late_protagonist_stales_only_written_scenes_of_its_arc` — знімки С1 і С2 без явних протагоністів (селектор твору `['A']`); потім `Y.protagonist_id='B'` → `('selector_changed','tracked_characters')` у `reasons(С2)`, а `reasons(С1)` без `tracked_characters` (питання власника: написані сцени ранніх арок не переписуються);
   - `test_removing_explicit_protagonists_keeps_matching_scene_snapshots` — знімок С1 із селектором сцени `['A']`; після зняття всіх явних протагоністів → без `tracked_characters` у причинах.
 - [ ] **Step 2:** запуск → FAIL.
-- [ ] **Step 3:** `selector_value` для `scene/tracked_characters`: `scene_tracked(peek_story, core_cards, peek_scenes, peek_scene(owner))`; для `story/tracked_characters`: `story_tracked_value(...)`.
+- [ ] **Step 3:** `selector_value` для `scene/tracked_characters`: `scene_tracked(peek_story, core_cards, peek_scenes, peek_scene(owner))`; `story/tracked_characters` — як зараз; переклад селектора твору на сцену версії — у `compare_snapshot`.
 - [ ] **Step 4:** запуск → PASS; `pytest tests/storage/test_memory_core_selectors.py tests/generation/test_writer_day_change.py -q` без змін тестів → PASS.
 - [ ] **Step 5:** коміт `feat(memory): tracked characters selector per scene`.
 
