@@ -78,3 +78,31 @@ def test_unknown_and_flashback_marks():
 def test_malformed_lines_are_not_moments():
     for line in ('Початок: Рік 1, Рік 2', 'Початок: Рік 1 вечір', 'Початок: 32 грудня', 'Day 2, 06:00'):
         assert scene_moment(line) is None and scene_start(line) is None
+
+
+# STORY-TIME-S02: order of moments; day labels and the day change across mark forms.
+from storygen.memory.story_time import before, day_label, scene_moment as m
+
+
+def test_before_compares_one_kind_only():
+    assert before(m('Початок: Рік -20'), m('Початок: Рік 1, День 3')) is True
+    assert before(m('Початок: День 30'), m('Початок: Рік 1')) is True
+    assert before(m('Початок: Рік 1, День 3'), m('Початок: Рік 1, День 3')) is False
+    assert before(m('Початок: 01.03.2024, 08:00'), m('Початок: Рік 1')) is None
+    assert before(m('Початок: невідомо'), m('Початок: Рік 1')) is None and before(None, m('Початок: Рік 1')) is None
+    assert before(m('Початок: День 3, 08:00'), m('Початок: День 3, 09:00')) is True
+    assert before(m('Початок: День 3'), m('Початок: День 3, 09:00')) is None
+
+
+def test_relative_day_label():
+    assert day_label('rel:2.0.14', 'uk') == 'рік 2, день 14' and day_label('rel:2.0.14', 'en') == 'year 2, day 14'
+    assert day_label('rel:-20.3.0', 'uk') == 'рік -20, місяць 3'
+    assert day_label('day:3', 'uk') == 'день 3' and day_label('date:1.3.2024', 'uk') == '1.3.2024'
+
+
+def test_day_change_between_day_and_relative_forms():
+    a = sc('a', 0, ['h'], 'Початок: Рік 0, День 2')
+    assert day_change([a], sc('b', 1, ['h'], 'Початок: день 3, 08:00'), 'h') is True
+    assert day_change([a], sc('b', 1, ['h'], 'Початок: День 2, 23:00'), 'h') is False
+    assert day_change([a], sc('b', 1, ['h'], 'Початок: невідомо'), 'h') is False
+    assert day_change([a], sc('b', 1, ['h'], 'Початок: 02.01.2024, 08:00'), 'h') is False

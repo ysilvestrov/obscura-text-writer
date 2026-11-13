@@ -103,11 +103,24 @@ def day_key(scene):
     return start[0] if start else None
 
 
+def before(a: Moment | None, b: Moment | None) -> bool | None:
+    """Whether moment a is earlier than b; None when either is missing or unknown, the kinds differ, or the day is the
+    same and only one of them has a time."""
+    if a is None or b is None or 'unknown' in (a.kind,b.kind) or a.kind!=b.kind:return None
+    if a.key!=b.key:return a.key<b.key
+    if a.minutes is None or b.minutes is None:return None if a.minutes!=b.minutes else False
+    return a.minutes<b.minutes
+
+
 def day_label(key, language='uk'):
-    # Literary form of a day key for prompts: «день 3»/«day 3» or «1.3.2024»; the key format never reaches the model.
+    # Literary form of a day key for prompts: «день 3»/«day 3», «рік 2, день 14» or «1.3.2024»; the key format never
+    # reaches the model.
     kind,value=key.split(':',1)
-    if kind!='day':return value
-    return f'day {value}' if language=='en' else f'день {value}'
+    if kind=='date':return value
+    names=('year','month','day') if language=='en' else ('рік','місяць','день')
+    if kind=='day':return f'{names[2]} {value}'
+    parts=[f'{name} {number}' for name,number in zip(names,(int(v) for v in value.split('.'))) if number]
+    return ', '.join(parts) or f'{names[2]} 0'
 
 
 def comparison_scene(scenes,scene,character_id,story=None):
@@ -120,5 +133,6 @@ def comparison_scene(scenes,scene,character_id,story=None):
 def day_change(scenes,scene,character_id,story=None):
     previous=comparison_scene(scenes,scene,character_id,story)
     if previous is None:return False
-    old,new=day_key(previous),day_key(scene)
-    return bool(old and new and old.split(':')[0]==new.split(':')[0] and old!=new)
+    # Moments of one kind with different days; «день N» and «Рік …, День …» are one kind (relative), dates another.
+    old,new=scene_moment(previous.beats),scene_moment(scene.beats)
+    return bool(old and new and old.kind==new.kind!='unknown' and old.key!=new.key)
