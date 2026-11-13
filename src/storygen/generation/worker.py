@@ -583,7 +583,18 @@ class RunCoordinator:
                     [v.id for v in sources]
                 )
             else:
-                context=build_context(self.repo,scene_id,stage,role,memory_approval=run.request.memory_approval if stage=='memory' else None)
+                from ..memory.previous import MergeRequired
+                try:
+                    context=build_context(self.repo,scene_id,stage,role,memory_approval=run.request.memory_approval if stage=='memory' else None)
+                except MergeRequired as exc:
+                    # MEMORY-MERGE-S02: stop before the scene, like a core review stop; the author confirms the merge.
+                    with self.condition:
+                        current=self.get_run(id)
+                        current.state='needs_review'
+                        current.error=str(exc)
+                        self._save(current)
+                        self.event(id,'state',{'state':current.state,'error':current.error,'merge_key':exc.merge_key,'scene_id':scene_id})
+                    return
                 # Reuse only the selected completed stage with exactly matching source/config input.
                 scene=self.repo.get_scene(scene_id)
                 head={'brief':'brief','draft':'draft','edit':'prose','memory':'memory'}[stage]

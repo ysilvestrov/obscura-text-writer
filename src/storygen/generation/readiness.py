@@ -174,6 +174,9 @@ def preview(repo, request, view=None):
             result.update(ready=False,can_confirm=True,reason='Попередня пам’ять потребує авторського підтвердження')
     except (ValueError,KeyError) as exc:
         result['reason']=str(exc) if isinstance(exc,ValueError) else 'Матеріал не знайдено; оновіть сторінку'
+        from ..memory.previous import MergeRequired
+        if isinstance(exc,MergeRequired):
+            result.update(reason_code='memory_merge_required',merge_key=exc.merge_key)
     return result
 
 

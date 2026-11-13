@@ -8,9 +8,9 @@ from tests.memory.merge_helpers import arc_book
 from tests.storage.test_memory_merges import coat_events
 
 
-def app_book(tmp_path, tokens='Z A B A+B', parts=(['Z'], ['A', 'B'])):
+def app_book(tmp_path, tokens='Z A B A+B', parts=(['Z'], ['A', 'B']), events=coat_events):
     app = create_app(AppSettings(data_dir=tmp_path / 'data', env_file=tmp_path / 'absent.env'))
-    repo, story, scenes = arc_book(None, tokens, list(parts), coat_events, repo=app.state.repo)
+    repo, story, scenes = arc_book(None, tokens, list(parts), events, repo=app.state.repo)
     return TestClient(app, base_url='http://127.0.0.1'), repo, story, scenes
 
 
@@ -45,7 +45,7 @@ def test_put_merge_revision_conflict_and_missing_decision(tmp_path):
 
 
 def test_book_end_merge_does_not_stop_the_last_scene(tmp_path):
-    client, repo, story, scenes = app_book(tmp_path, 'A B A B', (['A', 'B'],))
+    client, repo, story, scenes = app_book(tmp_path, 'A B A B', (['A', 'B'],), None)
     state = client.get(f'/api/stories/{story.id}/memory-merges', params={'point': 'book_end'}).json()
     assert state['state'] == 'none' and [h['scene_id'] for h in state['heads']] == [scenes[2].id, scenes[3].id]
     assert merge_point(story, scenes, scene_id=scenes[3].id) is None
