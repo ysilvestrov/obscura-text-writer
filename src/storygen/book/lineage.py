@@ -87,16 +87,28 @@ def merge_key(heads) -> str:
 
 
 def book_end_heads(story, scenes) -> tuple[str, ...]:
-    """Heads at the end of the book: the last scenes of the arcs of the last part with scenes that are not ancestors of
-    one another, in reading order; one element means the book ends without a merge."""
+    """Heads at the end of the book: the heads at the end of its last part with scenes; one element means the book ends
+    without a merge."""
     active = _active(scenes)
     if not active:
         return ()
-    items = lineage_map(story, active)
     structure = effective_structure(story, active) if getattr(story, 'book_structure', None) is not None else None
     if structure is None or structure.kind == 'flat' or any(s.id not in structure.arcs_of for s in active):
         return (active[-1].id,)
-    last_part = structure.part_of_arc[structure.arc_of[active[-1].id]]
+    return part_end_heads(story, active, structure.part_of_arc[structure.arc_of[active[-1].id]])
+
+
+def part_end_heads(story, scenes, part_id: str) -> tuple[str, ...]:
+    """Heads at the end of a part: the last scenes of its arcs that are not ancestors of one another, in reading order
+    (the heads the next part starts from). A book without arcs or with a scene outside the structure: its last scene."""
+    active = _active(scenes)
+    if not active:
+        return ()
+    structure = effective_structure(story, active) if getattr(story, 'book_structure', None) is not None else None
+    if structure is None or structure.kind == 'flat' or any(s.id not in structure.arcs_of for s in active):
+        return (active[-1].id,)
+    items = lineage_map(story, active)
+    last_part = part_id
     last_of_arc = {}
     for s in active:
         for arc in structure.arcs_of[s.id]:

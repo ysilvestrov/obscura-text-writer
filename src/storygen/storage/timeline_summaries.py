@@ -34,7 +34,8 @@ def check_text(text: str, limit: int) -> str:
 
 def save_summary_version(repo, story_id: str, block, memory_ids: list[str], text: str, origin: str, language: str,
                          previous_id: str | None = None, run_id: str | None = None):
-    if len(memory_ids) != len(block.scene_ids) or not all(memory_ids):
+    # One memory per scene of the block, plus the end-of-part merge when the part ends with several heads (MEMORY-MERGE).
+    if len(memory_ids) not in {len(block.scene_ids), len(block.scene_ids) + 1} or not all(memory_ids):
         raise ValueError('Кожна сцена блоку потребує вибраної пам’яті')
     refs = list(memory_ids) + ([previous_id] if previous_id else [])
     return repo.save_version(story_id, None, 'timeline_summary', summary_payload(block, memory_ids[-1], text, origin, language), refs, run_id)
@@ -77,7 +78,7 @@ def save_author_summary(repo, story_id: str, block_key: str, text: str, expected
     part = block_key.startswith('part:')
     text = check_text(text, PART_LIMIT if part else BLOCK_LIMIT)
     previous = repo.get_version(expected_version_id)
-    memory_ids = [id for id in previous.input_refs if id != expected_version_id and repo.get_version(id).kind == 'memory']
+    memory_ids = [id for id in previous.input_refs if id != expected_version_id and repo.get_version(id).kind in {'memory', 'memory_merge'}]
     block = SummaryBlock(block_key, '', tuple(current['scene_ids']), 0, 0, part)
     ref = save_summary_version(repo, story_id, block, memory_ids, text, 'author', current.get('language', story.language), expected_version_id)
     return publish_summary(repo, story_id, block_key, ref.id, expected_revision)
