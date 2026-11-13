@@ -7,7 +7,7 @@ class Element{
  setAttribute(k,v){this[k]=v;} focus(){this.focused=true;}
  append(n){this.children.push(n);} replaceChildren(...n){this.children=n;}
 }
-const nodes={};for(const id of ['export-story','export-form','export-submit','export-status','export-format','export-incomplete','export-cancel','publication-links'])nodes[id]=new Element();
+const nodes={};for(const id of ['export-story','export-form','export-submit','export-status','export-format','export-incomplete','export-cancel','publication-links','export-fb2-note'])nodes[id]=new Element();
 const events={};const document={querySelector:s=>nodes[s.slice(1)],createElement:()=>new Element(),addEventListener:(k,f)=>events[k]=f};
 const state={storyId:'story',dirty:false,saving:false,view:{scenes:[{heads:{prose:'id'}}]}};
 let calls=0,body,fail=false,release;
@@ -20,4 +20,15 @@ const links=nodes['publication-links'].children;fail=true;await submit();assert.
 state.dirty=true;events['editor-state-changed']();await submit();assert.equal(calls,2);assert.equal(nodes['export-story'].disabled,true);
 state.dirty=false;state.saving=true;events['editor-state-changed']();assert.equal(nodes['export-submit'].disabled,true);
 state.saving=false;events['editor-state-changed']();let done;release=new Promise(r=>done=r);const pending=submit();await submit();assert.equal(calls,3);done();await pending;
+// A blocking reason shown earlier disappears once the reason is gone (not a stale «saving»).
+state.saving=true;events['editor-state-changed']();assert.match(nodes['export-status'].textContent,/збереження|Saving/i);
+state.saving=false;events['editor-state-changed']();assert.equal(nodes['export-status'].textContent,'');assert.equal(nodes['export-submit'].disabled,false);
+// A result of the last export survives later availability checks.
+fail=false;release=null;await submit();const success=nodes['export-status'].textContent;assert.notEqual(success,'');
+events['editor-state-changed']();assert.equal(nodes['export-status'].textContent,success);
+// The FB2 requirement note shows only for FB2.
+const format=nodes['export-format'],note=nodes['export-fb2-note'];
+format.value='epub';format.onchange();assert.equal(note.hidden,true);
+format.value='fb2';format.onchange();assert.equal(note.hidden,false);
+format.value='md';format.onchange();assert.equal(note.hidden,true);
 console.log('export explicit form, cancellation, dirty/saving, duplicate and failure preservation passed');
