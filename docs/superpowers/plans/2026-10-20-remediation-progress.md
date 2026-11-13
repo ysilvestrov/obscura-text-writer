@@ -1920,3 +1920,13 @@ Playwright `memory-kind.spec.mjs` і `core-review.spec.mjs` пройшли вр�
 - SPEC.MD: EXPORT-001-S05 з описом усунених відхилень; traceability. Інструкції сайту (`publication.md`) вже описують вимоги FB2 без згадки про примітку в діалозі — оновлення не потрібне.
 - Cross-review (agy/gemini-3.8-flash): 2 знахідки про якість тестів, обидві виправлено (`b0a20b5`): точний текст успіху, перехід на нову причину, збереження помилки, причина «немає прози».
 - `verify.py` на `b0a20b5` (з `C:/tmp/epl`): passed 3055, failed 0, skipped 1.
+
+## 13.11.2026 — Довга проза, проєкт 2, крок 3: злиття пам'яті, ядро (специфікація `docs/superpowers/specs/2026-11/2026-11-12-parallel-arcs-design.md`, план `docs/superpowers/plans/2026-11/2026-11-13-memory-merge-core.md`)
+
+- Рішення власника (погоджено разом із планом): база злиття — спільний префікс журналів голів (`base_source_prose_ids`), а не пам'ять спільного предка; однаковий результат у кількох гілках бере події першої гілки; порожнє значення автора для запису поза базою нічого не додає.
+- Структура: перемежування арок частини дозволене, частини суцільні (`check_order`, fsck `book_structure_parts_mixed`); сцена зустрічі — список арок у `scene_arcs`, API `arc_ids`.
+- Родовід: попередники сцени зустрічі — об'єднання за її арками; `merge_key`, `book_end_heads`, `part_end_heads`, `lineage_numbers` (вікна відбору за сценами родоводу).
+- Злиття: чисте `memory/merge.py`, версія твору `memory_merge` і голови `Story.memory_merge_heads` з CAS (`storage/memory_merges.py`), `memory/previous.py::previous_memory` як єдине джерело попередньої пам'яті (тест-охоронець), зупинка конвеєра й причина готовності `memory_merge_required`, маршрути `GET/PUT /api/stories/{id}/memory-merges`, пам'ять кінця частини для підсумків.
+- Рішення виконавця записані в журналі плану (`.superpowers/sdd/2026-11-13-memory-merge-core/progress.md`): збереження в дві транзакції, як у підсумків; без окремого тесту перенесення рішень після перестановки голів; `replaces` підсумків лишає номери книги; воркер ловить `MergeRequired` навколо збирання контексту.
+- SPEC.MD: BOOK-STRUCTURE (S03), BOOK-LINEAGE (S02, новий S03, І3, обмеження), нова вимога MEMORY-MERGE (S01, S02, S03, S05), CONTEXT-002, MEMORY-001, MEMORY-SELECT, MEMORY-SUMMARY; traceability.
+- Далі: фінальне рев'ю ядра, потім план обв'язки (імпорт `Арки:`, вікно злиття, множинний вибір арок, позначки в списку сцен, Playwright, сайт, MEMORY-MERGE-S04) у тому самому PR.

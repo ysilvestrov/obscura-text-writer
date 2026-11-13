@@ -4182,9 +4182,9 @@
     {
       "id": "BOOK-STRUCTURE-S03",
       "requirement": "BOOK-STRUCTURE",
-      "scope": "Порушення послідовності, частина без арок, невідома арка — 400 без запису; 409 на ревізію; нова й відновлена сцена беруть арку попередньої.",
+      "scope": "Порушення порядку частин, сцена зустрічі з менше ніж двома арками чи арками різних частин, частина без арок, невідома арка — 400 без запису; 409 на ревізію; перемежування арок частини дозволене; нова й відновлена сцена беруть арку попередньої, після зустрічі — арку перед нею.",
       "tests": [
-        "tests/storage/test_book_structure.py::test_put_structure_rejects_mixed_arcs",
+        "tests/storage/test_book_structure.py::test_put_structure_rejects_mixed_parts",
         "tests/storage/test_book_structure.py::test_put_structure_rejects_part_without_arcs",
         "tests/storage/test_book_structure.py::test_put_structure_rejects_unknown_arc_and_unassigned_scene",
         "tests/storage/test_book_structure.py::test_put_structure_conflict_writes_nothing",
@@ -4194,7 +4194,19 @@
         "tests/storage/test_book_structure.py::test_restore_never_breaks_sequence",
         "tests/storage/test_book_structure.py::test_assign_scene_checks_sequence_and_revision",
         "tests/web/test_structure_api.py::test_put_structure_conflict_and_sequence_errors",
-        "tests/authoring/test_import_book_structure.py::test_import_that_would_mix_arcs_writes_nothing"
+        "tests/authoring/test_import_book_structure.py::test_import_may_interleave_arcs_of_a_part",
+        "tests/book/test_structure_order.py::test_interleaved_arcs_are_allowed",
+        "tests/book/test_structure_order.py::test_parts_must_stay_contiguous",
+        "tests/book/test_structure_order.py::test_meeting_scene_needs_two_arcs_of_one_part",
+        "tests/book/test_structure_order.py::test_scene_arc_list_and_canonical_form",
+        "tests/book/test_structure_order.py::test_effective_structure_lists_meeting_arcs",
+        "tests/book/test_structure_order.py::test_new_scene_after_meeting_scene_continues_the_arc_before_it",
+        "tests/book/test_structure.py::test_unassigned_scenes_are_violations",
+        "tests/storage/test_book_structure_meeting.py::test_single_arc_is_stored_as_string",
+        "tests/storage/test_book_structure_meeting.py::test_assign_meeting_scene",
+        "tests/storage/test_book_structure_meeting.py::test_interleaved_reorder_is_allowed",
+        "tests/storage/test_book_structure_meeting.py::test_new_scene_after_meeting_scene",
+        "tests/storage/test_book_structure_meeting.py::test_restore_meeting_scene_never_refuses"
       ]
     },
     {
@@ -4256,14 +4268,29 @@
     {
       "id": "BOOK-LINEAGE-S02",
       "requirement": "BOOK-LINEAGE",
-      "scope": "Перемішані арки, перша сцена арки після закінчених, початок частини з кількома головами, порожня й невідома арка, селектор order/prefix.",
+      "scope": "Перемішані арки, перша сцена арки після закінчених, початок частини з кількома головами, порожня й невідома арка, селектор order/prefix. Сцена зустрічі зливає голови своїх арок; голови кінця книги.",
       "tests": [
         "tests/book/test_lineage.py::test_interleaved_arcs_isolate_streams",
         "tests/book/test_lineage.py::test_first_scene_of_an_arc_after_ended_arcs",
         "tests/book/test_lineage.py::test_part_start_merges_heads_of_the_previous_part",
         "tests/book/test_lineage.py::test_empty_arc_and_unknown_arc_fall_back",
         "tests/book/test_lineage_guard.py::test_snapshot_order_of_an_interleaved_book_follows_the_lineage",
-        "tests/book/test_lineage.py::test_earlier_scenes_peeks_through_a_repository"
+        "tests/book/test_lineage.py::test_earlier_scenes_peeks_through_a_repository",
+        "tests/book/test_lineage_meeting.py::test_interleaved_arcs_have_own_chains",
+        "tests/book/test_lineage_meeting.py::test_meeting_scene_merges_arc_heads",
+        "tests/book/test_lineage_meeting.py::test_meeting_scene_with_an_arc_that_has_not_started",
+        "tests/book/test_lineage_meeting.py::test_part_start_after_interleaved_arcs_shares_one_merge_point",
+        "tests/book/test_lineage_meeting.py::test_book_end_heads",
+        "tests/book/test_lineage_meeting.py::test_book_end_heads_of_a_flat_book_is_the_last_scene"
+      ]
+    },
+    {
+      "id": "BOOK-LINEAGE-S03",
+      "requirement": "BOOK-LINEAGE",
+      "scope": "Ізоляція арок: запит сцени арки Б без пам’яті, джерел і хронології арки А; вікна за сценами родоводу.",
+      "tests": [
+        "tests/memory/test_arc_isolation.py::test_arc_b_sees_no_arc_a_memory",
+        "tests/memory/test_arc_isolation.py::test_windows_count_lineage_scenes"
       ]
     },
     {
@@ -4303,6 +4330,70 @@
         "tests/characters/test_arc_hero_acquaintance.py::test_flat_book_acquaintance_is_unchanged",
         "tests/characters/test_arc_hero_acquaintance.py::test_brief_link_state_uses_the_scene_hero",
         "tests/characters/test_arc_hero_acquaintance.py::test_planner_warning_uses_the_scene_hero"
+      ]
+    },
+    {
+      "id": "MEMORY-MERGE-S01",
+      "requirement": "MEMORY-MERGE",
+      "scope": "Конфлікти: різні значення запису в гілках — конфлікт, зміна в одній гілці — без питань, однаковий результат — без конфлікту.",
+      "tests": [
+        "tests/memory/test_merge_plan.py::test_change_in_one_branch_merges_cleanly",
+        "tests/memory/test_merge_plan.py::test_different_updates_of_one_record_conflict",
+        "tests/memory/test_merge_plan.py::test_same_result_in_two_branches_is_not_a_conflict",
+        "tests/memory/test_merge_plan.py::test_diverging_prefix_is_rejected",
+        "tests/storage/test_memory_merges.py::test_merge_point_of_a_meeting_scene",
+        "tests/storage/test_memory_merges.py::test_state_lists_the_conflict"
+      ]
+    },
+    {
+      "id": "MEMORY-MERGE-S02",
+      "requirement": "MEMORY-MERGE",
+      "scope": "Підтвердження й зупинка: без злиття контекст не будується, готовність називає причину, завдання зупиняється без виклику провайдера; після PUT злитий журнал — попередня пам’ять; 409 і 400 без запису.",
+      "tests": [
+        "tests/memory/test_previous_memory.py::test_merge_scene_without_merge_refuses_context",
+        "tests/memory/test_previous_memory.py::test_merged_journal_is_previous_memory",
+        "tests/memory/test_previous_memory.py::test_snapshot_of_merge_scene_selects_merge_head",
+        "tests/memory/test_previous_memory.py::test_prose_tail_of_merge_scene_is_latest_head",
+        "tests/test_previous_memory_guard.py::test_no_previous_memory_reads_outside_previous_py",
+        "tests/generation/test_merge_stop.py::test_run_stops_before_merge_scene",
+        "tests/generation/test_merge_stop.py::test_run_cannot_be_queued_at_a_merge_scene",
+        "tests/generation/test_merge_stop.py::test_readiness_names_memory_merge_required",
+        "tests/storage/test_memory_merges.py::test_save_publishes_version_and_head",
+        "tests/storage/test_memory_merges.py::test_revision_conflict_keeps_nothing",
+        "tests/storage/test_memory_merges.py::test_old_payload_reads_empty_merge_heads",
+        "tests/storage/test_memory_merges.py::test_fsck_reports_foreign_merge_head",
+        "tests/web/test_memory_merges_api.py::test_get_and_put_merge",
+        "tests/web/test_memory_merges_api.py::test_put_merge_revision_conflict_and_missing_decision",
+        "tests/web/test_memory_merges_api.py::test_store_edition_refuses_merge_put",
+        "tests/memory/test_merge_plan.py::test_missing_decision_names_the_key"
+      ]
+    },
+    {
+      "id": "MEMORY-MERGE-S03",
+      "requirement": "MEMORY-MERGE",
+      "scope": "Застарілість і перенос рішень: нова пам’ять голови робить злиття непридатним; переносяться лише рішення з тими самими ключами й значеннями.",
+      "tests": [
+        "tests/storage/test_memory_merges.py::test_stale_head_memory_blocks_save",
+        "tests/storage/test_memory_merges.py::test_new_head_memory_makes_merge_unusable_and_carries_decisions",
+        "tests/memory/test_merge_plan.py::test_decisions_carry_only_for_same_values"
+      ]
+    },
+    {
+      "id": "MEMORY-MERGE-S05",
+      "requirement": "MEMORY-MERGE",
+      "scope": "Збирання журналу: конфлікти слота й закриття проти оновлення, валідний журнал після рішення, подія автора, порядок подій; спільне злиття початку частини; злиття кінця книги не зупиняє конвеєр і дає пам’ять кінця частини підсумку.",
+      "tests": [
+        "tests/memory/test_merge_plan.py::test_two_new_records_of_one_slot_conflict",
+        "tests/memory/test_merge_plan.py::test_retire_against_update_conflicts",
+        "tests/memory/test_merge_plan.py::test_branch_choice_builds_valid_journal",
+        "tests/memory/test_merge_plan.py::test_author_value_event_cites_latest_head",
+        "tests/memory/test_merge_plan.py::test_author_empty_value_retires_the_base_record",
+        "tests/memory/test_merge_plan.py::test_events_are_ordered_by_source_position",
+        "tests/book/test_lineage_meeting.py::test_part_start_after_interleaved_arcs_shares_one_merge_point",
+        "tests/web/test_memory_merges_api.py::test_book_end_merge_does_not_stop_the_last_scene",
+        "tests/memory/test_summary_merge.py::test_part_with_two_heads_needs_the_merge_for_its_summary",
+        "tests/memory/test_summary_merge.py::test_last_part_summary_reads_the_book_end_merge",
+        "tests/memory/test_summary_merge.py::test_single_head_part_is_unchanged"
       ]
     },
     {
