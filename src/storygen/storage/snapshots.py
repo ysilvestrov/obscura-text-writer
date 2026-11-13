@@ -126,10 +126,12 @@ def core_cards(view,story):
 
 
 def memory_core_selectors(view,story,scene,scenes,select):
-    from ..memory.core import tracked_characters
+    from ..book.protagonists import has_explicit_protagonists, scene_tracked
     from ..memory.story_time import comparison_scene,day_key
-    tracked=tracked_characters(core_cards(view,story),scenes)
-    select('story',story.id,'tracked_characters',tracked)
+    tracked=scene_tracked(story,core_cards(view,story),scenes,scene)
+    # BOOK-LINEAGE-S04: a book without an explicit arc protagonist keeps the story selector (same snapshots as before).
+    if has_explicit_protagonists(story):select('scene',scene.id,'tracked_characters',tracked)
+    else:select('story',story.id,'tracked_characters',tracked)
     owners=[scene]+[item for item in (comparison_scene(scenes,scene,hero,story) for hero in tracked) if item]
     for item in dict((item.id,item) for item in owners).values():
         select('scene',item.id,'memory_day_key',day_key(item))
@@ -143,6 +145,11 @@ def selector_value(view, selector: DependencySelector):
     if kind=='story' and owner==view.story.id and field=='tracked_characters':
         from ..memory.core import tracked_characters
         return tracked_characters(core_cards(view,view.peek_story(owner)),view.peek_scenes(owner))
+    if kind=='scene' and field=='tracked_characters':
+        from ..book.protagonists import scene_tracked
+        scene=view.peek_scene(owner)
+        story=view.peek_story(scene.story_id)
+        return scene_tracked(story,core_cards(view,story),view.peek_scenes(story.id),scene)
     if kind=='scene' and field=='memory_projection_policy':
         from ..memory.forwarding import projection_policy
         return projection_policy(view,owner)
@@ -212,7 +219,19 @@ def legacy_selectors(snapshot: DependencySnapshot, selectors: list) -> list:
         owner=next((s.owner_id for s in selectors if s.kind=='scene' and s.field=='title'),None) or next(
             (s.owner_id for s in selectors if s.kind=='head' and s.field=='draft'),None)
         if owner:selectors.append(DependencySelector(kind='scene',owner_id=owner,field='prose_language',expected='uk'))
-    return selectors
+    return scene_tracked_selectors(selectors)
+
+
+def scene_tracked_selectors(selectors: list) -> list:
+    """BOOK-LINEAGE-S04: the story tracked-characters selector compares with the tracked characters of the snapshot's
+    own scene, so a protagonist given to a later arc stales only that arc's written scenes. The owner is the scene of
+    scene/title or of the order prefix/narrative_window selector; a snapshot without one keeps the story selector."""
+    if not any(s.kind=='story' and s.field=='tracked_characters' for s in selectors):return selectors
+    owner=next((s.owner_id for s in selectors if s.kind=='scene' and s.field=='title'),None) or next(
+        (s.owner_id for s in selectors if s.kind=='order' and s.field in {'prefix','narrative_window'}),None)
+    if not owner:return selectors
+    return [DependencySelector(kind='scene',owner_id=owner,field='tracked_characters',expected=s.expected)
+            if s.kind=='story' and s.field=='tracked_characters' else s for s in selectors]
 
 
 def language_only(result) -> bool:

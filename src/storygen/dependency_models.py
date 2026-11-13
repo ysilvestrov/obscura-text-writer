@@ -18,7 +18,7 @@ class DependencySelector(DependencyModel):
     def finite_selector(self):
         allowed={
             'story': {'style_version_id','canon_version_id','characters_version_id','scene_count','tracked_characters','timeline_summary_heads'},
-            'scene': {'title','target_words','character_ids','beats','memory_projection_policy','content_rating','memory_day_key','memory_kind_overrides','prose_language'},
+            'scene': {'title','target_words','character_ids','beats','memory_projection_policy','content_rating','memory_day_key','memory_kind_overrides','prose_language','tracked_characters'},
             'head': {'plan','brief','draft','prose','memory'},
             'source': {'source_plan','source_characters','source_preamble'},
             'order': {'all','prefix','narrative_window'},
