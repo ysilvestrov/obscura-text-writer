@@ -31,6 +31,11 @@ function row(kind,p,a,item,number){
   if(kind==='arc')line.append(protagonistField(p,a,item,input.placeholder));
   line.append(button('book.panel.up',()=>apply(move(buffer,p,a,-1))),button('book.panel.down',()=>apply(move(buffer,p,a,1))),
     button('book.panel.delete',()=>apply(remove(buffer,p,a))));
+  // STORY-TIME: with a flashback in the book, an arc without a known start sees no flashbacks of other arcs.
+  if(kind==='arc'&&(view.book_structure.arc_start_unknown||[]).includes(item.id)){
+    const hint=document.createElement('small');hint.className='book-structure-arc-hint muted';
+    uiText(hint,'textContent',()=>t('book.arc_start_unknown'));line.append(hint);
+  }
   return line;
 }
 

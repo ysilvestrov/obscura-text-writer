@@ -101,7 +101,12 @@ def story_view(id: str,request: Request):
     from ..book.structure import effective_structure
     # BOOK-STRUCTURE: the effective structure (implicit for a flat book) and each scene's arc.
     structure=effective_structure(story,listed)
-    book={"kind":structure.kind,"explicit":structure.explicit,"parts":[part.model_dump() for part in structure.parts]}
+    from ..memory.story_time import is_flashback
+    from ..book.story_time import arc_start
+    # STORY-TIME: arcs whose start is unknown, shown only when the book has a flashback (the start decides what it sees).
+    unknown=[arc.id for part in structure.parts for arc in part.arcs if arc_start(story,listed,arc.id) is None] if (
+        structure.kind=='structured' and any(is_flashback(scene) for scene in listed)) else []
+    book={"kind":structure.kind,"explicit":structure.explicit,"parts":[part.model_dump() for part in structure.parts],"arc_start_unknown":unknown}
     # arc_id stays the first arc for old clients; arc_ids lists every arc of a meeting scene (MEMORY-MERGE harness).
     from ..storage.memory_merges import merge_markers
     from ..memory.story_time import flashback_marked

@@ -74,3 +74,10 @@ assert.deepEqual(m.meetingOptions(book,[],label),[]);
   assert.deepEqual(m.sceneMarks({...rows[1],merge:'fresh'}),['book.badge.meeting']);
   assert.deepEqual(m.sceneMarks(rows[0]),[]);
 }
+
+// STORY-TIME-S07: a flashback (flag or «Початок:» mark) is marked in the scene status line.
+{
+  const flat={kind:'flat',explicit:false,parts:[{id:'p',title:'',arcs:[{id:'a',title:''}]}]};
+  const rows=m.groupScenes(flat,[{id:'s1',flashback:true},{id:'s2',flashback_marked:true},{id:'s3'}],label).filter(r=>r.type==='scene');
+  assert.deepEqual(rows.map(r=>m.sceneMarks(r)),[['book.badge.flashback'],['book.badge.flashback'],[]]);
+}
