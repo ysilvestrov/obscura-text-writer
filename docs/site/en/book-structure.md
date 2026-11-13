@@ -83,6 +83,12 @@ Each arc keeps its own memory: the model writing a scene of the Town arc does no
 
 The titles and order of parts and arcs never go into model requests. Renaming or dissolving the structure does not make any text stale. The exception is the [arc protagonist](#arc-protagonist): moving a scene to an arc with another protagonist, or changing the protagonist, changes the core state of its requests.
 
+## Flashbacks in a book with arcs
+
+An arc starts at the moment of its first scene that is not a [flashback](memory.md), taken from the `Start:` line of its outline. When a flashback of one arc describes a time earlier than the start of another arc and stands above it in the text, the model writing the scenes of that arc gets its facts in a “The past of other arcs” section. Arc and part titles never go into that section. Up to 40 facts are shown; when there are more, the facts of later flashbacks stay first and the app warns about the cut.
+
+New memory of such a flashback, or a change of its time or checkbox, makes the briefs and drafts of the scenes that see it out of date. When the book has a flashback, the “Book structure” panel shows a hint next to arcs whose start is unknown: add a `Start:` line to the first scene of the arc that is not a flashback, otherwise its scenes see no flashbacks of other arcs.
+
 ## Export
 
 In book files parts become higher-level sections: in Markdown a `##` heading with scenes under `###`; in TXT a separate line before the first scene of the part; in FB2 and EPUB nested sections and table of contents; in PDF a page for each part and two bookmark levels. An untitled part is exported as “Part 2”. Arcs are not shown in the export. See [Publication and export](publication.md) for more.

@@ -25,6 +25,14 @@ def test_patch_flashback_in_an_edition_without_long_prose(tmp_path, store_editio
     assert label('memory_header', 'uk') not in build_context(repo, s2.id, 'brief', role()).user_text
 
 
+def test_flashback_messages_are_translated():
+    from storygen.memory.flashbacks import FLASHBACK_FACTS_ONLY, FOREIGN_LIMIT_WARNING
+    from storygen.web.localization import diagnostic
+    assert diagnostic(FLASHBACK_FACTS_ONLY, 'en') == 'A flashback adds only facts'
+    assert diagnostic(FOREIGN_LIMIT_WARNING.format(shown=40, total=42), 'en') == 'The past of other arcs: 40 of 42 facts shown.'
+    assert diagnostic('Рядок «Спогад:» має бути «так» або «ні»; прапорець не поставлено.', 'en').startswith('The «Flashback:» line')
+
+
 def test_scene_list_reports_the_mark(tmp_path):
     repo = Repository(tmp_path)
     story = repo.create_story(StoryCreate(title='Оповідання'))
