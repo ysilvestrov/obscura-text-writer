@@ -23,9 +23,10 @@ def test_parts_must_stay_contiguous():
 
 def test_meeting_scene_needs_two_arcs_of_one_part():
     assert check_order(book(), {'c0': ['a', 'b']}, scenes(1)) == []
-    assert check_order(book(), {'c0': ['a', 'a']}, scenes(1))
-    assert check_order(book(), {'c0': ['a', 'c']}, scenes(1))
-    assert check_order(book(), {'c0': ['a', 'zz']}, scenes(1))
+    meeting = ['Сцена 1 «Scene 1» — сцена зустрічі: її арки мають бути різними й належати одній частині']
+    assert check_order(book(), {'c0': ['a', 'a']}, scenes(1)) == meeting
+    assert check_order(book(), {'c0': ['a', 'c']}, scenes(1)) == meeting
+    assert check_order(book(), {'c0': ['a', 'zz']}, scenes(1)) == ['Сцена 1 «Scene 1» не має арки зі структури книги']
 
 
 def test_scene_arc_list_and_canonical_form():

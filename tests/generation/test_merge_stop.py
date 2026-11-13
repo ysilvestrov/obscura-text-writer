@@ -44,7 +44,7 @@ def test_run_cannot_be_queued_at_a_merge_scene(tmp_path):
     import pytest
     repo, story, scenes = meeting_book(tmp_path)
     planner(repo, story.id)
-    with pytest.raises(ValueError, match='злиття'):
+    with pytest.raises(ValueError, match=f'^{MERGE_REQUIRED}$'):
         RunCoordinator(repo, lambda _: None).enqueue(RunRequest(story_id=story.id, scene_id=scenes[3].id, mode='stage', stage='brief'), 'q')
 
 
@@ -53,7 +53,7 @@ def test_readiness_names_memory_merge_required(tmp_path):
     planner(repo, story.id)
     result = preview(repo, RunRequest(story_id=story.id, scene_id=scenes[3].id, mode='stage', stage='brief'))
     assert result['ready'] is False and result['reason'] == MERGE_REQUIRED
-    assert result['reason_code'] == 'memory_merge_required' and result['merge_key'].startswith('heads:')
+    assert result['reason_code'] == 'memory_merge_required' and result['merge_key'] == 'heads:' + ','.join(sorted([scenes[1].id, scenes[2].id]))
 
 
 def test_resume_after_merge_runs_the_stopped_task(tmp_path):
@@ -83,4 +83,4 @@ def test_resume_after_merge_runs_the_stopped_task(tmp_path):
     resumed = worker.resume(run.id)
     assert (resumed.state, resumed.cursor) == ('queued', 0)
     worker._execute(run.id)
-    assert gateway.calls == 1 and worker.get_run(run.id).state != 'needs_review'
+    assert gateway.calls == 1 and worker.get_run(run.id).state == 'completed'

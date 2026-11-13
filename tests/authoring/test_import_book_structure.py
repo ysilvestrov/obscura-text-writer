@@ -139,7 +139,10 @@ def test_import_may_interleave_arcs_of_a_part(tmp_path):
     before = repo.get_story(story.id)
     mixed = '# Частина 2: Дорога\n\n## Сцена 5: А\nАрка: Ліс\nТекст.\n\n## Сцена 6: Б\nАрка: \nТекст.\n'
     run(repo, before, mixed)
-    assert len(repo.list_scenes(story.id)) == 5
+    story, scenes, structure = book(repo, story.id)
+    titles = {arc.id: arc.title for part in story.book_structure.parts for arc in part.arcs}
+    assert [titles[structure.arc_of[scene.id]] for scene in scenes] == ['Ранок', 'Ранок', '', 'Ліс', '']
+    assert structure.arc_of[scenes[4].id] == structure.arc_of[scenes[2].id]
 
 
 def test_parts_with_equal_or_empty_titles_stay_separate(tmp_path):

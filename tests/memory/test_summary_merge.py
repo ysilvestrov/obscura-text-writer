@@ -18,7 +18,7 @@ def test_part_with_two_heads_needs_the_merge_for_its_summary(tmp_path):
     view = repo.context_view(story.id)
     block = summary_blocks(story, scenes)[0]
     assert block.scene_ids == tuple(s.id for s in scenes[:4])
-    with pytest.raises(ValueError, match='злиття'):
+    with pytest.raises(ValueError, match='^Спершу підтвердіть злиття пам’яті в кінці частини «Частина 1»$'):
         block_inputs(view, story, scenes, block)
     story, merge_id = confirm(repo, story, merge_point(story, scenes, scene_id=scenes[4].id))
     view = repo.context_view(story.id)
@@ -29,7 +29,7 @@ def test_part_with_two_heads_needs_the_merge_for_its_summary(tmp_path):
 def test_last_part_summary_reads_the_book_end_merge(tmp_path):
     repo, story, scenes = arc_book(tmp_path, 'Z A B A B', [['Z'], ['A', 'B']])
     block = summary_blocks(story, scenes)[1]
-    with pytest.raises(ValueError, match='злиття'):
+    with pytest.raises(ValueError, match='^Спершу підтвердіть злиття пам’яті в кінці частини «Частина 2»$'):
         block_inputs(repo.context_view(story.id), story, scenes, block)
     story, merge_id = confirm(repo, story, merge_point(story, scenes, book_end=True))
     assert end_of_part_memory(repo.context_view(story.id), story, repo.list_scenes(story.id), block) == merge_id
