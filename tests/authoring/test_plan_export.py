@@ -35,7 +35,7 @@ def test_plan_and_characters_in_reading_order(tmp_path):
     trash_scene(repo, story.id, third.id, repo.get_scene(third.id).revision)
     name, content = plan_markdown(repo, story.id)
     text = content.decode('utf-8')
-    assert name.endswith('.md')
+    assert name == 'Маяк  на  пристані-план.md'
     assert text.startswith(r'# Маяк \*на\* пристані' + '\n')
     assert text.index('## План') < text.index('Задум: світло в тумані.') < text.index('### Сцена 1: Ранок') < text.index('### Сцена 2: Шторм') < text.index('## Персонажі')
     assert 'Що відбувається: лист.' in text  # imported beats, no plan version yet
@@ -58,13 +58,39 @@ def test_empty_plan_and_no_characters_are_marked(tmp_path):
 
 
 @pytest.mark.req('EXPORT-001')
+def test_imported_characters_text_without_cards(tmp_path):
+    repo = Repository(tmp_path)
+    story = repo.create_story(StoryCreate(title='Нотатки'))
+    upload(repo, story.id, 'Просто нотатки про героїв без заголовків.', 'source_characters')
+    assert repo.get_story(story.id).characters_version_id is None
+    text = plan_markdown(repo, story.id)[1].decode('utf-8')
+    assert text.endswith('## Персонажі\n\nПросто нотатки про героїв без заголовків.\n')
+
+
+@pytest.mark.req('EXPORT-001')
 def test_english_story_uses_english_labels(tmp_path):
     repo = Repository(tmp_path)
     story = repo.create_story(StoryCreate(title='Pier', language='en'))
     repo.create_scene(story.id, SceneCreate(title='First'))
-    text = plan_markdown(repo, story.id)[1].decode('utf-8')
+    name, content = plan_markdown(repo, story.id)
+    text = content.decode('utf-8')
+    assert name == 'Pier-plan.md'
     for label in ['## Plan', '### Scene 1: First', '_No plan yet._', '## Characters', '_No characters yet._']:
         assert label in text, label
+
+
+@pytest.mark.req('EXPORT-001')
+def test_english_availability_notes(tmp_path):
+    repo, story = story_with_plan(tmp_path, language='en')
+    first, second, third = repo.list_scenes(story.id)
+    cards = [c.model_dump() for c in load_characters(repo.read_text(repo.get_story(story.id).characters_version_id))]
+    cards[0]['entries'].append(dict(id=None, text='Knows.', origin='author', sources=[], availability='from_scene', available_from_scene_id=second.id))
+    cards[0]['entries'].append(dict(id=None, text='Saw a ship.', origin='author', sources=[], availability='from_scene', available_from_scene_id=third.id))
+    save_character_material(repo, story.id, cards, repo.get_story(story.id).revision)
+    trash_scene(repo, story.id, third.id, repo.get_scene(third.id).revision)
+    text = plan_markdown(repo, story.id)[1].decode('utf-8')
+    assert '- Knows. (from scene 2: Шторм)' in text
+    assert '- Saw a ship. (from a scene in the trash)' in text
 
 
 @pytest.mark.req('EXPORT-001')
@@ -77,7 +103,7 @@ def test_route_serves_markdown_attachment(tmp_path):
         response = client.get(f"/api/stories/{story['id']}/plan.md")
         assert response.status_code == 200
         assert response.headers['content-type'].startswith('text/markdown')
-        assert 'attachment' in response.headers['content-disposition'] and ".md" in response.headers['content-disposition']
+        assert response.headers['content-disposition'] == "attachment; filename=\"plan.md\"; filename*=UTF-8''%D0%9C%D0%B0%D1%8F%D0%BA-%D0%BF%D0%BB%D0%B0%D0%BD.md"
         assert response.text.startswith('# Маяк\n')
         assert client.get('/api/stories/missing/plan.md').status_code == 404
         assert not list((tmp_path).rglob('*.manifest.json'))  # nothing stored
