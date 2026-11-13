@@ -50,3 +50,11 @@ assert.equal(m.setProtagonist(kept,0,1,'A'),null);
 assert.equal(m.setProtagonist(kept,0,0,''),null);
 assert.deepEqual(m.payload(kept,1).parts[0].arcs.map(a=>a.protagonist_id),[null,'A']);
 console.log('ok');
+
+// MEMORY-MERGE harness H1: a meeting scene keeps all its arcs in the panel payload, and counts in each of its arcs.
+{
+  const meetingBook={kind:'structured',explicit:true,parts:[{id:'p1',title:'',arcs:[{id:'A',title:''},{id:'B',title:''}]}]};
+  const meeting=m.createBuffer(meetingBook,[{id:'s1',arc_id:'A',arc_ids:['A']},{id:'s3',arc_id:'A',arc_ids:['A','B']}]);
+  assert.deepEqual(m.payload(meeting,1).scene_arcs,{s1:'A',s3:['A','B']});
+  assert.equal(m.remove(meeting,0,1),'book.error.has_scenes');
+}

@@ -4247,7 +4247,8 @@
       "scope": "Групування списку, варіанти арки, правила буфера панелі (node); підключення сторінок; браузер: групи, поле «Арка», панель, пласка книга. Поле «Протагоніст арки» в буфері панелі (node) і в браузері.",
       "tests": [
         "tests/web/test_book_structure_ui.py::test_group_rows_arc_options_and_panel_buffer",
-        "tests/web/test_book_structure_ui.py::test_pages_load_the_structure_modules"
+        "tests/web/test_book_structure_ui.py::test_pages_load_the_structure_modules",
+        "tests/web/test_structure_api.py::test_story_lists_all_arcs_of_a_meeting_scene"
       ],
       "manual": {
         "procedure": "docs/verification/manual.md#book-structure-browser",
@@ -4365,7 +4366,8 @@
         "tests/web/test_memory_merges_api.py::test_get_and_put_merge",
         "tests/web/test_memory_merges_api.py::test_put_merge_revision_conflict_and_missing_decision",
         "tests/web/test_memory_merges_api.py::test_store_edition_refuses_merge_put",
-        "tests/memory/test_merge_plan.py::test_missing_decision_names_the_key"
+        "tests/memory/test_merge_plan.py::test_missing_decision_names_the_key",
+        "tests/generation/test_merge_stop.py::test_resume_after_merge_runs_the_stopped_task"
       ]
     },
     {
