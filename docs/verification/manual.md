@@ -291,6 +291,11 @@ MODEL-003-S02, MODEL-003-S03, MODEL-004-S01. Автоматична частин
 
 BOOK-STRUCTURE-S06, BUILD-EDITION-001-S08. Автоматична частина — Playwright `tests/web/browser/book-structure.spec.mjs` (п’ять cases на desktop і mobile: список сцен структурованої книги згрупований заголовками частин і арок, а на телефоні — групами вибору сцени; пласка книга без заголовків; поле «Арка» в параметрах сцени зберігає вибір одразу; панель «Структура книги» перейменовує частину одним збереженням; у виданні store структурована книга показує банер лише для читання й не має панелі): `node frontend/node_modules/@playwright/test/cli.js test tests/web/browser/book-structure.spec.mjs --config frontend/playwright.config.mjs`. Цей зв’язок не є доказом виконання; фактичний запуск фіксується окремо.
 
+<a id="timeline-summaries-panel"></a>
+## Панель підсумків хронології
+
+MEMORY-SUMMARY-S07. Автоматична частина — Playwright `tests/web/browser/timeline-summaries.spec.mjs` (три cases на desktop і mobile на нейтральному творі з 22 сцен і пам’яттю до сцени 21: панель пам’яті показує блок 1–10 «актуальний» з текстом і кнопками «Перебудувати»/«Редагувати» та блок 11–20 «немає підсумку» з кнопкою «Створити підсумок» без редагування; збережене виправлення заміняє текст; якщо іншу голову опубліковано раніше, збереження показує конфлікт і лишає набраний текст у полі): `node frontend/node_modules/@playwright/test/cli.js test tests/web/browser/timeline-summaries.spec.mjs --config frontend/playwright.config.mjs`. Платний запуск моделі ця перевірка не робить. Цей зв’язок не є доказом виконання; фактичний запуск фіксується окремо.
+
 <a id="desktop-launcher"></a>
 ## Запуск без консолі та значок у треї
 

@@ -624,3 +624,9 @@ body.ghost-open #notice { z-index: 70; }
 .writer-variant > .settings-hint { margin: 4px 0 0; }
 .writer-variant-fields { border: 0; padding: 0; margin: 12px 0 0; }
 .writer-variant-fields[hidden] { display: none; }
+/* MEMORY-SUMMARY-S07: timeline summaries in the memory panel */
+.timeline-summaries{margin-top:1.5rem;border-top:1px solid var(--border,#ccc);padding-top:1rem}
+.timeline-summary-row{margin:.75rem 0}
+.timeline-summary-state{color:var(--muted,#666);font-size:.9em}
+.timeline-summary-text{white-space:pre-wrap}
+.timeline-summary-editor{width:100%;box-sizing:border-box}

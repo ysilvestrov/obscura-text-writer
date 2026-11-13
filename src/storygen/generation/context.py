@@ -1,4 +1,5 @@
 from ..scene_description import SCENE_HEADING
+from ..book.lineage import previous_scenes
 import hashlib
 import json
 from dataclasses import dataclass
@@ -88,6 +89,7 @@ class MemorySelector:
 
 SELECTION_STEPS=12
 SELECTED_PROJECTION='memory-uk-v3-selected'
+SUMMARY_PROJECTION='memory-uk-v3-selected-summary'
 
 
 def _select_memory_section(selector,sections,measured,measure,fits,settings):
@@ -198,10 +200,15 @@ def _finish_context(repo,story,scene,stage,settings,sections,refs,fragments,syst
         if selected:
             sections,selection,steps,measured=selected
             total=sum(selection.layers.values())+sum(selection.dropped.values())
-            memory_metrics.update({'projection_version':SELECTED_PROJECTION,'projection_chars':len(selection.text),
+            memory_metrics.update({'projection_version':SUMMARY_PROJECTION if selection.summaries else SELECTED_PROJECTION,'projection_chars':len(selection.text),
                 'selection':{'layers':selection.layers,'dropped':selection.dropped,'selected_claim_ids':list(selection.selected_claim_ids),
                     'timeline_note':selection.timeline_note,'char_budget':selection.char_budget,'steps':steps}})
+            if selection.summaries:
+                # MEMORY-SUMMARY: the request depends on the summary versions it shows.
+                memory_metrics['selection']['summaries']=[{'block_key':key,'version_id':id} for key,id in selection.summaries]
+                refs.extend(id for _,id in selection.summaries)
             warnings.append(MEMORY_SELECTED_WARNING.format(shown=len(selection.selected_claim_ids),total=total))
+            warnings.extend(selection.warnings)
     if not fits(measured) and memory_narrower is not None:
         # MEMORY-SELECT-S07: one narrowed memory-stage catalog with matching schema bounds; no search, no further cuts.
         sections,updates,metrics,warning=memory_narrower()
@@ -224,6 +231,11 @@ def _finish_context(repo,story,scene,stage,settings,sections,refs,fragments,syst
         # Computed here, not via memory_selector: a rewrite re-enters make_context with the base metrics and no selector.
         from ..memory.kinds import kind_overrides
         snapshot.selectors.append(DependencySelector(kind='scene',owner_id=scene.id,field='memory_kind_overrides',expected=kind_overrides(repo,scene.id)))
+        used=memory_metrics['selection'].get('summaries')
+        if used:
+            # MEMORY-SUMMARY: a new head of a used block makes this text stale even when the old version is not.
+            snapshot.selectors.append(DependencySelector(kind='story',owner_id=story.id,field='timeline_summary_heads',
+                expected={item['block_key']:item['version_id'] for item in used}))
     if memory_provenance:
         fingerprint=hashlib.sha256((fingerprint+snapshot.model_dump_json()).encode()).hexdigest()
     head={'brief':'brief','draft':'draft','edit':'prose','memory':'memory','rewrite':'draft'}.get(stage)
@@ -237,7 +249,7 @@ def memory_projection(repo,story,scene,scenes,language):
     from ..memory.forwarding import hidden_before,forwarded_before
     from ..memory.core import tracked_characters
     from ..characters.models import load_characters
-    scene_numbers={s.id:s.position+1 for s in scenes if s.position<scene.position}
+    scene_numbers={s.id:s.position+1 for s in previous_scenes(story,scenes,scene)}
     cards=load_characters(repo.read_text(story.characters_version_id)) if story.characters_version_id else []
     source_numbers={id:scene_numbers[repo.get_version(id).scene_id] for id in past.source_prose_ids}
     hidden,forwarded=hidden_before(repo,scene.id),forwarded_before(repo,scene.id)
@@ -246,13 +258,13 @@ def memory_projection(repo,story,scene,scenes,language):
     return past,source_numbers,hidden,forwarded,tracked,names,projection
 
 
-def writer_day_change(scene,scenes,tracked,names,language):
+def writer_day_change(scene,scenes,tracked,names,language,story=None):
     """«ЗМІНИВСЯ ДЕНЬ» for the writing stages: tracked characters in the scene's cast whose day differs from their last scene
     (the same day_change as the memory stage); None when there is none."""
     from ..memory.story_time import comparison_scene, day_change, day_key, day_label
-    notes=[label('writer_day_changed',language,before=day_label(day_key(comparison_scene(scenes,scene,cid)),language),
+    notes=[label('writer_day_changed',language,before=day_label(day_key(comparison_scene(scenes,scene,cid,story)),language),
         after=day_label(day_key(scene),language),name=names.get(cid) or label('memory_protagonist',language))
-        for cid in tracked if cid in scene.character_ids and day_change(scenes,scene,cid)]
+        for cid in tracked if cid in scene.character_ids and day_change(scenes,scene,cid,story)]
     return '\n\n'.join(notes) or None
 
 
@@ -288,7 +300,7 @@ def build_context(repo,scene_id: str,stage: str,settings: RoleSettings,*,editor_
         from ..memory.reuse import memory_for_update, provenance_warnings
         past,approval,provenance=memory_for_update(repo,scene.id,memory_approval)
         reuse={'memory_provenance':provenance,'accepted_memory_ids':[approval['memory_id']] if approval else [],'context_warnings':provenance_warnings(provenance)}
-        previous=[s for s in scenes if s.position<scene.position]
+        previous=previous_scenes(story,scenes,scene)
         prose_id=scene.heads.get('prose')
         if not prose_id:raise ValueError('Спершу виберіть завершену прозу')
         if repo.get_version(prose_id).kind not in {'edited','manual'}:
@@ -307,7 +319,7 @@ def build_context(repo,scene_id: str,stage: str,settings: RoleSettings,*,editor_
         cards=load_characters(repo.read_text(story.characters_version_id)) if story.characters_version_id else []
         everyone=tracked_characters(cards,scenes)
         tracked=[cid for cid in everyone if cid in scene.character_ids]
-        changed={cid:day_change(scenes,scene,cid) for cid in tracked}
+        changed={cid:day_change(scenes,scene,cid,story) for cid in tracked}
         names={card.id:card.name for card in cards}
         prose_text=repo.read_text(prose_id)
         dump=lambda value:json.dumps(value,ensure_ascii=False,separators=(',',':'))
@@ -322,7 +334,7 @@ def build_context(repo,scene_id: str,stage: str,settings: RoleSettings,*,editor_
                 label('memory_claims',language)+'\n'+dump({'mutable':parts['mutable'],'immutable':parts['immutable']})]
             for cid in tracked:
                 if changed[cid]:
-                    sections.append(label('day_changed',language,before=day_label(day_key(comparison_scene(scenes,scene,cid)),language),
+                    sections.append(label('day_changed',language,before=day_label(day_key(comparison_scene(scenes,scene,cid,story)),language),
                         after=day_label(day_key(scene),language),name=parts['names'][cid]))
             sections+=[label('allowed_ids',language)+'\n'+json.dumps(scene.character_ids,ensure_ascii=False),
                 label('prose_fragments',language,id=prose_id)+'\n'+render_fragments(prose_text)]
@@ -399,7 +411,7 @@ def build_context(repo,scene_id: str,stage: str,settings: RoleSettings,*,editor_
     memory_index=len(sections)
     sections.append(memory_header+projection.text)
     # A section of its own after the memory: MEMORY-SELECT replaces only sections[memory_index].
-    day_note=writer_day_change(scene,scenes,tracked,names,language)
+    day_note=writer_day_change(scene,scenes,tracked,names,language,story)
     if day_note:sections.append(day_note)
     def selection_input():
         from ..memory.story_time import day_key
@@ -407,13 +419,15 @@ def build_context(repo,scene_id: str,stage: str,settings: RoleSettings,*,editor_
         # FTS query: the scene's own plan (already in refs) and, where it is a required input, its brief.
         query=[repo.read_text(scene.heads['plan']) if scene.heads.get('plan') else scene.beats]
         if stage in {'draft','edit'} and scene.heads.get('brief'):query.append(repo.read_text(scene.heads['brief']))
+        from ..memory.summaries import usable_summaries
+        summaries,stale=usable_summaries(repo,story,scenes,scene.position+1,language)
         return SelectionInput(tuple(items),scene.id,scene.position+1,tuple(scene.character_ids),tuple(tracked),names,'\n'.join(query),kinds(),
-            day_key(scene),{s.position+1:day_key(s) for s in scenes if s.position<scene.position},language)
+            day_key(scene),{s.position+1:day_key(s) for s in previous_scenes(story,scenes,scene)},language,tuple(summaries),tuple(stale))
     def kinds():
         from ..memory.kinds import kind_overrides
         return kind_overrides(repo if hasattr(repo,'peek_scene') else repo.context_view(story.id),scene.id)
     memory_selector=MemorySelector(memory_index,memory_header,projection.text,selection_input)
-    previous=[s for s in scenes if s.position<scene.position]
+    previous=previous_scenes(story,scenes,scene)
     fragments={}
     if previous:
         refs.extend(past.source_prose_ids)

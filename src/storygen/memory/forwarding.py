@@ -13,10 +13,10 @@ class ForwardingChange(DomainModel):
 
 
 def choices_at(view,scene_id,*,inclusive=False):
+    from ..book.lineage import earlier_scenes
     scene=view.peek_scene(scene_id);choices={}
-    for item in view.peek_scenes(scene.story_id):
-        if item.position<scene.position or inclusive and item.id==scene_id:
-            choices.update(item.memory_forwarding)
+    for item in earlier_scenes(view,scene,peek=True)+([scene] if inclusive else []):
+        choices.update(item.memory_forwarding)
     return choices
 
 
@@ -44,7 +44,8 @@ def projection_policy(view,scene_id):
     hidden={id for id,enabled in choices.items() if not enabled}
     if not hidden:return []
     scene=view.peek_scene(scene_id)
-    previous=[s for s in view.peek_scenes(scene.story_id) if s.position<scene.position]
+    from ..book.lineage import earlier_scenes
+    previous=earlier_scenes(view,scene,peek=True)
     memory_id=previous[-1].heads.get('memory') if previous else None
     if memory_id:
         # Resolution links only; quotes and prefix are validated where the journal is used for content.
@@ -61,7 +62,9 @@ def memory_view_from_view(view,scene_id):
     scene=view.get_scene(scene_id);memory_id=scene.heads.get('memory')
     scenes=view.list_scenes(scene.story_id)
     choices=choices_at(view,scene_id,inclusive=True)
-    stamp={'memory_id':memory_id,'prefix':[(s.id,s.heads.get('prose'),s.memory_forwarding) for s in scenes if s.position<=scene.position]}
+    from ..book.lineage import previous_scenes
+    prefix=previous_scenes(view.get_story(scene.story_id),scenes,scene)+[scene]
+    stamp={'memory_id':memory_id,'prefix':[(s.id,s.heads.get('prose'),s.memory_forwarding) for s in prefix]}
     digest=hashlib.sha256(json.dumps(stamp,sort_keys=True,separators=(',',':')).encode()).hexdigest()
     result={'scene':scene,'expected_revision':scene.revision,'fingerprint':digest,'rows':[],
         'can_save':False,'reason':'Спершу створіть пам’ять сцени','memory_id':memory_id}
@@ -86,7 +89,7 @@ def memory_view_from_view(view,scene_id):
         source=sources.get(quoted)
         if source is None:
             historical=view.get_version(quoted)
-            source=next((s for s in scenes if s.id==historical.scene_id and historical.story_id==scene.story_id and s.position<=scene.position),None)
+            source=next((s for s in prefix if s.id==historical.scene_id and historical.story_id==scene.story_id),None)
         result['rows'].append({'claim_id':event.claim_id,'text':event.text,'category':event.category,
             'category_label':labels[event.category],'source_scene':source.position+1 if source else None,
             'source_title':source.title if source else 'Попереднє джерело','quote':event.quote,'supporting_quotes':list(event.supporting_quotes),

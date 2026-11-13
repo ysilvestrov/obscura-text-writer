@@ -73,6 +73,8 @@ class Story(StoryCreate):
     # BOOK-STRUCTURE: parts and arcs, and the arc of each scene; None is one implicit part and arc.
     book_structure: BookStructure | None = None
     scene_arcs: dict[str,str] = Field(default_factory=dict,max_length=100000)
+    # MEMORY-SUMMARY: block key -> current timeline_summary version; CAS on the story revision.
+    timeline_summary_heads: dict[str,str] = Field(default_factory=dict,max_length=1000)
     created_at: str = Field(default_factory=now)
 
 
@@ -101,7 +103,7 @@ class Scene(SceneCreate):
     content_rating: ContentRating | None = None
 
 
-VersionKind = Literal["source_plan","source_characters","character_cards","scene_plan","canon","style","prompt","brief","draft","edited","manual","memory","evaluation"]
+VersionKind = Literal["source_plan","source_characters","character_cards","scene_plan","canon","style","prompt","brief","draft","edited","manual","memory","evaluation","timeline_summary"]
 
 
 class PromptContract(DomainModel):

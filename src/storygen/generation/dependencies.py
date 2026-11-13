@@ -89,7 +89,8 @@ def _author_format(repo,scene,head,requested):
 def _manual_snapshot(repo,scene,head,*,day_selectors=False):
     from ..dependency_models import DependencySelector,DependencySnapshot
     view=repo.context_view(scene.story_id);story=view.story
-    previous=[s for s in view.list_scenes(scene.story_id) if s.position<scene.position]
+    from ..book.lineage import earlier_scenes
+    previous=earlier_scenes(view,scene)
     selectors=[];refs={};baselines={}
     def select(kind,owner,field,value):
         selectors.append(DependencySelector(kind=kind,owner_id=owner,field=field,expected=value))

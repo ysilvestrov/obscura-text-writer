@@ -1,6 +1,7 @@
 """Finite selectors for actual semantic inputs, never SQL or executable expressions."""
 from ..dependency_models import DependencySnapshot, DependencySelector, DependencyChange, FreshnessResult
 from ..story_horizon import selected_plan_scenes, horizon_future_count
+from ..book.lineage import previous_scenes
 from ..rating.levels import effective_rating, from_wire, is_lower, to_wire
 
 # Generation scopes limited by the scene's effective content rating; author text and memory are not.
@@ -41,7 +42,7 @@ def build_dependency_snapshot(
         if settings.memory_mode=='evidence_delta':
             select('scene',scene.id,'character_ids',scene.character_ids)
             memory_core_selectors(view,story,scene,scenes,select)
-        prefix = [s for s in scenes if s.position <= scene.position]
+        prefix = previous_scenes(story, scenes, scene) + [scene]
         order = [s.id for s in prefix]
         select('order', scene.id, 'prefix', order)
         for item in prefix:
@@ -55,7 +56,7 @@ def build_dependency_snapshot(
             order = [s.id for s in scenes]
             select('order', story.id, 'all', order)
         else:
-            order=[s.id for s in scenes if s.position<scene.position]+[s.id for s in plans]
+            order=[s.id for s in previous_scenes(story,scenes,scene)]+[s.id for s in plans]
             selectors.append(
                 DependencySelector(
                     kind='order',
@@ -79,14 +80,15 @@ def build_dependency_snapshot(
         from ..memory.forwarding import projection_policy
         select('scene',scene.id,'memory_projection_policy',projection_policy(view,scene.id))
         selected_ids={item.id for item in plans}
+        previous = previous_scenes(story, scenes, scene)
+        earlier_ids = {s.id for s in previous}
         for item in scenes:
             if item.id in selected_ids:
                 head(item, 'plan')
                 if not item.heads.get('plan'):
                     select('scene', item.id, 'beats', item.beats)
-            elif item.position<scene.position:
+            elif item.id in earlier_ids:
                 head(item, 'prose')
-        previous = [s for s in scenes if s.position < scene.position]
         if previous:
             head(previous[-1], 'memory')
         for name in {'brief': [], 'draft': ['brief'], 'prose_edit': ['brief', 'draft'], 'author_text': [],'author_rewrite': []}[scope]:
@@ -128,7 +130,7 @@ def memory_core_selectors(view,story,scene,scenes,select):
     from ..memory.story_time import comparison_scene,day_key
     tracked=tracked_characters(core_cards(view,story),scenes)
     select('story',story.id,'tracked_characters',tracked)
-    owners=[scene]+[item for item in (comparison_scene(scenes,scene,hero) for hero in tracked) if item]
+    owners=[scene]+[item for item in (comparison_scene(scenes,scene,hero,story) for hero in tracked) if item]
     for item in dict((item.id,item) for item in owners).values():
         select('scene',item.id,'memory_day_key',day_key(item))
 
@@ -144,6 +146,9 @@ def selector_value(view, selector: DependencySelector):
     if kind=='scene' and field=='memory_projection_policy':
         from ..memory.forwarding import projection_policy
         return projection_policy(view,owner)
+    if kind=='story' and owner==view.story.id and field=='timeline_summary_heads':
+        heads=view.peek_story(owner).timeline_summary_heads
+        return {key:heads.get(key,'') for key in sorted(selector.expected or {})}
     if kind=='scene' and field=='memory_kind_overrides':
         from ..memory.kinds import kind_overrides
         return kind_overrides(view,owner)
@@ -175,11 +180,11 @@ def selector_value(view, selector: DependencySelector):
             return [s.id for s in scenes]
         if field == 'prefix':
             scene = view.peek_scene(owner)
-            return [s.id for s in scenes if s.position <= scene.position]
+            return [s.id for s in previous_scenes(view.peek_story(view.story.id), scenes, scene)] + [scene.id]
         if field=='narrative_window':
             scene=view.peek_scene(owner)
             future=[s for s in scenes if s.position>=scene.position][:selector.future_count+1]
-            return [s.id for s in scenes if s.position<scene.position]+[s.id for s in future]
+            return [s.id for s in previous_scenes(view.peek_story(view.story.id), scenes, scene)]+[s.id for s in future]
     raise ValueError('Невідомий селектор залежностей')
 
 
@@ -289,7 +294,7 @@ def build_evaluation_snapshot(view, scene_id, case, mode):
         targets = scenes
     else:
         scene = view.get_scene(scene_id)
-        prefix = [s for s in scenes if s.position <= scene.position]
+        prefix = [s for s in scenes if s.position <= scene.position]  # reading order (evaluation; BOOK-LINEAGE exception)
         order = [s.id for s in prefix]
         select('order', scene.id, 'prefix', order)
         targets = [scene]
@@ -418,7 +423,7 @@ def build_author_baseline(view, scene_id: str) -> DependencySnapshot:
         select('scene',scene.id,field,getattr(scene,field))
     from ..memory.forwarding import projection_policy
     select('scene',scene.id,'memory_projection_policy',projection_policy(view,scene.id))
-    previous=[item for item in scenes if item.position<scene.position]
+    previous=previous_scenes(story,scenes,scene)
     for item,name in [(item,'prose') for item in previous]+([(previous[-1],'memory')] if previous else []):
         id=item.heads.get(name);select('head',item.id,name,id);include(id)
     return DependencySnapshot(scope='author_text',selectors=selectors,refs=refs,scene_order=order,

@@ -236,6 +236,19 @@ def main():
             save_role_settings(repo,fixture['story_id'],'editor',RoleSettings(provider=ProviderSettings(model='synthetic-no-changes'),edit_mode='patches'),repo.get_story(fixture['story_id']).revision)
             return fixture
 
+        @app.post('/test-timeline-summaries')
+        def timeline_summaries_fixture():
+            # MEMORY-SUMMARY-S07: 22 scenes, memory up to scene 21, a published summary of scenes 1-10.
+            from tests.memory.summary_helpers import seed_long_story
+            from storygen.memory.summary_blocks import summary_blocks
+            from storygen.storage.timeline_summaries import publish_summary, save_summary_version
+            story = seed_long_story(repo, 22, 21, title='Довга дорога')
+            scenes = repo.list_scenes(story.id)
+            block = summary_blocks(story, scenes)[0]
+            ref = save_summary_version(repo, story.id, block, [s.heads['memory'] for s in scenes[:10]], 'Анна приїхала до міста.', 'model', 'uk')
+            publish_summary(repo, story.id, block.key, ref.id, story.revision)
+            return {'story_id': story.id, 'scene_id': scenes[21].id}
+
         @app.post('/test-core-review')
         def core_review_scene():
             return core_review_fixture(repo,rated_story('Ключ і пальто'))

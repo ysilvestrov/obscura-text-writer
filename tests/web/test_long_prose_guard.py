@@ -32,7 +32,7 @@ def setup(tmp_path, structured=True):
 
 def url(path, story, scene):
     values = {'story_id': story.id, 'scene_id': scene.id, 'run_id': 'run1', 'attempt_id': 'x', 'stage': 'brief', 'call_id': 'x',
-              'record_id': 'x', 'name': 'x'}
+              'record_id': 'x', 'name': 'x', 'block_key': 'range:1-10'}
     def value(match):
         name = match[1]
         if name == 'id':

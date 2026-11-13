@@ -26,6 +26,12 @@ While the request fits the role limits, memory is passed in full. Otherwise the 
 
 The **Type** column guides the selection: **Auto**, **Core** (always shown) or **Atmosphere** (only within a small share). The choice is saved at once and applies to the whole story.
 
+## Timeline summaries
+
+A selected request leaves out the timeline older than 20 scenes. To keep the model aware of what happened earlier, create a summary in the **Timeline summaries** section of the memory panel. A block is a part of the book, or, in a book without parts, every 10 scenes (1–10, 11–20…). The **Create summary** button is highlighted once the first scene of the block leaves the timeline window. The summary is written by the Memory role model: you see the model and the token estimate before the run, and the call is paid. You can correct the finished text with **Edit**.
+
+A summary is used only when memory does not fit: it replaces all timeline entries of its block with one line. If the prose or memory of a scene in the block changes, or the block's scenes change, the summary is marked "stale" and is not sent until you rebuild it.
+
 ## Confirming earlier memory
 
 If updating a scene's memory relies on an old journal of the previous scene, the application asks for confirmation. The dialog shows the memory scene, the number of new versions and of changed texts; **Cancel** does not start the model. Confirmation keeps the old sources and quotations; it does not verify the facts. If the sources change again, confirm again.

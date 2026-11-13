@@ -52,6 +52,9 @@ def preview(repo, request, view=None):
     if request.mode=='publication_suggest':
         from .publication_metadata import readiness
         return readiness(repo,request)
+    if request.mode=='timeline_summary':
+        from .timeline_summary import readiness
+        return readiness(repo,request)
     if request.mode=='edit_loop':
         from .editor_loop import readiness
         return readiness(repo,request,view=view)
@@ -185,6 +188,9 @@ def pending_preview(repo,run):
         return readiness(repo,run.request)
     if run.request.mode=='publication_suggest':
         from .publication_metadata import readiness
+        return readiness(repo,run.request)
+    if run.request.mode=='timeline_summary':
+        from .timeline_summary import readiness
         return readiness(repo,run.request)
     if run.request.mode=='edit_loop':
         from .editor_loop import readiness

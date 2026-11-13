@@ -174,6 +174,9 @@ def execute_stage(
                 (terminal.failure.get('category','technical') if terminal else 'incomplete'))
             attempt.error=attempt.error or {'empty_output':'Планувальник повернув порожню відповідь','output_limit':'Вичерпано ліміт відповіді'}.get(category,'Пропозицію не завершено')
             attempt.context['publication_failure']={**(terminal.failure if terminal else {}),'category':category,'message':attempt.error}
+        if stage=='timeline_summary':
+            attempt.error=attempt.error or ('Модель пам’яті повернула порожній підсумок' if attempt.state=='failed' and not text.strip() else 'Підсумок не завершено; автоматичного повтору немає')
+            attempt.context['summary_failure']={'category':attempt.state,'message':attempt.error}
         if stage=='classify' and attempt.state=='failed' and not attempt.context.get('classification_failure'):
             attempt.context['classification_failure']={'category':'output_limit' if attempt.finish_reason=='length' else 'incomplete','message':attempt.error}
         return repo.save_attempt(attempt)
@@ -209,6 +212,9 @@ def execute_stage(
             from .assisted_writing import save_rewrite_result
             return save_rewrite_result(repo,attempt,context,text)
         proposed=False
+        if stage=='timeline_summary':
+            from .timeline_summary import finish_summary
+            return finish_summary(repo,attempt,context,text,run_id)
         if stage=='publication_suggest':
             from ..publication_suggestions import parse_suggestions, fingerprint
             proposal={'source_stamp':json.loads(context.fragments['publication_sources']),
@@ -360,6 +366,9 @@ def execute_stage(
             failure=text_refusal(text) or {'category':'protocol','message':str(exc)}
             attempt.error=failure['message']
             attempt.context['publication_failure']=failure
+        elif stage=='timeline_summary':
+            attempt.error=str(exc) # Only trusted validate_summary/save messages reach this branch.
+            attempt.context['summary_failure']={'category':'protocol','message':attempt.error}
         elif stage=='classify':
             attempt.error=str(exc) # Only trusted parse_classification messages reach this branch.
             attempt.context['classification_failure']={'category':'refusal_unknown' if attempt.context.get('classification_refusal') else 'protocol','message':attempt.error}

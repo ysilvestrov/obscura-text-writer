@@ -80,7 +80,8 @@ def publish_memory_journal(repo,scene_id,journal,expected_revision,context=None)
     view,scene=ctx.view,ctx.scene
     validate_memory_journal(journal,ctx.sources,ctx.previous)
     refs=list(ctx.sources)
-    earlier=[s for s in view.list_scenes(scene.story_id) if s.position<scene.position]
+    from ..book.lineage import earlier_scenes
+    earlier=earlier_scenes(view,scene)
     if earlier:refs.append(earlier[-1].heads['memory'])
     snapshot=build_dependency_snapshot(view,scene_id,'memory',RoleSettings(provider=ProviderSettings(model='manual-memory')),refs)
     snapshot.memory_provenance=ctx.provenance
@@ -109,7 +110,7 @@ def rebuild_memory(repo,from_scene_id: str,gateway_factory,cancel,on_event,setti
     role=settings or get_role_settings(repo,first.story_id)['memory']
     attempts=[]
     for scene in repo.list_scenes(first.story_id):
-        if scene.position<first.position:
+        if scene.position<first.position:  # reading order: a rebuild runs every scene from here down
             continue
         if cancel.is_set() or not scene.heads.get('prose'):
             break

@@ -86,7 +86,7 @@ def core_review(repo, scene_id: str, locale: str = 'uk') -> dict:
     if bounds:
         signal=bounds.get('day_change')
         changed=any(signal.values()) if isinstance(signal,dict) else bool(signal)
-    else:changed=any(day_change(scenes,scene,cid) for cid in tracked)
+    else:changed=any(day_change(scenes,scene,cid,view.get_story(scene.story_id)) for cid in tracked)
     result.update(has_wire=wire is not None,day_change=changed,
         confirmation=ref.memory_confirmation.model_dump() if ref.memory_confirmation else None)
     old_slots,new_slots=_slots(old_active),_slots(new_active)
@@ -123,8 +123,9 @@ def core_review(repo, scene_id: str, locale: str = 'uk') -> dict:
 
 
 def _prefix(view, scene_id):
+    from ..book.lineage import earlier_scenes
     scene=view.get_scene(scene_id)
-    return [s for s in view.list_scenes(scene.story_id) if s.position<=scene.position and s.heads.get('prose')]
+    return [s for s in earlier_scenes(view,scene)+[scene] if s.heads.get('prose')]
 
 
 def prefix_scenes(repo, scene_id: str) -> list[dict]:
