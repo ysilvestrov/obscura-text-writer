@@ -1,6 +1,6 @@
 """Atomic per-file publication; prepared immutable versions are never rewritten."""
 import json
-from ..domain import Scene,VersionRef,new_id,RevisionConflict
+from ..domain import Scene,Story,VersionRef,new_id,RevisionConflict
 from ..import_models import ImportPublication,ImportPublicationResult
 from .authoring import _material
 from .invalidation import invalidate_in_transaction,invalidate_story_materials
@@ -75,6 +75,12 @@ def publish_import(repo,story_id,expected_revision,publication):
             db.execute('UPDATE versions SET scene_id=?,payload=? WHERE id=?',(scene.id,ref.model_dump_json(),ref.id))
             active.append(scene);created.append(scene.id)
         if created:repo._save_scene_order(db,active+archived)
+        if created:
+            # BOOK-STRUCTURE: parts, arcs and bindings of the new scenes, in the same transaction as the scenes.
+            from .book_structure import place_imported
+            by_id={scene.id:scene for scene in active}
+            placed=[(by_id[id],item.part_title,item.arc_title,item.part_index) for id,item in zip(created,publication.scenes)]
+            repo._save_story(db,place_imported(repo._get(db,'stories',story_id,Story),active,placed,publication.structured))
         metadata.update(created_scene_count=len(created),created_character_count=created_cards)
         db.execute('INSERT INTO source_files VALUES(?,?,?)',(metadata['id'],story_id,json.dumps(metadata,ensure_ascii=False)))
         if cards:sync_story_cast(repo,db,story_id)

@@ -4150,6 +4150,110 @@
       ]
     },
     {
+      "id": "BOOK-STRUCTURE-S01",
+      "requirement": "BOOK-STRUCTURE",
+      "scope": "Пласка книга: запит, відбиток, input_refs і знімок ті самі після структурування й розформування; GET твору й MCP get_story лише додають поля частини й арки.",
+      "tests": [
+        "tests/book/test_structure_invariants.py::test_flat_book_context_unchanged_by_structure_round_trip",
+        "tests/web/test_structure_api.py::test_story_view_of_flat_book_has_implicit_structure",
+        "tests/mcp/test_bridge.py::test_get_story_names_part_and_arc_of_each_scene",
+        "tests/mcp/test_bridge.py::test_get_story_of_a_flat_book_names_the_implicit_part_and_arc"
+      ]
+    },
+    {
+      "id": "BOOK-STRUCTURE-S02",
+      "requirement": "BOOK-STRUCTURE",
+      "scope": "Перейменування й перепризначення в структурованій книзі не змінюють запиту, відбитка й свіжості знімка.",
+      "tests": [
+        "tests/book/test_structure_invariants.py::test_structured_book_context_unchanged_by_regrouping"
+      ]
+    },
+    {
+      "id": "BOOK-STRUCTURE-S03",
+      "requirement": "BOOK-STRUCTURE",
+      "scope": "Порушення послідовності, частина без арок, невідома арка — 400 без запису; 409 на ревізію; нова й відновлена сцена беруть арку попередньої.",
+      "tests": [
+        "tests/storage/test_book_structure.py::test_put_structure_rejects_mixed_arcs",
+        "tests/storage/test_book_structure.py::test_put_structure_rejects_part_without_arcs",
+        "tests/storage/test_book_structure.py::test_put_structure_rejects_unknown_arc_and_unassigned_scene",
+        "tests/storage/test_book_structure.py::test_put_structure_conflict_writes_nothing",
+        "tests/storage/test_book_structure.py::test_new_scene_takes_arc_of_previous",
+        "tests/storage/test_book_structure.py::test_reorder_that_mixes_arcs_is_refused",
+        "tests/storage/test_book_structure.py::test_restore_scene_whose_arc_was_removed_takes_previous_arc",
+        "tests/storage/test_book_structure.py::test_restore_never_breaks_sequence",
+        "tests/storage/test_book_structure.py::test_assign_scene_checks_sequence_and_revision",
+        "tests/web/test_structure_api.py::test_put_structure_conflict_and_sequence_errors",
+        "tests/authoring/test_import_book_structure.py::test_import_that_would_mix_arcs_writes_nothing"
+      ]
+    },
+    {
+      "id": "BOOK-STRUCTURE-S04",
+      "requirement": "BOOK-STRUCTURE",
+      "scope": "Імпорт частин і арок: структура, чисті плани сцен, продовження частини, перша частина для наявних сцен, без маркерів — неявна, store — як раніше.",
+      "tests": [
+        "tests/authoring/test_import_book_structure.py::test_split_book_plan_finds_parts_and_arc_lines",
+        "tests/authoring/test_import_book_structure.py::test_import_creates_parts_arcs_and_clean_plans",
+        "tests/authoring/test_import_book_structure.py::test_additive_import_continues_the_last_part_by_title",
+        "tests/authoring/test_import_book_structure.py::test_flat_book_with_scenes_gets_them_in_the_first_part",
+        "tests/authoring/test_import_book_structure.py::test_plan_without_markers_keeps_implicit_structure",
+        "tests/authoring/test_import_book_structure.py::test_store_edition_imports_markers_as_text",
+        "tests/authoring/test_import_book_structure.py::test_parts_with_equal_or_empty_titles_stay_separate",
+        "tests/authoring/test_import_book_structure.py::test_first_structured_import_keeps_no_markers_in_the_source_plan"
+      ]
+    },
+    {
+      "id": "BOOK-STRUCTURE-S05",
+      "requirement": "BOOK-STRUCTURE",
+      "scope": "Частини в MD/TXT/FB2/EPUB/PDF, «Частина N»/«Part N» для частини без назви, без арок; пласка книга без змін.",
+      "tests": [
+        "tests/authoring/test_export_parts.py::test_markdown_has_part_headings",
+        "tests/authoring/test_export_parts.py::test_markdown_part_without_title_in_english",
+        "tests/authoring/test_export_parts.py::test_flat_markdown_is_unchanged",
+        "tests/authoring/test_export_parts.py::test_txt_has_part_paragraphs",
+        "tests/authoring/test_export_parts.py::test_fb2_nests_scene_sections_in_parts",
+        "tests/authoring/test_export_parts.py::test_epub_has_part_pages_and_nested_toc",
+        "tests/authoring/test_export_parts.py::test_pdf_renders_with_parts"
+      ]
+    },
+    {
+      "id": "BOOK-STRUCTURE-S06",
+      "requirement": "BOOK-STRUCTURE",
+      "scope": "Групування списку, варіанти арки, правила буфера панелі (node); підключення сторінок; браузер: групи, поле «Арка», панель, пласка книга.",
+      "tests": [
+        "tests/web/test_book_structure_ui.py::test_group_rows_arc_options_and_panel_buffer",
+        "tests/web/test_book_structure_ui.py::test_pages_load_the_structure_modules"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#book-structure-browser",
+        "reason": "check_docs.py індексує лише pytest; Playwright cases tests/web/browser/book-structure.spec.mjs виконуються окремим runner, цей зв’язок не є доказом виконання."
+      }
+    },
+    {
+      "id": "BUILD-EDITION-001-S08",
+      "requirement": "BUILD-EDITION-001",
+      "scope": "Обхід таблиці маршрутів: кожен маршрут запису під запобіжником або в списку дозволених; пласка книга й видання з довгою прозою працюють; читання й експорт дозволені.",
+      "tests": [
+        "tests/web/test_long_prose_guard.py::test_every_write_route_is_guarded_or_allowed_with_a_reason",
+        "tests/web/test_long_prose_guard.py::test_allowed_list_names_only_existing_routes",
+        "tests/web/test_long_prose_guard.py::test_flat_book_is_writable_in_store",
+        "tests/web/test_long_prose_guard.py::test_one_named_part_and_arc_is_writable_in_store",
+        "tests/web/test_long_prose_guard.py::test_structured_book_reads_and_exports_in_store",
+        "tests/web/test_long_prose_guard.py::test_structured_book_is_writable_with_long_prose",
+        "tests/web/test_book_structure_ui.py::test_server_refusals_are_translated"
+      ]
+    },
+    {
+      "id": "BUILD-EDITION-001-S09",
+      "requirement": "BUILD-EDITION-001",
+      "scope": "Видання paid без report_url, межа 2, довга проза; store без довгої прози: маршрути структури 400, імпорт без розбору.",
+      "tests": [
+        "tests/test_build_edition.py::test_paid_edition_has_long_prose_without_report_url",
+        "tests/test_build_edition.py::test_long_prose_only_outside_store",
+        "tests/web/test_structure_api.py::test_structure_routes_refused_without_long_prose",
+        "tests/authoring/test_import_book_structure.py::test_store_edition_imports_markers_as_text"
+      ]
+    },
+    {
       "id": "DESKTOP-001-S01",
       "requirement": "DESKTOP-001",
       "scope": "Тека даних у профілі користувача (кирилиця в шляху), журнал у файл із ротацією, запуск без stdout/stderr.",

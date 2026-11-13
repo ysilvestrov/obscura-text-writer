@@ -13,6 +13,7 @@ import {confirmUnsaved} from './core-review.js';
 import {readWorkspacePosition,rememberWorkspacePosition,resolveWorkspacePosition,updateWorkspaceUrl} from './workspace-position.js';
 import {registerWorkspaceCommand,invokeWorkspaceCommand} from './workspace-commands.js';
 import {externalNotice} from './scene-sync.js';
+import {groupScenes} from './book-structure.js';
 
 export const state={storyId:document.querySelector('#workspace')?.dataset.storyId,scene:null,view:null,mode:'plan',dirty:false,saving:false,bufferEpoch:0};
 export const initialWorkspacePosition=readWorkspacePosition(state.storyId,globalThis.location?.search||'');
@@ -99,8 +100,12 @@ async function loadView(options){
   const list=document.querySelector('#scene-list');list.replaceChildren();
   uiText(document.querySelector('#scene-count'),"textContent",()=>(state.view.scenes.length));
   const picker=document.querySelector('#scene-select-mobile');
-  if(picker){picker.replaceChildren();for(const scene of state.view.scenes){const option=document.createElement('option');option.value=scene.id;uiText(option,"textContent",()=>((scene.position+1)+'. '+displaySceneTitle(scene.title)));picker.append(option)}picker.value=state.scene?.id||'';picker.onchange=()=>{const scene=state.view.scenes.find(s=>s.id===picker.value);if(scene)void selectScene(scene)}}
-  for(const scene of state.view.scenes){
+  // BOOK-STRUCTURE-S06: a structured book groups scenes under part and arc headings; numbering stays continuous.
+  const rows=groupScenes(state.view.book_structure,state.view.scenes,(key,n)=>t(key,{p0:n}));
+  if(picker){picker.replaceChildren();let group=picker;for(const row of rows){if(row.type==='part'){group=document.createElement('optgroup');group.label=row.title;picker.append(group);continue}if(row.type!=='scene')continue;const scene=row.scene;const option=document.createElement('option');option.value=scene.id;uiText(option,"textContent",()=>((scene.position+1)+'. '+displaySceneTitle(scene.title)));group.append(option)}picker.value=state.scene?.id||'';picker.onchange=()=>{const scene=state.view.scenes.find(s=>s.id===picker.value);if(scene)void selectScene(scene)}}
+  for(const row of rows){
+    if(row.type!=='scene'){const heading=document.createElement('div');heading.className='scene-group scene-group-'+row.type;heading.setAttribute('role','heading');heading.setAttribute('aria-level',row.type==='part'?'3':'4');heading.textContent=row.title;list.append(heading);continue}
+    const scene=row.scene;
     const button=document.createElement('button');button.className='scene-item'+(state.scene?.id===scene.id?' active':'');uiText(button,"textContent",()=>((scene.position+1)+'. '+displaySceneTitle(scene.title)));
     button.setAttribute('aria-current',state.scene?.id===scene.id?'true':'false');
     const small=document.createElement('small');uiText(small,"textContent",()=>sceneStatus(scene,state.view.impact_status).label);button.append(small);button.onclick=()=>selectScene(scene);list.append(button);

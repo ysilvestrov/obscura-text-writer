@@ -5,6 +5,7 @@ import json
 import threading
 from importlib.resources import files
 from xml.sax.saxutils import escape
+from .book import part_starts
 from .markup import chapter_paragraphs,reportlab_runs
 from ..markdown_document import to_plain_text
 
@@ -39,7 +40,7 @@ def render(book):
     regular='ObscuraNotoSerif-Regular';bold='ObscuraNotoSerif-Bold'
     publication=book.snapshot.publication;card=publication.card
     visible=[book.title,card.cycle_title,card.publisher,card.publication_date,'Зміст',
-        *[p.display_name for p in publication.authors],*[c.title+'\n'+to_plain_text(c.text,c.content_format) for c in book.chapters]]
+        *[p.display_name for p in publication.authors],*book.parts,*[c.title+'\n'+to_plain_text(c.text,c.content_format) for c in book.chapters]]
     for font in [regular,bold,'ObscuraNotoSerif-Italic','ObscuraNotoSerif-BoldItalic']:
         glyphs=pdfmetrics.getFont(font).face.charToGlyph
         missing=next((c for text in visible for c in text if c not in '\n\r\t' and not glyphs.get(ord(c))),None)
@@ -55,9 +56,9 @@ def render(book):
     class BookDoc(BaseDocTemplate):
         def afterFlowable(self,flowable):
             if hasattr(flowable,'chapter_key'):
-                key=flowable.chapter_key;self.canv.bookmarkPage(key)
-                self.notify('TOCEntry',(0,escape(flowable.getPlainText()),self.page,key))
-                self.canv.addOutlineEntry(flowable.getPlainText(),key,0,False)
+                key=flowable.chapter_key;level=getattr(flowable,'outline_level',0);self.canv.bookmarkPage(key)
+                self.notify('TOCEntry',(level,escape(flowable.getPlainText()),self.page,key))
+                self.canv.addOutlineEntry(flowable.getPlainText(),key,level,False)
     def footer(canvas,doc):
         canvas.saveState();canvas.setFont(regular,9);canvas.drawCentredString(width/2,9*mm,str(doc.page));canvas.restoreState()
     def frame():return Frame(17*mm,18*mm,available_width,available_height,leftPadding=0,rightPadding=0,topPadding=0,bottomPadding=0)
@@ -78,10 +79,14 @@ def render(book):
         if text:flow.append(Paragraph(escape(text),front))
     flow.extend([NextPageTemplate('Body'),PageBreak(),Paragraph('Зміст',heading)])
     if book.chapters:
-        toc=TableOfContents();toc.levelStyles=[toc_style];flow.append(toc)
+        toc=TableOfContents();toc.levelStyles=[toc_style,ParagraphStyle('TOC2',parent=toc_style,leftIndent=12,spaceBefore=4)];flow.append(toc)
     else:flow.append(Paragraph('Немає сцен',front))
+    starts=part_starts(book);nested=1 if book.parts else 0
     for index,chapter in enumerate(book.chapters,1):
-        flow.append(PageBreak());h=Paragraph(escape(chapter.title),heading);h.chapter_key=f'chapter-{index}';flow.append(h)
+        if index-1 in starts:
+            # BOOK-STRUCTURE-S05: a part title on its own page, one outline level above its scenes.
+            flow.append(PageBreak());part=Paragraph(escape(starts[index-1]),title_style);part.chapter_key=f'part-{chapter.part_index+1}';flow.append(part)
+        flow.append(PageBreak());h=Paragraph(escape(chapter.title),heading);h.chapter_key=f'chapter-{index}';h.outline_level=nested;flow.append(h)
         paragraphs=list(chapter_paragraphs(chapter))
         while paragraphs and not paragraphs[-1]:paragraphs.pop()
         for runs in paragraphs:flow.append(Paragraph(reportlab_runs(runs),body) if runs else Spacer(1,7.5))

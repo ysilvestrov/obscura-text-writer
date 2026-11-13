@@ -69,6 +69,11 @@ def create_app(settings: AppSettings, *, gateway_factory=None,evaluator_factory=
                 return error_response(request,"Запит з іншого сайту відхилено",403)
         if from_bridge(request) and author_only_path(request.method,request.url.path):
             return error_response(request,RUN_OWNER_ONLY,403)
+        from .long_prose_guard import blocked
+        # BUILD-EDITION-001-S08: a structured book is read-only in an edition without long prose.
+        refusal=await blocked(app,request)
+        if refusal:
+            return error_response(request,"Некоректні дані: "+refusal,400)
         response=await call_next(request)
         # Relative ES module imports must be refreshed together with the document.
         response.headers['Cache-Control']='no-store'
@@ -109,6 +114,8 @@ def create_app(settings: AppSettings, *, gateway_factory=None,evaluator_factory=
 
     from .routes_stories import router
     app.include_router(router)
+    from .routes_structure import router as structure_router
+    app.include_router(structure_router)
     from .routes_settings import router as settings_router
     app.include_router(settings_router)
     from .routes_rating import router as rating_router

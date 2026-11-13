@@ -21,8 +21,13 @@ def export_story(repo,story_id: str,format: Literal['md','txt','fb2','epub','pdf
         content=render(book)
     else:
         parts=[]
-        for chapter in book.chapters:
-            heading=('## '+escape_plain_markdown(chapter.title)) if format=='md' else chapter.title
+        from ..publication.book import part_starts
+        starts=part_starts(book);level='###' if book.parts else '##'
+        for number,chapter in enumerate(book.chapters):
+            if number in starts:
+                # BOOK-STRUCTURE-S05: a part heading above its first scene.
+                parts.append(('## '+escape_plain_markdown(starts[number])) if format=='md' else starts[number])
+            heading=(level+' '+escape_plain_markdown(chapter.title)) if format=='md' else chapter.title
             text=to_plain_text(chapter.text,chapter.content_format) if format=='txt' else chapter.text if chapter.content_format=='markdown' else escape_plain_markdown(chapter.text)
             parts.append(heading+'\n\n'+text)
         title=('# '+escape_plain_markdown(book.title)) if format=='md' else book.title

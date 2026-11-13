@@ -6,6 +6,10 @@ from .domain import DomainModel, SceneCreate
 class ImportedScene(DomainModel):
     data: SceneCreate
     plan_version_id: str
+    # BOOK-STRUCTURE: part and arc titles from the plan; None continues the book's current part or arc.
+    part_title: str | None=Field(default=None,max_length=200)
+    arc_title: str | None=Field(default=None,max_length=200)
+    part_index: int | None=Field(default=None,ge=0,le=10000)
 
 class ImportPublication(DomainModel):
     metadata: dict
@@ -13,6 +17,7 @@ class ImportPublication(DomainModel):
     active_characters_version_id: str | None=None
     character_cards_version_id: str | None=None
     scenes: list[ImportedScene]=Field(default_factory=list)
+    structured: bool=False
 
 class ImportPublicationResult(DomainModel):
     revision: int

@@ -76,7 +76,15 @@ def _characters(repo,view,story,text,version,item,publication):
 
 
 def _plan(repo,view,story,text,version,item,publication):
-    preamble,sections=split_plan(text,'Scene' if story.language=='en' else 'Сцена')
+    from .. import build_edition
+    default='Scene' if story.language=='en' else 'Сцена'
+    if build_edition.current().long_prose:
+        # BOOK-STRUCTURE: parts and arcs; an edition without long prose imports the plan exactly as before.
+        from ..plan_sections import split_book_plan
+        preamble,book,publication.structured=split_book_plan(text,default)
+        sections=[item.section for item in book];places={id(item.section):item for item in book}
+    else:
+        preamble,sections=split_plan(text,default);places={}
     existing=view.list_scenes(story.id)
     numbers={s.author_scene_number for s in existing if s.author_scene_number is not None}
     accepted=[]
@@ -94,13 +102,16 @@ def _plan(repo,view,story,text,version,item,publication):
     for index,section in enumerate(accepted):
         data=SceneCreate(title=section.title,beats=section.text,author_scene_number=section.author_scene_number,target_words=1000 if existing else max(1,base+(index<remainder)))
         plan=repo.save_version(story.id,None,'scene_plan',section.text,[version.id])
-        publication.scenes.append(ImportedScene(data=data,plan_version_id=plan.id));proposals.append(data)
+        place=places.get(id(section))
+        publication.scenes.append(ImportedScene(data=data,plan_version_id=plan.id,part_title=place.part_title if place else None,
+                                                arc_title=place.arc_title if place else None,part_index=place.part_index if place else None));proposals.append(data)
     previous=view.active_source(story.id,'source_plan')
     if previous:
         combined=view.read_text(previous.id)+'\n\n'+''.join(s.text for s in accepted)
         active=repo.save_version(story.id,None,'source_plan',combined,[previous.id,version.id])
         publication.active_plan_version_id=active.id
-    elif len(accepted)==len(sections):publication.active_plan_version_id=version.id
+    # A structured plan is never kept as is: its part headings and arc lines must not reach the source plan.
+    elif len(accepted)==len(sections) and not publication.structured:publication.active_plan_version_id=version.id
     else:
         active=repo.save_version(story.id,None,'source_plan',preamble+''.join(s.text for s in accepted),[version.id])
         publication.active_plan_version_id=active.id

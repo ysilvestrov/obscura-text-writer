@@ -425,6 +425,10 @@ class Repository:
             db.execute("INSERT INTO scenes VALUES(?,?,?,?)",(scene.id,story_id,scene.position,scene.model_dump_json()))
             active.insert(position,scene)
             self._save_scene_order(db,active+archived)
+            from .book_structure import bind_new_scene
+            # BOOK-STRUCTURE: the arc binding is written with the scene, under the same story revision bump.
+            if story.book_structure is not None:
+                self._save_story(db,bind_new_scene(self._get(db,'stories',story_id,Story),active,scene,position))
             self._touch_story(db,story_id)
         return scene
 

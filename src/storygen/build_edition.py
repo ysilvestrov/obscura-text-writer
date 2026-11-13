@@ -17,12 +17,13 @@ from .rating.levels import higher_axes
 
 MARKER = 'build_edition.json'
 INVALID = 'Некоректний файл видання build_edition.json: {reason}'
-LIMITS = {'full': ContentRating(sexual=2, violence=2, themes=2), 'store': ContentRating(sexual=1, violence=2, themes=2)}
+LIMITS = {'full': ContentRating(sexual=2, violence=2, themes=2), 'store': ContentRating(sexual=1, violence=2, themes=2),
+          'paid': ContentRating(sexual=2, violence=2, themes=2)}
 URL_FIELDS = ('support_url', 'waitlist_url', 'report_url')
 
 
 class BuildEdition(DomainModel):
-    edition: Literal['full', 'store'] = 'full'
+    edition: Literal['full', 'store', 'paid'] = 'full'
     support_url: str = ''
     waitlist_url: str = ''
     report_url: str = ''
@@ -30,6 +31,11 @@ class BuildEdition(DomainModel):
     @property
     def max_rating(self) -> ContentRating:
         return LIMITS[self.edition]
+
+    @property
+    def long_prose(self) -> bool:
+        # Long prose (books, parts, arcs) is a product tier: the paid build and a source checkout have it, Store does not.
+        return self.edition != 'store'
 
 
 def _clean_https(url: str) -> bool:
