@@ -4388,6 +4388,21 @@
       ]
     },
     {
+      "id": "MEMORY-MERGE-S04",
+      "requirement": "MEMORY-MERGE",
+      "scope": "Вікно злиття: рядки конфліктів, перенесені рішення, власне значення, причина вимкненої кнопки, збереження вибору після відмови, перехід зі зупиненого запуску (node); підключення сторінки й переклад серверних відмов; браузер — голови, вибір, власне значення, конфлікт ревізії, кнопка переходу.",
+      "tests": [
+        "tests/web/test_memory_merge_ui.py::test_merge_window_rows_choices_and_payload",
+        "tests/web/test_memory_merge_ui.py::test_story_page_loads_the_merge_window",
+        "tests/web/test_memory_merge_ui.py::test_merge_refusals_are_translated",
+        "tests/web/test_memory_merge_ui.py::test_stop_link_matches_the_server_message"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#memory-merge-browser",
+        "reason": "check_docs.py індексує лише pytest; Playwright cases tests/web/browser/memory-merge.spec.mjs виконуються окремим runner, цей зв’язок не є доказом виконання."
+      }
+    },
+    {
       "id": "MEMORY-MERGE-S05",
       "requirement": "MEMORY-MERGE",
       "scope": "Збирання журналу: конфлікти слота й закриття проти оновлення, валідний журнал після рішення, подія автора, порядок подій; спільне злиття початку частини; злиття кінця книги не зупиняє конвеєр і дає пам’ять кінця частини підсумку.",
