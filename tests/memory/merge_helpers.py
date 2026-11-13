@@ -20,23 +20,24 @@ def slot_update(record, text, prose_id):
     return _change_event('update', record.claim_id, text, 'character_states', record.character_ids, prose_id, QUOTE, slot=record.slot)
 
 
-def arc_book(root, tokens, parts, events=None, *, repo=None):
+def arc_book(root, tokens, parts, events=None, *, repo=None, beats=None, only=None):
     """`tokens`: 'A B A+B' (a '+' marks a meeting scene); `parts`: [[arc ids], ...]. Every scene gets manual prose; a scene
     whose lineage needs no merge gets memory extending its head's journal with `events(n, prose_id, previous)` (default:
-    one fact). Returns (repo, story, scenes in reading order)."""
+    one fact). `beats`: the scene plans (default 'Анна йде містом.'); `only`: the scene numbers that get memory.
+    Returns (repo, story, scenes in reading order)."""
     repo = repo or Repository(root)
     story = repo.create_story(StoryCreate(title='Книга з арками'))
     words = tokens.split()
     scenes = []
     for n, _ in enumerate(words, 1):
-        scene = repo.create_scene(story.id, SceneCreate(title=f'Сцена {n}', beats='Анна йде містом.'))
+        scene = repo.create_scene(story.id, SceneCreate(title=f'Сцена {n}', beats=beats[n - 1] if beats else 'Анна йде містом.'))
         prose = repo.save_version(story.id, scene.id, 'manual', f'Сцена {n}. Анна йде містом.', [])
         repo.set_head(scene.id, 'prose', prose.id, repo.get_scene(scene.id).revision)
         scenes.append(repo.get_scene(scene.id))
     structure = [{'id': f'p{i}', 'title': f'Частина {i}', 'arcs': [{'id': a, 'title': a} for a in part]} for i, part in enumerate(parts, 1)]
     bindings = {s.id: (w.split('+') if '+' in w else w) for s, w in zip(scenes, words)}
     story = put_structure(repo, story.id, structure, bindings, repo.get_story(story.id).revision)
-    write_memory(repo, story.id, events)
+    write_memory(repo, story.id, events, only=only)
     return repo, repo.get_story(story.id), repo.list_scenes(story.id)
 
 
