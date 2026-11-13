@@ -28,12 +28,14 @@ class MemoryKindChange(DomainModel):
     claim_id: str = Field(min_length=1,max_length=200)
     kind: Literal['core','atmosphere'] | None
     expected_revision: int
+    # BOOK-LINEAGE-S04: the scene the author edits from; a core slot is refused only where it is core in that scene.
+    scene_id: str | None = Field(default=None,min_length=1,max_length=64)
 
 
 @router.put('/api/stories/{story_id}/memory-kind')
 def put_memory_kind(story_id: str,change: MemoryKindChange,request: Request):
     # MEMORY-SELECT-S08: an author mark for selection; CAS on the story revision.
-    return request.app.state.repo.update_memory_kind(story_id,change.claim_id,change.kind,change.expected_revision)
+    return request.app.state.repo.update_memory_kind(story_id,change.claim_id,change.kind,change.expected_revision,change.scene_id)
 
 
 @router.put('/api/scenes/{scene_id}/content-rating')

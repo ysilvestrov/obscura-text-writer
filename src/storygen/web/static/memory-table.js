@@ -84,7 +84,7 @@ export function installMemoryTable({state,api,json,notice,refresh,loadBuffer}){
       if(kindBusy||state.saving)return;
       const snapshot=data,captured=currentKey(),kind=select.value||null;kindBusy=true;draw();
       try{
-        const story=await api(`/api/stories/${snapshot.scene.story_id}/memory-kind`,json('PUT',{claim_id:row.claim_id,kind,expected_revision:snapshot.story_revision}));
+        const story=await api(`/api/stories/${snapshot.scene.story_id}/memory-kind`,json('PUT',{claim_id:row.claim_id,kind,expected_revision:snapshot.story_revision,scene_id:snapshot.scene.id}));
         snapshot.story_revision=story.revision;row.kind=kind;notice(t('memory.kind_saved'));
       }catch(error){
         notice(error.message,'error');

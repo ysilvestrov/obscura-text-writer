@@ -88,14 +88,14 @@ def capture_target(view,version_id,*,baseline_override=None,current_sources_only
             hashes.update(proof_hashes)
             numbers={source:item.position+1 for item,source in zip(prefix,journal.source_prose_ids)}
             state=context_label('impact_current_sources' if journal.source_prose_ids==[s.heads.get('prose') for s in prefix] else 'impact_historical_sources',view.story.language)
-            from ..memory.core import tracked_characters
+            from ..book.protagonists import scene_tracked
             from ..storage.snapshots import core_cards
             cards=core_cards(view,view.story)
             # The policy is already the effective hidden set (I5 applied); pass it through without re-deriving I5.
             policy=set(old_hidden if old else projection_policy(view,scene.id))
             return state+'\n'+project_memory(journal,old_cast if old else scene.character_ids,numbers,
                 hidden_claim_ids=policy,forwarded_claim_ids={e.claim_id for e in journal.events}-policy,
-                tracked=tracked_characters(cards,view.peek_scenes(view.story.id)),names={card.id:card.name for card in cards},language=view.story.language).text
+                tracked=scene_tracked(view.story,cards,view.peek_scenes(view.story.id),scene),names={card.id:card.name for card in cards},language=view.story.language).text
         return raw
     def document(value,selector,old=False):
         kinds=({'plan':{'scene_plan'},'brief':{'brief'},'draft':{'draft'},'prose':{'edited','manual'},'memory':{'memory'}}.get(selector.field)
@@ -118,7 +118,7 @@ def capture_target(view,version_id,*,baseline_override=None,current_sources_only
         snapshot=root_snapshot if id==ref.id else view.acceptances[id].baseline if id in view.acceptances else value.dependency_snapshot
         if id==ref.id and not snapshot:raise ValueError('Немає відтворюваної історичної бази')
         if snapshot:
-            from ..storage.snapshots import legacy_selectors
+            from ..storage.snapshots import current_value, legacy_selectors, snapshot_scene
             snapshot_selectors=legacy_selectors(snapshot,list(snapshot.selectors))
             replace,fallback=rating_fallback(view,snapshot)
             if replace and fallback and is_lower(from_wire(selector_value(view,fallback)),from_wire(fallback.expected)):
@@ -134,7 +134,7 @@ def capture_target(view,version_id,*,baseline_override=None,current_sources_only
                     continue
                 seen_selectors.add(seen)
                 # Historical target self selectors are known inputs, not publish targets.
-                current=selector_value(view,selector)
+                current=current_value(view,selector,snapshot_scene(snapshot_selectors))
                 if selector.field=='content_rating' and not is_lower(from_wire(current),from_wire(selector.expected)):
                     # A raised rating is not a changed input: it neither stales the material nor alters the capture.
                     current=selector.expected

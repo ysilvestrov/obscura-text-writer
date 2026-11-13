@@ -73,9 +73,9 @@ class Repository:
         from .authoring import update_story_language
         return update_story_language(self, story_id, language, expected_revision)
 
-    def update_memory_kind(self, story_id, claim_id, kind, expected_revision):
+    def update_memory_kind(self, story_id, claim_id, kind, expected_revision, scene_id=None):
         from .memory_kinds import update_memory_kind
-        return update_memory_kind(self, story_id, claim_id, kind, expected_revision)
+        return update_memory_kind(self, story_id, claim_id, kind, expected_revision, scene_id)
 
     def update_scene_rating(self, scene_id, rating, expected_revision):
         from .authoring import update_scene_rating

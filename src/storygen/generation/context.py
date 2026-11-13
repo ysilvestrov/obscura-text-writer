@@ -247,13 +247,13 @@ def memory_projection(repo,story,scene,scenes,language):
     """Memory of the preceding scenes as the writing stages see it (shared by build_context and MCP-BRIDGE writing-context)."""
     past=journal_before(repo,scene.id)
     from ..memory.forwarding import hidden_before,forwarded_before
-    from ..memory.core import tracked_characters
+    from ..book.protagonists import scene_tracked
     from ..characters.models import load_characters
     scene_numbers={s.id:s.position+1 for s in previous_scenes(story,scenes,scene)}
     cards=load_characters(repo.read_text(story.characters_version_id)) if story.characters_version_id else []
     source_numbers={id:scene_numbers[repo.get_version(id).scene_id] for id in past.source_prose_ids}
     hidden,forwarded=hidden_before(repo,scene.id),forwarded_before(repo,scene.id)
-    tracked=tracked_characters(cards,scenes);names={card.id:card.name for card in cards}
+    tracked=scene_tracked(story,cards,scenes,scene);names={card.id:card.name for card in cards}
     projection=project_memory(past,scene.character_ids,source_numbers,hidden_claim_ids=hidden,forwarded_claim_ids=forwarded,tracked=tracked,names=names,language=language)
     return past,source_numbers,hidden,forwarded,tracked,names,projection
 
@@ -310,14 +310,14 @@ def build_context(repo,scene_id: str,stage: str,settings: RoleSettings,*,editor_
         expected=past.source_prose_ids+[prose_id]
         from .evidence import render_fragments
         from ..characters.models import load_characters
-        from ..memory.core import tracked_characters
+        from ..book.protagonists import scene_tracked
         from ..memory.story_time import comparison_scene, day_change, day_key, day_label
         from ..memory.wire_v4 import schema_bounds_v4
         add(label('current_prose',language),prose_id)
         # Only v4 prompts pass preflight; /2 and /3 contracts are rejected before any request.
         wire=memory_wire_version(validate_role_prompt(repo,story.id,'memory',settings))
         cards=load_characters(repo.read_text(story.characters_version_id)) if story.characters_version_id else []
-        everyone=tracked_characters(cards,scenes)
+        everyone=scene_tracked(story,cards,scenes,scene)
         tracked=[cid for cid in everyone if cid in scene.character_ids]
         changed={cid:day_change(scenes,scene,cid,story) for cid in tracked}
         names={card.id:card.name for card in cards}

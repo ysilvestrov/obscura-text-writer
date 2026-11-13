@@ -219,19 +219,22 @@ def legacy_selectors(snapshot: DependencySnapshot, selectors: list) -> list:
         owner=next((s.owner_id for s in selectors if s.kind=='scene' and s.field=='title'),None) or next(
             (s.owner_id for s in selectors if s.kind=='head' and s.field=='draft'),None)
         if owner:selectors.append(DependencySelector(kind='scene',owner_id=owner,field='prose_language',expected='uk'))
-    return scene_tracked_selectors(selectors)
+    return selectors
 
 
-def scene_tracked_selectors(selectors: list) -> list:
-    """BOOK-LINEAGE-S04: the story tracked-characters selector compares with the tracked characters of the snapshot's
-    own scene, so a protagonist given to a later arc stales only that arc's written scenes. The owner is the scene of
-    scene/title or of the order prefix/narrative_window selector; a snapshot without one keeps the story selector."""
-    if not any(s.kind=='story' and s.field=='tracked_characters' for s in selectors):return selectors
-    owner=next((s.owner_id for s in selectors if s.kind=='scene' and s.field=='title'),None) or next(
+def snapshot_scene(selectors: list) -> str | None:
+    """The scene a snapshot was built for: the owner of scene/title or of the order prefix/narrative_window selector."""
+    return next((s.owner_id for s in selectors if s.kind=='scene' and s.field=='title'),None) or next(
         (s.owner_id for s in selectors if s.kind=='order' and s.field in {'prefix','narrative_window'}),None)
-    if not owner:return selectors
-    return [DependencySelector(kind='scene',owner_id=owner,field='tracked_characters',expected=s.expected)
-            if s.kind=='story' and s.field=='tracked_characters' else s for s in selectors]
+
+
+def current_value(view, selector: DependencySelector, owner_scene: str | None):
+    """BOOK-LINEAGE-S04: the story tracked-characters selector compares with the tracked characters of the snapshot's
+    own scene, so a protagonist given to a later arc stales only that arc's written scenes. The stored selector stays
+    as it is (a book without explicit protagonists gets the same value and the same report as before)."""
+    if selector.kind=='story' and selector.field=='tracked_characters' and owner_scene and owner_scene in getattr(view,'scenes',()):
+        return selector_value(view,DependencySelector(kind='scene',owner_id=owner_scene,field='tracked_characters',expected=None))
+    return selector_value(view,selector)
 
 
 def language_only(result) -> bool:
@@ -251,9 +254,10 @@ def compare_snapshot(view, snapshot: DependencySnapshot | dict) -> list[Dependen
     replace,fallback=rating_fallback(view,snapshot)
     if replace:
         selectors=[s for s in selectors if s.field!='content_rating']+([fallback] if fallback else [])
+    owner_scene=snapshot_scene(selectors)
     for selector in selectors:
         try:
-            current = selector_value(view, selector)
+            current = current_value(view, selector, owner_scene)
             if selector.field=='content_rating':
                 # Asymmetric: only a rating lower than expected on some axis changes the input.
                 changed=is_lower(from_wire(current),from_wire(selector.expected))

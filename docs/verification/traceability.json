@@ -4253,6 +4253,31 @@
       ]
     },
     {
+      "id": "BOOK-LINEAGE-S04",
+      "requirement": "BOOK-LINEAGE",
+      "scope": "Протагоніст арки: відстежувані персонажі сцени, збереження й перевірка картки, селектор сцени й переклад селектора твору, ядро щодо сцени в таблиці пам'яті й позначках типу, тест-охоронець викликів.",
+      "tests": [
+        "tests/book/test_protagonists.py::test_flat_book_tracks_the_book_hero",
+        "tests/book/test_protagonists.py::test_arc_protagonist_overrides_the_book_hero",
+        "tests/book/test_protagonists.py::test_missing_card_falls_back_to_the_book_hero",
+        "tests/book/test_protagonists.py::test_scene_without_a_known_arc_and_trashed_scene",
+        "tests/book/test_protagonists.py::test_explicit_flag",
+        "tests/storage/test_book_structure_protagonist.py::test_put_structure_saves_the_protagonist",
+        "tests/storage/test_book_structure_protagonist.py::test_unknown_card_is_refused_without_saving",
+        "tests/storage/test_book_structure_protagonist.py::test_import_continuation_keeps_the_protagonist",
+        "tests/web/test_book_structure_ui.py::test_group_rows_arc_options_and_panel_buffer",
+        "tests/storage/test_scene_tracked_selector.py::test_without_explicit_protagonists_the_story_selector_stays",
+        "tests/storage/test_scene_tracked_selector.py::test_explicit_protagonist_records_the_scene_selector",
+        "tests/storage/test_scene_tracked_selector.py::test_arc_protagonist_change_stales_only_its_arc",
+        "tests/storage/test_scene_tracked_selector.py::test_late_protagonist_stales_only_written_scenes_of_its_arc",
+        "tests/storage/test_scene_tracked_selector.py::test_removing_explicit_protagonists_keeps_matching_scene_snapshots",
+        "tests/memory/test_scene_core_slots.py::test_other_arc_protagonist_slot_is_an_ordinary_state",
+        "tests/memory/test_scene_core_slots.py::test_mark_is_refused_only_where_the_slot_is_core",
+        "tests/memory/test_scene_core_slots.py::test_memory_stage_tracks_the_scene_protagonist",
+        "tests/book/test_protagonist_guard.py::test_tracked_characters_is_called_only_by_the_protagonist_module"
+      ]
+    },
+    {
       "id": "BUILD-EDITION-001-S08",
       "requirement": "BUILD-EDITION-001",
       "scope": "Обхід таблиці маршрутів: кожен маршрут запису під запобіжником або в списку дозволених; пласка книга й видання з довгою прозою працюють; читання й експорт дозволені.",

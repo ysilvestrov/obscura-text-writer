@@ -67,8 +67,9 @@ def manual_memory_context(repo,scene_id,expected_revision) -> ManualMemoryContex
         raise ValueError('Потрібна завершена вибрана проза')
     sources={id:view.read_text(id) for id in previous.source_prose_ids+[prose_id]}
     from ..storage.snapshots import core_cards
-    from .core import tracked_characters
-    tracked=tracked_characters(core_cards(view,view.get_story(scene.story_id)),view.list_scenes(scene.story_id))
+    from ..book.protagonists import scene_tracked
+    story=view.get_story(scene.story_id)
+    tracked=scene_tracked(story,core_cards(view,story),view.list_scenes(scene.story_id),scene)
     return ManualMemoryContext(view,scene,previous,provenance,accepted_memory_ids,prose_id,sources,tracked)
 
 

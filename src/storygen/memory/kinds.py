@@ -31,10 +31,19 @@ def kind_overrides(view,scene_id) -> dict[str,str]:
     return {cid:marks[cid] for cid in sorted(marks) if cid in candidates}
 
 
-def tracked_ids(view,story) -> set[str]:
+def tracked_ids(view,story,scene) -> set[str]:
+    """BOOK-LINEAGE-S04: characters whose slots are core in this scene — the protagonists of its arcs."""
+    from ..book.protagonists import scene_tracked
     from ..storage.snapshots import core_cards
-    from .core import tracked_characters
-    return set(tracked_characters(core_cards(view,story),view.peek_scenes(story.id)))
+    return set(scene_tracked(story,core_cards(view,story),view.peek_scenes(story.id),scene))
+
+
+def tracked_anywhere(view,story) -> set[str]:
+    """Characters whose slots are core in at least one active scene (a mark request without a scene)."""
+    from ..book.protagonists import scene_tracked
+    from ..storage.snapshots import core_cards
+    cards,scenes=core_cards(view,story),view.peek_scenes(story.id)
+    return {cid for scene in scenes if not scene.trashed_at for cid in scene_tracked(story,cards,scenes,scene)}
 
 
 def is_core_slot(event,tracked) -> bool:
