@@ -35,3 +35,9 @@ def scene_tracked(story, cards, scenes, scene) -> list[str]:
             if character not in result:
                 result.append(character)
     return result
+
+
+def scene_hero(story, cards, scenes, scene) -> str | None:
+    """The acquaintance hero of a scene: the first of its tracked characters; None without cards."""
+    tracked = scene_tracked(story, cards, scenes, scene) if cards else []
+    return tracked[0] if tracked else None

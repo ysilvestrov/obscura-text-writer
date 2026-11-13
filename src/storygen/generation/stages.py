@@ -244,13 +244,14 @@ def execute_stage(
             proposed=bool(brief.proposed_changes)
             if brief.introduced:
                 try:
-                    from ..characters.acquaintance import protagonist,unexpected_introduced
+                    from ..book.protagonists import scene_hero
+                    from ..characters.acquaintance import unexpected_introduced
                     from ..characters.models import load_characters
                     view=repo.context_view(context.story_id) if hasattr(repo,'context_view') else repo
                     scene=view.get_scene(scene_id)
                     story=view.get_story(context.story_id)
                     cards=load_characters(view.read_text(story.characters_version_id)) if story.characters_version_id else []
-                    hero=protagonist(cards,view.list_scenes(story.id))[0] if cards else None
+                    hero=scene_hero(story,cards,view.list_scenes(story.id),scene)
                     if unexpected_introduced(scene,hero,brief.introduced):
                         attempt.context['planner_warnings'].append('Планувальник: introduced містить ID поза складом сцени або головного героя; їх не враховано.')
                 except Exception:
