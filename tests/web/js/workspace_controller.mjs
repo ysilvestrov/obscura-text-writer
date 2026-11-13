@@ -3,8 +3,8 @@ import {readFileSync} from 'node:fs';
 import {pathToFileURL} from 'node:url';
 const base=new URL('../../../src/storygen/web/static/',import.meta.url);
 class Element{
-  hidden=false;disabled=false;value='';dataset={};textContent='';children=[];attrs={};
-  setAttribute(k,v){this.attrs[k]=v}querySelector(){return null}append(...nodes){this.children.push(...nodes)}before(){}
+  hidden=false;disabled=false;value='';dataset={};classList={contains(){return false},toggle(){}};textContent='';children=[];attrs={};
+  setAttribute(k,v){this.attrs[k]=v}querySelector(){return null}append(...nodes){this.children.push(...nodes)}before(){}addEventListener(){}
 }
 const nodes=new Map(),handlers=new Map();
 const element=id=>{if(!nodes.has(id))nodes.set(id,new Element());return nodes.get(id)};
@@ -27,7 +27,7 @@ code=code.replace(/^import .* from '\.\/editor.js';$/m,'const {state,textEditor,
   .replace(/^import .* from '\.\/api.js';$/m,'const {api,json,notice}=globalThis.fixture;')
   .replace(/^import .* from '\.\/workspace-commands.js';$/m,'const {invokeWorkspaceCommand}=globalThis.fixture;')
   .replace("'./workspace-state.js'",JSON.stringify(new URL('workspace-state.js',base).href))
-  .replace("'./run-readiness.js'",JSON.stringify(new URL('run-readiness.js',base).href))
+  .replace("'./run-readiness.js'",JSON.stringify(new URL('run-readiness.js',base).href)).replace("'./run-jump.js'",JSON.stringify(new URL('run-jump.js',base).href)).replace("'./workspace-focus.js'",JSON.stringify(new URL('workspace-focus.js',base).href))
   .replace("'./workspace-status.js'",JSON.stringify(new URL('workspace-status.js',base).href));
 await import('data:text/javascript;base64,'+Buffer.from(code).toString('base64'));
 const primary=element('#workspace-primary');

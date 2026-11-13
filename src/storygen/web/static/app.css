@@ -403,6 +403,33 @@ pre { white-space: pre-wrap; overflow-wrap: anywhere; font: 14px/1.7 var(--font-
 .scene-status-badge { padding: 0.125rem 0.5rem; border-radius: 999px; background: var(--accent-soft); color: var(--text-primary); }
 .external-change { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; color: var(--warning); font-weight: 600; }
 .run-options { flex-basis: 100%; }
+/* R20-WORKSPACE-S03: the status row, the consequence note and a waiting review card scroll under the material. */
+.workspace-hint-info { margin: 0.75rem 0 0; color: var(--text-secondary); font-size: 0.8125rem; }
+#workspace-material ~ .workspace-status-row { margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border-color); }
+#workspace-material ~ .review-attention { margin-top: 0.75rem; }
+.workspace-pinned-notes { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 0.75rem; }
+.workspace-pinned-notes:not(:has(> :not([hidden]))) { display: none; }
+.workspace-pinned-notes > p { margin: 0.5rem 0 0; }
+.run-jump { color: var(--warning); font-weight: 600; font-size: 0.875rem; white-space: nowrap; }
+.run-jump[hidden] { display: none; }
+.icon-maximize { --icon: url(/static/icons/maximize.svg); }
+.icon-minimize { --icon: url(/static/icons/minimize.svg); }
+/* R20-WORKSPACE-S05: full screen inside the app window; only the editor and a thin save row remain. */
+body:has(#workspace.focus-mode) .topbar, #workspace.focus-mode .storybar, #workspace.focus-mode .scene-panel, #workspace.focus-mode .context-panel,
+#workspace.focus-mode .scene-heading, #workspace.focus-mode #mode-tabs, #workspace.focus-mode .workspace-primary-wrap, #workspace.focus-mode #run-jump,
+#workspace.focus-mode .workspace-hint-info, #workspace.focus-mode .workspace-status-row, #workspace.focus-mode .review-attention,
+#workspace.focus-mode #workspace-history, #workspace.focus-mode .workspace-extra, #workspace.focus-mode #scene-statistics, #workspace.focus-mode .workspace-output,
+#workspace.focus-mode .workspace-compact-status { display: none !important; }
+#workspace.focus-mode .editor-panel { position: fixed; inset: 0; z-index: 20; display: flex; flex-direction: column; padding: 0.5rem 1rem 1rem; background: var(--bg-surface); }
+/* The fixed panel shares z-index 20 with #notice and comes later in the tree: keep notices above it. */
+body:has(#workspace.focus-mode) #notice { z-index: 30; }
+#workspace.focus-mode .workspace-sticky { position: static; margin-bottom: 0.5rem; }
+#workspace.focus-mode #workspace-material { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow-y: auto; }
+/* The editor fills the window; panels that follow it inside the material (comments, assisted writing) scroll below. */
+#workspace.focus-mode #workspace-material > textarea#editor:not([hidden]), #workspace.focus-mode #workspace-material > .rich-text-surface:not([hidden]) { flex: none; height: 100%; min-height: 0; display: flex; flex-direction: column; }
+#workspace.focus-mode #workspace-material > textarea#editor { resize: none; }
+#workspace.focus-mode .rich-text-host { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+#workspace.focus-mode .rich-text-host .ProseMirror { flex: 1; min-height: 0; height: auto; }
 .run-options label { max-width: 22rem; }
 #run-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-block: 0.75rem; }
 #run-actions .run-action { flex: 1 1 8rem; }
