@@ -41,5 +41,6 @@ def test_import_continuation_keeps_the_protagonist(tmp_path):
     repo, story, (s1, s2) = with_cards(tmp_path)
     story = put_structure(repo, story.id, parts('B'), {s1.id: 'a1', s2.id: 'b1'}, story.revision)
     new = Scene(id='s3', story_id=story.id, title='Нова', position=2)
-    placed = place_imported(story, [s1, s2, new], [(new, 'Друга', None, 0)], True)
+    placed, pending, warnings = place_imported(story, [s1, s2, new], [(new, 'Друга', None, 0)], True)
+    assert pending == [] and warnings == []
     assert placed.book_structure.parts[1].arcs[0].protagonist_id == 'B' and placed.scene_arcs['s3'] == 'b1'

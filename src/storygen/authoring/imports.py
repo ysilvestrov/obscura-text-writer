@@ -104,7 +104,8 @@ def _plan(repo,view,story,text,version,item,publication):
         plan=repo.save_version(story.id,None,'scene_plan',section.text,[version.id])
         place=places.get(id(section))
         publication.scenes.append(ImportedScene(data=data,plan_version_id=plan.id,part_title=place.part_title if place else None,
-                                                arc_title=place.arc_title if place else None,part_index=place.part_index if place else None));proposals.append(data)
+                                                arc_title=place.arc_title if place else None,part_index=place.part_index if place else None,
+                                                protagonist_name=place.protagonist_name if place else None));proposals.append(data)
     previous=view.active_source(story.id,'source_plan')
     if previous:
         combined=view.read_text(previous.id)+'\n\n'+''.join(s.text for s in accepted)
@@ -132,7 +133,7 @@ def import_sources(repo: Repository,story_id: str,files: list[SourceFile]) -> Im
         if not text.strip():raise ValueError('Матеріал порожній')
         prepared.append((file,text))
     result=ImportResult(files=[ImportFileResult(client_index=i,name=f.name,kind=f.kind) for i,f in enumerate(files)])
-    created=[]
+    created=[];pending=[]
     for index,(file,text) in enumerate(prepared):
         item=result.files[index]
         try:
@@ -158,11 +159,16 @@ def import_sources(repo: Repository,story_id: str,files: list[SourceFile]) -> Im
                 raise (ImportBatchConflict(result) if isinstance(error,RevisionConflict) else ImportBatchFailure(result)) from error
             break
         item.status='imported';item.source_id=id;item.version_id=version.id;item.created_scene_ids=published.created_scene_ids
+        item.warnings.extend(published.warnings)
+        if published.pending_protagonists:pending.append((item,published.pending_protagonists))
         result.sources.append(metadata);result.version_ids.append(version.id)
         created.extend(zip(item.created_scene_ids,proposals,strict=True))
         result.proposed_scenes.extend(proposals);result.created_scene_ids.extend(item.created_scene_ids)
         result.created_character_cards+=item.created_character_cards
         result.skipped_character_names.extend(item.skipped_character_names);result.skipped_scene_numbers.extend(item.skipped_scene_numbers)
+    # BOOK-LINEAGE-S04: protagonist names a later card file of the batch may have created, resolved like the cast (#103).
+    from ..storage.book_structure import bind_pending_protagonists
+    for item,names in pending:item.warnings.extend(bind_pending_protagonists(repo,story_id,names))
     result.warnings=[message for item in result.files for message in item.warnings+([item.error] if item.error else [])]
     view=repo.context_view(story_id)
     # The cast is resolved at publication, also against cards a later file of the same batch created (#103).
