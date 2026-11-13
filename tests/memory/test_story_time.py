@@ -42,3 +42,39 @@ def test_date_keys_are_canonical():
     a=sc('a',0,['h'],'Початок: 1.3.2024, 20:00')
     assert day_change([a],sc('b',1,['h'],'Початок: 01.03.24, 22:00'),'h') is False
     assert day_change([a],sc('b',1,['h'],'Початок: 02.03.2024, 08:00'),'h') is True
+
+
+# STORY-TIME-S01: relative marks, «невідомо», the flashback mark; legacy keys unchanged.
+from storygen.memory.story_time import Moment, scene_moment, flashback_marked
+
+
+def test_legacy_keys_are_unchanged():
+    assert scene_start('Початок: 12.03.2024, 22:00') == ('date:12.3.2024', '22:00')
+    assert scene_start('Початок: 1.3.24, 08:00') == ('date:1.3.2024', '08:00')
+    assert scene_start('**Початок:** день 3, 07:15') == ('day:3', '07:15')
+    assert scene_start('Start: day 4, 06:00') == ('day:4', '06:00')
+
+
+def test_relative_forms_in_any_order():
+    assert scene_moment('Початок: Рік 2, День 14, 08:00') == Moment('rel', (2, 0, 14), 480, False)
+    assert scene_moment('Початок: День 14 Рік 2') == Moment('rel', (2, 0, 14), None, False)
+    assert scene_moment('Start: Year -20, Month 3') == Moment('rel', (-20, 3, 0), None, False)
+    assert scene_start('Початок: Рік 2, Місяць 1, День 14') == ('rel:2.1.14', None)
+
+
+def test_day_only_keeps_the_day_key():
+    assert scene_start('Початок: день 3') == ('day:3', None)
+    assert scene_moment('Початок: День -2, 23:30') == Moment('rel', (0, 0, -2), 1410, True)
+
+
+def test_unknown_and_flashback_marks():
+    assert scene_moment('Початок: невідомо') == Moment('unknown', None, None, False)
+    assert scene_start('Start: unknown') is None
+    assert scene_moment('Початок: (спогад)') is None and flashback_marked('Початок: (спогад)')
+    assert scene_start('Початок: 01.03.2024, 08:00 (флешбек)') == ('date:1.3.2024', '08:00')
+    assert flashback_marked('Start: Year -5 (Flashback)') and not flashback_marked('Початок: Рік 1')
+
+
+def test_malformed_lines_are_not_moments():
+    for line in ('Початок: Рік 1, Рік 2', 'Початок: Рік 1 вечір', 'Початок: 32 грудня', 'Day 2, 06:00'):
+        assert scene_moment(line) is None and scene_start(line) is None
