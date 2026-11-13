@@ -56,6 +56,9 @@ def test_check_rejects_other_actions_and_admits_six_facts():
     assert [v.code for v in check_v4(json.loads(v4_response(character_states_add=state)), MemoryJournal(), bounds)] == ['flashback_only_facts']
     assert [v.code for v in check_v4(json.loads(v4_response(timeline_add=facts(1))), MemoryJournal(), bounds)] == ['flashback_only_facts']
     assert check_v4(json.loads(v4_response(facts_add=facts(6))), MemoryJournal(), bounds) == []
+    decided = json.loads(v4_response(facts_add=facts(1)))
+    decided['threads'] = {'c000009': {'status': 'unchanged', 'evidence_ids': ['f000001']}}
+    assert 'flashback_only_facts' in [v.code for v in check_v4(decided, MemoryJournal(), bounds)]
     assert [(v.operation, v.code) for v in check_v4(json.loads(v4_response(facts_add=facts(7))), MemoryJournal(), bounds)] == [('facts.add', 'add_limit')]
 
 
@@ -71,7 +74,7 @@ def test_simple_mode_memory_stage_gets_no_catalog(tmp_path):
 def test_model_answer_changing_a_state_is_rejected(tmp_path):
     repo, story, s1, s2, journal, claims = flashback_scene(tmp_path)
     core = core_unchanged('A')
-    with pytest.raises(AssertionError):
+    with pytest.raises(AssertionError, match='flashback_only_facts'):
         run_memory(repo, s2, v4_response(core))
     attempt = run_memory(repo, s2, v4_response(facts_add=[{'text': 'Сусід стукав', 'evidence_ids': ['f000002']}]))
     head = load_memory(repo.read_text(repo.get_scene(s2.id).heads['memory']))

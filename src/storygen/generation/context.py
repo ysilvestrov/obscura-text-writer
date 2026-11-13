@@ -434,9 +434,8 @@ def build_context(repo,scene_id: str,stage: str,settings: RoleSettings,*,editor_
     from ..memory.flashbacks import foreign_flashbacks, foreign_section
     foreign=foreign_flashbacks(repo,story,scenes,scene,language)
     foreign_text,foreign_warning=foreign_section(foreign,language)
-    if foreign_text:
-        sections.append(foreign_text)
-        refs.extend(item.memory_id for item in foreign)
+    if foreign_text:sections.append(foreign_text)
+    refs.extend(item.memory_id for item in foreign)
     if foreign_warning:warnings.append(foreign_warning)
     def selection_input():
         from ..memory.story_time import day_key

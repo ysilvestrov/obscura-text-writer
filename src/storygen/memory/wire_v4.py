@@ -153,9 +153,10 @@ def check_v4(data,previous,bounds) -> list[Violation]:
     envelope=_envelope(data,4,GROUP_ACTIONS,SECTIONS)
     if envelope:return envelope
     fragment_ids=set(bounds['fragment_ids']);active=replay_memory(previous);allowed=set(bounds['character_ids'])
-    result=_check_decisions(data,active,bounds,fragment_ids);adds=0;targets=Counter()
     flashback=bool(bounds.get('flashback'))
-    if flashback and any(data[c][a] for c in CATEGORIES for a in GROUP_ACTIONS[c] if (c,a)!=('facts','add')):
+    # A flashback catalog has no core or threads: any decision, like any action besides facts.add, is one refusal.
+    result=[] if flashback else _check_decisions(data,active,bounds,fragment_ids);adds=0;targets=Counter()
+    if flashback and (data['core'] or data['threads'] or any(data[c][a] for c in CATEGORIES for a in GROUP_ACTIONS[c] if (c,a)!=('facts','add'))):
         result.append(Violation('$','flashback_only_facts'))
     for category in CATEGORIES:
         for action in GROUP_ACTIONS[category]:

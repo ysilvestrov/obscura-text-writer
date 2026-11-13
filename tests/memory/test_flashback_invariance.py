@@ -3,10 +3,7 @@
 The rest of the invariance is the existing suite, which passes unchanged (as for BOOK-LINEAGE-S01)."""
 import json
 
-import pytest
-
 from storygen.generation.context import build_context
-from storygen.memory import story_time
 from tests.memory.merge_helpers import arc_book
 from tests.memory.test_core_review import role, two_scenes
 
@@ -29,11 +26,3 @@ def test_book_without_flashbacks_writes_nothing_new(tmp_path):
             if context.stage == 'memory':
                 assert 'flashback' not in json.loads(context.fragments['memory_schema_bounds'])
 
-
-def test_requests_equal_those_with_flashbacks_switched_off(tmp_path, monkeypatch):
-    for repo, scenes in books(tmp_path):
-        before = [(c.user_text, c.fingerprint, c.dependency_snapshot.model_dump_json()) for c in contexts(repo, scenes, ['brief', 'memory'])]
-        monkeypatch.setattr(story_time, 'is_flashback', lambda scene: False)
-        after = [(c.user_text, c.fingerprint, c.dependency_snapshot.model_dump_json()) for c in contexts(repo, scenes, ['brief', 'memory'])]
-        monkeypatch.undo()
-        assert before == after

@@ -139,3 +139,15 @@ def test_moment_change_inside_visibility_stales_the_scene(tmp_path):
     moved = scene.model_copy(update={'beats': 'Початок: Рік -4 (спогад)'})
     after = flashback_facts_value(view, view.get_story(story.id), [moved] + view.list_scenes(story.id)[1:], view.get_scene(scenes[1].id))
     assert after == [f"{scenes[0].id}|{scenes[0].heads['memory']}|рік -4"]
+    brief = write_brief(repo, scenes[1])
+    assert not repo.get_version(brief).stale
+    repo.update_scene_plan(scene.id, 'Початок: Рік -4 (спогад)', scene.revision, expected_plan_version_id=scene.heads.get('plan'))
+    assert repo.get_version(brief).stale
+
+
+def test_flashback_without_facts_is_an_input_ref(tmp_path):
+    repo, story, scenes = two_arcs(tmp_path)
+    save_scene_journal(repo, repo.get_scene(scenes[0].id), MemoryJournal(), [])
+    context = build_context(repo, scenes[1].id, 'brief', role())
+    assert HEADER not in context.user_text
+    assert repo.get_scene(scenes[0].id).heads['memory'] in context.input_refs

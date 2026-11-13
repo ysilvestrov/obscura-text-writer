@@ -53,3 +53,7 @@ def test_structure_reports_arcs_with_unknown_start_only_with_a_flashback(tmp_pat
         assert client.get(f'/api/stories/{story.id}').json()['book_structure']['arc_start_unknown'] == []
         repo.create_scene(story.id, SceneCreate(title='Сцена 3', beats='Початок: Рік -9 (спогад)'))
         assert client.get(f'/api/stories/{story.id}').json()['book_structure']['arc_start_unknown'] == ['B']
+        second = repo.get_scene(scenes[1].id)
+        repo.update_scene_plan(second.id, 'Початок: невідомо', second.revision, expected_plan_version_id=second.heads.get('plan'))
+        repo.update_scene_plan(scenes[0].id, 'Початок: невідомо', repo.get_scene(scenes[0].id).revision, expected_plan_version_id=repo.get_scene(scenes[0].id).heads.get('plan'))
+        assert client.get(f'/api/stories/{story.id}').json()['book_structure']['arc_start_unknown'] == ['A', 'B']
