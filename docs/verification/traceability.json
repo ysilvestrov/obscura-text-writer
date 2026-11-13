@@ -1213,6 +1213,15 @@
       ]
     },
     {
+      "id": "EXPORT-001-S05",
+      "requirement": "EXPORT-001",
+      "scope": "Стан діалогу експорту й видимість примітки про FB2 (export-form.js) і розмітка примітки в шаблоні.",
+      "tests": [
+        "tests/web/test_exports_ui.py::test_export_form_explicit_options_dirty_and_failure",
+        "tests/web/test_exports_ui.py::test_export_dialog_fb2_note_starts_hidden_and_local_note_stays"
+      ]
+    },
+    {
       "id": "SECURITY-001-S01",
       "requirement": "SECURITY-001",
       "scope": "Чужий сайт змінює локальні дані. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
