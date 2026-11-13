@@ -1928,3 +1928,5 @@ Playwright `memory-kind.spec.mjs` і `core-review.spec.mjs` пройшли вр�
 - Діалог: пункт «План і персонажі (.md)»; `#export-story` більше не вимикається через відсутність прози (причина лишилась на «Створити файл» для книжкових форматів); для плану — посилання на завантаження без `POST /export`, галочку неповного твору приховано.
 - SPEC.MD: абзац і EXPORT-001-S06; traceability. Сайт: `docs/site/{uk,en}/publication.md`, пару підтверджено.
 - Перевірка в браузері (Playwright, тимчасовий сценарій): завантаження `<назва>-план.md` з очікуваним вмістом.
+- Cross-review (agy/gemini-3.8-flash; codex і agy Argon — ліміти): 4 знахідки про тести, усі виправлено (`57a181f`): точні імена файлів і `Content-Disposition`, тест запасного тексту `source_characters`, англійські позначки доступності.
+- `verify.py` на `57a181f` (з `C:/tmp/epl`): passed 3061, failed 0, skipped 1.
