@@ -320,7 +320,11 @@ def build_context(repo,scene_id: str,stage: str,settings: RoleSettings,*,editor_
         wire=memory_wire_version(validate_role_prompt(repo,story.id,'memory',settings))
         cards=load_characters(repo.read_text(story.characters_version_id)) if story.characters_version_id else []
         everyone=scene_tracked(story,cards,scenes,scene)
-        tracked=[cid for cid in everyone if cid in scene.character_ids]
+        from ..memory.story_time import flashback_mode, is_flashback
+        # STORY-TIME: a flashback decides no core and sees no day change; in short prose it gets no catalog either.
+        flashback=is_flashback(scene)
+        simple=flashback and flashback_mode(story,scenes)=='simple'
+        tracked=[] if flashback else [cid for cid in everyone if cid in scene.character_ids]
         changed={cid:day_change(scenes,scene,cid,story) for cid in tracked}
         names={card.id:card.name for card in cards}
         prose_text=repo.read_text(prose_id)
@@ -328,10 +332,10 @@ def build_context(repo,scene_id: str,stage: str,settings: RoleSettings,*,editor_
         def catalog_sections(keep=None):
             catalog=memory_catalog_v4(past,tracked,names,all_tracked=everyone,keep=keep)
             parts=json.loads(catalog)
-            bounds=schema_bounds_v4(past,prose_text,scene.character_ids,everyone,changed,keep=keep)
+            bounds=schema_bounds_v4(past,prose_text,scene.character_ids,everyone,changed,keep=keep,flashback=flashback)
             return catalog,parts,bounds,stage_sections(parts)
         def stage_sections(parts):
-            sections=[label('memory_core',language)+'\n'+dump({'names':parts['names'],'core':parts['core']}),
+            sections=[] if simple else [label('memory_core',language)+'\n'+dump({'names':parts['names'],'core':parts['core']}),
                 label('memory_threads',language)+'\n'+dump(parts['threads']),
                 label('memory_claims',language)+'\n'+dump({'mutable':parts['mutable'],'immutable':parts['immutable']})]
             for cid in tracked:
@@ -357,7 +361,7 @@ def build_context(repo,scene_id: str,stage: str,settings: RoleSettings,*,editor_
             'memory_allowed_character_ids':json.dumps(scene.character_ids),'memory_wire_version':str(wire),
             'memory_schema_bounds':json.dumps(bounds,ensure_ascii=False),'memory_tracked':json.dumps(tracked,ensure_ascii=False)},accepted_prose_ids=expected,**reuse,
             memory_metrics={'projection_version':f'memory-catalog-v{wire}','journal_chars':len(past.model_dump_json()),'catalog_chars':len(catalog),'event_count':len(past.events)},
-            memory_narrower=narrower)
+            memory_narrower=None if simple else narrower)
     if stage=='edit' and settings.edit_mode in {'patches','diff'}:
         from .evidence import render_fragments
         draft_id=editor_source_id or scene.heads.get('draft')
