@@ -137,7 +137,8 @@ def day_label(key, language='uk'):
 def comparison_scene(scenes,scene,character_id,story=None):
     """The latest scene of the lineage (BOOK-LINEAGE) with this character; production callers pass the story."""
     from ..book.lineage import previous_scenes
-    before=[item for item in previous_scenes(story,scenes,scene) if character_id in item.character_ids]
+    # STORY-TIME: a flashback is not a step of the present; the present compares with the present scene before it.
+    before=[item for item in previous_scenes(story,scenes,scene) if character_id in item.character_ids and not is_flashback(item)]
     return before[-1] if before else None
 
 
