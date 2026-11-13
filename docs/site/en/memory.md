@@ -42,6 +42,16 @@ Until the merge is confirmed, writing this scene does not start: a run stops bef
 
 If the memory of one of the arcs changes later, the merge becomes out of date and has to be confirmed again; decisions for the same conflicts with the same values are filled in by themselves and marked as carried over. The end-of-book merge appears in the memory tab of the last scene: it does not stop writing, but the summary of the last part needs it.
 
+## Flashbacks
+
+A flashback scene tells about the past and does not move the present on. Mark it with the **Flashback** checkbox in the scene settings, with a `Flashback: yes` line in the outline, or with a mark in the time line: `Start: Year -20 (flashback)` (also `(спогад)`). When the mark sets the flashback, the checkbox is on and cannot be changed. The scene list shows “flashback” under the title of such a scene.
+
+The memory of a flashback only adds facts, up to six per scene: character states, open threads and the timeline do not change, so the next scene of the present sees the hero as before the flashback and gets the new facts. Saving flashback memory by hand that changes anything else is refused with “A flashback adds only facts”. A flashback neither gives a "DAY CHANGED" note nor breaks one: the scene after it compares its day with the scene before it.
+
+In a story (no parts or arcs) the model writing a flashback gets no memory at all. In a book with arcs it gets the facts, threads and timeline without the hero's core state.
+
+A scene of a book with arcs also sees **The past of other arcs**: facts from flashbacks of other arcs that stand above it in the text and describe the time before its arc starts. See [Parts and arcs](book-structure.md), “Flashbacks in a book with arcs”.
+
 ## Confirming earlier memory
 
 If updating a scene's memory relies on an old journal of the previous scene, the application asks for confirmation. The dialog shows the memory scene, the number of new versions and of changed texts; **Cancel** does not start the model. Confirmation keeps the old sources and quotations; it does not verify the facts. If the sources change again, confirm again.

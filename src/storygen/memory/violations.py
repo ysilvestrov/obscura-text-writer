@@ -24,6 +24,7 @@ CODES={
     'target_meta':'Update/retire змінює категорію або scope чинного claim',
     'target_twice':'Один claim змінено кілька разів за відповідь',
     'scope_unknown':'Невідомий scope персонажа: character_ids містить персонажа поза дозволеним списком сцени',
+    'flashback_only_facts':'Спогад додає лише факти (flashback_only_facts)',
 }
 
 

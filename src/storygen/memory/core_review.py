@@ -75,6 +75,10 @@ def core_review(repo, scene_id: str, locale: str = 'uk') -> dict:
     result={'scene_id':scene.id,'memory_version_id':memory_id,'revision':scene.revision,'has_wire':False,
             'day_change':False,'confirmation':None,'slots':[],'threads':[]}
     if not memory_id:return result
+    from .story_time import is_flashback
+    if is_flashback(scene):
+        # STORY-TIME: a flashback decides no core and closes no thread; there is nothing to review.
+        return {**result,'flashback':True}
     ref=view.get_version(memory_id)
     head=load_memory(view.read_text(memory_id))
     before,own=_split(head)

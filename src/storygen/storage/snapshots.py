@@ -97,6 +97,14 @@ def build_dependency_snapshot(
         memory_core_selectors(view,story,scene,scenes,select)
     if scope in RATING_SCOPES:
         select('scene', scene.id, 'content_rating', to_wire(effective_rating(story, scene)))
+    from ..memory.story_time import is_flashback
+    if scope in FLASHBACK_SCOPES and is_flashback(scene):
+        # STORY-TIME: written only for a flashback, so snapshots of a book without flashbacks stay byte for byte the same.
+        select('scene', scene.id, 'flashback', True)
+    if scope in FOREIGN_FLASHBACK_SCOPES:
+        from ..memory.flashbacks import flashback_facts_value
+        value=flashback_facts_value(view,story,scenes,scene)
+        if value:select('scene', scene.id, 'flashback_facts', value)
     if scope in PROSE_LANGUAGE_SCOPES:
         from ..language import prose_language
         select('scene', scene.id, 'prose_language', prose_language(story, scene))
@@ -116,6 +124,12 @@ def build_dependency_snapshot(
             and view.get_version(id).kind in {'edited', 'manual'}
         ] if scope != 'patches' else [],
     )
+
+
+# STORY-TIME: the scopes whose input depends on the scene being a flashback (memory and every writing stage).
+FLASHBACK_SCOPES={'memory','brief','draft','prose_edit','author_text','author_rewrite'}
+# STORY-TIME: the scopes whose request carries «Минуле інших арок».
+FOREIGN_FLASHBACK_SCOPES={'brief','draft','prose_edit','author_rewrite'}
 
 
 def core_cards(view,story):
@@ -171,6 +185,12 @@ def selector_value(view, selector: DependencySelector):
     if kind=='scene' and field=='memory_kind_overrides':
         from ..memory.kinds import kind_overrides
         return kind_overrides(view,owner)
+    if kind=='scene' and field=='flashback':
+        from ..memory.story_time import is_flashback
+        return is_flashback(view.peek_scene(owner))
+    if kind=='scene' and field=='flashback_facts':
+        from ..memory.flashbacks import flashback_facts_value
+        return flashback_facts_value(view,view.peek_story(view.story.id),view.peek_scenes(view.story.id),view.peek_scene(owner))
     if kind=='scene' and field=='prose_language':
         from ..language import prose_language
         return prose_language(view.peek_story(view.story.id), view.peek_scene(owner))
@@ -262,6 +282,14 @@ def compare_snapshot(view, snapshot: DependencySnapshot | dict) -> list[Dependen
     if snapshot.scope in {'brief','draft','prose_edit','author_text','author_rewrite'} and not any(s.field=='memory_projection_policy' for s in selectors):
         owner=next((s.owner_id for s in selectors if s.kind=='scene' and s.field=='title'),None)
         if owner:selectors.append(DependencySelector(kind='scene',owner_id=owner,field='memory_projection_policy',expected=[]))
+    if snapshot.scope in FLASHBACK_SCOPES and not any(s.field=='flashback' for s in selectors):
+        # STORY-TIME-S06: a missing flashback selector means «not a flashback»; a flag set later stales the version.
+        owner=snapshot_scene(selectors)
+        if owner:selectors.append(DependencySelector(kind='scene',owner_id=owner,field='flashback',expected=False))
+    if snapshot.scope in FOREIGN_FLASHBACK_SCOPES and not any(s.field=='flashback_facts' for s in selectors):
+        # STORY-TIME-S06: a missing selector means no visible foreign flashback; a new one stales the version.
+        owner=snapshot_scene(selectors)
+        if owner:selectors.append(DependencySelector(kind='scene',owner_id=owner,field='flashback_facts',expected=[]))
     selectors=legacy_selectors(snapshot,selectors)
     replace,fallback=rating_fallback(view,snapshot)
     if replace:

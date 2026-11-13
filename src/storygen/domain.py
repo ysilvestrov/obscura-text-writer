@@ -92,6 +92,8 @@ class SceneCreate(DomainModel):
     character_ids: list[str] = Field(default_factory=list)
     # STORY-LANGUAGE: prose language of this scene only; None follows the story language.
     prose_language: Literal['uk','en'] | None = None
+    # STORY-TIME: a scene that remembers the past; the «(спогад)» mark in «Початок:» makes one too (is_flashback).
+    flashback: bool = False
 
 
 class Scene(SceneCreate):

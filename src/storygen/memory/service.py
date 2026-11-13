@@ -79,6 +79,10 @@ def publish_memory_journal(repo,scene_id,journal,expected_revision,context=None)
     from ..storage.snapshots import build_dependency_snapshot
     ctx=context or manual_memory_context(repo,scene_id,expected_revision)
     view,scene=ctx.view,ctx.scene
+    from .story_time import is_flashback
+    if is_flashback(scene):
+        from .flashbacks import check_flashback_journal
+        check_flashback_journal(journal,ctx.previous)
     validate_memory_journal(journal,ctx.sources,ctx.previous)
     refs=list(ctx.sources)
     from .previous import previous_memory

@@ -5614,6 +5614,86 @@
         "tests/book/test_arc_start.py::test_a_meeting_scene_can_open_its_arcs",
         "tests/book/test_arc_start.py::test_arc_start_without_a_present_scene_is_unknown"
       ]
+    },
+    {
+      "id": "STORY-TIME-S03",
+      "requirement": "STORY-TIME",
+      "scope": "Прапорець і позначка дають спогад; рядок плану «Спогад:»; схема й перевірка лише фактів (до 6); простий режим без каталогу; відповідь моделі й ручна пам’ять зі зміною стану відхиляються; наступна сцена має факти спогаду й ті самі стани; перевірка ядра порожня; прапорець робить пам’ять застарілою; рішення core чи threads у відповіді спогаду — теж flashback_only_facts.",
+      "tests": [
+        "tests/memory/test_flashback_scene.py::test_flag_or_mark_makes_a_flashback",
+        "tests/memory/test_flashback_scene.py::test_book_story_time_reexports_is_flashback",
+        "tests/memory/test_flashback_scene.py::test_mode_follows_the_book",
+        "tests/memory/test_flashback_scene.py::test_patch_sets_flag_and_bumps_revision",
+        "tests/memory/test_flashback_scene.py::test_flag_stales_memory_through_the_selector",
+        "tests/authoring/test_flashback_import.py::test_flashback_line_is_cut_and_sets_the_field",
+        "tests/authoring/test_flashback_import.py::test_import_sets_the_flag",
+        "tests/authoring/test_flashback_import.py::test_import_sets_the_flag_in_an_edition_without_long_prose",
+        "tests/memory/test_flashback_memory.py::test_schema_allows_only_fact_adds",
+        "tests/memory/test_flashback_memory.py::test_check_rejects_other_actions_and_admits_six_facts",
+        "tests/memory/test_flashback_memory.py::test_simple_mode_memory_stage_gets_no_catalog",
+        "tests/memory/test_flashback_memory.py::test_model_answer_changing_a_state_is_rejected",
+        "tests/memory/test_flashback_memory.py::test_full_mode_memory_stage_keeps_the_catalog",
+        "tests/memory/test_flashback_memory.py::test_next_scene_gets_flashback_facts_and_the_same_states",
+        "tests/memory/test_flashback_memory.py::test_manual_memory_changing_a_state_is_400",
+        "tests/memory/test_flashback_memory.py::test_first_scene_flashback_has_only_its_facts",
+        "tests/memory/test_flashback_memory.py::test_core_review_of_a_flashback_is_empty"
+      ]
+    },
+    {
+      "id": "STORY-TIME-S04",
+      "requirement": "STORY-TIME",
+      "scope": "Письменник спогаду: в оповіданні без пам’яті, у книзі з арками без станів і ядра; спогад не дає й не перериває сигнал дня.",
+      "tests": [
+        "tests/memory/test_flashback_writer.py::test_short_prose_flashback_writer_has_no_memory",
+        "tests/memory/test_flashback_writer.py::test_book_flashback_writer_has_no_core_or_states",
+        "tests/memory/test_flashback_writer.py::test_flashback_neither_gives_nor_breaks_the_day_signal"
+      ]
+    },
+    {
+      "id": "STORY-TIME-S05",
+      "requirement": "STORY-TIME",
+      "scope": "Минуле інших арок: видимість (вище, раніше за початок арки, поза родоводом), англійський розділ, сцена зустрічі один раз, межа 40 фактів; застарілість від нової й появи пам’яті, моменту, знятого й пізніше поставленого прапорця; пам’ять спогаду без фактів усе одно входить у input_refs.",
+      "tests": [
+        "tests/memory/test_foreign_flashbacks.py::test_foreign_flashback_before_arc_start_is_shown",
+        "tests/memory/test_foreign_flashbacks.py::test_section_is_in_english_for_an_english_story",
+        "tests/memory/test_foreign_flashbacks.py::test_not_shown_when_below_later_unknown_or_arc_start_unknown",
+        "tests/memory/test_foreign_flashbacks.py::test_meeting_scene_shows_a_fact_once",
+        "tests/memory/test_foreign_flashbacks.py::test_lineage_flashback_is_not_foreign",
+        "tests/memory/test_foreign_flashbacks.py::test_limit_of_forty_facts_warns",
+        "tests/memory/test_foreign_flashbacks.py::test_flashback_without_fresh_memory_is_skipped_then_stales_the_scene",
+        "tests/memory/test_foreign_flashbacks.py::test_new_flashback_memory_stales_the_scene",
+        "tests/memory/test_foreign_flashbacks.py::test_unset_flag_stales_the_scene",
+        "tests/memory/test_foreign_flashbacks.py::test_flag_set_later_stales_an_old_snapshot",
+        "tests/memory/test_foreign_flashbacks.py::test_moment_change_inside_visibility_stales_the_scene",
+        "tests/memory/test_foreign_flashbacks.py::test_flashback_without_facts_is_an_input_ref"
+      ]
+    },
+    {
+      "id": "STORY-TIME-S06",
+      "requirement": "STORY-TIME",
+      "scope": "Книга без спогадів: без нових селекторів, ключа меж і розділу «Минуле інших арок». Ті самі запити, відбитки й знімки доводять наявні тести пакета, що проходять без змін.",
+      "tests": [
+        "tests/memory/test_flashback_invariance.py::test_book_without_flashbacks_writes_nothing_new",
+        "tests/memory/test_flashback_scene.py::test_book_without_flashbacks_writes_no_flashback_selector",
+        "tests/memory/test_flashback_scene.py::test_flashback_scene_writes_the_selector",
+        "tests/memory/test_flashback_memory.py::test_ordinary_bounds_have_no_flashback_key"
+      ]
+    },
+    {
+      "id": "STORY-TIME-S07",
+      "requirement": "STORY-TIME",
+      "scope": "Прапорець через API у виданні без довгої прози й простий режим; позначка в списку сцен; арки з невідомим початком (немає позначки або «Початок: невідомо») лише за наявності спогаду; мітка спогаду в рядку стану. Браузерна частина — Playwright.",
+      "tests": [
+        "tests/web/test_flashback_api.py::test_patch_flashback_in_an_edition_without_long_prose",
+        "tests/web/test_flashback_api.py::test_scene_list_reports_the_mark",
+        "tests/web/test_flashback_api.py::test_structure_reports_arcs_with_unknown_start_only_with_a_flashback",
+        "tests/web/test_book_structure_ui.py::test_group_rows_arc_options_and_panel_buffer",
+        "tests/web/test_flashback_api.py::test_flashback_messages_are_translated"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#flashback-browser",
+        "reason": "check_docs.py індексує лише pytest; Playwright cases tests/web/browser/flashback.spec.mjs виконуються окремим runner, цей зв’язок не є доказом виконання."
+      }
     }
   ]
 }

@@ -91,6 +91,17 @@ def flashback_marked(beats) -> bool:
     return any(HEAD.match(line) and FLASHBACK_MARK.search(line) for line in _plain_lines(beats))
 
 
+def is_flashback(scene) -> bool:
+    """A scene that remembers the past: its flashback flag or the «(спогад)»/«(флешбек)» mark in its «Початок:» line."""
+    return bool(getattr(scene,'flashback',False)) or flashback_marked(scene.beats)
+
+
+def flashback_mode(story, scenes) -> Literal['simple','full']:
+    """How a flashback works: 'simple' in a book without explicit structure (short prose), 'full' otherwise."""
+    from ..book.structure import structure_kind
+    return 'simple' if structure_kind(story,scenes)=='flat' else 'full'
+
+
 def scene_start(beats):
     """(day key, 'ГГ:ХХ' or None) of the scene's mark; None without a mark or for «невідомо»."""
     parsed=_start(beats)
@@ -126,7 +137,8 @@ def day_label(key, language='uk'):
 def comparison_scene(scenes,scene,character_id,story=None):
     """The latest scene of the lineage (BOOK-LINEAGE) with this character; production callers pass the story."""
     from ..book.lineage import previous_scenes
-    before=[item for item in previous_scenes(story,scenes,scene) if character_id in item.character_ids]
+    # STORY-TIME: a flashback is not a step of the present; the present compares with the present scene before it.
+    before=[item for item in previous_scenes(story,scenes,scene) if character_id in item.character_ids and not is_flashback(item)]
     return before[-1] if before else None
 
 

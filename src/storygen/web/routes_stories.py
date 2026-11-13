@@ -25,6 +25,8 @@ class ScenePatch(DomainModel):
     character_ids: list[str] | None=None
     # 'story' resets the override so the scene follows the story language again; None leaves it unchanged.
     prose_language: Literal['uk','en','story'] | None=None
+    # STORY-TIME: the flashback flag; None leaves it unchanged.
+    flashback: bool | None=None
     # MCP-BRIDGE-S19: the plan head the external client read; null means it read a scene without a plan version.
     expected_plan_version_id: str | None=Field(default=None,max_length=64)
 
@@ -99,11 +101,20 @@ def story_view(id: str,request: Request):
     from ..book.structure import effective_structure
     # BOOK-STRUCTURE: the effective structure (implicit for a flat book) and each scene's arc.
     structure=effective_structure(story,listed)
-    book={"kind":structure.kind,"explicit":structure.explicit,"parts":[part.model_dump() for part in structure.parts]}
+    from ..memory.story_time import is_flashback
+    from ..book.story_time import arc_start
+    from ..memory.story_time import Moment
+    unknown_moment=Moment('unknown',None,None,False)
+    # STORY-TIME: arcs whose start is unknown, shown only when the book has a flashback (the start decides what it sees).
+    unknown=[arc.id for part in structure.parts for arc in part.arcs if (arc_start(story,listed,arc.id) or unknown_moment).kind=='unknown'] if (
+        structure.kind=='structured' and any(is_flashback(scene) for scene in listed)) else []
+    book={"kind":structure.kind,"explicit":structure.explicit,"parts":[part.model_dump() for part in structure.parts],"arc_start_unknown":unknown}
     # arc_id stays the first arc for old clients; arc_ids lists every arc of a meeting scene (MEMORY-MERGE harness).
     from ..storage.memory_merges import merge_markers
+    from ..memory.story_time import flashback_marked
     marks=merge_markers(view,story,listed) if story.book_structure is not None else {}
-    scenes=[{**view.effective_scene(scene.id).model_dump(),"arc_id":structure.arc_of.get(scene.id),"arc_ids":list(structure.arcs_of.get(scene.id,())),"memory_merge":marks.get(scene.id)} for scene in listed]
+    scenes=[{**view.effective_scene(scene.id).model_dump(),"arc_id":structure.arc_of.get(scene.id),"arc_ids":list(structure.arcs_of.get(scene.id,())),"memory_merge":marks.get(scene.id),
+        "flashback_marked":flashback_marked(scene.beats)} for scene in listed]
     return {"impact_status":scene_status(view),"language_locked":request.app.state.repo.story_language_locked(id),"story":story,"book_structure":book,"scenes":scenes,"scene_ratings":ratings,"sources":[view.get_version(v.id) for v in view.versions.values() if v.kind in {"source_plan","source_characters"}],"character_names":names,"source_files":view.source_files,"active_sources":view.sources}
 
 
@@ -147,7 +158,7 @@ def patch_scene(id: str,data: ScenePatch,request: Request):
         raise ValueError('Ідентифікатор прочитаного плану передається лише разом із планом')
     scene=repo.get_scene(id)
     revision=data.expected_revision
-    changes={key:value for key,value in data.model_dump().items() if key in {"title","target_words","character_ids"} and value is not None}
+    changes={key:value for key,value in data.model_dump().items() if key in {"title","target_words","character_ids","flashback"} and value is not None}
     if data.prose_language is not None:
         changes['prose_language']=None if data.prose_language=='story' else data.prose_language
     # The whole patch is validated before the first change, so a bad field leaves neither plan nor properties written.

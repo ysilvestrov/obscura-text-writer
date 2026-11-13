@@ -1,11 +1,8 @@
 """Story time of a book's arcs (STORY-TIME): where an arc starts in story time; pure, no IO."""
-from ..memory.story_time import Moment, flashback_marked, scene_moment
+from ..memory.story_time import Moment, is_flashback, scene_moment
 from .structure import effective_structure
 
-
-def is_flashback(scene) -> bool:
-    """A scene that remembers the past: the «(спогад)»/«(флешбек)» mark in its «Початок:» line."""
-    return flashback_marked(scene.beats)
+__all__ = ['arc_start', 'is_flashback']
 
 
 def arc_start(story, scenes, arc_id: str) -> Moment | None:

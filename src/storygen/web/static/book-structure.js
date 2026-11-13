@@ -24,11 +24,12 @@ export function groupScenes(book,scenes,label){
 }
 
 // MEMORY-MERGE harness: a scene row knows whether it is a meeting scene and whether its merge point waits for the author.
-const sceneRow=scene=>({type:'scene',scene,meeting:(scene.arc_ids?.length||0)>1,merge:scene.memory_merge||null});
+// STORY-TIME: a flashback by its flag or by the mark in «Початок:».
+const sceneRow=scene=>({type:'scene',scene,meeting:(scene.arc_ids?.length||0)>1,merge:scene.memory_merge||null,flashback:!!(scene.flashback||scene.flashback_marked)});
 
 // i18n keys of the marks shown in the scene's status line.
 export function sceneMarks(row){
-  return [row.meeting&&'book.badge.meeting',row.merge==='required'&&'book.badge.merge'].filter(Boolean);
+  return [row.flashback&&'book.badge.flashback',row.meeting&&'book.badge.meeting',row.merge==='required'&&'book.badge.merge'].filter(Boolean);
 }
 
 // Options «Part › Arc» for the scene arc field, in structure order.

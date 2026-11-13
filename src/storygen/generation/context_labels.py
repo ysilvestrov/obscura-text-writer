@@ -39,6 +39,9 @@ LABELS: dict[str, dict[str, str]] = {
     'ending_goal': {'uk': 'АВТОРСЬКИЙ ОРІЄНТИР ФІНАЛУ — ЗАДУМ, НЕ ЗДІЙСНЕНІ ПОДІЇ',
                     'en': 'AUTHOR ENDING GOAL — INTENT, NOT EVENTS THAT HAVE HAPPENED'},
     'memory_header': {'uk': 'ЗДІЙСНЕНІ ПОДІЇ — ПЕРЕВІРЕНА ПАМ’ЯТЬ', 'en': 'EVENTS THAT HAVE HAPPENED — VERIFIED MEMORY'},
+    # STORY-TIME: facts of flashbacks of other arcs earlier than the start of this scene's arc; no structure names.
+    'foreign_flashbacks': {'uk': 'МИНУЛЕ ІНШИХ АРОК — ФАКТИ СПОГАДІВ', 'en': 'THE PAST OF OTHER ARCS — FACTS FROM FLASHBACKS'},
+    'foreign_flashback_scene': {'uk': 'Сцена {number} ({time}):', 'en': 'Scene {number} ({time}):'},
     'previous_tail': {'uk': 'ЗАВЕРШЕННЯ ПОПЕРЕДНЬОЇ СЦЕНИ (явно вибраний фрагмент)',
                       'en': 'ENDING OF THE PREVIOUS SCENE (explicitly selected excerpt)'},
     'rewrite_source': {'uk': 'ЗБЕРЕЖЕНА ЧЕРНЕТКА ДЛЯ ПЕРЕПИСУВАННЯ', 'en': 'SAVED DRAFT TO REWRITE'},

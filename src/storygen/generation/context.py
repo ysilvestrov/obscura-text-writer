@@ -11,7 +11,7 @@ from ..dependency_models import DependencySnapshot, TargetCAS
 from ..storage.snapshots import build_dependency_snapshot
 from ..domain import DomainModel
 from ..memory.service import journal_before
-from ..memory.projection import project_memory, memory_catalog_v4, memory_items
+from ..memory.projection import MemoryProjection, project_memory, memory_catalog_v4, memory_items
 from ..memory.selection import SelectionInput, minimal_chars, select_memory
 from ..providers.models import RoleSettings
 from .models import StyleProfile
@@ -246,6 +246,14 @@ def _finish_context(repo,story,scene,stage,settings,sections,refs,fragments,syst
 def memory_projection(repo,story,scene,scenes,language):
     """Memory of the preceding scenes as the writing stages see it (shared by build_context and MCP-BRIDGE writing-context)."""
     past=journal_before(repo,scene.id)
+    from ..memory.story_time import flashback_mode, is_flashback
+    flashback=is_flashback(scene)
+    if flashback and flashback_mode(story,scenes)=='simple':
+        # STORY-TIME: a short-prose flashback receives no memory at all.
+        return past,{},set(),set(),[],{},MemoryProjection('',{'projection_version':'flashback-none','projection_chars':0})
+    if flashback:
+        from ..memory.flashbacks import present_only_journal
+        past=present_only_journal(past)
     from ..memory.forwarding import hidden_before,forwarded_before
     from ..book.protagonists import scene_tracked
     from ..characters.models import load_characters
@@ -253,7 +261,7 @@ def memory_projection(repo,story,scene,scenes,language):
     cards=load_characters(repo.read_text(story.characters_version_id)) if story.characters_version_id else []
     source_numbers={id:scene_numbers[repo.get_version(id).scene_id] for id in past.source_prose_ids}
     hidden,forwarded=hidden_before(repo,scene.id),forwarded_before(repo,scene.id)
-    tracked=scene_tracked(story,cards,scenes,scene);names={card.id:card.name for card in cards}
+    tracked=[] if flashback else scene_tracked(story,cards,scenes,scene);names={card.id:card.name for card in cards}
     projection=project_memory(past,scene.character_ids,source_numbers,hidden_claim_ids=hidden,forwarded_claim_ids=forwarded,tracked=tracked,names=names,language=language)
     return past,source_numbers,hidden,forwarded,tracked,names,projection
 
@@ -261,7 +269,8 @@ def memory_projection(repo,story,scene,scenes,language):
 def writer_day_change(scene,scenes,tracked,names,language,story=None):
     """«ЗМІНИВСЯ ДЕНЬ» for the writing stages: tracked characters in the scene's cast whose day differs from their last scene
     (the same day_change as the memory stage); None when there is none."""
-    from ..memory.story_time import comparison_scene, day_change, day_key, day_label
+    from ..memory.story_time import comparison_scene, day_change, day_key, day_label, is_flashback
+    if is_flashback(scene):return None
     notes=[label('writer_day_changed',language,before=day_label(day_key(comparison_scene(scenes,scene,cid,story)),language),
         after=day_label(day_key(scene),language),name=names.get(cid) or label('memory_protagonist',language))
         for cid in tracked if cid in scene.character_ids and day_change(scenes,scene,cid,story)]
@@ -320,7 +329,11 @@ def build_context(repo,scene_id: str,stage: str,settings: RoleSettings,*,editor_
         wire=memory_wire_version(validate_role_prompt(repo,story.id,'memory',settings))
         cards=load_characters(repo.read_text(story.characters_version_id)) if story.characters_version_id else []
         everyone=scene_tracked(story,cards,scenes,scene)
-        tracked=[cid for cid in everyone if cid in scene.character_ids]
+        from ..memory.story_time import flashback_mode, is_flashback
+        # STORY-TIME: a flashback decides no core and sees no day change; in short prose it gets no catalog either.
+        flashback=is_flashback(scene)
+        simple=flashback and flashback_mode(story,scenes)=='simple'
+        tracked=[] if flashback else [cid for cid in everyone if cid in scene.character_ids]
         changed={cid:day_change(scenes,scene,cid,story) for cid in tracked}
         names={card.id:card.name for card in cards}
         prose_text=repo.read_text(prose_id)
@@ -328,10 +341,10 @@ def build_context(repo,scene_id: str,stage: str,settings: RoleSettings,*,editor_
         def catalog_sections(keep=None):
             catalog=memory_catalog_v4(past,tracked,names,all_tracked=everyone,keep=keep)
             parts=json.loads(catalog)
-            bounds=schema_bounds_v4(past,prose_text,scene.character_ids,everyone,changed,keep=keep)
+            bounds=schema_bounds_v4(past,prose_text,scene.character_ids,everyone,changed,keep=keep,flashback=flashback)
             return catalog,parts,bounds,stage_sections(parts)
         def stage_sections(parts):
-            sections=[label('memory_core',language)+'\n'+dump({'names':parts['names'],'core':parts['core']}),
+            sections=[] if simple else [label('memory_core',language)+'\n'+dump({'names':parts['names'],'core':parts['core']}),
                 label('memory_threads',language)+'\n'+dump(parts['threads']),
                 label('memory_claims',language)+'\n'+dump({'mutable':parts['mutable'],'immutable':parts['immutable']})]
             for cid in tracked:
@@ -357,7 +370,7 @@ def build_context(repo,scene_id: str,stage: str,settings: RoleSettings,*,editor_
             'memory_allowed_character_ids':json.dumps(scene.character_ids),'memory_wire_version':str(wire),
             'memory_schema_bounds':json.dumps(bounds,ensure_ascii=False),'memory_tracked':json.dumps(tracked,ensure_ascii=False)},accepted_prose_ids=expected,**reuse,
             memory_metrics={'projection_version':f'memory-catalog-v{wire}','journal_chars':len(past.model_dump_json()),'catalog_chars':len(catalog),'event_count':len(past.events)},
-            memory_narrower=narrower)
+            memory_narrower=None if simple else narrower)
     if stage=='edit' and settings.edit_mode in {'patches','diff'}:
         from .evidence import render_fragments
         draft_id=editor_source_id or scene.heads.get('draft')
@@ -412,10 +425,18 @@ def build_context(repo,scene_id: str,stage: str,settings: RoleSettings,*,editor_
     past,source_numbers,hidden,forwarded,tracked,names,projection=memory_projection(repo,story,scene,scenes,language)
     memory_header=label('memory_header',language)+'\n'
     memory_index=len(sections)
-    sections.append(memory_header+projection.text)
+    no_memory=projection.metrics.get('projection_version')=='flashback-none'
+    if not no_memory:sections.append(memory_header+projection.text)
     # A section of its own after the memory: MEMORY-SELECT replaces only sections[memory_index].
     day_note=writer_day_change(scene,scenes,tracked,names,language,story)
     if day_note:sections.append(day_note)
+    # STORY-TIME «Минуле інших арок»: nothing at all without visible foreign flashbacks (the request stays the same).
+    from ..memory.flashbacks import foreign_flashbacks, foreign_section
+    foreign=foreign_flashbacks(repo,story,scenes,scene,language)
+    foreign_text,foreign_warning=foreign_section(foreign,language)
+    if foreign_text:sections.append(foreign_text)
+    refs.extend(item.memory_id for item in foreign)
+    if foreign_warning:warnings.append(foreign_warning)
     def selection_input():
         from ..memory.story_time import day_key
         items,_=memory_items(past,scene.character_ids,source_numbers,hidden_claim_ids=hidden,forwarded_claim_ids=forwarded,tracked=tracked,names=names,language=language)
@@ -430,7 +451,7 @@ def build_context(repo,scene_id: str,stage: str,settings: RoleSettings,*,editor_
     def kinds():
         from ..memory.kinds import kind_overrides
         return kind_overrides(repo if hasattr(repo,'peek_scene') else repo.context_view(story.id),scene.id)
-    memory_selector=MemorySelector(memory_index,memory_header,projection.text,selection_input)
+    memory_selector=None if no_memory else MemorySelector(memory_index,memory_header,projection.text,selection_input)
     previous=previous_scenes(story,scenes,scene)
     fragments={}
     if previous:

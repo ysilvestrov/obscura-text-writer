@@ -80,7 +80,7 @@ def update_scene_plan(repo,scene_id: str,text: str,expected_revision: int,expect
 
 
 def update_scene_metadata(repo,scene_id: str,changes: dict,expected_revision: int) -> Scene:
-    allowed={"title","target_words","character_ids","prose_language"}
+    allowed={"title","target_words","character_ids","prose_language","flashback"}
     if set(changes)-allowed:
         raise ValueError("Непідтримувані поля сцени")
     with repo.db.connection() as db:
@@ -92,8 +92,8 @@ def update_scene_metadata(repo,scene_id: str,changes: dict,expected_revision: in
         if candidate==scene:return scene
         scene=candidate.model_copy(update={'revision':scene.revision+1})
         repo._save_scene(db,scene)
-        if set(changes)-{'prose_language'}:
-            # Prose language stales only material built for it, through the scene/prose_language selector.
+        if set(changes)-{'prose_language','flashback'}:
+            # Prose language and the flashback flag stale only material built for them, through their scene selectors.
             from .invalidation import invalidate_in_transaction
             invalidate_in_transaction(repo,db,list(scene.heads.values()))
         repo._touch_story(db,scene.story_id)
