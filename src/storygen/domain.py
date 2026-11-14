@@ -121,7 +121,7 @@ class Scene(SceneCreate):
     content_rating: ContentRating | None = None
 
 
-VersionKind = Literal["source_plan","source_characters","character_cards","scene_plan","canon","style","prompt","brief","draft","edited","manual","memory","evaluation","timeline_summary","memory_merge"]
+VersionKind = Literal["source_plan","source_characters","character_cards","scene_plan","canon","style","prompt","brief","draft","edited","manual","memory","evaluation","timeline_summary","memory_merge","series_start"]
 
 
 class PromptContract(DomainModel):
