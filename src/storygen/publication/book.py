@@ -38,8 +38,19 @@ class Book:
     def title(self):return self.snapshot.publication.effective_title
 
 
+def series_cycle(repo,snapshot):
+    """SERIES-S06: an empty cycle of the card takes the series title, and an empty cycle number the book's number."""
+    story=snapshot.story;card=snapshot.publication.card
+    if not story.series_id or card.cycle_title:return snapshot
+    from ..storage.series import get_series
+    try:title=get_series(repo,story.series_id).title
+    except KeyError:return snapshot
+    card=card.model_copy(update={'cycle_title':title,'cycle_number':card.cycle_number if card.cycle_number is not None else story.series_number})
+    return snapshot.model_copy(update={'publication':snapshot.publication.model_copy(update={'card':card})})
+
+
 def capture(repo,story_id,format,allow_incomplete):
-    snapshot=repo.publication_snapshot(story_id)
+    snapshot=series_cycle(repo,repo.publication_snapshot(story_id))
     publication=snapshot.publication
     if format=='fb2':
         if not publication.authors:raise ValueError('FB2: оберіть автора в картці публікації')

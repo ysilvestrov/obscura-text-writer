@@ -16,6 +16,11 @@ ALLOWED = {
     ('POST', '/api/stories/{id}/trash'): 'специфікація дозволяє прибрати твір у кошик',
     ('POST', '/api/stories/{id}/restore'): 'специфікація дозволяє відновити твір',
     ('POST', '/api/stories/{id}/export'): 'експорт дозволено',
+    ('POST', '/api/series'): 'маршрути серії відмовляють у будь-якому виданні без довгої прози власною перевіркою',
+    ('PATCH', '/api/series/{series_id}'): 'маршрути серії відмовляють у будь-якому виданні без довгої прози власною перевіркою',
+    ('POST', '/api/stories/{story_id}/series/refresh'): 'маршрути серії відмовляють у будь-якому виданні без довгої прози власною перевіркою',
+    ('POST', '/api/series/{series_id}/books'): 'маршрути серії відмовляють у будь-якому виданні без довгої прози власною перевіркою',
+    ('DELETE', '/api/series/{series_id}'): 'маршрути серії відмовляють у будь-якому виданні без довгої прози власною перевіркою',
     ('PUT', '/api/stories/{story_id}/structure'): 'маршрути структури відмовляють у будь-якій книзі власною перевіркою',
     ('DELETE', '/api/stories/{story_id}/structure'): 'маршрути структури відмовляють у будь-якій книзі власною перевіркою',
     ('PUT', '/api/stories/{story_id}/scenes/{scene_id}/arc'): 'маршрути структури відмовляють у будь-якій книзі власною перевіркою',
@@ -91,8 +96,10 @@ async def blocked(app, request) -> str | None:
     target = _target(route.path, params, body)
     if not target:
         return None
-    from ..book.guard import READ_ONLY
+    from ..book.guard import READ_ONLY, READ_ONLY_SERIES
     from ..book.structure import structure_kind
     from ..storage.book_structure import structured_story
     found = structured_story(app.state.repo, **target)
+    if found and found[0].series_id:
+        return READ_ONLY_SERIES
     return READ_ONLY if found and structure_kind(*found) == 'structured' else None

@@ -61,6 +61,12 @@ class BookStructure(DomainModel):
     parts: list[Part] = Field(default_factory=list)
 
 
+class SeriesStart(DomainModel):
+    """SERIES: the `Початок` line of a book in its series — a time mark without an hour and the anchor book number."""
+    offset: str = Field(min_length=1, max_length=200)
+    anchor: int = Field(ge=1, le=1000000)
+
+
 class Story(StoryCreate):
     trashed_at: str | None = None
     initial_content_rating: ContentRating | None = None
@@ -80,6 +86,11 @@ class Story(StoryCreate):
     timeline_summary_heads: dict[str,str] = Field(default_factory=dict,max_length=1000)
     # MEMORY-MERGE: merge key -> current memory_merge version; CAS on the story revision.
     memory_merge_heads: dict[str,str] = Field(default_factory=dict,max_length=10000)
+    # SERIES: the series of the book, its release number, its `Початок` and the current start snapshot (series_start).
+    series_id: str | None = None
+    series_number: int | None = Field(default=None,ge=1,le=1000000)
+    series_start: SeriesStart | None = None
+    series_start_version_id: str | None = None
     created_at: str = Field(default_factory=now)
 
 
@@ -110,7 +121,7 @@ class Scene(SceneCreate):
     content_rating: ContentRating | None = None
 
 
-VersionKind = Literal["source_plan","source_characters","character_cards","scene_plan","canon","style","prompt","brief","draft","edited","manual","memory","evaluation","timeline_summary","memory_merge"]
+VersionKind = Literal["source_plan","source_characters","character_cards","scene_plan","canon","style","prompt","brief","draft","edited","manual","memory","evaluation","timeline_summary","memory_merge","series_start"]
 
 
 class PromptContract(DomainModel):

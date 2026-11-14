@@ -34,7 +34,7 @@ What happens: Maria calls Lera and asks for advice.
 
 A character file with name headings of the same level (`## Lera`) creates starting cards with the status "Timing unverified" in a new story. Names that mix alphabets (a Latin C instead of a Cyrillic С) produce a warning.
 
-A long book can be divided into parts and arcs right in the outline: see [Parts and arcs](book-structure.md).
+A long book can be divided into parts and arcs right in the outline: see [Parts and arcs](book-structure.md). The `Series:`, `Number:` and `Start:` lines before the first scene add the book to a series: see [Book series](series.md).
 
 ## If something goes wrong
 

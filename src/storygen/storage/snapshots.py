@@ -95,6 +95,11 @@ def build_dependency_snapshot(
             head(scene, name)
         # CONTEXT-002-S05: these stages see «ЗМІНИВСЯ ДЕНЬ», so a change of the parsed day is a change of their input.
         memory_core_selectors(view,story,scene,scenes,select)
+    if scope in SERIES_SCOPES:
+        from ..memory.series_start import scene_series_start
+        start = scene_series_start(story, scenes, scene)
+        # SERIES: written only for a first scene of a series book, so other snapshots stay byte for byte the same.
+        if start:select('scene', scene.id, 'series_start', start)
     if scope in RATING_SCOPES:
         select('scene', scene.id, 'content_rating', to_wire(effective_rating(story, scene)))
     from ..memory.story_time import is_flashback
@@ -128,6 +133,8 @@ def build_dependency_snapshot(
 
 # STORY-TIME: the scopes whose input depends on the scene being a flashback (memory and every writing stage).
 FLASHBACK_SCOPES={'memory','brief','draft','prose_edit','author_text','author_rewrite'}
+# SERIES: the scopes whose input includes the start snapshot of a series book.
+SERIES_SCOPES={'memory','brief','draft','prose_edit','author_rewrite'}
 # STORY-TIME: the scopes whose request carries «Минуле інших арок».
 FOREIGN_FLASHBACK_SCOPES={'brief','draft','prose_edit','author_rewrite'}
 
@@ -191,6 +198,9 @@ def selector_value(view, selector: DependencySelector):
     if kind=='scene' and field=='flashback_facts':
         from ..memory.flashbacks import flashback_facts_value
         return flashback_facts_value(view,view.peek_story(view.story.id),view.peek_scenes(view.story.id),view.peek_scene(owner))
+    if kind=='scene' and field=='series_start':
+        from ..memory.series_start import scene_series_start
+        return scene_series_start(view.peek_story(view.story.id), view.peek_scenes(view.story.id), view.peek_scene(owner))
     if kind=='scene' and field=='prose_language':
         from ..language import prose_language
         return prose_language(view.peek_story(view.story.id), view.peek_scene(owner))
@@ -290,6 +300,10 @@ def compare_snapshot(view, snapshot: DependencySnapshot | dict) -> list[Dependen
         # STORY-TIME-S06: a missing selector means no visible foreign flashback; a new one stales the version.
         owner=snapshot_scene(selectors)
         if owner:selectors.append(DependencySelector(kind='scene',owner_id=owner,field='flashback_facts',expected=[]))
+    if snapshot.scope in SERIES_SCOPES and not any(s.field=='series_start' for s in selectors):
+        # SERIES: a missing selector means «no start snapshot»; one taken later stales a first scene's version.
+        owner=snapshot_scene(selectors)
+        if owner:selectors.append(DependencySelector(kind='scene',owner_id=owner,field='series_start',expected=None))
     selectors=legacy_selectors(snapshot,selectors)
     replace,fallback=rating_fallback(view,snapshot)
     if replace:

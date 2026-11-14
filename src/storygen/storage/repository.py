@@ -443,7 +443,7 @@ class Repository:
         source_view=self.context_view(story_id) if input_refs else None
         if any(source_view.get_version(id).story_id != story_id for id in input_refs):
             raise ValueError("Джерела належать іншому твору")
-        format="json" if kind in {"character_cards","style","memory","evaluation","brief","timeline_summary","memory_merge"} else "text"
+        format="json" if kind in {"character_cards","style","memory","evaluation","brief","timeline_summary","memory_merge","series_start"} else "text"
         id=new_id()
         data=text.encode("utf-8")
         version=VersionRef(id=id,story_id=story_id,scene_id=scene_id,kind=kind,format=format,content_format=content_format,sha256=hashlib.sha256(data).hexdigest(),

@@ -22,7 +22,10 @@ def memory_statistics(view,scene,memory_id,*,first=False,merged=False):
         else:journal=load_memory(view.read_text(memory_id))
         source_scenes={id:view.scenes[v.scene_id] for id,v in view.versions.items()
             if v.kind in {'manual','edited'} and v.scene_id in view.scenes and not view.scenes[v.scene_id].trashed_at}
-        if any(id not in source_scenes or source_scenes[id].position>scene.position for id in journal.source_prose_ids):
+        # SERIES: the start snapshot of a series book (scene 0) is a valid source too.
+        starts={id for id in journal.source_prose_ids[:1] if id in view.versions and view.versions[id].kind=='series_start'
+                and view.versions[id].story_id==scene.story_id}
+        if any(id not in starts and (id not in source_scenes or source_scenes[id].position>scene.position) for id in journal.source_prose_ids):
             raise ValueError('Пам’ять містить джерела з майбутніх або недоступних сцен')
         active=replay_memory(journal)
         return {'available':True,'version_id':ref.id,'stale':ref.stale,'complete':ref.complete,
@@ -30,7 +33,7 @@ def memory_statistics(view,scene,memory_id,*,first=False,merged=False):
             'events':{key:sum(e.category==key for e in journal.events) for key in CATEGORIES},
             'operations':{op:sum(e.operation==op for e in journal.events) for op in ['add','update','retire']},
             'event_count':len(journal.events),
-            'current_scene_events':sum(source_scenes[e.source_version_id].id==scene.id for e in journal.events)}
+            'current_scene_events':sum(e.source_version_id in source_scenes and source_scenes[e.source_version_id].id==scene.id for e in journal.events)}
     except ValueError:
         return {'available':False,'version_id':ref.id,'stale':ref.stale,'reason':'Журнал не можна порахувати: перевірте структуру та джерела до цієї сцени'}
 

@@ -79,15 +79,18 @@ def capture_target(view,version_id,*,baseline_override=None,current_sources_only
             heading=SCENE_HEADING.search(raw)
             return raw[:heading.start()] if heading else raw
         if value.kind=='memory':
-            from .memory_review import validated_journal
+            from .memory_review import prose_sources, validated_journal
             from ..memory.projection import project_memory
             from ..memory.forwarding import projection_policy
             owner=view.peek_scene(value.scene_id)
             if owner.position>=scene.position:raise ValueError('Пам’ять передумов має належати попередній сцені')
             journal,proof_hashes,prefix=validated_journal(view,id,owner)
             hashes.update(proof_hashes)
-            numbers={source:item.position+1 for item,source in zip(prefix,journal.source_prose_ids)}
-            state=context_label('impact_current_sources' if journal.source_prose_ids==[s.heads.get('prose') for s in prefix] else 'impact_historical_sources',view.story.language)
+            ids=prose_sources(journal,len(prefix))
+            # SERIES: the start snapshot of a series book is scene 0.
+            numbers={**{source:0 for source in journal.source_prose_ids[:len(journal.source_prose_ids)-len(ids)]},
+                     **{source:item.position+1 for item,source in zip(prefix,ids)}}
+            state=context_label('impact_current_sources' if ids==[s.heads.get('prose') for s in prefix] else 'impact_historical_sources',view.story.language)
             from ..book.protagonists import scene_tracked
             from ..storage.snapshots import core_cards
             cards=core_cards(view,view.story)

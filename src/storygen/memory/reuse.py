@@ -15,7 +15,16 @@ def _candidate(view,scene_id):
     from .previous import previous_memory, read_previous_journal
     before=previous_memory(view,scene)  # MergeRequired (a ValueError) when a merge point has no usable merge
     previous=before.ancestors
-    if not previous:return MemoryJournal(),None,[],False
+    if not previous and not before.series_start:return MemoryJournal(),None,[],False
+    if before.series_start:
+        # SERIES: a first scene extends the book's start snapshot; its records are quoted from the snapshot text.
+        ref=view.get_version(before.memory_id)
+        if ref.kind!='series_start' or ref.story_id!=scene.story_id or not ref.complete:
+            raise ValueError('Знімок початку серії належить іншому твору')
+        from .series_start import read_source
+        journal=read_previous_journal(view,before)
+        validate_memory_journal(journal,{ref.id:read_source(view,ref.id,ref)})
+        return journal,None,[],False
     memory_id=before.memory_id
     if not memory_id:raise ValueError('Спершу оновіть пам’ять попередньої сцени')
     ref=view.get_version(memory_id)
@@ -23,12 +32,22 @@ def _candidate(view,scene_id):
     if not owner_ok or ref.story_id!=scene.story_id or not ref.complete:
         raise ValueError('Попередня пам’ять незавершена або належить іншій сцені')
     journal=read_previous_journal(view,before)
-    if len(journal.source_prose_ids)!=len(previous):
-        raise ValueError('Попередня пам’ять не відповідає порядку попередніх сцен')
     # Only kind/scene_id/story_id/complete/sha256 are read below; a Repository (execute_stage) has no peek_version.
     peek=getattr(view,'peek_version',view.get_version)
     sources={};current=[];changed_text=changed_versions=0
-    for item,old_id in zip(previous,journal.source_prose_ids):
+    ids=journal.source_prose_ids
+    if len(ids)==len(previous)+1:
+        # SERIES: scene 0 — the book's start snapshot heads the journal of a series book.
+        from .series_start import read_source
+        try:start=peek(ids[0])
+        except KeyError:raise ValueError('Попередня пам’ять містить невідоме або стороннє джерело') from None
+        if start.kind!='series_start' or start.story_id!=scene.story_id or not start.complete:
+            raise ValueError('Попередня пам’ять не відповідає порядку попередніх сцен')
+        sources[ids[0]]=read_source(view,ids[0],start)
+        ids=ids[1:]
+    if len(ids)!=len(previous):
+        raise ValueError('Попередня пам’ять не відповідає порядку попередніх сцен')
+    for item,old_id in zip(previous,ids):
         try:old=peek(old_id)
         except KeyError:raise ValueError('Попередня пам’ять містить невідоме або стороннє джерело') from None
         current_id=item.heads.get('prose')
@@ -45,14 +64,14 @@ def _candidate(view,scene_id):
     validate_memory_journal(journal,sources)
     provenance=list(ref.dependency_snapshot.memory_provenance) if ref.dependency_snapshot else []
     pairs=approved_source_pairs(provenance)
-    needs_confirmation=ref.stale or any(old!=selected and (old,selected) not in pairs for old,selected in zip(journal.source_prose_ids,current))
+    needs_confirmation=ref.stale or any(old!=selected and (old,selected) not in pairs for old,selected in zip(ids,current))
     baseline={'scene_id':scene.id,'revision':scene.revision,'heads':scene.heads,'characters':scene.character_ids,
               'prefix':[(s.id,s.heads.get('prose')) for s in previous],
               'memory_id':ref.id,'memory_sha256':ref.sha256,'stale':ref.stale,
               'source_hashes':[(id,peek(id).sha256) for id in sources]}
     fingerprint=hashlib.sha256(json.dumps(baseline,sort_keys=True,ensure_ascii=False).encode()).hexdigest()
     review={'fingerprint':fingerprint,'scene_id':scene.id,'memory_id':ref.id,'memory_scene_number':previous[-1].position+1,
-            'source_prose_ids':journal.source_prose_ids,'current_source_prose_ids':current,
+            'source_prose_ids':ids,'current_source_prose_ids':current,
             'changed_version_count':changed_versions,'changed_text_count':changed_text,'risk':bool(changed_text)}
     return journal,review,provenance,needs_confirmation
 

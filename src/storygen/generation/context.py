@@ -259,7 +259,8 @@ def memory_projection(repo,story,scene,scenes,language):
     from ..characters.models import load_characters
     scene_numbers={s.id:s.position+1 for s in previous_scenes(story,scenes,scene)}
     cards=load_characters(repo.read_text(story.characters_version_id)) if story.characters_version_id else []
-    source_numbers={id:scene_numbers[repo.get_version(id).scene_id] for id in past.source_prose_ids}
+    from ..memory.series_start import source_number
+    source_numbers={id:source_number(repo.get_version(id),scene_numbers) for id in past.source_prose_ids}
     hidden,forwarded=hidden_before(repo,scene.id),forwarded_before(repo,scene.id)
     tracked=[] if flashback else scene_tracked(story,cards,scenes,scene);names={card.id:card.name for card in cards}
     projection=project_memory(past,scene.character_ids,source_numbers,hidden_claim_ids=hidden,forwarded_claim_ids=forwarded,tracked=tracked,names=names,language=language)
@@ -317,7 +318,7 @@ def build_context(repo,scene_id: str,stage: str,settings: RoleSettings,*,editor_
         refs.extend(past.source_prose_ids)
         from ..memory.previous import previous_memory
         before=previous_memory(repo,scene)
-        if before.memory_id:refs.append(before.memory_id)
+        if before.memory_id and before.memory_id not in refs:refs.append(before.memory_id)
         expected=past.source_prose_ids+[prose_id]
         from .evidence import render_fragments
         from ..characters.models import load_characters
@@ -357,10 +358,11 @@ def build_context(repo,scene_id: str,stage: str,settings: RoleSettings,*,editor_
         catalog,parts,bounds,sections=catalog_sections()
         def narrower():
             from ..memory.selection import narrow_catalog
+            from ..memory.series_start import source_number
             numbers={s.id:s.position+1 for s in scenes}
             from ..book.lineage import lineage_numbers
             narrow=narrow_catalog(past,scene.character_ids,everyone,names,prose_text,scene.position+1,
-                {id:numbers[repo.get_version(id).scene_id] for id in past.source_prose_ids},lineage_numbers(story,scenes,scene))
+                {id:source_number(repo.get_version(id),numbers) for id in past.source_prose_ids},lineage_numbers(story,scenes,scene))
             small,_,small_bounds,small_sections=catalog_sections(set(narrow.keep))
             return (small_sections,{'memory_schema_bounds':json.dumps(small_bounds,ensure_ascii=False)},
                 {'projection_version':f'memory-catalog-v{wire}-narrow','catalog_chars':len(small),
@@ -454,6 +456,8 @@ def build_context(repo,scene_id: str,stage: str,settings: RoleSettings,*,editor_
     memory_selector=None if no_memory else MemorySelector(memory_index,memory_header,projection.text,selection_input)
     previous=previous_scenes(story,scenes,scene)
     fragments={}
+    if not previous and past.source_prose_ids:
+        refs.extend(past.source_prose_ids)  # SERIES: the start snapshot a first scene of a series book extends
     if previous:
         refs.extend(past.source_prose_ids)
         from ..memory.previous import previous_memory

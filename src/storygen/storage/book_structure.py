@@ -282,6 +282,6 @@ def structured_story(repo, *, story_id=None, scene_id=None, run_id=None):
         if row is None:
             return None
         story = Story.model_validate_json(row[0])
-        if story.book_structure is None:
+        if story.book_structure is None and story.series_id is None:  # SERIES-S06: a series book is guarded too
             return None
         return story, _scenes(db, story_id)

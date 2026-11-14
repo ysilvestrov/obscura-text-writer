@@ -20,6 +20,7 @@ class PreviousMemory:
     memory_id: str | None
     merge_key: str | None = None
     ancestors: list = field(default_factory=list)
+    series_start: bool = False  # SERIES: memory_id is the book's start snapshot (scene 0)
 
 
 def _peek_view(view):
@@ -40,6 +41,8 @@ def previous_memory(view, scene, *, peek: bool = False, require: bool = True) ->
     scenes = (view.peek_scenes if peek and hasattr(view, 'peek_scenes') else view.list_scenes)(scene.story_id)
     ancestors = previous_scenes(story, scenes, scene)
     if not ancestors:
+        if story.series_start_version_id:
+            return PreviousMemory(story.series_start_version_id, None, [], True)
         return PreviousMemory(None, None, [])
     item = lineage_map(story, scenes).get(scene.id)
     if item is None or not item.needs_merge:
@@ -57,6 +60,9 @@ def read_previous_journal(view, previous: PreviousMemory, *, peek: bool = False)
     from .journal import MemoryJournal, load_memory
     reader = _peek_view(view) if peek else view
     raw = reader.read_text(previous.memory_id)
+    if previous.series_start:
+        from .series_start import read_series_start
+        return read_series_start(raw, previous.memory_id).journal
     if previous.merge_key:
         return MemoryJournal.model_validate(json.loads(raw)['journal'])
     return load_memory(raw)

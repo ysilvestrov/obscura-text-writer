@@ -147,3 +147,51 @@ def split_book_plan(text,default_title='Сцена'):
         result.append(BookSection(PlanSection(section.title,body,section.author_scene_number),part,arc,index,protagonist,meeting))
         offset+=len(section.text)
     return preamble,result,found
+
+
+# SERIES: «Серія:/Номер:/Початок:» in the plan preamble (before the first scene) put the book into a series; cut from
+# the plan like an arc line. «Початок» is a project 3 time mark without the hour, free text, then the anchor number.
+SERIES_LINE=re.compile(r'^(?:серія|series)\s*:\s*(.*)$',re.IGNORECASE)
+NUMBER_LINE=re.compile(r'^(?:номер|number)\s*:\s*(.*)$',re.IGNORECASE)
+SERIES_START_LINE=re.compile(r'^(?:початок|start)\s*:\s*(.*)$',re.IGNORECASE)
+OFFSET=re.compile(r'(?i)^\s*((?:(?:рік|year|місяць|month|день|day)\s+[+-]?\d+)(?:\s*,?\s*(?:рік|year|місяць|month|день|day)\s+[+-]?\d+)*)')
+OFFSET_UNITS={'рік':0,'year':0,'місяць':1,'month':1,'день':2,'day':2}
+
+
+@dataclass(frozen=True)
+class SeriesLines:
+    title: str
+    number: int
+    start: object | None  # SeriesStart
+
+
+def parse_series_start(text):
+    """SeriesStart(offset, anchor) from «Рік -5, День 2 <any text> <anchor>», or None."""
+    from .domain import SeriesStart
+    from .memory.story_time import PART
+    match=OFFSET.match(text or '')
+    if not match:return None
+    keys=[OFFSET_UNITS[unit.lower()] for unit,_ in PART.findall(match[1])]
+    if len(set(keys))!=len(keys):return None
+    anchor=re.search(r'\d+',text[match.end():])
+    if not anchor or not 1<=int(anchor[0])<=1000000:return None
+    return SeriesStart(offset=' '.join(match[1].split())[:200],anchor=int(anchor[0]))
+
+
+def cut_series_lines(preamble):
+    """(preamble without series lines, SeriesLines or None, whether the lines were present but not usable)."""
+    kept=[];found={}
+    for line in preamble.splitlines(keepends=True):
+        plain=_plain(line.rstrip('\r\n'))
+        for key,pattern in (('title',SERIES_LINE),('number',NUMBER_LINE),('start',SERIES_START_LINE)):
+            match=pattern.fullmatch(plain)
+            if match:found[key]=_plain(match[1]).strip();break
+        else:kept.append(line)
+    text=''.join(kept)
+    if not found:return text,None,False
+    title=' '.join(found.get('title','').split())[:300]
+    number=found.get('number','')
+    start=parse_series_start(found['start']) if found.get('start') else None
+    if not title or not number.isdigit() or not 1<=int(number)<=1000000 or (found.get('start') and start is None):
+        return text,None,True
+    return text,SeriesLines(title,int(number),start),False

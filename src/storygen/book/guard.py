@@ -4,6 +4,8 @@ from .. import build_edition
 
 NO_LONG_PROSE = 'Частини й арки доступні лише у виданні з довгою прозою'
 READ_ONLY = 'Ця книга має частини чи арки; у цій збірці вона доступна лише для читання й експорту'
+# SERIES-S06: a book of a series is long prose too.
+READ_ONLY_SERIES = 'Ця книга входить у серію; у цій збірці вона доступна лише для читання й експорту'
 
 
 def require_long_prose() -> None:

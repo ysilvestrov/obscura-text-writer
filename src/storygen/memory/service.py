@@ -65,7 +65,8 @@ def manual_memory_context(repo,scene_id,expected_revision) -> ManualMemoryContex
     ref=view.get_version(prose_id)
     if ref.kind not in {'manual','edited'} or not ref.complete:
         raise ValueError('Потрібна завершена вибрана проза')
-    sources={id:view.read_text(id) for id in previous.source_prose_ids+[prose_id]}
+    from .series_start import read_source
+    sources={id:read_source(view,id) for id in previous.source_prose_ids+[prose_id]}
     from ..storage.snapshots import core_cards
     from ..book.protagonists import scene_tracked
     story=view.get_story(scene.story_id)
@@ -87,7 +88,7 @@ def publish_memory_journal(repo,scene_id,journal,expected_revision,context=None)
     refs=list(ctx.sources)
     from .previous import previous_memory
     before=previous_memory(view,scene)
-    if before.memory_id:refs.append(before.memory_id)
+    if before.memory_id and before.memory_id not in refs:refs.append(before.memory_id)
     snapshot=build_dependency_snapshot(view,scene_id,'memory',RoleSettings(provider=ProviderSettings(model='manual-memory')),refs)
     snapshot.memory_provenance=ctx.provenance
     snapshot.accepted_stale_memory_ids=ctx.accepted_memory_ids

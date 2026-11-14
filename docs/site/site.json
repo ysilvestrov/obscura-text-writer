@@ -8,6 +8,7 @@
     {"slug": "characters", "title": {"uk": "Персонажі", "en": "Characters"}},
     {"slug": "imports", "title": {"uk": "Імпорт матеріалів", "en": "Importing materials"}},
     {"slug": "book-structure", "title": {"uk": "Частини й арки", "en": "Parts and arcs"}},
+    {"slug": "series", "title": {"uk": "Серії книг", "en": "Book series"}},
     {"slug": "ghost-mode", "title": {"uk": "Переписування по пам’яті", "en": "Rewriting from memory"}},
     {"slug": "memory", "title": {"uk": "Пам’ять", "en": "Memory"}},
     {"slug": "writing-tools", "title": {"uk": "Коментарі, промпти й горизонт", "en": "Comments, prompts and horizon"}},
