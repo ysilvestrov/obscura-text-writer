@@ -36,6 +36,15 @@ def test_chronology_starts_from_the_book_without_start(tmp_path):
     assert outside == [second_origin.id, forward.id, off_axis.id]
 
 
+def test_chronology_keeps_release_order_outside_for_any_input_order(tmp_path):
+    client, repo = client_for(tmp_path)
+    item = store.create_series(repo, 'Сага')
+    first = book(repo, item, 'Перша', 1)
+    second = book(repo, item, 'Друга', 2)
+    third = book(repo, item, 'Третя', 3)
+    assert chronology(list(reversed(store.series_books(repo, item.id)))) == ([first.id], [second.id, third.id])
+
+
 def test_chronology_without_an_origin_places_nothing(tmp_path):
     client, repo = client_for(tmp_path)
     item = store.create_series(repo, 'Сага')

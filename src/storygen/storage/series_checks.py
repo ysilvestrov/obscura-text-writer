@@ -19,6 +19,8 @@ def check_series(report, db, stories, versions=None) -> None:
     numbers = Counter()
     for story in stories.values():
         if story.series_id is None and story.series_number is None:
+            if story.series_start_version_id:  # leaving a series clears it
+                report.add('invalid_series', story.id, 'Знімок початку серії в книзі поза серією')
             continue
         if story.series_id not in known or story.series_number is None:
             report.add('invalid_series', story.id, 'Книга посилається на відсутню серію або не має номера')

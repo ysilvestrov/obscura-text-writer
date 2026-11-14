@@ -5710,7 +5710,8 @@
         "tests/series/test_series_entity.py::test_migration_from_5_creates_the_table",
         "tests/series/test_series_entity.py::test_integrity_checks_series_references",
         "tests/series/test_series_snapshot.py::test_new_book_button_takes_the_snapshot",
-        "tests/series/test_series_entity.py::test_integrity_checks_the_start_snapshot_reference"
+        "tests/series/test_series_entity.py::test_integrity_checks_the_start_snapshot_reference",
+        "tests/series/test_series_entity.py::test_integrity_checks_a_start_snapshot_outside_a_series"
       ]
     },
     {
@@ -5764,7 +5765,8 @@
         "tests/series/test_series_snapshot.py::test_finishing_the_source_later_takes_no_snapshot",
         "tests/series/test_series_memory.py::test_retake_or_leaving_stales_brief_and_memory_of_scene_1",
         "tests/series/test_series_memory.py::test_old_snapshot_without_the_selector_stales_after_a_snapshot_appears",
-        "tests/series/test_series_memory.py::test_author_text_of_a_first_scene_depends_on_the_snapshot"
+        "tests/series/test_series_memory.py::test_author_text_of_a_first_scene_depends_on_the_snapshot",
+        "tests/series/test_series_refresh.py::test_refresh_names_cards_changed_in_the_source_and_keeps_the_book_copy"
       ]
     },
     {
@@ -5807,7 +5809,8 @@
         "tests/series/test_series_screen.py::test_start_text_is_parsed_or_refused",
         "tests/series/test_series_screen.py::test_series_pages",
         "tests/series/test_series_screen.py::test_series_pages_absent_in_store",
-        "tests/series/test_series_screen.py::test_a_book_with_a_negative_start_is_marked_as_a_prequel"
+        "tests/series/test_series_screen.py::test_a_book_with_a_negative_start_is_marked_as_a_prequel",
+        "tests/series/test_series_screen.py::test_chronology_keeps_release_order_outside_for_any_input_order"
       ],
       "manual": {
         "procedure": "docs/verification/manual.md#series-browser",

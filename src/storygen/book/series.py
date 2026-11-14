@@ -132,4 +132,4 @@ def chronology(books) -> tuple[list[str], list[str]]:
             moments[item.series_number] = tuple(a + b for a, b in zip(base, moment.key))
     placed = [item.id for item in sorted((item for item in ordered if item.series_number in moments),
                                          key=lambda item: (moments[item.series_number], item.series_number))]
-    return placed, [item.id for item in books if item.id not in placed]
+    return placed, [item.id for item in ordered if item.id not in placed]

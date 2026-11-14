@@ -91,3 +91,8 @@
 - [ ] Step 2: SPEC/traceability → `python scripts/check_docs.py` OK.
 - [ ] Step 3: повний `pytest -q` і Playwright `series.spec.mjs` → зелено; `python scripts/verify.py` → STATUS.md.
 - [ ] Step 4: commit `docs(series): site, spec and traceability — harness`.
+
+## Відхилення під час виконання
+
+- Task 5: окремого `series-axis.js` з `axisLayout` немає. Вісь обчислює сервер (`book/series.chronology`), а `GET /api/series/{id}` віддає `placed`/`outside`; одна реалізація правила хронології замість двох. Перевірки — pytest `tests/series/test_series_screen.py`.
+- Task 5: позначка приквела (`SeriesStatus.prequel`) додана за специфікацією, хоча план її не мав.

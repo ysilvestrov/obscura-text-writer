@@ -108,6 +108,17 @@ def test_refresh_adds_new_cards_and_skips_same_name(tmp_path):
     assert any('Віра' in w for w in warnings)
 
 
+def test_refresh_names_cards_changed_in_the_source_and_keeps_the_book_copy(tmp_path):
+    repo, item, first, scenes, second, scene = setup(tmp_path)
+    before = [c.model_dump() for c in cards_of(repo, second)]
+    source = [json.loads(c.model_dump_json()) for c in cards_of(repo, first)]
+    source[0]['entries'][0]['text'] = 'Хірургиня'
+    publish_cards(repo, first, source)
+    story, warnings = store.refresh_snapshot(repo, second.id, repo.get_story(second.id).revision)
+    assert warnings == [store.CARD_CHANGED.format(names=cards_of(repo, first)[0].name)]
+    assert [c.model_dump() for c in cards_of(repo, story)] == before
+
+
 def test_refresh_stales_scene_1_memory(tmp_path):
     repo, item, first, scenes, second, scene = setup(tmp_path)
     memory_id = write_scene_memory(repo, scene)

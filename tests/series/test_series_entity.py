@@ -117,6 +117,18 @@ def test_integrity_checks_the_start_snapshot_reference(tmp_path):
     assert [i.code for i in check_integrity(repo.root).issues] == ['invalid_series']
 
 
+def test_integrity_checks_a_start_snapshot_outside_a_series(tmp_path):
+    # Leaving a series clears the snapshot reference; one left on a book outside a series is corrupt data.
+    from storygen.storage.integrity import check_integrity
+    repo = Repository(tmp_path)
+    book = repo.create_story(StoryCreate(title='Книга'))
+    other = repo.save_version(book.id, None, 'source_plan', 'План.', [])
+    with repo.db.connection() as db:
+        db.execute('BEGIN IMMEDIATE')
+        repo._save_story(db, repo._active_story(db, book.id).model_copy(update={'series_start_version_id': other.id}))
+    assert [i.code for i in check_integrity(repo.root).issues] == ['invalid_series']
+
+
 def test_integrity_checks_series_references(tmp_path):
     from storygen.storage.integrity import check_integrity
     repo = Repository(tmp_path)
