@@ -36,6 +36,7 @@ def test_preamble_puts_the_book_into_a_new_series(tmp_path):
     story, warnings = run(repo, story, 'Серія: Морська сага\nНомер: 1\n\n' + SCENES)
     item = store.find_series(repo, ' морська  САГА ')
     assert (story.series_id, story.series_number) == (item.id, 1)
+    assert warnings == ['Створено нову серію «Морська сага»']
     assert 'Серія:' not in repo.read_text(repo.active_source(story.id, 'source_plan').id)
     assert len(repo.list_scenes(story.id)) == 2
 

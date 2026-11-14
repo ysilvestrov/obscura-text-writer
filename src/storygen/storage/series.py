@@ -237,6 +237,7 @@ def take_snapshot_if_ready(repo, story_id: str) -> Story:
 
 
 SERIES_LINES_INVALID = 'Рядки «Серія:», «Номер:» і «Початок:» не розпізнано; книгу не додано до серії.'
+SERIES_CREATED = 'Створено нову серію «{title}»'
 
 
 def enter_series_from_plan(repo, story_id: str, lines, invalid: bool) -> list[str]:
@@ -249,12 +250,15 @@ def enter_series_from_plan(repo, story_id: str, lines, invalid: bool) -> list[st
     item = find_series(repo, lines.title)
     if item and any(b.series_number == lines.number and b.id != story_id for b in series_books(repo, item.id)):
         return [SERIES_NUMBER_TAKEN.format(number=lines.number) + '; книгу не додано до серії.']
+    notes = []
     try:
-        item = item or create_series(repo, lines.title)
+        if item is None:
+            item = create_series(repo, lines.title)
+            notes.append(SERIES_CREATED.format(title=item.title))
         set_story_series(repo, story_id, item.id, lines.number, lines.start, repo.get_story(story_id).revision)
     except ValueError as error:
-        return [str(error)]
-    return []
+        return notes + [str(error)]
+    return notes
 
 
 def create_book(repo, series_id: str, title: str) -> Story:
