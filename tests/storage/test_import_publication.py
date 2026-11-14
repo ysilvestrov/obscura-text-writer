@@ -58,7 +58,7 @@ def test_schema4_backfill_preserves_latest_selector_and_explicit_number(tmp_path
     with repo.db.connection() as db:
         data=scene.model_dump();data.pop('author_scene_number')
         db.execute('UPDATE scenes SET payload=? WHERE id=?',(json.dumps(data),scene.id))
-        db.execute('DROP TABLE active_sources');db.execute('PRAGMA user_version=4')
+        db.execute('DROP TABLE series');db.execute('DROP TABLE active_sources');db.execute('PRAGMA user_version=4')
     copy=Repository(tmp_path)
     assert copy.active_source(story.id,'source_plan').id==last.metadata['version_id']
     assert copy.get_scene(scene.id).author_scene_number==2

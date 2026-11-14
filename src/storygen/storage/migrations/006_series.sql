@@ -1,0 +1,1 @@
+CREATE TABLE series(id TEXT PRIMARY KEY, revision INTEGER NOT NULL, payload TEXT NOT NULL);

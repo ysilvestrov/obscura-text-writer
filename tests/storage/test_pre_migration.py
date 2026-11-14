@@ -35,7 +35,7 @@ def old_schema_dir(tmp_path, upto=4, name='Мої твори'):
 
 def test_schema_version_constant_matches_a_fresh_database(tmp_path):
     Repository(tmp_path / 'data')
-    assert version(tmp_path / 'data') == SCHEMA_VERSION == 5
+    assert version(tmp_path / 'data') == SCHEMA_VERSION == 6
 
 
 def test_no_database_and_current_schema_need_no_backup(tmp_path):

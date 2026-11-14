@@ -21,7 +21,7 @@ def test_schema3_migration_retains_original_payload_and_blobs(tmp_path):
     assert check_integrity(root).ok
     repo=Repository(root)
     with repo.db.connection() as db:
-        assert db.execute('PRAGMA user_version').fetchone()[0]==5
+        assert db.execute('PRAGMA user_version').fetchone()[0]==6
         assert db.execute('SELECT payload FROM stories').fetchone()[0]==story.model_dump_json()
         assert db.execute('SELECT COUNT(*) FROM authoring_comment_sets').fetchone()[0]==0
     assert check_integrity(root).ok

@@ -5,7 +5,7 @@ from pathlib import Path
 
 
 # The schema version a start brings every database to (DESKTOP-001-S03 backs up older ones first).
-SCHEMA_VERSION = 5
+SCHEMA_VERSION = 6
 
 
 class Database:
@@ -42,6 +42,9 @@ class Database:
                             data['author_scene_number']=explicit_scene_number(data.get('title',''))
                         db.execute('UPDATE scenes SET payload=? WHERE id=?',(json.dumps(data,ensure_ascii=False),row['id']))
                 db.execute('PRAGMA user_version=5')
+            if db.execute("PRAGMA user_version").fetchone()[0] == 5:
+                sql=files("storygen.storage").joinpath("migrations/006_series.sql").read_text(encoding="utf-8")
+                db.executescript("BEGIN IMMEDIATE;\n"+sql+"\nPRAGMA user_version=6;\nCOMMIT;")
             if db.execute("PRAGMA user_version").fetchone()[0] != SCHEMA_VERSION:
                 raise ValueError("Непідтримувана версія бази даних")
 
