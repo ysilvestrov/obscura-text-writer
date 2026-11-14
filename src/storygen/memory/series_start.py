@@ -61,6 +61,14 @@ def read_series_start(raw: str, version_id: str) -> SeriesStartData:
                                    'evidence_version_id': own(e.evidence_version_id)}) for e in journal.events]
     resolved = MemoryJournal(schema_version=journal.schema_version, source_prose_ids=[version_id], events=events)
     source = {k: v for k, v in data.items() if k not in {'schema_version', 'text', 'journal'}}
+    if 'sources' not in source:  # a 4a snapshot: one source in single fields
+        source['sources'] = [{
+            'story_id': source.get('source_story_id'), 'summary_version_id': source.get('source_summary_version_id'),
+            'summary_sha256': source.get('source_summary_sha256'),
+            'characters_version_id': source.get('source_characters_version_id'),
+            'characters_sha256': source.get('source_characters_sha256'),
+            'card_hashes': source.get('source_card_hashes') or {}}] if source.get('source_story_id') else []
+    source.setdefault('resolved', [])
     return SeriesStartData(data['text'], resolved, source)
 
 
