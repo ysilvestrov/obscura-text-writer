@@ -129,7 +129,8 @@ def story_series_refresh(story_id: str, data: SeriesRefresh, request: Request):
 
 @router.get('/api/stories/{story_id}/series/facts')
 def story_series_facts(story_id: str, request: Request):
-    """The records of the book's start memory with their source book and decision (SERIES-S09)."""
+    """The records of the book's start memory with their source book and decision (SERIES-S09). Long prose only."""
+    require_long_prose()
     try:
         return {'facts': store.start_facts(request.app.state.repo, story_id)}
     except ValueError as error:

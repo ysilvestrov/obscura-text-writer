@@ -51,8 +51,8 @@ def future_section(reader, story, scene, language: str, limit: int) -> str | Non
     lines, dropped = future_block(reader, story, scene, limit)
     if not lines and not dropped:
         return None
-    note = ['\n' + label('future_more', language, count=dropped)] if dropped else []
-    return label('future_facts', language) + '\n' + '\n'.join(lines) + ''.join(note)
+    note = [label('future_more', language, count=dropped)] if dropped else []
+    return '\n'.join([label('future_facts', language), *lines, *note])
 
 
 def future_value(reader, story) -> list | None:

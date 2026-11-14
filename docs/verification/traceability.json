@@ -5834,7 +5834,9 @@
         "tests/series/test_series_prequel_merge.py::test_sequential_series_snapshot_is_unchanged",
         "tests/series/test_series_prequel_merge.py::test_cards_come_from_main_book_then_prequels",
         "tests/series/test_series_prequel_merge.py::test_new_prequel_between_source_and_book_changes_the_status",
-        "tests/series/test_series_screen.py::test_a_book_with_a_negative_start_is_marked_as_a_prequel"
+        "tests/series/test_series_screen.py::test_a_book_with_a_negative_start_is_marked_as_a_prequel",
+        "tests/series/test_series_prequel_merge.py::test_card_clash_with_a_later_source_refuses_before_any_copy",
+        "tests/series/test_series_prequel_merge.py::test_same_name_cards_of_two_sources_keep_the_main_book"
       ]
     },
     {
@@ -5847,7 +5849,9 @@
         "tests/series/test_series_decisions.py::test_decisions_need_confirmation_and_known_keys",
         "tests/series/test_series_decisions.py::test_refresh_carries_decisions_and_defaults_new_keys",
         "tests/series/test_series_decisions.py::test_series_4a_prequel_snapshot_is_all_past",
-        "tests/series/test_series_decisions.py::test_store_refuses_decisions"
+        "tests/series/test_series_decisions.py::test_store_refuses_decisions",
+        "tests/series/test_series_decisions.py::test_prequel_that_stops_being_one_needs_a_refresh",
+        "tests/series/test_series_decisions.py::test_book_that_becomes_a_prequel_starts_with_the_future"
       ]
     },
     {
@@ -5861,7 +5865,8 @@
         "tests/series/test_series_future.py::test_scene_without_cast_gets_records_without_heroes",
         "tests/series/test_series_future.py::test_writing_context_future_changes_the_fingerprint",
         "tests/series/test_series_future.py::test_sequential_series_requests_are_unchanged",
-        "tests/series/test_series_invariance.py::test_sequential_series_is_unchanged"
+        "tests/series/test_series_invariance.py::test_sequential_series_is_unchanged",
+        "tests/series/test_series_future.py::test_mcp_fingerprint_without_a_future_is_as_before"
       ]
     }
   ]

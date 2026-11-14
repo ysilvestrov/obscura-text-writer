@@ -148,6 +148,11 @@ def start_memory(repo, story) -> StartMemory | None:
     return StartMemory(merged, texts, sources, resolved, origins=origins(merged))
 
 
+def is_legacy_start(data) -> bool:
+    """A snapshot taken before 4b: its single source is stored in the single `source_*` fields."""
+    return 'source_story_id' in data.source
+
+
 def _series_books(stories, story):
     return [s for s in stories if s.series_id == story.series_id and s.series_number]
 
@@ -189,9 +194,14 @@ def series_status(repo, story) -> SeriesStatus | None:
         stories = repo.list_stories(include_trashed=True)
         prequel = is_prequel(_series_books(stories, story), story)
         status = replace(status, prequel=prequel)
-        if prequel and status.state == 'fresh' and read_series_start(
-                repo.read_text(story.series_start_version_id), story.series_start_version_id).decisions is None:
-            status = replace(status, state='prequel_review')  # a 4a snapshot: every record is past until reviewed
+        if status.state == 'fresh':
+            data = read_series_start(repo.read_text(story.series_start_version_id), story.series_start_version_id)
+            if prequel and data.decisions is None:
+                # A 4a snapshot is read as all past until reviewed; a 4b snapshot taken when the book was not a prequel
+                # has the wrong shape and needs a refresh, as does a prequel snapshot of a book that is no prequel now.
+                status = replace(status, state='prequel_review' if is_legacy_start(data) else 'source_changed')
+            elif not prequel and data.decisions is not None:
+                status = replace(status, state='source_changed')
     return status
 
 

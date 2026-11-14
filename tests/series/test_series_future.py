@@ -51,18 +51,18 @@ def test_limit_trims_with_a_note(tmp_path):
     future = [{'key': 'slot:A:clothing', 'category': 'character_states', 'text': 'Халат', 'character_ids': ['A']},
               {'key': 'claim:1', 'category': 'facts', 'text': 'Анна поїхала до моря', 'character_ids': []},
               {'key': 'claim:2', 'category': 'facts', 'text': 'Біля порту маяк', 'character_ids': []}]
-    lines, dropped = future_lines(future, {'A'}, {'A': 'Анна'}, 40)
-    assert lines[0].endswith('Халат') and 'Анна поїхала до моря' in lines[1] and dropped == 1
+    assert future_lines(future, {'A'}, {'A': 'Анна'}, 40) == (['- Анна: Халат', '- Анна поїхала до моря'], 1)
     repo, first, prequel, scene, later = prequel_book(tmp_path)
     section = future_section(repo, repo.get_story(prequel.id), scene, 'uk', 15)
-    assert 'Халат' in section and label('future_more', 'uk', count=1) in section
+    assert section == f"{FUTURE}\n- Анна: Халат\n{label('future_more', 'uk', count=1)}"
+    assert future_section(repo, repo.get_story(prequel.id), scene, 'uk', 5) == f"{FUTURE}\n{label('future_more', 'uk', count=2)}"
 
 
 def test_scene_without_cast_gets_records_without_heroes(tmp_path):
     lines, dropped = future_lines(
         [{'key': 'slot:A:clothing', 'category': 'character_states', 'text': 'Халат', 'character_ids': ['A']},
          {'key': 'claim:1', 'category': 'facts', 'text': 'Сусід пішов', 'character_ids': []}], set(), {'A': 'Анна'}, 1000)
-    assert (lines, dropped) == ([lines[0]], 0) and 'Сусід пішов' in lines[0]
+    assert (lines, dropped) == (['- Сусід пішов'], 0)
 
 
 def test_writing_context_future_changes_the_fingerprint(tmp_path):
@@ -90,7 +90,7 @@ def test_sequential_series_requests_are_unchanged(tmp_path):
     second, scene = book(repo, 'Книга 2', cast=['A'])
     into_series(repo, second, item.id, 2)
     assert FUTURE not in build_context(repo, scene.id, 'brief', role()).user_text
-    assert writing_context(repo, scene.id)['future'] == []
+    assert 'future' not in writing_context(repo, scene.id)
     ref = repo.get_version(write_brief(repo, repo.get_scene(scene.id)))
     assert FUTURE not in build_context(repo, scene.id, 'draft', role()).user_text
     assert not any(s.field == 'series_future' for s in ref.dependency_snapshot.selectors)
@@ -102,5 +102,4 @@ def test_mcp_fingerprint_without_a_future_is_as_before(tmp_path):
     repo = Repository(tmp_path)
     story, scene = book(repo, 'Окрема', cast=['A'])
     scene, content, fingerprint = _read(repo, scene.id)
-    old = {k: v for k, v in content.items() if k != 'future'}
-    assert content['future'] == [] and fingerprint == _fingerprint(repo, scene, old)
+    assert 'future' not in content and fingerprint == _fingerprint(repo, scene, content)

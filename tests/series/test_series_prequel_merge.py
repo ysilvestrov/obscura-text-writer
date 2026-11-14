@@ -160,3 +160,23 @@ def test_new_prequel_between_source_and_book_changes_the_status(tmp_path):
     status = series_status(repo, third)
     assert (status.state, [r['kept_story_id'] for r in status.resolved]) == ('fresh', [first.id])
     assert [s['story_id'] for s in snapshot(repo, third).source['sources']] == [first.id, prequel.id]
+
+
+def test_card_clash_with_a_later_source_refuses_before_any_copy(tmp_path):
+    def with_boris(repo, story):
+        own = [json.loads(c.model_dump_json()) for c in load_characters(repo.read_text(story.characters_version_id))]
+        publish_cards(repo, story, own + [card('B', 'Борис')])
+    repo, item, first, prequel, third, cloth = series_with_prequel(tmp_path, cards=with_boris)
+    publish_cards(repo, repo.get_story(third.id), [card('X', 'Борис')])
+    cards_before = repo.get_story(third.id).characters_version_id
+    third = enter(repo, third, item, 3, ('Рік 2', 1))
+    assert third.series_start_version_id is None and third.characters_version_id == cards_before
+
+
+def test_same_name_cards_of_two_sources_keep_the_main_book(tmp_path):
+    def other_anna(repo, story):
+        publish_cards(repo, story, [card('Z', 'Анна')])
+    repo, item, first, prequel, third, cloth = series_with_prequel(tmp_path, cards=other_anna)
+    third = enter(repo, third, item, 3, ('Рік 2', 1))
+    assert third.series_start_version_id
+    assert [c.id for c in load_characters(repo.read_text(third.characters_version_id))] == ['A']

@@ -5,22 +5,30 @@ from fastapi.testclient import TestClient
 
 from storygen.application.settings import AppSettings
 from storygen.book.series import series_status
-from storygen.memory.journal import replay_memory
+from storygen.memory.journal import MemoryJournal, _change_event, load_memory, replay_memory
 from storygen.memory.series_start import read_series_start
 from storygen.series_models import SeriesStart
 from storygen.storage import series as store
 from storygen.storage.integrity import check_integrity
 from storygen.storage.repository import Repository
 from storygen.web.app import create_app
-from tests.series.helpers import book, finished_book, into_series
+from tests.series.helpers import book, finished_book, into_series, memory
 from tests.series.test_series_memory import write_brief, write_scene_memory
 from tests.series.test_series_refresh import rewrite_last_memory
 
 
-def setup(tmp_path):
+def setup(tmp_path, *, changed_clothes=False):
     repo = Repository(tmp_path)
     item = store.create_series(repo, 'Сага')
     first, scenes, cloth = finished_book(repo)
+    if changed_clothes:  # scene 2 of book 1 also changes Anna's clothing: the record has an add and an update
+        last = repo.get_scene(scenes[1].id)
+        journal = load_memory(repo.read_text(last.heads['memory']))
+        memory(repo, last, MemoryJournal(schema_version=3, source_prose_ids=journal.source_prose_ids[:-1],
+                                         events=[e for e in journal.events if e.source_version_id != last.heads['prose']]),
+               [e for e in journal.events if e.source_version_id == last.heads['prose']]
+               + [_change_event('update', cloth.claim_id, 'Пальто', 'character_states', ['A'], last.heads['prose'],
+                                'Сусід пішов додому.', slot='clothing')])
     first = into_series(repo, first, item.id, 1)
     prequel, scene = book(repo, 'Приквел', cast=['A'])
     prequel = store.set_story_series(repo, prequel.id, item.id, 2, SeriesStart(offset='Рік -10', anchor=1), prequel.revision)
@@ -54,15 +62,16 @@ def test_first_prequel_snapshot_is_all_future(tmp_path):
 
 
 def test_saving_past_moves_the_record_chain_into_memory(tmp_path):
-    repo, item, first, scenes, prequel, scene = setup(tmp_path)
+    repo, item, first, scenes, prequel, scene = setup(tmp_path, changed_clothes=True)
     memory_id = write_scene_memory(repo, scene)
     brief_id = write_brief(repo, scene)
-    clothing = keys(repo, prequel)['Халат']
+    clothing = keys(repo, prequel)['Пальто']
     before = snapshot(repo, prequel).source
     story = store.save_decisions(repo, prequel.id, {clothing: 'past'}, repo.get_story(prequel.id).revision)
     data = snapshot(repo, story)
-    assert [e.text for e in replay_memory(data.journal).values()] == ['Халат']
-    assert data.text == 'Анна в халаті.'
+    assert [(e.operation, e.text) for e in data.journal.events] == [('add', 'Халат'), ('update', 'Пальто')]
+    assert [e.text for e in replay_memory(data.journal).values()] == ['Пальто']
+    assert data.text == 'Анна в халаті.\nСусід пішов додому.'
     assert [f['text'] for f in data.future] == ['Сусід пішов']
     assert (data.source['sources'], data.source['resolved']) == (before['sources'], before['resolved'])
     assert repo.get_version(memory_id).stale and repo.get_version(brief_id).stale
@@ -106,9 +115,13 @@ def test_series_4a_prequel_snapshot_is_all_past(tmp_path):
     story = repo.get_story(prequel.id)
     raw = json.loads(repo.read_text(story.series_start_version_id))
     full = raw.pop('start_memory')
-    for name in ('decisions', 'future', 'origins'):
+    for name in ('decisions', 'future', 'origins', 'resolved'):
         raw.pop(name)
-    raw.update(full)  # a 4a snapshot: the whole summary of the source book in the journal, no decisions
+    main = raw.pop('sources')[0]
+    raw.update(full)  # a 4a snapshot: the whole summary of the source book in the journal, single source fields
+    raw.update({'source_story_id': main['story_id'], 'source_summary_version_id': main['summary_version_id'],
+                'source_summary_sha256': main['summary_sha256'], 'source_characters_version_id': main['characters_version_id'],
+                'source_characters_sha256': main['characters_sha256'], 'source_card_hashes': main['card_hashes']})
     version = repo.save_version(story.id, None, 'series_start', json.dumps(raw, ensure_ascii=False),
                                 [raw['characters_version_id']])
     with repo.db.connection() as db:
@@ -131,3 +144,29 @@ def test_store_refuses_decisions(tmp_path, store_edition):
                              json={'decisions': {clothing: 'past'}, 'expected_revision': repo.get_story(prequel.id).revision,
                                    'confirm': True})
         assert refused.status_code == 400 and 'довгою прозою' in refused.text
+        facts = client.get(f'/api/stories/{prequel.id}/series/facts')
+        assert facts.status_code == 400 and 'довгою прозою' in facts.text
+
+
+def test_prequel_that_stops_being_one_needs_a_refresh(tmp_path):
+    repo, item, first, scenes, prequel, scene = setup(tmp_path)
+    story = store.set_story_series(repo, prequel.id, item.id, 2, SeriesStart(offset='Рік 5', anchor=1),
+                                   repo.get_story(prequel.id).revision)
+    assert series_status(repo, story).state == 'source_changed'
+    story, _ = store.refresh_snapshot(repo, story.id, story.revision)
+    data = snapshot(repo, story)
+    assert data.decisions is None and len(replay_memory(data.journal)) == 2
+    assert series_status(repo, story).state == 'fresh'
+
+
+def test_book_that_becomes_a_prequel_starts_with_the_future(tmp_path):
+    repo, item, first, scenes, prequel, scene = setup(tmp_path)
+    store.set_story_series(repo, prequel.id, None, None, None, repo.get_story(prequel.id).revision)
+    second, _ = book(repo, 'Книга 2', cast=['A'])
+    second = store.set_story_series(repo, second.id, item.id, 2, SeriesStart(offset='Рік 5', anchor=1), second.revision)
+    assert snapshot(repo, second).decisions is None
+    second = store.set_story_series(repo, second.id, item.id, 2, SeriesStart(offset='Рік -5', anchor=1),
+                                    repo.get_story(second.id).revision)
+    assert series_status(repo, second).state == 'source_changed'
+    second, _ = store.refresh_snapshot(repo, second.id, second.revision)
+    assert set(snapshot(repo, second).decisions.values()) == {'future'}
