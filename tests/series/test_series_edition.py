@@ -36,6 +36,7 @@ def test_mcp_get_story_reports_the_series(tmp_path):
     from storygen.mcp.bridge import story_series
     client, repo, story, scene = series_book(tmp_path)
     data = client.get(f'/api/stories/{story.id}').json()
-    assert story_series(data) == {'title': 'Сага', 'number': 1, 'start': None, 'status': 'first'}
+    assert story_series(data) == {'title': 'Сага', 'number': 1, 'start': None, 'status': 'first',
+                                  'prequel': False, 'resolved_count': 0}
     lone = repo.create_story(StoryCreate(title='Окрема'))
     assert story_series(client.get(f'/api/stories/{lone.id}').json()) is None

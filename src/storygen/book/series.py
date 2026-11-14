@@ -72,6 +72,7 @@ class SeriesStatus:
     changed_cards: list = field(default_factory=list)
     prequel: bool = False  # earlier on the axis than a book with a smaller number (SERIES-001, 4b)
     resolved: list = field(default_factory=list)  # conflicts the automatic merge of the start memory settled
+    sources: list = field(default_factory=list)  # story IDs of the snapshot's sources, in their order
 
 
 @dataclass
@@ -229,7 +230,8 @@ def _snapshot_status(repo, story) -> SeriesStatus | None:
     key = ('story_id', 'summary_version_id', 'characters_version_id')
     same = [[item.get(k) for k in key] for item in snapshot['sources']] == [[row[k] for k in key] for _, _, row in rows]
     return SeriesStatus('fresh' if same and not changed else 'source_changed', lead.id, lead.series_number,
-                        list(dict.fromkeys(changed)), resolved=snapshot['resolved'])
+                        list(dict.fromkeys(changed)), resolved=snapshot['resolved'],
+                        sources=[item['story_id'] for item in snapshot['sources']])
 
 
 def chronology(books) -> tuple[list[str], list[str]]:

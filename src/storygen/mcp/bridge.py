@@ -196,8 +196,10 @@ def story_series(data: dict) -> dict | None:
     series = data.get('series')
     if not series:
         return None
+    status = series.get('status') or {}
     return {'title': series['title'], 'number': series['number'], 'start': series.get('start'),
-            'status': (series.get('status') or {}).get('state')}
+            'status': status.get('state'), 'prequel': bool(status.get('prequel')),
+            'resolved_count': len(status.get('resolved') or [])}
 
 
 def build_server(http: httpx.Client, client_name: str | None = None) -> MCPServer:
