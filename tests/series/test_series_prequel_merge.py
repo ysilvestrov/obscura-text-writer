@@ -27,6 +27,8 @@ def write_prequel(repo, item, number, start, cloth, *, fact='Біля порту
     gives (sentence, events) appended to the scene."""
     story, scene = book(repo, f'Приквел {number}', written=False, cast=['A'])
     story = enter(repo, story, item, number, start)
+    if story.series_start_version_id:  # the whole start memory is the prequel's past (SERIES-S09)
+        store.save_decisions(repo, story.id, {f['key']: 'past' for f in store.start_facts(repo, story.id)}, story.revision)
     if cards:
         cards(repo, repo.get_story(story.id))
     if finished:

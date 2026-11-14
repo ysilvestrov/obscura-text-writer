@@ -6,7 +6,7 @@ their kind, quotes, slots and IDs and pass the usual quote check. The stored jou
 the version ID is known only after `save_version`, so reading replaces the marker with it.
 """
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from .journal import MemoryJournal
 
@@ -20,6 +20,8 @@ class SeriesStartData:
     text: str
     journal: MemoryJournal
     source: dict
+    decisions: dict | None = None  # a prequel (SERIES-S09): {key: 'past' | 'future'}; None — every record is past
+    future: list = field(default_factory=list)  # [{key, category, text, character_ids, story_id}] of the future keys
 
 
 def inherit_journal(journal: MemoryJournal, texts: dict[str, str]) -> tuple[str, MemoryJournal]:
@@ -69,7 +71,22 @@ def read_series_start(raw: str, version_id: str) -> SeriesStartData:
             'characters_sha256': source.get('source_characters_sha256'),
             'card_hashes': source.get('source_card_hashes') or {}}] if source.get('source_story_id') else []
     source.setdefault('resolved', [])
-    return SeriesStartData(data['text'], resolved, source)
+    return SeriesStartData(data['text'], resolved, source, data.get('decisions'), data.get('future', []))
+
+
+def prequel_split(text: str, journal: MemoryJournal, decisions: dict[str, str], origins: dict[str, str]):
+    """A prequel's snapshot from its whole start memory (`text` and `journal` with the marker as source): the journal
+    keeps the events of the `past` keys, the text only their quotes; the active records of the other keys are the
+    future. Returns (text, journal, future)."""
+    from .journal import replay_memory
+    from .merge import _key
+    past = [e for e in journal.events if decisions.get(_key(e)) == 'past']
+    kept = MemoryJournal(schema_version=journal.schema_version, source_prose_ids=[SERIES_MARKER], events=past)
+    kept_text, kept = inherit_journal(kept, {SERIES_MARKER: text})
+    future = [{'key': _key(e), 'category': e.category, 'text': e.text, 'character_ids': list(e.character_ids),
+               'story_id': origins.get(_key(e))}
+              for e in replay_memory(journal).values() if decisions.get(_key(e)) != 'past']
+    return kept_text, kept, future
 
 
 def source_number(version_ref, numbers: dict[str, int]) -> int:

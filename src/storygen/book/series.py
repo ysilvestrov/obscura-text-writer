@@ -85,6 +85,7 @@ class StartMemory:
     sources: list
     resolved: list
     missing: object = None
+    origins: dict = field(default_factory=dict)  # merge key -> the source book whose events the record came from
 
 
 def _source_rows(repo, story):
@@ -111,17 +112,23 @@ def start_memory(repo, story) -> StartMemory | None:
     source latest in the chronology (no moment or a tie: the greater number). None when the book has no sources."""
     from ..memory.merge import plan_merge, build_merged_journal
     rows, missing = _source_rows(repo, story)
+    from ..memory.merge import _key
     if missing is not None:
         return StartMemory(None, {}, [row for _, _, row in rows], [], missing)
     if not rows:
         return None
-    journals, texts = {}, {}
+    journals, texts, owners = {}, {}, {}
     for book, view, row in rows:
         journals[book.id], own = summary_journal(view, row['summary_version_id'])
         texts.update(own)
+        for id in journals[book.id].source_prose_ids:
+            owners.setdefault(id, book.id)
     sources = [row for _, _, row in rows]
+
+    def origins(journal):
+        return {_key(e): owners[e.source_version_id] for e in journal.events}
     if len(rows) == 1:
-        return StartMemory(journals[rows[0][0].id], texts, sources, [])
+        return StartMemory(journals[rows[0][0].id], texts, sources, [], origins=origins(journals[rows[0][0].id]))
     order = [book.id for book, _, _ in rows]
     main = rows[0][0] if not is_prequel(_series_books(repo.list_stories(include_trashed=True), story), rows[0][0]) else None
     moments = chronology_moments([b for b in repo.list_stories(include_trashed=True)
@@ -138,7 +145,7 @@ def start_memory(repo, story) -> StartMemory | None:
                          'dropped': [{'story_id': id, 'text': conflict.values[id]} for id in heads if id != winner]})
     prose_ids = list(dict.fromkeys(id for head in order for id in journals[head].source_prose_ids))
     merged = build_merged_journal(plan, decisions, prose_ids, prose_ids[-1])
-    return StartMemory(merged, texts, sources, resolved)
+    return StartMemory(merged, texts, sources, resolved, origins=origins(merged))
 
 
 def _series_books(stories, story):
@@ -178,8 +185,13 @@ def start_sources(stories, story) -> list:
 def series_status(repo, story) -> SeriesStatus | None:
     status = _snapshot_status(repo, story)
     if status is not None:
+        from ..memory.series_start import read_series_start
         stories = repo.list_stories(include_trashed=True)
-        status = replace(status, prequel=is_prequel(_series_books(stories, story), story))
+        prequel = is_prequel(_series_books(stories, story), story)
+        status = replace(status, prequel=prequel)
+        if prequel and status.state == 'fresh' and read_series_start(
+                repo.read_text(story.series_start_version_id), story.series_start_version_id).decisions is None:
+            status = replace(status, state='prequel_review')  # a 4a snapshot: every record is past until reviewed
     return status
 
 
