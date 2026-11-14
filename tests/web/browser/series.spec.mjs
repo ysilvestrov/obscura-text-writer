@@ -11,7 +11,7 @@ async function seriesWithBook(request,title){
   const {story_id}=await(await request.post('/test-fixture')).json();
   const item=await(await request.post('/api/series',{data:{title}})).json();
   const story=(await view(request,story_id)).story;
-  const put=await request.patch(`/api/stories/${story_id}/series`,{data:{series_id:item.id,number:1,start_text:'Рік 0, опора 1',expected_revision:story.revision}});
+  const put=await request.patch(`/api/stories/${story_id}/series`,{data:{series_id:item.id,number:1,expected_revision:story.revision}});
   expect(put.ok(),await put.text()).toBeTruthy();
   return {item,story_id};
 }
@@ -31,7 +31,7 @@ test('the series screen shows both orders and creates the next book',async({page
   await expect(page.locator('#series-books .series-book')).toHaveCount(1);
   await expect(page.locator('#series-books .series-book').first()).toContainText('перша книга серії');
   await expect(page.locator('#series-axis li')).toHaveCount(1);
-  await expect(page.locator('#series-axis li').first()).toContainText('Рік 0');
+  await expect(page.locator('#series-axis li').first()).toContainText('точка відліку');
   await expect(page.locator('#series-delete')).toBeDisabled();
   await page.locator('#series-new-book').click();
   await page.locator('dialog input').fill('Книга 2');
@@ -53,10 +53,10 @@ test('the book settings put a book into a series',async({page,request})=>{
   await expect(form).toBeVisible();
   await form.locator('select[name="series_id"]').selectOption({label:name('Сага налаштувань')});
   await form.locator('input[name="number"]').fill('1');
-  await form.locator('input[name="start"]').fill('Рік -2, опора 1');
+  await form.locator('input[name="start"]').fill('Рік 0, опора 1');
   await form.getByRole('button',{name:'Зберегти'}).click();
   await expect(page.locator('#notice')).toContainText('Серію збережено');
   const series=(await view(request,story_id)).series;
-  expect([series.title,series.number,series.start.offset]).toEqual([name('Сага налаштувань'),1,'Рік -2']);
+  expect([series.title,series.number,series.start.offset]).toEqual([name('Сага налаштувань'),1,'Рік 0']);
   await expect(form.locator('[data-series-status]')).toContainText('перша книга серії');
 });

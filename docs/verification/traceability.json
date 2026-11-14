@@ -5801,7 +5801,8 @@
       "requirement": "SERIES-001",
       "scope": "Екран серії: книги за виходом зі станом, вісь хронології й книги поза віссю, позначка приквела, розбір Початку, сторінки лише з довгою прозою. Браузерна частина — Playwright tests/web/browser/series.spec.mjs (окремий runner, зв’язок не є доказом виконання).",
       "tests": [
-        "tests/series/test_series_screen.py::test_chronology_places_books_of_one_anchor_and_leaves_the_rest_outside",
+        "tests/series/test_series_screen.py::test_chronology_starts_from_the_book_without_start",
+        "tests/series/test_series_screen.py::test_chronology_without_an_origin_places_nothing",
         "tests/series/test_series_screen.py::test_series_api_lists_books_with_status_and_trash",
         "tests/series/test_series_screen.py::test_start_text_is_parsed_or_refused",
         "tests/series/test_series_screen.py::test_series_pages",

@@ -112,17 +112,24 @@ def _snapshot_status(repo, story) -> SeriesStatus | None:
 
 
 def chronology(books) -> tuple[list[str], list[str]]:
-    """The series axis by `Початок`: books whose start shares the most common anchor (ties: the smaller anchor), ordered
-    by offset and then number; every other book (no start, another anchor, an offset that is not a time mark) is
-    outside the axis. Returns (placed ids, outside ids in release order)."""
-    from collections import Counter
+    """The series axis by `Початок` (SERIES-001): the first book without a start (by number) is the origin; a start is a
+    time mark counted from its anchor, which must be an earlier book of the series already on the axis, so there are no
+    cycles. Every other book (a second book without start, a later, missing or off-axis anchor, an offset that is not a
+    time mark) is outside. Returns (placed ids by moment and number, outside ids in release order)."""
     from ..memory.story_time import _relative
-    keyed = {}
-    for item in books:
-        moment = _relative(item.series_start.offset) if item.series_start else None
-        if moment is not None:
-            keyed[item.id] = (item.series_start.anchor, moment.key, item.series_number or 0)
-    anchors = Counter(anchor for anchor, _, _ in keyed.values())
-    anchor = max(anchors, key=lambda a: (anchors[a], -a)) if anchors else None
-    placed = sorted((id for id, (a, _, _) in keyed.items() if a == anchor), key=lambda id: keyed[id][1:])
+    ordered = sorted(books, key=lambda item: item.series_number or 0)
+    origin = next((item for item in ordered if not item.series_start), None)
+    moments = {}
+    if origin is not None:
+        moments[origin.series_number] = (0, 0, 0)
+        for item in ordered:
+            if item is origin or not item.series_start:
+                continue
+            moment = _relative(item.series_start.offset)
+            base = moments.get(item.series_start.anchor)
+            if moment is None or base is None or item.series_start.anchor >= (item.series_number or 0):
+                continue
+            moments[item.series_number] = tuple(a + b for a, b in zip(base, moment.key))
+    placed = [item.id for item in sorted((item for item in ordered if item.series_number in moments),
+                                         key=lambda item: (moments[item.series_number], item.series_number))]
     return placed, [item.id for item in books if item.id not in placed]

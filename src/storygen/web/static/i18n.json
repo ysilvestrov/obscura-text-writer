@@ -2471,7 +2471,7 @@
     "series.number": "Номер у серії",
     "series.start": "Початок",
     "series.start_placeholder": "Рік -5, опора 1",
-    "series.start_help": "Позначка часу без години (рік, місяць, день зі знаком), далі номер книги-опори. Потрібна лише для осі хронології.",
+    "series.start_help": "Позначка часу без години (рік, місяць, день зі знаком) від книги-опори, далі номер опори — книги серії з меншим номером. Порожнє поле робить книгу точкою відліку осі. Потрібне лише для осі хронології.",
     "series.header": "Серія «{p0}», книга {p1}",
     "series.status.fresh": "знімок актуальний",
     "series.status.first": "перша книга серії",
@@ -2497,7 +2497,8 @@
     "series.msg.read_only": "Ця книга входить у серію; у цій збірці вона доступна лише для читання й експорту",
     "series.msg.previous_book": "Попередня книга серії",
     "series.status.prequel": "Приквел: поки продовжує попередню книгу за виходом; приквели з’являться згодом.",
-    "series.msg.created": "Створено нову серію «{p0}»"
+    "series.msg.created": "Створено нову серію «{p0}»",
+    "series.origin": "точка відліку"
   },
   "en": {
     "ui.save": "Save",
@@ -4971,7 +4972,7 @@
     "series.number": "Number in the series",
     "series.start": "Start",
     "series.start_placeholder": "Year -5, anchor 1",
-    "series.start_help": "A time mark without the hour (year, month, day with a sign), then the anchor book number. Used only for the chronology axis.",
+    "series.start_help": "A time mark without the hour (year, month, day with a sign) from the anchor book, then the anchor number — a book of the series with a smaller number. An empty field makes the book the origin of the axis. Used only for the chronology axis.",
     "series.header": "Series «{p0}», book {p1}",
     "series.status.fresh": "snapshot is current",
     "series.status.first": "first book of the series",
@@ -4997,6 +4998,7 @@
     "series.msg.read_only": "This book belongs to a series; in this build it is available for reading and export only",
     "series.msg.previous_book": "Previous book of the series",
     "series.status.prequel": "Prequel: for now it continues the previous book by release; prequels come later.",
-    "series.msg.created": "Created a new series «{p0}»"
+    "series.msg.created": "Created a new series «{p0}»",
+    "series.origin": "origin"
   }
 }

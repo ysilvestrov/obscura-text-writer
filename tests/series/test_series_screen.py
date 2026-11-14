@@ -19,17 +19,29 @@ def book(repo, item, title, number, start=None):
     return store.set_story_series(repo, story.id, item.id, number, start, story.revision)
 
 
-def test_chronology_places_books_of_one_anchor_and_leaves_the_rest_outside(tmp_path):
+def test_chronology_starts_from_the_book_without_start(tmp_path):
+    # The book without «Початок» is the origin; a start counts from its anchor, which must be an earlier book of the
+    # series on the axis. A second book without start, a later or missing anchor and an anchor off the axis are outside.
+    client, repo = client_for(tmp_path)
+    item = store.create_series(repo, 'Сага')
+    first = book(repo, item, 'Перша', 1)
+    prequel = book(repo, item, 'Передісторія', 2, SeriesStart(offset='Рік -10', anchor=1))
+    later = book(repo, item, 'Пізніше', 3, SeriesStart(offset='Рік 2, День 5', anchor=1))
+    chained = book(repo, item, 'Між ними', 4, SeriesStart(offset='Рік -1', anchor=3))
+    second_origin = book(repo, item, 'Ще без початку', 5)
+    forward = book(repo, item, 'Наперед', 6, SeriesStart(offset='Рік 1', anchor=7))
+    off_axis = book(repo, item, 'Від неопори', 7, SeriesStart(offset='Рік 1', anchor=5))
+    placed, outside = chronology(store.series_books(repo, item.id))
+    assert placed == [prequel.id, first.id, chained.id, later.id]
+    assert outside == [second_origin.id, forward.id, off_axis.id]
+
+
+def test_chronology_without_an_origin_places_nothing(tmp_path):
     client, repo = client_for(tmp_path)
     item = store.create_series(repo, 'Сага')
     first = book(repo, item, 'Перша', 1, SeriesStart(offset='Рік 0', anchor=1))
-    prequel = book(repo, item, 'Передісторія', 2, SeriesStart(offset='Рік -10', anchor=1))
-    later = book(repo, item, 'Пізніше', 3, SeriesStart(offset='Рік 2, День 5', anchor=1))
-    lone = book(repo, item, 'Без опори', 4)
-    other = book(repo, item, 'Інша опора', 5, SeriesStart(offset='Рік 1', anchor=4))
-    placed, outside = chronology(store.series_books(repo, item.id))
-    assert placed == [prequel.id, first.id, later.id]
-    assert outside == [lone.id, other.id]
+    second = book(repo, item, 'Друга', 2, SeriesStart(offset='Рік 1', anchor=1))
+    assert chronology(store.series_books(repo, item.id)) == ([], [first.id, second.id])
 
 
 def test_series_api_lists_books_with_status_and_trash(tmp_path):
@@ -42,7 +54,7 @@ def test_series_api_lists_books_with_status_and_trash(tmp_path):
     assert data['series']['title'] == 'Сага'
     assert [(b['id'], b['number'], b['trashed']) for b in data['books']] == [(first.id, 1, False), (second.id, 2, True)]
     assert data['books'][0]['status']['state'] == 'first'
-    assert data['outside'] == [first.id, second.id] and data['placed'] == []
+    assert data['placed'] == [first.id] and data['outside'] == [second.id]
 
 
 def test_start_text_is_parsed_or_refused(tmp_path):

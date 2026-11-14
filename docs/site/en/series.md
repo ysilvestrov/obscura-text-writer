@@ -66,13 +66,13 @@ Next to it is the **Update from the previous book** button. Before acting, Obscu
 
 ## Chronology
 
-The `Start` line places the book on the chronology axis. It holds a time mark without the hour (year, month, day with a sign), followed by the number of the anchor book:
+The `Start` line places the book on the chronology axis. The book without `Start` is the origin of the axis; usually it is the first book. The other books hold a time mark without the hour (year, month, day with a sign) from the anchor book, followed by the anchor number:
 
-- `Year 0, anchor 1` — the same point as book 1;
-- `Year 2, Day 5, anchor 1` — two years and five days after it;
-- `Year -10, anchor 1` — ten years before it.
+- `Year 2, Day 5, anchor 1` — two years and five days after the start of book 1;
+- `Year -10, anchor 1` — ten years before it;
+- `Year -1, anchor 3` — a year before the start of book 3.
 
-Books with one anchor go onto the axis. Books without `Start` or with another anchor are shown off the axis.
+The anchor is a book of the series with a smaller number that is already on the axis itself. A second book without `Start`, an anchor with a larger number or an anchor off the axis puts the book off the axis; this does not affect how the book works.
 
 `Start` only orders the books on the screen. A book with a negative offset (a prequel) for now continues the memory of the previous book by release, like an ordinary one, and is marked “Prequel”. Separate memory for prequels will come later.
 

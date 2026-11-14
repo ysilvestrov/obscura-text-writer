@@ -44,7 +44,9 @@ function renderSeries(){
   page.querySelector('#series-rename').elements.title.value=view.series.title;
   page.querySelector('#series-books').replaceChildren(...view.books.map(bookCard));
   const byId=Object.fromEntries(view.books.map(book=>[book.id,book]));
-  page.querySelector('#series-axis').replaceChildren(...view.placed.map(id=>element('li','',()=>t('series.axis_item',{p0:byId[id].start.offset,p1:byId[id].number,p2:byId[id].title}))));
+  // The origin is the book without «Початок»; every other book on the axis shows its offset from the anchor.
+  const mark=book=>book.start?book.start.offset:t('series.origin');
+  page.querySelector('#series-axis').replaceChildren(...view.placed.map(id=>element('li','',()=>t('series.axis_item',{p0:mark(byId[id]),p1:byId[id].number,p2:byId[id].title}))));
   page.querySelector('#series-outside').replaceChildren(...view.outside.map(id=>element('li','',()=>t('series.book_heading',{p0:byId[id].number,p1:byId[id].title}))));
   const remove=page.querySelector('#series-delete');remove.disabled=view.books.length>0;
   uiText(remove,'title',()=>view.books.length?t('series.delete_blocked'):'');
