@@ -1,0 +1,57 @@
+"""SERIES: the source book of a snapshot and the summary of a book. Read-only."""
+import hashlib
+import json
+
+SUMMARY_NEEDS_MERGE = 'потрібне злиття кінця книги'
+SUMMARY_NO_MEMORY = 'остання сцена без актуальної пам’яті'
+
+
+def source_book(stories, story):
+    """The book of the same series, not in the trash, with the greatest number below the book's number; None for the
+    first book or a book outside a series."""
+    if not story.series_id or not story.series_number:
+        return None
+    earlier = [s for s in stories if s.series_id == story.series_id and not s.trashed_at and s.id != story.id
+               and s.series_number and s.series_number < story.series_number]
+    return max(earlier, key=lambda s: s.series_number, default=None)
+
+
+def book_summary(view, story) -> tuple[str | None, str | None]:
+    """(version id, reason): the usable book-end merge when the book ends in two or more heads, else the fresh memory of
+    the last active scene. Scenes without prose are active too, so a book not written to its end has no summary."""
+    from ..book.lineage import book_end_heads
+    from ..storage.memory_merges import merge_point, usable_merge
+    scenes = view.list_scenes(story.id)
+    active = [s for s in scenes if not s.trashed_at]
+    if not active:
+        return None, SUMMARY_NO_MEMORY
+    if len(book_end_heads(story, active)) >= 2:
+        merged = usable_merge(view, story, active, merge_point(story, active, book_end=True))
+        return (merged, None) if merged else (None, SUMMARY_NEEDS_MERGE)
+    memory_id = active[-1].heads.get('memory')
+    if not memory_id:
+        return None, SUMMARY_NO_MEMORY
+    ref = view.get_version(memory_id)
+    if not ref.complete or view.is_stale(memory_id):
+        return None, SUMMARY_NO_MEMORY
+    return memory_id, None
+
+
+def summary_journal(view, version_id):
+    """The journal of a summary (a scene memory or the journal inside a book-end merge) and the texts of its sources;
+    a series start source (book 3 from book 2) gives its quote text."""
+    from ..memory.journal import MemoryJournal, load_memory
+    from ..memory.series_start import SERIES_START_KIND, read_series_start
+    ref = view.get_version(version_id)
+    raw = view.read_text(version_id)
+    journal = MemoryJournal.model_validate(json.loads(raw)['journal']) if ref.kind == 'memory_merge' else load_memory(raw)
+    texts = {}
+    for id in journal.source_prose_ids:
+        source = view.get_version(id)
+        text = view.read_text(id)
+        texts[id] = read_series_start(text, id).text if source.kind == SERIES_START_KIND else text
+    return journal, texts
+
+
+def card_hash(card) -> str:
+    return hashlib.sha256(card.model_dump_json().encode('utf-8')).hexdigest()

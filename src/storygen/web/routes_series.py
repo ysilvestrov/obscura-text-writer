@@ -48,6 +48,13 @@ def series_delete(series_id: str, expected_revision: int, request: Request):
     return {'deleted': series_id}
 
 
+@router.post('/api/series/{series_id}/books')
+def series_new_book(series_id: str, data: SeriesIn, request: Request):
+    require_long_prose()
+    store.get_series(request.app.state.repo, series_id)
+    return store.create_book(request.app.state.repo, series_id, data.title)
+
+
 @router.patch('/api/stories/{story_id}/series')
 def story_series(story_id: str, data: StorySeries, request: Request):
     require_long_prose()

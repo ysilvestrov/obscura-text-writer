@@ -1,4 +1,6 @@
 """SERIES storage: the series table (CAS on its revision) and the series fields of a book (CAS on the story revision)."""
+import json
+
 from ..domain import RevisionConflict, SeriesStart, Story, new_id
 from ..scene_description import name_key
 from ..series_models import Series
@@ -113,6 +115,101 @@ def set_story_series(repo, story_id: str, series_id: str | None, number: int | N
     return story
 
 
+NO_SOURCE = 'Попередня книга ще не має підсумку'
+CARD_NAME_CLASH = 'Картки з тими самими іменами вже є в книзі: {names}'
+
+
+def _source(repo, story):
+    from ..book.series import book_summary, source_book
+    source = source_book(repo.list_stories(include_trashed=True), story)
+    if source is None:
+        return None, None, None
+    view = repo.context_view(source.id)
+    summary, _ = book_summary(view, view.story)
+    return source, view, summary
+
+
+def _copy_cards(repo, story, view, source):
+    """Copy the source cards into the book: same card and entry IDs, «from scene» entries become timeless, citations move
+    onto a new source_characters version of the book. Returns (cards version id or None, card hashes)."""
+    from ..book.series import card_hash
+    from ..characters.models import load_characters
+    from ..scene_description import name_key
+    if not source.characters_version_id:
+        return story.characters_version_id, {}
+    cards = load_characters(view.read_text(source.characters_version_id))
+    own = load_characters(repo.read_text(story.characters_version_id)) if story.characters_version_id else []
+    own_ids = {c.id for c in own}
+    by_name = {name_key(c.name): c for c in own}
+    clash = [c.name for c in cards if name_key(c.name) in by_name and by_name[name_key(c.name)].id != c.id]
+    if clash:
+        raise ValueError(CARD_NAME_CLASH.format(names=', '.join(clash)))
+    hashes = {c.id: card_hash(c) for c in cards}
+    added = [c for c in cards if c.id not in own_ids]
+    if not added:
+        return story.characters_version_id, hashes
+    quotes = list(dict.fromkeys(s.quote for c in added for e in c.entries for s in e.sources))
+    text_id = repo.save_version(story.id, None, 'source_characters', '\n'.join(quotes), []).id if quotes else None
+    copied = []
+    for c in added:
+        entries = []
+        for e in c.entries:
+            entry = json.loads(e.model_dump_json())
+            if entry['availability'] == 'from_scene':
+                entry['availability'], entry['available_from_scene_id'] = 'timeless', None
+            entry['sources'] = [{**s, 'version_id': text_id} for s in entry['sources']]
+            entries.append(entry)
+        copied.append({**json.loads(c.model_dump_json()), 'entries': entries})
+    merged = [json.loads(c.model_dump_json()) for c in own] + copied
+    load_characters(json.dumps(merged, ensure_ascii=False))
+    saved = repo.save_version(story.id, None, 'character_cards', json.dumps(merged, ensure_ascii=False), [text_id] if text_id else [])
+    repo.publish_story_material(story.id, 'characters_version_id', saved.id, repo.get_story(story.id).revision)
+    return saved.id, hashes
+
+
+def take_snapshot(repo, story_id: str, expected_revision: int) -> Story:
+    """Take (or retake) the start snapshot: the summary journal of the source book as scene 0 and a copy of its cards."""
+    from ..book.series import summary_journal
+    from ..memory.series_start import inherit_journal, series_start_payload
+    story = repo.get_story(story_id)
+    if story.revision != expected_revision:
+        raise RevisionConflict(STORY_CONFLICT)
+    source, view, summary = _source(repo, story)
+    if not summary:
+        raise ValueError(NO_SOURCE)
+    journal, texts = summary_journal(view, summary)
+    text, inherited = inherit_journal(journal, texts)
+    cards_id, hashes = _copy_cards(repo, story, view, source)
+    summary_ref = view.get_version(summary)
+    cards_ref = view.get_version(source.characters_version_id) if source.characters_version_id else None
+    payload = series_start_payload(text, inherited, {
+        'source_story_id': source.id, 'source_summary_version_id': summary, 'source_summary_sha256': summary_ref.sha256,
+        'source_characters_version_id': cards_ref.id if cards_ref else None,
+        'source_characters_sha256': cards_ref.sha256 if cards_ref else None,
+        'source_card_hashes': hashes, 'characters_version_id': cards_id})
+    start = repo.save_version(story.id, None, 'series_start', payload, [cards_id] if cards_id else [])
+    with repo.db.connection() as db:
+        db.execute('BEGIN IMMEDIATE')
+        current = repo._active_story(db, story_id)
+        current = current.model_copy(update={'series_start_version_id': start.id, 'revision': current.revision + 1})
+        repo._save_story(db, current)
+    return current
+
+
 def take_snapshot_if_ready(repo, story_id: str) -> Story:
-    """Placeholder until the start snapshot (Task 3): returns the story unchanged."""
-    return repo.get_story(story_id)
+    """On entering a series: take the snapshot when the source book has a summary and no card clashes; otherwise leave
+    the book without one (its status explains why)."""
+    story = repo.get_story(story_id)
+    try:
+        return take_snapshot(repo, story_id, story.revision)
+    except ValueError:
+        return repo.get_story(story_id)
+
+
+def create_book(repo, series_id: str, title: str) -> Story:
+    """«Нова книга серії»: a new story with the next free number; the snapshot follows when the source has a summary."""
+    from ..domain import StoryCreate
+    books = series_books(repo, series_id)
+    number = max((b.series_number or 0 for b in books), default=0) + 1
+    story = repo.create_story(StoryCreate(title=title))
+    return set_story_series(repo, story.id, series_id, number, None, story.revision)
