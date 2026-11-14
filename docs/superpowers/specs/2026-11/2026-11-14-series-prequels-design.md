@@ -1,7 +1,8 @@
 # Довга проза, проєкт 4б: приквели в серії
 
 Дата: 2026-11-14
-Статус: чернетка
+Статус: чекає на затвердження
+Spec-review: failed (author: claude; codex: usage limit until Nov 15th, 2026 3:17 PM; agy: timeout after 15 min; fallback agy/gemini-3.8-flash: canary failed twice, review not run)
 
 Друга частина проєкту 4 загального дизайну `docs/superpowers/specs/2026-11/2026-11-12-long-prose-design.md`. Спирається на серії й знімок старту з 4а (`docs/superpowers/specs/2026-11/2026-11-14-series-design.md`, SERIES-001).
 
@@ -152,4 +153,4 @@
 
 ## Рев'ю спеки
 
-Ще не проводилося.
+Крос-рев'ю не відбулося: codex вичерпав квоту до 15.11.2026 15:17, agy/gemini-4-argon перевищив 15 хвилин, запасний agy/gemini-3.8-flash двічі не пройшов перевірку заборони запису (canary) і рев'ю не запускав. Зауважень немає; спека проходила лише власну перевірку автора «очима виконавця».
