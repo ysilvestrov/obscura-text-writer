@@ -50,7 +50,11 @@ def create_app(settings: AppSettings, *, gateway_factory=None,evaluator_factory=
         edition=build_edition.current()
         pairs=[('app.link.support',edition.support_url),('app.link.waitlist',edition.waitlist_url),('app.link.report',edition.report_url)]
         return [{'key':key,'url':url} for key,url in pairs if url]
-    app.state.templates.env.globals.update(t=ui_translate,ui_locale=request_locale,app_links=app_links)
+    def long_prose():
+        # SERIES-S07: the series screen and its link exist only in an edition with long prose.
+        from .. import build_edition
+        return build_edition.current().long_prose
+    app.state.templates.env.globals.update(t=ui_translate,ui_locale=request_locale,app_links=app_links,long_prose=long_prose)
     app.mount("/static",StaticFiles(directory=str(root.joinpath("static"))),name="static")
 
     def error_response(request,detail,status_code):

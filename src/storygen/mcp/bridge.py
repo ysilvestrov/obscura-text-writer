@@ -191,6 +191,15 @@ def preset_keys(settings: dict) -> list[str]:
     return [key for key in keys if key]
 
 
+def story_series(data: dict) -> dict | None:
+    """SERIES: the series of a book in get_story — title, number, start and the snapshot state; None outside a series."""
+    series = data.get('series')
+    if not series:
+        return None
+    return {'title': series['title'], 'number': series['number'], 'start': series.get('start'),
+            'status': (series.get('status') or {}).get('state')}
+
+
 def build_server(http: httpx.Client, client_name: str | None = None) -> MCPServer:
     base = str(http.base_url).rstrip('/')
     server = MCPServer('Obscura', instructions=INSTRUCTIONS)
@@ -240,7 +249,7 @@ def build_server(http: httpx.Client, client_name: str | None = None) -> MCPServe
         return {'id': story['id'], 'title': story['title'], 'language': story.get('language'),
                 'language_locked': data.get('language_locked'), 'revision': story.get('revision'),
                 'content_rating': story.get('content_rating'), 'target_words': story.get('target_words'),
-                'writing_mode': story.get('writing_mode', 'chat'),
+                'writing_mode': story.get('writing_mode', 'chat'), 'series': story_series(data),
                 'characters': [{'id': key, 'name': value} for key, value in names.items()], 'scenes': scenes}
 
     @server.tool()

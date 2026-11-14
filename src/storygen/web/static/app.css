@@ -630,3 +630,15 @@ body.ghost-open #notice { z-index: 70; }
 .timeline-summary-state{color:var(--muted,#666);font-size:.9em}
 .timeline-summary-text{white-space:pre-wrap}
 .timeline-summary-editor{width:100%;box-sizing:border-box}
+
+/* SERIES-S07: series screen (variant B) */
+.series-head { display: flex; flex-wrap: wrap; gap: 16px; align-items: end; justify-content: space-between; }
+.series-rename { display: flex; gap: 8px; align-items: end; }
+.series-columns { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 32px; margin-top: 24px; }
+@media (max-width: 800px) { .series-columns { grid-template-columns: 1fr; } }
+.series-books { display: grid; gap: 16px; }
+.series-book h3 { margin-top: 0; }
+.series-trashed { color: var(--text-secondary); font-style: italic; }
+.series-axis { border-left: 2px solid var(--border-color); padding-left: 24px; }
+.series-axis li { margin-bottom: 12px; }
+.story-series { margin: 4px 0 0; }

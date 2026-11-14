@@ -1,6 +1,6 @@
 """SERIES: the source book of a snapshot and the summary of a book. Read-only."""
 import hashlib
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 import json
 
 SUMMARY_NEEDS_MERGE = 'потрібне злиття кінця книги'
@@ -26,10 +26,12 @@ def book_summary(view, story) -> tuple[str | None, str | None]:
     active = [s for s in scenes if not s.trashed_at]
     if not active:
         return None, SUMMARY_NO_MEMORY
-    if len(book_end_heads(story, active)) >= 2:
+    heads = book_end_heads(story, active)
+    if len(heads) >= 2:
         merged = usable_merge(view, story, active, merge_point(story, active, book_end=True))
         return (merged, None) if merged else (None, SUMMARY_NEEDS_MERGE)
-    memory_id = active[-1].heads.get('memory')
+    end = next(s for s in active if s.id == heads[0])  # the scene the book ends in: its own memory, not a predecessor's
+    memory_id = end.heads.get('memory')
     if not memory_id:
         return None, SUMMARY_NO_MEMORY
     ref = view.get_version(memory_id)
@@ -68,9 +70,24 @@ class SeriesStatus:
     source_story_id: str | None = None
     source_number: int | None = None
     changed_cards: list = field(default_factory=list)
+    prequel: bool = False  # a negative «Початок»: in 4a it still continues the previous book by release
+
+
+def is_prequel(start) -> bool:
+    """Whether a «Початок» lies before its anchor: a relative time mark below zero."""
+    from ..memory.story_time import _relative
+    moment = _relative(start.offset) if start else None
+    return bool(moment and moment.key < (0, 0, 0))
 
 
 def series_status(repo, story) -> SeriesStatus | None:
+    status = _snapshot_status(repo, story)
+    if status is not None:
+        status = replace(status, prequel=is_prequel(story.series_start))
+    return status
+
+
+def _snapshot_status(repo, story) -> SeriesStatus | None:
     from ..characters.models import load_characters
     from ..memory.series_start import read_series_start
     if not story.series_id:
@@ -92,3 +109,20 @@ def series_status(repo, story) -> SeriesStatus | None:
     same = (snapshot.get('source_story_id') == source.id and snapshot.get('source_summary_version_id') == summary
             and snapshot.get('source_characters_version_id') == source.characters_version_id)
     return SeriesStatus('fresh' if same and not changed else 'source_changed', source.id, source.series_number, changed)
+
+
+def chronology(books) -> tuple[list[str], list[str]]:
+    """The series axis by `Початок`: books whose start shares the most common anchor (ties: the smaller anchor), ordered
+    by offset and then number; every other book (no start, another anchor, an offset that is not a time mark) is
+    outside the axis. Returns (placed ids, outside ids in release order)."""
+    from collections import Counter
+    from ..memory.story_time import _relative
+    keyed = {}
+    for item in books:
+        moment = _relative(item.series_start.offset) if item.series_start else None
+        if moment is not None:
+            keyed[item.id] = (item.series_start.anchor, moment.key, item.series_number or 0)
+    anchors = Counter(anchor for anchor, _, _ in keyed.values())
+    anchor = max(anchors, key=lambda a: (anchors[a], -a)) if anchors else None
+    placed = sorted((id for id, (a, _, _) in keyed.items() if a == anchor), key=lambda id: keyed[id][1:])
+    return placed, [item.id for item in books if item.id not in placed]

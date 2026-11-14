@@ -83,8 +83,11 @@ def _plan(repo,view,story,text,version,item,publication):
         from ..plan_sections import split_book_plan
         preamble,book,publication.structured=split_book_plan(text,default)
         sections=[item.section for item in book];places={id(item.section):item for item in book}
+        # SERIES: the preamble lines were applied before the batch (enter_series_from_plan); here they are only cut.
+        from ..plan_sections import cut_series_lines
+        kept=cut_series_lines(preamble)[0];series_cut=kept!=preamble;preamble=kept
     else:
-        preamble,sections=split_plan(text,default);places={}
+        preamble,sections=split_plan(text,default);places={};series_cut=False
     existing=view.list_scenes(story.id)
     numbers={s.author_scene_number for s in existing if s.author_scene_number is not None}
     accepted=[]
@@ -120,7 +123,7 @@ def _plan(repo,view,story,text,version,item,publication):
         active=repo.save_version(story.id,None,'source_plan',combined,[previous.id,version.id])
         publication.active_plan_version_id=active.id
     # A structured plan is never kept as is: its part headings and arc lines must not reach the source plan.
-    elif len(accepted)==len(sections) and not publication.structured and not cut:publication.active_plan_version_id=version.id
+    elif len(accepted)==len(sections) and not publication.structured and not cut and not series_cut:publication.active_plan_version_id=version.id
     else:
         active=repo.save_version(story.id,None,'source_plan',preamble+''.join(texts),[version.id])
         publication.active_plan_version_id=active.id
@@ -128,6 +131,19 @@ def _plan(repo,view,story,text,version,item,publication):
         item.warnings.append('Сцени без номера завжди додаються як нові, зокрема при повторному імпорті. Перегляньте поділ плану.')
     if item.skipped_scene_numbers:item.warnings.append('Пропущено номери сцен: '+', '.join(map(str,item.skipped_scene_numbers))+'. Наявні плани не змінено.')
     return proposals
+
+
+def _enter_series(repo,story_id,prepared):
+    """SERIES: the series lines of the first plan of the batch put the book into its series before any file is imported,
+    so the start snapshot comes before a card file of the same batch. Returns {file index: warnings}."""
+    from .. import build_edition
+    if not build_edition.current().long_prose:return {}
+    index=next((i for i,(file,_) in enumerate(prepared) if file.kind=='source_plan'),None)
+    if index is None:return {}
+    from ..plan_sections import cut_series_lines, split_book_plan
+    from ..storage.series import enter_series_from_plan
+    _,lines,invalid=cut_series_lines(split_book_plan(prepared[index][1])[0])
+    return {index:enter_series_from_plan(repo,story_id,lines,invalid)}
 
 
 def import_sources(repo: Repository,story_id: str,files: list[SourceFile]) -> ImportResult:
@@ -142,6 +158,7 @@ def import_sources(repo: Repository,story_id: str,files: list[SourceFile]) -> Im
         prepared.append((file,text))
     result=ImportResult(files=[ImportFileResult(client_index=i,name=f.name,kind=f.kind) for i,f in enumerate(files)])
     created=[];pending=[]
+    series_notes=_enter_series(repo,story_id,prepared)
     for index,(file,text) in enumerate(prepared):
         item=result.files[index]
         try:
@@ -167,6 +184,7 @@ def import_sources(repo: Repository,story_id: str,files: list[SourceFile]) -> Im
                 raise (ImportBatchConflict(result) if isinstance(error,RevisionConflict) else ImportBatchFailure(result)) from error
             break
         item.status='imported';item.source_id=id;item.version_id=version.id;item.created_scene_ids=published.created_scene_ids
+        item.warnings.extend(series_notes.get(index,[]))
         item.warnings.extend(published.warnings)
         if published.pending_protagonists:pending.append((item,published.pending_protagonists))
         result.sources.append(metadata);result.version_ids.append(version.id)

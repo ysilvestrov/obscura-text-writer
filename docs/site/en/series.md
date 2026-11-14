@@ -1,0 +1,89 @@
+# Book series
+
+A series joins several books. The next book starts where the previous one ended: the heroes’ memory and the character cards pass into it as a **snapshot**. It is a copy taken at one moment, not a live link: after that the book lives its own life.
+
+Series are available in the paid build of Obscura and when running from source, like [parts and arcs](book-structure.md). The Microsoft Store build does not have them: see [below](#in-a-build-without-series).
+
+## Adding a book to a series
+
+Books of a series stay ordinary stories in the story list. There are three ways to add a book to a series.
+
+**Outline preamble.** When you [import an outline](imports.md), lines before the first scene set the series:
+
+```text
+Series: Sea saga
+Number: 2
+Start: Year 2 after the first book, anchor 1
+
+## Scene 1: Return
+The captain returns to the harbour.
+```
+
+- `Series:` — the series title. If there is no such series, Obscura creates it and tells you so.
+- `Number:` — the book’s number in the series by release.
+- `Start:` — an optional line for the chronology axis (see [below](#chronology)).
+- These lines do not go into the outline.
+- If the number is already taken by another book of the series or the lines are not recognised, the outline is imported without the series, and Obscura explains why.
+
+**Book settings.** On the story settings page, in the writing section, the **Series** panel has the fields “Series” (an existing series or “New series…”), “Number in the series” and “Start”. To leave the series, choose “— no series —”.
+
+**The “New book in the series” button.** On the series screen it creates a book with the next free number and opens it.
+
+## Series screen
+
+The **Series** link is on the library page. On the series screen:
+
+- on the left — the books by release: number, title, snapshot state, the “Open” button;
+- on the right — the same books on the chronology axis, with the books off the axis below it;
+- at the top — renaming the series, “New book in the series” and “Delete series”.
+
+Only a series without books can be deleted, including books in the trash. A book in the trash stays in the series, keeps its number and is shown marked “in the trash”.
+
+Under the title of a series book in the workspace you see the series title and number. The link leads to the series screen.
+
+## Snapshot of the previous book
+
+The snapshot is taken by itself when a book enters a series with number 2 or higher and the previous book is already **finished**: its last scene has current memory (or the book-end merge of the arcs is usable).
+
+- **Memory.** The first scenes of the book continue the memory of the end of the previous book. On the memory panel these entries are marked “Previous book of the series”.
+- **Cards.** The book gets a copy of the previous book’s character cards with the same heroes. If the book already has a card with the same name that is a different character, the snapshot is not taken by itself: the book shows a warning, and “Update from the previous book” takes the snapshot without such cards and names them.
+- The previous book is the nearest book of the series with a smaller number that is not in the trash.
+
+If the previous book is not finished yet, there is no snapshot, and the book shows “the previous book has no summary yet”.
+
+## Warnings and updates
+
+Finishing or editing the previous book **does not change** the next one by itself. The book and the series screen only show a warning:
+
+- “⚠ book N has changed” — the memory of the end of the previous book, its cards or the previous book itself changed after the snapshot;
+- “the previous book is finished — possible inconsistency” — the book started without a snapshot, and the previous book is now finished.
+
+Next to it is the **Update from the previous book** button. Before acting, Obscura warns you:
+
+- the memory, briefs and drafts of this book’s first scenes will become stale;
+- new cards of the previous book are added;
+- cards changed in the previous book are not overwritten: Obscura lists them, and you carry the edits over.
+
+## Chronology
+
+The `Start` line places the book on the chronology axis. It holds a time mark without the hour (year, month, day with a sign), followed by the number of the anchor book:
+
+- `Year 0, anchor 1` — the same point as book 1;
+- `Year 2, Day 5, anchor 1` — two years and five days after it;
+- `Year -10, anchor 1` — ten years before it.
+
+Books with one anchor go onto the axis. Books without `Start` or with another anchor are shown off the axis.
+
+`Start` only orders the books on the screen. A book with a negative offset (a prequel) for now continues the memory of the previous book by release, like an ordinary one, and is marked “Prequel”. Separate memory for prequels will come later.
+
+## Export
+
+If the series fields of the [publication card](publication.md) are empty, the EPUB gets the series title and the book number as the series and the position in it.
+
+## Chat clients
+
+Through [MCP](mcp.md) a chat sees the series, the number, `Start` and the snapshot state in `get_story`. A chat can add a book to a series with an outline preamble in `import_plan_and_characters`. Other series actions are available only in the app.
+
+## In a build without series
+
+The Microsoft Store build has no series screen, and series changes are unavailable. A series book created in another build can be opened for reading and export.

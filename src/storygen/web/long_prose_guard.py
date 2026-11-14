@@ -96,8 +96,10 @@ async def blocked(app, request) -> str | None:
     target = _target(route.path, params, body)
     if not target:
         return None
-    from ..book.guard import READ_ONLY
+    from ..book.guard import READ_ONLY, READ_ONLY_SERIES
     from ..book.structure import structure_kind
     from ..storage.book_structure import structured_story
     found = structured_story(app.state.repo, **target)
+    if found and found[0].series_id:
+        return READ_ONLY_SERIES
     return READ_ONLY if found and structure_kind(*found) == 'structured' else None

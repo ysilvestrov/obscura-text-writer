@@ -236,6 +236,27 @@ def take_snapshot_if_ready(repo, story_id: str) -> Story:
         return repo.get_story(story_id)
 
 
+SERIES_LINES_INVALID = 'Рядки «Серія:», «Номер:» і «Початок:» не розпізнано; книгу не додано до серії.'
+
+
+def enter_series_from_plan(repo, story_id: str, lines, invalid: bool) -> list[str]:
+    """The plan preamble: find the series by title (or create it) and put the book in with its number and start. A
+    taken number or unparsed lines give a warning and leave the book's series fields as they are."""
+    if invalid:
+        return [SERIES_LINES_INVALID]
+    if lines is None:
+        return []
+    item = find_series(repo, lines.title)
+    if item and any(b.series_number == lines.number and b.id != story_id for b in series_books(repo, item.id)):
+        return [SERIES_NUMBER_TAKEN.format(number=lines.number) + '; книгу не додано до серії.']
+    try:
+        item = item or create_series(repo, lines.title)
+        set_story_series(repo, story_id, item.id, lines.number, lines.start, repo.get_story(story_id).revision)
+    except ValueError as error:
+        return [str(error)]
+    return []
+
+
 def create_book(repo, series_id: str, title: str) -> Story:
     """«Нова книга серії»: a new story with the next free number; the snapshot follows when the source has a summary."""
     from ..domain import StoryCreate

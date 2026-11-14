@@ -5694,6 +5694,124 @@
         "procedure": "docs/verification/manual.md#flashback-browser",
         "reason": "check_docs.py індексує лише pytest; Playwright cases tests/web/browser/flashback.spec.mjs виконуються окремим runner, цей зв’язок не є доказом виконання."
       }
+    },
+    {
+      "id": "SERIES-S01",
+      "requirement": "SERIES-001",
+      "scope": "Створення, перейменування й видалення серії з CAS; унікальні назва й номер (зокрема в кошику); серія й номер разом; HTTP і кнопка «Нова книга серії»; Store відхиляє записи; міграція 5→6; цілісність полів серії. Імпорт преамбули — план обв’язки.",
+      "tests": [
+        "tests/series/test_series_entity.py::test_create_rename_delete_with_cas",
+        "tests/series/test_series_entity.py::test_delete_refuses_a_series_with_a_trashed_book",
+        "tests/series/test_series_entity.py::test_number_unique_including_trash",
+        "tests/series/test_series_entity.py::test_series_and_number_go_together",
+        "tests/series/test_series_entity.py::test_story_json_without_series_keys_reads_as_before",
+        "tests/series/test_series_entity.py::test_series_over_http",
+        "tests/series/test_series_entity.py::test_store_edition_refuses_series_edits",
+        "tests/series/test_series_entity.py::test_migration_from_5_creates_the_table",
+        "tests/series/test_series_entity.py::test_integrity_checks_series_references",
+        "tests/series/test_series_snapshot.py::test_new_book_button_takes_the_snapshot",
+        "tests/series/test_series_entity.py::test_integrity_checks_the_start_snapshot_reference"
+      ]
+    },
+    {
+      "id": "SERIES-S02",
+      "requirement": "SERIES-001",
+      "scope": "Журнал знімка з маркером, цитатами й ID; позиція 0 у журналах і цілісності; стан героя в запиті письменника першої сцени; етап пам’яті першої сцени продовжує знімок; префікс другої сцени; номер сцени 0 у відборі; джерело знімка й підсумок (недописана книга, книга з арками без злиття). Злиття пам’яті книги серії з арками, перевірка впливу й статистика пам’яті приймають знімок.",
+      "tests": [
+        "tests/series/test_series_journal.py::test_inherited_journal_keeps_kinds_quotes_and_ids",
+        "tests/series/test_series_journal.py::test_inherited_quotes_are_in_the_text",
+        "tests/series/test_series_journal.py::test_scene_journal_extends_series_start",
+        "tests/series/test_series_journal.py::test_integrity_accepts_series_start_only_at_position_0",
+        "tests/series/test_series_journal.py::test_source_number_is_zero_for_series_start",
+        "tests/series/test_series_journal.py::test_payload_keeps_the_marker",
+        "tests/series/test_series_memory.py::test_writer_of_the_first_scene_sees_the_hero_state_of_book_1",
+        "tests/series/test_series_memory.py::test_memory_stage_of_the_first_scene_extends_series_start",
+        "tests/series/test_series_memory.py::test_second_scene_passes_the_prefix_check",
+        "tests/series/test_series_memory.py::test_snapshot_is_source_number_zero",
+        "tests/series/test_series_memory.py::test_timeline_of_book_1_leaves_the_window_after_20_scenes",
+        "tests/series/test_series_memory.py::test_hero_state_of_book_1_is_recent_in_the_first_scenes",
+        "tests/series/test_series_memory.py::test_memory_tab_names_the_previous_book_as_scene_0",
+        "tests/series/test_series_snapshot.py::test_source_is_nearest_previous_not_in_trash",
+        "tests/series/test_series_snapshot.py::test_no_snapshot_without_a_summary_and_no_skip",
+        "tests/series/test_series_snapshot.py::test_unfinished_book_has_no_summary",
+        "tests/series/test_series_snapshot.py::test_book_with_arcs_ending_in_two_arcs_needs_the_book_end_merge",
+        "tests/series/test_series_memory.py::test_series_book_with_arcs_merges_memory_over_the_snapshot",
+        "tests/series/test_series_memory.py::test_impact_capture_and_statistics_accept_the_snapshot"
+      ]
+    },
+    {
+      "id": "SERIES-S03",
+      "requirement": "SERIES-001",
+      "scope": "Копія карток з тими самими ID, «відома завжди», цитати в новій source_characters книги, цілісність; відмова за однойменної картки з іншим ID. Імпорт файлу карток після знімка — план обв’язки.",
+      "tests": [
+        "tests/series/test_series_snapshot.py::test_entering_the_series_takes_the_snapshot",
+        "tests/series/test_series_snapshot.py::test_card_name_clash_refuses"
+      ]
+    },
+    {
+      "id": "SERIES-S04",
+      "requirement": "SERIES-001",
+      "scope": "Стан під час читання (first/no_summary/source_finished/source_changed/fresh, змінені картки без власних правок); дописання джерела без знімка й застарілості; оновлення з підтвердженням, перший знімок, нові картки без однойменних; застарілість першої сцени після оновлення, виходу чи появи знімка; author_text.",
+      "tests": [
+        "tests/series/test_series_refresh.py::test_first_book_and_fresh_status",
+        "tests/series/test_series_refresh.py::test_new_memory_of_book_1_warns_without_staling_book_2",
+        "tests/series/test_series_refresh.py::test_card_change_in_source_is_listed_but_own_edits_are_not",
+        "tests/series/test_series_refresh.py::test_source_finished_later_warns_and_refresh_takes_the_first_snapshot",
+        "tests/series/test_series_refresh.py::test_trashed_or_renumbered_source_warns",
+        "tests/series/test_series_refresh.py::test_refresh_adds_new_cards_and_skips_same_name",
+        "tests/series/test_series_refresh.py::test_refresh_stales_scene_1_memory",
+        "tests/series/test_series_refresh.py::test_refresh_endpoint_requires_confirmation_and_story_view_has_series",
+        "tests/series/test_series_snapshot.py::test_finishing_the_source_later_takes_no_snapshot",
+        "tests/series/test_series_memory.py::test_retake_or_leaving_stales_brief_and_memory_of_scene_1",
+        "tests/series/test_series_memory.py::test_old_snapshot_without_the_selector_stales_after_a_snapshot_appears",
+        "tests/series/test_series_memory.py::test_author_text_of_a_first_scene_depends_on_the_snapshot"
+      ]
+    },
+    {
+      "id": "SERIES-S05",
+      "requirement": "SERIES-001",
+      "scope": "Книга поза серією: без селектора series_start і версії series_start у вхідних даних, старі знімки актуальні (мутація «селектор завжди» ламає тест).",
+      "tests": [
+        "tests/series/test_series_invariance.py::test_book_outside_series_is_unchanged",
+        "tests/series/test_series_memory.py::test_book_outside_series_writes_no_series_selector"
+      ]
+    },
+    {
+      "id": "SERIES-S06",
+      "requirement": "SERIES-001",
+      "scope": "Преамбула плану ставить серію до імпорту карток, попередження за зайнятого номера й нерозбірних рядків; Store відкриває книгу серії лише для читання; MCP get_story показує серію; EPUB бере цикл із серії лише за порожніх полів.",
+      "tests": [
+        "tests/series/test_series_import.py::test_series_lines_are_cut_and_parsed",
+        "tests/series/test_series_import.py::test_preamble_puts_the_book_into_a_new_series",
+        "tests/series/test_series_import.py::test_preamble_with_existing_series_takes_the_snapshot_before_cards",
+        "tests/series/test_series_import.py::test_taken_number_warns_and_imports_the_plan",
+        "tests/series/test_series_import.py::test_unparsed_lines_warn",
+        "tests/series/test_series_import.py::test_own_number_is_not_taken",
+        "tests/series/test_series_import.py::test_store_edition_leaves_lines_in_the_plan",
+        "tests/series/test_series_edition.py::test_store_opens_a_series_book_read_only",
+        "tests/series/test_series_edition.py::test_full_edition_edits_a_series_book",
+        "tests/series/test_series_edition.py::test_mcp_get_story_reports_the_series",
+        "tests/series/test_series_export.py::test_epub_takes_the_series_when_cycle_is_empty",
+        "tests/series/test_series_export.py::test_card_cycle_wins_over_the_series",
+        "tests/series/test_series_export.py::test_book_outside_series_keeps_an_empty_cycle"
+      ]
+    },
+    {
+      "id": "SERIES-S07",
+      "requirement": "SERIES-001",
+      "scope": "Екран серії: книги за виходом зі станом, вісь хронології й книги поза віссю, позначка приквела, розбір Початку, сторінки лише з довгою прозою. Браузерна частина — Playwright tests/web/browser/series.spec.mjs (окремий runner, зв’язок не є доказом виконання).",
+      "tests": [
+        "tests/series/test_series_screen.py::test_chronology_places_books_of_one_anchor_and_leaves_the_rest_outside",
+        "tests/series/test_series_screen.py::test_series_api_lists_books_with_status_and_trash",
+        "tests/series/test_series_screen.py::test_start_text_is_parsed_or_refused",
+        "tests/series/test_series_screen.py::test_series_pages",
+        "tests/series/test_series_screen.py::test_series_pages_absent_in_store",
+        "tests/series/test_series_screen.py::test_a_book_with_a_negative_start_is_marked_as_a_prequel"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#series-browser",
+        "reason": "check_docs.py індексує лише pytest; Playwright cases tests/web/browser/series.spec.mjs виконуються окремим runner, цей зв’язок не є доказом виконання."
+      }
     }
   ]
 }

@@ -24,8 +24,8 @@
     "en": "fabef01c2253d7021b2d144135232b450890815005241073aafbf7cbfbf2c85f"
   },
   "imports": {
-    "uk": "8f5cddde51af1f0e50ba667ba321be0958e60be8b7305d0bd692993a0495c875",
-    "en": "7ef78623f4cdac56cce0d65c5c1c01bc7ee04e4bf1f362160d7a3151ee2c8721"
+    "uk": "71de5e2badc52f84160ede21d7683d90a94d8857f9c910a35e636ae6f3166f22",
+    "en": "a5a40f2034e3ed91a1bf66c6fcc30b9001ba05f2cb5cab5ca6c2aca08958a9d8"
   },
   "index": {
     "uk": "45f8436b2cef3359a7105b126e6b3c80eb8de653658d1e777c03de1b7d044ec8",
@@ -58,6 +58,10 @@
   "revision": {
     "uk": "4ddd20c225e0afdd49aa1f0c182dacacf8fe2b7ba568dd4aa9219e15dad48630",
     "en": "2d1c373f582297ce69cbdfadb0b70dbc1f7baefab795192a889b3fd9238d6a6d"
+  },
+  "series": {
+    "uk": "957e0dfb0329f8d68736071f686c22cecfc223c91f6b67494a5e5fe36dcf21b5",
+    "en": "ff0174a11bb6de0de8cbfb75ebc935df37f95a0af5d52a6b998ae8b25939e208"
   },
   "story-language": {
     "uk": "c6ce11707a4995eacdeb284ed95caec4c91e2d914911a98e231fea305f821a7a",

@@ -1,0 +1,10 @@
+{% extends "base.html" %}{% block title %}{{ t('series.title') }} — Obscura{% endblock %}{% block content %}
+<main class="library series-page" data-series-id="{{ series_id or '' }}"><a href="{{ '/series' if series_id else '/' }}" class="muted"><span data-i18n="{{ 'series.back' if series_id else 'series.back_library' }}">{{ t('series.back' if series_id else 'series.back_library') }}</span></a>
+{% if series_id %}<div class="series-head"><h1 id="series-title"></h1><form id="series-rename" class="series-rename"><label><span data-i18n="series.rename">{{ t('series.rename') }}</span><input name="title" maxlength="300" required></label><button><span data-i18n="ui.save">{{ t('ui.save') }}</span></button></form><div class="actions"><button type="button" id="series-new-book"><span data-i18n="series.new_book">{{ t('series.new_book') }}</span></button><button type="button" id="series-delete" class="secondary"><span data-i18n="series.delete">{{ t('series.delete') }}</span></button></div></div>
+<div class="series-columns"><section aria-labelledby="series-release-title"><h2 id="series-release-title"><span data-i18n="series.release_order">{{ t('series.release_order') }}</span></h2><div id="series-books" class="series-books"></div></section>
+<section aria-labelledby="series-axis-title"><h2 id="series-axis-title"><span data-i18n="series.chronology">{{ t('series.chronology') }}</span></h2><ol id="series-axis" class="series-axis"></ol><h3><span data-i18n="series.outside">{{ t('series.outside') }}</span></h3><ul id="series-outside" class="series-outside"></ul></section></div>
+{% else %}<h1><span data-i18n="series.title">{{ t('series.title') }}</span></h1><p class="muted"><span data-i18n="series.intro">{{ t('series.intro') }}</span></p>
+<form id="series-create" class="new-story"><label><span data-i18n="series.name">{{ t('series.name') }}</span><input name="title" maxlength="300" required></label><button><span data-i18n="series.create">{{ t('series.create') }}</span></button></form>
+<section id="series-list" class="cards"></section>{% endif %}</main>
+{% endblock %}
+{% block scripts %}<script type="module" src="/static/series-page.js"></script>{% endblock %}
