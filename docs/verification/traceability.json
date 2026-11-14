@@ -5868,6 +5868,21 @@
         "tests/series/test_series_invariance.py::test_sequential_series_is_unchanged",
         "tests/series/test_series_future.py::test_mcp_fingerprint_without_a_future_is_as_before"
       ]
+    },
+    {
+      "id": "SERIES-S11",
+      "requirement": "SERIES-001",
+      "scope": "Джерела в статусі книги після приквела, prequel і resolved_count у MCP get_story, поле future контексту письма приквела, розмітка перегляду фактів у налаштуваннях; діалог фактів і екран серії — Playwright за ручною процедурою.",
+      "tests": [
+        "tests/series/test_series_prequel_harness.py::test_status_lists_the_sources_of_a_book_after_prequel",
+        "tests/series/test_series_prequel_harness.py::test_get_story_shows_prequel_and_review_state",
+        "tests/series/test_series_prequel_harness.py::test_scene_context_of_a_prequel_has_future",
+        "tests/series/test_series_prequel_harness.py::test_settings_page_has_the_facts_review"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#series-browser",
+        "reason": "Діалог фактів і блок джерел на екрані серії перевіряє Playwright (series.spec.mjs), який не входить у pytest."
+      }
     }
   ]
 }

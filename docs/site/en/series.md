@@ -80,7 +80,9 @@ A prequel is a book that stands on the axis earlier than some book with a smalle
 
 A prequel does not get the memory of earlier books as events that have already happened: its characters have not yet lived through what will happen to them later. These records go to the writer's requests as a separate section, “The future you must not contradict”, so the prequel's text does not contradict later books. A prequel snapshot taken before this version keeps the earlier memory as the past and shows the warning “review the facts of later books”.
 
-A book after a prequel starts from the memory of the main book — the nearest earlier book that is not a prequel — and of the prequels between them. If a prequel changed something the main book has (a character's clothes, say), the main book's value is kept; between two prequels, the one later in the chronology wins. A new prequel between the source book and the book gives a warning, and “Update from the previous book” takes it into the snapshot.
+You decide which facts of later books have already happened before the prequel. In the prequel's settings, on the series panel, press “Review the facts of later books”. The records are grouped by kind (facts, character states, open threads, timeline), each with the book it comes from. Mark a record “Past” if it has already happened: it then becomes the prequel's memory. “Future” keeps it in the section that must not be contradicted. “Save marks” asks for confirmation, because the memory and briefs of the prequel's first scenes become stale.
+
+A book after a prequel starts from the memory of the main book — the nearest earlier book that is not a prequel — and of the prequels between them. If a prequel changed something the main book has (a character's clothes, say), the main book's value is kept; between two prequels, the one later in the chronology wins. A new prequel between the source book and the book gives a warning, and “Update from the previous book” takes it into the snapshot. On the series screen such a book has a “Sources: …” line and a collapsed “Conflicts settled automatically” block: which prequel values were dropped and whose book's value stayed.
 
 ## Export
 
@@ -88,7 +90,7 @@ If the series fields of the [publication card](publication.md) are empty, the EP
 
 ## Chat clients
 
-Through [MCP](mcp.md) a chat sees the series, the number, `Start` and the snapshot state in `get_story`. A chat can add a book to a series with an outline preamble in `import_plan_and_characters`. Other series actions are available only in the app.
+Through [MCP](mcp.md) a chat sees the series, the number, `Start`, the snapshot state, whether the book is a prequel and how many conflicts were settled automatically in `get_story`; a prequel scene's context has a `future` field. A chat can add a book to a series with an outline preamble in `import_plan_and_characters`. Other series actions are available only in the app.
 
 ## In a build without series
 
