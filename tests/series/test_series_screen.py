@@ -95,12 +95,12 @@ def test_series_pages_absent_in_store(tmp_path, store_edition):
 
 
 def test_a_book_with_a_negative_start_is_marked_as_a_prequel(tmp_path):
-    # SERIES-S07: a prequel continues the previous book by release in 4a and carries a warning that prequels come in 4b.
+    # SERIES-S07/S08: a prequel is earlier on the axis than a book with a smaller number; a book off the axis is not one.
     client, repo = client_for(tmp_path)
     item = store.create_series(repo, 'Сага')
-    book(repo, item, 'Перша', 1, SeriesStart(offset='Рік 0', anchor=1))
+    book(repo, item, 'Перша', 1)
     book(repo, item, 'Передісторія', 2, SeriesStart(offset='Рік -10, День 3', anchor=1))
     book(repo, item, 'Пізніше', 3, SeriesStart(offset='Рік 2', anchor=1))
-    book(repo, item, 'Без початку', 4)
+    book(repo, item, 'Поза віссю', 4, SeriesStart(offset='Рік -5', anchor=9))
     data = client.get(f'/api/series/{item.id}').json()
     assert [b['status']['prequel'] for b in data['books']] == [False, True, False, False]

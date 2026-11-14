@@ -70,20 +70,48 @@ class SeriesStatus:
     source_story_id: str | None = None
     source_number: int | None = None
     changed_cards: list = field(default_factory=list)
-    prequel: bool = False  # a negative «Початок»: in 4a it still continues the previous book by release
+    prequel: bool = False  # earlier on the axis than a book with a smaller number (SERIES-001, 4b)
 
 
-def is_prequel(start) -> bool:
-    """Whether a «Початок» lies before its anchor: a relative time mark below zero."""
-    from ..memory.story_time import _relative
-    moment = _relative(start.offset) if start else None
-    return bool(moment and moment.key < (0, 0, 0))
+def _series_books(stories, story):
+    return [s for s in stories if s.series_id == story.series_id and s.series_number]
+
+
+def prequel_ids(books) -> set[str]:
+    """Books not in the trash on the chronology axis whose moment is earlier than the moment of some book not in the
+    trash with a smaller number. A book off the axis is not a prequel."""
+    live = [b for b in books if not b.trashed_at]
+    moments = chronology_moments(live)
+    by_id = {b.id: b for b in live}
+    return {id for id, moment in moments.items()
+            if any(other != id and by_id[other].series_number < by_id[id].series_number and moments[other] > moment
+                   for other in moments)}
+
+
+def is_prequel(books, story) -> bool:
+    return story.id in prequel_ids(books)
+
+
+def start_sources(stories, story) -> list:
+    """The sources of a book's start memory: the main book (the nearest earlier book not in the trash that is not a
+    prequel) and the prequels not in the trash between it and the book, by number; [] outside a series or for the first
+    book. Without a main book, every earlier prequel."""
+    if not story.series_id or not story.series_number:
+        return []
+    books = _series_books(stories, story)
+    prequels = prequel_ids(books)
+    earlier = sorted((b for b in books if not b.trashed_at and b.id != story.id and b.series_number < story.series_number),
+                     key=lambda b: b.series_number)
+    main = next((b for b in reversed(earlier) if b.id not in prequels), None)
+    floor = main.series_number if main else 0
+    return ([main] if main else []) + [b for b in earlier if b.id in prequels and b.series_number > floor]
 
 
 def series_status(repo, story) -> SeriesStatus | None:
     status = _snapshot_status(repo, story)
     if status is not None:
-        status = replace(status, prequel=is_prequel(story.series_start))
+        stories = repo.list_stories(include_trashed=True)
+        status = replace(status, prequel=is_prequel(_series_books(stories, story), story))
     return status
 
 
@@ -112,10 +140,18 @@ def _snapshot_status(repo, story) -> SeriesStatus | None:
 
 
 def chronology(books) -> tuple[list[str], list[str]]:
-    """The series axis by `Початок` (SERIES-001): the first book without a start (by number) is the origin; a start is a
-    time mark counted from its anchor, which must be an earlier book of the series already on the axis, so there are no
-    cycles. Every other book (a second book without start, a later, missing or off-axis anchor, an offset that is not a
-    time mark) is outside. Returns (placed ids by moment and number, outside ids in release order)."""
+    """The series axis by `Початок` (SERIES-001): (placed ids by moment and number, outside ids in release order)."""
+    ordered = sorted(books, key=lambda item: item.series_number or 0)
+    moments = chronology_moments(books)
+    placed = sorted(moments, key=lambda id: (moments[id], next(b.series_number for b in ordered if b.id == id)))
+    return placed, [item.id for item in ordered if item.id not in placed]
+
+
+def chronology_moments(books) -> dict[str, tuple[int, int, int]]:
+    """Moments of the books on the axis: the first book without a start (by number) is the origin; a start is a time mark
+    counted from its anchor, which must be an earlier book of the series already on the axis, so there are no cycles.
+    Every other book (a second book without start, a later, missing or off-axis anchor, an offset that is not a time
+    mark) is off the axis."""
     from ..memory.story_time import _relative
     ordered = sorted(books, key=lambda item: item.series_number or 0)
     origin = next((item for item in ordered if not item.series_start), None)
@@ -130,6 +166,4 @@ def chronology(books) -> tuple[list[str], list[str]]:
             if moment is None or base is None or item.series_start.anchor >= (item.series_number or 0):
                 continue
             moments[item.series_number] = tuple(a + b for a, b in zip(base, moment.key))
-    placed = [item.id for item in sorted((item for item in ordered if item.series_number in moments),
-                                         key=lambda item: (moments[item.series_number], item.series_number))]
-    return placed, [item.id for item in ordered if item.id not in placed]
+    return {item.id: moments[item.series_number] for item in ordered if item.series_number in moments}
