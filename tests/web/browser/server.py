@@ -174,6 +174,28 @@ def main():
         def new_fixture():
             return make_fixture()
 
+        @app.post('/test-series-prequel')
+        def series_prequel_fixture():
+            # SERIES-S11: a series with a finished book 1 and a fresh prequel 2 (every record future); a second series with
+            # book 1, a finished prequel 2 (records past, Anna's clothing changed) and book 3 after it (neutral text).
+            import uuid
+            from storygen.storage import series as store
+            from tests.series.helpers import book, finished_book, into_series
+            from tests.series.test_series_prequel_merge import enter, write_prequel
+            tag = uuid.uuid4().hex[:6]
+            item = store.create_series(repo, f'Сага приквела {tag}')
+            first, _, cloth = finished_book(repo)
+            into_series(repo, first, item.id, 1)
+            prequel, _ = book(repo, 'Приквел', cast=['A'])
+            prequel = enter(repo, prequel, item, 2, ('Рік -10', 1))
+            other = store.create_series(repo, f'Сага джерел {tag}')
+            book1, _, cloth = finished_book(repo, 'Перша книга')
+            into_series(repo, book1, other.id, 1)
+            write_prequel(repo, other, 2, ('Рік -10', 1), cloth)
+            third, _ = book(repo, 'Третя книга', cast=['A'])
+            enter(repo, third, other, 3, ('Рік 2', 1))
+            return {'series_id': item.id, 'prequel_id': prequel.id, 'sources_series_id': other.id, 'third_id': third.id}
+
         @app.post('/test-brief-proposal')
         def brief_proposal():
             import json,threading

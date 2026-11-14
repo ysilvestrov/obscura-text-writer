@@ -24,6 +24,8 @@ async function load(){
   const status=form.querySelector('[data-series-status]');uiText(status,'textContent',()=>series?statusText(series.status):'');
   const refresh=form.querySelector('[data-series-refresh]');
   refresh.hidden=!series||!['source_changed','source_finished'].includes(series.status.state);
+  // SERIES-S11: a prequel with a snapshot reviews the facts of later books (series-facts.js).
+  form.querySelector('[data-series-facts]').hidden=!series?.status?.prequel||!['fresh','prequel_review'].includes(series.status.state);
   const link=form.querySelector('[data-series-link]');link.hidden=!series;if(series)link.href=`/series/${series.id}`;
 }
 
@@ -43,6 +45,7 @@ function install(){
     await load().catch(error=>notice(error.message,'error'));
   };
   form.querySelector('[data-series-refresh]').onclick=async()=>{if(await refreshBook(storyId))await load()};
+  document.addEventListener('series-changed',()=>load().catch(error=>notice(error.message,'error')));
   load().catch(error=>notice(error.message,'error'));
 }
 

@@ -35,3 +35,10 @@ def test_scene_context_of_a_prequel_has_future(tmp_path):
     with client_for(tmp_path) as client:
         context = client.get(f'/api/scenes/{scene.id}/writing-context').json()
     assert '- Анна: Халат' in context['future']
+
+
+def test_settings_page_has_the_facts_review(tmp_path):
+    repo, item, first, scenes, prequel, scene = prequel_setup(tmp_path)
+    with client_for(tmp_path) as client:
+        html = client.get(f'/stories/{prequel.id}/settings').text
+    assert 'data-series-facts' in html and 'id="series-facts-dialog"' in html and '/static/series-facts.js' in html

@@ -60,3 +60,26 @@ test('the book settings put a book into a series',async({page,request})=>{
   expect([series.title,series.number,series.start.offset]).toEqual([name('Сага налаштувань'),1,'Рік 0']);
   await expect(form.locator('[data-series-status]')).toContainText('перша книга серії');
 });
+
+test('a prequel reviews the facts of later books and saves the marks',async({page,request})=>{
+  const {prequel_id}=await(await request.post('/test-series-prequel')).json();
+  await page.goto(`/stories/${prequel_id}/settings`);
+  if(test.info().project.name==='mobile')await page.locator('#settings-section-mobile').selectOption('writing');
+  else await page.locator('[data-settings-nav="writing"]').click();
+  const form=page.locator('#story-series-form');
+  await expect(form.locator('[data-series-status]')).toContainText('Приквел');
+  await form.getByRole('button',{name:'Переглянути факти пізніших книг'}).click();
+  const dialog=page.locator('#series-facts-dialog');
+  await expect(dialog.locator('.series-fact')).toHaveCount(2);
+  const clothes=dialog.locator('.series-fact',{hasText:'Халат'});
+  await expect(clothes).toContainText('Книга 1');
+  await expect(clothes.getByLabel('Майбутнє')).toBeChecked();
+  await expect(dialog.getByRole('button',{name:'Зберегти позначки'})).toBeDisabled();
+  await clothes.getByLabel('Минуле').check();
+  await expect(dialog.locator('[data-facts-changed]')).toHaveText('Змінено: 1');
+  await dialog.getByRole('button',{name:'Зберегти позначки'}).click();
+  await page.locator('dialog.app-dialog').getByRole('button',{name:'Зберегти позначки'}).click();
+  await expect(page.locator('#notice')).toContainText('Позначки збережено');
+  const facts=(await(await request.get(`/api/stories/${prequel_id}/series/facts`)).json()).facts;
+  expect(facts.map(f=>[f.text,f.decision])).toEqual([['Сусід пішов','future'],['Халат','past']]);
+});
