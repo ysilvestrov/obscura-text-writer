@@ -12,15 +12,30 @@ def validated_journal(view,id,scene):
     return journal,dict(hashes),list(prefix)
 
 
+def prose_sources(journal,count):
+    """The prose sources of a journal: all of them, or all but the leading start snapshot of a series book (scene 0)."""
+    ids=journal.source_prose_ids
+    return ids[1:] if len(ids)==count+1 else ids
+
+
 def _validated_journal(view,id,scene):
     ref=view.versions[id]
     if ref.story_id!=scene.story_id or ref.scene_id!=scene.id or ref.kind!='memory' or not ref.complete:
         raise ValueError('Пам’ять має неправильного власника або незавершене джерело')
     raw=view.read_blob(ref.relative_path,ref.sha256).decode('utf-8');journal=load_memory(raw)
     prefix=[s for s in view.peek_scenes(scene.story_id) if s.position<=scene.position]
-    if len(journal.source_prose_ids)!=len(prefix):raise ValueError('Пам’ять не відповідає повному префіксу сцен')
     sources={};hashes={}
-    for item,source in zip(prefix,journal.source_prose_ids):
+    ids=prose_sources(journal,len(prefix))
+    if len(ids)<len(journal.source_prose_ids):
+        # SERIES: scene 0 — the book's start snapshot heads the journal of a series book.
+        start=view.versions[journal.source_prose_ids[0]]
+        if start.kind!='series_start' or start.story_id!=scene.story_id or not start.complete:
+            raise ValueError('Джерело пам’яті не відповідає префіксу сцен')
+        from ..memory.series_start import read_series_start
+        sources[start.id]=read_series_start(view.read_blob(start.relative_path,start.sha256).decode('utf-8'),start.id).text
+        hashes[start.id]=start.sha256
+    if len(ids)!=len(prefix):raise ValueError('Пам’ять не відповідає повному префіксу сцен')
+    for item,source in zip(prefix,ids):
         v=view.versions[source]
         if v.scene_id!=item.id or v.story_id!=scene.story_id or v.kind not in {'manual','edited'} or not v.complete:
             raise ValueError('Джерело пам’яті не відповідає префіксу сцен')
@@ -36,6 +51,6 @@ def capture_memory(view,scene):
     try:
         journal,hashes,prefix=validated_journal(view,id,scene)
         result.update(memory_sha256=view.versions[id].sha256,memory_text=journal.model_dump_json(),memory_source_hashes=hashes,
-            memory_evidence_status='current' if journal.source_prose_ids==[s.heads.get('prose') for s in prefix] else 'historical')
+            memory_evidence_status='current' if prose_sources(journal,len(prefix))==[s.heads.get('prose') for s in prefix] else 'historical')
     except (KeyError,ValueError,OSError):pass
     return result

@@ -134,7 +134,7 @@ def check_integrity(root: Path) -> IntegrityReport:
             from .billing_checks import check_billing
             check_billing(report,db,stories)
             from .series_checks import check_series
-            check_series(report,db,stories)
+            check_series(report,db,stories,versions)
             check_memory_versions(report,root,versions)
             from .character_checks import check_character_versions
             check_character_versions(report,root,versions,scenes,stories)

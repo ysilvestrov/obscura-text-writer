@@ -1,4 +1,5 @@
 """SERIES-S03: the start snapshot is scene 0 of a series book's memory (neutral examples)."""
+import json
 import threading
 
 from storygen.domain import SceneCreate
@@ -142,3 +143,45 @@ def test_author_text_of_a_first_scene_depends_on_the_snapshot(tmp_path):
     view = repo.context_view(second.id)
     snapshot = _manual_snapshot(repo, repo.get_scene(scene.id), 'prose')
     assert any(s.field == 'series_start' and s.expected == second.series_start_version_id for s in snapshot.selectors)
+
+
+def test_series_book_with_arcs_merges_memory_over_the_snapshot(tmp_path):
+    from storygen.memory.journal import _add_event
+    from storygen.memory.series_start import read_series_start
+    from storygen.storage.memory_merges import merge_point, save_merge
+    from tests.memory.merge_helpers import arc_book
+    from tests.series.helpers import memory
+    from storygen.domain import StoryCreate
+    from storygen.memory.journal import MemoryJournal
+    repo = Repository(tmp_path)
+    item = store.create_series(repo, 'Серія')
+    # A quote with double quotes: JSON escapes them, so only the snapshot's quote text contains it verbatim.
+    first = repo.create_story(StoryCreate(title='Книга 1'))
+    only = repo.create_scene(first.id, SceneCreate(title='Сцена 1', beats='Анна.'))
+    said = prose(repo, only, 'Анна сказала: "Так".')
+    memory(repo, only, MemoryJournal(schema_version=3), [_add_event('facts', 'Анна погодилася', said.id, 'Анна сказала: "Так".', 0)])
+    into_series(repo, first, item.id, 1)
+    _, arcs, scenes = arc_book(tmp_path, 'A B A+B', [['A', 'B']], repo=repo, only={99})
+    arcs = into_series(repo, arcs, item.id, 2)
+    start = read_series_start(repo.read_text(arcs.series_start_version_id), arcs.series_start_version_id).journal
+    ids = []
+    for scene in scenes[:2]:
+        scene = repo.get_scene(scene.id)
+        memory(repo, scene, start, [_add_event('facts', f'Подія {scene.title}', scene.heads['prose'], 'Анна йде містом.', 0)])
+        ids.append(repo.get_scene(scene.id).heads['memory'])
+    story = repo.get_story(arcs.id)
+    point = merge_point(story, repo.list_scenes(story.id), scene_id=scenes[2].id)
+    story, version_id = save_merge(repo, story.id, point.key, {}, story.revision, ids)
+    merged = json.loads(repo.read_text(version_id))['journal']
+    assert merged['source_prose_ids'][0] == arcs.series_start_version_id
+
+
+def test_impact_capture_and_statistics_accept_the_snapshot(tmp_path):
+    from storygen.application.statistics import memory_statistics
+    from storygen.impact.memory_review import capture_memory
+    repo, item, second, scene, cloth = second_book(tmp_path)
+    write_scene_memory(repo, scene)
+    view = repo.context_view(second.id)
+    scene = view.get_scene(scene.id)
+    assert capture_memory(view, scene)['memory_evidence_status'] == 'current'
+    assert memory_statistics(view, scene, scene.heads['memory'])['available']

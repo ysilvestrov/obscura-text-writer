@@ -207,7 +207,8 @@ def save_merge(repo, story_id: str, key: str, decisions: dict, expected_revision
     if memory_ids != list(expected_head_memory_ids):
         raise RevisionConflict(CHANGED)
     journal = build_merged_journal(plan, decisions, sources, author_source)
-    validate_memory_journal(journal, {id: view.read_text(id) for id in sources})
+    from ..memory.series_start import read_source
+    validate_memory_journal(journal, {id: read_source(view, id) for id in sources})
     payload = json.dumps({'schema_version': SCHEMA_VERSION, 'merge_key': key, 'heads': list(point.heads),
                           'head_memory_ids': memory_ids, 'base_source_prose_ids': plan.base.source_prose_ids,
                           'conflicts': [{'key': c.key, 'values': c.values} for c in plan.conflicts],
