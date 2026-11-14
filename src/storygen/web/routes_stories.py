@@ -115,7 +115,11 @@ def story_view(id: str,request: Request):
     marks=merge_markers(view,story,listed) if story.book_structure is not None else {}
     scenes=[{**view.effective_scene(scene.id).model_dump(),"arc_id":structure.arc_of.get(scene.id),"arc_ids":list(structure.arcs_of.get(scene.id,())),"memory_merge":marks.get(scene.id),
         "flashback_marked":flashback_marked(scene.beats)} for scene in listed]
-    return {"impact_status":scene_status(view),"language_locked":request.app.state.repo.story_language_locked(id),"story":story,"book_structure":book,"scenes":scenes,"scene_ratings":ratings,"sources":[view.get_version(v.id) for v in view.versions.values() if v.kind in {"source_plan","source_characters"}],"character_names":names,"source_files":view.source_files,"active_sources":view.sources}
+    from .routes_series import series_block
+    # SERIES: the block is present only for a book in a series.
+    series=series_block(request.app.state.repo,story)
+    extra={"series":series} if series else {}
+    return {**extra,"impact_status":scene_status(view),"language_locked":request.app.state.repo.story_language_locked(id),"story":story,"book_structure":book,"scenes":scenes,"scene_ratings":ratings,"sources":[view.get_version(v.id) for v in view.versions.values() if v.kind in {"source_plan","source_characters"}],"character_names":names,"source_files":view.source_files,"active_sources":view.sources}
 
 
 @router.get("/api/stories/{id}/scene-revisions")

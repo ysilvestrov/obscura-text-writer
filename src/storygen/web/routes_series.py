@@ -1,5 +1,5 @@
 """SERIES API: series of books and the series fields of a book. Long prose only (BUILD-EDITION-001)."""
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import Field
 
 from ..book.guard import require_long_prose
@@ -7,6 +7,8 @@ from ..domain import DomainModel, SeriesStart
 from ..storage import series as store
 
 router = APIRouter()
+REFRESH_CONFIRM = 'Оновлення робить застарілою пам’ять перших сцен книги; підтвердьте його'
+
 
 
 class SeriesIn(DomainModel):
@@ -15,6 +17,11 @@ class SeriesIn(DomainModel):
 
 class SeriesRename(SeriesIn):
     expected_revision: int
+
+
+class SeriesRefresh(DomainModel):
+    expected_revision: int
+    confirm: bool = False
 
 
 class StorySeries(DomainModel):
@@ -59,3 +66,24 @@ def series_new_book(series_id: str, data: SeriesIn, request: Request):
 def story_series(story_id: str, data: StorySeries, request: Request):
     require_long_prose()
     return store.set_story_series(request.app.state.repo, story_id, data.series_id, data.number, data.start, data.expected_revision)
+
+
+@router.post('/api/stories/{story_id}/series/refresh')
+def story_series_refresh(story_id: str, data: SeriesRefresh, request: Request):
+    """«Оновити з попередньої книги»: stales the memory of the book's first scenes, so it runs only with confirm."""
+    require_long_prose()
+    if not data.confirm:
+        raise HTTPException(422, REFRESH_CONFIRM)
+    story, warnings = store.refresh_snapshot(request.app.state.repo, story_id, data.expected_revision)
+    return {'story': story, 'warnings': warnings}
+
+
+def series_block(repo, story):
+    """The `series` block of the story view: only for a book in a series."""
+    if not story.series_id:
+        return None
+    from ..book.series import series_status
+    from dataclasses import asdict
+    item = store.get_series(repo, story.series_id)
+    return {'id': item.id, 'title': item.title, 'number': story.series_number, 'start': story.series_start,
+            'status': asdict(series_status(repo, story))}

@@ -1,5 +1,6 @@
 """SERIES: the source book of a snapshot and the summary of a book. Read-only."""
 import hashlib
+from dataclasses import dataclass, field
 import json
 
 SUMMARY_NEEDS_MERGE = 'потрібне злиття кінця книги'
@@ -55,3 +56,39 @@ def summary_journal(view, version_id):
 
 def card_hash(card) -> str:
     return hashlib.sha256(card.model_dump_json().encode('utf-8')).hexdigest()
+
+
+@dataclass(frozen=True)
+class SeriesStatus:
+    """The start snapshot of a series book against its source, computed on read and never stored. `state`: 'first'
+    (no source book), 'no_summary' (no snapshot, the source has no summary), 'source_finished' (no snapshot, the
+    source has a summary now), 'source_changed' (the summary, the cards or the source book differ from the
+    snapshot), 'fresh'."""
+    state: str
+    source_story_id: str | None = None
+    source_number: int | None = None
+    changed_cards: list = field(default_factory=list)
+
+
+def series_status(repo, story) -> SeriesStatus | None:
+    from ..characters.models import load_characters
+    from ..memory.series_start import read_series_start
+    if not story.series_id:
+        return None
+    source = source_book(repo.list_stories(include_trashed=True), story)
+    snapshot = None
+    if story.series_start_version_id:
+        snapshot = read_series_start(repo.read_text(story.series_start_version_id), story.series_start_version_id).source
+    if source is None:
+        return SeriesStatus('source_changed' if snapshot else 'first')
+    view = repo.context_view(source.id)
+    summary, _ = book_summary(view, view.story)
+    found = SeriesStatus('no_summary', source.id, source.series_number)
+    if snapshot is None:
+        return found if summary is None else SeriesStatus('source_finished', source.id, source.series_number)
+    cards = load_characters(view.read_text(source.characters_version_id)) if source.characters_version_id else []
+    hashes = snapshot.get('source_card_hashes', {})
+    changed = [c.id for c in cards if c.id in hashes and hashes[c.id] != card_hash(c)]
+    same = (snapshot.get('source_story_id') == source.id and snapshot.get('source_summary_version_id') == summary
+            and snapshot.get('source_characters_version_id') == source.characters_version_id)
+    return SeriesStatus('fresh' if same and not changed else 'source_changed', source.id, source.series_number, changed)
