@@ -16,11 +16,15 @@ def _content(view,story,scene,writer) -> dict:
     brief=view.read_text(scene.heads['brief']) if scene.heads.get('brief') else None
     rating=effective_rating(story,scene)
     instructions,instructions_error=_draft_instructions(view,story,scene,writer)
+    from ..generation.context_labels import label
+    from ..memory.future import future_block
+    future,dropped=future_block(view,story,scene,writer.max_input_chars//8)  # SERIES-S10
+    if dropped:future=future+[label('future_more',story.language,count=dropped)]
     return {'instructions':instructions,'instructions_error':instructions_error,'story_id':story.id,'scene_id':scene.id,'title':scene.title,'position':scene.position,'scene_count':len(scenes),
             'plan':plan,'brief':brief,'characters':characters,'character_warnings':list(character_warnings),'memory':projection.text,
             'day_change':writer_day_change(scene,scenes,tracked,names,story.language,story),
             'rating':rating.model_dump() if rating else None,'language':scene.prose_language or story.language,
-            'story_language':story.language,'target_words':scene.target_words}
+            'story_language':story.language,'target_words':scene.target_words,'future':future}
 
 
 def _draft_instructions(view,story,scene,writer) -> tuple[str | None,str | None]:
