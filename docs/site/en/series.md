@@ -46,7 +46,7 @@ Under the title of a series book in the workspace you see the series title and n
 The snapshot is taken by itself when a book enters a series with number 2 or higher and the previous book is already **finished**: its last scene has current memory (or the book-end merge of the arcs is usable).
 
 - **Memory.** The first scenes of the book continue the memory of the end of the previous book. On the memory panel these entries are marked “Previous book of the series”.
-- **Cards.** The book gets a copy of the previous book’s character cards with the same heroes. If the book already has a card with the same name that is a different character, the snapshot is not taken by itself: the book shows a warning, and “Update from the previous book” takes the snapshot without such cards and names them.
+- **Cards.** The book gets a copy of the previous book’s character cards with the same heroes. If the book already has a card with the same name that is a different character, the snapshot is not taken by itself, and the book shows a warning. “Update from the previous book” then names those cards: rename them in the book and update again.
 - The previous book is the nearest book of the series with a smaller number that is not in the trash.
 
 If the previous book is not finished yet, there is no snapshot, and the book shows “the previous book has no summary yet”.
