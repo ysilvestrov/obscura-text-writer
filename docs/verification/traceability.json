@@ -5816,6 +5816,53 @@
         "procedure": "docs/verification/manual.md#series-browser",
         "reason": "check_docs.py індексує лише pytest; Playwright cases tests/web/browser/series.spec.mjs виконуються окремим runner, цей зв’язок не є доказом виконання."
       }
+    },
+    {
+      "id": "SERIES-S08",
+      "requirement": "SERIES-001",
+      "scope": "Приквел за віссю й джерела стартової пам’яті; автоматичне злиття головної книги й приквелів із resolved, приквел без підсумку, приквел до приквела, новий приквел між джерелом і книгою, знімок 4а як одне джерело, послідовна серія без змін, картки з головної книги, потім приквелів.",
+      "tests": [
+        "tests/series/test_series_sources.py::test_prequel_is_earlier_on_the_axis_than_a_smaller_number",
+        "tests/series/test_series_sources.py::test_book_off_the_axis_is_not_a_prequel",
+        "tests/series/test_series_sources.py::test_sources_are_the_main_book_and_prequels_between",
+        "tests/series/test_series_sources.py::test_trashed_main_book_moves_to_the_previous_one",
+        "tests/series/test_series_sources.py::test_prequel_of_a_prequel_sources",
+        "tests/series/test_series_prequel_merge.py::test_book_after_prequel_merges_main_book_and_prequel",
+        "tests/series/test_series_prequel_merge.py::test_prequel_without_summary_blocks_the_snapshot",
+        "tests/series/test_series_prequel_merge.py::test_prequel_of_a_prequel_conflict_takes_the_later_prequel",
+        "tests/series/test_series_prequel_merge.py::test_series_4a_snapshot_reads_as_one_source",
+        "tests/series/test_series_prequel_merge.py::test_sequential_series_snapshot_is_unchanged",
+        "tests/series/test_series_prequel_merge.py::test_cards_come_from_main_book_then_prequels",
+        "tests/series/test_series_prequel_merge.py::test_new_prequel_between_source_and_book_changes_the_status",
+        "tests/series/test_series_screen.py::test_a_book_with_a_negative_start_is_marked_as_a_prequel"
+      ]
+    },
+    {
+      "id": "SERIES-S09",
+      "requirement": "SERIES-001",
+      "scope": "Позначки приквела: перший знімок «усе майбутнє», збереження «минуле» з ланцюжком і застарілістю першої сцени, підтвердження, невідомий ключ і ревізія в HTTP, перенесення позначок оновленням, знімок 4а як «усе минуле» з prequel_review, відмова Store.",
+      "tests": [
+        "tests/series/test_series_decisions.py::test_first_prequel_snapshot_is_all_future",
+        "tests/series/test_series_decisions.py::test_saving_past_moves_the_record_chain_into_memory",
+        "tests/series/test_series_decisions.py::test_decisions_need_confirmation_and_known_keys",
+        "tests/series/test_series_decisions.py::test_refresh_carries_decisions_and_defaults_new_keys",
+        "tests/series/test_series_decisions.py::test_series_4a_prequel_snapshot_is_all_past",
+        "tests/series/test_series_decisions.py::test_store_refuses_decisions"
+      ]
+    },
+    {
+      "id": "SERIES-S10",
+      "requirement": "SERIES-001",
+      "scope": "Секція майбутнього в brief і draft сцен приквела без записів «минуле», без неї в memory, ліміт із приміткою, сцена без героїв, поле future і відбиток контексту письма MCP, селектор series_future пізніших сцен (мутація «без скоупів» ламає тест), послідовна серія без змін (мутація «resolved завжди непорожній» ламає тест).",
+      "tests": [
+        "tests/series/test_series_future.py::test_brief_and_draft_of_a_prequel_get_the_future_section",
+        "tests/series/test_series_future.py::test_memory_stage_has_no_future_section",
+        "tests/series/test_series_future.py::test_limit_trims_with_a_note",
+        "tests/series/test_series_future.py::test_scene_without_cast_gets_records_without_heroes",
+        "tests/series/test_series_future.py::test_writing_context_future_changes_the_fingerprint",
+        "tests/series/test_series_future.py::test_sequential_series_requests_are_unchanged",
+        "tests/series/test_series_invariance.py::test_sequential_series_is_unchanged"
+      ]
     }
   ]
 }
