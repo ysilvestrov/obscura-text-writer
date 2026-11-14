@@ -38,6 +38,11 @@ LABELS: dict[str, dict[str, str]] = {
     'future_plan': {'uk': 'МАЙБУТНІ ПОДІЇ — ПЛАН СЦЕНИ {number}', 'en': 'FUTURE EVENTS — PLAN OF SCENE {number}'},
     'ending_goal': {'uk': 'АВТОРСЬКИЙ ОРІЄНТИР ФІНАЛУ — ЗАДУМ, НЕ ЗДІЙСНЕНІ ПОДІЇ',
                     'en': 'AUTHOR ENDING GOAL — INTENT, NOT EVENTS THAT HAVE HAPPENED'},
+    # SERIES-S10: records of later books a prequel must not contradict; not memory, no quotes.
+    'future_facts': {'uk': 'МАЙБУТНЄ, ЯКОМУ НЕ МОЖНА СУПЕРЕЧИТИ — ПОДІЇ ПІЗНІШИХ КНИГ СЕРІЇ, ЩЕ НЕ ЗДІЙСНЕНІ В ЦІЙ КНИЗІ',
+                     'en': 'THE FUTURE YOU MUST NOT CONTRADICT — EVENTS OF LATER BOOKS OF THE SERIES, NOT YET HAPPENED IN THIS BOOK'},
+    'future_more': {'uk': '…і ще записів майбутнього, що не вмістилися: {count}',
+                    'en': '…and {count} more future records that did not fit'},
     'memory_header': {'uk': 'ЗДІЙСНЕНІ ПОДІЇ — ПЕРЕВІРЕНА ПАМ’ЯТЬ', 'en': 'EVENTS THAT HAVE HAPPENED — VERIFIED MEMORY'},
     # STORY-TIME: facts of flashbacks of other arcs earlier than the start of this scene's arc; no structure names.
     'foreign_flashbacks': {'uk': 'МИНУЛЕ ІНШИХ АРОК — ФАКТИ СПОГАДІВ', 'en': 'THE PAST OF OTHER ARCS — FACTS FROM FLASHBACKS'},

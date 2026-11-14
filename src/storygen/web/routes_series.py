@@ -3,12 +3,13 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import Field
 
 from ..book.guard import require_long_prose
-from ..domain import DomainModel, SeriesStart
+from ..domain import DomainModel, RevisionConflict, SeriesStart
 from ..storage import series as store
 
 router = APIRouter()
 START_UNPARSED = 'Початок має бути позначкою часу (рік, місяць, день зі знаком) і номером опори'
 REFRESH_CONFIRM = 'Оновлення робить застарілою пам’ять перших сцен книги; підтвердьте його'
+DECISIONS_CONFIRM = 'Нові позначки роблять застарілими пам’ять і завдання перших сцен книги; підтвердьте їх'
 
 
 
@@ -21,6 +22,12 @@ class SeriesRename(SeriesIn):
 
 
 class SeriesRefresh(DomainModel):
+    expected_revision: int
+    confirm: bool = False
+
+
+class SeriesDecisions(DomainModel):
+    decisions: dict[str, str]
     expected_revision: int
     confirm: bool = False
 
@@ -118,6 +125,30 @@ def story_series_refresh(story_id: str, data: SeriesRefresh, request: Request):
         raise HTTPException(422, REFRESH_CONFIRM)
     story, warnings = store.refresh_snapshot(request.app.state.repo, story_id, data.expected_revision)
     return {'story': story, 'warnings': warnings}
+
+
+@router.get('/api/stories/{story_id}/series/facts')
+def story_series_facts(story_id: str, request: Request):
+    """The records of the book's start memory with their source book and decision (SERIES-S09). Long prose only."""
+    require_long_prose()
+    try:
+        return {'facts': store.start_facts(request.app.state.repo, story_id)}
+    except ValueError as error:
+        raise HTTPException(404, str(error)) from None
+
+
+@router.put('/api/stories/{story_id}/series/decisions')
+def story_series_decisions(story_id: str, data: SeriesDecisions, request: Request):
+    """Past and future decisions of a prequel: stale the memory of the first scenes, so they run only with confirm."""
+    require_long_prose()
+    if not data.confirm:
+        raise HTTPException(422, DECISIONS_CONFIRM)
+    try:
+        return store.save_decisions(request.app.state.repo, story_id, data.decisions, data.expected_revision)
+    except RevisionConflict:
+        raise
+    except ValueError as error:
+        raise HTTPException(422, str(error)) from None
 
 
 def series_block(repo, story):

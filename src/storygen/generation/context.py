@@ -421,6 +421,10 @@ def build_context(repo,scene_id: str,stage: str,settings: RoleSettings,*,editor_
     if profile.ending_goal.strip():
         sections.append(label('ending_goal',language)+'\n'+profile.ending_goal)
         if count is None:sections.append(horizon_instructions(scene,len(scenes),language))
+    if stage in {'brief','draft','edit','rewrite'}:
+        from ..memory.future import future_section
+        future=future_section(repo,story,scene,language,settings.max_input_chars//8)  # SERIES-S10
+        if future:sections.append(future)
     from ..memory.reuse import provenance_before, provenance_warnings
     inherited_provenance=provenance_before(repo,scene.id)
     warnings.extend(provenance_warnings(inherited_provenance))

@@ -1,4 +1,5 @@
-"""SERIES-S05: a book outside a series is unchanged — no series selector, no new input, old snapshots stay fresh."""
+"""SERIES-S05: a book outside a series is unchanged — no series selector, no new input, old snapshots stay fresh;
+a series without prequels keeps the 4a snapshot and selectors (SERIES-S10)."""
 from storygen.generation.context import build_context
 from storygen.storage.snapshots import compare_snapshot
 from tests.memory.merge_helpers import arc_book
@@ -23,3 +24,17 @@ def test_book_outside_series_is_unchanged(tmp_path):
         assert not any(s.field == 'series_start' for s in ref.dependency_snapshot.selectors)
         assert compare_snapshot(owner.context_view(ref.story_id), ref.dependency_snapshot) == []
         assert not ref.stale
+
+
+def test_sequential_series_is_unchanged(tmp_path):
+    import json
+    from storygen.memory.series_start import read_series_start
+    from tests.series.test_series_memory import second_book
+    repo, item, second, scene, cloth = second_book(tmp_path)
+    raw = json.loads(repo.read_text(second.series_start_version_id))
+    data = read_series_start(json.dumps(raw), second.series_start_version_id)
+    assert len(data.source['sources']) == 1 and data.source['resolved'] == []
+    assert not {'decisions', 'future', 'start_memory', 'origins'} & set(raw)
+    assert data.decisions is None and data.future == []
+    fields = {s.field for s in repo.get_version(write_brief(repo, scene)).dependency_snapshot.selectors}
+    assert 'series_start' in fields and 'series_future' not in fields

@@ -121,26 +121,15 @@ CARD_SKIPPED = 'Не додано картки, однойменні з карт
 CARD_CHANGED = 'Картки змінилися в попередній книзі й не перезаписані: {names}'
 
 
-def _source(repo, story):
-    from ..book.series import book_summary, source_book
-    source = source_book(repo.list_stories(include_trashed=True), story)
-    if source is None:
-        return None, None, None
-    view = repo.context_view(source.id)
-    summary, _ = book_summary(view, view.story)
-    return source, view, summary
-
-
 def _copy_cards(repo, story, view, source, refuse=True):
     """Copy the source cards into the book: same card and entry IDs, «from scene» entries become timeless, citations move
     onto a new source_characters version of the book. Cards already in the book by ID stay as they are; a card with the
     name of a book card under another ID refuses the copy (`refuse`) or is skipped and named (a refresh). Returns
-    (cards version id or None, card hashes of the source, names skipped)."""
-    from ..book.series import card_hash
+    (cards version id or None, names skipped)."""
     from ..characters.models import load_characters
     from ..scene_description import name_key
     if not source.characters_version_id:
-        return story.characters_version_id, {}, []
+        return story.characters_version_id, []
     cards = load_characters(view.read_text(source.characters_version_id))
     own = load_characters(repo.read_text(story.characters_version_id)) if story.characters_version_id else []
     own_ids = {c.id for c in own}
@@ -148,10 +137,9 @@ def _copy_cards(repo, story, view, source, refuse=True):
     clash = [c.name for c in cards if c.id not in own_ids and name_key(c.name) in by_name]
     if clash and refuse:
         raise ValueError(CARD_NAME_CLASH.format(names=', '.join(clash)))
-    hashes = {c.id: card_hash(c) for c in cards}
     added = [c for c in cards if c.id not in own_ids and name_key(c.name) not in by_name]
     if not added:
-        return story.characters_version_id, hashes, clash
+        return story.characters_version_id, clash
     quotes = list(dict.fromkeys(s.quote for c in added for e in c.entries for s in e.sources))
     text_id = repo.save_version(story.id, None, 'source_characters', '\n'.join(quotes), []).id if quotes else None
     copied = []
@@ -168,11 +156,12 @@ def _copy_cards(repo, story, view, source, refuse=True):
     load_characters(json.dumps(merged, ensure_ascii=False))
     saved = repo.save_version(story.id, None, 'character_cards', json.dumps(merged, ensure_ascii=False), [text_id] if text_id else [])
     repo.publish_story_material(story.id, 'characters_version_id', saved.id, repo.get_story(story.id).revision)
-    return saved.id, hashes, clash
+    return saved.id, clash
 
 
 def take_snapshot(repo, story_id: str, expected_revision: int) -> Story:
-    """Take (or retake) the start snapshot: the summary journal of the source book as scene 0 and a copy of its cards."""
+    """Take (or retake) the start snapshot: the start memory of the book (the summary journal of the main book merged
+    with the prequels between, SERIES-S08) as scene 0 and a copy of the sources' cards."""
     return _snapshot(repo, story_id, expected_revision, refuse=True)[0]
 
 
@@ -187,43 +176,167 @@ def refresh_snapshot(repo, story_id: str, expected_revision: int) -> tuple[Story
     if not story.series_start_version_id:
         return take_snapshot(repo, story_id, expected_revision), []
     old = read_series_start(repo.read_text(story.series_start_version_id), story.series_start_version_id).source
-    story, clash, source = _snapshot(repo, story_id, expected_revision, refuse=False)
+    old_hashes = {item['story_id']: item['card_hashes'] for item in old['sources']}
+    story, clash, sources = _snapshot(repo, story_id, expected_revision, refuse=False)
     warnings = [CARD_SKIPPED.format(names=', '.join(clash))] if clash else []
-    if source.characters_version_id:
-        hashes = old.get('source_card_hashes', {})
-        changed = [c.name for c in load_characters(repo.read_text(source.characters_version_id))
-                   if c.id in hashes and hashes[c.id] != card_hash(c)]
-        if changed:
-            warnings.append(CARD_CHANGED.format(names=', '.join(changed)))
+    changed = []
+    for item in sources:
+        hashes = old_hashes.get(item['story_id'], {})
+        if item['characters_version_id']:
+            changed += [c.name for c in load_characters(repo.read_text(item['characters_version_id']))
+                        if c.id in hashes and hashes[c.id] != card_hash(c) and c.name not in changed]
+    if changed:
+        warnings.append(CARD_CHANGED.format(names=', '.join(changed)))
     return story, warnings
 
 
 def _snapshot(repo, story_id, expected_revision, refuse):
-    from ..book.series import summary_journal
-    from ..memory.series_start import inherit_journal, series_start_payload
+    from ..book.series import _series_books, is_prequel, start_memory
+    from ..memory.series_start import inherit_journal
     story = repo.get_story(story_id)
     if story.revision != expected_revision:
         raise RevisionConflict(STORY_CONFLICT)
-    source, view, summary = _source(repo, story)
-    if not summary:
+    memory = start_memory(repo, story)
+    if memory is None or memory.missing is not None:
         raise ValueError(NO_SOURCE)
-    journal, texts = summary_journal(view, summary)
-    text, inherited = inherit_journal(journal, texts)
-    cards_id, hashes, clash = _copy_cards(repo, story, view, source, refuse)
-    summary_ref = view.get_version(summary)
-    cards_ref = view.get_version(source.characters_version_id) if source.characters_version_id else None
-    payload = series_start_payload(text, inherited, {
-        'source_story_id': source.id, 'source_summary_version_id': summary, 'source_summary_sha256': summary_ref.sha256,
-        'source_characters_version_id': cards_ref.id if cards_ref else None,
-        'source_characters_sha256': cards_ref.sha256 if cards_ref else None,
-        'source_card_hashes': hashes, 'characters_version_id': cards_id})
-    start = repo.save_version(story.id, None, 'series_start', payload, [cards_id] if cards_id else [])
+    text, inherited = inherit_journal(memory.journal, memory.texts)
+    carried = _current_decisions(repo, story)
+    prequel = is_prequel(_series_books(repo.list_stories(include_trashed=True), story), story)
+    clash = _card_clash(repo, story, memory.sources)
+    if clash and refuse:  # before any copy: a refused first snapshot leaves the book's cards as they were
+        raise ValueError(CARD_NAME_CLASH.format(names=', '.join(clash)))
+    cards_id = story.characters_version_id
+    for item in memory.sources:  # a card with an ID or a name already copied from an earlier source is skipped
+        source = repo.get_story(item['story_id'])
+        cards_id, _ = _copy_cards(repo, repo.get_story(story_id), repo.context_view(source.id), source, refuse=False)
+    fields = {'sources': memory.sources, 'resolved': memory.resolved, 'characters_version_id': cards_id}
+    if prequel:
+        current_keys = _keys(inherited)
+        decisions = {key: carried.get(key, 'future') for key in current_keys}
+        fields['origins'] = {key: memory.origins.get(key) for key in current_keys}
+        current = _save_start(repo, story_id, None, _prequel_payload(text, inherited, decisions, fields))
+    else:
+        from ..memory.series_start import series_start_payload
+        current = _save_start(repo, story_id, None, series_start_payload(text, inherited, fields))
+    return current, clash, memory.sources
+
+
+def _card_clash(repo, story, sources) -> list[str]:
+    """Names of source cards that clash with the book's own cards: the same name_key under another ID."""
+    from ..characters.models import load_characters
+    from ..scene_description import name_key
+    own = load_characters(repo.read_text(story.characters_version_id)) if story.characters_version_id else []
+    own_ids, own_names = {c.id for c in own}, {name_key(c.name) for c in own}
+    clash = []
+    for item in sources:
+        if item['characters_version_id']:
+            clash += [c.name for c in load_characters(repo.read_text(item['characters_version_id']))
+                      if c.id not in own_ids and name_key(c.name) in own_names and c.name not in clash]
+    return clash
+
+
+def _keys(journal) -> list[str]:
+    from ..memory.journal import replay_memory
+    from ..memory.merge import _key
+    return list(dict.fromkeys(_key(e) for e in replay_memory(journal).values()))
+
+
+def _prequel_payload(text, journal, decisions, fields) -> str:
+    """The payload of a prequel's snapshot: the journal and text of the past keys, the future records, the decisions
+    and the whole start memory (to move a key between past and future without rebuilding from the sources)."""
+    from ..memory.series_start import prequel_split, series_start_payload
+    kept_text, kept, future = prequel_split(text, journal, decisions, fields.get('origins') or {})
+    return series_start_payload(kept_text, kept, {
+        **fields, 'decisions': decisions, 'future': future,
+        'start_memory': {'text': text, 'journal': json.loads(journal.model_dump_json())}})
+
+
+def _save_start(repo, story_id, expected_revision, payload) -> Story:
+    """A new series_start version of the book and the book pointing at it (CAS on the story revision when given)."""
+    cards_id = json.loads(payload).get('characters_version_id')
+    start = repo.save_version(story_id, None, 'series_start', payload, [cards_id] if cards_id else [])
     with repo.db.connection() as db:
         db.execute('BEGIN IMMEDIATE')
         current = repo._active_story(db, story_id)
+        if expected_revision is not None and current.revision != expected_revision:
+            raise RevisionConflict(STORY_CONFLICT)
         current = current.model_copy(update={'series_start_version_id': start.id, 'revision': current.revision + 1})
         repo._save_story(db, current)
-    return current, clash, source
+    return current
+
+
+def _whole_start(repo, story):
+    """(snapshot data, text and journal of the whole start memory with the marker as source): a prequel snapshot
+    keeps it apart; any other snapshot is whole."""
+    from ..memory.journal import MemoryJournal
+    from ..memory.series_start import read_series_start
+    raw = repo.read_text(story.series_start_version_id)
+    data = read_series_start(raw, story.series_start_version_id)
+    whole = data.source.get('start_memory') or json.loads(raw)
+    return data, whole['text'], MemoryJournal.model_validate(whole['journal'])
+
+
+def _current_decisions(repo, story) -> dict:
+    """The decisions of the book's snapshot to carry into a new one: stored ones, every key past for a 4a snapshot
+    (read as all past); {} without a snapshot or for a snapshot taken when the book was not a prequel."""
+    if not story.series_start_version_id:
+        return {}
+    from ..book.series import is_legacy_start
+    data, _, journal = _whole_start(repo, story)
+    if data.decisions is not None:
+        return data.decisions
+    return {key: 'past' for key in _keys(journal)} if is_legacy_start(data) else {}
+
+
+NO_SNAPSHOT = 'Книга ще не має знімка старту серії'
+NOT_PREQUEL = 'Позначки «минуле» і «майбутнє» ставляться лише для приквела'
+UNKNOWN_KEYS = 'Цих записів немає в стартовій пам’яті: {keys}'
+BAD_DECISION = 'Позначка має бути «past» або «future»'
+CATEGORY_ORDER = ('facts', 'character_states', 'open_threads', 'timeline')
+
+
+def start_facts(repo, story_id: str) -> list[dict]:
+    """The records of the book's start memory with their source book and decision (SERIES-S09), by category, then text."""
+    from ..memory.journal import replay_memory
+    from ..memory.merge import _key
+    story = repo.get_story(story_id)
+    if not story.series_start_version_id:
+        raise ValueError(NO_SNAPSHOT)
+    data, _, journal = _whole_start(repo, story)
+    origins = data.source.get('origins') or {}
+    first = (data.source['sources'] or [{}])[0].get('story_id')
+    rows = [{'key': _key(e), 'category': e.category, 'text': e.text, 'character_ids': list(e.character_ids),
+             'story_id': origins.get(_key(e), first),
+             'decision': (data.decisions or {}).get(_key(e), 'future') if data.decisions is not None else 'past'}
+            for e in replay_memory(journal).values()]
+    order = {name: i for i, name in enumerate(CATEGORY_ORDER)}
+    return sorted(rows, key=lambda row: (order.get(row['category'], len(order)), row['text']))
+
+
+def save_decisions(repo, story_id: str, decisions: dict[str, str], expected_revision: int) -> Story:
+    """New decisions of a prequel's snapshot: a new series_start version with the same sources and the journal of the
+    past keys; the memory of the book's first scenes becomes stale through the snapshot dependency."""
+    from ..book.series import _series_books, is_prequel
+    story = repo.get_story(story_id)
+    if story.revision != expected_revision:
+        raise RevisionConflict(STORY_CONFLICT)
+    if not story.series_start_version_id:
+        raise ValueError(NO_SNAPSHOT)
+    if not is_prequel(_series_books(repo.list_stories(include_trashed=True), story), story):
+        raise ValueError(NOT_PREQUEL)
+    if any(value not in ('past', 'future') for value in decisions.values()):
+        raise ValueError(BAD_DECISION)
+    data, text, journal = _whole_start(repo, story)
+    keys = _keys(journal)
+    unknown = [key for key in decisions if key not in keys]
+    if unknown:
+        raise ValueError(UNKNOWN_KEYS.format(keys=', '.join(unknown)))
+    merged = {**_current_decisions(repo, story), **decisions}
+    first = (data.source['sources'] or [{}])[0].get('story_id')
+    fields = {'sources': data.source['sources'], 'resolved': data.source['resolved'],
+              'characters_version_id': data.source.get('characters_version_id'),
+              'origins': data.source.get('origins') or {key: first for key in keys}}
+    return _save_start(repo, story_id, expected_revision, _prequel_payload(text, journal, merged, fields))
 
 
 def take_snapshot_if_ready(repo, story_id: str) -> Story:

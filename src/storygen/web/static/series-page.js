@@ -24,11 +24,30 @@ async function loadList(){
   }
 }
 
+// SERIES-S11: a book whose start memory merged two or more books (after a prequel) lists its sources and the conflicts
+// the automatic merge settled, by book titles; a title missing from the series falls back to the plain ID.
+function sourcesBlock(book,titles){
+  const sources=book.status.sources||[];if(sources.length<2)return [];
+  const name=id=>`«${titles[id]||id}»`;
+  const blocks=[element('p','series-sources muted',()=>t('series.sources',{p0:sources.map(name).join(', ')}))];
+  const resolved=book.status.resolved||[];
+  if(resolved.length){
+    const details=element('details','series-resolved');
+    details.append(element('summary','',()=>t('series.resolved_summary',{p0:resolved.length})));
+    const list=element('ul','');
+    for(const item of resolved)for(const dropped of item.dropped)
+      list.append(element('li','',()=>t('series.resolved_item',{p0:dropped.text,p1:name(dropped.story_id),p2:name(item.kept_story_id)})));
+    details.append(list);blocks.push(details);
+  }
+  return blocks;
+}
+
 function bookCard(book){
   const card=element('article','card series-book');card.dataset.bookId=book.id;
   card.append(element('h3','',()=>t('series.book_heading',{p0:book.number,p1:book.title})));
   if(book.trashed)card.append(element('p','series-trashed',()=>t('series.trashed')));
   card.append(element('p','series-status',()=>statusText(book.status)));
+  card.append(...sourcesBlock(book,Object.fromEntries(view.books.map(item=>[item.id,item.title]))));
   const actions=element('div','actions');
   const open=document.createElement('a');open.className='button secondary';open.href=`/stories/${book.id}`;
   uiText(open,'textContent',()=>t('series.open'));actions.append(open);

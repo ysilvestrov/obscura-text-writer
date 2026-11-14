@@ -65,14 +65,14 @@ def test_entering_the_series_takes_the_snapshot(tmp_path):
     second = into_series(repo, second, item.id, 2)
     data = read_series_start(repo.read_text(second.series_start_version_id), second.series_start_version_id)
     assert cloth.claim_id in {e.claim_id for e in data.journal.events}
-    assert data.source['source_story_id'] == first.id
-    assert data.source['source_summary_version_id'] == scenes[1].heads['memory']
+    assert data.source['sources'][0]['story_id'] == first.id
+    assert data.source['sources'][0]['summary_version_id'] == scenes[1].heads['memory']
     cards = load_characters(repo.read_text(second.characters_version_id))
     assert [(c.id, c.name) for c in cards] == [('A', 'Анна')]
     entry = cards[0].entries[0]
     assert (entry.id, entry.availability, entry.available_from_scene_id) == ('e1', 'timeless', None)
     assert repo.get_version(entry.sources[0].version_id).story_id == second.id
-    assert set(data.source['source_card_hashes']) == {'A'}
+    assert set(data.source['sources'][0]['card_hashes']) == {'A'}
     assert check_integrity(repo.root).ok, check_integrity(repo.root).issues
 
 
