@@ -22,7 +22,7 @@
 5. [#29](https://github.com/ysilvestrov/obscura-text-writer/issues/29) — R-25 двомовний сайт інструкцій; після #89.
 6. [#84](https://github.com/ysilvestrov/obscura-text-writer/issues/84) — R-32 MCP-сервер для Claude/Codex, вузький перший набір інструментів.
 7. [#30](https://github.com/ysilvestrov/obscura-text-writer/issues/30) — розповсюдження: інсталятор, оновлення, підпис коду; після #29 і #88, потребує рішень власника щодо платформ, локальної моделі й платного підпису.
-8. [#31](https://github.com/ysilvestrov/obscura-text-writer/issues/31) — довга форма: серія, біблія світу, жанрові пакети. Загальний дизайн довгої прози затверджено 12.11.2026: `docs/superpowers/specs/2026-11/2026-11-12-long-prose-design.md` (чотири проєкти; біблія світу й жанрові пакети лишаються в #31).
+8. [#31](https://github.com/ysilvestrov/obscura-text-writer/issues/31) — довга форма: серія, біблія світу, жанрові пакети. Загальний дизайн довгої прози затверджено 12.11.2026: `docs/superpowers/specs/2026-11/2026-11-12-long-prose-design.md` (чотири проєкти; біблія світу й жанрові пакети лишаються в #31). Усі чотири проєкти довгої прози злито 14.11.2026 (останні — серії: PR #165 і #166); у #31 лишаються біблія світу й жанрові пакети.
 9. [#76](https://github.com/ysilvestrov/obscura-text-writer/issues/76) — R-31 тон прози за зразком літературного тексту.
 10. [#39](https://github.com/ysilvestrov/obscura-text-writer/issues/39) — залишок швидкості робочого простору (PERF-001-S03).
 11. [#75](https://github.com/ysilvestrov/obscura-text-writer/issues/75) — R-30 навігація на вкладці «Персонажі».
