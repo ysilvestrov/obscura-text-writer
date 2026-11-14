@@ -67,3 +67,19 @@ def read_series_start(raw: str, version_id: str) -> SeriesStartData:
 def source_number(version_ref, numbers: dict[str, int]) -> int:
     """Scene number of a memory source: 0 for the start snapshot of a series book, else the number of its scene."""
     return 0 if version_ref.kind == SERIES_START_KIND else numbers[version_ref.scene_id]
+
+
+def scene_series_start(story, scenes, scene) -> str | None:
+    """The start snapshot a scene extends: the book's snapshot for a scene without ancestors in the book, else None
+    (a scene with ancestors reaches it through their memory)."""
+    from ..book.lineage import previous_scenes
+    if not story.series_start_version_id or previous_scenes(story, scenes, scene):
+        return None
+    return story.series_start_version_id
+
+
+def read_source(reader, version_id: str, ref=None) -> str:
+    """Text of a memory source: the prose itself, or the quote text of a start snapshot."""
+    ref = ref or reader.get_version(version_id)
+    raw = reader.read_text(version_id)
+    return read_series_start(raw, version_id).text if ref.kind == SERIES_START_KIND else raw

@@ -83,13 +83,15 @@ def memory_view_from_view(view,scene_id):
     for event in entries.values():
         # The title and scene follow the version the quote was taken from.
         quoted=event.evidence_version_id or event.source_version_id
-        source=sources.get(quoted)
+        source=sources.get(quoted);previous_book=False
         if source is None:
             historical=view.get_version(quoted)
+            # SERIES: a record inherited from the previous book comes from scene 0, the start snapshot.
+            previous_book=historical.kind=='series_start' and historical.story_id==scene.story_id
             source=next((s for s in prefix if s.id==historical.scene_id and historical.story_id==scene.story_id),None)
         result['rows'].append({'claim_id':event.claim_id,'text':event.text,'category':event.category,
-            'category_label':labels[event.category],'source_scene':source.position+1 if source else None,
-            'source_title':source.title if source else 'Попереднє джерело','quote':event.quote,'supporting_quotes':list(event.supporting_quotes),
+            'category_label':labels[event.category],'source_scene':0 if previous_book else source.position+1 if source else None,
+            'source_title':'Попередня книга серії' if previous_book else source.title if source else 'Попереднє джерело','quote':event.quote,'supporting_quotes':list(event.supporting_quotes),
             'forward':event.claim_id not in hidden,'closed':event.operation=='retire',
             # MEMORY-SELECT-S08: the author's selection mark; a core slot is always shown and takes none.
             'kind':marks.get(event.claim_id),'slot':is_core_slot(event,tracked)})

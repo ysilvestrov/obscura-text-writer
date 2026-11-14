@@ -267,7 +267,8 @@ def execute_stage(
                 if 'previous_memory' in context.fragments
                 else journal_before(repo, scene_id)
             )
-            sources={id:repo.read_text(id) for id in previous.source_prose_ids}
+            from ..memory.series_start import read_source
+            sources={id:read_source(repo,id) for id in previous.source_prose_ids}
             # Validate against the exact source passed in this attempt, not a concurrent replacement.
             expected = [
                 id for id in context.input_refs

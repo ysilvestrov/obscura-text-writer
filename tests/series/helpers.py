@@ -53,9 +53,9 @@ def finished_book(repo, title='Книга 1'):
     return repo.get_story(story.id), [repo.get_scene(s.id) for s in (s1, s2)], cloth
 
 
-def book(repo, title, *, written=True):
+def book(repo, title, *, written=True, cast=()):
     story = repo.create_story(StoryCreate(title=title))
-    scene = repo.create_scene(story.id, SceneCreate(title='Сцена 1', beats='Анна.'))
+    scene = repo.create_scene(story.id, SceneCreate(title='Сцена 1', beats='Анна.', character_ids=list(cast)))
     if written:
         prose(repo, scene, 'Анна вийшла.')
     return repo.get_story(story.id), repo.get_scene(scene.id)
