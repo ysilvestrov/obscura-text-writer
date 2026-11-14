@@ -83,3 +83,15 @@ test('a prequel reviews the facts of later books and saves the marks',async({pag
   const facts=(await(await request.get(`/api/stories/${prequel_id}/series/facts`)).json()).facts;
   expect(facts.map(f=>[f.text,f.decision])).toEqual([['Сусід пішов','future'],['Халат','past']]);
 });
+
+test('series screen shows the sources after a prequel',async({page,request})=>{
+  const {sources_series_id,third_id}=await(await request.post('/test-series-prequel')).json();
+  await page.goto(`/series/${sources_series_id}`);
+  const card=page.locator(`.series-book[data-book-id="${third_id}"]`);
+  await expect(card.locator('.series-sources')).toHaveText('Джерела: «Перша книга», «Приквел 2»');
+  const resolved=card.locator('details.series-resolved');
+  await expect(resolved.locator('summary')).toHaveText('Автоматично розв’язано конфліктів: 1');
+  await resolved.locator('summary').click();
+  await expect(resolved.locator('li')).toHaveText('«Сорочка» з книги «Приквел 2» → лишилося значення книги «Перша книга»');
+  await expect(page.locator('.series-book .series-sources')).toHaveCount(1);
+});
