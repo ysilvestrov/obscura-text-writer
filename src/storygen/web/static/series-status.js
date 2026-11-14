@@ -14,6 +14,7 @@ export function statusText(status){
     no_summary:t('series.status.no_summary'),
     source_finished:t('series.status.source_finished'),
     source_changed:t('series.status.source_changed',{p0:number})+changed,
+    prequel_review:t('series.status.prequel_review'),
   }[status.state]||'')+prequel;
 }
 

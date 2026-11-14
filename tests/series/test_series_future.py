@@ -94,3 +94,13 @@ def test_sequential_series_requests_are_unchanged(tmp_path):
     ref = repo.get_version(write_brief(repo, repo.get_scene(scene.id)))
     assert FUTURE not in build_context(repo, scene.id, 'draft', role()).user_text
     assert not any(s.field == 'series_future' for s in ref.dependency_snapshot.selectors)
+
+
+def test_mcp_fingerprint_without_a_future_is_as_before(tmp_path):
+    # SERIES-001: a book without a future section keeps its MCP context fingerprint — an empty `future` is not hashed.
+    from storygen.application.writing_context import _fingerprint, _read
+    repo = Repository(tmp_path)
+    story, scene = book(repo, 'Окрема', cast=['A'])
+    scene, content, fingerprint = _read(repo, scene.id)
+    old = {k: v for k, v in content.items() if k != 'future'}
+    assert content['future'] == [] and fingerprint == _fingerprint(repo, scene, old)

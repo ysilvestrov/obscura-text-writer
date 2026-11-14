@@ -2496,7 +2496,8 @@
     "series.msg.refresh_confirm": "Оновлення робить застарілою пам’ять перших сцен книги; підтвердьте його",
     "series.msg.read_only": "Ця книга входить у серію; у цій збірці вона доступна лише для читання й експорту",
     "series.msg.previous_book": "Попередня книга серії",
-    "series.status.prequel": "Приквел: поки продовжує попередню книгу за виходом; приквели з’являться згодом.",
+    "series.status.prequel": "Приквел: пам’ять пізніших книг — майбутнє, якому не можна суперечити.",
+    "series.status.prequel_review": "приквел: перегляньте факти пізніших книг",
     "series.msg.created": "Створено нову серію «{p0}»",
     "series.origin": "точка відліку"
   },
@@ -4997,7 +4998,8 @@
     "series.msg.refresh_confirm": "The update makes the memory of the book’s first scenes stale; confirm it",
     "series.msg.read_only": "This book belongs to a series; in this build it is available for reading and export only",
     "series.msg.previous_book": "Previous book of the series",
-    "series.status.prequel": "Prequel: for now it continues the previous book by release; prequels come later.",
+    "series.status.prequel": "Prequel: the memory of later books is a future it must not contradict.",
+    "series.status.prequel_review": "prequel: review the facts of later books",
     "series.msg.created": "Created a new series «{p0}»",
     "series.origin": "origin"
   }

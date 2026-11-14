@@ -39,6 +39,8 @@ def _draft_instructions(view,story,scene,writer) -> tuple[str | None,str | None]
 def _fingerprint(repo,scene,content: dict) -> str:
     # Lazy: generation.dependencies imports this module for the write-side check.
     from ..generation.dependencies import _manual_snapshot
+    # SERIES-001: an empty future section is not hashed, so a book without a prequel future keeps its fingerprint.
+    content={k:v for k,v in content.items() if k!='future' or v}
     payload={'snapshot':_manual_snapshot(repo,scene,'draft',day_selectors=True).model_dump(mode='json'),'content':content}
     return hashlib.sha256(json.dumps(payload,ensure_ascii=False,sort_keys=True,separators=(',',':')).encode('utf-8')).hexdigest()
 
