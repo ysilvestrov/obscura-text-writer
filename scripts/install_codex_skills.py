@@ -50,7 +50,7 @@ def main(argv: list[str] | None = None) -> int:
         result={'result':'failed','errors':[str(error)]}
     except (OSError,ValueError):
         result={'result':'failed','errors':['operation_failed']}
-    print(json.dumps(result,ensure_ascii=False,default=str))
+    print(json.dumps(result,default=str))
     return 0 if result['result'] in {'generated','installed','unchanged'} else 1
 
 

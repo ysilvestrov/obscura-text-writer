@@ -12,9 +12,11 @@ from pathlib import Path
 from typing import Literal
 
 import tomlkit
+from tomlkit.items import InlineTable
 
 _LOCK = threading.Lock()
-_HTTP_FIELDS = ('url', 'bearer_token_env_var', 'http_headers', 'env_http_headers', 'oauth')
+_HTTP_FIELDS = ('url', 'bearer_token_env_var', 'http_headers', 'env_http_headers', 'oauth',
+                'http_headers_helper', 'oauth_resource', 'auth')
 
 
 class CodexConfigError(ValueError):
@@ -46,6 +48,8 @@ def _document(content: bytes):
         raise CodexConfigError('invalid_mcp_table')
     if 'obscura' in servers and not isinstance(servers['obscura'], Mapping):
         raise CodexConfigError('invalid_obscura_table')
+    if "bearer_token" in servers.get("obscura", {}):
+        raise CodexConfigError("deprecated_bearer_token")
     return doc
 
 
@@ -98,13 +102,32 @@ def _copy_permissions(source: Path, target: Path) -> None:
         descriptor = ctypes.create_string_buffer(size.value)
         if not get(str(source), 4, descriptor, size, ctypes.byref(size)):
             raise ctypes.WinError(ctypes.get_last_error())
-        set_security = api.SetFileSecurityW
-        set_security.argtypes = (wintypes.LPCWSTR, wintypes.DWORD, ctypes.c_void_p)
-        set_security.restype = wintypes.BOOL
+        control = int.from_bytes(descriptor.raw[2:4], 'little')
+        if not control & 0x0400:
+            # Do not upgrade a legacy DACL: modern auto-inheritance would add parent ACEs.
+            legacy = api.SetFileSecurityW
+            legacy.argtypes = (wintypes.LPCWSTR, wintypes.DWORD, ctypes.c_void_p)
+            legacy.restype = wintypes.BOOL
+            if not legacy(str(target), 4, descriptor):
+                raise ctypes.WinError(ctypes.get_last_error())
+            return
+        get_dacl = api.GetSecurityDescriptorDacl
+        get_dacl.argtypes = (ctypes.c_void_p, ctypes.POINTER(wintypes.BOOL),
+                            ctypes.POINTER(ctypes.c_void_p), ctypes.POINTER(wintypes.BOOL))
+        get_dacl.restype = wintypes.BOOL
+        present, defaulted = wintypes.BOOL(), wintypes.BOOL()
+        dacl = ctypes.c_void_p()
+        if not get_dacl(descriptor, ctypes.byref(present), ctypes.byref(dacl), ctypes.byref(defaulted)):
+            raise ctypes.WinError(ctypes.get_last_error())
+        set_security = api.SetNamedSecurityInfoW
+        set_security.argtypes = (wintypes.LPWSTR, wintypes.DWORD, wintypes.DWORD,
+                                ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p)
+        set_security.restype = wintypes.DWORD
         protected = int.from_bytes(descriptor.raw[2:4], 'little') & 0x1000
         flags = 4 | (0x80000000 if protected else 0x20000000)
-        if not set_security(str(target), flags, descriptor):
-            raise ctypes.WinError(ctypes.get_last_error())
+        status = set_security(str(target), 1, flags, None, None, dacl, None)
+        if status:
+            raise ctypes.WinError(status)
 
 
 def write_config(path: Path, command: list[str]) -> ConfigResult:
@@ -119,7 +142,7 @@ def write_config(path: Path, command: list[str]) -> ConfigResult:
             doc['mcp_servers'] = tomlkit.table()
         servers = doc['mcp_servers']
         if 'obscura' not in servers:
-            servers['obscura'] = tomlkit.table()
+            servers['obscura'] = tomlkit.inline_table() if isinstance(servers, InlineTable) else tomlkit.table()
         entry = servers['obscura']
         for key in _HTTP_FIELDS:
             entry.pop(key, None)
@@ -140,11 +163,11 @@ def write_config(path: Path, command: list[str]) -> ConfigResult:
         temporary = Path(name)
         try:
             with os.fdopen(handle, 'wb') as stream:
+                if raw is not None:
+                    _copy_permissions(path, temporary)
                 stream.write(rendered)
                 stream.flush()
                 os.fsync(stream.fileno())
-            if raw is not None:
-                _copy_permissions(path, temporary)
             if _read(path) != raw:
                 raise CodexConfigError('config_changed')
             os.replace(temporary, path)

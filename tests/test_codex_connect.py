@@ -12,10 +12,12 @@ COMMAND = [r'C:\Program Files\Obscura\obscura-mcp.exe', '--data-dir', r'C:\tmp\n
 
 
 @pytest.mark.req('STORE-MCP-001')
-def test_codex_roots_are_temporary():
-    assert Path(os.environ['USERPROFILE']).is_relative_to(Path('C:/tmp'))
+def test_codex_roots_are_temporary(tmp_path_factory):
+    base = tmp_path_factory.getbasetemp()
+    assert Path(os.environ['USERPROFILE']).is_relative_to(base)
+    assert os.environ['HOME'] == os.environ['USERPROFILE']
     assert Path.home() == Path(os.environ['USERPROFILE'])
-    assert cc.config_path(Path.home(), os.environ['CODEX_HOME']).is_relative_to(Path('C:/tmp'))
+    assert cc.config_path(Path.home(), os.environ['CODEX_HOME']).is_relative_to(base)
 
 
 @pytest.mark.req('STORE-MCP-001')
@@ -141,3 +143,107 @@ def test_config_home_must_be_absolute(tmp_path, value):
 def test_config_home_selects_explicit_profile(tmp_path):
     assert cc.config_path(tmp_path, None) == tmp_path/'.codex/config.toml'
     assert cc.config_path(tmp_path, str(tmp_path/'separate')) == tmp_path/'separate/config.toml'
+
+
+@pytest.mark.req('STORE-MCP-001')
+def test_inline_parent_can_add_obscura_without_changing_other(tmp_path):
+    path=tmp_path/'config.toml'
+    path.write_text('mcp_servers = { other = { command = "other.exe" } }\n')
+    assert cc.write_config(path,COMMAND).result == 'configured'
+    doc=tomlkit.parse(path.read_text())
+    assert doc['mcp_servers']['other']['command']=='other.exe'
+    assert doc['mcp_servers']['obscura']['command']==COMMAND[0]
+    assert cc.write_config(path,COMMAND).result=='unchanged'
+
+
+@pytest.mark.req('STORE-MCP-001')
+@pytest.mark.parametrize('field,value', [
+    ('http_headers_helper','helper'),
+    ('oauth_resource','https://example.invalid/resource'),
+    ('auth','oauth'),
+])
+def test_all_http_only_fields_are_removed_for_stdio(tmp_path,field,value):
+    path=tmp_path/'config.toml'
+    path.write_text('[mcp_servers.obscura]\nurl="https://example.invalid"\n'
+                    'scopes=["read"]\n'+field+'="'+value+'"\n')
+    assert cc.write_config(path,COMMAND).result=='configured'
+    entry=tomlkit.parse(path.read_text())['mcp_servers']['obscura']
+    assert field not in entry and entry['scopes']==['read']
+    assert cc.config_status(path,COMMAND)['state']=='configured'
+
+
+@pytest.mark.req('STORE-MCP-001')
+def test_deprecated_bearer_token_is_refused_without_exposing_it(tmp_path):
+    path=tmp_path/'config.toml'
+    raw=b'[mcp_servers.obscura]\nurl="https://example.invalid"\nbearer_token="neutral-private"\n'
+    path.write_bytes(raw)
+    with pytest.raises(cc.CodexConfigError) as error:
+        cc.write_config(path,COMMAND)
+    assert 'neutral-private' not in str(error.value)
+    assert path.read_bytes()==raw and cc.config_status(path,COMMAND)['state']=='invalid'
+    assert list(tmp_path.iterdir())==[path]
+
+
+@pytest.mark.req('STORE-MCP-001')
+@pytest.mark.skipif(os.name!='nt',reason='Windows DACL API')
+@pytest.mark.parametrize('mode',['legacy','inherited','protected'])
+def test_private_acl_is_applied_before_bytes_and_preserved(tmp_path,monkeypatch,mode):
+    import ctypes
+    from ctypes import wintypes
+    api=ctypes.WinDLL('advapi32',use_last_error=True)
+    get=api.GetFileSecurityW
+    get.argtypes=(wintypes.LPCWSTR,wintypes.DWORD,ctypes.c_void_p,wintypes.DWORD,ctypes.POINTER(wintypes.DWORD))
+    get.restype=wintypes.BOOL
+    def security(path):
+        size=wintypes.DWORD()
+        get(str(path),4,None,0,ctypes.byref(size))
+        buffer=ctypes.create_string_buffer(size.value)
+        assert get(str(path),4,buffer,size,ctypes.byref(size))
+        return buffer
+    def rights(path):
+        descriptor=security(path)
+        present,defaulted=wintypes.BOOL(),wintypes.BOOL()
+        pointer=ctypes.c_void_p()
+        getter=api.GetSecurityDescriptorDacl
+        getter.argtypes=(ctypes.c_void_p,ctypes.POINTER(wintypes.BOOL),ctypes.POINTER(ctypes.c_void_p),ctypes.POINTER(wintypes.BOOL))
+        getter.restype=wintypes.BOOL
+        assert getter(descriptor,ctypes.byref(present),ctypes.byref(pointer),ctypes.byref(defaulted))
+        size=int.from_bytes(ctypes.string_at(pointer,4)[2:4],'little') if pointer.value else 0
+        # Windows may normalize AUTO_INHERITED cache bits. Compare actual ACEs and access/inheritance controls.
+        control=int.from_bytes(descriptor.raw[2:4],'little') & 0x100C
+        return control,ctypes.string_at(pointer,size) if size else b''
+    path=tmp_path/'config.toml'
+    path.write_text('model="neutral"\n')
+    protected = mode == 'protected'
+    if mode != 'legacy':
+        buffer=security(path)
+        present,defaulted=wintypes.BOOL(),wintypes.BOOL()
+        dacl=ctypes.c_void_p()
+        getter=api.GetSecurityDescriptorDacl
+        getter.argtypes=(ctypes.c_void_p,ctypes.POINTER(wintypes.BOOL),ctypes.POINTER(ctypes.c_void_p),ctypes.POINTER(wintypes.BOOL))
+        getter.restype=wintypes.BOOL
+        assert getter(buffer,ctypes.byref(present),ctypes.byref(dacl),ctypes.byref(defaulted))
+        setter=api.SetNamedSecurityInfoW
+        setter.argtypes=(wintypes.LPWSTR,wintypes.DWORD,wintypes.DWORD,ctypes.c_void_p,ctypes.c_void_p,ctypes.c_void_p,ctypes.c_void_p)
+        setter.restype=wintypes.DWORD
+        assert setter(str(path),1,4|(0x80000000 if protected else 0x20000000),None,None,dacl,None)==0
+    expected=rights(path)
+    assert bool(expected[0] & 0x1000)==protected
+    fdopen=os.fdopen
+    class CheckedWriter:
+        def __init__(self,stream):
+            self.stream=stream
+        def __enter__(self):
+            return self
+        def __exit__(self,*args):
+            self.stream.close()
+        def __getattr__(self,name):
+            return getattr(self.stream,name)
+        def write(self,data):
+            temporary=next(tmp_path.glob('.obscura-*.tmp'))
+            assert rights(temporary)==expected, 'private bytes would be written before ACL'
+            return self.stream.write(data)
+    monkeypatch.setattr(os,'fdopen',lambda *a,**kw:CheckedWriter(fdopen(*a,**kw)))
+    result=cc.write_config(path,COMMAND)
+    assert rights(path)==expected
+    assert rights(result.backup)==expected

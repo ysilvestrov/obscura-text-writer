@@ -167,3 +167,83 @@ def test_unsafe_bundle_is_rejected_before_write(tmp_path, bundle):
     unsafe=dataclasses.replace(bundle,files={**bundle.files,'../outside.md':b'escape'})
     assert install_skills(unsafe,tmp_path).result == 'failed'
     assert not list(tmp_path.iterdir())
+
+
+@pytest.mark.req('CODEX-SKILLS')
+@pytest.mark.parametrize('parent',['skills','obscura-staging','obscura-backups'])
+def test_parent_redirect_during_staging_is_refused(tmp_path,bundle,monkeypatch,parent):
+    import shutil
+    from storygen import codex_skill_install as ci
+    install_skills(bundle,tmp_path)
+    agents=tmp_path/'.agents'
+    redirected=agents/parent
+    redirected.mkdir(exist_ok=True)
+    outside=tmp_path/'outside'
+    held=tmp_path/'held'
+    original=ci._write_tree
+    redirected_once=False
+    before=None
+    def redirect(path,files,*args,**kwargs):
+        nonlocal redirected_once,before
+        result=original(path,files,*args,**kwargs)
+        if not redirected_once:
+            shutil.copytree(redirected,outside)
+            before=tree(outside)
+            assert redirected.resolve().is_relative_to(tmp_path.resolve())
+            redirected.rename(held)
+            if os.name=='nt':
+                import _winapi
+                _winapi.CreateJunction(str(outside),str(redirected))
+            else:
+                redirected.symlink_to(outside,target_is_directory=True)
+            redirected_once=True
+        return result
+    monkeypatch.setattr(ci,'_write_tree',redirect)
+    report=install_skills(update(bundle),tmp_path)
+    assert report.result in {'conflict','failed','partial'}
+    assert tree(outside)==before
+
+
+@pytest.mark.req('CODEX-SKILLS')
+def test_rollback_does_not_restore_directory_deleted_after_publication(tmp_path,bundle,monkeypatch):
+    import shutil
+    install_skills(bundle,tmp_path)
+    original=os.replace
+    calls=0
+    deleted=None
+    def fail_after_author_deletion(src,dst):
+        nonlocal calls,deleted
+        calls+=1
+        if calls==2:
+            result=original(src,dst)
+            deleted=Path(dst)
+            assert deleted.resolve().is_relative_to(tmp_path.resolve())
+            shutil.rmtree(deleted)
+            return result
+        if calls==3:
+            raise PermissionError('third rename')
+        return original(src,dst)
+    monkeypatch.setattr(os,'replace',fail_after_author_deletion)
+    report=install_skills(update(bundle),tmp_path)
+    assert report.result=='partial' and NAMES[0] in report.conflicts
+    assert deleted and not deleted.exists()
+
+
+@pytest.mark.req('CODEX-SKILLS')
+def test_conflict_on_not_yet_touched_target_is_named(tmp_path,bundle,monkeypatch):
+    from storygen import codex_skill_install as ci
+    install_skills(bundle,tmp_path)
+    original=ci._write_tree
+    changed=False
+    def author_change(path,files,*args,**kwargs):
+        nonlocal changed
+        result=original(path,files,*args,**kwargs)
+        if not changed:
+            (tmp_path/'.agents/skills'/NAMES[-1]/'SKILL.md').write_text('author edit')
+            changed=True
+        return result
+    monkeypatch.setattr(ci,'_write_tree',author_change)
+    report=install_skills(update(bundle),tmp_path)
+    assert report.result in {'conflict','failed','partial'}
+    assert NAMES[-1] in report.conflicts
+    assert (tmp_path/'.agents/skills'/NAMES[-1]/'SKILL.md').read_text()=='author edit'

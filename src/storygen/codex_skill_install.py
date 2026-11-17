@@ -41,6 +41,57 @@ def _info(path: Path):
     return info
 
 
+def _identity(info):
+    return (info.st_dev, info.st_ino) if info else None
+
+
+class _Directories:
+    """Recheck every ancestor and remembered directory identity before filesystem operations."""
+    def __init__(self, profile: Path):
+        self.profile = profile
+        self.identities = {}
+
+    def chain(self, path: Path):
+        try:
+            relative = path.relative_to(self.profile)
+        except ValueError:
+            raise _Conflict('unsafe_install_path') from None
+        current = self.profile
+        yield current
+        for part in relative.parts:
+            current = current/part
+            yield current
+
+    def check(self, path: Path):
+        for ancestor in self.chain(path):
+            info = _info(ancestor)
+            if ancestor in self.identities and _identity(info) != self.identities[ancestor]:
+                raise _Conflict('install_parent_changed')
+            if info is not None and not stat.S_ISDIR(info.st_mode):
+                raise _Conflict('not_a_directory')
+
+    def watch(self, path: Path):
+        self.check(path)
+        for ancestor in self.chain(path):
+            info = _info(ancestor)
+            if info is not None:
+                self.identities[ancestor] = _identity(info)
+
+    def mkdir(self, path: Path):
+        self.check(path)
+        path.mkdir(parents=True, exist_ok=True)
+        self.watch(path)
+
+
+@dataclass
+class _Action:
+    name: str
+    target: Path
+    old: dict[str, bytes] | None
+    backup: Path | None
+    published: bool = False
+
+
 def _tree(path: Path) -> dict[str, bytes] | None:
     info = _info(path)
     if info is None:
@@ -118,20 +169,30 @@ def _managed(files: dict[str, bytes]) -> bool:
         return False
 
 
-def _write_tree(path: Path, files: dict[str, bytes]) -> None:
+def _write_tree(path: Path, files: dict[str, bytes], guard: _Directories) -> None:
+    guard.check(path.parent)
     path.mkdir(parents=True)
+    guard.watch(path)
     for relative,raw in files.items():
         target = path/relative
-        target.parent.mkdir(parents=True,exist_ok=True)
-        target.write_bytes(raw)
+        guard.mkdir(target.parent)
+        with target.open('xb') as stream:
+            stream.write(raw)
 
 
-def _rollback(actions, expected, staging: Path):
+def _rollback(actions, expected, staging: Path, guard: _Directories):
     restored, conflicts = [], []
-    for name,target,old,backup in reversed(actions):
+    for action in reversed(actions):
+        name,target,old,backup = action.name,action.target,action.old,action.backup
         try:
+            guard.check(target.parent)
+            if backup:
+                guard.check(backup.parent)
             current = _tree(target)
             saved = _tree(backup) if backup else None
+            if action.published and current is None:
+                conflicts.append(name)  # The author removed/moved an already published directory.
+                continue
             if current == old:
                 continue
             if old is not None and saved != old:
@@ -142,14 +203,29 @@ def _rollback(actions, expected, staging: Path):
                     conflicts.append(name)
                     continue
                 rescue = staging/'rollback'/name
-                rescue.parent.mkdir(parents=True,exist_ok=True)
+                guard.mkdir(rescue.parent)
+                guard.check(target.parent)
                 os.replace(target,rescue)
             if old is not None:
+                guard.check(backup.parent)
+                guard.check(target.parent)
                 os.replace(backup,target)
             restored.append(name)
         except (OSError,_Conflict):
             conflicts.append(name)
     return tuple(restored),tuple(conflicts)
+
+
+def _available_backups(backups: list[Path], guard: _Directories) -> tuple[Path, ...]:
+    available = []
+    for path in backups:
+        try:
+            guard.check(path.parent)
+            if _info(path):
+                available.append(path)
+        except (OSError,_Conflict):
+            pass
+    return tuple(available)
 
 
 def install_skills(bundle: SkillBundle, userprofile: Path) -> InstallReport:
@@ -163,30 +239,32 @@ def install_skills(bundle: SkillBundle, userprofile: Path) -> InstallReport:
     agents = profile/'.agents'
     skills = agents/'skills'
     backup_root, staging_root = agents/'obscura-backups',agents/'obscura-staging'
+    guard = _Directories(profile)
     try:
         for path in (profile,agents,skills,backup_root,staging_root):
-            info = _info(path)
-            if info is not None and not stat.S_ISDIR(info.st_mode):
-                raise _Conflict('not_a_directory')
+            guard.watch(path)
     except _Conflict:
         return InstallReport('conflict',errors=('unsafe_install_root',))
     except OSError:
         return InstallReport('failed',errors=('install_access_denied',))
     lock = agents/'.obscura-install.lock'
     try:
-        agents.mkdir(parents=True,exist_ok=True)
+        guard.mkdir(agents)
         lock.mkdir()
+        lock_identity = _identity(_info(lock))
     except FileExistsError:
         return InstallReport('conflict',errors=('install_busy',))
+    except _Conflict:
+        return InstallReport('conflict',errors=('install_parent_changed',))
     except OSError:
         return InstallReport('failed',errors=('install_access_denied',))
-    actions = []
-    backups = []
+    actions, backups = [], []
     staging = staging_root/uuid.uuid4().hex
     try:
         originals, conflicts = {}, []
         for name in _NAMES:
             try:
+                guard.check(skills)
                 old = _tree(skills/name)
                 originals[name] = old
                 if old is not None and not _managed(old):
@@ -198,41 +276,56 @@ def install_skills(bundle: SkillBundle, userprofile: Path) -> InstallReport:
         changed = [name for name in _NAMES if originals[name] != expected[name]]
         if not changed:
             return InstallReport('unchanged')
+        guard.mkdir(staging)
         for name in _NAMES:
-            _write_tree(staging/name,expected[name])
+            _write_tree(staging/name,expected[name],guard)
         backup_dir = backup_root/staging.name
         for name in changed:
             target = skills/name
             old = originals[name]
+            guard.check(target.parent)
+            guard.check(staging)
+            guard.check(backup_root)
             if _tree(target) != old:
                 raise _Conflict(name)
-            target.parent.mkdir(parents=True,exist_ok=True)
+            guard.mkdir(target.parent)
             backup = backup_dir/name if old is not None else None
-            actions.append((name,target,old,backup))
+            action = _Action(name,target,old,backup)
+            actions.append(action)
             if backup:
-                backup.parent.mkdir(parents=True,exist_ok=True)
+                guard.mkdir(backup.parent)
+                guard.check(target.parent)
                 os.replace(target,backup)
                 backups.append(backup)
+            guard.check(staging)
+            guard.check(target.parent)
             os.replace(staging/name,target)
+            action.published = True
         for name in _NAMES:
+            guard.check(skills)
             if _tree(skills/name) != expected[name]:
                 raise _Conflict(name)
         return InstallReport('installed',installed=tuple(changed),backups=tuple(backups))
     except (OSError,_Conflict) as error:
-        restored, conflicts = _rollback(actions,expected,staging)
+        restored, rollback_conflicts = _rollback(actions,expected,staging,guard)
+        initial = (str(error),) if isinstance(error,_Conflict) else ()
+        conflicts = tuple(dict.fromkeys((*initial,*rollback_conflicts)))
         installed = []
-        for name,target,old,backup in actions:
+        for action in actions:
             try:
-                if _tree(target) == expected[name]:
-                    installed.append(name)
+                guard.check(action.target.parent)
+                if _tree(action.target) == expected[action.name]:
+                    installed.append(action.name)
             except (OSError,_Conflict):
                 pass
-        return InstallReport('partial' if conflicts else 'failed',installed=tuple(installed),
-                             restored=restored,conflicts=conflicts,
-                             backups=tuple(path for path in backups if path.exists()),
-                             errors=('install_changed' if isinstance(error,_Conflict) else 'install_io_failed',))
+        result = 'partial' if rollback_conflicts else 'conflict' if initial else 'failed'
+        return InstallReport(result,installed=tuple(installed),restored=restored,conflicts=conflicts,
+                             backups=_available_backups(backups,guard),
+                             errors=('install_changed' if initial else 'install_io_failed',))
     finally:
         try:
-            lock.rmdir()
-        except OSError:
-            pass  # A changed lock belongs to the external writer; never recursively erase it.
+            guard.check(agents)
+            if _identity(_info(lock)) == lock_identity:
+                lock.rmdir()
+        except (OSError,_Conflict):
+            pass

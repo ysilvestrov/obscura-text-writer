@@ -110,3 +110,19 @@ def test_core_config_and_install_sequence(tmp_path):
     author.write_text('author edit')
     assert install_skills(bundle,tmp_path).result == 'conflict'
     assert author.read_text() == 'author edit'
+
+
+@pytest.mark.req('CODEX-SKILLS')
+def test_cli_emits_json_with_unicode_path_on_legacy_stdout(tmp_path,monkeypatch):
+    import io
+    spec=importlib.util.spec_from_file_location('codex_legacy_stdout_test',SCRIPT)
+    module=importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    buffer=io.BytesIO()
+    stream=io.TextIOWrapper(buffer,encoding='cp1252')
+    monkeypatch.setattr(sys,'stdout',stream)
+    target=tmp_path/'Є output'
+    assert module.main(['--output',str(target)])==0
+    stream.flush()
+    result=json.loads(buffer.getvalue().decode('ascii'))
+    assert result['path']==str(target) and result['result']=='generated'

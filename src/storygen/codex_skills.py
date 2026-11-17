@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import posixpath
 import re
 from dataclasses import dataclass
@@ -12,6 +13,13 @@ GENERATOR_VERSION = '1'
 TICK = chr(96)
 PLUGIN_ROOT = chr(36) + '{CLAUDE_PLUGIN_ROOT}'
 PORTABLE = {'name', 'description', 'license', 'compatibility', 'metadata', 'allowed-tools'}
+
+
+MODEL_ADAPTER = ('## Model\n\nUse the current session for planning. Do not automatically switch models, '
+                 'call an advisor, or create subagents. No Codex quality comparison has been measured.')
+PIPELINE_ADAPTER = ('## Model routing\n\nUse the current session for brief, draft, edit, and memory. '
+                    'Do not automatically switch models or create subagents. '
+                    'No Codex quality or cost comparison has been measured.')
 
 
 class GenerationError(ValueError):
@@ -40,8 +48,63 @@ def _section(text: str, start: str, end: str | None, replacement: str) -> str:
     if text.count(start) != 1 or end is not None and text.count(end) != 1:
         raise GenerationError('source_model_section_changed')
     left = text.index(start)
-    right = text.index(end, left + len(start)) if end else len(text)
+    next_heading = re.search(r'^## ', text[left + len(start):], re.M)
+    right = left + len(start) + next_heading.start() if next_heading else len(text)
+    if end and text.index(end) < right:
+        raise GenerationError('source_model_section_changed')
     return text[:left] + replacement + '\n\n' + text[right:]
+
+
+
+def _scalar(raw: str) -> str:
+    """An explicit portable YAML string subset, not a permissive YAML parser."""
+    raw = raw.strip()
+    if not raw:
+        raise GenerationError('unsupported_frontmatter')
+    if raw.startswith('"'):
+        try:
+            value = json.loads(raw)
+        except ValueError:
+            raise GenerationError('invalid_frontmatter_scalar') from None
+        if not isinstance(value, str):
+            raise GenerationError('unsupported_frontmatter_scalar')
+        return value
+    if raw.startswith("'"):
+        if not re.fullmatch(r"'(?:[^']|'')*'", raw):
+            raise GenerationError('invalid_frontmatter_scalar')
+        return raw[1:-1].replace("''", "'")
+    if (raw[0] in '[]{}&*!|>@%' or re.search(r':(?:\s|$)|(?:^|\s)#', raw) or
+            raw.lower() in {'true', 'false', 'null', '~'} or
+            re.fullmatch(r'[-+]?(?:\d[\d_.]*)(?:[eE][-+]?\d+)?', raw)):
+        raise GenerationError('unsupported_frontmatter_scalar')
+    return raw
+
+
+def _frontmatter(front: str) -> dict:
+    values = {}
+    metadata = None
+    for line in front.splitlines():
+        if not line.strip() or line.lstrip().startswith('#'):
+            continue
+        if line[0].isspace():
+            match = re.fullmatch(r'  ([A-Za-z0-9_-]+):[ \t]*(.*)', line)
+            if metadata is None or not match or match[1] in metadata:
+                raise GenerationError('unsupported_frontmatter')
+            metadata[match[1]] = _scalar(match[2])
+        else:
+            match = re.fullmatch(r'([A-Za-z0-9_-]+):[ \t]*(.*)', line)
+            if not match or match[1] not in PORTABLE or match[1] in values:
+                raise GenerationError('unsupported_frontmatter')
+            key, raw = match.groups()
+            metadata = None
+            if key == 'metadata':
+                if raw.strip():
+                    raise GenerationError('unsupported_metadata')
+                metadata = {}
+                values[key] = metadata
+            else:
+                values[key] = _scalar(raw)
+    return values
 
 
 def generate_skills(source: Path) -> SkillBundle:
@@ -103,7 +166,7 @@ def generate_skills(source: Path) -> SkillBundle:
             if not text.startswith('---\n') or '\n---\n' not in text[4:]:
                 raise GenerationError('invalid_frontmatter')
             front = text[4:text.index('\n---\n', 4)]
-            fields = dict(re.findall(r'^([a-z][a-z-]*):[ \t]*(.*)$', front, re.M))
+            fields = _frontmatter(front)
             if fields.get('name') != name or not fields.get('description') or set(fields) - PORTABLE:
                 raise GenerationError('unsupported_frontmatter')
             text = _once(text, 'name: '+name+'\n', 'name: obscura-'+name+'\n')
@@ -114,14 +177,9 @@ def generate_skills(source: Path) -> SkillBundle:
             lines[rule_lines[0]] = rules.rstrip()+'\n'
             text = ''.join(lines)
         if key == 'skills/start-story/SKILL.md':
-            text = _section(text, '## Model\n', '## Gates\n',
-                            '## Model\n\nUse the current session for planning. Do not automatically switch models, '
-                            'call an advisor, or create subagents. No Codex quality comparison has been measured.')
+            text = _section(text, '## Model\n', '## Gates\n', MODEL_ADAPTER)
         if key == 'skills/draft-scene/references/chat-pipeline.md':
-            text = _section(text, '## Model routing\n', None,
-                            '## Model routing\n\nUse the current session for brief, draft, edit, and memory. '
-                            'Do not automatically switch models or create subagents. '
-                            'No Codex quality or cost comparison has been measured.')
+            text = _section(text, '## Model routing\n', None, PIPELINE_ADAPTER)
         if 'AskUserQuestion' in text:
             if key != 'skills/start-story/references/interview.md':
                 raise GenerationError('unknown_question_instruction')
@@ -137,6 +195,7 @@ def generate_skills(source: Path) -> SkillBundle:
         text = re.sub(re.escape(PLUGIN_ROOT) + '/([^'+TICK+r'\s]+)', plugin_reference, text)
 
         def relative_reference(reference: str) -> str:
+            reference, separator, fragment = reference.partition('#')
             if '\\' in reference or ':' in reference or reference.startswith('/'):
                 raise GenerationError('external_reference')
             parent = posixpath.dirname(target)
@@ -145,13 +204,17 @@ def generate_skills(source: Path) -> SkillBundle:
                 resolved = posixpath.normpath(posixpath.join('obscura-'+name, 'references', reference))
             if resolved not in available:
                 raise GenerationError('unresolved_relative_reference')
-            return posixpath.relpath(resolved, parent)
+            return posixpath.relpath(resolved, parent) + ('#' + fragment if separator else '')
 
-        text = re.sub(TICK+'([^'+TICK+r'\n]*\.md)'+TICK,
+        text = re.sub(TICK+'([^'+TICK+r'\n]*\.md[^'+TICK+r'\n]*)'+TICK,
                       lambda match: TICK+relative_reference(match[1])+TICK, text)
-        text = re.sub(r'(\[[^\]]+\]\()([^)]+\.md)(\))',
-                      lambda match: match[1]+relative_reference(match[2])+match[3], text)
-        if any(token in text for token in ('CLAUDE_PLUGIN_ROOT', 'Claude', 'AskUserQuestion', '/model', 'Advisor')):
+        text = re.sub(r'(\[[^\]]+\]\()([^\s)]+)(\))',
+                      lambda match: (match[1]+relative_reference(match[2])+match[3]
+                                     if '.md' in match[2] else match[0]), text)
+        remaining = text.replace(MODEL_ADAPTER, '').replace(PIPELINE_ADAPTER, '')
+        if (any(token in remaining for token in ('CLAUDE_PLUGIN_ROOT', 'Claude')) or
+                re.search(r'\b(?:advisor|subagents?|claude code|claude desktop|connect claude|askuserquestion)\b|/model\b',
+                          remaining, re.I)):
             raise GenerationError('unadapted_client_instruction')
         if target.endswith('/SKILL.md'):
             text += '\nResolve local file references relative to the directory of the file that contains them.\n'

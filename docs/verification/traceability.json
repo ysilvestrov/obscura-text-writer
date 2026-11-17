@@ -6622,7 +6622,11 @@
         "tests/test_codex_connect.py::test_powershell_command_quotes_apostrophes",
         "tests/test_codex_connect.py::test_config_home_must_be_absolute",
         "tests/test_codex_connect.py::test_config_home_selects_explicit_profile",
-        "tests/test_codex_connect.py::test_codex_roots_are_temporary"
+        "tests/test_codex_connect.py::test_codex_roots_are_temporary",
+        "tests/test_codex_connect.py::test_inline_parent_can_add_obscura_without_changing_other",
+        "tests/test_codex_connect.py::test_all_http_only_fields_are_removed_for_stdio",
+        "tests/test_codex_connect.py::test_deprecated_bearer_token_is_refused_without_exposing_it",
+        "tests/test_codex_connect.py::test_private_acl_is_applied_before_bytes_and_preserved"
       ]
     },
     {
@@ -6635,7 +6639,10 @@
         "tests/test_codex_skills.py::test_rules_and_references_are_portable",
         "tests/test_codex_skills.py::test_source_drift_refuses_the_whole_bundle",
         "tests/test_codex_skills.py::test_external_reference_is_rejected",
-        "tests/test_codex_skills.py::test_symlink_source_is_rejected"
+        "tests/test_codex_skills.py::test_symlink_source_is_rejected",
+        "tests/test_codex_skills.py::test_model_adaptation_preserves_other_sections",
+        "tests/test_codex_skills.py::test_entire_frontmatter_is_validated",
+        "tests/test_codex_skills.py::test_markdown_fragment_does_not_hide_missing_reference"
       ]
     },
     {
@@ -6645,7 +6652,8 @@
       "tests": [
         "tests/test_codex_skills.py::test_planning_and_scene_routing_use_current_session",
         "tests/test_codex_skills.py::test_provider_recipes_are_preserved",
-        "tests/test_codex_skills.py::test_unknown_mcp_tool_is_reported"
+        "tests/test_codex_skills.py::test_unknown_mcp_tool_is_reported",
+        "tests/test_codex_skills.py::test_lowercase_advisor_instruction_is_not_emitted"
       ]
     },
     {
@@ -6661,7 +6669,10 @@
         "tests/test_codex_skill_install.py::test_rollback_preserves_concurrent_author_edit",
         "tests/test_codex_skill_install.py::test_backups_and_staging_are_not_discoverable",
         "tests/test_codex_skill_install.py::test_busy_lock_refuses_without_changes",
-        "tests/test_codex_skill_install.py::test_unsafe_bundle_is_rejected_before_write"
+        "tests/test_codex_skill_install.py::test_unsafe_bundle_is_rejected_before_write",
+        "tests/test_codex_skill_install.py::test_parent_redirect_during_staging_is_refused",
+        "tests/test_codex_skill_install.py::test_rollback_does_not_restore_directory_deleted_after_publication",
+        "tests/test_codex_skill_install.py::test_conflict_on_not_yet_touched_target_is_named"
       ]
     },
     {
@@ -6675,7 +6686,8 @@
         "tests/test_install_codex_skills.py::test_cli_installs_into_temporary_profile",
         "tests/test_install_codex_skills.py::test_cli_uses_its_checkout_from_another_cwd",
         "tests/test_install_codex_skills.py::test_cli_generation_failure_does_not_install",
-        "tests/test_install_codex_skills.py::test_core_config_and_install_sequence"
+        "tests/test_install_codex_skills.py::test_core_config_and_install_sequence",
+        "tests/test_install_codex_skills.py::test_cli_emits_json_with_unicode_path_on_legacy_stdout"
       ]
     }
   ]

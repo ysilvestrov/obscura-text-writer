@@ -118,14 +118,66 @@ def test_symlink_source_is_rejected(tmp_path):
 @pytest.mark.req('CODEX-SKILLS')
 def test_unknown_mcp_tool_is_reported(tmp_path):
     from storygen.mcp.bridge import TOOLS
-    source = copy_source(tmp_path)
-    skill = source/'skills/start-story/SKILL.md'
-    skill.write_text(skill.read_text()+'\nCall mcp__obscura__unknown_test_tool.\n',encoding='utf-8')
-    bundle = generate_skills(source)
-    mentions = set()
-    for raw in bundle.files.values():
-        mentions.update(re.findall(r'mcp__obscura__(\w+)', raw.decode()))
-    assert mentions - set(TOOLS) == {'unknown_test_tool'}
-    clean = generate_skills(SOURCE)
-    for raw in clean.files.values():
-        assert set(re.findall(r'mcp__obscura__(\w+)',raw.decode())) <= set(TOOLS)
+    from test_claude_plugin import tool_mentions
+    source=copy_source(tmp_path)
+    skill=source/'skills/start-story/SKILL.md'
+    tick=chr(96)
+    skill.write_text(skill.read_text()+'\nCall '+tick+'get_unknown_test_tool(story_id)'+tick+'.\n',encoding='utf-8')
+    bundle=generate_skills(source)
+    mentions=set().union(*(tool_mentions(raw.decode()) for raw in bundle.files.values()))
+    assert {'get_story','get_stage_task','save_draft'} <= mentions
+    assert mentions - set(TOOLS)=={'get_unknown_test_tool'}
+    clean=generate_skills(SOURCE)
+    real=set().union(*(tool_mentions(raw.decode()) for raw in clean.files.values()))
+    assert {'get_story','get_stage_task','save_draft'} <= real
+    assert real <= set(TOOLS)
+
+
+@pytest.mark.req('CODEX-SKILLS')
+@pytest.mark.parametrize('skill,position', [
+    ('draft-scene/references/chat-pipeline.md','end'),
+    ('start-story/SKILL.md','before_gates'),
+])
+def test_model_adaptation_preserves_other_sections(tmp_path,skill,position):
+    source=copy_source(tmp_path)
+    path=source/'skills'/skill
+    extra='## Additional requirement\n\nKeep the neutral editorial checklist.\n\n'
+    text=path.read_text()
+    text=text+extra if position=='end' else text.replace('## Gates\n',extra+'## Gates\n')
+    path.write_text(text,encoding='utf-8')
+    result=generate_skills(source)
+    emitted=result.files['obscura-'+skill].decode()
+    assert 'Keep the neutral editorial checklist.' in emitted
+
+
+@pytest.mark.req('CODEX-SKILLS')
+def test_lowercase_advisor_instruction_is_not_emitted(tmp_path):
+    source=copy_source(tmp_path)
+    path=source/'skills/start-story/SKILL.md'
+    path.write_text(path.read_text()+'\nConsult the advisor before continuing.\n',encoding='utf-8')
+    with pytest.raises(GenerationError):
+        generate_skills(source)
+
+
+@pytest.mark.req('CODEX-SKILLS')
+@pytest.mark.parametrize('mutation', ['invalid_scalar','unknown_key'])
+def test_entire_frontmatter_is_validated(tmp_path,mutation):
+    source=copy_source(tmp_path)
+    path=source/'skills/start-story/SKILL.md'
+    text=path.read_text()
+    if mutation=='invalid_scalar':
+        text=text.replace('description: ','description: invalid: ',1)
+    else:
+        text=text.replace('\n---\n','\nclient_only: yes\n---\n',1)
+    path.write_text(text,encoding='utf-8')
+    with pytest.raises(GenerationError):
+        generate_skills(source)
+
+
+@pytest.mark.req('CODEX-SKILLS')
+def test_markdown_fragment_does_not_hide_missing_reference(tmp_path):
+    source=copy_source(tmp_path)
+    path=source/'skills/start-story/SKILL.md'
+    path.write_text(path.read_text()+'\n[chapter](references/missing.md#introduction)\n',encoding='utf-8')
+    with pytest.raises(GenerationError):
+        generate_skills(source)
