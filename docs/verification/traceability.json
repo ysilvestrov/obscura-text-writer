@@ -6624,6 +6624,29 @@
         "tests/test_codex_connect.py::test_config_home_selects_explicit_profile",
         "tests/test_codex_connect.py::test_codex_roots_are_temporary"
       ]
+    },
+    {
+      "id": "CODEX-SKILLS-S01",
+      "requirement": "CODEX-SKILLS",
+      "scope": "Детерміновані переносні тексти, адаптація клієнта й звірка MCP-контракту; не поведінка моделей.",
+      "tests": [
+        "tests/test_codex_skills.py::test_real_sources_generate_five_self_contained_skills",
+        "tests/test_codex_skills.py::test_generation_does_not_change_sources",
+        "tests/test_codex_skills.py::test_rules_and_references_are_portable",
+        "tests/test_codex_skills.py::test_source_drift_refuses_the_whole_bundle",
+        "tests/test_codex_skills.py::test_external_reference_is_rejected",
+        "tests/test_codex_skills.py::test_symlink_source_is_rejected"
+      ]
+    },
+    {
+      "id": "CODEX-SKILLS-S03",
+      "requirement": "CODEX-SKILLS",
+      "scope": "Детерміновані переносні тексти, адаптація клієнта й звірка MCP-контракту; не поведінка моделей.",
+      "tests": [
+        "tests/test_codex_skills.py::test_planning_and_scene_routing_use_current_session",
+        "tests/test_codex_skills.py::test_provider_recipes_are_preserved",
+        "tests/test_codex_skills.py::test_unknown_mcp_tool_is_reported"
+      ]
     }
   ]
 }

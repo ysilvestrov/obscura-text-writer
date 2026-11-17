@@ -2279,3 +2279,4 @@ Playwright `memory-kind.spec.mjs` і `core-review.spec.mjs` пройшли вр�
 - План основи затверджено власником; обрано нативне виконання. Реалізація в C:/tmp/obscura-codex-design, гілка codex/obscura-codex-integration.
 - Task 1: RED — відсутній codex_connect; GREEN — 38 тестів конфігурації та незмінені тести Claude. Конфігуратор TOML, унікальні копії, права/DACL, звірка конкурентної зміни, ізольовані профілі; STORE-MCP-S12 і traceability у цьому ж коміті.
 - Користувацька документація Task 1 не змінюється: поки немає UI чи публічного CLI. Оновлення uk/en заплановано разом із CLI.
+- Task 2: RED — відсутній codex_skills; GREEN — 14 passed, 1 skipped разом із незміненими тестами плагіна Claude. П’ять скілів, правила, шляхи, клієнтський Model/Model routing, рецепти, відмова при дрейфі; CODEX-SKILLS S01/S03 і traceability. OS відмовила у створенні тестового symlink — цей тест skipped, не доказ живої перевірки symlink.
