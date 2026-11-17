@@ -30,7 +30,7 @@
 
 Наслідок порядку, погоджений власником 10.11.2026: інсталятор іде перед довгою формою, тож перший реліз готових збірок розрахований на оповідання, а не на романи.
 
-Без місця в черзі: [#176](https://github.com/ysilvestrov/obscura-text-writer/issues/176) — R-37 рекламні пікселі й банер згоди на cookies для сайту (запит власника 15.11.2026). [#200](https://github.com/ysilvestrov/obscura-text-writer/issues/200) — R-39 скіли Obscura: пакування для Store, методика в MCP, скіл `revise` (залишок R-35, перший пакет якого реалізовано 17.11.2026); [#196](https://github.com/ysilvestrov/obscura-text-writer/issues/196) — R-38 анотацію пише роль письменника (запит власника 17.11.2026); [#67](https://github.com/ysilvestrov/obscura-text-writer/issues/67), [#68](https://github.com/ysilvestrov/obscura-text-writer/issues/68), [#69](https://github.com/ysilvestrov/obscura-text-writer/issues/69), [#70](https://github.com/ysilvestrov/obscura-text-writer/issues/70) — залишки #60.
+Без місця в черзі: [#176](https://github.com/ysilvestrov/obscura-text-writer/issues/176) — R-37 рекламні пікселі й банер згоди на cookies для сайту (запит власника 15.11.2026). [#200](https://github.com/ysilvestrov/obscura-text-writer/issues/200) — R-39 скіли Obscura: пакування для Store і методика в MCP (залишок R-35, перший пакет якого реалізовано 17.11.2026; виконується разом із залишком #119); [#203](https://github.com/ysilvestrov/obscura-text-writer/issues/203) — R-40 скіл `revise`; [#196](https://github.com/ysilvestrov/obscura-text-writer/issues/196) — R-38 анотацію пише роль письменника (запит власника 17.11.2026); [#67](https://github.com/ysilvestrov/obscura-text-writer/issues/67), [#68](https://github.com/ysilvestrov/obscura-text-writer/issues/68), [#69](https://github.com/ysilvestrov/obscura-text-writer/issues/69), [#70](https://github.com/ysilvestrov/obscura-text-writer/issues/70) — залишки #60.
 
 Відкладено: [#61](https://github.com/ysilvestrov/obscura-text-writer/issues/61) — автоматичні сигнали втрати запису пам'яті (з #41); береться, коли буде видно частоту пропусків пам'яті v4.
 
@@ -689,15 +689,24 @@ Read-only розбір останнього запуску06.11.2026 вияви�
 - Залежності: немає; пов’язано з рецептами R-35.
 - Приймання: SPEC.MD (публікація, ролі) + traceability; сторінки сайту uk/en, якщо там згадано роль етапу.
 
-## R-39 — Скіли Obscura: пакування для Store, методика в MCP, скіл `revise`
+## R-39 — Скіли Obscura: пакування для Store і методика в MCP
 
-**Статус:** залишок R-35 після першого пакета, GitHub [#200](https://github.com/ysilvestrov/obscura-text-writer/issues/200). Місце в черзі не визначено.
+**Статус:** залишок R-35 після першого пакета, GitHub [#200](https://github.com/ysilvestrov/obscura-text-writer/issues/200). 17.11.2026 власник поставив R-39 разом із залишком #119 перед публікацією в Store, обрав для методики інструмент-провідник і виніс `revise` в R-40; специфікація `docs/superpowers/specs/2026-11/2026-11-17-store-release-design.md`.
 
 - Мета: скіли Obscura має автор версії зі Store і клієнт без підтримки скілів, а не лише той, хто встановив Obscura з вихідного коду.
 - Обсяг:
   - ZIP скілів для Claude Desktop / claude.ai зі спільними правилами, вбудованими в кожен скіл; плагін у сталій теці поза `AppData` (віртуалізація MSIX); кнопка «Підключити до Claude» встановлює й плагін (`claude plugin marketplace add` / `install`, `.mcpb` або ZIP для Desktop);
-  - методика в MCP для клієнтів без скілів: prompts або інструмент-провідник із тими самими кроками;
-  - скіл `revise`: правка написаних сцен за коментарями автора.
-- Відкриті рішення: публічний репозиторій плагіна й версії зі збірками Store; підтримка Free-плану; порядок частин і обсяг `revise`.
+  - методика в MCP для клієнтів без скілів: інструмент-провідник `get_guide` із тими самими кроками.
+- Відкриті рішення: публічний репозиторій плагіна й версії зі збірками Store.
 - Залежності: R-35 (перший пакет, #195, #197); #30/#119 (збірка Store); R-33 для ліцензії публічного плагіна.
-- Приймання: SPEC.MD CLAUDE-SKILLS (пакування, MCP prompts) + traceability; сторінки `mcp` і `install` uk/en.
+- Приймання: SPEC.MD CLAUDE-SKILLS, MCP-BRIDGE, STORE-MCP-001 + traceability; сторінки `mcp` і `install` uk/en.
+
+## R-40 — Скіл `revise`
+
+**Статус:** винесено з R-39 рішенням власника 17.11.2026, GitHub [#203](https://github.com/ysilvestrov/obscura-text-writer/issues/203). Місце в черзі не визначено.
+
+- Мета: правка вже написаних сцен за коментарями автора через скіл.
+- Обсяг: скіл `revise` у плагіні, сценарій на ізольованому стенді; ZIP для Desktop і `get_guide` підхоплюють його після R-39.
+- Відкриті рішення: обсяг правки (сцена, кілька сцен, план); чи використовує скіл наявний режим переписування.
+- Залежності: R-39 (#200).
+- Приймання: SPEC.MD CLAUDE-SKILLS + traceability; сторінка `mcp` uk/en.
