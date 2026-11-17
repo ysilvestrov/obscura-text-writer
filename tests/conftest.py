@@ -188,3 +188,14 @@ def isolated_claude(request, tmp_path_factory, monkeypatch):
     def refuse(*args, **kwargs):
         raise AssertionError('a test tried to restart the real Claude Desktop')
     monkeypatch.setattr(claude_connect, 'restart_desktop', refuse)
+
+@pytest.fixture(autouse=True)
+def isolated_codex(tmp_path_factory, monkeypatch):
+    """All Codex/Agents profiles, including child processes, stay in the test root."""
+    base = tmp_path_factory.mktemp('codex-roots')
+    profile = base / 'home'
+    profile.mkdir()
+    monkeypatch.setenv('USERPROFILE', str(profile))
+    monkeypatch.setenv('HOME', str(profile))
+    monkeypatch.setenv('CODEX_HOME', str(base / 'codex'))
+    monkeypatch.setattr(Path, 'home', classmethod(lambda cls: profile))

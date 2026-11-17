@@ -10,7 +10,7 @@
 
 **Spec:** [2026-11-17-codex-integration-design.md](../../specs/2026-11/2026-11-17-codex-integration-design.md), затверджено власником 17.11.2026.
 
-**Статус:** план готовий до перегляду; виконання ще не почалося.
+**Статус:** затверджено власником 17.11.2026; виконання нативне.
 
 ## Global Constraints
 
@@ -60,8 +60,8 @@
 - powershell_command(command: list[str]) -> str; починається з codex mcp add obscura --, кожен аргумент — коректно екранований PowerShell-літерал.
 - CodexConfigError(ValueError): безпечна причина відмови; OSError окремо для файлових відмов. Модуль не читає середовище під час імпорту.
 
-- [ ] 1. Додати автоматичну isolated_codex у conftest.py: USERPROFILE, HOME й CODEX_HOME спрямувати до tmp_path_factory; Path.home() повертає тимчасовий профіль. Не змінювати існуючу isolated_claude. Нові тести використовують ці корені; ізоляцію перевірити test_codex_roots_are_temporary.
-- [ ] 2. Додати тести з реальними файлами. Основні точні результати:
+- [x] 1. Додати автоматичну isolated_codex у conftest.py: USERPROFILE, HOME й CODEX_HOME спрямувати до tmp_path_factory; Path.home() повертає тимчасовий профіль. Не змінювати існуючу isolated_claude. Нові тести використовують ці корені; ізоляцію перевірити test_codex_roots_are_temporary.
+- [x] 2. Додати тести з реальними файлами. Основні точні результати:
   ~~~python
   result = write_config(tmp_path / "profile/config.toml", command)
   assert result.result == "configured" and result.created and result.backup is None
@@ -72,10 +72,10 @@
   assert result.path.read_bytes() == before
   ~~~
   Окремі функції: test_missing_config_is_created, test_existing_config_is_idempotent, test_http_migration_keeps_unrelated_settings, test_invalid_toml_is_untouched, test_non_table_is_untouched, test_unique_backup_keeps_exact_previous_bytes, test_changed_file_is_not_overwritten, test_failed_replace_keeps_original, test_powershell_command_quotes_apostrophes, test_config_home_must_be_absolute. У HTTP-тесті залишити інший сервер, верхній коментар, model і tools-політику obscura; перевірити enabled=true, нові command/args та відсутність url/oauth/http_headers тільки в obscura. Тест concurrent change змінює файл після створення backup, але до фінальної звірки, й доводить збереження авторських байтів; він не приписує гарантій вузькій гонці після останньої звірки.
-- [ ] 3. Запустити тести до модуля — RED через відсутній імпорт/можливість запису, не помилку фікстури. Додати tomlkit до extra web й установити цю залежність у тестове середовище, лише після схвалення виконання плану.
-- [ ] 4. Реалізувати парсинг/перевірку таблиць, керовані поля, унікальну байтову копію, тимчасовий файл поруч, повторний parse, замок, перевірку актуальних байтів перед replace й перечитування після нього. Якщо зовнішній редактор змінив результат після replace, не відновлювати автоматично старий файл. Зафіксувати залишкову вузьку зовнішню гонку як обмеження.
-- [ ] 5. Додати STORE-MCP-S12 до STORE-MCP-001: WHEN виклик конфігуратора Codex — THEN керовані поля/backup/unchanged/відмова; жодної заяви, що UI вже існує або клієнт підключено. Traceability посилається на конкретні функції цієї задачі. Сайт поки не змінювати: кнопки й публічної команди ще немає; причину записати в коміт.
-- [ ] 6. Запустити test_codex_connect.py та незмінені test_claude_connect.py, check_docs.py і diff --check; усі мають завершитися кодом 0. Коміт: feat(codex): preserve user MCP configuration.
+- [x] 3. Запустити тести до модуля — RED через відсутній імпорт/можливість запису, не помилку фікстури. Додати tomlkit до extra web й установити цю залежність у тестове середовище, лише після схвалення виконання плану.
+- [x] 4. Реалізувати парсинг/перевірку таблиць, керовані поля, унікальну байтову копію, тимчасовий файл поруч, повторний parse, замок, перевірку актуальних байтів перед replace й перечитування після нього. Якщо зовнішній редактор змінив результат після replace, не відновлювати автоматично старий файл. Зафіксувати залишкову вузьку зовнішню гонку як обмеження.
+- [x] 5. Додати STORE-MCP-S12 до STORE-MCP-001: WHEN виклик конфігуратора Codex — THEN керовані поля/backup/unchanged/відмова; жодної заяви, що UI вже існує або клієнт підключено. Traceability посилається на конкретні функції цієї задачі. Сайт поки не змінювати: кнопки й публічної команди ще немає; причину записати в коміт.
+- [x] 6. Запустити test_codex_connect.py та незмінені test_claude_connect.py, check_docs.py і diff --check; усі мають завершитися кодом 0. Коміт: feat(codex): preserve user MCP configuration.
 
 ### Task 2: Детермінований генератор п’яти скілів
 

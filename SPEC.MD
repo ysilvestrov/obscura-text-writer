@@ -4689,7 +4689,19 @@ Worker SHALL щодня (Cron Trigger `17 3 * * *`) видаляти запис�
 - THEN закриваються й запускаються знову лише процеси Claude Desktop
 - AND запит моста чи іншого походження до маршрутів підключення отримує 403, і жодна дія не виконується.
 
+<a id="store-mcp-s12"></a>
+#### Scenario: STORE-MCP-S12 — Конфігурація Codex без втрати налаштувань
+- GIVEN явно визначений користувацький профіль Codex і команда локального моста
+- WHEN конфігуратор зберігає запис mcp_servers.obscura
+- THEN новий файл створюється без копії відсутнього файла, а наявний зберігається в унікальній байтовій копії поруч
+- AND змінюються лише command, args, enabled=true й конфліктні HTTP-поля запису obscura, інші сервери, політики та коментарі зберігаються
+- AND рівнозначний запис не переписується, некоректний TOML/не-таблиця не змінюється, а конкурентна зміна до фінальної звірки відхиляє запис
+- AND стан підтверджує лише прочитаний файл, не живе підключення клієнта.
+
 #### Технічний опис і сумісність (STORE-MCP-001)
+
+- **Конфігуратор Codex (основа, UI ще не додано).** codex_connect.config_path(userprofile, codex_home) обирає абсолютний CODEX_HOME/config.toml або USERPROFILE/.codex/config.toml; відносний чи порожній явно заданий CODEX_HOME відхиляється. write_config(path, command) через TOML Kit (tomlkit>=0.13,<1, extra web) зберігає лише керовані поля stdio-запису й прибирає його HTTP-поля url, bearer_token_env_var, http_headers, env_http_headers, oauth. Відомі політики stdio, env і решта файла не змінюються; значення ключів не генеруються й не повертаються статусом. Наявний файл копіюється байтово в унікальний config.toml.obscura-backup-<id>; POSIX-права й Windows DACL копії та файла заміни зберігаються. Після серіалізації — повторний parse, тимчасовий файл поруч, звірка початкових байтів перед атомарним os.replace і перечитування результату. Зовнішній редактор лишає вузьку гонку між останньою звіркою й replace; автоматичного руйнівного відновлення немає. config_status повертає тільки state і шлях; powershell_command лише формує команду для копіювання, не виконує її. Автоматична фікстура isolated_codex спрямовує тестові HOME/USERPROFILE/CODEX_HOME і Path.home у тимчасовий профіль.
+
 
 - **Модулі.** `storygen/mcp/launch.py` (`Connection`, `start_obscura`, `ObscuraUnavailable`, `START_TIMEOUT`); `storygen/mcp/bridge.py` (`build_server(..., connection=)`, `main`: `--url`, `--data-dir`); `storygen/packaging.py` (`BRIDGE_NAME`, `BRIDGE_CONTENTS`, `BRIDGE_ENTRY`, `bridge_pyinstaller_args`, `appx_manifest(bridge_executable=)`); `scripts/build_store.py` (`freeze_bridge`, `check_bridge`, `bridge_megabytes` у підсумку); `bridge.connection_for`, `bridge.main(--self-check)`. Обв’язка: `storygen/mcp/edition.py` (`edition_refusal`), prompt `start_story`, `storygen/claude_connect.py` (`Roots`, `bridge_command`, `claude_code_command`, `find_desktop_config`, `write_desktop_entry`, `UnusableConfig`, `build_mcpb`, `find_claude_code`, `connect_claude_code`, `restart_desktop`), `web/routes_connect.py`, `static/claude-connect.js`; тести тримає подалі від справжнього Claude автоматична фікстура `tests/conftest.py::isolated_claude`.
 - **Сумісність.** Наявні записи клієнтів з `--url` працюють як раніше. Запис робочої копії без аргументів поводиться як раніше (`http://127.0.0.1:8765`). Установлений міст і запис із `--data-dir` знаходять Obscura на будь-якому порту. Формат даних і HTTP API не змінюються.

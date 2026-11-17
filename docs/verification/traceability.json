@@ -6605,6 +6605,25 @@
       "tests": [
         "tests/test_waitlist_worker.py::test_s09_old_rows_are_purged_daily"
       ]
+    },
+    {
+      "id": "STORE-MCP-S12",
+      "requirement": "STORE-MCP-001",
+      "scope": "Безпечний TOML-конфігуратор Codex: керовані поля, незмінність сторонніх даних, backup, конфлікт і відмова.",
+      "tests": [
+        "tests/test_codex_connect.py::test_missing_config_is_created",
+        "tests/test_codex_connect.py::test_existing_config_is_idempotent",
+        "tests/test_codex_connect.py::test_http_migration_keeps_unrelated_settings",
+        "tests/test_codex_connect.py::test_invalid_toml_is_untouched",
+        "tests/test_codex_connect.py::test_non_table_is_untouched",
+        "tests/test_codex_connect.py::test_unique_backup_keeps_exact_previous_bytes",
+        "tests/test_codex_connect.py::test_changed_file_is_not_overwritten",
+        "tests/test_codex_connect.py::test_failed_replace_keeps_original",
+        "tests/test_codex_connect.py::test_powershell_command_quotes_apostrophes",
+        "tests/test_codex_connect.py::test_config_home_must_be_absolute",
+        "tests/test_codex_connect.py::test_config_home_selects_explicit_profile",
+        "tests/test_codex_connect.py::test_codex_roots_are_temporary"
+      ]
     }
   ]
 }
