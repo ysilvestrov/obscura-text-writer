@@ -6647,6 +6647,22 @@
         "tests/test_codex_skills.py::test_provider_recipes_are_preserved",
         "tests/test_codex_skills.py::test_unknown_mcp_tool_is_reported"
       ]
+    },
+    {
+      "id": "CODEX-SKILLS-S02",
+      "requirement": "CODEX-SKILLS",
+      "scope": "Маніфест, preflight, кероване оновлення, ізоляція staging/backup й відкат без втрати правок.",
+      "tests": [
+        "tests/test_codex_skill_install.py::test_first_install_and_repeat",
+        "tests/test_codex_skill_install.py::test_managed_update_creates_exact_backups",
+        "tests/test_codex_skill_install.py::test_conflict_preflight_leaves_all_targets_untouched",
+        "tests/test_codex_skill_install.py::test_reparse_target_is_refused_before_any_write",
+        "tests/test_codex_skill_install.py::test_failed_third_rename_restores_original_trees",
+        "tests/test_codex_skill_install.py::test_rollback_preserves_concurrent_author_edit",
+        "tests/test_codex_skill_install.py::test_backups_and_staging_are_not_discoverable",
+        "tests/test_codex_skill_install.py::test_busy_lock_refuses_without_changes",
+        "tests/test_codex_skill_install.py::test_unsafe_bundle_is_rejected_before_write"
+      ]
     }
   ]
 }
