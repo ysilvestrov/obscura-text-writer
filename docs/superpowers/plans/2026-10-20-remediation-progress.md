@@ -2282,3 +2282,8 @@ Playwright `memory-kind.spec.mjs` і `core-review.spec.mjs` пройшли вр�
 - Task 2: RED — відсутній codex_skills; GREEN — 14 passed, 1 skipped разом із незміненими тестами плагіна Claude. П’ять скілів, правила, шляхи, клієнтський Model/Model routing, рецепти, відмова при дрейфі; CODEX-SKILLS S01/S03 і traceability. OS відмовила у створенні тестового symlink — цей тест skipped, не доказ живої перевірки symlink.
 - Task 3: RED — відсутній codex_skill_install; GREEN — 13 тестів установки, включно зі справжнім Windows junction, керованими backup, конфліктами та безпечним відкатом при паралельній авторській правці; CODEX-SKILLS-S02 і traceability у цьому ж коміті. Публічного UI/CLI ще немає, тому сайт оновлюється в Task 4.
 - Попередній повний pytest (розпочато до змін, завершено після зміни pyproject) дав 2 failed, 3582 passed, 19 skipped: test_declared_dependencies_all_have_licence_texts і test_build_dependencies_have_no_copyleft не бачили tomlkit у старому PYTHONPATH процесу. Прогін не є чистим baseline, бо джерела змінювалися. Обидва тести повторено з ізольованим target C:/tmp/obscura-codex-deps: 2 passed. Остаточний verify.py виконується після стабілізації коду.
+
+### 18.11.2026 — CLI основи Codex
+
+- Task 4: RED — CLI відсутній, 5 failed; GREEN — 8 тестів реального CLI, аргументів, тимчасового профілю, чужого cwd, відмови генерації та ланцюжка config→generate→install→update→conflict. Джерела Claude й пакування не змінено.
+- Оновлено mcp uk/en: Store obscura-mcp.exe проти checkout storygen-mcp.exe, CLI встановлення/оновлення, корені, конфлікти й ручне відновлення. CODEX-SKILLS-S06 і traceability додано разом із кодом. Повний verify.py й незалежне рев’ю ще попереду.

@@ -92,13 +92,21 @@ claude mcp add --scope user obscura -- C:\Obscura\.venv\Scripts\storygen-mcp.exe
 
 Для іншого порту додайте `"args": ["--url", "http://127.0.0.1:8770"]`. У командах `claude mcp add` і `codex mcp add` аргументи йдуть після шляху до програми: `… storygen-mcp.exe --url http://127.0.0.1:8770`.
 
-**Codex.** У терміналі:
+**Codex.** Для Obscura з Microsoft Store виконайте в терміналі:
 
-```powershell
-codex mcp add obscura -- C:\Obscura\.venv\Scripts\storygen-mcp.exe
-```
+~~~powershell
+codex mcp add obscura -- obscura-mcp.exe
+~~~
 
-Або додайте в `~/.codex/config.toml` розділ `[mcp_servers.obscura]` з рядком `command = 'C:\Obscura\.venv\Scripts\storygen-mcp.exe'`.
+Для робочої копії з вихідного коду використовуйте її власний міст (замініть C:\Obscura на свою теку):
+
+~~~powershell
+codex mcp add obscura -- "C:\Obscura\.venv\Scripts\storygen-mcp.exe"
+~~~
+
+Отже, `obscura-mcp.exe` — міст установленої збірки, а `storygen-mcp.exe` у `.venv\Scripts` — міст робочої копії. Якщо робочу копію запущено на іншому порту, додайте `--url http://127.0.0.1:8770`; для запуску через desktop launcher з окремою бібліотекою — `--data-dir "C:\Obscura Library"`.
+
+Альтернатива — запис `[mcp_servers.obscura]` у `~/.codex/config.toml` з `command` та, за потреби, `args`. Не замінюйте весь файл: збережіть інші налаштування й попередню копію. Якщо задано `CODEX_HOME`, файл лежить у цій теці. Локальні клієнти Codex використовують спільний профіль конфігурації; після зміни відкрийте нову сесію або перезапустіть клієнт.
 
 Чат-клієнти в браузері (claude.ai, chatgpt.com) локальних серверів не підтримують.
 
@@ -131,6 +139,32 @@ claude plugin install obscura@obscura
 ```powershell
 claude plugin uninstall obscura@obscura
 ```
+
+## Скіли для Codex із робочої копії
+
+Пакет Codex генерується з тих самих джерел, що й скіли Claude; вручну копіювати тексти не потрібно. Він містить `obscura-start-story`, `obscura-series-bible`, `obscura-draft-scene`, `obscura-publish` і `obscura-setup-models`. Планування й усі етапи сцени виконує поточна сесія Codex без автоматичного перемикання моделей.
+
+Спершу підключіть MCP за інструкцією вище. Потім у теці робочої копії Obscura виконайте:
+
+~~~powershell
+.\.venv\Scripts\python.exe .\scripts\install_codex_skills.py --install
+~~~
+
+Скіли зберігаються в `%USERPROFILE%\.agents\skills`. `CODEX_HOME` змінює місце конфігурації MCP, але не цю теку. Якщо скіли не з’явилися, відкрийте нову сесію або перезапустіть Codex. Можна попросити «хочу написати історію» або явно вказати `$obscura-start-story`.
+
+Для перегляду пакета без встановлення згенеруйте його в нову або порожню теку:
+
+~~~powershell
+.\.venv\Scripts\python.exe .\scripts\install_codex_skills.py --output "C:\tmp\obscura-codex-skills"
+~~~
+
+**Оновлення.** Оновіть робочу копію й повторіть `--install`. Незмінений пакет не переписується. Попередня керована версія зберігається в `%USERPROFILE%\.agents\obscura-backups\<id>`; підготовчі й невідновлені файли — в `obscura-staging\<id>` поруч. Ці теки не скануються як скіли. Програма називає фактичні копії в JSON-результаті.
+
+Чужа тека, пошкоджений маніфест `.obscura-install.json` або ваші зміни зупиняють установку всього набору до замін. Збережіть власні правки окремо й узгодьте їх із новим пакетом; автоматичного примусового перезапису немає. `failed` означає невдалу дію без залишкових власних змін; `partial` — що повний безпечний відкат не вдався. У такому разі перевірте названі конфлікти й копії перед повтором.
+
+**Відновлення й видалення.** Закрийте Codex. Для відновлення спершу збережіть пізніші власні зміни, потім вручну поверніть потрібну теку з названої копії. Для видалення набору приберіть лише п’ять перелічених `obscura-*` тек із `.agents\skills`. Копії й staging можна очистити вручну після перевірки; вони не видаляються автоматично. Зайнятий `.agents\.obscura-install.lock` не прибирайте, доки інший установник працює; після збою перевірте, що його процес завершився.
+
+Цей спосіб доступний із вихідного коду. Встановлення скілів із пакета Microsoft Store буде окремим оновленням.
 
 ## Як писати з чатом
 

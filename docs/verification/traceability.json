@@ -6663,6 +6663,20 @@
         "tests/test_codex_skill_install.py::test_busy_lock_refuses_without_changes",
         "tests/test_codex_skill_install.py::test_unsafe_bundle_is_rejected_before_write"
       ]
+    },
+    {
+      "id": "CODEX-SKILLS-S06",
+      "requirement": "CODEX-SKILLS",
+      "scope": "Справжній CLI у дочірньому Python із тимчасовими профілями; повний ланцюжок основи без моделей.",
+      "tests": [
+        "tests/test_install_codex_skills.py::test_cli_output_is_deterministic",
+        "tests/test_install_codex_skills.py::test_cli_requires_one_destination",
+        "tests/test_install_codex_skills.py::test_cli_refuses_nonempty_output",
+        "tests/test_install_codex_skills.py::test_cli_installs_into_temporary_profile",
+        "tests/test_install_codex_skills.py::test_cli_uses_its_checkout_from_another_cwd",
+        "tests/test_install_codex_skills.py::test_cli_generation_failure_does_not_install",
+        "tests/test_install_codex_skills.py::test_core_config_and_install_sequence"
+      ]
     }
   ]
 }
