@@ -64,5 +64,10 @@ Desktop.ini
 # detent cross-review runs
 tmp/
 
+# Nix & direnv artifacts
+.direnv/
+result
+result-*
+
 # user-guide site build output (#29)
 _site/

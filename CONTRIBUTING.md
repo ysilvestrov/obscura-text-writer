@@ -12,6 +12,15 @@ python -m venv .venv
 ./.venv/Scripts/python.exe scripts/check_docs.py
 ```
 
+Офіційно підтримується лише Windows; Linux/macOS через Nix — неофіційно, без гарантій.
+У середовищі [Nix](https://nixos.org/download/) оболонка розробки з Python 3.12, Node.js і системними бібліотеками відкривається через `nix develop` (або `direnv allow` чи `nix-shell`), а локальний сервер запускається з кореня репозиторію через `./scripts/start.sh` або `nix run`:
+
+```bash
+nix develop
+python -m pytest -q
+python scripts/check_docs.py
+```
+
 Для JavaScript-перевірок потрібен Node.js у PATH. Їх запускають pytest-обгортки
 з потрібними аргументами. Без Node.js більшість цих перевірок пропускається, а тести
 Worker списку очікування (`tests/test_waitlist_worker.py`) падають: вони єдиний

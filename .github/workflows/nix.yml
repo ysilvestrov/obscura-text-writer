@@ -1,0 +1,59 @@
+# Unofficial Nix contributor environment (RUNTIME-001): checks that the flake evaluates, the devShell prepares
+# .venv and passes tests/test_nix.py, and `nix run` starts the server on Linux and macOS.
+# This does not make Linux or macOS officially supported. No secrets, no model calls.
+name: nix
+
+on:
+  pull_request:
+    paths:
+      - 'flake.nix'
+      - 'flake.lock'
+      - 'shell.nix'
+      - '.envrc'
+      - 'scripts/start.sh'
+      - 'tests/test_nix.py'
+      - 'requirements-lock.txt'
+      - 'pyproject.toml'
+      - '.github/workflows/nix.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v30
+      - name: Flake evaluates
+        run: nix flake check --no-update-lock-file
+      - name: devShell prepares .venv and runs tests/test_nix.py
+        run: nix develop --no-update-lock-file --command python -m pytest -q -p no:cacheprovider -rs tests/test_nix.py
+      - name: nix run starts the server
+        run: |
+          log="$RUNNER_TEMP/server.log"
+          nix run --no-update-lock-file . -- --port 8760 --data-dir "$RUNNER_TEMP/data" > "$log" 2>&1 &
+          pid=$!
+          for _ in $(seq 1 120); do
+            if curl --fail --silent --show-error --output /dev/null http://127.0.0.1:8760/; then
+              echo "server answered"
+              kill "$pid"
+              exit 0
+            fi
+            if ! kill -0 "$pid" 2>/dev/null; then
+              echo "::error::server exited before answering"
+              cat "$log"
+              exit 1
+            fi
+            sleep 2
+          done
+          echo "::error::server did not answer in 240 s"
+          cat "$log"
+          kill "$pid" || true
+          exit 1
