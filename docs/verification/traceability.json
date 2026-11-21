@@ -7266,6 +7266,19 @@
       }
     },
     {
+      "id": "SERIES-BIBLE-S09",
+      "requirement": "SERIES-BIBLE-001",
+      "scope": "Перевірка цілісності біблії світу: правильна біблія чиста, кожне порушення — invalid_series; backup і копія перед міграцією з біблією.",
+      "tests": [
+        "tests/series/test_series_bible_entity.py::test_integrity_accepts_a_bible_made_by_the_app",
+        "tests/series/test_series_bible_entity.py::test_integrity_flags_a_broken_bible",
+        "tests/series/test_series_bible_entity.py::test_integrity_flags_a_start_snapshot_in_a_bible",
+        "tests/series/test_series_bible_entity.py::test_integrity_flags_a_second_bible_even_in_the_trash",
+        "tests/series/test_series_bible_entity.py::test_integrity_flags_a_start_outside_a_series",
+        "tests/series/test_series_bible_entity.py::test_backups_accept_a_series_with_a_bible"
+      ]
+    },
+    {
       "id": "WAITLIST-001-S01",
       "requirement": "WAITLIST-001",
       "scope": "Нова адреса: запис, 303 мовою сторінки, IP лише в Turnstile; редакція «Приватності» збігається з PRIVACY_EDITION.",
