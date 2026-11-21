@@ -1,7 +1,7 @@
 # Швидкість огляду впливу: розбір карток і журналів раз на запит (PERF-001-S05)
 
 Дата: 2026-11-21
-Статус: чекає на затвердження
+Статус: затверджено 2026-11-21
 Spec-review: agy/gemini-4-argon @ 2f6ba3f (author: claude) — 3 findings: 3 fixed, 0 rejected (fallback: codex — usage limit)
 
 ## Для власника
