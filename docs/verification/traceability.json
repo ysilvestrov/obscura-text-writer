@@ -1238,7 +1238,13 @@
         "tests/impact/test_planning_readonly.py::test_planning_deep_copies_do_not_grow_with_reads",
         "tests/generation/test_classification_state_sql.py::test_preview_and_readiness_match_unfiltered_scan",
         "tests/generation/test_classification_state_sql.py::test_classification_reads_attempts_through_sql_filter",
-        "tests/generation/test_classification_state_sql.py::test_classification_keys_filter_like_python"
+        "tests/generation/test_classification_state_sql.py::test_classification_keys_filter_like_python",
+        "tests/book/test_lineage_speed.py::test_lineage_matches_reference",
+        "tests/book/test_lineage_speed.py::test_chain_previous_scenes_builds_no_map",
+        "tests/book/test_lineage_speed.py::test_structured_map_is_built_once_per_scope",
+        "tests/book/test_lineage_speed.py::test_story_request_builds_the_structured_map_at_most_once",
+        "tests/storage/test_context_view_readonly.py::test_hot_readiness_readers_take_no_deep_version_copy",
+        "tests/storage/test_context_view_readonly.py::test_read_text_keeps_freshness_order"
       ]
     },
     {
@@ -1248,17 +1254,22 @@
       "tests": [
         "tests/storage/test_context_view_readonly.py::test_readiness_and_status_do_not_mutate_view_models",
         "tests/storage/test_context_view_readonly.py::test_second_request_sees_change_made_between_requests",
-        "tests/impact/test_planning_readonly.py::test_planning_does_not_mutate_view"
+        "tests/impact/test_planning_readonly.py::test_planning_does_not_mutate_view",
+        "tests/storage/test_context_view_readonly.py::test_readiness_all_operations_does_not_mutate_view_models",
+        "tests/book/test_lineage_speed.py::test_scope_sees_a_structure_change_and_does_not_leak_mutation",
+        "tests/book/test_lineage_speed.py::test_lineage_memo_does_not_outlive_a_request"
       ]
     },
     {
       "id": "PERF-001-S03",
       "requirement": "PERF-001",
-      "scope": "Межі часу типових дій. Процедуру виконано 08.11.2026 у браузері: цілі ≤ 1 с / ≤ 3 с НЕ досягнуто (відкриття твору, максимум вибору сцени на 68 сценах, розгортання всіх операцій readiness на пізній сцені 300); результат PASS не оголошується, виміри — у SPEC.MD (PERF-001, «Відомі обмеження») і журналі виконання.",
-      "tests": [],
+      "scope": "Межі часу типових дій. Процедуру виконано 08.11.2026 і повторно 21.11.2026 (після #39) у браузері на синтетичних 300 сценах: цілі ≤ 3 с НЕ досягнуто для відкриття твору (5,4–5,5 с) і збереження (7,3–8,0 с); вибір сцени (2,3–3,0 с) і readiness усіх операцій (1,3–1,7 с) — у межах. На копії 68 сцен ціль ≤ 1 с НЕ досягнуто: відкриття 2,75–3,01 с, вибір сцени 0,91–1,93 с, усі операції 1,43–1,55 с, збереження 2,95–3,09 с; результат PASS не оголошується, виміри — у SPEC.MD (PERF-001) і журналі виконання.",
+      "tests": [
+        "tests/storage/test_workspace_bench.py::test_story_open_requests_are_timed_through_the_app_and_stay_out_of_digest_core"
+      ],
       "manual": {
         "procedure": "docs/verification/manual.md#workspace-speed",
-        "reason": "Час відповіді залежить від машини й навантаження; межі потребують вимірювання в браузері на копії робочих даних і синтетичному творі. Виконано 08.11.2026, цілі не досягнуто; повторне виконання потрібне після наступного пакета оптимізацій."
+        "reason": "Час відповіді залежить від машини й навантаження; межі потребують вимірювання в браузері на копії робочих даних і синтетичному творі. Виконано 08.11.2026 і 21.11.2026, цілі не досягнуто; повторне виконання потрібне після наступного пакета оптимізацій."
       }
     },
     {

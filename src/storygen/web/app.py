@@ -15,6 +15,7 @@ from ..application.settings import AppSettings
 from ..domain import RevisionConflict, StorageCorruption
 from .bridge_marker import RUN_OWNER_ONLY, BridgeForbidden, author_only_path, from_bridge
 from ..storage.repository import Repository
+from ..book.lineage import lineage_scope
 from ..generation.worker import RunCoordinator
 
 
@@ -87,11 +88,13 @@ def create_app(settings: AppSettings, *, gateway_factory=None,evaluator_factory=
                 from .routes_codex_connect import CONNECT_OWNER_ONLY
             return error_response(request,CONNECT_OWNER_ONLY,403)
         from .long_prose_guard import blocked
-        # BUILD-EDITION-001-S08: a structured book is read-only in an edition without long prose.
-        refusal=await blocked(app,request)
-        if refusal:
-            return error_response(request,"Некоректні дані: "+refusal,400)
-        response=await call_next(request)
+        # PERF-001: lineage maps are memoised for this request only; the scope closes with the response.
+        with lineage_scope():
+            # BUILD-EDITION-001-S08: a structured book is read-only in an edition without long prose.
+            refusal=await blocked(app,request)
+            if refusal:
+                return error_response(request,"Некоректні дані: "+refusal,400)
+            response=await call_next(request)
         # Relative ES module imports must be refreshed together with the document.
         response.headers['Cache-Control']='no-store'
         return response

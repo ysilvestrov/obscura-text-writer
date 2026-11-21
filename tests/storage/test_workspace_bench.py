@@ -21,7 +21,7 @@ def test_bench_digest_is_stable_and_synthetic_story_has_requested_size(tmp_path)
     first, second = measure(repo, story_id), measure(repo, story_id)
     assert first['digest'] == second['digest'] and len(first['digest']) == 64
     assert len(OPERATIONS) == 9 and first['scenes'] == 5
-    expected = {f'readiness:{n}' for n in OPERATIONS} | {'readiness:all', 'story_view', 'list_attempts', 'list_runs', 'scene_select'}
+    expected = {f'readiness:{n}' for n in OPERATIONS} | {'readiness:all', 'story_view', 'list_attempts', 'list_runs', 'scene_select', 'story_open'}
     assert set(first['timings']) == expected
     assert 'readiness:brief' in expected and 'readiness:edit_loop' in expected
 
@@ -172,3 +172,13 @@ def test_failing_scene_select_endpoint_is_a_clear_error_with_exit_code_2(tmp_pat
     assert script.main(['--synthetic', '3', '--workdir', str(tmp_path / 'w')]) == 2
     out = capsys.readouterr()
     assert 'scene_select_failed: comments' in out.err and 'Traceback' not in out.err and out.out == ''
+
+
+def test_story_open_requests_are_timed_through_the_app_and_stay_out_of_digest_core(tmp_path):
+    """PERF-001-S03 (#39): opening a story (story view, impact, trash) is measured through the app with its lineage scope."""
+    repo = Repository(tmp_path)
+    story_id = build_story(repo, 3, shallow_copies=True)
+    result = measure(repo, story_id)
+    assert set(result['story_open_requests']) == {'story', 'impact', 'trash'}
+    assert result['timings']['story_open'] == pytest.approx(sum(result['story_open_requests'].values()), abs=1e-5)
+    assert measure(repo, story_id)['digest_core'] == result['digest_core']

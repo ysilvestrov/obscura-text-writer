@@ -96,6 +96,12 @@ class ContextView:
         result.stale=self.is_stale(id)
         return result
 
+    def peek_version_stale(self, id):
+        """Внутрішнє читання без копії: (версія, перерахована актуальність) у тому самому порядку викликів, що get_version.
+        Не змінювати версію й не повертати її викликачам (PERF-001)."""
+        ref=self.peek_version(id)
+        return ref,self.is_stale(id)
+
     def get_stored_version(self, id):
         """Як Repository.get_version: версія без записів прийняття, рецензії чи пріоритетів лишається зі збереженим stale."""
         ref=self.peek_version(id)
@@ -124,7 +130,8 @@ class ContextView:
         return self.get_version(id) if id else None
 
     def read_text(self, id):
-        ref = self.get_version(id)
+        # PERF-001: no deep copy; is_stale is still asked, so freshness_cache fills in the same order as before.
+        ref, _ = self.peek_version_stale(id)
         return self.read_blob(ref.relative_path, ref.sha256).decode('utf-8')
 
     def read_blob(self, path, sha):
@@ -132,3 +139,12 @@ class ContextView:
         if key not in self.blob_cache:
             self.blob_cache[key]=self.files.read(path,sha)
         return self.blob_cache[key]
+
+
+def version_and_stale(source, id):
+    """(version, stale) for a context view without a deep copy, for a repository through its public read. The version
+    must not be changed or handed to a caller (PERF-001)."""
+    if isinstance(source, ContextView):
+        return source.peek_version_stale(id)
+    ref = source.get_version(id)
+    return ref, ref.stale

@@ -342,3 +342,61 @@ def test_list_versions_rejects_a_view_of_another_story(tmp_path):
     other = repo.create_story(StoryCreate(title='Інший'))
     with pytest.raises(ValueError):
         repo.list_versions(other.id, view=repo.context_view(story.id))
+
+
+HOT_READERS = {'read_text', 'build_dependency_snapshot', '_finish_context', 'memory_projection',
+               # the no-copy helpers these readers go through (cross-review): a get_version inside them is a copy too
+               'peek_version_stale', 'version_and_stale', 'ref', 'stale'}
+
+
+def _readiness_all(repo, story_id, view):
+    from storygen.application.workspace_bench import OPERATIONS, _request
+    from storygen.generation.readiness import preview
+    return [preview(repo, _request(story_id, s.id, name), view=view)
+            for s in view.peek_scenes(story_id) for name in OPERATIONS]
+
+
+def test_readiness_all_operations_does_not_mutate_view_models(tmp_path):
+    """PERF-001-S02 (#39): readiness of every operation on one shared view leaves its models unchanged."""
+    repo, story, scenes = seeded(tmp_path)
+    _configure(repo, story.id)
+    view = repo.context_view(story.id)
+    before = _dumps(view)
+    results = _readiness_all(repo, story.id, view)
+    assert any(isinstance(r, dict) and r.get('ready') is True for r in results)
+    assert _dumps(view) == before
+
+
+def test_hot_readiness_readers_take_no_deep_version_copy(tmp_path, monkeypatch):
+    """PERF-001 (#39): read_text, dependency snapshots and context assembly read versions without a deep copy."""
+    import sys
+    repo, story, scenes = seeded(tmp_path)
+    _configure(repo, story.id)
+    view = repo.context_view(story.id)
+    callers = []
+    original = ContextView.get_version
+
+    def recording(self, id):
+        callers.append(sys._getframe(1).f_code.co_name)
+        return original(self, id)
+
+    monkeypatch.setattr(ContextView, 'get_version', recording)
+    _readiness_all(repo, story.id, view)
+    for version_id, ref in view.versions.items():
+        if ref.kind != 'memory' and ref.scene_id and not view.scenes[ref.scene_id].trashed_at:
+            view.read_text(version_id)
+    assert not HOT_READERS & set(callers), sorted(HOT_READERS & set(callers))
+
+
+def test_read_text_keeps_freshness_order(tmp_path):
+    """read_text still asks freshness, as get_version did, so a snapshot cycle resolves the same way (#39)."""
+    repo, story, scene, draft, prose = setup(tmp_path)
+    view = repo.context_view(story.id)
+    asked = []
+    original = ContextView.is_stale
+    ContextView_is_stale = lambda self, id: (asked.append(id), original(self, id))[1]  # noqa: E731
+    import pytest as _pytest
+    with _pytest.MonkeyPatch.context() as mp:
+        mp.setattr(ContextView, 'is_stale', ContextView_is_stale)
+        view.read_text(prose.id)
+    assert asked and asked[0] == prose.id
