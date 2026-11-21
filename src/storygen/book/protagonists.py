@@ -20,11 +20,12 @@ def arcs_of(story, scene) -> list[str]:
     return [arc for arc in scene_arc_list(story.scene_arcs, scene.id) if arc in known]
 
 
-def scene_tracked(story, cards, scenes, scene) -> list[str]:
+def scene_tracked(story, cards, scenes, scene, inferred=None) -> list[str]:
+    """inferred: tracked_characters(cards, scenes) when the caller already has it (PERF-001-S05)."""
     if getattr(story, 'series_bible', False):
         return []  # SERIES-BIBLE: a world bible has no protagonists and no core state
     from ..memory.core import tracked_characters
-    inferred = tracked_characters(cards, scenes)
+    inferred = tracked_characters(cards, scenes) if inferred is None else inferred
     arcs = arcs_of(story, scene)
     if not arcs:
         return inferred

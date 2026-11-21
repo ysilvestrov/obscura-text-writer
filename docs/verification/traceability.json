@@ -1244,7 +1244,8 @@
         "tests/book/test_lineage_speed.py::test_structured_map_is_built_once_per_scope",
         "tests/book/test_lineage_speed.py::test_story_request_builds_the_structured_map_at_most_once",
         "tests/storage/test_context_view_readonly.py::test_hot_readiness_readers_take_no_deep_version_copy",
-        "tests/storage/test_context_view_readonly.py::test_read_text_keeps_freshness_order"
+        "tests/storage/test_context_view_readonly.py::test_read_text_keeps_freshness_order",
+        "tests/impact/test_planning_speed.py::test_memo_gives_the_same_plan"
       ]
     },
     {
@@ -1257,7 +1258,9 @@
         "tests/impact/test_planning_readonly.py::test_planning_does_not_mutate_view",
         "tests/storage/test_context_view_readonly.py::test_readiness_all_operations_does_not_mutate_view_models",
         "tests/book/test_lineage_speed.py::test_scope_sees_a_structure_change_and_does_not_leak_mutation",
-        "tests/book/test_lineage_speed.py::test_lineage_memo_does_not_outlive_a_request"
+        "tests/book/test_lineage_speed.py::test_lineage_memo_does_not_outlive_a_request",
+        "tests/impact/test_planning_speed.py::test_memo_does_not_survive_the_request",
+        "tests/impact/test_planning_speed.py::test_plan_leaves_memoized_models_as_parsed"
       ]
     },
     {
@@ -1286,6 +1289,20 @@
         "tests/web/test_resumed_events.py::test_short_run_keeps_state_when_the_detail_fetch_fails",
         "tests/web/test_resumed_events.py::test_review_session_picks_the_protocol_3_run_from_the_short_list"
       ]
+    },
+    {
+      "id": "PERF-001-S05",
+      "requirement": "PERF-001",
+      "scope": "Межа часу огляду впливу. Автоматично перевіряється складність (розбори й похідні значення за один план) і еквівалентність із планом без запам’ятовування на синтетичному творі з картками; час на копії 68 сцен виміряно 21.11.2026: 8,45–8,56 с при цілі ≤ 10 с, відбиток плану збігся з базовим.",
+      "tests": [
+        "tests/impact/test_planning_speed.py::test_cast_fixture_makes_every_head_stale_with_hidden_memory",
+        "tests/impact/test_planning_speed.py::test_plan_parses_versions_once_and_derives_once_per_scene",
+        "tests/impact/test_planning_speed.py::test_memo_gives_the_same_plan"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#impact-speed",
+        "reason": "Час відповіді залежить від машини й даних; межа 10 с перевіряється виміром на копії робочих даних. Виконано 21.11.2026: 8,45–8,56 с."
+      }
     },
     {
       "id": "EVAL-001-S01",
