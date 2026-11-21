@@ -145,12 +145,16 @@ def test_story_request_builds_the_structured_map_at_most_once(tmp_path, monkeypa
     assert module._memo.get() is None
 
 
-def test_structure_change_between_requests_is_visible(tmp_path):
+def test_lineage_memo_does_not_outlive_a_request(tmp_path, monkeypatch):
+    """Each request builds its own map: the second identical request builds it again (no cache between requests)."""
     from tests.web.test_structure_api import put, setup
-    client, repo, story, scenes = setup(tmp_path, n=3)
-    assert put(client, story, scenes, ['a1', 'a2', 'b1']).status_code == 200
-    first = client.get(f'/api/stories/{story.id}').json()
-    assert put(client, repo.get_story(story.id), scenes, ['a1', 'a1', 'b1']).status_code == 200
-    second = client.get(f'/api/stories/{story.id}').json()
-    assert [s['arc_id'] for s in first['scenes']] == ['a1', 'a2', 'b1']
-    assert [s['arc_id'] for s in second['scenes']] == ['a1', 'a1', 'b1']
+    client, repo, story, scenes = setup(tmp_path, n=6)
+    assert put(client, story, scenes, ['a1', 'a2', 'a1', 'a2', 'b1', 'b1']).status_code == 200
+    calls = _counting(monkeypatch)
+    url = f'/api/scenes/{scenes[4].id}/statistics?stage=draft'
+    per_request = []
+    for _ in range(2):
+        calls.clear()
+        assert client.get(url).status_code == 200
+        per_request.append(len(calls))
+    assert per_request == [1, 1]
