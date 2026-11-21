@@ -1,7 +1,7 @@
 # Рекламні теги Google і банер згоди на сайті (R-37, #176)
 
 Дата: 2026-11-21
-Статус: чекає на затвердження
+Статус: затверджено 2026-11-21
 Spec-review: agy/gemini-4-argon @ e443356 (author: claude) — 3 findings: 3 fixed, 0 rejected (fallback: codex — usage limit)
 
 ## Для власника

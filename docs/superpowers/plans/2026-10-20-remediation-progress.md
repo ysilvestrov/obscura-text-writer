@@ -2518,3 +2518,11 @@ Inherited whitespace у ліцензійному тексті tokenizers із ma
 - Рішення власника: кома й крапка в імені заборонені (замінюються пробілом); тому кілька авторів — через «та», скорочення — «та інші» без крапки.
 - Реалізовано: `application/exports.py::download_name` і `export_download` (ім'я з уже перевіреного маніфесту), `filename*` UTF-8 у маршруті завантаження; ASCII-запасне ім'я й сховище — під ID експорту. Маніфест, план, діалог і MCP `export_book` без змін.
 - Перевірки: 10 нових тестів; суміжні `tests/authoring tests/web tests/mcp` — 976 passed.
+
+## 2026-11-21 — R-37: теги Google і банер згоди на сайті, PR 1 — механізм (#176, DOCS-SITE-S11)
+
+- Спека: [2026-11-21-site-ads-consent-design.md](../specs/2026-11/2026-11-21-site-ads-consent-design.md), затверджено власником 21.11.2026; оцінка власника M, автора M (з кроком власника поза репозиторієм — межа L). Гілка `claude/site-consent`.
+- Рішення власника: Google Ads, власний мінімальний банер, конверсія — запис у список очікування, плюс GA4.
+- Реалізовано: `docs/site/consent.js` (банер, `localStorage`, Consent Mode v2 базовий — тег лише після згоди, конверсія на `#waitlist-ok` раз на вкладку, відкликання видаляє cookies Google), розділ `ads` у `build_site.py` з перевіркою формату ID, кнопка «Налаштування cookies», вимога до `privacy` у `check_site.py`. Без `ads` сайт не змінюється.
+- Перевірки: Node-тест `tests/web/js/site_consent.mjs`, `tests/test_site_ads.py`; попередній перегляд збірки з вигаданими ID у вбудованому браузері: банер із рівними кнопками, після «Reject» запитів до Google немає («Accept» не натискали, щоб не слати запитів до Google).
+- Далі: PR 2 з ID власника, новою редакцією «Приватності» uk/en і `PRIVACY_EDITION`; після злиття — `npx wrangler deploy` і ручна процедура `manual.md#site-consent`.

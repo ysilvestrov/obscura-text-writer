@@ -124,6 +124,31 @@ def waitlist_form(manifest,lang):
 
 LOCALES={'uk':'uk_UA','en':'en_US'}
 
+# DOCS-SITE-S11: Google Ads and GA4 ids of the `ads` section; consent.js loads the Google tag only after consent.
+ADS_FORMATS={'google_ads':re.compile(r'AW-[0-9]{4,20}'),'conversion_label':re.compile(r'[A-Za-z0-9_-]{1,64}'),'ga4':re.compile(r'G-[A-Z0-9]{4,20}')}
+CONSENT_LABEL={'uk':'Налаштування cookies','en':'Cookie settings'}
+
+
+def ads_settings(manifest):
+    """None without an `ads` section; otherwise its three ids, each of its exact format, or the build stops."""
+    section=manifest.get('ads')
+    if section is None:return None
+    if not isinstance(section,dict):raise ValueError('site.json: ads має бути об’єктом з google_ads, conversion_label і ga4')
+    for name,pattern in ADS_FORMATS.items():
+        value=section.get(name)
+        if not isinstance(value,str) or not pattern.fullmatch(value):
+            raise ValueError(f'site.json: ads.{name} має формат {pattern.pattern}')
+    return {name:section[name] for name in ADS_FORMATS}
+
+
+def consent_script(ads,base):
+    return (f'<script src="{base}consent.js" defer data-ads="{ads["google_ads"]}" data-conversion="{ads["conversion_label"]}" '
+            f'data-ga4="{ads["ga4"]}" data-privacy="privacy.html"></script>\n')
+
+
+def consent_button(ads,lang):
+    return f'<button type="button" class="site-consent-open" data-consent-open>{CONSENT_LABEL[lang]}</button>\n' if ads else ''
+
 
 def site_base_url(manifest):
     """The public address of the site (`base_url`), or None for a build without one (tests, local previews)."""
@@ -169,6 +194,8 @@ def nav_icons(manifest):
 
 def page_html(template,manifest,lang,slug,content,scripts=''):
     pages=manifest['pages'];base='' if lang=='uk' else '../'
+    ads=ads_settings(manifest)
+    if ads:scripts=consent_script(ads,base)+scripts
     titles={page['slug']:page['title'][lang] for page in pages};icons=nav_icons(manifest)
     label=lambda name:(f'<span class="nav-icon" aria-hidden="true">{icons[name]}</span> ' if name in icons else '')+html.escape(titles[name])
     nav='\n'.join(f'<li><a href="{page["slug"]}.html"'+(' aria-current="page"' if page['slug']==slug else '')+f'>{label(page["slug"])}</a></li>' for page in pages)
@@ -179,7 +206,7 @@ def page_html(template,manifest,lang,slug,content,scripts=''):
     home='index.html' if 'index' in titles else f'{pages[0]["slug"]}.html'
     values={'lang':lang,'title':html.escape(titles[slug]),'base':base,'home':home,'switch':switch,'nav':nav,'alt':switch_href,
             'meta':head_meta(manifest,lang,slug,f'{titles[slug]} · Obscura Text Writer'),
-            'scripts':scripts,'content':content,'nav_label':LABELS[lang]['nav'],'lang_label':LABELS[lang]['lang']}
+            'scripts':scripts,'consent':consent_button(ads,lang),'content':content,'nav_label':LABELS[lang]['nav'],'lang_label':LABELS[lang]['lang']}
     content=values.pop('content');out=template
     for key,value in values.items():out=out.replace('{'+key+'}',value)
     return out.replace('{content}',content)  # last: page text may contain literal {placeholders}
@@ -200,7 +227,7 @@ def build(root=ROOT,out=None):
             if page_form(page):content+=waitlist_form(manifest,lang);scripts=TURNSTILE_SCRIPT+'\n'
             target.write_text(page_html(template,manifest,lang,page['slug'],content,scripts),encoding='utf-8',newline='\n')
             written.append(target)
-    for name in ('site.css','site.js'):shutil.copyfile(root/SITE/name,out/name);written.append(out/name)
+    for name in ('site.css','site.js')+(('consent.js',) if ads_settings(manifest) else ()):shutil.copyfile(root/SITE/name,out/name);written.append(out/name)
     images=root/IMAGES
     if images.is_dir():
         for image in sorted(p for p in images.rglob('*') if p.is_file()):

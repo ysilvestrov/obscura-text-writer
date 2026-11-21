@@ -517,6 +517,19 @@ B1 виконано 18.11.2026, запуск 20261118-164659-b6b2f8 (15:46:59–
 
 R20-WORKSPACE-S07, STORE-FOOTER-S01, STORE-FOOTER-S02. Автоматична частина — Playwright `tests/web/browser/store-footer.spec.mjs` (на вкладці «Чернетка» «Взяти як прозу» стоїть ліворуч від основної дії й зберігає чернетку як прозу з її форматом; у виданні Store немає «Параметрів запуску», «Додаткових дій» і розбору контексту; історія Store показує лише текстові версії й повертає версію з її форматом) і `tests/web/browser/scene-delete.spec.mjs` (у підвалі немає «Видалити сцену»): `node frontend/node_modules/@playwright/test/cli.js test tests/web/browser/store-footer.spec.mjs tests/web/browser/scene-delete.spec.mjs --config frontend/playwright.config.mjs`. Браузерний сервер імпортує пакет із `PYTHONPATH`, тож у worktree задайте `PYTHONPATH=<worktree>/src`. Цей зв’язок не є доказом виконання; фактичний запуск фіксується окремо.
 
+<a id="site-consent"></a>
+## Банер згоди й теги Google на живому сайті (DOCS-SITE-S11)
+
+Після злиття PR з розділом `ads` у `docs/site/site.json` і публікації сайту, у вікні InPrivate браузера з інструментами розробника (вкладка «Мережа») або з Google Tag Assistant:
+
+1. Відкрити `https://obscurawriter.com/` — банер з рівними кнопками; у «Мережі» немає запитів до `googletagmanager.com`, `google-analytics.com`, `googleadservices.com`, `doubleclick.net`.
+2. «Відхилити», перейти на іншу сторінку — банера немає, запитів до Google немає.
+3. «Налаштування cookies» → «Прийняти» — з'являється запит `gtag/js?id=AW-…`, далі запити GA4 (`collect`); у Tag Assistant стан згоди `granted` для всіх чотирьох типів.
+4. Записатися в список очікування на `paid.html` нейтральною тестовою адресою — після повернення на `#waitlist-ok` у Tag Assistant одна подія конверсії Google Ads і подія `sign_up` GA4; перезавантаження вкладки другої конверсії не дає. Тестовий запис видалити з D1 за `docs/waitlist.md`.
+5. «Налаштування cookies» → «Відхилити» — сторінка перезавантажується, cookies `_ga`, `_ga_*`, `_gcl_au` на `obscurawriter.com` зникли, запитів до Google немає.
+
+Результат (дата, браузер, що побачено) записати в журнал виконання.
+
 <a id="plan-preamble-panel"></a>
 ## Панель «Загальні вказівки з плану»
 

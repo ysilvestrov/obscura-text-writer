@@ -5960,6 +5960,26 @@
       ]
     },
     {
+      "id": "DOCS-SITE-S11",
+      "requirement": "DOCS-SITE",
+      "scope": "Розділ ads маніфесту, consent.js (банер, збереження вибору, тег Google лише після згоди, конверсія #waitlist-ok, відкликання) і вимога до privacy в check_site.py. Справжні запити до Google на живому сайті — ручна процедура.",
+      "tests": [
+        "tests/test_site_ads.py::test_without_ads_the_site_has_no_banner_and_no_google",
+        "tests/test_site_ads.py::test_with_ads_every_page_loads_the_banner_script_and_no_google_tag",
+        "tests/test_site_ads.py::test_ads_ids_of_a_wrong_format_stop_the_build",
+        "tests/test_site_ads.py::test_ads_section_must_have_all_three_ids",
+        "tests/test_site_ads.py::test_check_requires_privacy_to_name_google_cookies_when_ads_are_set",
+        "tests/test_site_ads.py::test_check_fails_when_privacy_misses_google_cookies",
+        "tests/test_site_ads.py::test_check_fails_with_ads_and_no_privacy_page",
+        "tests/test_site_ads.py::test_check_without_ads_does_not_require_google_cookies",
+        "tests/test_site_ads.py::test_site_consent_script"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#site-consent",
+        "reason": "Справжні запити до Google, стан згоди в Tag Assistant і конверсія видні лише на живому сайті з ID власника."
+      }
+    },
+    {
       "id": "MCP-BRIDGE-S01",
       "requirement": "MCP-BRIDGE",
       "scope": "Недоступний сервер дає помилку інструмента з адресою; каталог даних не створюється. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
