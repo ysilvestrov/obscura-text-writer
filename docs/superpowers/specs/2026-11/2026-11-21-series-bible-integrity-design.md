@@ -44,6 +44,7 @@ Spec-review: agy/gemini-4-argon @ e0f7839 (author: claude) — 2 findings: 2 fix
 - Власник: **XS**.
 - Автор: **XS**, один PR, одна задача: `series_checks.py` (≈ 15 рядків), тести в `tests/series/test_series_bible_entity.py` (біблія чиста; біблія з номером / `Початок` / знімком; друга біблія; позначка без серії; `create_backup` і `backup_before_migration` проходять на серії з біблією), SPEC SERIES / SERIES-BIBLE-001 і traceability.
 - Дешевшого варіанта немає (Б — той самий обсяг без перевірок біблії).
+- Фактично: XS, 1 PR (#248), 1 задача.
 
 ### Питання до власника
 
