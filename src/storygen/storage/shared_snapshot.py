@@ -55,8 +55,13 @@ def read_view(repo, db, story_id):
     # are the state of `generation`.
     if _unchanged(repo.db, db, generation, in_flight):
         state = view.shared_state()
-        if store.publish(story_id, generation, state) is state:
+        published = store.publish(story_id, generation, state)
+        if published is state:
             view.adopt(state)
+        elif published is not None:
+            # A parallel capture of the same generation published first: share its state, so the top level of
+            # freshness is still computed once.
+            return ContextView.from_state(published, db)
     return view
 
 

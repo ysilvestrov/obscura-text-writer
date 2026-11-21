@@ -27,6 +27,12 @@ def _peek_view(view):
     """A read-only facade for selector evaluation: no freshness recomputation, no recorded dependencies."""
     class Peek:
         memo_cache = getattr(view, 'memo_cache', None)  # PERF-001-S05: parses through the facade share the view's memo
+        # PERF-001-S06: a journal parse carries over generations through the view's ImmutableStore.
+        immutable = getattr(view, 'immutable', None)
+        versions = getattr(view, 'versions', {})
+
+        def read_blob(self, path, sha):
+            return view.read_blob(path, sha)
 
         def get_version(self, id):
             return view.peek_version(id)

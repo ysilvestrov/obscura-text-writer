@@ -43,6 +43,7 @@ def test_connection_remembers_state_at_open(tmp_path):
 def test_connection_opened_during_a_commit_sees_it_in_flight(tmp_path):
     db = Database(tmp_path / 'x.sqlite3')
     seen = {}
+    before = db.generation()
     inside, release = threading.Event(), threading.Event()
 
     def writer():
@@ -58,7 +59,7 @@ def test_connection_opened_during_a_commit_sees_it_in_flight(tmp_path):
     release.set()
     thread.join(5)
     db._before_commit_hook = None
-    assert seen['state'][1] == 1
+    assert seen['state'] == (before + 1, 1)
 
 
 def test_two_databases_on_one_path_share_generation(tmp_path):

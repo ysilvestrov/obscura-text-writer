@@ -206,8 +206,11 @@ def test_shared_equals_private_after_writes(tmp_path):
 
     def compare():
         shared = repo.context_view(story.id)
-        repo.context_view(story.id)  # a second read of the generation reuses the published state
-        assert _outputs(repo, story.id, shared) == _outputs(repo, story.id, private_view(repo, story.id))
+        reused = repo.context_view(story.id)  # a second read of the generation reuses the published state
+        assert reused.shared_lock is shared.shared_lock is not None
+        expected = _outputs(repo, story.id, private_view(repo, story.id))
+        assert _outputs(repo, story.id, shared) == expected
+        assert _outputs(repo, story.id, reused) == expected
     compare()
     other = repo.save_version(story.id, scene.id, 'draft', 'B', [])
     repo.set_head(scene.id, 'draft', other.id, repo.get_scene(scene.id).revision)
@@ -302,4 +305,42 @@ def test_scene_values_start_again_in_a_new_generation(tmp_path):
     plan_review(view)
     assert any(key[0] == 'names' for key in view.memo_cache)
     repo.db.bump_generation()
-    assert not any(key[0] in {'names', 'policy', 'tracked'} for key in repo.context_view(story_id).memo_cache)
+    fresh = repo.context_view(story_id)
+    assert fresh.memo_cache is not view.memo_cache
+    # Only parses of one version's file carry over (ImmutableStore); scene values are computed again.
+    assert not any(key[0][0] in {'names', 'policy', 'tracked'} for key in repo.immutable.parses)
+    plan_review(fresh)
+    assert any(key[0] == 'names' for key in fresh.memo_cache)
+
+
+def test_second_capture_of_a_generation_adopts_the_published_state(tmp_path, monkeypatch):
+    from storygen.storage.shared_snapshot import read_view
+    repo, story, scene, draft, prose = setup(tmp_path)
+    with repo.db.connection() as a, repo.db.connection() as b:
+        first = read_view(repo, a, story.id)
+        # b missed the store before a published (both captured in parallel).
+        monkeypatch.setattr(repo.snapshots, 'get', lambda *args: None)
+        second = read_view(repo, b, story.id)
+    assert first.shared_lock is not None
+    assert second.shared_lock is first.shared_lock
+    assert second.versions is first.versions
+
+
+def test_peek_journal_parse_carries_over_generations(tmp_path, monkeypatch):
+    import storygen.memory.journal as journal
+    from storygen.application.workspace_bench import build_story
+    from storygen.memory.previous import previous_memory, read_previous_journal
+    from storygen.storage.repository import Repository
+    repo = Repository(tmp_path)
+    story_id = build_story(repo, 3, cast=True)
+    view = repo.context_view(story_id)
+    scene = view.list_scenes(story_id)[-1]
+    previous = previous_memory(view, scene, peek=True)
+    assert previous.memory_id
+    read_previous_journal(view, previous, peek=True)
+    calls = []
+    original = journal.load_memory
+    monkeypatch.setattr(journal, 'load_memory', lambda *a, **k: (calls.append(1), original(*a, **k))[1])
+    repo.db.bump_generation()
+    read_previous_journal(repo.context_view(story_id), previous, peek=True)
+    assert calls == []

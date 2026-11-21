@@ -70,7 +70,7 @@ def test_memo_gives_the_same_plan(cast_repo, monkeypatch):
     assert plan_review(repo.context_view(story_id)).model_dump() == memoized
 
 
-def test_memo_does_not_survive_the_request(tmp_path):
+def test_memo_does_not_survive_a_write(tmp_path):
     repo = Repository(tmp_path)
     story_id = build_story(repo, 3, cast=True)
     before = plan_review(repo.context_view(story_id))

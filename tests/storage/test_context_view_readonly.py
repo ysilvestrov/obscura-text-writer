@@ -222,7 +222,7 @@ def test_peek_path_matches_copying_path(tmp_path, monkeypatch):
 
 
 def test_second_request_sees_change_made_between_requests(tmp_path):
-    """No state crosses requests: each readiness call and ContextView is built fresh from the database."""
+    """A write between requests starts a new data generation: the next request sees the change (PERF-001-S06)."""
     from storygen.application.workspace_bench import OPERATIONS, _default, _request
     from storygen.generation.readiness import preview
     repo, story, scene, draft, prose = setup(tmp_path)

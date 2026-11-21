@@ -1259,7 +1259,7 @@
         "tests/storage/test_context_view_readonly.py::test_readiness_all_operations_does_not_mutate_view_models",
         "tests/book/test_lineage_speed.py::test_scope_sees_a_structure_change_and_does_not_leak_mutation",
         "tests/book/test_lineage_speed.py::test_lineage_memo_does_not_outlive_a_request",
-        "tests/impact/test_planning_speed.py::test_memo_does_not_survive_the_request",
+        "tests/impact/test_planning_speed.py::test_memo_does_not_survive_a_write",
         "tests/impact/test_planning_speed.py::test_plan_leaves_memoized_models_as_parsed"
       ]
     },
@@ -1332,6 +1332,8 @@
         "tests/storage/test_shared_snapshot.py::test_damaged_file_gives_integrity_error_next_generation",
         "tests/storage/test_shared_snapshot.py::test_cards_and_journals_parsed_once_across_a_write",
         "tests/storage/test_shared_snapshot.py::test_scene_values_start_again_in_a_new_generation",
+        "tests/storage/test_shared_snapshot.py::test_second_capture_of_a_generation_adopts_the_published_state",
+        "tests/storage/test_shared_snapshot.py::test_peek_journal_parse_carries_over_generations",
         "tests/storage/test_shared_snapshot_guards.py::test_only_allowed_modules_open_sqlite",
         "tests/storage/test_shared_snapshot_guards.py::test_no_commit_outside_the_connection_exit",
         "tests/storage/test_shared_snapshot_guards.py::test_clis_take_the_lock_or_write_only_token_profiles",
