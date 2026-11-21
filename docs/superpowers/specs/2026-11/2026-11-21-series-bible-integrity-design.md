@@ -2,7 +2,7 @@
 
 Дата: 2026-11-21
 Статус: чекає на затвердження
-Spec-review: agy/gemini-4-argon @ e0f7839 (author: claude) — 2 findings: 1 fixed, 1 rejected (fallback: codex — usage limit)
+Spec-review: agy/gemini-4-argon @ e0f7839 (author: claude) — 2 findings: 2 fixed, 0 rejected (fallback: codex — usage limit)
 
 ## Для власника
 
