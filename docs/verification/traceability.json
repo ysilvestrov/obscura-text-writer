@@ -1266,7 +1266,7 @@
     {
       "id": "PERF-001-S03",
       "requirement": "PERF-001",
-      "scope": "Межі часу типових дій. Процедуру виконано 08.11.2026 і повторно 21.11.2026 (після #39) у браузері на синтетичних 300 сценах: цілі ≤ 3 с НЕ досягнуто для відкриття твору (5,4–5,5 с) і збереження (7,3–8,0 с); вибір сцени (2,3–3,0 с) і readiness усіх операцій (1,3–1,7 с) — у межах. На копії 68 сцен ціль ≤ 1 с НЕ досягнуто: відкриття 2,75–3,01 с, вибір сцени 0,91–1,93 с, усі операції 1,43–1,55 с, збереження 2,95–3,09 с; результат PASS не оголошується, виміри — у SPEC.MD (PERF-001) і журналі виконання.",
+      "scope": "Межі часу типових дій. Процедуру виконано 08.11.2026 і повторно 21.11.2026 (після #39) у браузері на синтетичних 300 сценах: цілі ≤ 3 с НЕ досягнуто для відкриття твору (5,4–5,5 с) і збереження (7,3–8,0 с); вибір сцени (2,3–3,0 с) і readiness усіх операцій (1,3–1,7 с) — у межах. На копії 68 сцен ціль ≤ 1 с НЕ досягнуто: відкриття 2,75–3,01 с, вибір сцени 0,91–1,93 с, усі операції 1,43–1,55 с, збереження 2,95–3,09 с; результат PASS не оголошується, виміри — у SPEC.MD (PERF-001) і журналі виконання. Після спільного знімка (S06): 68 сцен — відкриття 1,24–1,32 с після запису й 0,43–0,56 с без змін, 300 сцен — 1,95–2,03 с після запису; ціль 1 с на 68 сценах для першого відкриття після запису НЕ досягнуто.",
       "tests": [
         "tests/storage/test_workspace_bench.py::test_story_open_requests_are_timed_through_the_app_and_stay_out_of_digest_core"
       ],
@@ -1303,6 +1303,40 @@
         "procedure": "docs/verification/manual.md#impact-speed",
         "reason": "Час відповіді залежить від машини й даних; межа 10 с перевіряється виміром на копії робочих даних. Виконано 21.11.2026: 8,45–8,56 с."
       }
+    },
+    {
+      "id": "PERF-001-S06",
+      "requirement": "PERF-001",
+      "scope": "Спільний знімок твору між запитами одного покоління даних: покоління в Database, публікація без коміту у вікні читання, приватні view транзакцій запису й результати з циклом, обчислення один раз, незмінні розбори зі stat-перевіркою, профілі токенів у кожному запиті, сторожі записів.",
+      "tests": [
+        "tests/storage/test_generation.py::test_read_and_empty_rollback_keep_generation",
+        "tests/storage/test_generation.py::test_writing_commit_and_writing_rollback_each_add_two",
+        "tests/storage/test_generation.py::test_connection_remembers_state_at_open",
+        "tests/storage/test_generation.py::test_connection_opened_during_a_commit_sees_it_in_flight",
+        "tests/storage/test_generation.py::test_two_databases_on_one_path_share_generation",
+        "tests/storage/test_generation.py::test_bump_generation_for_writes_outside_connection",
+        "tests/storage/test_shared_snapshot.py::test_reads_of_one_generation_share_state",
+        "tests/storage/test_shared_snapshot.py::test_repository_reads_share_the_snapshot",
+        "tests/storage/test_shared_snapshot.py::test_write_starts_a_new_generation",
+        "tests/storage/test_shared_snapshot.py::test_commit_between_open_and_capture_keeps_view_private",
+        "tests/storage/test_shared_snapshot.py::test_older_generation_never_replaces_newer",
+        "tests/storage/test_shared_snapshot.py::test_store_keeps_a_bounded_number_of_stories",
+        "tests/storage/test_shared_snapshot.py::test_write_transaction_view_is_private",
+        "tests/storage/test_shared_snapshot.py::test_impact_and_review_current_caches_are_private",
+        "tests/storage/test_shared_snapshot.py::test_impact_record_checked_in_parallel_with_freshness",
+        "tests/storage/test_shared_snapshot.py::test_cycle_results_match_a_private_view_in_every_order",
+        "tests/storage/test_shared_snapshot.py::test_parallel_requests_compute_top_level_once",
+        "tests/storage/test_shared_snapshot.py::test_shared_equals_private_after_writes",
+        "tests/storage/test_shared_snapshot.py::test_trashed_story_and_scene_raise_like_private",
+        "tests/storage/test_shared_snapshot.py::test_blob_reused_across_generations_only_with_same_stat",
+        "tests/storage/test_shared_snapshot.py::test_damaged_file_gives_integrity_error_next_generation",
+        "tests/storage/test_shared_snapshot.py::test_cards_and_journals_parsed_once_across_a_write",
+        "tests/storage/test_shared_snapshot.py::test_scene_values_start_again_in_a_new_generation",
+        "tests/storage/test_shared_snapshot_guards.py::test_only_allowed_modules_open_sqlite",
+        "tests/storage/test_shared_snapshot_guards.py::test_no_commit_outside_the_connection_exit",
+        "tests/storage/test_shared_snapshot_guards.py::test_clis_take_the_lock_or_write_only_token_profiles",
+        "tests/storage/test_shared_snapshot_guards.py::test_token_profiles_written_by_another_process_are_seen"
+      ]
     },
     {
       "id": "EVAL-001-S01",
