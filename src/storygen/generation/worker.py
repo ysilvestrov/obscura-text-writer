@@ -10,6 +10,7 @@ from .context import build_context, make_context, ContextOverflow
 from ..run_models import Run, RunRequest, RunEvent, merge_warnings
 from .pipeline import STAGES, STAGE_ROLES
 from .stages import execute_stage
+from ..book.lineage import lineage_scope
 
 
 TERMINAL={'completed','failed','cancelled','interrupted','needs_review','alternative','paused'}
@@ -431,7 +432,9 @@ class RunCoordinator:
                     self._save(queued)
                     self.event(queued.id,'state',{'state':'running'})
                 try:
-                    self._execute(queued.id)
+                    # PERF-001: lineage memo for this run only (content-keyed, bounded); never shared with requests.
+                    with lineage_scope():
+                        self._execute(queued.id)
                 except Exception as exc:
                     with self.condition:
                         run=self.get_run(queued.id)

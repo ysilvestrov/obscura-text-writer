@@ -6,10 +6,32 @@ Direct predecessors of a scene in a structured book:
 - the start of a part: the heads of all arcs of the nearest earlier part with scenes (none for the first part).
 Ancestors are the transitive closure in reading order; heads are the predecessors that are not ancestors of one another.
 For a flat book, a book with sequential arcs, and a book where some active scene has no known arc, the lineage is the
-reading-order chain: every active scene above, and the previous one as the only head."""
+reading-order chain: every active scene above, and the previous one as the only head.
+
+PERF-001: the chain answers one scene in O(n) without the map; the map is memoised only inside `lineage_scope()` (one
+HTTP request or one worker step) and never outlives it."""
+import json
+from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass
 
 from .structure import effective_structure
+
+_MEMO_LIMIT = 8
+_memo: ContextVar[dict | None] = ContextVar('lineage_memo', default=None)
+
+
+@contextmanager
+def lineage_scope():
+    """Memoise lineage maps for the duration of one request or worker step; a nested scope uses the outer memo."""
+    if _memo.get() is not None:
+        yield
+        return
+    token = _memo.set({})
+    try:
+        yield
+    finally:
+        _memo.reset(token)
 
 
 @dataclass(frozen=True)
@@ -27,13 +49,41 @@ def _chain(active):
     return {s.id: Lineage((active[i - 1].id,) if i else (), tuple(x.id for x in active[:i]), False) for i, s in enumerate(active)}
 
 
+def _is_chain(story, active) -> bool:
+    """The whole book reads as one chain: no structure (or a pure helper called without a story), a flat structure, or
+    some active scene without a known arc. Always checked over the whole book, never for one scene."""
+    if getattr(story, 'book_structure', None) is None:
+        return True
+    structure = effective_structure(story, active)
+    return structure.kind == 'flat' or any(s.id not in structure.arcs_of for s in active)
+
+
+def _memo_key(story, scenes):
+    structure = getattr(story, 'book_structure', None)
+    return (structure.model_dump_json() if structure is not None else None,
+            json.dumps(getattr(story, 'scene_arcs', None), sort_keys=True, default=str),
+            tuple((s.id, s.position, bool(s.trashed_at)) for s in scenes))
+
+
 def lineage_map(story, scenes) -> dict:
+    """Lineage of every active scene; inside `lineage_scope()` computed once per distinct input (a fresh dict each call)."""
+    memo = _memo.get()
+    if memo is None:
+        return _build_map(story, scenes)
+    scenes = list(scenes)
+    key = _memo_key(story, scenes)
+    if key not in memo:
+        if len(memo) >= _MEMO_LIMIT:  # a long worker run whose scenes move: keep memory bounded
+            memo.clear()
+        memo[key] = _build_map(story, scenes)
+    return dict(memo[key])
+
+
+def _build_map(story, scenes) -> dict:
     active = _active(scenes)
-    if getattr(story, 'book_structure', None) is None:  # no structure, or a pure helper called without a story
+    if _is_chain(story, active):
         return _chain(active)
     structure = effective_structure(story, active)
-    if structure.kind == 'flat' or any(s.id not in structure.arcs_of for s in active):
-        return _chain(active)
     arcs_of, part_of = structure.arcs_of, structure.part_of_arc
     index = {s.id: i for i, s in enumerate(active)}
     last_of_arc = {}
@@ -120,14 +170,27 @@ def part_end_heads(story, scenes, part_id: str) -> tuple[str, ...]:
     return _heads(candidates, ancestors, index)
 
 
+def _chain_index(active, scene_id):
+    return next((i for i, s in enumerate(active) if s.id == scene_id), None)
+
+
 def lineage(story, scenes, scene_id: str) -> Lineage:
-    return lineage_map(story, scenes)[scene_id]
+    active = _active(scenes)
+    if _is_chain(story, active):
+        i = _chain_index(active, scene_id)
+        if i is None:
+            raise KeyError(scene_id)
+        return Lineage((active[i - 1].id,) if i else (), tuple(x.id for x in active[:i]), False)
+    return lineage_map(story, active)[scene_id]
 
 
 def previous_scenes(story, scenes, scene) -> list:
     """Ancestors of `scene` as scene objects in reading order; a scene outside the active lineage (trashed, not yet
     listed) gets every active scene above its position, as before the lineage."""
     active = _active(scenes)
+    if _is_chain(story, active):
+        i = _chain_index(active, scene.id)
+        return active[:i] if i is not None else [s for s in active if s.position < scene.position]
     item = lineage_map(story, active).get(scene.id)
     if item is None:
         return [s for s in active if s.position < scene.position]
