@@ -70,4 +70,5 @@ def test_missing_model_proof_revokes_effective_freshness(tmp_path):
     assert not repo.get_version(ref.id).stale
     attempt=repo.get_attempt(record.attempt_id)
     repo.files.resolve(attempt.partial_path).write_text('broken proof',encoding='utf-8')
+    repo.db.bump_generation()  # PERF-001-S06: a file changed outside the app is noticed in the next data generation
     assert repo.get_version(ref.id).stale

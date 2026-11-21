@@ -127,6 +127,7 @@ def test_author_acceptance4_rechecks_original_raw(tmp_path):
     view=repo.context_view(story.id);report=next(iter(view.review_reports.values()))
     attempt=repo.get_attempt(next(iter(report.proofs.values())))
     (repo.root/attempt.partial_path).write_text('{}',encoding='utf-8')
+    repo.db.bump_generation()  # PERF-001-S06: a file changed outside the app is noticed in the next data generation
     assert repo.get_version(ref.id).stale
 
 

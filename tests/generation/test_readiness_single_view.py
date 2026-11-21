@@ -74,6 +74,7 @@ def test_source_preamble_parses_plan_once_per_view(tmp_path, monkeypatch):
     scene = repo.list_scenes(story.id)[0]
     from storygen.generation.context import build_context
     context = build_context(repo, scene.id, 'brief', RoleSettings(provider=ProviderSettings(model='synthetic')))
+    repo.db.bump_generation()  # PERF-001-S06: a view of a new generation, not the one build_context already used
     view = repo.context_view(story.id)
     import storygen.plan_sections as plan_sections
     original = plan_sections.split_plan

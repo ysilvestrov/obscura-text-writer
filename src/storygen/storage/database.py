@@ -1,4 +1,5 @@
 import sqlite3
+import threading
 from contextlib import contextmanager
 from importlib.resources import files
 from pathlib import Path
@@ -8,9 +9,36 @@ from pathlib import Path
 SCHEMA_VERSION = 6
 
 
+class _Generation:
+    """PERF-001-S06: the data generation of one database file, shared by every Database of that path in the process.
+    A commit that wrote adds 1 before it and 1 after it (commit or rollback); in_flight counts such commits."""
+    def __init__(self):
+        self.lock = threading.Lock()
+        self.value = 0
+        self.in_flight = 0
+
+
+_GENERATIONS: dict[Path, _Generation] = {}
+_GENERATIONS_LOCK = threading.Lock()
+
+
+def _generation_of(path: Path) -> _Generation:
+    key = path.resolve()
+    with _GENERATIONS_LOCK:
+        return _GENERATIONS.setdefault(key, _Generation())
+
+
+class _Connection(sqlite3.Connection):
+    """A connection that remembers (generation, commits in flight) at the moment it was opened, before any read."""
+    opened: tuple[int, int] = (0, 0)
+
+
 class Database:
+    _before_commit_hook = None  # tests only: runs after a writing commit is marked in flight
+
     def __init__(self,path: Path):
         self.path=path
+        self._generation=_generation_of(path)
         path.parent.mkdir(parents=True,exist_ok=True)
         with self.connection() as db:
             db.execute("PRAGMA journal_mode=WAL")
@@ -48,14 +76,45 @@ class Database:
             if db.execute("PRAGMA user_version").fetchone()[0] != SCHEMA_VERSION:
                 raise ValueError("Непідтримувана версія бази даних")
 
+    def generation(self) -> int:
+        with self._generation.lock:
+            return self._generation.value
+
+    def opened_state(self, db) -> tuple[int, int]:
+        """(generation, writing commits in flight) when this connection was opened, before its first read."""
+        return db.opened
+
+    def bump_generation(self) -> None:
+        """For tests and tools that wrote to the file without connection(): later reads build a new snapshot."""
+        with self._generation.lock:
+            self._generation.value += 2
+
     @contextmanager
     def connection(self):
-        db=sqlite3.connect(self.path,timeout=5)
+        db=sqlite3.connect(self.path,timeout=5,factory=_Connection)
+        state=self._generation
+        with state.lock:
+            db.opened=(state.value,state.in_flight)
         db.row_factory=sqlite3.Row
         db.execute("PRAGMA foreign_keys=ON")
         db.execute("PRAGMA busy_timeout=5000")
+        wrote=False
         try:
             with db:
-                yield db
+                try:
+                    yield db
+                finally:
+                    # The only commit point (PERF-001-S06): mark a writing commit before it becomes visible.
+                    if db.total_changes:
+                        wrote=True
+                        with state.lock:
+                            state.in_flight+=1
+                            state.value+=1
+                        if self._before_commit_hook:
+                            self._before_commit_hook()
         finally:
+            if wrote:
+                with state.lock:
+                    state.in_flight-=1
+                    state.value+=1
             db.close()

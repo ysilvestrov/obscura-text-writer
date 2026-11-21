@@ -11,14 +11,74 @@ def memo(source, key, build):
     if cache is None:
         return build()
     if key not in cache:
-        cache[key] = build()
+        store = getattr(source, 'immutable', None)
+        ref = source.versions.get(key[1]) if store is not None and key[0] in IMMUTABLE_MEMO else None
+        if ref is not None:
+            # PERF-001-S06: a parse of one version carries over generations, but only after its file passed the
+            # stat check of this generation (read_blob raises as before when the file is missing or changed).
+            source.read_blob(ref.relative_path, ref.sha256)
+            cache[key] = store.parsed((key, ref.sha256), build)
+        else:
+            cache[key] = build()
     return cache[key]
+
+
+# Memo kinds whose value depends only on one version's file (key[1] is the version id).
+IMMUTABLE_MEMO = frozenset({'memory', 'cards'})
+
+
+def token_profiles(db):
+    """Token profiles are read on every request: storygen-tokens writes them from another process (PERF-001-S06)."""
+    return [json.loads(r[0]) for r in db.execute("SELECT payload FROM app_settings WHERE key LIKE 'token_profile:%' ORDER BY key")]
+
+
+class LayeredCache:
+    """PERF-001-S06: the freshness cache of a view over a shared snapshot. Reads look in the request's private layer
+    first, then in the shared one; a plain store goes to the shared layer, set_private keeps a result to the request
+    (a result computed through a dependency cycle depends on the order of the walk)."""
+    def __init__(self, shared):
+        self.shared = shared
+        self.private = {}
+
+    def __contains__(self, key):
+        return key in self.private or key in self.shared
+
+    def __getitem__(self, key):
+        return self.private[key] if key in self.private else self.shared[key]
+
+    def get(self, key, default=None):
+        return self[key] if key in self else default
+
+    def __setitem__(self, key, value):
+        self.shared[key] = value
+
+    def set_private(self, key, value):
+        self.private[key] = value
+
+
+class SharedState:
+    """The read-only part of a ContextView one data generation shares between requests (PERF-001-S06)."""
+    def __init__(self, fields, fresh):
+        import threading
+        self.fields = fields
+        self.fresh = fresh
+        self.lock = threading.RLock()
+
+
+# Captured models and caches of values that depend only on the snapshot; never the walk state or sentinel caches.
+SHARED_FIELDS = ('files', 'story', 'scenes', 'versions', 'impact_records', 'impact_applications', 'impact_proofs',
+                 'review_reports', 'review_acceptances', 'review_operations', 'review_proofs', 'review_authority',
+                 'review_authority_operations', 'sources', 'source_files', 'acceptances', 'acceptance_records',
+                 'blob_cache', 'preamble_cache', 'journal_cache', 'memo_cache', 'immutable')
 
 
 class ContextView:
     def __init__(self, repo, db, story_id):
         self.files = repo.files
+        self.immutable = getattr(repo, 'immutable', None)
         self.resolving = set()
+        self.cycle_hits = 0  # dependency cycles met so far; a result whose walk met one stays private
+        self.shared_lock = None
         self.freshness_cache = {}
         self.blob_cache = {}
         self.preamble_cache = {}
@@ -39,7 +99,7 @@ class ContextView:
         self.review_current_cache={}
         from .review_authority import load as load_authority
         self.review_authority,self.review_authority_operations=load_authority(db,story_id)
-        self.token_profiles = [json.loads(r[0]) for r in db.execute("SELECT payload FROM app_settings WHERE key LIKE 'token_profile:%' ORDER BY key")]
+        self.token_profiles = token_profiles(db)
         self.sources = {row[0]:row[1] for row in db.execute('SELECT kind,version_id FROM active_sources WHERE story_id=?',(story_id,))}
         from .import_store import source_files
         self.source_files=source_files(db,story_id)
@@ -56,6 +116,30 @@ class ContextView:
                 raise ValueError('Невідповідна версія журналу прийняття')
             self.acceptances[record.version_id]=record
             self.acceptance_records.append(record)
+
+    def shared_state(self):
+        """The state to publish for this view's generation; the view itself is unchanged until adopt()."""
+        return SharedState({name: getattr(self, name) for name in SHARED_FIELDS}, self.freshness_cache)
+
+    def adopt(self, state):
+        """Turn this freshly captured view into a request view over the published state (its own models)."""
+        self.freshness_cache = LayeredCache(state.fresh)
+        self.shared_lock = state.lock
+
+    @classmethod
+    def from_state(cls, state, db):
+        """A request view over a published state: shared models and results, its own walk state, sentinel caches
+        (impact_current_cache, review_current_cache) and token profiles."""
+        view = cls.__new__(cls)
+        view.__dict__.update(state.fields)
+        view.resolving = set()
+        view.cycle_hits = 0
+        view.freshness_cache = LayeredCache(state.fresh)
+        view.shared_lock = state.lock
+        view.impact_current_cache = {}
+        view.review_current_cache = {}
+        view.token_profiles = token_profiles(db)
+        return view
 
     def list_acceptances(self, story_id):
         """Як Repository.list_acceptances(story_id): усі записи прийняття твору в порядку запису, копіями."""
@@ -152,7 +236,8 @@ class ContextView:
     def read_blob(self, path, sha):
         key=(path,sha)
         if key not in self.blob_cache:
-            self.blob_cache[key]=self.files.read(path,sha)
+            store=getattr(self,'immutable',None)
+            self.blob_cache[key]=store.read(self.files,path,sha) if store is not None else self.files.read(path,sha)
         return self.blob_cache[key]
 
 

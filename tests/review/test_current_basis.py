@@ -86,6 +86,7 @@ def test_current_consistency_cannot_hide_corrupt_source(tmp_path):
     repo,story,first,second,ref,worker,run,calls=legacy(tmp_path)
     source=repo.get_version(repo.get_scene(first.id).heads['prose'])
     (repo.root/source.relative_path).write_text('Пошкоджено.',encoding='utf-8')
+    repo.db.bump_generation()  # PERF-001-S06: a file changed outside the app is noticed in the next data generation
     assert capture(repo.context_view(story.id),ref.id).blockers
     assert not calls
 

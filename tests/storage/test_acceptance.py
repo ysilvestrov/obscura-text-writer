@@ -90,6 +90,7 @@ def test_acceptance_rejects_invalid_version(tmp_path,damage):
         path=repo.root/ref.relative_path
         if damage=='missing':path.unlink()
         else:path.write_bytes(b'broken')
+        repo.db.bump_generation()  # PERF-001-S06: a file changed outside the app is noticed in the next data generation
     else:
         ref=repo.save_version(story.id,scene.id,damage,'{}',[])
     with pytest.raises((ValueError,KeyError,OSError)):
