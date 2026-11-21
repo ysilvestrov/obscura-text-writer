@@ -14,7 +14,7 @@ from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
 if __package__ in (None,''):sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
-from scripts.build_site import markdown, page_form, waitlist_settings
+from scripts.build_site import ads_settings, markdown, page_form, waitlist_settings
 from scripts.site_common import IMAGES, SITE, WAITLIST_PRIVACY_ANCHOR, heading_id, heading_text, load_manifest, page_hash, page_path, page_slug
 
 ROOT=Path(__file__).resolve().parents[1]
@@ -93,7 +93,25 @@ def check(root=ROOT):
         for lang in manifest['languages']:check_links(root,lang,slug,set(slugs),errors)
     for slug in sorted(set(sync)-set(slugs)):errors.append(f'{SYNC}: запис {slug} не відповідає жодній сторінці маніфесту')
     check_waitlist(root,manifest,errors)
+    check_ads(root,manifest,errors)
     return errors
+
+
+GOOGLE_COOKIES=('_ga','_gcl_au')
+
+
+def check_ads(root,manifest,errors):
+    """DOCS-SITE-S11: with Google tags the privacy page of each language names their cookies."""
+    try:
+        if not ads_settings(manifest):return
+    except ValueError as exc:errors.append(str(exc));return
+    if 'privacy' not in [page['slug'] for page in manifest['pages']]:
+        errors.append('site.json: розділ ads потребує сторінки privacy з описом cookies Google');return
+    for lang in manifest['languages']:
+        path=page_path(root,lang,'privacy')
+        text=path.read_text(encoding='utf-8') if path.is_file() else ''
+        missing=[name for name in GOOGLE_COOKIES if name not in text]
+        if missing:errors.append(f'privacy ({lang}): з розділом ads сторінка має назвати cookies Google: {", ".join(missing)}')
 
 
 def check_waitlist(root,manifest,errors):

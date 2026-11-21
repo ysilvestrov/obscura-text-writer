@@ -26,4 +26,9 @@ a { color: var(--accent); }
 .waitlist-consent { display: flex; gap: 8px; align-items: flex-start; }
 .waitlist-consent input { margin-top: 6px; }
 .waitlist-form button { justify-self: start; padding: 8px 18px; font: inherit; color: var(--surface); background: var(--accent); border: 0; border-radius: 6px; cursor: pointer; }
+.site-consent-open { margin-left: auto; padding: 4px 10px; font: inherit; font-size: 0.9em; color: var(--text); background: transparent; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; }
+.consent-banner { position: fixed; left: 16px; right: 16px; bottom: 16px; z-index: 10; max-width: 720px; margin: 0 auto; padding: 16px 20px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.15); }
+.consent-banner[hidden] { display: none; }
+.consent-banner p { flex: 1 1 320px; margin: 0; }
+.consent-choice { min-width: 120px; padding: 8px 18px; font: inherit; color: var(--surface); background: var(--accent); border: 0; border-radius: 6px; cursor: pointer; }
 @media (max-width: 760px) { .site-layout { display: block; } .site-nav ul { padding: 12px 16px; display: flex; flex-wrap: wrap; gap: 4px 14px; } .site-main { padding: 16px; border-left: 0; } .site-header { padding: 12px 16px; } }
