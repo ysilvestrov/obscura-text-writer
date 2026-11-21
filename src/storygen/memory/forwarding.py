@@ -39,7 +39,13 @@ def effective_hidden(journal,hidden_claim_ids,*,forwarded=()):
 
 
 def projection_policy(view,scene_id):
-    """Selector value scene/memory_projection_policy: the effective hidden set (I5) at the scene's boundary."""
+    """Selector value scene/memory_projection_policy: the effective hidden set (I5) at the scene's boundary.
+    Once per scene on a ContextView (PERF-001-S05); a new list."""
+    from ..storage.context_view import memo
+    return list(memo(view,('policy',scene_id),lambda:_projection_policy(view,scene_id)))
+
+
+def _projection_policy(view,scene_id):
     choices=choices_at(view,scene_id)
     hidden={id for id,enabled in choices.items() if not enabled}
     if not hidden:return []

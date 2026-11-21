@@ -27,6 +27,10 @@ from ..storage.repository import Repository
 REPO_ROOT = Path(__file__).resolve().parents[3]
 OPERATIONS = ('prepare', *STAGES, 'scene', 'remaining', 'rebuild_memory', 'edit_loop')
 SYNTHETIC_TITLE = 'Synthetic workspace bench'
+# PERF-001-S05: a separate workload with character cards and memory selection; the plain one keeps its S03 digests.
+CAST_TITLE = 'Synthetic workspace bench (cast)'
+CAST_CARDS = 8
+CAST_ENTRIES = 6
 BENCH_RATING = ContentRating(sexual=0, violence=0, themes=0)
 BENCH_ROLES = ('planner', 'writer', 'editor', 'memory')
 # Local provider with builtin prompts: readiness stays offline and needs no budget limit. The window is
@@ -47,15 +51,18 @@ def _shallow_model_copy(enabled):
         BaseModel.model_copy = original
 
 
-def build_story(repo: Repository, scenes: int, shallow_copies: bool = False) -> str:
+def build_story(repo: Repository, scenes: int, shallow_copies: bool = False, cast: bool = False) -> str:
     """Create a story with `scenes` scenes, each with a plan, manual prose and memory (one fact per scene).
 
     shallow_copies swaps pydantic deep copies for shallow ones while the data is written: the baseline
     code pays O(n^2) deep copies per write, which makes a 300-scene build take hours. Only the setup of
     the synthetic data is affected; measure() always runs the real code.
+
+    cast (PERF-001-S05) adds neutral character cards with protagonist, other-name and acquaintance markers, a cast on
+    every scene, a hidden memory record and a later edit of the cards, so every prose head is stale.
     """
     with _shallow_model_copy(shallow_copies):
-        return _build_story(repo, scenes)
+        return _build_story(repo, scenes, cast)
 
 
 def configure_roles(repo: Repository, story_id: str) -> None:
@@ -65,24 +72,60 @@ def configure_roles(repo: Repository, story_id: str) -> None:
         save_role_settings(repo, story_id, name, role, repo.get_story(story_id).revision)
 
 
-def _build_story(repo, scenes):
-    story = repo.create_story(StoryCreate(title=SYNTHETIC_TITLE))
+def _cast_cards(edition):
+    """Neutral cards: card 0 is the protagonist; every card has another name and knows the next card."""
+    from ..characters.models import CharacterEntry, CharacterRecord
+    cards = []
+    for c in range(CAST_CARDS):
+        lines = [f'Роль у творі: {"Головна героїня" if c == 0 else "Другорядна роль"}', f"Інше ім'я: Псевдо {c + 1}",
+                 f'Знайомий з: Персонаж {(c + 1) % CAST_CARDS + 1}']
+        traits = lambda e: [f'- Риса {e}.{k} ({edition})' for k in range(8)]
+        entries = [CharacterEntry(id=f'e{c}_{e}', origin='author', availability='timeless',
+                                  text='\n'.join((lines if e == 0 else []) + traits(e)))
+                   for e in range(CAST_ENTRIES)]
+        cards.append(CharacterRecord(id=f'c{c}', name=f'Персонаж {c + 1}', entries=entries))
+    return json.dumps([card.model_dump() for card in cards], ensure_ascii=False)
+
+
+def _publish_cards(repo, story_id, edition):
+    ref = repo.save_version(story_id, None, 'character_cards', _cast_cards(edition), [])
+    repo.publish_story_material(story_id, 'characters_version_id', ref.id, repo.get_story(story_id).revision)
+
+
+def _build_story(repo, scenes, cast=False):
+    story = repo.create_story(StoryCreate(title=CAST_TITLE if cast else SYNTHETIC_TITLE))
     # Generation is blocked for an unrated story, so the bench rates its own story before anything else.
     story = repo.update_story_rating(story.id, BENCH_RATING, story.revision)
+    if cast:
+        _publish_cards(repo, story.id, 'first')
     sources, facts = [], []
     for i in range(scenes):
         scene = repo.create_scene(story.id, SceneCreate(title=f'Scene {i + 1}', beats=f'Plan beat {i + 1}'))
         repo.update_scene_plan(scene.id, scene.beats, scene.revision)
         scene = repo.get_scene(scene.id)
+        if cast:
+            repo.update_scene_metadata(scene.id, {'character_ids': ['c0', f'c{i % (CAST_CARDS - 1) + 1}']}, scene.revision)
+            scene = repo.get_scene(scene.id)
         text = f'Synthetic detail number {i + 1}.'
         save_manual_prose(repo, scene.id, text, scene.revision)
         scene = repo.get_scene(scene.id)
         sources.append(scene.heads['prose'])
         facts.append(dict(text=text, source_version_id=sources[-1], quote=text))
         save_scene_memory(repo, scene.id, json.dumps(dict(source_prose_ids=list(sources), facts=list(facts))), scene.revision)
+        if cast and i == 0:
+            _hide_first_record(repo, scene.id)
+    if cast:
+        _publish_cards(repo, story.id, 'second')
     # Roles are saved last, so their presence marks a completed build (see _check_synthetic).
     configure_roles(repo, story.id)
     return story.id
+
+
+def _hide_first_record(repo, scene_id):
+    """The author hides the first memory record of the scene, so later scenes have a non-empty projection policy."""
+    from ..memory.forwarding import memory_view, save_forwarding
+    table = memory_view(repo, scene_id)
+    save_forwarding(repo, scene_id, {table['rows'][0]['claim_id']: False}, table['expected_revision'], table['fingerprint'])
 
 
 def _check_synthetic(repo, story_id, scenes):
@@ -291,18 +334,19 @@ def _check_data_dir(path, require_database):
     return resolved
 
 
-def run(data=None, story=None, synthetic=None, workdir=None) -> dict:
+def run(data=None, story=None, synthetic=None, workdir=None, cast=False) -> dict:
     """Open a data directory (or a synthetic workdir, reused only when it holds the same completed workload) and measure."""
     repo = Repository(_check_data_dir(workdir, False) if synthetic else _check_data_dir(data, True))
     if synthetic:
-        existing = [s for s in repo.list_stories() if s.title == SYNTHETIC_TITLE]
+        title = CAST_TITLE if cast else SYNTHETIC_TITLE
+        existing = [s for s in repo.list_stories() if s.title == title]
         if len(existing) > 1:
             raise ValueError('synthetic_ambiguous: workdir holds several synthetic stories; use a new --workdir')
         if existing:
             story_id = existing[0].id
             _check_synthetic(repo, story_id, synthetic)
         else:
-            story_id = build_story(repo, synthetic, shallow_copies=True)
+            story_id = build_story(repo, synthetic, shallow_copies=True, cast=cast)
     else:
         chosen = [s for s in repo.list_stories() if story is None or s.id.startswith(story)]
         if not chosen:

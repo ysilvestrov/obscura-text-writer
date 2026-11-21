@@ -64,12 +64,12 @@ def capture_target(view,version_id,*,baseline_override=None,current_sources_only
             reviewed=latest_review(view,id)
             if reviewed:baseline_ids[id]='review:'+reviewed.id
         if value.kind=='character_cards':
-            from ..characters.models import load_characters
+            from ..storage.snapshots import parsed_cards
             from ..characters.projection import project_characters
             # Read-only projection over shared view models; the old cast goes into a separate copy of the target scene.
             projected_scenes=view.peek_scenes(view.story.id)
             if old:projected_scenes=[item.model_copy(update={'character_ids':old_cast}) if item.id==scene.id else item for item in projected_scenes]
-            projection=project_characters(load_characters(raw),projected_scenes,scene.id,view.story.language)
+            projection=project_characters(parsed_cards(view,id,lambda:raw),projected_scenes,scene.id,view.story.language)
             warnings.update(projection.warnings)
             return projection.text
         if value.kind=='source_characters':
@@ -91,15 +91,12 @@ def capture_target(view,version_id,*,baseline_override=None,current_sources_only
             numbers={**{source:0 for source in journal.source_prose_ids[:len(journal.source_prose_ids)-len(ids)]},
                      **{source:item.position+1 for item,source in zip(prefix,ids)}}
             state=context_label('impact_current_sources' if ids==[s.heads.get('prose') for s in prefix] else 'impact_historical_sources',view.story.language)
-            from ..book.protagonists import scene_tracked
-            from ..storage.snapshots import core_cards
-            from ..characters.names import scene_names
-            cards=core_cards(view,view.story)
+            from ..storage.snapshots import view_scene_tracked,view_scene_names
             # The policy is already the effective hidden set (I5 applied); pass it through without re-deriving I5.
             policy=set(old_hidden if old else projection_policy(view,scene.id))
             return state+'\n'+project_memory(journal,old_cast if old else scene.character_ids,numbers,
                 hidden_claim_ids=policy,forwarded_claim_ids={e.claim_id for e in journal.events}-policy,
-                tracked=scene_tracked(view.story,cards,view.peek_scenes(view.story.id),scene),names=scene_names(cards,view.peek_scenes(view.story.id),scene),language=view.story.language).text
+                tracked=view_scene_tracked(view,scene),names=view_scene_names(view,scene),language=view.story.language).text
         return raw
     def document(value,selector,old=False,blind=False):
         kinds=({'plan':{'scene_plan'},'brief':{'brief'},'draft':{'draft'},'prose':{'edited','manual'},'memory':{'memory'}}.get(selector.field)

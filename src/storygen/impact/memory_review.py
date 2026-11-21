@@ -22,7 +22,8 @@ def _validated_journal(view,id,scene):
     ref=view.versions[id]
     if ref.story_id!=scene.story_id or ref.scene_id!=scene.id or ref.kind!='memory' or not ref.complete:
         raise ValueError('Пам’ять має неправильного власника або незавершене джерело')
-    raw=view.read_blob(ref.relative_path,ref.sha256).decode('utf-8');journal=load_memory(raw)
+    from ..storage.context_view import memo
+    raw=view.read_blob(ref.relative_path,ref.sha256).decode('utf-8');journal=memo(view,('memory',id,'scene'),lambda:load_memory(raw))
     prefix=[s for s in view.peek_scenes(scene.story_id) if s.position<=scene.position]
     sources={};hashes={}
     ids=prose_sources(journal,len(prefix))

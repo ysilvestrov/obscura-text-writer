@@ -82,6 +82,16 @@ Spec-review: agy/gemini-4-argon @ 2f6ba3f (author: claude) — 3 findings: 3 fix
 
 **П5. Синтетика.** `application/workspace_bench.py` будує твір без `characters_version_id` (картки порожні), тому `core_cards` повертає `[]` і гарячі місця П1 не виникають.
 
+## Поправка після реалізації (2026-11-21)
+
+Не змінює розділ «Для власника», тож статус лишається «затверджено».
+
+- Замість окремих `cards_cache`, `memory_parse_cache`, `tracked_cache`, `names_cache`, `policy_cache` зроблено один словник `ContextView.memo_cache` і функцію `storage/context_view.py::memo(source, key, build)`. Ключі ті самі: `('cards', version_id)`, `('memory', version_id, mode)`, `('inferred_tracked',)`, `('tracked', scene_id)`, `('names', scene_id)`, `('policy', scene_id)`, а також `('character_names', scene_id)` для значення селектора `character_names`. Цей селектор теж шукав протагоніста для кожної сцени, і після кешу протагоністів лишалося 21 виклик на 6 сценах.
+- `storage/memory_merges.py` не переведено на кеш. `usable_merge` читає лише невеликий payload злиття, а словники `head_inputs` ідуть у планування злиття, де спільний об'єкт був би ризиком. Кеш журналу в режимі `merge` працює через `read_previous_journal`, а фасад `_peek_view` має той самий `memo_cache` (знахідка 2 рев'ю).
+- Фактичні виміри:
+  - копія 68 сцен: `plan_review` 25,19–25,24 → 8,34–8,46 с, HTTP 8,45–8,56 с, відбиток той самий;
+  - синтетика `--cast` 68: `/impact` 9,44 → 1,92 с, `digest`/`digest_core` старого й нового коду збігаються.
+
 ## Технічний опис
 
 ### Кеші view
