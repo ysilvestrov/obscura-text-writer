@@ -37,11 +37,14 @@ def test_several_authors_joined_in_card_language():
 def test_long_author_list_keeps_first_and_others_within_sixty():
     authors = download_name(manifest(authors=('А' * 40, 'Б' * 40)), ID, 'txt', tz=PLUS_TWO).split(' — ')[0]
     assert authors == 'А' * 40 + ' та інші'
-    first = ('Слово ' * 12).strip()  # 71 characters, a space falls at the cut
+    first = ('Слово ' * 12).strip()  # 71 characters: cut to 60 - len(' та інші') = 52
     authors = download_name(manifest(authors=(first, 'Б')), ID, 'txt', tz=PLUS_TWO).split(' — ')[0]
-    assert len(authors) <= 60 and authors.endswith(' та інші') and '  ' not in authors
+    assert authors == ('Слово ' * 8).strip() + ' Слов та інші'
+    spaced = 'А' * 51 + ' ' + 'Б' * 20  # the 52nd character is a space: no double space before the suffix
+    authors = download_name(manifest(authors=(spaced, 'В')), ID, 'txt', tz=PLUS_TWO).split(' — ')[0]
+    assert authors == 'А' * 51 + ' та інші'
     english = download_name(manifest(authors=('A' * 58, 'B'), language='en'), ID, 'txt', tz=PLUS_TWO).split(' — ')[0]
-    assert len(english) <= 60 and english.endswith(' and others')
+    assert english == 'A' * 49 + ' and others'
 
 
 def test_one_long_author_is_cut_without_suffix():
@@ -50,10 +53,11 @@ def test_one_long_author_is_cut_without_suffix():
 
 
 def test_long_title_is_cut_to_the_limit_without_a_trailing_space():
-    name = download_name(manifest(title=('Дуже довга назва ' * 20).strip()), ID, 'epub', tz=PLUS_TWO)
-    base = name[:-len('.epub')]
-    assert len(base) <= 150 and base.endswith(' — 2026-11-21') and base.startswith('Автор — Дуже')
-    assert ' —' in base and '  ' not in base
+    # 150 - len('Автор — ') - len(' — 2026-11-21') = 129 characters for the title.
+    long = ('Дуже довга назва ' * 20).strip()
+    assert download_name(manifest(title=long), ID, 'epub', tz=PLUS_TWO) == 'Автор — ' + long[:129] + ' — 2026-11-21.epub'
+    spaced = 'Х' * 128 + ' кінець'  # the 129th character is a space
+    assert download_name(manifest(title=spaced), ID, 'epub', tz=PLUS_TWO) == 'Автор — ' + 'Х' * 128 + ' — 2026-11-21.epub'
 
 
 def test_missing_parts_are_skipped():
