@@ -104,12 +104,16 @@ def test_chain_previous_scenes_builds_no_map(kind, monkeypatch):
 def test_structured_map_is_built_once_per_scope(kind, monkeypatch):
     story, scenes = _book(kind, random.Random(kind), 12)
     calls = _counting(monkeypatch)
+    checks = []
+    is_chain = module._is_chain
+    monkeypatch.setattr(module, '_is_chain', lambda story, active: checks.append(1) or is_chain(story, active))
     with lineage_scope():
         with lineage_scope():  # a nested scope uses the outer memo
             for scene in scenes:
                 previous_scenes(story, scenes, scene)
         book_end_heads(story, scenes)
     assert len(calls) == 1
+    assert len(checks) <= 2  # the chain flag and the map build, not once per call
     calls.clear()
     for scene in scenes[:3]:  # outside a scope: no memory, as before
         previous_scenes(story, scenes, scene)
