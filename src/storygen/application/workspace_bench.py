@@ -164,17 +164,54 @@ def measure(repo: Repository, story_id: str) -> dict:
     # Server time of the selection requests only; building the app and the client is not part of a click.
     timings['scene_select'] = sum(seconds for _, seconds in selection.values())
     outputs['scene_select'] = {label: response for label, (response, _) in selection.items()}
+    # PERF-001-S03 (#39): the requests of opening a story, through the app (and so inside its lineage scope).
+    opening = _story_open(repo, story_id)
+    timings['story_open'] = sum(seconds for _, seconds in opening.values())
+    outputs['story_open'] = {label: response for label, (response, _) in opening.items()}
     return {'story': story_id[:8], 'scenes': len(scenes),
             'timings': {k: round(v, 6) for k, v in timings.items()},
             'scene_select_requests': {label: round(seconds, 6) for label, (_, seconds) in selection.items()},
+            'story_open_requests': {label: round(seconds, 6) for label, (_, seconds) in opening.items()},
             'digest': _digest(outputs),
-            # Outputs without scene selection: comparable with digests taken before scene_select used the web app.
-            'digest_core': _digest({k: v for k, v in outputs.items() if k != 'scene_select'})}
+            # Outputs without app requests: comparable with digests taken before scene_select used the web app.
+            'digest_core': _digest({k: v for k, v in outputs.items() if k not in {'scene_select', 'story_open'}})}
 
 
 def _digest(outputs):
     canonical = json.dumps(outputs, sort_keys=True, ensure_ascii=False, default=_default)
     return hashlib.sha256(canonical.encode('utf-8')).hexdigest()
+
+
+def _story_open(repo, story_id):
+    """The heavy GET requests of opening a story in the editor: the story view, the impact overview and the trash.
+    Returns {label: ((status, json), seconds)}; labels carry no ids."""
+    return _app_requests(repo, 'story_open_failed', [('story', f'/api/stories/{story_id}'),
+                                                     ('impact', f'/api/stories/{story_id}/impact'),
+                                                     ('trash', f'/api/stories/{story_id}/trash')])
+
+
+def _app_requests(repo, error, requests):
+    from fastapi.testclient import TestClient
+    from ..application.settings import AppSettings
+    from ..web.app import create_app
+    app = create_app(AppSettings(data_dir=repo.root, env_file=repo.root / '.workspace-bench-no.env'))
+    client = TestClient(app, base_url='http://127.0.0.1:8765', raise_server_exceptions=False)
+    result = {}
+    try:
+        for label, url in requests:
+            start = time.perf_counter()
+            response = client.get(url)
+            seconds = time.perf_counter() - start
+            try:
+                body = response.json()
+            except ValueError:
+                body = None
+            if response.status_code >= 500 or body is None:
+                raise ValueError(f'{error}: {label} returned HTTP {response.status_code}')
+            result[label] = ((response.status_code, body), seconds)
+    finally:
+        client.close()
+    return result
 
 
 def _scene_select(repo, story_id, scene_id):
