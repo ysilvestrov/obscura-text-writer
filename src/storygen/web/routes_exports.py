@@ -5,7 +5,7 @@ from fastapi.responses import Response
 
 from urllib.parse import quote
 
-from ..application.exports import export_story,download_export
+from ..application.exports import export_story,export_download
 from ..application.plan_export import plan_markdown
 from ..domain import DomainModel
 
@@ -25,10 +25,14 @@ def export(id: str,body: ExportRequest,request: Request):
 
 @router.get('/api/stories/{id}/exports/{name}')
 def download(id: str,name: str,request: Request):
-    content=download_export(request.app.state.repo,id,name)
+    content,download=export_download(request.app.state.repo,id,name)
     extension=name.rsplit('.',1)[-1]
     mime={'pdf':'application/pdf','epub':'application/epub+zip','fb2':'application/x-fictionbook+xml','json':'application/json','md':'text/markdown','txt':'text/plain'}[extension]
-    return Response(content,media_type=mime,headers={'Content-Disposition':f'attachment; filename="{name}"'})
+    disposition=f'attachment; filename="{name}"'
+    if extension!='json':
+        # EXPORT-001-S07: the readable name (authors, title, date) in filename*; the technical name stays the ASCII fallback.
+        disposition+=f"; filename*=UTF-8''{quote(download,safe='')}"
+    return Response(content,media_type=mime,headers={'Content-Disposition':disposition})
 
 
 @router.get('/api/stories/{id}/plan.md')

@@ -35,6 +35,8 @@ Open **☰ Story actions → Export…** and choose a format: MD, TXT, FB2, EPUB
 
 A finished file does not change when you edit the text: create a new export.
 
+The book file downloads under a name made of the author, the title and the export date, for example `Author — Title — 2026-11-21.epub`. Several authors are joined with “and” in an English card; commas, full stops and characters Windows does not allow in file names become spaces, and a long title is shortened. Without an author the name starts with the title.
+
 The same list has a **Plan and characters (.md)** item. It gives you one readable file with the general plan notes, the plan of each scene in reading order and the character cards. It needs no prose, but save unsaved edits first. The file is built from the current state when you download it and is not kept among the exports. It cannot be imported back: importing uses the separate plan and character templates.
 
 FB2, EPUB, PDF and covers need the `publication` extras; the installer includes them. For an installation from source, see [Installation](install.md).

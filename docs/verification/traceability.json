@@ -1478,6 +1478,23 @@
       ]
     },
     {
+      "id": "EXPORT-001-S07",
+      "requirement": "EXPORT-001",
+      "scope": "Читабельне ім'я завантаження файлу книги з маніфесту (exports.py::download_name) і заголовок Content-Disposition у routes_exports.py.",
+      "tests": [
+        "tests/authoring/test_export_filename.py::test_name_is_authors_title_and_local_date",
+        "tests/authoring/test_export_filename.py::test_commas_dots_and_windows_characters_become_spaces",
+        "tests/authoring/test_export_filename.py::test_several_authors_joined_in_card_language",
+        "tests/authoring/test_export_filename.py::test_long_author_list_keeps_first_and_others_within_sixty",
+        "tests/authoring/test_export_filename.py::test_one_long_author_is_cut_without_suffix",
+        "tests/authoring/test_export_filename.py::test_long_title_is_cut_to_the_limit_without_a_trailing_space",
+        "tests/authoring/test_export_filename.py::test_missing_parts_are_skipped",
+        "tests/authoring/test_export_filename.py::test_technical_name_without_metadata_or_title_and_authors",
+        "tests/authoring/test_export_filename.py::test_download_header_has_readable_name_and_technical_fallback",
+        "tests/authoring/test_export_filename.py::test_legacy_export_downloads_under_technical_name"
+      ]
+    },
+    {
       "id": "SECURITY-001-S01",
       "requirement": "SECURITY-001",
       "scope": "Чужий сайт змінює локальні дані. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
