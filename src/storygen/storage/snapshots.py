@@ -164,10 +164,38 @@ FUTURE_SCOPES={'brief','draft','prose_edit','author_rewrite'}
 
 
 def core_cards(view,story):
-    from ..characters.models import load_characters
     if not story.characters_version_id:return []
     ref=view.peek_version(story.characters_version_id)  # no deep copy: planning counts them
-    return load_characters(view.read_blob(ref.relative_path,ref.sha256).decode('utf-8'))
+    return parsed_cards(view,ref.id,lambda:view.read_blob(ref.relative_path,ref.sha256).decode('utf-8'))
+
+
+def parsed_cards(view,version_id,raw):
+    """PERF-001-S05: the cards of a version, parsed once per view; a new list of shared, read-only cards."""
+    from ..characters.models import load_characters
+    from .context_view import memo
+    return list(memo(view,('cards',version_id),lambda:load_characters(raw())))
+
+
+def view_inferred_tracked(view):
+    """The inferred protagonist of the view's book (story tracked_characters), once per view; a new list."""
+    from ..memory.core import tracked_characters
+    from .context_view import memo
+    return list(memo(view,('inferred_tracked',),lambda:tracked_characters(core_cards(view,view.story),view.peek_scenes(view.story.id))))
+
+
+def view_scene_tracked(view,scene):
+    """scene_tracked of a view scene over the view's own cards and scenes, once per scene; a new list."""
+    from ..book.protagonists import scene_tracked
+    from .context_view import memo
+    return list(memo(view,('tracked',scene.id),lambda:scene_tracked(view.story,core_cards(view,view.story),view.peek_scenes(view.story.id),scene,
+        inferred=view_inferred_tracked(view))))
+
+
+def view_scene_names(view,scene):
+    """scene_names of a view scene over the view's own cards and scenes, once per scene; a new dict."""
+    from ..characters.names import scene_names
+    from .context_view import memo
+    return dict(memo(view,('names',scene.id),lambda:scene_names(core_cards(view,view.story),view.peek_scenes(view.story.id),scene)))
 
 
 def narrator_selector(view, story, scene, select):
@@ -187,12 +215,12 @@ def memory_core_selectors(view,story,scene,scenes,select):
         select('scene',item.id,'memory_day_key',day_key(item))
 
 
-def character_names_value(view,story,scene,scenes):
+def character_names_value(view,story,scene,scenes,tracked=None):
     """CHARACTER-NAMES: {id: 'current, earlier…'} of the cast and tracked characters, as the memory request names them."""
     from ..book.protagonists import scene_tracked
     from ..characters.names import scene_name
     cards=core_cards(view,story)
-    wanted=set(scene.character_ids)|set(scene_tracked(story,cards,scenes,scene))
+    wanted=set(scene.character_ids)|set(scene_tracked(story,cards,scenes,scene) if tracked is None else tracked)
     active={item.id:item for item in scenes if not item.trashed_at}
     return {card.id:', '.join([current,*earlier]) for card in cards if card.id in wanted for current,earlier in [scene_name(card,active,scene)]}
 
@@ -247,13 +275,12 @@ def selector_value(view, selector: DependencySelector):
         from ..memory.story_time import day_key
         return day_key(view.peek_scene(owner))
     if kind=='story' and owner==view.story.id and field=='tracked_characters':
-        from ..memory.core import tracked_characters
-        return tracked_characters(core_cards(view,view.peek_story(owner)),view.peek_scenes(owner))
+        view.peek_story(owner)
+        return view_inferred_tracked(view)
     if kind=='scene' and field=='tracked_characters':
-        from ..book.protagonists import scene_tracked
         scene=view.peek_scene(owner)
-        story=view.peek_story(scene.story_id)
-        return scene_tracked(story,core_cards(view,story),view.peek_scenes(story.id),scene)
+        view.peek_story(scene.story_id)
+        return view_scene_tracked(view,scene)
     if kind=='scene' and field=='memory_projection_policy':
         from ..memory.forwarding import projection_policy
         return projection_policy(view,owner)
@@ -278,8 +305,11 @@ def selector_value(view, selector: DependencySelector):
         from ..memory.series_start import scene_series_start
         return scene_series_start(view.peek_story(view.story.id), view.peek_scenes(view.story.id), view.peek_scene(owner))
     if kind=='scene' and field=='character_names':
-        story=view.peek_story(view.story.id)
-        return character_names_value(view,story,view.peek_scene(owner),view.peek_scenes(story.id))
+        from .context_view import memo
+        story=view.peek_story(view.story.id);scene=view.peek_scene(owner)
+        # PERF-001-S05: the view's own story, cards and scenes; once per scene.
+        return dict(memo(view,('character_names',owner),lambda:character_names_value(view,story,scene,view.peek_scenes(story.id),
+            tracked=view_scene_tracked(view,scene))))
     if kind=='scene' and field=='narrator':
         from ..narration import effective_narrator, narrator_value
         return narrator_value(effective_narrator(view.peek_scene(owner), core_cards(view, view.peek_story(view.story.id)))[0])

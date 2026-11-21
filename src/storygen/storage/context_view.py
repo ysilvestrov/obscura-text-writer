@@ -3,6 +3,18 @@ import json
 from ..domain import Scene, Story, VersionRef
 
 
+def memo(source, key, build):
+    """PERF-001-S05: the value of build() kept for the life of a ContextView (one request); computed every time for a
+    source without a memo (Repository). Only a successful result is kept, so an error is raised again on every call.
+    The caller hands out new containers when the value is a list or dict; models in it are shared and read-only."""
+    cache = getattr(source, 'memo_cache', None)
+    if cache is None:
+        return build()
+    if key not in cache:
+        cache[key] = build()
+    return cache[key]
+
+
 class ContextView:
     def __init__(self, repo, db, story_id):
         self.files = repo.files
@@ -11,6 +23,9 @@ class ContextView:
         self.blob_cache = {}
         self.preamble_cache = {}
         self.journal_cache = {}
+        # PERF-001-S05: parsed cards and memory journals by version, and per-scene derived values (protagonists, names,
+        # memory projection policy). Lives as long as the view (one request); entries are shared and never modified.
+        self.memo_cache = {}
         self.story = repo._active_story(db, story_id)
         self.scenes = {s.id: s for s in [Scene.model_validate_json(r[0]) for r in db.execute(
             'SELECT payload FROM scenes WHERE story_id=? ORDER BY position,id', (story_id,))]}

@@ -16,11 +16,14 @@ def main(argv=None):
     parser.add_argument('--story',help='story id prefix')
     parser.add_argument('--synthetic',type=int,help='number of synthetic scenes')
     parser.add_argument('--workdir',help='directory for the synthetic story')
+    parser.add_argument('--cast',action='store_true',help='synthetic story with character cards and memory selection (PERF-001-S05)')
     parser.add_argument('--json',action='store_true')
     args=parser.parse_args(argv)
     if bool(args.synthetic)==bool(args.data) or (args.synthetic and not args.workdir):
         parser.error('use --data <dir> or --synthetic <N> --workdir <dir>')
-    try:result=run(args.data,args.story,args.synthetic,args.workdir)
+    if args.cast and not args.synthetic:
+        parser.error('--cast needs --synthetic')
+    try:result=run(args.data,args.story,args.synthetic,args.workdir,args.cast)
     except (LookupError,ValueError) as error:
         print(str(error),file=sys.stderr);return 2
     print(json.dumps(result,sort_keys=True,indent=None if args.json else 2))

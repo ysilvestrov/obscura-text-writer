@@ -26,6 +26,8 @@ class PreviousMemory:
 def _peek_view(view):
     """A read-only facade for selector evaluation: no freshness recomputation, no recorded dependencies."""
     class Peek:
+        memo_cache = getattr(view, 'memo_cache', None)  # PERF-001-S05: parses through the facade share the view's memo
+
         def get_version(self, id):
             return view.peek_version(id)
 
@@ -58,11 +60,17 @@ def previous_memory(view, scene, *, peek: bool = False, require: bool = True) ->
 def read_previous_journal(view, previous: PreviousMemory, *, peek: bool = False):
     """The journal of `previous` (a scene memory or the journal inside a merge); ValueError/KeyError/OSError propagate."""
     from .journal import MemoryJournal, load_memory
+    from ..storage.context_view import memo
     reader = _peek_view(view) if peek else view
     raw = reader.read_text(previous.memory_id)
-    if previous.series_start:
-        from .series_start import read_series_start
-        return read_series_start(raw, previous.memory_id).journal
-    if previous.merge_key:
-        return MemoryJournal.model_validate(json.loads(raw)['journal'])
-    return load_memory(raw)
+    mode = 'series_start' if previous.series_start else 'merge' if previous.merge_key else 'scene'
+
+    def parse():
+        if previous.series_start:
+            from .series_start import read_series_start
+            return read_series_start(raw, previous.memory_id).journal
+        if previous.merge_key:
+            return MemoryJournal.model_validate(json.loads(raw)['journal'])
+        return load_memory(raw)
+    # PERF-001-S05: the journal of a version is parsed once per view; shared and read-only.
+    return memo(reader, ('memory', previous.memory_id, mode), parse)
