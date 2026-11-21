@@ -344,7 +344,9 @@ def test_list_versions_rejects_a_view_of_another_story(tmp_path):
         repo.list_versions(other.id, view=repo.context_view(story.id))
 
 
-HOT_READERS = {'read_text', 'build_dependency_snapshot', '_finish_context', 'memory_projection'}
+HOT_READERS = {'read_text', 'build_dependency_snapshot', '_finish_context', 'memory_projection',
+               # the no-copy helpers these readers go through (cross-review): a get_version inside them is a copy too
+               'peek_version_stale', 'version_and_stale', 'ref', 'stale'}
 
 
 def _readiness_all(repo, story_id, view):

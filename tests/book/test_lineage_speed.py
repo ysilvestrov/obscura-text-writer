@@ -126,7 +126,10 @@ def test_scope_sees_a_structure_change_and_does_not_leak_mutation():
         first = lineage_map(story, scenes)
         first.clear()  # a caller mutating its result does not spoil the memo
         assert lineage_map(story, scenes) == reference_lineage_map(story, scenes)
-        changed = story.model_copy(update={'scene_arcs': {**story.scene_arcs, scenes[-1].id: 'F'}})
+        # A binding change that changes the lineage (cross-review: the old one rebound a scene to its own arc).
+        changed = next(c for c in (story.model_copy(update={'scene_arcs': {**story.scene_arcs, s.id: arc}})
+                                   for s in scenes[1:4] for arc in 'ABC')
+                       if reference_lineage_map(c, scenes) != reference_lineage_map(story, scenes))
         assert lineage_map(changed, scenes) == reference_lineage_map(changed, scenes)
         moved = [s.model_copy(update={'position': {1: 2, 2: 1}.get(s.position, s.position)}) for s in scenes]  # one part
         assert lineage_map(story, moved) == reference_lineage_map(story, moved)
