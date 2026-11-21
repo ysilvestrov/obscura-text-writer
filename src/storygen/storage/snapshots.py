@@ -460,8 +460,10 @@ def compare_snapshot(view, snapshot: DependencySnapshot | dict) -> list[Dependen
                 raise ValueError('Пошкоджене джерело')
             source_result=view.freshness_cache.get(id)
             if source_result and any(c.reason=='dependency_cycle' for c in source_result.reasons):
+                _met_cycle(view)
                 changes.append(DependencyChange(version_id=id,reason='dependency_cycle'))
             if id in view.resolving:
+                _met_cycle(view)
                 changes.append(DependencyChange(version_id=id,reason='dependency_cycle'))
             actual_baseline=view.acceptances[id].id if id in view.acceptances else None
             if actual_baseline!=snapshot.ref_baselines.get(id):
@@ -532,14 +534,35 @@ def resolve_freshness(view, version_id: str) -> FreshnessResult:
 
 
 def freshness(view, version_id: str) -> FreshnessResult:
-    """Внутрішнє читання без копії: спільний об'єкт freshness_cache; не змінювати результат."""
+    """Внутрішнє читання без копії: спільний об'єкт freshness_cache; не змінювати результат.
+
+    PERF-001-S06: on a view over a shared snapshot the top-level computation runs under the snapshot lock, so
+    parallel requests of one generation compute it once and take the stored result."""
+    if version_id in view.freshness_cache:
+        return view.freshness_cache[version_id]
+    lock = getattr(view, 'shared_lock', None)
+    if lock is not None and not view.resolving:
+        with lock:
+            if version_id in view.freshness_cache:
+                return view.freshness_cache[version_id]
+            return _compute_freshness(view, version_id)
+    return _compute_freshness(view, version_id)
+
+
+def _met_cycle(view):
+    view.cycle_hits = getattr(view, 'cycle_hits', 0) + 1
+
+
+def _compute_freshness(view, version_id: str) -> FreshnessResult:
     if version_id in view.freshness_cache:
         return view.freshness_cache[version_id]
     if version_id in view.resolving:
+        _met_cycle(view)
         return FreshnessResult(stale=True, reasons=[DependencyChange(version_id=version_id, reason='dependency_cycle')])
     ref = view.versions.get(version_id)
     if ref is None:
         return FreshnessResult(stale=True, reasons=[DependencyChange(version_id=version_id, reason='source_missing')])
+    cycles_before = getattr(view, 'cycle_hits', 0)
     view.resolving.add(version_id)
     try:
         reasons = []
@@ -584,7 +607,12 @@ def freshness(view, version_id: str) -> FreshnessResult:
             reasons=reasons,
             baseline_id=acceptance.id if acceptance else ref.id if baseline else None
         )
-        view.freshness_cache[version_id] = result
+        cache = view.freshness_cache
+        if hasattr(cache, 'set_private') and (getattr(view, 'cycle_hits', 0) != cycles_before
+                                              or any(r.reason == 'dependency_cycle' for r in reasons)):
+            cache.set_private(version_id, result)  # depends on the order of the walk: never shared
+        else:
+            cache[version_id] = result
         return result
     finally:
         view.resolving.remove(version_id)

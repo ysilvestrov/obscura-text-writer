@@ -34,12 +34,14 @@ def view(db,story):
 def publication_snapshot(repo,story_id):
     with repo.db.connection() as db:
         db.execute('BEGIN')
-        return _publication_snapshot(repo,db,story_id)
+        return _publication_snapshot(repo,db,story_id,shared=True)
 
 
-def _publication_snapshot(repo,db,story_id):
+def _publication_snapshot(repo,db,story_id,shared=False):
+    """shared: a read outside a write transaction may use the generation's shared snapshot (PERF-001-S06)."""
     from .context_view import ContextView
-    captured=ContextView(repo,db,story_id)
+    from .shared_snapshot import read_view
+    captured=read_view(repo,db,story_id) if shared else ContextView(repo,db,story_id)
     return PublicationSnapshot(story=captured.story,publication=view(db,captured.story),
         scenes=[(captured.effective_scene(s.id),captured.get_version(s.heads['prose']) if s.heads.get('prose') else None)
                 for s in captured.list_scenes(story_id)])

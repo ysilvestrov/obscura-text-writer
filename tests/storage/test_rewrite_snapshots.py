@@ -23,4 +23,5 @@ def test_frozen_source_still_checks_exact_hash(rewrite_case):
     repo,scene,source,notes,role,request=rewrite_case
     ctx=build_rewrite_context(repo,request)
     repo.files.resolve(source.relative_path).write_text('Пошкодження',encoding='utf-8')
+    repo.db.bump_generation()  # PERF-001-S06: a file changed outside the app is noticed in the next data generation
     assert any(c.reason=='source_unavailable' for c in compare_snapshot(repo.context_view(scene.story_id),ctx.dependency_snapshot))

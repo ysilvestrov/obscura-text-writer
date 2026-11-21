@@ -231,10 +231,10 @@ class Repository:
             return ref
 
     def context_view(self, story_id):
-        from .context_view import ContextView
+        from .shared_snapshot import read_view
         with self.db.connection() as db:
             db.execute('BEGIN')
-            return ContextView(self, db, story_id)
+            return read_view(self, db, story_id)
 
     def review(self,action,**kwargs):
         from . import review_store
@@ -272,6 +272,9 @@ class Repository:
             raise ValueError('Каталог містить незавершене відновлення. Відновіть резерв у новий каталог.')
         self.db=Database(self.root/"storygen.sqlite3")
         self.files=FileStore(self.root)
+        from .shared_snapshot import ImmutableStore, SnapshotStore
+        self.snapshots=SnapshotStore()
+        self.immutable=ImmutableStore()
 
     def _get(self,db,table,id,model):
         row=db.execute(f"SELECT payload FROM {table} WHERE id=?",(id,)).fetchone()
@@ -298,11 +301,11 @@ class Repository:
 
     def scene_view(self,scene_id: str):
         """One SQL snapshot for a scene request: the story view of an active scene (KeyError as get_scene)."""
-        from .context_view import ContextView
+        from .shared_snapshot import read_view
         with self.db.connection() as db:
             db.execute('BEGIN')
             scene=self._active_scene(db,scene_id)
-            return ContextView(self,db,scene.story_id)
+            return read_view(self,db,scene.story_id)
 
     def active_scene_story_id(self,scene_id: str) -> str:
         """Story id of an active scene of an active story; KeyError like get_scene, without building a view."""
@@ -330,8 +333,8 @@ class Repository:
             if include_trashed:
                 return self._get(db,'scenes',id,Scene)
             scene=self._active_scene(db,id)
-            from .context_view import ContextView
-            return ContextView(self,db,scene.story_id).effective_scene(id)
+            from .shared_snapshot import read_view
+            return read_view(self,db,scene.story_id).effective_scene(id)
 
     def get_version(self,id: str) -> VersionRef:
         with self.db.connection() as db:
@@ -344,8 +347,8 @@ class Repository:
                 reviewed=any(json.loads(r[0]).get('target',{}).get('version_id')==ref.id for r in db.execute('SELECT payload FROM app_settings WHERE key LIKE ? OR key LIKE ?',('review3:'+ref.story_id+':acceptance:%','review4:'+ref.story_id+':acceptance:%')))
                 policies,_=review_authority.load(db,ref.story_id)
                 if not author_accepted and not reviewed and not any(scope[0]==ref.scene_id for scope in policies):return ref
-            from .context_view import ContextView
-            return ContextView(self,db,ref.story_id).get_version(id)
+            from .shared_snapshot import read_view
+            return read_view(self,db,ref.story_id).get_version(id)
 
     def list_stories(self,include_trashed: bool=False) -> list[Story]:
         with self.db.connection() as db:
