@@ -1,7 +1,7 @@
 # Ім'я файлу експорту з автора, назви книги й дати (R-42, #236)
 
 Дата: 2026-11-21
-Статус: чекає на затвердження
+Статус: затверджено 2026-11-21
 Spec-review: agy/gemini-4-argon @ 620440a (author: claude) — 3 findings: 3 fixed, 0 rejected (fallback: codex — usage limit)
 
 ## Для власника

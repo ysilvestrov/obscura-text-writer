@@ -2,6 +2,7 @@
 import hashlib
 import json
 import re
+from datetime import datetime
 from pathlib import Path
 from typing import Literal
 from ..publication.book import capture,EXPORTER,RATING_UNSET_EXPORT
@@ -52,6 +53,63 @@ def export_story(repo,story_id: str,format: Literal['md','txt','fb2','epub','pdf
 
 def download_export(repo,story_id,name):
     """Read verified immutable bytes; an orphan output is never downloadable."""
+    return export_download(repo,story_id,name)[0]
+
+
+# EXPORT-001-S07: the readable download name of a book export.
+_UNSAFE=re.compile(r'[\\/:*?"<>|,.\x00-\x1f]')
+AUTHORS_LIMIT=60
+NAME_LIMIT=150
+SEPARATOR=' — '
+
+
+def _clean(text):
+    return ' '.join(_UNSAFE.sub(' ',text).split()) if isinstance(text,str) else ''
+
+
+def _cut(text,limit):
+    return text[:max(limit,0)].rstrip()
+
+
+def _authors(names,language):
+    names=[n for n in map(_clean,names) if n]
+    english=isinstance(language,str) and language.lower().startswith('en')
+    joined=(' and ' if english else ' та ').join(names)
+    if len(joined)<=AUTHORS_LIMIT:return joined
+    if len(names)==1:return _cut(names[0],AUTHORS_LIMIT)
+    suffix=' and others' if english else ' та інші'
+    return _cut(names[0],AUTHORS_LIMIT-len(suffix))+suffix
+
+
+def _local_date(created,tz):
+    try:return datetime.fromisoformat(created).astimezone(tz).date().isoformat()
+    except (TypeError,ValueError):return ''
+
+
+def download_name(manifest,export_id,format,tz=None):
+    """`Автори — Назва — РРРР-ММ-ДД.<format>` from the manifest; parts that are empty after cleaning are skipped.
+    The technical `<export_id>.<format>` when the manifest has no usable metadata or neither title nor authors."""
+    technical=f'{export_id}.{format}'
+    metadata=manifest.get('metadata') if isinstance(manifest,dict) else None
+    try:
+        people=[a['display_name'] for a in metadata['authors'] if isinstance(a,dict) and 'display_name' in a]
+        card=metadata.get('card')
+        authors=_authors(people,card.get('language') if isinstance(card,dict) else None)
+        title=_clean(metadata['effective_title'])
+    except (KeyError,TypeError,AttributeError):
+        return technical
+    if not title and not authors:return technical
+    date=_local_date(manifest.get('created_at'),tz)
+    fixed=sum(len(p)+len(SEPARATOR) for p in (authors,date) if p)
+    if title:
+        title=_cut(title,max(NAME_LIMIT-fixed,1))
+        if len(title)+fixed>NAME_LIMIT and authors:
+            authors=_cut(authors,len(authors)-(len(title)+fixed-NAME_LIMIT))
+    return SEPARATOR.join(p for p in (authors,title,date) if p)+'.'+format
+
+
+def export_download(repo,story_id,name):
+    """(verified bytes, download file name) of an export file or its manifest."""
     repo.get_story(story_id)
     match=re.fullmatch(r'([0-9a-f]{32})\.(md|txt|fb2|epub|pdf|manifest\.json)',name)
     if not match:raise KeyError('Немає експорту')
@@ -75,4 +133,5 @@ def download_export(repo,story_id,name):
             content=repo.files.read(base+output,digest)
     except (KeyError,ValueError,TypeError,OSError) as exc:
         raise StorageCorruption('Експорт або manifest пошкоджено; створіть новий експорт') from exc
-    return raw if extension=='manifest.json' else content
+    if extension=='manifest.json':return raw,name
+    return content,download_name(manifest,export_id,format)
