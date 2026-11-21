@@ -127,11 +127,17 @@ def build_dependency_snapshot(
         select('scene', scene.id, 'prose_language', prose_language(story, scene))
     if scope in NARRATOR_SCOPES:
         narrator_selector(view, story, scene, select)
+    # PERF-001: only scalar fields of the versions are read, so no deep copy; the stale call order is the one of get_version.
+    from .context_view import version_and_stale
+    def ref(id):
+        return version_and_stale(view, id)[0]
+    def stale(id):
+        return version_and_stale(view, id)[1]
     return DependencySnapshot(
         scope=scope,
-        frozen_author_source_id=next((id for id in input_refs if view.get_version(id).scene_id==scene_id and view.get_version(id).kind=='draft'),None) if scope=='author_rewrite' else None,
+        frozen_author_source_id=next((id for id in input_refs if ref(id).scene_id==scene_id and ref(id).kind=='draft'),None) if scope=='author_rewrite' else None,
         selectors=selectors,
-        refs={id: view.get_version(id).sha256 for id in dict.fromkeys(input_refs)},
+        refs={id: ref(id).sha256 for id in dict.fromkeys(input_refs)},
         ref_baselines={
             id: view.acceptances[id].id if id in view.acceptances else None
             for id in input_refs
@@ -139,8 +145,8 @@ def build_dependency_snapshot(
         scene_order=order,
         accepted_stale_prose_ids=[
             id for id in input_refs
-            if (scope == 'memory' or view.get_version(id).stale)
-            and view.get_version(id).kind in {'edited', 'manual'}
+            if (scope == 'memory' or stale(id))
+            and ref(id).kind in {'edited', 'manual'}
         ] if scope != 'patches' else [],
     )
 

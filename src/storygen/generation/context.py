@@ -219,9 +219,12 @@ def _finish_context(repo,story,scene,stage,settings,sections,refs,fragments,syst
     breakdown=request_breakdown(api_request,sections,stage,prediction,settings)
     if not fits(measured):
         raise ContextOverflow(estimate,limit,chars,memory_metrics.get('projection_chars',memory_metrics.get('catalog_chars',0)),breakdown,max_input_chars=settings.max_input_chars)
-    accepted_stale=[id for id in dict.fromkeys(accepted_prose_ids) if id in refs and (ref:=repo.get_version(id)).stale and ref.kind in {'edited','manual'}]
-    fingerprint=hashlib.sha256(json.dumps({'system':system,'user':user,'settings':settings.model_dump(exclude={'low_rating_variant','edit_pass_limit'}),'refs':refs,'accepted_stale_prose_ids':accepted_stale,'order':build_dependency_snapshot(repo,scene.id if scene else None,stage,settings,refs).scene_order},ensure_ascii=False,sort_keys=True).encode()).hexdigest()
+    from ..storage.context_view import version_and_stale
+    # PERF-001: kind and stale only, so no deep copy (the stale call order is the one of get_version).
+    accepted_stale=[id for id in dict.fromkeys(accepted_prose_ids) if id in refs and (pair:=version_and_stale(repo,id))[1] and pair[0].kind in {'edited','manual'}]
+    # PERF-001: one dependency snapshot serves the fingerprint and the context (it was built twice, identically).
     snapshot=build_dependency_snapshot(repo,scene.id if scene else None,stage,settings,refs)
+    fingerprint=hashlib.sha256(json.dumps({'system':system,'user':user,'settings':settings.model_dump(exclude={'low_rating_variant','edit_pass_limit'}),'refs':refs,'accepted_stale_prose_ids':accepted_stale,'order':snapshot.scene_order},ensure_ascii=False,sort_keys=True).encode()).hexdigest()
     from ..dependency_models import MemoryReuseApproval
     snapshot.memory_provenance=[MemoryReuseApproval.model_validate(p) for p in memory_provenance]
     snapshot.accepted_stale_memory_ids=list(accepted_memory_ids)
@@ -260,7 +263,9 @@ def memory_projection(repo,story,scene,scenes,language):
     scene_numbers={s.id:s.position+1 for s in previous_scenes(story,scenes,scene)}
     cards=load_characters(repo.read_text(story.characters_version_id)) if story.characters_version_id else []
     from ..memory.series_start import source_number
-    source_numbers={id:source_number(repo.get_version(id),scene_numbers) for id in past.source_prose_ids}
+    from ..storage.context_view import version_and_stale
+    # PERF-001: source_number reads kind and scene_id only.
+    source_numbers={id:source_number(version_and_stale(repo,id)[0],scene_numbers) for id in past.source_prose_ids}
     hidden,forwarded=hidden_before(repo,scene.id),forwarded_before(repo,scene.id)
     from ..characters.names import scene_names
     tracked=[] if flashback else scene_tracked(story,cards,scenes,scene);names=scene_names(cards,scenes,scene)  # CHARACTER-NAMES
