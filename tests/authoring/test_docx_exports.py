@@ -1,0 +1,163 @@
+"""EXPORT-DOCX: the Word manuscript with scene bookmarks for the R-46 import."""
+import re
+import zipfile
+import io
+from xml.etree import ElementTree as ET
+
+import pytest
+
+from storygen.domain import StoryCreate, SceneCreate
+from storygen.generation.dependencies import save_manual_prose
+from storygen.publication.book import capture
+from storygen.publication import docx
+from storygen.publication_models import PublicationData
+from storygen.storage.book_structure import put_structure
+from storygen.storage.repository import Repository
+from tests.authoring.test_ebook_exports import seeded
+
+W = '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}'
+PARTS = {'[Content_Types].xml', '_rels/.rels', 'word/document.xml', 'word/_rels/document.xml.rels', 'word/styles.xml',
+         'word/footer1.xml', 'docProps/core.xml', 'docProps/custom.xml'}
+INVALID_XML = 'Текст містить недопустимий символ XML 1.0; його не вилучено автоматично'
+
+
+def rendered(repo, story, allow_incomplete=False):
+    book = capture(repo, story.id, 'docx', allow_incomplete)
+    return book, docx.render(book)
+
+
+def part(content, name):
+    with zipfile.ZipFile(io.BytesIO(content)) as archive:
+        return archive.read(name).decode('utf-8')
+
+
+def paragraphs(content):
+    """(style, text) for each body paragraph."""
+    root = ET.fromstring(part(content, 'word/document.xml'))
+    result = []
+    for p in root.iter(W + 'p'):
+        style = p.find(f'{W}pPr/{W}pStyle')
+        result.append((style.get(W + 'val') if style is not None else None, ''.join(t.text or '' for t in p.iter(W + 't'))))
+    return result
+
+
+def bookmarks(content):
+    return re.findall(r'w:bookmarkStart [^>]*w:name="([^"]+)"', part(content, 'word/document.xml'))
+
+
+def flat_book(root, prose, *, language='uk', card_language=None, scene_language=None, content_format=None):
+    repo = Repository(root)
+    story = repo.create_story(StoryCreate(title='Книга', language=language))
+    scene = repo.create_scene(story.id, SceneCreate(title='Сцена <1> & "друга"', prose_language=scene_language))
+    save_manual_prose(repo, scene.id, prose, 0, content_format)
+    author = repo.publication('create_signature', display_name='Автор')
+    data = PublicationData(title='Книга', author_ids=[author.id], genres=['short_story'], **({'language': card_language} if card_language else {}))
+    repo.publication('save_card', story_id=story.id, data=data, expected_revision=0, expected_signature_revisions={author.id: 0})
+    return repo, story
+
+
+def test_docx_parts_and_styles(tmp_path):
+    repo, story = seeded(tmp_path, count=3)
+    book, content = rendered(repo, story)
+    with zipfile.ZipFile(io.BytesIO(content)) as archive:
+        assert set(archive.namelist()) == PARTS
+    found = paragraphs(content)
+    assert found[0] == ('Title', 'Публічна назва')
+    assert [text for style, text in found if style == 'Heading2'] == [f'Сцена {i}: <Двері>' for i in range(1, 4)]
+    styles = part(content, 'word/styles.xml')
+    for style in ['Heading1', 'Heading2']:
+        block = re.search(rf'w:styleId="{style}".*?</w:style>', styles, re.S).group(0)
+        assert '<w:pageBreakBefore/>' in block
+    assert 'w:w="11906"' in part(content, 'word/document.xml')
+
+
+def test_docx_scene_bookmarks_and_custom_properties(tmp_path):
+    repo, story = seeded(tmp_path, count=3)
+    book, content = rendered(repo, story)
+    assert bookmarks(content) == ['_os' + chapter.entry['scene_id'] for chapter in book.chapters]
+    custom = part(content, 'docProps/custom.xml')
+    assert f'name="ObscuraStoryId"><vt:lpwstr>{story.id}<' in custom
+    assert f'name="ObscuraExportId"><vt:lpwstr>{book.export_id}<' in custom
+    assert 'name="ObscuraManuscript"><vt:lpwstr>1<' in custom
+
+
+def test_docx_trash_scene_absent(tmp_path):
+    repo, story = seeded(tmp_path, count=3)
+    trashed = repo.list_scenes(story.id)[1]
+    repo.set_scene_trashed(story.id, trashed.id, repo.get_scene(trashed.id).revision, False)
+    # Trashing a scene makes the next one stale; that is not what this test checks.
+    book, content = rendered(repo, story, allow_incomplete=True)
+    assert '_os' + trashed.id not in bookmarks(content)
+    assert [text for style, text in paragraphs(content) if style == 'Heading2'] == ['Сцена 1: <Двері>', 'Сцена 3: <Двері>']
+
+
+def test_docx_markdown_runs_and_controls(tmp_path):
+    repo, story = flat_book(tmp_path, 'Слово *курсив* і **жирний**.\n', content_format='markdown')
+    _, content = rendered(repo, story)
+    document = part(content, 'word/document.xml')
+    assert re.search(r'<w:i/>.*?<w:t xml:space="preserve">курсив</w:t>', document)
+    assert re.search(r'<w:b/>.*?<w:t xml:space="preserve">жирний</w:t>', document)
+    assert ('Heading2', 'Сцена <1> & "друга"') in paragraphs(content)
+    repo, story = flat_book(tmp_path / 'plain', '\nліва\tправа <&>\nрядок\n\n')
+    _, content = rendered(repo, story)
+    document = part(content, 'word/document.xml')
+    assert '<w:tab/>' in document
+    texts = [text for style, text in paragraphs(content) if style is None]
+    assert texts[-3:] == ['', 'ліваправа <&>', 'рядок']  # leading empty kept, trailing empty dropped
+
+
+def test_docx_language_document_and_scene(tmp_path):
+    repo, story = flat_book(tmp_path, 'Текст.\n', language='uk', card_language='en')
+    _, content = rendered(repo, story)
+    assert re.search(r'<w:rPrDefault>.*?<w:lang w:val="en"', part(content, 'word/styles.xml'), re.S)
+    assert '<w:lang w:val="uk-UA"/>' in part(content, 'word/document.xml')
+    repo, story = flat_book(tmp_path / 'same', 'Text.\n', language='uk', card_language='en-GB', scene_language='en')
+    _, content = rendered(repo, story)
+    assert '<w:lang ' not in part(content, 'word/document.xml')
+
+
+def test_docx_untitled_part_and_title_page(tmp_path):
+    repo = Repository(tmp_path)
+    story = repo.create_story(StoryCreate(title='Книга'))
+    scenes = []
+    for title in ['Ранок', 'Вечір']:
+        scene = repo.create_scene(story.id, SceneCreate(title=title))
+        save_manual_prose(repo, scene.id, 'Три слова тут.\n', 0)
+        scenes.append(scene)
+    parts = [{'id': 'p1', 'title': 'Дім', 'arcs': [{'id': 'a1'}]}, {'id': 'p2', 'title': '', 'arcs': [{'id': 'b1'}]}]
+    put_structure(repo, story.id, parts, {scenes[0].id: 'a1', scenes[1].id: 'b1'}, repo.get_story(story.id).revision)
+    book, content = rendered(repo, story)
+    found = paragraphs(content)
+    assert [text for style, text in found if style == 'Heading1'] == ['Дім', 'Частина 2']
+    words = sum(chapter.entry['word_count'] for chapter in book.chapters)
+    assert (None, f'Слів: {words}') in found
+
+
+def test_docx_incomplete_without_service_words(tmp_path):
+    repo = Repository(tmp_path)
+    story = repo.create_story(StoryCreate(title='Книга'))
+    scene = repo.create_scene(story.id, SceneCreate(title='Порожня'))
+    book, content = rendered(repo, story, allow_incomplete=True)
+    assert bookmarks(content) == ['_os' + scene.id]
+    document = part(content, 'word/document.xml')
+    for word in ['застар', 'перегляд', 'Немає завершеної']:
+        assert word not in document
+
+
+def test_docx_invalid_xml_character_raises(tmp_path):
+    repo, story = flat_book(tmp_path, 'Погано\x01.\n')
+    with pytest.raises(ValueError, match=INVALID_XML):
+        rendered(repo, story)
+
+
+def test_docx_validate_rejects_foreign_ids(tmp_path):
+    from dataclasses import replace
+    repo, story = seeded(tmp_path, count=2)
+    book, content = rendered(repo, story)
+    docx.validate(content, book)
+    with pytest.raises(ValueError):
+        docx.validate(content, replace(book, export_id='f' * 32))
+    with pytest.raises(ValueError):
+        docx.validate(content, replace(book, chapters=tuple(reversed(book.chapters))))
+    with pytest.raises(ValueError):
+        docx.validate(b'not a zip', book)

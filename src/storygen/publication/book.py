@@ -4,6 +4,7 @@ from uuid import UUID,uuid5
 from ..domain import new_id,now
 from ..publication_models import PublicationSnapshot
 from ..rating.levels import age_label
+from ..language import prose_language
 import re
 
 RATING_UNSET_EXPORT='Віковий рейтинг твору не задано; позначку не додано'
@@ -19,6 +20,8 @@ class Chapter:
     content_format: str = 'plain'
     # BOOK-STRUCTURE-S05: index into Book.parts; None for a flat book.
     part_index: int | None = None
+    # EXPORT-DOCX: the effective prose language of the scene (its own, otherwise the story's).
+    language: str = 'uk'
 
 
 @dataclass(frozen=True)
@@ -67,7 +70,8 @@ def capture(repo,story_id,format,allow_incomplete):
         else:entry['warnings'].append('Немає завершеної вибраної прози')
         from ..markdown_document import to_plain_text
         entry['word_count']=len(re.findall(r"\b[\w’'-]+\b",to_plain_text(text,content_format)))
-        warnings.extend(entry['warnings']);chapters.append(Chapter(scene.title,text,entry,content_format))
+        warnings.extend(entry['warnings'])
+        chapters.append(Chapter(scene.title,text,entry,content_format,language=prose_language(snapshot.story,scene)))
     if warnings and not allow_incomplete:raise ValueError('Експорт зупинено: є відсутні або застарілі сцени. Явно дозвольте неповний експорт.')
     cover=None
     if publication.cover:
