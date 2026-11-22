@@ -94,7 +94,9 @@ def _author_events(plan: MergePlan, conflict: Conflict, text: str, source_id: st
         slot = None
         sample = next(e for events in conflict.events.values() for e in events)
         category, characters = (record.category, record.character_ids) if record else (sample.category, sample.character_ids)
+        if record is None:kwargs['location_ids'] = sample.location_ids
     if record is not None:
+        kwargs['location_ids'] = record.location_ids  # MEMORY-LOCATIONS: a change keeps the place of its claim
         if text:
             return [_change_event('update', record.claim_id, text, record.category, record.character_ids, source_id, None, slot=slot, **kwargs)]
         return [_change_event('retire', record.claim_id, record.text, record.category, record.character_ids, source_id, None, slot=slot, **kwargs)]

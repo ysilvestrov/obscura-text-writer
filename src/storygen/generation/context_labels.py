@@ -26,6 +26,9 @@ LABELS: dict[str, dict[str, str]] = {
                                  'Одяг, речі при собі й тілесний стан у «ЯДРО СТАНУ» — з попереднього дня й можуть бути вже не чинні.',
                            'en': 'DAY CHANGED: {before} → {after} ({name})\n'
                                  'Clothing, items carried and bodily state in "CORE STATE" are from the previous day and may no longer hold.'},
+    'scene_locations': {'uk': 'ЛОКАЦІЇ СЦЕНИ', 'en': 'SCENE LOCATIONS'},
+    'allowed_location_ids': {'uk': 'ДОЗВОЛЕНІ LOCATION_IDS: додайте до нового запису location_ids місць цієї сцени, яких він стосується (порожній список — запис не про місце)',
+                             'en': 'ALLOWED LOCATION_IDS: give a new record the location_ids of the places of this scene it is about (an empty list — not about a place)'},
     'allowed_ids': {'uk': 'ДОЗВОЛЕНІ CHARACTER_IDS ДЛЯ НОВИХ СТАНІВ', 'en': 'ALLOWED CHARACTER_IDS FOR NEW STATES'},
     'prose_fragments': {'uk': 'ПОТОЧНА ПРОЗА [version_id={id}] — НУМЕРОВАНІ ФРАГМЕНТИ',
                         'en': 'CURRENT PROSE [version_id={id}] — NUMBERED FRAGMENTS'},

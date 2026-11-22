@@ -117,8 +117,8 @@ def check_integrity(root: Path) -> IntegrityReport:
             db.execute('PRAGMA query_only=ON')
             db.execute('BEGIN')
             schema=db.execute('PRAGMA user_version').fetchone()[0]
-            if schema not in {2,3,4,5,6}:
-                report.add('unsupported_schema', 'storygen.sqlite3', 'Schemas 2–6 are supported; migrations are not run')
+            if schema not in {2,3,4,5,6,7}:
+                report.add('unsupported_schema', 'storygen.sqlite3', 'Schemas 2–7 are supported; migrations are not run')
                 return report
             if db.execute('PRAGMA integrity_check').fetchall() != [('ok',)]:
                 report.add('sqlite_integrity', 'storygen.sqlite3', 'SQLite integrity_check found errors')
@@ -143,6 +143,8 @@ def check_integrity(root: Path) -> IntegrityReport:
             check_billing(report,db,stories)
             from .series_checks import check_series
             check_series(report,db,stories,versions)
+            from .location_checks import check_locations
+            check_locations(report,db,scenes)
             check_memory_versions(report,root,versions)
             from .character_checks import check_character_versions
             check_character_versions(report,root,versions,scenes,stories)

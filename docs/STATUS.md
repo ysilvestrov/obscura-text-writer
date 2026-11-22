@@ -1,21 +1,21 @@
 # Стан перевірки проєкту
 
-**ПЕРЕВІРКА ПРОЙШЛА** — свідчення конкретного запуску, не поточного довільного стану.
+**ПЕРЕВІРКА НЕ ПРОЙШЛА** — свідчення конкретного запуску, не поточного довільного стану.
 
-- Початок (UTC): 2026-11-22T10:18:29.062399+00:00
-- Завершення (UTC): 2026-11-22T10:31:25.691293+00:00
-- Базовий commit: `33d4dc788a16b64389b508ec6a72d715ea1e001e`
+- Початок (UTC): 2026-11-22T10:13:19.021452+00:00
+- Завершення (UTC): 2026-11-22T10:26:38.224544+00:00
+- Базовий commit: `efa320142c6ded78ee1aee409f4035f4f6eff313`
 - Незакомічені зміни під час перевірки: `false`
-- SHA-256 вихідного знімка: `b1604aa0906a4e5b13c66a85e04ac312a3efab38e74fc831330655c30bbf92e6`
+- SHA-256 вихідного знімка: `bfa37f6e320c5085283bc833e2945469250ea08c2b9cfac32fff32d10c34b65e`
 - Зміна знімка під час прогону: `false`
-- Exit code: `0`
-- Фактичні testcase результати JUnit: passed: 4268 · failed: 0 · errors: 0 · skipped: 3
-- Тривалість: 776.64 с
+- Exit code: `1`
+- Фактичні testcase результати JUnit: passed: 4323 · failed: 3 · errors: 0 · skipped: 3
+- Тривалість: 799.20 с
 
 Точний argv (JSON, не shell-команда):
 
 ```json
-["C:\\tmp\\verify-draft-scroll\\.venv\\Scripts\\python.exe", "-m", "pytest", "-q", "--junitxml=C:\\tmp\\verify-draft-scroll\\artifacts\\verification-mtq22jxh\\junit.xml", "--basetemp=C:\\tmp\\verify-draft-scroll\\artifacts\\verification-mtq22jxh\\test-tmp"]
+["C:\\tmp\\p39v\\.venv\\Scripts\\python.exe", "-m", "pytest", "-q", "--junitxml=C:\\tmp\\p39v\\artifacts\\verification-fwelrlh2\\junit.xml", "--basetemp=C:\\tmp\\p39v\\artifacts\\verification-fwelrlh2\\test-tmp"]
 ```
 
 Результат стосується лише наведеної команди й вихідного знімка. Якщо в argv зазначено окремі файли або фільтри, це часткова перевірка. Збір (collection) не є виконанням; skipped не зараховано до passed. Відсутній або непридатний XML позначається непідтвердженим. Після зміни вихідних файлів звіт історичний. Власний STATUS і artifacts виключено зі знімка; початкова ревізія може мати dirty=true, оскільки звіт створюється до коміту.
