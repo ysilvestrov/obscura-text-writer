@@ -263,7 +263,7 @@ def wire_v4_events(wire: MemoryWireV4,previous,prose_id,prose,bounds) -> MemoryJ
                 if claim.quote is None:quote,supporting,extra=None,[],{'source_kind':'author'}
                 else:quote,supporting,extra=claim.quote,claim.supporting_quotes,{'evidence_version_id':claim.evidence_version_id or claim.source_version_id}
                 change('retire',claim,claim.text,quote,supporting,**extra)
-                add('character_states',claim.text,quote,supporting,[cid],resolves_claim_id=claim.claim_id,**extra)
+                add('character_states',claim.text,quote,supporting,[cid],claim.location_ids,resolves_claim_id=claim.claim_id,**extra)
     for claim_id in bounds['threads']:
         decision=wire.threads[claim_id]
         if decision.status=='closed':

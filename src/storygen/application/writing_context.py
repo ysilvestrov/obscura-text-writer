@@ -23,6 +23,8 @@ def _content(view,story,scene,writer) -> dict:
     from ..narration import narrator_section
     from ..characters.models import load_characters
     narrator,narrator_warnings=narrator_section(scene,load_characters(view.read_text(story.characters_version_id)) if story.characters_version_id else [],story.language,scenes)
+    from ..storage.locations import shown_locations, view_locations
+    places=[{'path':path,'description':text} for path,text in shown_locations(view_locations(view),scene.location_ids)]
     return {'instructions':instructions,'instructions_error':instructions_error,'story_id':story.id,'scene_id':scene.id,'title':scene.title,'position':scene.position,'scene_count':len(scenes),
             'plan':plan,'brief':brief,'characters':characters,'character_warnings':list(character_warnings),'memory':projection.text,
             'day_change':writer_day_change(scene,scenes,tracked,names,story.language,story),
@@ -30,6 +32,8 @@ def _content(view,story,scene,writer) -> dict:
             'story_language':story.language,'target_words':scene.target_words,
             # SCENE-NARRATOR: only a scene with a narrator override (or a narrator problem) has the fields.
             **({'narrator':narrator} if narrator else {}),**({'narrator_warnings':narrator_warnings} if narrator_warnings else {}),
+            # MEMORY-LOCATIONS-S06: only a scene with locations has the field, so other fingerprints stay the same.
+            **({'locations':places} if places else {}),
             # SERIES-S10: only a book with a prequel future has the field, so other fingerprints stay the same.
             **({'future':future} if future else {}),
             # STYLE-SAMPLE-001: the same for the voice sample of the story.

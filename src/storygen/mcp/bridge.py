@@ -375,7 +375,8 @@ def build_server(http: httpx.Client | None, client_name: str | None = None, *, c
     @server.tool()
     def get_scene_context(scene_id: str) -> dict[str, Any]:
         """Усе потрібне для чернетки сцени: план, бриф, картки персонажів, пам’ять попередніх сцен, рейтинг, мова,
-        цільова довжина, revision і context_fingerprint (обидва передайте в save_draft)."""
+        цільова довжина, локації сцени з описами (locations, якщо є), revision і context_fingerprint (обидва передайте
+        в save_draft)."""
         return request('GET', f'/api/scenes/{identifier(scene_id)}/writing-context')
 
     @server.tool()

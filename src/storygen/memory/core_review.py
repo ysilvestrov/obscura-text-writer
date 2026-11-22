@@ -273,7 +273,7 @@ def _author_events(base,edits,ctx,allowed):
             # The retire carries the resolution text; with a quote the resolution is also a fact (I3), linked for I5.
             events.append(_change_event('retire',claim.claim_id,edit.text,claim.category,[],prose_id,quote,
                 source_kind='author',evidence_version_id=evidence,location_ids=claim.location_ids))
-            if quote is not None:add('facts',edit.text,quote,evidence_version_id=evidence,resolves_claim_id=claim.claim_id)
+            if quote is not None:add('facts',edit.text,quote,evidence_version_id=evidence,resolves_claim_id=claim.claim_id,location_ids=claim.location_ids)
     return events
 
 

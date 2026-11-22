@@ -173,3 +173,29 @@ def test_writing_memory_keeps_a_state_of_an_absent_character_in_the_same_place(t
     assert 'Олег чекає біля плити' in build_context(repo, second.id, 'brief', role()).user_text
     repo.update_scene_plan(second.id, 'Хто бере участь: Юлія\nЛокація: Ліс', repo.get_scene(second.id).revision)
     assert 'Олег чекає біля плити' not in build_context(repo, second.id, 'brief', role()).user_text
+
+
+@pytest.mark.req('MEMORY-LOCATIONS')
+def test_writing_context_lists_locations_and_a_description_changes_the_fingerprint(tmp_path):
+    from storygen.application.writing_context import writing_context
+    repo, story, scene, _ = setup(tmp_path)
+    before = writing_context(repo, scene.id)
+    assert before['locations'] == [{'path': 'Дім', 'description': ''}, {'path': 'Дім / кухня', 'description': ''}]
+    write(repo, lambda db: store.set_description(db, story.id, lid(story, 'Дім', 'кухня'), 'Тісна.'))
+    after = writing_context(repo, scene.id)
+    assert after['locations'][1] == {'path': 'Дім / кухня', 'description': 'Тісна.'}
+    assert after['context_fingerprint'] != before['context_fingerprint']
+    repo, story, scene, _ = setup(tmp_path / 'plain', beats='Хто бере участь: Юлія\nЮлія чекає.')
+    assert 'locations' not in writing_context(repo, scene.id)
+
+
+@pytest.mark.req('MEMORY-LOCATIONS')
+def test_manual_snapshot_has_the_location_selectors(tmp_path):
+    from storygen.generation.dependencies import _manual_snapshot
+    repo, story, scene, _ = setup(tmp_path)
+    write(repo, lambda db: store.set_description(db, story.id, lid(story, 'Дім'), 'Старий дім.'))
+    scene = repo.get_scene(scene.id)
+    author = {s.field for s in _manual_snapshot(repo, scene, 'prose').selectors}
+    mcp = {s.field for s in _manual_snapshot(repo, scene, 'draft', day_selectors=True).selectors}
+    assert 'location_neighbourhood' in author and 'location_context' not in author
+    assert {'location_neighbourhood', 'location_context'} <= mcp

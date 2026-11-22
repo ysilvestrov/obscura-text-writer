@@ -121,6 +121,9 @@ def _manual_snapshot(repo,scene,head,*,day_selectors=False):
     if is_flashback(scene):
         # STORY-TIME: author_text is a flashback scope; without the selector a flashback's own text was stale at once.
         select('scene',scene.id,'flashback',True)
+    from ..storage.snapshots import location_selectors
+    # MEMORY-LOCATIONS: the same neighbourhood selector as the author baseline; an MCP draft also saw the descriptions.
+    location_selectors(view,scene,'draft' if day_selectors else 'author_text',select)
     if day_selectors:
         # An MCP draft was written from writing-context with its day_change note; the author's own text was not.
         from ..storage.snapshots import memory_core_selectors, narrator_selector, same_day_selectors

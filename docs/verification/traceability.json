@@ -5669,7 +5669,7 @@
     {
       "id": "MEMORY-LOCATIONS-S04",
       "requirement": "MEMORY-LOCATIONS",
-      "scope": "location_ids у журналі (серіалізація, зміни, replay), межі й схема wire v4, location_unknown, стара відповідь, закриття лінії, ручне збереження, злиття арок, розділ дозволених локацій етапу memory.",
+      "scope": "location_ids у журналі (серіалізація, зміни, replay), межі й схема wire v4, location_unknown, стара відповідь, закриття лінії, ручне збереження, злиття арок, розділ дозволених локацій етапу memory, факт розв’язки й стан після unknown успадковують локації, повтор чи порожній ID відхиляється.",
       "tests": [
         "tests/memory/test_memory_locations.py::test_empty_location_ids_are_not_serialized_and_old_journals_read",
         "tests/memory/test_memory_locations.py::test_a_change_keeps_the_location_of_its_claim_and_replay_rejects_another",
@@ -5682,7 +5682,12 @@
         "tests/memory/test_memory_locations.py::test_manual_save_keeps_new_locations_and_fills_changes_from_their_claim",
         "tests/memory/test_memory_locations.py::test_author_merge_of_arcs_keeps_the_record_location",
         "tests/generation/test_location_context.py::test_memory_stage_allows_the_scene_places_and_their_ancestors",
-        "tests/generation/test_location_context.py::test_memory_stage_of_a_scene_without_places_is_unchanged"
+        "tests/generation/test_location_context.py::test_memory_stage_of_a_scene_without_places_is_unchanged",
+        "tests/memory/test_memory_locations.py::test_wire_closing_a_thread_gives_the_resolution_fact_its_location",
+        "tests/memory/test_memory_locations.py::test_a_slot_turning_unknown_keeps_its_location_on_the_atmosphere_state",
+        "tests/memory/test_memory_locations.py::test_author_closing_a_thread_gives_the_resolution_fact_its_location",
+        "tests/memory/test_memory_locations.py::test_replay_rejects_repeated_or_blank_locations",
+        "tests/memory/test_memory_locations.py::test_manual_save_rejects_a_change_with_another_location"
       ]
     },
     {
@@ -5702,12 +5707,14 @@
     {
       "id": "MEMORY-LOCATIONS-S06",
       "requirement": "MEMORY-LOCATIONS",
-      "scope": "Розділ «ЛОКАЦІЇ СЦЕНИ» в brief/draft/повному edit, без нього в memory й edit латками, англійська мітка, сцена без локацій, застарілість за описом.",
+      "scope": "Розділ «ЛОКАЦІЇ СЦЕНИ» в brief/draft/повному edit, без нього в memory й edit латками, англійська мітка, сцена без локацій, застарілість за описом, поле locations у MCP writing-context і його відбиток, селектори локацій знімка ручного збереження.",
       "tests": [
         "tests/generation/test_location_context.py::test_section_lists_scene_locations_with_ancestors_and_descriptions",
         "tests/generation/test_location_context.py::test_memory_and_patches_get_no_section_and_english_label",
         "tests/generation/test_location_context.py::test_scene_without_locations_has_no_section_and_no_new_selectors",
-        "tests/generation/test_location_context.py::test_description_change_stales_brief_of_scenes_that_show_it_only"
+        "tests/generation/test_location_context.py::test_description_change_stales_brief_of_scenes_that_show_it_only",
+        "tests/generation/test_location_context.py::test_writing_context_lists_locations_and_a_description_changes_the_fingerprint",
+        "tests/generation/test_location_context.py::test_manual_snapshot_has_the_location_selectors"
       ]
     },
     {

@@ -129,6 +129,8 @@ def replay_memory(journal: MemoryJournal) -> dict[str,MemoryEvent]:
         last_position=position;event_ids.add(event.event_id)
         if len(event.character_ids)!=len(set(event.character_ids)) or any(not id.strip() for id in event.character_ids):
             raise ValueError('Некоректний scope пам’яті')
+        if len(event.location_ids)!=len(set(event.location_ids)) or any(not id.strip() for id in event.location_ids):
+            raise ValueError('Некоректні локації пам’яті')
         if event.category!='character_states' and event.character_ids:
             raise ValueError('Scope дозволено лише для станів')
         if event.operation=='add':
@@ -402,7 +404,6 @@ def normalize_manual_memory(raw,previous,prose_id,prose,allowed_character_ids,*,
     if journal.source_prose_ids!=previous.source_prose_ids+[prose_id]:
         raise ValueError('Пам’ять посилається на інші джерела прози')
     events=[];mapping={};duplicates={};change_ids=set();known={e.claim_id for e in previous.events}
-    places={c.claim_id:c.location_ids for c in replay_memory(previous).values()}  # MEMORY-LOCATIONS: kept by changes
     for event in journal.events[len(previous.events):]:
         if event.source_version_id!=prose_id or (event.evidence_version_id is None and any(
                 q not in prose for q in [event.quote,*event.supporting_quotes] if q is not None)):
@@ -424,14 +425,14 @@ def normalize_manual_memory(raw,previous,prose_id,prose,allowed_character_ids,*,
             canonical=_add_event(event.category,event.text,prose_id,event.quote,occurrence,event.character_ids,event.supporting_quotes,
                 slot=event.slot,source_kind=event.source_kind,evidence_version_id=event.evidence_version_id,resolves_claim_id=link,
                 location_ids=event.location_ids)
-            mapping[event.claim_id]=canonical.claim_id;known.add(canonical.claim_id);places[canonical.claim_id]=canonical.location_ids
+            mapping[event.claim_id]=canonical.claim_id;known.add(canonical.claim_id)
         else:
             claim=mapping.get(event.claim_id,event.claim_id)
             args=(event.operation,claim,event.text,prose_id,event.quote,event.supporting_quotes)
             kwargs=dict(slot=event.slot,source_kind=event.source_kind,evidence_version_id=event.evidence_version_id,resolves_claim_id=link)
             occurrence=0
             while change_event_id(*args,**kwargs,occurrence=occurrence) in change_ids:occurrence+=1
-            canonical=event.model_copy(update={'claim_id':claim,'resolves_claim_id':link,'location_ids':list(places.get(claim,event.location_ids)),
+            canonical=event.model_copy(update={'claim_id':claim,'resolves_claim_id':link,
                 'event_id':change_event_id(*args,**kwargs,occurrence=occurrence)})
             change_ids.add(canonical.event_id)
         events.append(canonical)

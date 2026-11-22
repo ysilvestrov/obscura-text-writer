@@ -116,3 +116,55 @@ def test_author_merge_of_arcs_keeps_the_record_location():
     conflict = Conflict(key='claim:' + MOOD.claim_id, values={}, events={'h1': [placed]})
     events = _author_events(plan, conflict, 'Спокійна', 'merge-1', {})
     assert events[0].operation == 'update' and events[0].location_ids == [KITCHEN]
+
+
+@pytest.mark.req('MEMORY-LOCATIONS')
+def test_wire_closing_a_thread_gives_the_resolution_fact_its_location():
+    placed = T1.model_copy(update={'location_ids': [HOUSE]})
+    prev = PREV.model_copy(update={'events': [placed if e.claim_id == T1.claim_id else e for e in PREV.events]})
+    data = answer(threads_=threads(**{T1.claim_id: tdec('closed', 'Стукав сусід', ['f000003'])}))
+    journal = run(data, prev=prev, bounds=schema_bounds_v4(prev, PROSE, ['h'], ['h'], {'h': False}))
+    fact = next(e for e in new(journal, prev) if e.resolves_claim_id == T1.claim_id and e.operation == 'add')
+    assert fact.location_ids == [HOUSE]
+
+
+@pytest.mark.req('MEMORY-LOCATIONS')
+def test_a_slot_turning_unknown_keeps_its_location_on_the_atmosphere_state():
+    from tests.memory.test_wire_v4 import CLOTH
+    placed = CLOTH.model_copy(update={'location_ids': [KITCHEN]})
+    prev = PREV.model_copy(update={'events': [placed if e.claim_id == CLOTH.claim_id else e for e in PREV.events]})
+    journal = run(answer(core(clothing=dec('unknown', reason='Новий день'))), prev=prev,
+                  bounds=schema_bounds_v4(prev, PROSE, ['h'], ['h'], {'h': False}))
+    retire, add = new(journal, prev)
+    assert retire.location_ids == [KITCHEN] and add.location_ids == [KITCHEN]
+
+
+@pytest.mark.req('MEMORY-LOCATIONS')
+def test_author_closing_a_thread_gives_the_resolution_fact_its_location():
+    from types import SimpleNamespace
+    from storygen.memory.core_review import ThreadEdit, _author_events
+    placed = T1.model_copy(update={'location_ids': [HOUSE]})
+    base = MemoryJournal(schema_version=3, source_prose_ids=['p1'], events=[placed])
+    ctx = SimpleNamespace(prose_id='p2', sources={'p2': 'Стукав сусід.'})
+    edit = ThreadEdit(kind='thread', claim_id=T1.claim_id, action='close', text='Стукав сусід', quote='Стукав сусід.')
+    retire, fact = _author_events(base, [edit], ctx, {'p2'})
+    assert retire.location_ids == [HOUSE] and fact.resolves_claim_id == T1.claim_id and fact.location_ids == [HOUSE]
+
+
+@pytest.mark.req('MEMORY-LOCATIONS')
+@pytest.mark.parametrize('ids', [[KITCHEN, KITCHEN], [''], ['  ']])
+def test_replay_rejects_repeated_or_blank_locations(ids):
+    event = _add_event('facts', 'Лист', 'p1', 'q', 0, location_ids=ids)
+    with pytest.raises(ValueError):
+        replay_memory(MemoryJournal.model_construct(schema_version=3, source_prose_ids=['p1'], events=[event]))
+
+
+@pytest.mark.req('MEMORY-LOCATIONS')
+def test_manual_save_rejects_a_change_with_another_location():
+    placed = MOOD.model_copy(update={'location_ids': [KITCHEN]})
+    prev = MemoryJournal(schema_version=3, source_prose_ids=['p1'], events=[placed])
+    update = _change_event('update', MOOD.claim_id, 'Ніч', MOOD.category, ['h'], 'p2', 'Надворі ніч.', location_ids=[FOREST])
+    raw = json.dumps({'schema_version': 3, 'source_prose_ids': ['p1', 'p2'],
+                      'events': [json.loads(e.model_dump_json()) for e in (placed, update)]}, ensure_ascii=False)
+    with pytest.raises(ValueError):
+        normalize_manual_memory(raw, prev, 'p2', PROSE, ['h'])
