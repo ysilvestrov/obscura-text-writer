@@ -17,7 +17,7 @@ from tests.authoring.test_ebook_exports import seeded
 
 W = '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}'
 PARTS = {'[Content_Types].xml', '_rels/.rels', 'word/document.xml', 'word/_rels/document.xml.rels', 'word/styles.xml',
-         'word/footer1.xml', 'docProps/core.xml', 'docProps/custom.xml'}
+         'word/footer1.xml', 'word/settings.xml', 'docProps/core.xml', 'docProps/custom.xml'}
 INVALID_XML = 'Текст містить недопустимий символ XML 1.0; його не вилучено автоматично'
 
 
@@ -212,3 +212,26 @@ def test_docx_bare_language_gets_a_region_for_word(tmp_path, card, expected):
     repo, story = flat_book(tmp_path, 'Текст.\n', card_language=card)
     _, content = rendered(repo, story)
     assert re.search(rf'<w:rPrDefault>.*?<w:lang w:val="{expected}"/>', part(content, 'word/styles.xml'), re.S)
+
+
+P_ORDER = ['pStyle', 'keepNext', 'pageBreakBefore', 'spacing', 'ind', 'jc', 'outlineLvl']
+
+
+def test_docx_paragraph_properties_follow_schema_order(tmp_path):
+    # CT_PPrBase is a sequence: strict consumers repair or reject jc before ind, or ind before spacing.
+    repo, story = seeded(tmp_path, count=2)
+    _, content = rendered(repo, story)
+    for name in ['word/document.xml', 'word/styles.xml', 'word/footer1.xml']:
+        for ppr in ET.fromstring(part(content, name)).iter(W + 'pPr'):
+            children = [child.tag.removeprefix(W) for child in ppr]
+            assert children == sorted(children, key=P_ORDER.index), (name, children)
+
+
+def test_docx_opens_in_current_word_mode(tmp_path):
+    # Without compatibilityMode 15 Word opens the file in Word 2007 compatibility mode (no modern comments).
+    repo, story = seeded(tmp_path, count=1)
+    _, content = rendered(repo, story)
+    settings = part(content, 'word/settings.xml')
+    assert 'w:name="compatibilityMode" w:uri="http://schemas.microsoft.com/office/word" w:val="15"' in settings
+    assert 'Target="settings.xml"' in part(content, 'word/_rels/document.xml.rels')
+    assert 'PartName="/word/settings.xml"' in part(content, '[Content_Types].xml')

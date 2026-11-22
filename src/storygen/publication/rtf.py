@@ -46,7 +46,8 @@ def render(book):
         '{\\stylesheet{\\s0 Normal;}{\\s1\\outlinelevel0\\b\\fs32 heading 1;}{\\s2\\outlinelevel1\\b\\fs28 heading 2;}}',
         f'\\paperw{p["width_twips"]}\\paperh{p["height_twips"]}'+''.join(f'\\marg{side}{p["margin_twips"]}' for side in 'lrtb'),
         '{\\footer\\pard\\qc\\fi0 \\chpgn\\par}',
-        f'\\f0\\fs{p["font_half_points"]}\n']
+        # \deflang is only a default: without \lang Word gives the text the system language.
+        f'\\f0\\fs{p["font_half_points"]}'+(f'\\lang{LANG_ID[document_language]}' if deflang else '')+'\n']
     out.append(_paragraph(encode(book.title),centered+'\\sb2400\\sa480\\b\\fs36'))
     for person in publication.authors:out.append(_paragraph(encode(person.display_name),centered))
     if card.cycle_title:

@@ -22,7 +22,7 @@ PACKAGE_RELS='http://schemas.openxmlformats.org/package/2006/relationships'
 CUSTOM_FMTID='{D5CDD505-2E9C-101B-9397-08002B2CF9AE}'
 HEAD='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
 REQUIRED=('[Content_Types].xml','_rels/.rels','word/document.xml','word/_rels/document.xml.rels','word/styles.xml',
-    'word/footer1.xml','docProps/core.xml','docProps/custom.xml')
+    'word/footer1.xml','word/settings.xml','docProps/core.xml','docProps/custom.xml')
 
 
 def valid_text(text):
@@ -52,7 +52,7 @@ def _run(text,*,bold=False,italic=False,lang=None):
 
 
 def _paragraph(content='',*,style=None,centered=False,bookmark=None):
-    properties=(f'<w:pStyle w:val="{style}"/>' if style else '')+('<w:jc w:val="center"/><w:ind w:firstLine="0"/>' if centered else '')
+    properties=(f'<w:pStyle w:val="{style}"/>' if style else '')+('<w:ind w:firstLine="0"/><w:jc w:val="center"/>' if centered else '')
     start=f'<w:bookmarkStart w:id="{bookmark[0]}" w:name="{bookmark[1]}"/>' if bookmark else ''
     end=f'<w:bookmarkEnd w:id="{bookmark[0]}"/>' if bookmark else ''
     return f'<w:p>{"<w:pPr>"+properties+"</w:pPr>" if properties else ""}{start}{content}{end}</w:p>'
@@ -101,12 +101,12 @@ def _styles(book):
         f'<w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/><w:qFormat/>'
         f'<w:pPr><w:ind w:firstLine="{p["first_line_twips"]}"/></w:pPr></w:style>'
         '<w:style w:type="paragraph" w:styleId="Title"><w:name w:val="Title"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:qFormat/>'
-        '<w:pPr><w:jc w:val="center"/><w:spacing w:before="2400" w:after="480"/><w:ind w:firstLine="0"/></w:pPr><w:rPr><w:b/><w:sz w:val="36"/></w:rPr></w:style>'
+        '<w:pPr><w:spacing w:before="2400" w:after="480"/><w:ind w:firstLine="0"/><w:jc w:val="center"/></w:pPr><w:rPr><w:b/><w:sz w:val="36"/></w:rPr></w:style>'
         +heading('Heading1','heading 1',0,32)+heading('Heading2','heading 2',1,28)+'</w:styles>')
 
 
 def _footer():
-    return (f'{HEAD}<w:ftr xmlns:w="{W}"><w:p><w:pPr><w:jc w:val="center"/><w:ind w:firstLine="0"/></w:pPr>'
+    return (f'{HEAD}<w:ftr xmlns:w="{W}"><w:p><w:pPr><w:ind w:firstLine="0"/><w:jc w:val="center"/></w:pPr>'
         '<w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText xml:space="preserve"> PAGE </w:instrText></w:r>'
         '<w:r><w:fldChar w:fldCharType="end"/></w:r></w:p></w:ftr>')
 
@@ -133,6 +133,7 @@ CONTENT_TYPES=(f'{HEAD}<Types xmlns="http://schemas.openxmlformats.org/package/2
     '<Default Extension="xml" ContentType="application/xml"/>'
     '<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>'
     '<Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>'
+    '<Override PartName="/word/settings.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.settings+xml"/>'
     '<Override PartName="/word/footer1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"/>'
     '<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>'
     '<Override PartName="/docProps/custom.xml" ContentType="application/vnd.openxmlformats-officedocument.custom-properties+xml"/></Types>')
@@ -142,12 +143,17 @@ ROOT_RELS=(f'{HEAD}<Relationships xmlns="{PACKAGE_RELS}">'
     f'<Relationship Id="rId3" Type="{R}/custom-properties" Target="docProps/custom.xml"/></Relationships>')
 DOCUMENT_RELS=(f'{HEAD}<Relationships xmlns="{PACKAGE_RELS}">'
     f'<Relationship Id="rIdStyles" Type="{R}/styles" Target="styles.xml"/>'
-    f'<Relationship Id="rIdFooter" Type="{R}/footer" Target="footer1.xml"/></Relationships>')
+    f'<Relationship Id="rIdFooter" Type="{R}/footer" Target="footer1.xml"/>'
+    f'<Relationship Id="rIdSettings" Type="{R}/settings" Target="settings.xml"/></Relationships>')
+# compatibilityMode 15: without it Word opens the file in Word 2007 compatibility mode, without modern comments.
+SETTINGS=(f'{HEAD}<w:settings xmlns:w="{W}"><w:compat>'
+    '<w:compatSetting w:name="compatibilityMode" w:uri="http://schemas.microsoft.com/office/word" w:val="15"/>'
+    '</w:compat></w:settings>')
 
 
 def render(book):
     parts=[('[Content_Types].xml',CONTENT_TYPES),('_rels/.rels',ROOT_RELS),('word/document.xml',_document(book)),
-        ('word/_rels/document.xml.rels',DOCUMENT_RELS),('word/styles.xml',_styles(book)),('word/footer1.xml',_footer()),
+        ('word/_rels/document.xml.rels',DOCUMENT_RELS),('word/styles.xml',_styles(book)),('word/footer1.xml',_footer()),('word/settings.xml',SETTINGS),
         ('docProps/core.xml',_core(book)),('docProps/custom.xml',_custom(book))]
     output=io.BytesIO()
     with zipfile.ZipFile(output,'w',compression=zipfile.ZIP_DEFLATED,compresslevel=9) as archive:

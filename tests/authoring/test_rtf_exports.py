@@ -61,3 +61,11 @@ def test_rtf_invalid_xml_character_raises(tmp_path):
     repo, story = flat_book(tmp_path, 'Погано\x01.\n')
     with pytest.raises(ValueError, match=INVALID_XML):
         rendered(repo, story)
+
+
+def test_rtf_document_language_reaches_the_text(tmp_path):
+    # Word applies \deflang only as a default; without \lang the text takes the system language (seen: 1045).
+    repo, story = flat_book(tmp_path, 'Текст.\n', card_language='uk-UA')
+    assert '\\f0\\fs24\\lang1058' in rendered(repo, story)
+    repo, story = flat_book(tmp_path / 'fr', 'Texte.\n', card_language='fr')
+    assert '\\f0\\fs24\n' in rendered(repo, story)
