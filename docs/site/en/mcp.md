@@ -264,7 +264,7 @@ The chat can go through every stage of a scene itself: write the scene brief, wr
 
 - Obscura checks the chat's answer with the same code as its own model's answer. It does not save a wrong answer even in part, and returns all the violations to the chat at once. After three refusals in a row the chat should stop and show you the violations.
 - If the scene, the role settings or the prompt changed between the task and the answer, the answer is refused, and the chat takes the task again.
-- A result from the chat behaves like a model result: a brief with significant changes waits for your decision, editing in the edit-selection mode goes to "Editor changes", and the memory becomes current. You confirm the memory core, as for a model.
+- A result from the chat behaves like a model result: a brief with significant changes waits for your decision, editing in the edit-selection mode goes to "Editor changes", and the memory becomes current. An edit that keeps fewer than 60% of the words of the text is treated as an excerpt and is not saved. You confirm the memory core, as for a model.
 - If the previous prose changed after its memory, the chat does not get the memory task: you confirm the use of the previous memory in Obscura.
 - In the version history such versions are marked "External client: <name>". Prose edited by the chat is an editing version with this mark.
 - These tools cost no money and are not counted in the budget. If a role is not configured, Obscura uses the chat's typical context limits; it does not know the chat's own window.

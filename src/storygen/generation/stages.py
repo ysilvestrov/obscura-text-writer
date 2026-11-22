@@ -323,6 +323,11 @@ def execute_stage(
             original=repo.read_text(context.fragments['copyedit_draft_id'])
             build_rewrite_diff(original,text)
             return save_pass_result(repo,attempt,context,original,text)
+        elif stage=='edit' and context.settings.edit_mode=='prose' and context.fragments.get('copyedit_draft_id'):
+            # EDIT-DIAGNOSTICS-S03: a single edit commits prose without review, so an excerpt is rejected before saving.
+            from .editor_output import shrink_check
+            original=repo.read_text(context.fragments['copyedit_draft_id'])
+            if text!=original:shrink_check(text,original,original)
         elif stage=='edit' and context.settings.edit_mode=='diff':
             from ..rewrite_diff import build_rewrite_diff, rewrite_warnings
             draft_id=context.fragments['copyedit_draft_id']
@@ -341,6 +346,8 @@ def execute_stage(
                 return save_pass_result(repo,attempt,context,original,text)
             from ..copyediting import require_editor_changes
             require_editor_changes(original,text)
+            from .editor_output import shrink_check
+            shrink_check(text,original,original)  # EDIT-DIAGNOSTICS-S03
             attempt.context['copyedit_proposal']={'protocol_version':2,'draft_id':draft_id,'proposal':proposal.model_dump()}
             attempt.context['editor_warnings']=rewrite_warnings(original,text,proposal.edits)
             if bad:
