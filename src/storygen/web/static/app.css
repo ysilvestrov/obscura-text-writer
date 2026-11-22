@@ -433,7 +433,6 @@ pre { white-space: pre-wrap; overflow-wrap: anywhere; font: 14px/1.7 var(--font-
 /* R20-WORKSPACE-S03: the status row, the consequence note and a waiting review card scroll under the material. */
 .workspace-hint-info { margin: 0.75rem 0 0; color: var(--text-secondary); font-size: 0.8125rem; }
 #workspace-material ~ .workspace-status-row { margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border-color); }
-#workspace-material ~ .review-attention { margin-top: 0.75rem; }
 .workspace-pinned-notes { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 0.75rem; }
 .workspace-pinned-notes:not(:has(> :not([hidden]))) { display: none; }
 .workspace-pinned-notes > p { margin: 0.5rem 0 0; }
@@ -444,7 +443,7 @@ pre { white-space: pre-wrap; overflow-wrap: anywhere; font: 14px/1.7 var(--font-
 /* R20-WORKSPACE-S05: full screen inside the app window; only the editor and a thin save row remain. */
 body:has(#workspace.focus-mode) .topbar, #workspace.focus-mode .storybar, #workspace.focus-mode .scene-panel, #workspace.focus-mode .context-panel,
 #workspace.focus-mode .scene-heading, #workspace.focus-mode #mode-tabs, #workspace.focus-mode .workspace-primary-wrap, #workspace.focus-mode #run-jump,
-#workspace.focus-mode .workspace-hint-info, #workspace.focus-mode .workspace-status-row, #workspace.focus-mode .review-attention,
+#workspace.focus-mode .workspace-hint-info, #workspace.focus-mode .workspace-status-row,
 #workspace.focus-mode #workspace-history, #workspace.focus-mode .workspace-extra, #workspace.focus-mode #scene-statistics, #workspace.focus-mode .workspace-output,
 #workspace.focus-mode .workspace-compact-status, #workspace.focus-mode #workspace-use-draft, #workspace.focus-mode #workspace-edit-prose, #workspace.focus-mode #plan-renumber { display: none !important; }
 #workspace.focus-mode .editor-panel { position: fixed; inset: 0; z-index: 20; display: flex; flex-direction: column; padding: 0.5rem 1rem 1rem; background: var(--bg-surface); }
@@ -599,7 +598,6 @@ body.ghost-open #notice { z-index: 70; }
 .icon-label { display: none; }
 @media (min-width: 1280px) { .icon-label { display: inline; } }
 .story-menu-wrap { position: relative; }
-.menu-dot { position: absolute; top: 4px; right: 4px; width: 8px; height: 8px; border-radius: 50%; background: var(--accent-primary); }
 .story-menu { position: absolute; right: 0; top: calc(100% + 4px); z-index: 30; min-width: 16rem; max-width: min(22rem, calc(100vw - 32px)); padding: 0.25rem; background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 8px 24px rgb(0 0 0 / 0.12); }
 .story-menu[hidden] { display: none; }
 @media (max-width: 650px) { .story-menu { left: auto; right: 0; } .storybar .story-actions { justify-content: flex-end; } }
@@ -607,7 +605,6 @@ body.ghost-open #notice { z-index: 70; }
 .story-menu li > a, .story-menu li > button { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 0.5rem; padding: 0.55rem 0.75rem; border: 0; border-radius: 6px; background: transparent; color: inherit; text-align: left; text-decoration: none; font: inherit; }
 .story-menu li > a:hover, .story-menu li > button:hover, .story-menu li > a:focus-visible, .story-menu li > button:focus-visible { background: var(--accent-soft); }
 .story-menu li > button:disabled { opacity: 0.55; }
-.menu-count { min-width: 1.5rem; padding: 0 0.4rem; border-radius: 999px; background: var(--accent-primary); color: var(--bg-surface); font-size: 0.75rem; text-align: center; }
 .export-dialog { max-width: min(32rem, calc(100vw - 32px)); border: 1px solid var(--border-color); border-radius: 10px; padding: 1.25rem; }
 .export-dialog::backdrop { background: rgb(0 0 0 / 0.35); }
 .series-facts-dialog { max-width: min(40rem, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow-y: auto; }
@@ -615,7 +612,6 @@ body.ghost-open #notice { z-index: 70; }
 .series-fact-text { margin: 0; flex: 1 1 14rem; overflow-wrap: anywhere; }
 .series-fact-choices { display: flex; gap: .75rem; }
 .series-fact-choice { display: inline-flex; gap: .3rem; align-items: center; }
-.review-attention { flex-basis: 100%; }
 .revision-content { max-width: 960px; margin: 0 auto; padding: 24px 30px; }
 .revision-page .book-impact > summary { pointer-events: none; }
 /* Model catalog picker (settings: role form and connection widget). */

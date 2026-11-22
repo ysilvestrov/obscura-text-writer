@@ -1,6 +1,7 @@
 from typing import Literal
 
 from fastapi import APIRouter, Request
+from fastapi.responses import RedirectResponse
 from pydantic import Field
 from fastapi.responses import JSONResponse
 
@@ -76,8 +77,9 @@ def story_page(id: str,request: Request):
 
 @router.get("/stories/{id}/revision")
 def revision_page(id: str,request: Request):
-    """#89: book check (impact review) lives on its own page; no new API."""
-    return request.app.state.templates.TemplateResponse(request=request,name="revision.html",context={"story":request.app.state.repo.get_story(id)})
+    """The book check page of R-28 is removed (R-44 PR 1); old links and bookmarks open the story."""
+    request.app.state.repo.get_story(id)
+    return RedirectResponse(f"/stories/{id}",status_code=303)
 
 
 @router.get("/stories/{id}/characters")
