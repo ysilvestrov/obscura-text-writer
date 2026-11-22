@@ -125,3 +125,53 @@ def test_remaining_workflow_stops_on_excerpt_before_memory(tmp_path,mode):
     assert checkpoint['stop_reason']=='pass_failed' and 'редактора: 1 із 7' in current.warning
     assert copyedit_preview(repo,scenes[0].id,checkpoint['proposal_attempt_id'])['preview']==edits[0]
     assert [c.stage for c in calls]==['brief','draft','edit','edit'] and 'prose' not in repo.get_scene(scenes[0].id).heads
+
+
+def single_edit_scene(tmp_path,mode):
+    import json
+    repo=Repository(tmp_path);story=repo.create_story(StoryCreate(title='Одиночна редактура'))
+    scene=repo.create_scene(story.id,SceneCreate(title='Сцена',beats='Подія'))
+    brief=repo.save_version(story.id,scene.id,'brief',json.dumps({'objective':'Сцена','beats':['Подія'],'constraints':[],'proposed_changes':[]}),[])
+    repo.set_head(scene.id,'brief',brief.id,repo.get_scene(scene.id).revision)
+    draft=repo.save_version(story.id,scene.id,'draft',SOURCE,[brief.id])
+    repo.set_head(scene.id,'draft',draft.id,repo.get_scene(scene.id).revision)
+    save_role_settings(repo,story.id,'editor',RoleSettings(provider=ProviderSettings(model='synthetic'),edit_mode=mode),repo.get_story(story.id).revision)
+    return repo,repo.get_scene(scene.id)
+
+
+def single_edit(tmp_path,mode,response):
+    repo,scene=single_edit_scene(tmp_path,mode)
+    class Gateway:
+        def stream(self,ctx,cancel):
+            yield GenerationEvent(type='delta',text=response)
+            yield GenerationEvent(type='terminal',finish_reason='stop')
+    worker=RunCoordinator(repo,lambda _:Gateway())
+    run=worker.enqueue(RunRequest(story_id=scene.story_id,scene_id=scene.id,mode='stage',stage='edit'),'single')
+    worker._execute(run.id)
+    return repo,scene,worker.get_run(run.id),repo.list_attempts(scene.story_id,run.id)[-1]
+
+
+@pytest.mark.parametrize('mode',['prose','diff'])
+def test_single_edit_rejects_excerpt_without_prose_or_proposal(tmp_path,mode):
+    repo,scene,run,attempt=single_edit(tmp_path,mode,EXCERPT)
+    assert attempt.state=='failed' and attempt.context['editor_failure']['category']=='guard'
+    assert 'редактора: 20 із 50' in attempt.error and 'copyedit_proposal' not in attempt.context
+    assert not attempt.result_version_id and 'prose' not in repo.get_scene(scene.id).heads
+    assert run.state=='failed'
+
+
+@pytest.mark.parametrize('mode,state',[('prose','completed'),('diff','needs_review')])
+def test_single_edit_above_threshold_keeps_its_contract(tmp_path,mode,state):
+    kept=' '.join(SOURCE.split()[:31])
+    repo,scene,run,attempt=single_edit(tmp_path,mode,kept)
+    assert attempt.state==state
+    if mode=='prose':assert repo.read_text(repo.get_scene(scene.id).heads['prose'])==kept
+
+
+def test_chat_edit_result_rejects_excerpt(tmp_path):
+    from storygen.application.chat_stages import ChatStageRejected,_context,stage_result,task_fingerprint
+    repo,scene=single_edit_scene(tmp_path,'prose')
+    fingerprint=task_fingerprint(_context(repo,scene.id,'edit'))
+    with pytest.raises(ChatStageRejected) as caught:stage_result(repo,scene.id,'edit',fingerprint,EXCERPT,None)
+    assert 'редактора: 20 із 50' in str(caught.value) and caught.value.details['editor_failure']['category']=='guard'
+    assert 'prose' not in repo.get_scene(scene.id).heads

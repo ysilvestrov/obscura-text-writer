@@ -2667,6 +2667,16 @@
       ]
     },
     {
+      "id": "EDIT-DIAGNOSTICS-S03",
+      "requirement": "EDIT-DIAGNOSTICS",
+      "scope": "Межа 60% слів для одиночного edit prose/diff і запису edit із чату; вище межі чинний контракт.",
+      "tests": [
+        "tests/generation/test_editor_shrink_guard.py::test_single_edit_rejects_excerpt_without_prose_or_proposal",
+        "tests/generation/test_editor_shrink_guard.py::test_single_edit_above_threshold_keeps_its_contract",
+        "tests/generation/test_editor_shrink_guard.py::test_chat_edit_result_rejects_excerpt"
+      ]
+    },
+    {
       "id": "EDIT-LOOP-STOP-S03",
       "requirement": "EDIT-LOOP-STOP",
       "scope": "Попередні валідні зміни доступні після failed спроби; немає autoaccept/retry, cancellation/source guards чинні.",
