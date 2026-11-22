@@ -4334,6 +4334,16 @@
       }
     },
     {
+      "id": "R20-WORKSPACE-S08",
+      "requirement": "R20-WORKSPACE",
+      "scope": "Створення чернетки з кінця довгого завдання; позиція верху матеріалу на desktop і mobile.",
+      "tests": [],
+      "manual": {
+        "procedure": "docs/verification/manual.md#workspace-one-click",
+        "reason": "Сценарій інтеграції браузера з синтетичним сервером перевіряється окремим Playwright runner."
+      }
+    },
+    {
       "id": "WORKSPACE-TOOLS-S01",
       "requirement": "WORKSPACE-TOOLS",
       "scope": "Розмітка верхнього рядка й меню; клавіатура — у ручній процедурі.",
