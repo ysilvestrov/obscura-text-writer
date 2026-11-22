@@ -1,3 +1,4 @@
+from datetime import date
 from typing import Annotated, Literal
 from urllib.parse import urlparse
 
@@ -102,6 +103,12 @@ class RoleSettings(DomainModel):
         return self
 
 
+class ModelRetirement(DomainModel):
+    """MODEL-RETIREMENT: the provider's notice that it removes the model on this date (replacement only from Venice)."""
+    date: date
+    replacement: str | None = None
+
+
 class ModelOption(DomainModel):
     id: str
     name: str | None = None
@@ -112,3 +119,4 @@ class ModelOption(DomainModel):
     privacy: Literal['anonymized','private','unknown'] = 'unknown'
     tee: bool = False
     supports_schema: bool | None = None
+    retirement: ModelRetirement | None = None

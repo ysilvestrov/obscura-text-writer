@@ -45,8 +45,10 @@ def model_option(provider, row, repo=None):
         uncensored = spec.get('uncensored') is True
     elif provider == 'openrouter' and isinstance(row.get('supported_parameters'),list):
         schema = 'structured_outputs' in row['supported_parameters']
+    from .retirement import retirement_from
     return ModelOption(id=row['id'], name=name if isinstance(name,str) and name else None, context_tokens=known_limit(context),
-        max_output_tokens=known_limit(output), uncensored=uncensored, tariff=tariff, privacy=privacy, tee=tee, supports_schema=schema)
+        max_output_tokens=known_limit(output), uncensored=uncensored, tariff=tariff, privacy=privacy, tee=tee, supports_schema=schema,
+        retirement=retirement_from(provider,row))
 
 
 def validate_limits(context_cap, output_cap, context_tokens=None, max_output_tokens=None):
