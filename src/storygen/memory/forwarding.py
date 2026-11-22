@@ -86,6 +86,11 @@ def memory_view_from_view(view,scene_id):
     from .kinds import is_core_slot, tracked_ids
     story=view.get_story(scene.story_id);marks=story.memory_kind_overrides;tracked=tracked_ids(view,story,scene)
     result['story_revision']=story.revision
+    from ..locations import canonical
+    from ..storage.locations import view_locations
+    cards=view_locations(view);merged={c.id:c.merged_into for c in cards.values()}
+    def places(ids):  # MEMORY-LOCATIONS-S07: paths of the record's cards, merged cards as their target
+        return [cards[id].path for id in dict.fromkeys(canonical(merged,id) for id in ids) if id in cards]
     for event in entries.values():
         # The title and scene follow the version the quote was taken from.
         quoted=event.evidence_version_id or event.source_version_id
@@ -100,7 +105,7 @@ def memory_view_from_view(view,scene_id):
             'source_title':'Попередня книга серії' if previous_book else source.title if source else 'Попереднє джерело','quote':event.quote,'supporting_quotes':list(event.supporting_quotes),
             'forward':event.claim_id not in hidden,'closed':event.operation=='retire',
             # MEMORY-SELECT-S08: the author's selection mark; a core slot is always shown and takes none.
-            'kind':marks.get(event.claim_id),'slot':is_core_slot(event,tracked)})
+            'kind':marks.get(event.claim_id),'slot':is_core_slot(event,tracked),'locations':places(event.location_ids)})
     stale=view.get_version(memory_id).stale
     result.update(can_save=not stale,reason='Пам’ять застаріла: спершу оновіть її' if stale else None)
     return result

@@ -2,6 +2,7 @@ import {confirmDialog} from './dialogs.js';
 import {createTextEditor} from './text-editor.js';
 import {installCoreReview,confirmUnsaved} from './core-review.js';
 import {live,t,msg,labelEntries,getLocale,uiText,uiAttr,uiHTML,diagnostic} from './i18n.js';
+import {announceRevision,followRevision} from './story-revision.js';
 export function installMemoryTable({state,api,json,notice,refresh,loadBuffer}){
   const panel=document.querySelector('#memory-view');
   if(!panel)return {active:()=>false,save:async()=>{}};
@@ -52,6 +53,7 @@ export function installMemoryTable({state,api,json,notice,refresh,loadBuffer}){
     const text=latest.heads.memory?(await api(`/api/versions/${latest.heads.memory}`)).text:'';
     if(state.scene?.id===sceneId&&!state.dirty)loadBuffer(latest,'memory',text);
   }
+  followRevision(()=>data?.story_revision!=null?{storyId:data.scene.story_id,get:()=>data.story_revision,set:value=>{data.story_revision=value}}:null);
   const coreReview=installCoreReview({container:reviewBox,api,json,notice,refresh:reloadAfterReview});
   state.coreReview={dirty:coreReview.dirty,discard:coreReview.discard};
   let key=null,data=null,pending={},advanced=false,loading=false,rawText='',loadedSceneId=null,loadedMemoryId=null;
@@ -85,7 +87,7 @@ export function installMemoryTable({state,api,json,notice,refresh,loadBuffer}){
       const snapshot=data,captured=currentKey(),kind=select.value||null;kindBusy=true;draw();
       try{
         const story=await api(`/api/stories/${snapshot.scene.story_id}/memory-kind`,json('PUT',{claim_id:row.claim_id,kind,expected_revision:snapshot.story_revision,scene_id:snapshot.scene.id}));
-        snapshot.story_revision=story.revision;row.kind=kind;notice(t('memory.kind_saved'));
+        snapshot.story_revision=story.revision;announceRevision(snapshot.scene.story_id,story.revision);row.kind=kind;notice(t('memory.kind_saved'));
       }catch(error){
         notice(error.message,'error');
         if(currentKey()===captured&&!state.dirty){kindBusy=false;void load();return;}
@@ -95,7 +97,7 @@ export function installMemoryTable({state,api,json,notice,refresh,loadBuffer}){
   }
   function draw(){
     body.replaceChildren();if(!data){controls();return;}
-    const rows=data.rows.filter(row=>(!filter.value||row.category===filter.value)&&(!sceneFilter.value||row.source_scene_id===sceneFilter.value)&&`${row.text} ${row.source_title}`.toLocaleLowerCase('uk').includes(search.value.toLocaleLowerCase('uk')));
+    const rows=data.rows.filter(row=>(!filter.value||row.category===filter.value)&&(!sceneFilter.value||row.source_scene_id===sceneFilter.value)&&`${row.text} ${row.source_title} ${(row.locations||[]).join(' ')}`.toLocaleLowerCase('uk').includes(search.value.toLocaleLowerCase('uk')));
     counts(rows.length);
     if(!rows.length&&data.rows.length){const tr=node('tr'),td=node('td',msg("m_2d74a1418749"));td.colSpan=5;tr.append(td);body.append(tr);}
     for(const row of rows){
@@ -111,6 +113,8 @@ export function installMemoryTable({state,api,json,notice,refresh,loadBuffer}){
       };
       choice.append(check);content.append(node('p',live(()=>(row.text))));
       const proof=node('details');proof.append(node('summary',msg("m_a09205d5a71e")),node('p',live(()=>(row.quote||t("m_d657ca4e0613")))));for(const extra of Array.isArray(row.supporting_quotes)?row.supporting_quotes:[])proof.append(node('p',live(()=>(extra))));content.append(proof);
+      // MEMORY-LOCATIONS-S07: the record's locations, shown only.
+      if(row.locations?.length){const where=node('p',live(()=>t('memory.locations',{p0:row.locations.join('; ')})));where.className='hint memory-locations';content.append(where);}
       const kindCell=kindControl(row);
       [choice,content,category,source,kindCell].forEach((td,i)=>uiAttr(td,'data-label',()=>[msg("m_6cf9b3a4b307"),msg("m_461437b0662b"),msg("m_7f3e53d4d224"),msg("m_aca3cc594690"),msg("memory.kind")][i]));
       tr.append(choice,content,category,source,kindCell);body.append(tr);

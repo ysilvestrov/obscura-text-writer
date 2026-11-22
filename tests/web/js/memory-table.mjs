@@ -22,7 +22,7 @@ const state={scene:{id:'s',position:0,heads:{memory:'m'},revision:0},view:{scene
 let release,hold=false,fail=false,sent;
 const response={scene:state.scene,expected_revision:0,fingerprint:'hash',memory_id:'m',can_save:true,
   rows:[{claim_id:'HIDDEN_ID',text:'Факт <img>',quote:'Доказ',supporting_quotes:['Ще один','Третій'],category:'facts',category_label:'Факт',forward:true,source_scene:1,source_title:'Початок'},
-  {claim_id:'NO_SUPPORT',text:'Другий',quote:'Без додаткових',category:'facts',category_label:'Факт',forward:true,source_scene:1,source_title:'Початок'},
+  {claim_id:'NO_SUPPORT',text:'Другий',quote:'Без додаткових',locations:['Дім / кухня','Двір'],category:'facts',category_label:'Факт',forward:true,source_scene:1,source_title:'Початок'},
   {claim_id:'OTHER',text:'Інша сцена',quote:'Цитата',category:'timeline',category_label:'Хронологія',forward:true,source_scene:2,source_title:'Друга'},
   {claim_id:'UNKNOWN',text:'Невідоме джерело',quote:'Цитата',category:'facts',category_label:'Факт',forward:true,source_scene:null,source_title:'Попереднє джерело'}]};
 const api=async(url,options)=>{
@@ -47,6 +47,11 @@ const proofOf=row=>row.children[1].children[1];
 const paragraphs=proofOf(body.children[0]).children.filter(c=>c.tag==='p').map(c=>String(c.textContent));
 assert.deepEqual(paragraphs,['Доказ','Ще один','Третій'],'Supporting quotes follow the main quote');
 assert.deepEqual(proofOf(body.children[1]).children.filter(c=>c.tag==='p').map(c=>String(c.textContent)),['Без додаткових'],'A row without supporting_quotes renders exactly the main quote');
+// MEMORY-LOCATIONS-S07: a row names its locations under the proof; a row without them has no such line; search finds a path.
+assert.equal(String(body.children[1].children[1].children[2].textContent),'Локації: Дім / кухня; Двір');
+assert.equal(body.children[0].children[1].children.length,2);
+search.value='кухня';search.oninput();assert.deepEqual(body.children.map(row=>row.children[1].children[0].textContent),['Другий']);
+search.value='';search.oninput();
 
 assert.equal(JSON.stringify(panel).includes('HIDDEN_ID'),false,'Internal claim IDs are not visible DOM text');
 const check=body.children[0].children[0].children[0];

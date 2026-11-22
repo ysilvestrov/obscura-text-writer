@@ -7,6 +7,7 @@ import {createTextEditor} from './text-editor.js';
 import {state} from './editor.js';
 import {confirmDialog} from './dialogs.js';
 import {summaryRows} from './timeline-summaries.js';
+import {announceRevision,followRevision} from './story-revision.js';
 
 const FINISHED=new Set(['completed','failed','cancelled','needs_review','alternative']);
 let data=null,editing=null,storyId=null;
@@ -88,9 +89,10 @@ async function save(row){
   try{
     data=await api(`/api/stories/${state.storyId}/timeline-summaries/${encodeURIComponent(row.key)}`,
       json('PUT',{text:editing.text,expected_version_id:editing.versionId,expected_revision:data.story_revision}));
-    editing=null;notice(msg('summaries.saved'));draw();
+    announceRevision(state.storyId,data.story_revision);editing=null;notice(msg('summaries.saved'));draw();
   }catch(e){notice(diagnostic(e.message),'error')}  // the buffer stays in `editing`
 }
 
+followRevision(()=>data&&storyId===state.storyId?{storyId,get:()=>data.story_revision,set:value=>{data.story_revision=value}}:null);
 document.addEventListener('scene-selected',load);
 document.addEventListener('story-refreshed',load);

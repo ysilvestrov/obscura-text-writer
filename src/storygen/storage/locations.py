@@ -84,11 +84,19 @@ def dismiss_pair(db, story_id: str, a: str, b: str):
 
 def suggestions(db, story_id: str) -> list[tuple[str,str]]:
     """Pairs of unmerged cards that look alike and were not dismissed, each as (first created, second)."""
-    cards=[c for c in load_locations(db,story_id).values() if not c.merged_into]
+    every=load_locations(db,story_id);cards=[c for c in every.values() if not c.merged_into]
     dismissed={(r[0],r[1]) for r in db.execute('SELECT a,b FROM location_dismissals WHERE story_id=?',(story_id,))}
+    def ancestors(card):
+        seen=set()
+        while card.parent_id and card.parent_id not in seen and card.parent_id in every:
+            seen.add(card.parent_id);card=every[card.parent_id]
+        return seen
+    lineage={c.id:ancestors(c) for c in cards}
     found=[]
     for i,a in enumerate(cards):
         for b in cards[i+1:]:
+            # A place and a place inside it share words by construction; that is nesting, not a duplicate.
+            if a.id in lineage[b.id] or b.id in lineage[a.id]:continue
             if tuple(sorted((a.id,b.id))) not in dismissed and similar(a.path,b.path):found.append((a.id,b.id))
     return found
 
@@ -126,3 +134,35 @@ def backfill(db):
         data=json.loads(row['payload'])
         data['location_ids']=plan_location_ids(db,row['story_id'],data.get('beats',''))
         db.execute('UPDATE scenes SET payload=? WHERE id=?',(json.dumps(data,ensure_ascii=False),row['id']))
+
+
+def locations_view(repo, story_id: str) -> dict:
+    """MEMORY-LOCATIONS-S07: cards of a story with the active scenes that name each card (merged names count for the
+    target) and the open suggestions; the story revision guards every change."""
+    view=repo.context_view(story_id)
+    story=view.get_story(story_id);cards=view_locations(view)
+    merged={c.id:c.merged_into for c in cards.values()}
+    scenes={id:[] for id in cards}
+    for scene in sorted(view.list_scenes(story_id),key=lambda s:s.position):
+        for id in dict.fromkeys(canonical(merged,id) for id in scene.location_ids):
+            if id in scenes:scenes[id].append({'id':scene.id,'position':scene.position,'title':scene.title})
+    with repo.db.connection() as db:
+        pairs=suggestions(db,story_id)
+    return {'story_revision':story.revision,
+            'locations':[{'id':c.id,'path':c.path,'parent_id':c.parent_id,'merged_into':c.merged_into,
+                          'target_path':cards[canonical(merged,c.id)].path if c.merged_into else None,
+                          'description':c.description,'scenes':scenes[c.id]} for c in cards.values()],
+            'suggestions':[{'a':a,'b':b,'a_path':cards[a].path,'b_path':cards[b].path} for a,b in pairs]}
+
+
+def change_locations(repo, story_id: str, expected_revision: int, action) -> dict:
+    """Applies action(db) to the cards of a story under CAS on its revision, which moves on by one."""
+    from ..domain import RevisionConflict
+    with repo.db.connection() as db:
+        db.execute('BEGIN IMMEDIATE')
+        story=repo._active_story(db,story_id)
+        if story.revision!=expected_revision:
+            raise RevisionConflict('Твір уже змінено. Оновіть локації; зміну не збережено.')
+        action(db)
+        repo._save_story(db,story.model_copy(update={'revision':story.revision+1}))
+    return locations_view(repo,story_id)

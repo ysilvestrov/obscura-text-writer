@@ -314,6 +314,24 @@ def main():
             publish_summary(repo, story.id, block.key, ref.id, story.revision)
             return {'story_id': story.id, 'scene_id': scenes[21].id}
 
+        @app.post('/test-locations')
+        def locations_fixture():
+            # MEMORY-LOCATIONS-S07: two scenes with a typo look-alike («Квартира Джорджа» / «Квартира Джоржа») and a nested
+            # room; scene 1 has prose and a memory fact, so the memory table can change an entry type (neutral text).
+            from storygen.domain import SceneCreate, StoryCreate
+            from storygen.memory.journal import MemoryJournal, _add_event
+            story = repo.create_story(StoryCreate(title='Пристань'))
+            first = repo.create_scene(story.id, SceneCreate(title='Ранок', beats='Локація: Квартира Джорджа / вітальня', character_ids=[]))
+            repo.create_scene(story.id, SceneCreate(title='Вечір', beats='Локація: Квартира Джоржа, двір', character_ids=[]))
+            prose = repo.save_version(story.id, first.id, 'manual', 'Чайник закипів на плиті.', [])
+            repo.set_head(first.id, 'prose', prose.id, repo.get_scene(first.id).revision)
+            journal = MemoryJournal(schema_version=3, source_prose_ids=[prose.id],
+                                    events=[_add_event('facts', 'Чайник закипів', prose.id, 'Чайник закипів на плиті.', 0,
+                                                       location_ids=repo.get_scene(first.id).location_ids)])
+            memory = repo.save_version(story.id, first.id, 'memory', journal.model_dump_json(), [prose.id])
+            repo.set_head(first.id, 'memory', memory.id, repo.get_scene(first.id).revision)
+            return {'story_id': story.id, 'scene_id': first.id}
+
         @app.post('/test-memory-merge')
         def memory_merge_fixture():
             # MEMORY-MERGE-S04: part 1 — arc Z; part 2 — arcs A and B interleave, scene 4 is their meeting. Scenes 2 and 3
