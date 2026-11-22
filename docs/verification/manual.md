@@ -300,6 +300,11 @@ MODEL-005-S01, MODEL-005-S02. Автоматична частина — Playwrig
 
 MODEL-001-S02. Автоматична частина — Playwright `tests/web/browser/writer-variant.spec.mjs` (два cases: перемикач «Окрема модель для сцен рівня 0–1» відкриває власні поля, збереження пише `low_rating_variant` з лімітами, відновлення після reload, зняття перемикача зберігає `null`; модель варіанта без Uncensored отримує власний блок згоди для ролі письменника): `node frontend/node_modules/@playwright/test/cli.js test tests/web/browser/writer-variant.spec.mjs --config frontend/playwright.config.mjs`. Цей зв’язок не є доказом виконання; фактичний запуск фіксується окремо.
 
+<a id="openrouter-reasoning-browser"></a>
+## Поле Reasoning OpenRouter у браузері
+
+OPENROUTER-REASONING-S04. Автоматична частина — Playwright `tests/web/browser/openrouter-reasoning.spec.mjs` (роль планувальника з OpenRouter і збереженим `low`: поле видно й воно показує `low` до завантаження каталогу; перемикання на local ховає поле, а збереження прибирає `openrouter_reasoning_effort` з ролі). Запуск із кодом робочого дерева (тестовий сервер інакше імпортує editable-встановлення): `cd frontend; $env:PYTHONPATH='<worktree>\src'; npx playwright test ../tests/web/browser/openrouter-reasoning.spec.mjs`. Прогін 22.11.2026 на гілці `claude/openrouter-reasoning` у повному наборі: 475 passed, 6 skipped, 1 failed — `workspace-layout.spec.mjs` «full screen mode…», який окремо пройшов двічі на гілці й раз на main, тобто нестабільний і не пов'язаний зі зміною.
+
 <a id="scene-delete-browser"></a>
 ## Видалення сцени зі списку в браузері
 
