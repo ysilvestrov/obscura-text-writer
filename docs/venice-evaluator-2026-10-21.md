@@ -35,7 +35,7 @@ scene-запит: 17180 символів, приблизно 14594 вхідни�
 Перевірена конфігурація кандидата — звичайна Gemma: json_schema, max_output_tokens=6000,
 context_tokens=256000, max_input_chars=100000, temperature=0.1, timeout=180,
 Venice system prompt вимкнений. Модель не reasoning; опцію disable_thinking
-залишено false. Готовий UI JSON — config/evaluator.venice.gemma-4.ui.example.json;
+залишено false. Готовий UI JSON — config/evaluator.venice.glm-5-3-flash.ui.example.json (до 22.11.2026 — `gemma-4-uncensored`, яку Venice прибирає 01.12.2026);
 config/evaluator.venice.example.json — лише внутрішній config для CLI, без UI-wrapper.
 Налаштування живого твору не змінювалися. За результатом повної першої сцени
 нижче кандидат **не рекомендований як робочий оцінювач із поточним промптом**.

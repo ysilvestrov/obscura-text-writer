@@ -1,7 +1,7 @@
 {
   "config": {
     "provider": "venice",
-    "model": "gemma-4-uncensored",
+    "model": "glm-5-3-flash-uncensored",
     "api_key_env": "VENICE_API_KEY",
     "max_input_chars": 100000,
     "max_output_tokens": 6000,

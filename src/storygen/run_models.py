@@ -11,6 +11,19 @@ def merge_warnings(existing: str | None,messages: list[str]) -> str | None:
     return '\n'.join(dict.fromkeys(line for line in lines if line)) or None
 
 
+# The editor loop's status lines: why it stopped, or that the final edits were accepted (storage writes the latter).
+EDITOR_STOP_NAMES={'no_changes':'Редактор не запропонував нових змін','limit':'Досягнуто ліміту проходів','cycle':'Виявлено повтор попереднього тексту',
+    'pass_failed':'Цикл зупинено після невдалого проходу; показано результати успішних'}
+EDITS_ACCEPTED='Підсумкові правки прийнято.'
+
+
+def loop_status(warning: str | None,status: str) -> str | None:
+    """MODEL-RETIREMENT-S02: the editor loop's status line replaces the previous one; other warnings stay."""
+    statuses=tuple(EDITOR_STOP_NAMES.values())+(EDITS_ACCEPTED,)
+    kept=[line for line in (warning or '').splitlines() if not line.startswith(statuses)]
+    return merge_warnings('\n'.join(kept),[status])
+
+
 class RunRequest(DomainModel):
     story_id: str
     scene_id: str | None = None

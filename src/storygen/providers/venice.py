@@ -33,8 +33,11 @@ def model_options(client,repo=None):
 
 def validate_model(client,model_id,requires_schema,*,context_tokens=None,max_output_tokens=None,require_uncensored=True):
     spec=next((spec for id,spec in catalog_models(client) if id==model_id),None)
-    if spec is None or (require_uncensored and spec.get('uncensored') is not True):
-        raise VeniceModelUnavailable('Venice: модель не має uncensored=true або недоступна в каталозі.')
+    if spec is None:
+        # MODEL-RETIREMENT-S03: Venice remaps a removed model on its side only; here the role stops with a plain reason.
+        raise VeniceModelUnavailable(f'Venice: моделі «{model_id}» немає в каталозі — провайдер міг її прибрати. Виберіть іншу модель у налаштуваннях ролі.')
+    if require_uncensored and spec.get('uncensored') is not True:
+        raise VeniceModelUnavailable(f'Venice: модель «{model_id}» не має uncensored=true.')
     if requires_schema and spec.get('capabilities',{}).get('supportsResponseSchema') is not True:
         raise VeniceModelUnavailable('Venice: модель не підтримує JSON Schema. Змініть модель або режим відповіді.')
 

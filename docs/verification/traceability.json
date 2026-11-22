@@ -7792,6 +7792,61 @@
         "procedure": "docs/verification/manual.md#plan-preamble-panel",
         "reason": "Вигляд і поведінка панелі в «Письмо» перевіряються в браузері вручну."
       }
+    },
+    {
+      "id": "MODEL-RETIREMENT-S01",
+      "requirement": "MODEL-RETIREMENT",
+      "scope": "Дата й заміна з каталогу Venice і OpenRouter; некоректні поля — невідомо.",
+      "tests": [
+        "tests/providers/test_model_retirement.py::test_venice_notice_gives_the_removal_date_and_the_replacement",
+        "tests/providers/test_model_retirement.py::test_venice_notice_without_removes_at_uses_its_date_and_may_have_no_replacement",
+        "tests/providers/test_model_retirement.py::test_openrouter_expiration_date_has_no_replacement",
+        "tests/providers/test_model_retirement.py::test_missing_or_broken_venice_notice_is_unknown_not_invented",
+        "tests/providers/test_model_retirement.py::test_a_broken_replacement_drops_only_the_replacement",
+        "tests/providers/test_model_retirement.py::test_missing_or_broken_openrouter_date_is_unknown",
+        "tests/providers/test_model_retirement.py::test_local_models_have_no_retirement",
+        "tests/providers/test_model_retirement.py::test_discovery_returns_the_notice_with_the_catalog"
+      ]
+    },
+    {
+      "id": "MODEL-RETIREMENT-S02",
+      "requirement": "MODEL-RETIREMENT",
+      "scope": "Попередження запуску в усіх шляхах виконання, без блокування й без втрати інших попереджень.",
+      "tests": [
+        "tests/providers/test_model_retirement.py::test_warning_names_the_model_the_date_and_the_replacement",
+        "tests/providers/test_model_retirement.py::test_a_retiring_model_still_passes_the_catalog_check",
+        "tests/providers/test_model_retirement.py::test_the_gateway_remembers_the_retirement_of_the_model_it_called",
+        "tests/providers/test_model_retirement.py::test_server_texts_match_the_interface_catalog_so_english_can_translate_them",
+        "tests/generation/test_model_retirement_warnings.py::test_edit_loop_warns_about_the_editor_model",
+        "tests/generation/test_model_retirement_warnings.py::test_scene_pipeline_keeps_the_writer_warning_after_the_editor_finishes",
+        "tests/generation/test_model_retirement_warnings.py::test_the_next_scene_replaces_the_stop_line_and_keeps_the_retirement_warning",
+        "tests/generation/test_model_retirement_warnings.py::test_a_model_without_a_notice_adds_no_warning",
+        "tests/generation/test_model_retirement_warnings.py::test_impact_review_warns_about_the_planner_model",
+        "tests/generation/test_model_retirement_warnings.py::test_impact_review_in_parts_warns_about_the_planner_model",
+        "tests/generation/test_model_retirement_warnings.py::test_book_review_call_carries_the_warning"
+      ]
+    },
+    {
+      "id": "MODEL-RETIREMENT-S03",
+      "requirement": "MODEL-RETIREMENT",
+      "scope": "Модель, якої немає в каталозі Venice, зупиняє виклик зрозумілою помилкою.",
+      "tests": [
+        "tests/providers/test_model_retirement.py::test_a_model_missing_from_the_venice_catalog_says_it_may_have_been_removed",
+        "tests/providers/test_model_retirement.py::test_a_censored_model_keeps_its_own_message"
+      ]
+    },
+    {
+      "id": "MODEL-RETIREMENT-S04",
+      "requirement": "MODEL-RETIREMENT",
+      "scope": "Попередження збереження ролі, позначка в списку моделей і поле MCP.",
+      "tests": [
+        "tests/web/test_model_retirement_save.py::test_saving_a_retiring_model_succeeds_with_a_warning",
+        "tests/web/test_model_retirement_save.py::test_saving_a_model_without_a_notice_has_no_warning_field",
+        "tests/web/test_model_retirement_save.py::test_catalog_trouble_saves_without_a_warning",
+        "tests/web/test_model_picker.py::test_model_picker_marks_a_retiring_model",
+        "tests/mcp/test_bridge_settings.py::test_model_list_carries_the_provider_retirement_notice",
+        "tests/providers/test_model_retirement.py::test_role_check_collects_each_retiring_part_once"
+      ]
     }
   ]
 }

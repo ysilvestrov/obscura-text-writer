@@ -271,3 +271,17 @@ def test_mcp_writing_settings_carry_the_sample(tmp_path):
     changed = ok(call(server, 'update_settings', {'story_id': created.id, 'section': 'writing', 'expected_fingerprint': writing['fingerprint'],
                                                   'fields': {'tone_sample': 'Short, dry sentences.'}}))
     assert changed['settings']['tone_sample'] == 'Short, dry sentences.' and changed['settings']['tone'] == writing['tone']
+
+
+@pytest.mark.req('MODEL-RETIREMENT')
+def test_model_list_carries_the_provider_retirement_notice(tmp_path, monkeypatch):
+    from datetime import date
+    from storygen.providers.models import ModelRetirement
+    app, http = obscura(tmp_path)
+    created = story(app)
+    put_role(http, created.id, 'writer')
+    monkeypatch.setattr('storygen.web.routes_settings.discover_models', lambda settings, http_client=None, *, repo=None: [
+        ModelOption(id='gemma-test', retirement=ModelRetirement(date=date(2026, 12, 1), replacement='glm-test')), ModelOption(id='glm-test')])
+    data = ok(call(build_server(http), 'get_settings', {'story_id': created.id, 'models_for_role': 'writer'}))
+    assert {item['id']: item['retirement'] for item in data['models']} == {
+        'gemma-test': {'date': '2026-12-01', 'replacement': 'glm-test'}, 'glm-test': None}

@@ -745,7 +745,7 @@ def build_server(http: httpx.Client | None, client_name: str | None = None, *, c
             if models_query:
                 models = [item for item in models if models_query.lower() in str(item.get('id', '')).lower()]
             models.sort(key=lambda item: str(item.get('id', '')))
-            result['models'] = [{key: item.get(key) for key in ('id', 'context_tokens', 'max_output_tokens', 'tariff', 'uncensored')}
+            result['models'] = [{key: item.get(key) for key in ('id', 'context_tokens', 'max_output_tokens', 'tariff', 'uncensored', 'retirement')}
                                 for item in models[:MODELS_LIMIT]]
             result['models_total'] = len(models)
         return result

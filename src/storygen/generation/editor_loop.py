@@ -174,8 +174,7 @@ def initialize(worker,run):
         worker._save(current)
 
 
-STOP_NAMES={'no_changes':'Редактор не запропонував нових змін','limit':'Досягнуто ліміту проходів','cycle':'Виявлено повтор попереднього тексту',
-    'pass_failed':'Цикл зупинено після невдалого проходу; показано результати успішних'}
+from ..run_models import EDITOR_STOP_NAMES as STOP_NAMES
 
 
 def stop_after_failure(worker,run,attempt):
@@ -239,14 +238,18 @@ def finish(worker,run,reason):
             if usable and pause:current.state='paused'
             advance=bool(usable)
             if not usable:current.error='Редактор не запропонував змін. Немає актуальної прийнятої прози з цим текстом; пам’ять не запускалася.'
-        current.warning=STOP_NAMES[reason]+f". Спроб: {data['attempt_count']} із {current.request.edit_pass_limit}."+(' Перегляньте спільні правки.' if summary else ' Сумарних змін немає; прийняття недоступне.')
+        stop=STOP_NAMES[reason]+f". Спроб: {data['attempt_count']} із {current.request.edit_pass_limit}."+(' Перегляньте спільні правки.' if summary else ' Сумарних змін немає; прийняття недоступне.')
         if data.get('no_change_prose_version_id') and current.state!='cancelled':
-            current.warning=STOP_NAMES['no_changes']+f". Спроб: {data['attempt_count']} із {current.request.edit_pass_limit}. Прозу збережено автоматично без змін."
+            stop=STOP_NAMES['no_changes']+f". Спроб: {data['attempt_count']} із {current.request.edit_pass_limit}. Прозу збережено автоматично без змін."
         if reason=='pass_failed':
             count=sum(a.state=='completed' for a in model_attempts(repo,current))
-            current.warning+=f" Успішних проходів: {count}. Причина зупинки: {data.get('failure_message') or 'Невдалий прохід редактора'}."
+            stop+=f" Успішних проходів: {count}. Причина зупинки: {data.get('failure_message') or 'Невдалий прохід редактора'}."
         if broken and not summary:
-            current.warning+=' '+' '.join(broken)
+            stop+=' '+' '.join(broken)
+        # The stop line of this loop replaces the previous loop's (one scene of «remaining» at a time); warnings of other
+        # stages and passes, such as a retiring model, stay.
+        from .run_warnings import loop_status
+        current.warning=loop_status(current.warning,stop)
         if advance:current.cursor+=1
         worker._save(current)
         worker.event(run.id,'state',{'state':current.state,'warning':current.warning,'error':current.error})
@@ -301,6 +304,10 @@ def _execute(worker,id):
         with worker.condition:
             current=worker.get_run(id)
             progress(current)['attempt_count']=len(model_attempts(repo,current))
+            # MODEL-RETIREMENT-S02: each pass carries its model's retirement notice; every branch below saves the run.
+            from ..run_models import merge_warnings
+            from .run_warnings import retirement_warnings
+            if retirement_warnings(completed):current.warning=merge_warnings(current.warning,retirement_warnings(completed))
             worker.event(id,'stage_finished',dict(attempt_id=completed.id,state=completed.state,usage=completed.usage,finish_reason=completed.finish_reason))
             if completed.state!='completed':
                 if worker.cancel_event.is_set() or current.state in {'cancelled','cancellation_requested'}:

@@ -1,21 +1,21 @@
 # Стан перевірки проєкту
 
-**ПЕРЕВІРКА ПРОЙШЛА** — свідчення конкретного запуску, не поточного довільного стану.
+**ПЕРЕВІРКА НЕ ПРОЙШЛА** — свідчення конкретного запуску, не поточного довільного стану.
 
-- Початок (UTC): 2026-11-22T12:45:11.394113+00:00
-- Завершення (UTC): 2026-11-22T12:57:13.384937+00:00
-- Базовий commit: `20870e3ab308168c5915024e587112770ba7fe83`
+- Початок (UTC): 2026-11-22T13:49:00.392093+00:00
+- Завершення (UTC): 2026-11-22T14:01:54.551862+00:00
+- Базовий commit: `0d4b5cd17a1c105ba049d14c853be042d422f14f`
 - Незакомічені зміни під час перевірки: `false`
-- SHA-256 вихідного знімка: `45908b5cbac9a97ed1d05d3d5d12a26b1fae6eef6f9d7806ceef79d86bdef05a`
+- SHA-256 вихідного знімка: `3db611e78d8fce218ffb3e3c804314a9345199cf9d0aebb1b2c82ad1ad327bd8`
 - Зміна знімка під час прогону: `false`
-- Exit code: `0`
-- Фактичні testcase результати JUnit: passed: 4341 · failed: 0 · errors: 0 · skipped: 3
-- Тривалість: 721.98 с
+- Exit code: `1`
+- Фактичні testcase результати JUnit: passed: 4376 · failed: 3 · errors: 0 · skipped: 3
+- Тривалість: 774.17 с
 
 Точний argv (JSON, не shell-команда):
 
 ```json
-["C:\\tmp\\verify-review-buttons\\.venv\\Scripts\\python.exe", "-m", "pytest", "-q", "--junitxml=C:\\tmp\\verify-review-buttons\\artifacts\\verification-fpozk1_e\\junit.xml", "--basetemp=C:\\tmp\\verify-review-buttons\\artifacts\\verification-fpozk1_e\\test-tmp"]
+["C:\\tmp\\p39v\\.venv\\Scripts\\python.exe", "-m", "pytest", "-q", "--junitxml=C:\\tmp\\p39v\\artifacts\\verification-bfh9iqgd\\junit.xml", "--basetemp=C:\\tmp\\p39v\\artifacts\\verification-bfh9iqgd\\test-tmp"]
 ```
 
 Результат стосується лише наведеної команди й вихідного знімка. Якщо в argv зазначено окремі файли або фільтри, це часткова перевірка. Збір (collection) не є виконанням; skipped не зараховано до passed. Відсутній або непридатний XML позначається непідтвердженим. Після зміни вихідних файлів звіт історичний. Власний STATUS і artifacts виключено зі знімка; початкова ревізія може мати dirty=true, оскільки звіт створюється до коміту.

@@ -97,6 +97,8 @@ def execute_stage(
     else:
         known=frozenset()
     broken=broken_text.structured_broken(text,known) if guard==1 else []
+    from .run_warnings import stage_retirement
+    stage_retirement(attempt,gateway,context.settings.provider.model)
     accounting=getattr(gateway,'accounting',None)
     if accounting:
         attempt.context['accounting']=accounting.result

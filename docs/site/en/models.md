@@ -33,10 +33,15 @@ Badges come only from catalog fields, never from the model name:
 - **Uncensored** — the provider explicitly marked the model as uncensored.
 - **TEE**, **Private**, **Anonymous** — the Venice privacy level. "Privacy unknown" means the catalog did not report the field, as with OpenRouter.
 - **JSON Schema** — the catalog says the model supports structured output by schema.
+- **Retiring DD.MM.YYYY** — the provider announced it removes the model on that day. The chosen model's line shows the date and the replacement if the provider named one (Venice does, OpenRouter does not).
 
 Filters: search by name or ID, **Uncensored only**, **Privacy** (default "Private and above"; you can choose "any" or "TEE only") and **JSON Schema**. For providers that do not report privacy (OpenRouter, local) the privacy filter is inactive and models are shown with "privacy unknown". A missing field always means "unknown", never "yes" or "no".
 
 Venice lists all online models, including those without Uncensored, and they can be chosen. An ID that is not in the catalog can be typed manually; it is kept and marked "not in catalog".
+
+### A model the provider is retiring
+
+Obscura never changes the model by itself. A model marked "Retiring" can be chosen and saved, but saving the settings shows a warning with the date and the replacement instead of the usual message, and every run on that model adds the same warning to its status. Once the provider removes the model, a Venice run stops before any paid request with a message that the model is not in the catalog. Pick another model in the role settings beforehand.
 
 ### JSON Schema mode
 
