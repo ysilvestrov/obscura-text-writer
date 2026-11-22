@@ -8,12 +8,13 @@ import {mountHorizonControls} from './horizon-controls.js';
 import {mountModelPicker,pickerMessage} from './model-picker.js';
 import {mountModelPolicy} from './model-policy.js';
 import {mountProviderKey,keyName} from './provider-key.js';
+import {mountOpenrouterReasoning,providerReasoning} from './openrouter-reasoning.js';
 import {mountWriterVariant} from './writer-variant.js';
 const root=document.querySelector('[data-story-id]'),id=root.dataset.storyId;
 const names={get planner(){return t("m_38c94c25c4af")},get writer(){return t("m_75515c07207a")},get editor(){return t("m_19e99ed8f039")},get memory(){return t("m_aa1cfb48cc30")}};
 const defaults={provider:{provider:'local',base_url:'http://localhost:1235/v1',model:'',timeout:3600,key_env:'OPENROUTER_API_KEY',include_usage:false,response_mode:'prompt_json'},context_tokens:8192,max_output_tokens:2048,max_input_chars:80000,temperature:0.7,prompt_version_id:null,prepare_prompt_version_id:null};
 let snapshot,profileBaseline;
-const providerNames=['provider','base_url','model','timeout','key_env','response_mode','include_usage','local_disable_thinking','venice_include_system_prompt','venice_disable_thinking','venice_reasoning_effort'];
+const providerNames=['provider','base_url','model','timeout','key_env','response_mode','include_usage','local_disable_thinking','venice_include_system_prompt','venice_disable_thinking','venice_reasoning_effort','openrouter_reasoning_effort'];
 const roleScope=(data,role)=>({settings:data.roles[role]||null,prompt:data.prompts[role]||'',prepare:role==='planner'?data.prepare_prompt:null,contract:data.prompt_contracts?.[role]||null});
 async function checkScope(role,baseline,shared=false){
  const latest=await api(`/api/stories/${id}/settings`);
@@ -44,8 +45,10 @@ async function load(onlyRole=null){
     form.elements.venice_disable_thinking.onchange=updateEffort;updateEffort();
     uiInsertHTML(form,'beforeend','<label class="local-options"><input type="checkbox" name="local_disable_thinking"> <span data-i18n="m_d11a85d919fd">Вимкнути thinking</span> (reasoning_effort=none)</label>');
     form.elements.local_disable_thinking.checked=!!config.provider.local_disable_thinking;
+    // OPENROUTER-REASONING: choices come from the model's catalog row (openrouter-reasoning.js).
+    uiInsertHTML(form,'beforeend','<fieldset class="openrouter-options"><legend>OpenRouter</legend><label>Reasoning<select name="openrouter_reasoning_effort"></select></label><p class="settings-hint"><span data-i18n="openrouter.reasoning.hint">Варіанти беруться зі списку моделей OpenRouter. Вимкнений або знижений reasoning лишає більше вихідного ліміту на текст.</span></p></fieldset>');
     const classification=role==='editor'?mountClassification(form,config.classification):null;
-    const vendorVisibility=()=>{form.querySelector('.venice-options').hidden=form.elements.provider.value!=='venice';form.querySelector('.local-options').hidden=form.elements.provider.value!=='local'};
+    const vendorVisibility=()=>{form.querySelector('.venice-options').hidden=form.elements.provider.value!=='venice';form.querySelector('.local-options').hidden=form.elements.provider.value!=='local';form.querySelector('.openrouter-options').hidden=form.elements.provider.value!=='openrouter'};
     uiInsertHTML(form,'beforeend',"<label><input type=\"checkbox\" name=\"shared_provider\"> <span data-i18n=\"m_eebf11e6a0f9\">Застосувати цю модель та її підключення до всіх 4 ролей</span></label><p><span data-i18n=\"m_326a237b045f\">Промпти, режими та ліміти інших ролей зберігаються.</span></p>");
     const save=document.createElement('button');save.type='submit';save.className='scope-submit';uiText(save,"textContent",()=>(t("m_32c3e22963bc")));form.append(save);
     uiText(form.querySelector('h2'),"textContent",()=>(name));
@@ -68,15 +71,17 @@ async function load(onlyRole=null){
     upgradeInput.onchange=updateContract;
     form.elements.prompt_text.addEventListener('input',updateContract);updateContract();
     if(role==='planner'){const prepareAssignment=document.createElement('label');const input=document.createElement('input');input.type='checkbox';input.name='confirm_prepare_prompt_contract';prepareAssignment.append(input,caption("m_083894cf6717"));form.elements.prepare_prompt_text.parentElement.after(prepareAssignment)}
-    form.applyProvider=value=>{config.provider=structuredClone(value);for(const key of ['provider','base_url','model','timeout','key_env','response_mode'])form.elements[key].value=value[key];for(const key of ['include_usage','local_disable_thinking','venice_include_system_prompt','venice_disable_thinking'])form.elements[key].checked=value[key]||false;form.elements.venice_reasoning_effort.value=value.venice_reasoning_effort||'';updateEffort();vendorVisibility();catalog.clear();form.providerKey?.refresh()};
+    form.applyProvider=value=>{config.provider=structuredClone(value);for(const key of ['provider','base_url','model','timeout','key_env','response_mode'])form.elements[key].value=value[key];for(const key of ['include_usage','local_disable_thinking','venice_include_system_prompt','venice_disable_thinking'])form.elements[key].checked=value[key]||false;form.elements.venice_reasoning_effort.value=value.venice_reasoning_effort||'';updateEffort();vendorVisibility();catalog.clear();reasoning.write(value.openrouter_reasoning_effort);form.providerKey?.refresh()};
     if(role==='editor'){
       const updateReview=()=>{const manual=form.elements.edit_mode.value==='diff';form.elements.edit_review.disabled=manual;form.elements.edit_review.closest('label').hidden=form.elements.edit_mode.value!=='patches';if(manual)form.elements.edit_review.value='review'};
       const previous=form.elements.edit_mode.onchange;form.elements.edit_mode.onchange=()=>{previous?.();updateReview()};updateReview();
     }
     vendorVisibility();
     form.elements.provider.onchange=()=>{const selected=form.elements.provider.value;form.elements.base_url.value={local:'http://localhost:1235/v1',openrouter:'https://openrouter.ai/api/v1',venice:'https://api.venice.ai/api/v1'}[selected];form.elements.timeout.value=selected==='local'?3600:180;form.elements.key_env.value=selected==='venice'?'VENICE_API_KEY':'OPENROUTER_API_KEY';vendorVisibility()};
-    const provider=()=>({...config.provider,provider:form.elements.provider.value,key_env:keyName(form.elements.key_env.value)||null,local_disable_thinking:form.elements.local_disable_thinking.checked,venice_include_system_prompt:form.elements.venice_include_system_prompt.checked,venice_disable_thinking:form.elements.venice_disable_thinking.checked,venice_reasoning_effort:form.elements.venice_reasoning_effort.value||null,model:form.elements.model.value||'discovery-only',base_url:form.elements.base_url.value,timeout:form.elements.timeout.value===''?null:Number(form.elements.timeout.value),response_mode:form.elements.response_mode.value,include_usage:form.elements.include_usage.checked});
+    const provider=()=>({...config.provider,provider:form.elements.provider.value,key_env:keyName(form.elements.key_env.value)||null,local_disable_thinking:form.elements.local_disable_thinking.checked,venice_include_system_prompt:form.elements.venice_include_system_prompt.checked,venice_disable_thinking:form.elements.venice_disable_thinking.checked,venice_reasoning_effort:form.elements.venice_reasoning_effort.value||null,openrouter_reasoning_effort:providerReasoning(form.elements.provider.value,form.elements.openrouter_reasoning_effort.value),model:form.elements.model.value||'discovery-only',base_url:form.elements.base_url.value,timeout:form.elements.timeout.value===''?null:Number(form.elements.timeout.value),response_mode:form.elements.response_mode.value,include_usage:form.elements.include_usage.checked});
     const catalog=mountModelPicker({host:form.querySelector('.model-picker'),modelInput:form.elements.model,providerInput:form.elements.provider,baseUrlInput:form.elements.base_url,responseModeInput:form.elements.response_mode,limitInputs:{context_tokens:form.elements.context_tokens,max_output_tokens:form.elements.max_output_tokens}});
+    const reasoning=mountOpenrouterReasoning({select:form.elements.openrouter_reasoning_effort,picker:catalog,modelInput:form.elements.model});
+    reasoning.write(config.provider.openrouter_reasoning_effort);
     // MODEL-003/MODEL-004: consent and refusal mark sit under the chosen model and travel with the picker in the layout.
     const policyHost=document.createElement('div');form.querySelector('.model-picker').append(policyHost);
     mountModelPolicy({host:policyHost,role,modelInput:form.elements.model,providerInput:form.elements.provider,baseUrlInput:form.elements.base_url,picker:catalog});

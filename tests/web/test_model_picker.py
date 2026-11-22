@@ -15,3 +15,10 @@ def test_model_picker_marks_a_retiring_model():
     root=Path(__file__).resolve().parents[2]
     result=subprocess.run(['node',str(root/'tests/web/js/model_retirement.mjs'),str(root)],capture_output=True,encoding='utf-8',timeout=20)
     assert result.returncode==0,result.stderr
+
+
+@pytest.mark.req('OPENROUTER-REASONING')
+def test_openrouter_reasoning_choices_follow_the_model():
+    root=Path(__file__).resolve().parents[2]
+    result=subprocess.run(['node',str(root/'tests/web/js/openrouter_reasoning.mjs'),str(root)],capture_output=True,encoding='utf-8',timeout=20)
+    assert result.returncode==0,result.stderr
