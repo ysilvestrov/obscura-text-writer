@@ -25,7 +25,7 @@ The chat gets twenty-eight tools:
 - **new signature** in the shared author and pen-name directory;
 - **cover** from a file on your computer;
 - **text cover** from the publication card in one of four palettes — when the chat has no access to files, such as Claude Desktop from the Microsoft Store build;
-- **book export** to FB2, EPUB, PDF, MD or TXT: the chat gives a link to the finished file;
+- **book export** to FB2, EPUB, PDF, MD, TXT, DOCX or RTF: the chat gives a link to the finished file;
 - **story settings**: reading the writing profile, [role models](models.md), key state and presets, and on request the prompts and the provider's model list;
 - **settings changes**: chosen fields of the writing profile or of one role, over what the chat has read;
 - **role preset**: a preview and, with your consent in the chat, applying a saved preset;
@@ -130,7 +130,7 @@ Skills are ready-made instructions for Claude that lead the conversation step by
 - `start-story` — from an idea to a story with a plan and character cards;
 - `series-bible` — a world bible for a cycle of books: articles on magic, organisations, geography, chronology;
 - `draft-scene` — a scene stage by stage: brief, draft, edit, memory; in "Obscura writes" mode, runs of its models;
-- `publish` — the publication card, a text cover and export to FB2, EPUB or PDF;
+- `publish` — the publication card, a text cover and export to FB2, EPUB, PDF or a DOCX manuscript;
 - `setup-models` — models for the four roles by genre and budget, checked against the provider's list.
 
 **Claude Code.** The “Connect Claude Code” button in the library installs the skills together with the bridge (see [The button in the library](#the-button-in-the-library)). Obscura copies them into the stories folder, under `claude\marketplace`, so an Obscura update does not break them. Do not put your own files in that folder: a folder without Obscura's marker is left unchanged, and Obscura shows its path.

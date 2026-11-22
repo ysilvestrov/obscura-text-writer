@@ -9,15 +9,17 @@ from ..publication.book import capture,EXPORTER,RATING_UNSET_EXPORT
 from ..storage.files import StorageCorruption
 from ..markdown_document import to_plain_text,escape_plain_markdown
 
-FORMATS={'md','txt','fb2','epub','pdf'}
+FORMATS={'md','txt','fb2','epub','pdf','docx','rtf'}
 
 
-def export_story(repo,story_id: str,format: Literal['md','txt','fb2','epub','pdf'],allow_incomplete: bool = False) -> Path:
-    if format not in FORMATS:raise ValueError('Доступні MD, TXT, FB2, EPUB і PDF')
+def export_story(repo,story_id: str,format: Literal['md','txt','fb2','epub','pdf','docx','rtf'],allow_incomplete: bool = False) -> Path:
+    if format not in FORMATS:raise ValueError('Доступні MD, TXT, FB2, EPUB, PDF, DOCX і RTF')
     book=capture(repo,story_id,format,allow_incomplete)
-    if format in {'fb2','epub','pdf'}:
+    if format in {'fb2','epub','pdf','docx','rtf'}:
         if format=='fb2':from ..publication.fb2 import render
         elif format=='pdf':from ..publication.pdf import render
+        elif format=='docx':from ..publication.docx import render
+        elif format=='rtf':from ..publication.rtf import render
         else:from ..publication.epub import render
         content=render(book)
     else:
@@ -41,11 +43,16 @@ def export_story(repo,story_id: str,format: Literal['md','txt','fb2','epub','pdf
         'warnings':list(book.warnings)+([RATING_UNSET_EXPORT] if book.age_rating is None else []),
         'scenes':[c.entry for c in book.chapters],'word_count':sum(c.entry['word_count'] for c in book.chapters),
         'metadata':book.snapshot.publication.model_dump(mode='json'),'exporter':EXPORTER,
-        'validation':{'fb2':'bundled XSD','epub':'local structure','md':'plain text','txt':'plain text','pdf':'Platypus layout + font coverage'}[format],
+        'validation':{'fb2':'bundled XSD','epub':'local structure','md':'plain text','txt':'plain text','pdf':'Platypus layout + font coverage',
+            'docx':'OOXML structure + scene bookmarks','rtf':'RTF 1.9 text'}[format],
         'output_file':name,'output_sha256':hashlib.sha256(content).hexdigest()}
     if format=='pdf':
         from ..publication.pdf import format_details
         manifest['format_details']=format_details()
+    elif format in {'docx','rtf'}:
+        # EXPORT-DOCX: the manuscript layout the file was built with.
+        from ..publication.docx import PROFILE
+        manifest['format_details']={'profile':PROFILE}
     repo.files.write(relative,content)
     repo.files.write(f'stories/{story_id}/exports/{book.export_id}.manifest.json',json.dumps(manifest,ensure_ascii=False,indent=2).encode('utf-8'))
     return repo.files.resolve(relative)
@@ -111,7 +118,7 @@ def download_name(manifest,export_id,format,tz=None):
 def export_download(repo,story_id,name):
     """(verified bytes, download file name) of an export file or its manifest."""
     repo.get_story(story_id)
-    match=re.fullmatch(r'([0-9a-f]{32})\.(md|txt|fb2|epub|pdf|manifest\.json)',name)
+    match=re.fullmatch(r'([0-9a-f]{32})\.(md|txt|fb2|epub|pdf|docx|rtf|manifest\.json)',name)
     if not match:raise KeyError('Немає експорту')
     export_id,extension=match.groups();base=f'stories/{story_id}/exports/'
     manifest_path=repo.files.resolve(base+export_id+'.manifest.json')

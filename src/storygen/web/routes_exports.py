@@ -13,7 +13,7 @@ router=APIRouter()
 
 
 class ExportRequest(DomainModel):
-    format: Literal['md','txt','fb2','epub','pdf'] = 'md'
+    format: Literal['md','txt','fb2','epub','pdf','docx','rtf'] = 'md'
     allow_incomplete: bool = False
 
 
@@ -27,7 +27,8 @@ def export(id: str,body: ExportRequest,request: Request):
 def download(id: str,name: str,request: Request):
     content,download=export_download(request.app.state.repo,id,name)
     extension=name.rsplit('.',1)[-1]
-    mime={'pdf':'application/pdf','epub':'application/epub+zip','fb2':'application/x-fictionbook+xml','json':'application/json','md':'text/markdown','txt':'text/plain'}[extension]
+    mime={'pdf':'application/pdf','epub':'application/epub+zip','fb2':'application/x-fictionbook+xml','json':'application/json','md':'text/markdown','txt':'text/plain',
+        'docx':'application/vnd.openxmlformats-officedocument.wordprocessingml.document','rtf':'application/rtf'}[extension]
     disposition=f'attachment; filename="{name}"'
     if extension!='json':
         # EXPORT-001-S07: the readable name (authors, title, date) in filename*; the technical name stays the ASCII fallback.

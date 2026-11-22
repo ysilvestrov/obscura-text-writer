@@ -91,7 +91,7 @@ New memory of such a flashback, or a change of its time or checkbox, makes the b
 
 ## Export
 
-In book files parts become higher-level sections: in Markdown a `##` heading with scenes under `###`; in TXT a separate line before the first scene of the part; in FB2 and EPUB nested sections and table of contents; in PDF a page for each part and two bookmark levels. An untitled part is exported as “Part 2”. Arcs are not shown in the export. See [Publication and export](publication.md) for more.
+In book files parts become higher-level sections: in Markdown a `##` heading with scenes under `###`; in TXT a separate line before the first scene of the part; in FB2 and EPUB nested sections and table of contents; in PDF a page for each part and two bookmark levels; in DOCX and RTF a Heading 1 on a new page above Heading 2 scenes. An untitled part is exported as “Part 2”. Arcs are not shown in the export. See [Publication and export](publication.md) for more.
 
 ## In a build without parts and arcs
 

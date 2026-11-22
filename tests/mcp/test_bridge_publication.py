@@ -120,10 +120,20 @@ def test_export_of_unfinished_story_needs_permission(tmp_path):
     assert data['complete'] is False and data['warnings']
 
 
+def test_export_book_writes_docx_and_rtf_manuscripts(tmp_path):
+    app, http = obscura(tmp_path)
+    story = written_story(app, http)
+    server = build_server(http)
+    for format in ('docx', 'rtf'):
+        data = ok(call(server, 'export_book', {'story_id': story.id, 'format': format}))
+        assert data['format'] == format and data['download_url'].endswith('.' + format)
+        assert http.get(data['download_url'].removeprefix(BASE)).status_code == 200
+
+
 @pytest.mark.req('MCP-BRIDGE')
 def test_export_format_is_checked_before_request():
     seen = []
-    result = call(_recording_server(seen), 'export_book', {'story_id': 'S1', 'format': 'docx'})
+    result = call(_recording_server(seen), 'export_book', {'story_id': 'S1', 'format': 'odt'})
     assert result.is_error and seen == []
 
 

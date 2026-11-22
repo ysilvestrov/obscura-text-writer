@@ -39,7 +39,7 @@ CHAT_WRITES = 'Твір у режимі «пише чат»: напишіть т
 MEMORY_APPROVAL = 'Попередня пам’ять потребує вашого підтвердження в Obscura: відкрийте сцену й підтвердьте використання пам’яті'
 LANGUAGES = ('uk', 'en')
 PUBLICATION_FIELDS = tuple(PublicationData.model_fields)
-EXPORT_FORMATS = ('fb2', 'epub', 'pdf', 'md', 'txt')
+EXPORT_FORMATS = ('fb2', 'epub', 'pdf', 'md', 'txt', 'docx', 'rtf')
 COVER_EXTENSIONS = ('.png', '.jpg', '.jpeg')
 COVER_MAX_BYTES = 10 * 1024 * 1024
 COVER_PALETTES = ('ink', 'paper', 'wine', 'forest')
@@ -670,8 +670,9 @@ def build_server(http: httpx.Client | None, client_name: str | None = None, *, c
 
     @server.tool()
     def export_book(story_id: str, format: str, allow_incomplete: bool = False) -> dict[str, Any]:
-        """Експортує книгу (fb2, epub, pdf, md чи txt) з картки публікації й затвердженої прози; повертає посилання на файл.
-        Незавершений твір (сцени без прози) експортується лише з allow_incomplete=true. FB2 потребує автора й жанру в картці."""
+        """Експортує книгу (fb2, epub, pdf, md, txt, docx чи rtf) з картки публікації й затвердженої прози; повертає посилання на файл.
+        Незавершений твір (сцени без прози) експортується лише з allow_incomplete=true. FB2 потребує автора й жанру в картці.
+        docx і rtf — рукопис для редактора (A4, сцени з нової сторінки); docx містить приховані мітки сцен для імпорту редакції."""
         identifier(story_id)
         if format not in EXPORT_FORMATS:
             raise ToolError(f'format: одне з {", ".join(EXPORT_FORMATS)}')
