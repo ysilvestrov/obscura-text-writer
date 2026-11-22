@@ -1,8 +1,8 @@
 # Reasoning для ролей з провайдером OpenRouter
 
 Дата: 2026-11-22
-Статус: чернетка
-Spec-review: —
+Статус: чекає на затвердження
+Spec-review: codex/gpt-6.1-sol @ d4f1217 (author: claude) — 4 findings: 4 fixed, 0 rejected
 
 ## Для власника
 
@@ -120,7 +120,7 @@ Spec-review: —
 Його викликає `generation_request` для `provider == 'openrouter'`. `evaluation_request` не змінюється. `sdk_arguments` уже переносить `reasoning` в `extra_body`.
 
 **Каталог.**
-- `ModelOption.reasoning: ReasoningCapability | None` (`mandatory: bool`, `efforts: list[str] | None`, `default_effort: str | None`).
+- `ModelOption.reasoning: ReasoningCapability | None` (`mandatory: bool`, `default_enabled: bool | None`, `efforts: list[str] | None`, `default_effort: str | None`).
 - `catalog.model_option` заповнює його з об'єкта `reasoning` рядка OpenRouter. Відсутній `supported_efforts` → `efforts = []` (рівень вибрати не можна). `null` → `None` (усі рівні). Невідомі значення відкидаються.
 - Для Venice і local `reasoning = None`.
 
@@ -129,6 +129,7 @@ Spec-review: —
 - варіанти: «за замовчуванням» завжди; «вимкнено», якщо модель не `mandatory`; рівні з `efforts` (усі, якщо `None`);
 - без завантаженого списку моделей — «за замовчуванням» і збережене значення;
 - значення, якого модель не дозволяє, показується з позначкою «модель не підтримує», а не мовчки скидається;
+- обидва збирачі payload (`settings.js` і `settings-connection.js`, які зараз переносять поля через `...config.provider` / `...original`) явно ставлять `openrouter_reasoning_effort: null`, коли провайдер не OpenRouter: інакше перемикання OpenRouter → Venice зі збереженим `low` дасть payload, який сервер відхилить;
 - `web/app.py` додає поле в `allowed`.
 
 **MCP** (`mcp/bridge.py`):
@@ -137,8 +138,11 @@ Spec-review: —
 - зміна провайдера з OpenRouter на інший скидає поле так само, як `key_env`.
 
 **Скіл `setup-models`** (`integrations/claude/obscura/skills/setup-models/SKILL.md`) — після відповіді власника на питання 1:
-- для редактора з моделлю, де `reasoning` є і не `mandatory`, — `none`;
-- для `mandatory` — найнижчий рівень з `efforts`;
+- правило діє лише для редактора й лише коли `reasoning.default_enabled` дорівнює `true`; інакше поле не чіпається;
+- не `mandatory` → `none`;
+- `mandatory` і непорожній `efforts` → останній (найнижчий) елемент переліку, бо OpenRouter віддає його від найвищого до найнижчого;
+- `mandatory` і `efforts = None` (усі рівні) → `low`;
+- `mandatory` і `efforts = []` (рівень вибрати не можна) → поле не чіпається, автору кажуть, що reasoning цієї моделі не налаштовується;
 - автору про це кажуть одним рядком;
 - плюс тести встановлення скілів.
 
@@ -182,9 +186,15 @@ Spec-review: —
 |---|---|---|---|
 | Порожнє поле не змінює відбитки й маніфести | Інваріант I1, SPEC OPENROUTER-REASONING-S03 | Регресійний тест на legacy-маніфест wire2 і відбиток контексту з порожнім полем (П4 показав, що без заходів падає) | сильна після тесту |
 | Модель з `mandatory` відхиляє `none` | Форма й скіл ховають «вимкнено» | Документація (П2, дослівно) + П5: 400 для glm-5.3-flash | сильна |
-| `effort: "none"` вимикає reasoning, а `low` його зменшує | Мета, «На чому стоїть рішення», wire-форма | П5: 0 і 20 reasoning-токенів на коротких запитах | сильна для коротких запитів; що весь прохід редактора вкладеться в ліміт, не стверджується |
+| `effort: "none"` вимикає reasoning | Мета, «На чому стоїть рішення», wire-форма | П5: 0 reasoning-токенів у двох Qwen | сильна для коротких запитів; що весь прохід редактора вкладеться в ліміт, не стверджується |
+| `low` приймається моделлю з обов'язковим reasoning | Скіл, форма | П5: GLM `low` → 200, текст, 20 reasoning-токенів. Порівняння з типовим `max` не робилось, тож що `low` *зменшує* витрату, спека не стверджує | середня: лише факт прийняття |
 | Можливості моделі в `ModelOption.reasoning` | Каталог, форма, MCP | Живий каталог (П3) — зовнішні дані, можуть змінитися | середня: читається щоразу з каталогу, не кешується як істина |
 
 ## Рев'ю спеки
 
-Ще не запускалось.
+| # | Перевірка | Рішення | Причина / що змінено |
+|---|---|---|---|
+| 1 | Скіл губить умову «ввімкнено за замовчуванням» | виправлено | `ReasoningCapability` отримав `default_enabled`; правило скіла діє лише за `default_enabled: true` |
+| 2 | Немає дії для `mandatory` без рівнів | виправлено | Явні правила для `efforts = []` (не чіпати, сказати автору) і `efforts = None` (`low`) |
+| 3 | Перемикання провайдера у вебформі лишає поле, і збереження падає | виправлено | Обидва збирачі payload скидають поле в `null` поза OpenRouter |
+| 4 | П5 не доводить, що `low` зменшує reasoning | виправлено | Заявку звужено до «`low` приймається»; про зменшення не стверджується |
