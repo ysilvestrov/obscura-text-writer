@@ -90,7 +90,7 @@ Spec-review: —
 - qwen3.7-plus: `effort none` і `enabled false`.
 - qwen3.8-flash: `effort none` і `max_tokens 64`.
 
-Результат (`C:	mp\or-probe\probe-output.jsonl`):
+Результат (`C:\tmp\or-probe\probe-output.jsonl`):
 
 | Модель | reasoning | Статус | finish | completion / reasoning токенів |
 |---|---|---|---|---|
