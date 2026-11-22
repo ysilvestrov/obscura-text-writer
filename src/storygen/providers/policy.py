@@ -6,7 +6,9 @@ from urllib.parse import urlsplit
 from .models import ProviderSettings
 from ..rating.levels import AXES, effective_rating
 
-from ..roles import ROLES as POLICY_ROLES, ROLE_LABELS, STAGE_ROLE
+from ..roles import ROLES, ROLE_LABELS, STAGE_ROLE
+
+POLICY_ROLES = ROLES
 
 # Scene stages from the registry plus stages outside the scene pipeline.
 STAGE_POLICY_ROLE = {**STAGE_ROLE, 'impact_delta': 'planner', 'impact_check': 'planner',
