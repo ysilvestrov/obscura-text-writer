@@ -16,7 +16,7 @@ Notes saved without text changes do not make later scenes outdated. Limits: up t
 
 In the settings of the **Editor** role you can choose a mode:
 
-- **Revision with change review** — the model returns prose, and the application shows each change as "Before / After". Tick the ones you want, press **Preview selected text** and then **Apply selected changes**. If there are no changes, the text becomes prose at once.
+- **Revision with change review** — the model returns prose, and the application shows each change as "Before / After". Tick the ones you want, press **Preview edited text** and then **Accept edits**. If there are no changes, the text becomes prose at once.
 - **Targeted language edits** — see [Editing a scene](revision.md#editing-a-scene).
 
 **Maximum editing passes** (1 to 10, default 5) — how many times the editor may pass over the text in one run. Each pass is a separate model call; the editor stops earlier when there is nothing left to change. The value is kept for each story separately.
