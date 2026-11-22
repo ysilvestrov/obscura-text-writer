@@ -1,8 +1,8 @@
 # R-43 — Експорт DOCX і RTF для редактури
 
 Дата: 2026-11-22
-Статус: чернетка
-Spec-review: —
+Статус: чекає на затвердження
+Spec-review: codex/gpt-6.1-sol @ e61f9dd (author: claude) — 4 findings: 4 fixed, 0 rejected
 
 GitHub [#268](https://github.com/ysilvestrov/obscura-text-writer/issues/268). Перший із чотирьох пакетів сценарію «редактура книги зовнішнім редактором» (R-43 → R-44 → R-45 → R-46).
 
@@ -37,6 +37,7 @@ GitHub [#268](https://github.com/ysilvestrov/obscura-text-writer/issues/268). П
 **Що стане гірше.**
 - Два нові формати в підтримці; ручний OOXML може натрапити на випадок, який Word «відновлює». Захист: перевірка архіву перед публікацією і ручна процедура у Word.
 - RTF великої книги важчий за DOCX у кілька разів (кожна кирилична літера — `\uN?`).
+- У RTF мова для перевірки правопису позначається лише для української й англійської; книга іншою мовою (картка публікації з тегом, наприклад, `fr`) отримає RTF без позначки мови, і Word перевірятиме її мовою за замовчуванням. DOCX записує будь-який тег картки.
 - Мітки не захищені від редактора: видалений заголовок сцени забирає закладку.
 
 **Оцінка.** Власник: S. Автор: S, на межі M. Розбивка: DOCX-рендерер і перевірка — 35%, RTF — 15%, підключення формату (експорт, завантаження, маршрут, MCP, діалог, i18n) — 15%, тести — 15%, SPEC (EXPORT-001, EXPORT-CLEAN), traceability, сайт uk/en, README/PRODUCT, скіл publish — 20%. Дешевший варіант: лише DOCX без RTF — втрачається формат для редакторів без Word, економія ~15%.
@@ -60,17 +61,17 @@ GitHub [#268](https://github.com/ysilvestrov/obscura-text-writer/issues/268). П
 
 Пакет (zip, `ZIP_DEFLATED`): `[Content_Types].xml`, `_rels/.rels`, `word/document.xml`, `word/_rels/document.xml.rels`, `word/styles.xml`, `word/footer1.xml`, `docProps/core.xml`, `docProps/custom.xml`.
 
-- Мова (рішення автора спеки після builder check): документ — `card.language` картки публікації, як `dc:language` в EPUB/FB2 (тег BCP-47 записується як є в `w:lang` і `dc:language`; RTF — `\langN` лише для `uk`/`en`, інші теги без `\lang`). Сцена з `prose_language`, відмінною від мови документа, отримує `w:lang` (`uk-UA`/`en-US`) у `rPr` кожного свого фрагмента; RTF — `\lang1058`/`\lang1033` в абзацах сцени. Підписи службових рядків («Слів», «Частина N») — за `story.language`, як наявний `book_parts`.
+- Мова (рішення автора спеки після builder check): документ — `card.language` картки публікації, як `dc:language` в EPUB/FB2 (тег BCP-47 записується як є в `w:lang` і `dc:language`; RTF — `\langN` лише для `uk`/`en`, інші теги без `\lang`). Ефективна мова прози сцени береться наявним `language.prose_language(story, scene)` (власна мова сцени, інакше мова твору) і записується в нове поле `Chapter.language` у `capture`; якщо вона відмінна від основного підтегу `card.language` (`uk-UA` → `uk`), кожен фрагмент сцени отримує `w:lang` (`uk-UA`/`en-US`) у `rPr`, RTF — `\lang1058`/`\lang1033` в абзацах сцени. RTF-мова документа: основний підтег `uk`/`en` → `\deflang1058`/`\deflang1033`, інші мови без `\deflang` (обмеження записано в «Що стане гірше»). Підписи службових рядків («Слів», «Частина N») — за `story.language`, як наявний `book_parts`.
 - Стилі: `docDefaults` (Times New Roman для всіх скриптів, 24 півпункти, `w:lang` документа, інтервал `line=360 auto`, `after=0`); `Normal` з `firstLine=709`; `Title` (по центру, жирний 16 пт); `Heading1`/`Heading2` (`name` = `heading 1`/`heading 2`, `keepNext`, `pageBreakBefore`, `outlineLvl` 0/1, без відступу).
 - Сторінка: `pgSz` 11906×16838, `pgMar` 1417 з усіх боків; колонтитул із полем `PAGE` по центру.
 - Титул: назва (`Title`), автори по рядку, цикл «Назва · N», рядок «Слів: N» / «Words: N» (сума `word_count` сцен, мова за `story.language`).
 - Частини: `Heading1` з назвою з `part_starts(book)`.
 - Сцени: `Heading2` з назвою; вміст абзацу обгорнуто `bookmarkStart`/`bookmarkEnd` з іменем `_os` + `scene_id` (35 знаків, ліміт Word — 40; префікс `_` робить закладку прихованою) і послідовними `w:id`.
-- Абзаци — з `markup.chapter_paragraphs(chapter)`: порожній абзац для порожніх рядків, хвостові порожні відкидаються як у PDF; `run.bold`/`run.italic` → `w:b`/`w:i`; `\n` усередині фрагмента → `w:br`; текст у `w:t xml:space="preserve"`.
+- Абзаци — з `markup.chapter_paragraphs(chapter)`: порожній абзац для порожніх рядків, хвостові порожні відкидаються як у PDF; `run.bold`/`run.italic` → `w:b`/`w:i`; `\n` усередині фрагмента → `w:br`, `\t` → `w:tab`; решта тексту у `w:t xml:space="preserve"`.
 - `core.xml`: `dc:title`, `dc:creator` (автори через «; »), `dc:language`.
 - `custom.xml`: `ObscuraStoryId`, `ObscuraExportId`, `ObscuraManuscript`=`1` (версія розмітки для R-46).
 - Недопустимі для XML 1.0 символи — та сама помилка, що в FB2/EPUB (`book.xml_bytes`-перевірка), текст не вилучається.
-- `validate(content)` перед записом: zip читається, усі обов'язкові частини присутні й розбираються як XML, кількість закладок `_os…` дорівнює кількості сцен і їхні імена збігаються з `scene_id` у порядку книги, `custom.xml` містить ID твору й експорту. Порушення → `ValueError`, файл не публікується.
+- `validate(content, book)` перед записом (очікувані ідентичності беруться з того самого захопленого `book`): zip читається, усі обов'язкові частини присутні й розбираються як XML, імена закладок `_os…` дорівнюють `_os`+`scene_id` сцен `book.chapters` у тому самому порядку й кількості, `custom.xml` містить саме `book.snapshot.story.id` і `book.export_id`. Порушення → `ValueError`, файл не публікується.
 
 ### RTF
 
@@ -118,3 +119,7 @@ Throwaway-скрипт зібрав мінімальний DOCX за схемо�
 
 | # | Перевірка | Рішення | Причина / що змінено |
 |---|---|---|---|
+| 1 | 6 — `validate` не має очікуваних ID | виправлено | `validate(content, book)` звіряє закладки й `custom.xml` з ідентичностями захопленого `book` |
+| 2 | 6 — успадкована мова сцени | виправлено | ефективна мова через `language.prose_language` у новому `Chapter.language`, порівняння з основним підтегом картки |
+| 3 | 1 — обмеження мови RTF не в розділі власника | виправлено | основний підтег `uk`/`en` → `\deflang`; обмеження для інших мов у «Що стане гірше» |
+| 4 | 6 — табуляція в DOCX | виправлено | `\t` → `w:tab` |
