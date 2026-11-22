@@ -677,6 +677,12 @@ body.ghost-open #notice { z-index: 70; }
 .timeline-summary-state{color:var(--muted,#666);font-size:.9em}
 .timeline-summary-text{white-space:pre-wrap}
 .timeline-summary-editor{width:100%;box-sizing:border-box}
+/* MEMORY-LOCATIONS-S07: the «Locations» section of the story side panel. */
+.location-row{margin:.75rem 0}
+.location-row>p{margin:.25rem 0}
+.location-description textarea{width:100%;box-sizing:border-box}
+.location-description[open]>summary .location-preview{display:none}
+.location-suggestion{margin:.5rem 0}
 
 /* SERIES-S07: series screen (variant B) */
 .series-head { display: flex; flex-wrap: wrap; gap: 16px; align-items: end; justify-content: space-between; }

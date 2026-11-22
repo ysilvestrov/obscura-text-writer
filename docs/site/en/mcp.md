@@ -15,7 +15,7 @@ The chat gets twenty-eight tools:
 - **outline preamble**: the title and general notes before the first scene, only over the version the chat has read;
 - **new scene** at the chosen place in the story, with a plan or modelled on the previous scene;
 - **scene plan and properties**: the plan (only over the plan the chat has read), the title, the length, the cast and the prose language;
-- **scene context**: the plan, the brief, the cast's cards, the memory of earlier scenes, the age rating, the language and the target length;
+- **scene context**: the plan, the brief, the cast's cards, the scene's locations with descriptions, the memory of earlier scenes, the age rating, the language and the target length;
 - **scene text**: the scene's current plan, brief, draft, prose or memory together with the ID of the current version; the chat reads a long text in parts;
 - **import a plan and characters**: the same as the [import](imports.md) form;
 - **save a draft**: a new version of the scene's draft, only over the draft the chat has read;
@@ -283,7 +283,7 @@ The free version does not write long prose (books, parts, arcs), series or scene
 
 - Obscura must be running. Otherwise the chat gets the error "Obscura не запущено за адресою …" (Obscura is not running at …).
 - The next scene's context can be read only after the previous scene's memory is updated, just as for generation in Obscura.
-- If the scene was changed after the context was read, the save is refused with "Сцену вже змінено" (the scene has already been changed). If the cards, the rating, the story language or the memory of earlier scenes changed, it is refused with "Контекст сцени змінився — прочитайте його знову" (the scene context changed, read it again). Either way, ask the chat to read the context again.
+- If the scene was changed after the context was read, the save is refused with "Сцену вже змінено" (the scene has already been changed). If the cards, a location description, the rating, the story language or the memory of earlier scenes changed, it is refused with "Контекст сцени змінився — прочитайте його знову" (the scene context changed, read it again). Either way, ask the chat to read the context again.
 - If the draft was changed after the chat read it (by you in Obscura or by another conversation), the save is refused with "Чернетку змінено після того, як її прочитали" (the draft was changed after it was read). Ask the chat to read the draft again and repeat its change over it.
 - The chat sees only saved texts. It does not see unsaved edits in an open editor: save them before asking the chat to change anything.
 - The chat sees Obscura's errors with the prefix "Error executing tool …", followed by Obscura's code and explanation.

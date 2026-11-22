@@ -23,11 +23,15 @@ STORIES={
     'uk':{'title':'Маяк на пристані','scenes':['Ранок у селищі','Лист без підпису','Шторм','Повернення'],'hero':'Анна',
           'brief':'{"objective":"Анна знаходить лист і вирішує його прочитати","beats":["Анна відчиняє скриньку на пристані","Усередині лежить конверт без підпису","Вітер з моря ледь не вириває папір"],"constraints":["Без флешбеків"],"proposed_changes":[]}',
           'draft':'Анна відчинила скриньку на пристані й побачила конверт без підпису. Вітер з моря шарпав папір.',
-          'characters':'## Анна\nДоглядачка маяка, уважна до дрібниць.\n\n## Петро\nРибалка, давній друг родини.\n'},
+          'characters':'## Анна\nДоглядачка маяка, уважна до дрібниць.\n\n## Петро\nРибалка, давній друг родини.\n',
+          'location_label':'Локація','locations':['Маяк / ліхтарна','Пристань','Пристань біля маяка','Маяк'],
+          'location_description':('Маяк','Білий маяк на скелі; гвинтові сходи ведуть до ліхтарної.')},
     'en':{'title':'Lighthouse pier','scenes':['Morning in the village','An unsigned letter','The storm','Coming back'],'hero':'Anna',
           'brief':'{"objective":"Anna finds the letter and decides to read it","beats":["Anna opens the box on the pier","Inside lies an envelope with no signature","The sea wind almost tears the paper away"],"constraints":["No flashbacks"],"proposed_changes":[]}',
           'draft':'Anna opened the box on the pier and found an envelope with no signature. The sea wind tugged at the paper.',
-          'characters':'## Anna\nThe lighthouse keeper, attentive to small things.\n\n## Peter\nA fisherman and an old friend of the family.\n'},
+          'characters':'## Anna\nThe lighthouse keeper, attentive to small things.\n\n## Peter\nA fisherman and an old friend of the family.\n',
+          'location_label':'Location','locations':['Lighthouse / lamp room','Pier','Pier by the lighthouse','Lighthouse'],
+          'location_description':('Lighthouse','A white lighthouse on the rock; a spiral stair leads to the lamp room.')},
 }
 
 
@@ -40,7 +44,13 @@ def seed(data_dir,languages=('uk','en')):
         spec=STORIES[lang]
         story=repo.create_story(StoryCreate(title=spec['title'],language=lang))
         story=repo.update_story_rating(story.id,ContentRating(sexual=0,violence=0,themes=0),story.revision)
-        scenes=[repo.create_scene(story.id,SceneCreate(title=title,beats=f'{spec["hero"]}: {title.lower()}.')) for title in spec['scenes']]
+        # MEMORY-LOCATIONS: each scene names a place; «Пристань біля маяка» looks like «Пристань», so the panel shows a suggestion.
+        scenes=[repo.create_scene(story.id,SceneCreate(title=title,beats=f'{spec["hero"]}: {title.lower()}.\n{spec["location_label"]}: {place}'))
+                for title,place in zip(spec['scenes'],spec['locations'])]
+        from storygen.locations import location_id,normalize
+        from storygen.storage.locations import change_locations,set_description
+        path,text=spec['location_description'];card=location_id(story.id,normalize((path,)))
+        change_locations(repo,story.id,repo.get_story(story.id).revision,lambda db:set_description(db,story.id,card,text))
         scene=scenes[1]
         brief=repo.save_version(story.id,scene.id,'brief',spec['brief'],[])
         repo.set_head(scene.id,'brief',brief.id,repo.get_scene(scene.id).revision)
@@ -110,6 +120,14 @@ def capture(base,ids,languages):
                         # BRIEF-FORM: the writer's brief as a form.
                         page.goto(f'{base}/stories/{story}?scene={scene}&material=brief');page.wait_for_load_state('networkidle')
                         page.locator('#brief-form').wait_for(state='visible');shot(page,folder/'brief-form-desktop.png',shots)
+                    if suffix=='desktop':
+                        # MEMORY-LOCATIONS-S07: the «Locations» section of the side panel with a suggestion and a description.
+                        section=page.locator('details.tool-section[data-section=locations]')
+                        if not section.evaluate('node=>node.open'):section.locator(':scope > summary').click()
+                        section.locator('.location-row').first.wait_for();section.locator('.location-description').first.locator('summary').click()
+                        section.scroll_into_view_if_needed();page.wait_for_timeout(300)
+                        section.screenshot(path=str(folder/'locations-desktop.png'));shots.append(folder/'locations-desktop.png')
+                        section.locator(':scope > summary').click()
                     page.locator('#story-menu-toggle').click();page.locator('#story-menu').wait_for();shot(page,folder/f'story-menu-{suffix}.png',shots)
                     if suffix=='desktop':
                         for path,name in [(f'/stories/{story}/revision','revision'),(f'/stories/{story}/characters','characters'),

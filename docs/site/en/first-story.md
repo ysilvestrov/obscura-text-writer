@@ -14,6 +14,8 @@ In the scene list expand **Add materials**. Download the **Outline with timing (
 
 You can also start without files: **Add scene** in the top row creates a scene with an outline skeleton (all its fields are empty in the first scene), and **Characters** opens the character cards.
 
+The `Location:` line of a scene plan names its place, nested places included: `Location: Lighthouse / lamp room`. The application turns it into location cards that memory uses for later scenes in the same place (see [Memory](memory.md#locations)).
+
 Review the proposed scenes and participants before you run a model.
 
 ## Work through a scene in stages

@@ -18,7 +18,9 @@ const box=()=>document.querySelector('#story-locations');
 function description(row){
   const wrap=node('details',null,'location-description');
   if(drafts.has(row.id))wrap.open=true;
-  wrap.append(node('summary',()=>t('locations.description')+(row.description&&!drafts.has(row.id)?': '+row.description:'')));
+  const summary=node('summary',()=>t('locations.description'));
+  if(row.description)summary.append(node('span',()=>': '+row.description,'location-preview'));  // hidden while open
+  wrap.append(summary);
   const area=document.createElement('textarea');area.rows=3;area.maxLength=2000;area.value=drafts.get(row.id)??row.description;
   uiAttr(area,'aria-label',()=>t('locations.description')+' — '+row.path);
   const counter=node('p',()=>t('locations.counter',{p0:area.value.length}),'hint');
