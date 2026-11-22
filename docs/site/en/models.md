@@ -51,13 +51,13 @@ If a role or connection uses the **JSON Schema** response mode, the JSON Schema 
 
 Some OpenRouter models (Qwen and GLM among them) "think" first and only then write the answer. The reasoning counts toward the role's output limit and is paid for. If the model spends the whole limit on it, there is no text, and the stage stops with an "Output limit exhausted" error.
 
-A role with the OpenRouter provider has a **Reasoning** field in its form. The choices come from the model list, so load the list first:
+A role with the OpenRouter provider has a **Reasoning** field in its form. The choices come from the model list, so press **Get model list** first and pick the model:
 
 - **Model default** — Obscura sends nothing, and the model behaves as usual.
 - **Off** — reasoning is turned off. This choice is missing when the model's reasoning is mandatory.
 - **minimal … max** — the reasoning level; only the levels the model accepts are shown.
 
-A saved value the chosen model does not accept is marked "not supported by the model": pick another one. Reasoning that is off or lower leaves more of the limit for text, but it can affect the role's quality. The `setup-models` skill sets reasoning on its own only for the editor, and says so.
+A saved value the chosen model does not accept is marked "not supported by the model": pick another one. Reasoning that is off or lower leaves more of the limit for text, but it can affect the role's quality. The `setup-models` skill sets reasoning on its own only for the editor, and says so. The separate writer model for scenes 0-1 has no such field and runs with its model's default reasoning.
 
 ## Consent for a model without Uncensored
 

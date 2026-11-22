@@ -7944,9 +7944,10 @@
     {
       "id": "OPENROUTER-REASONING-S04",
       "requirement": "OPENROUTER-REASONING",
-      "scope": "Варіанти форми за каталогом моделі; позначка недозволеного значення; null поза OpenRouter.",
+      "scope": "Варіанти форми за каталогом моделі; позначка недозволеного значення; null поза OpenRouter; окрема модель письменника не успадковує рівень.",
       "tests": [
-        "tests/web/test_model_picker.py::test_openrouter_reasoning_choices_follow_the_model"
+        "tests/web/test_model_picker.py::test_openrouter_reasoning_choices_follow_the_model",
+        "tests/web/test_writer_variant_ui.py::test_writer_variant_payload_and_texts"
       ],
       "manual": {
         "procedure": "docs/verification/manual.md#openrouter-reasoning-browser",

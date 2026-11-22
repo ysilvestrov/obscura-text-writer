@@ -35,3 +35,7 @@ setLocale('en');
 assert.equal(t('writer.variant.toggle'),'Separate model for scenes rated 0–1');
 assert.equal(t('writer.variant.hint'),'Optional. If not set, the main model writes every scene. Scenes where any rating axis is 2 are always written by the main model.');
 assert.equal(t('writer.variant.main_hint'),'The main model writes every scene, including level 2.');
+// OPENROUTER-REASONING: the variant has no Reasoning control and its own model, so it never inherits the writer's level.
+const routed={provider:'openrouter',model:'qwen/qwen3.8-flash',base_url:'https://openrouter.ai/api/v1',key_env:null,timeout:180,response_mode:'prompt_json',openrouter_reasoning_effort:'none'};
+const variantRouted=variantPayload(form(true,{variant_provider:'openrouter',variant_base_url:'https://openrouter.ai/api/v1',variant_model:'z-ai/glm-5.3-flash'},variantBase({provider:routed}))).provider;
+assert.equal(variantRouted.model,'z-ai/glm-5.3-flash');assert.equal('openrouter_reasoning_effort' in variantRouted,false);

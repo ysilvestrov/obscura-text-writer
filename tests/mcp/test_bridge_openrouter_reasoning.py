@@ -25,6 +25,11 @@ def test_update_settings_sets_and_provider_switch_clears_the_field(tmp_path, mon
                                         'fields': {'openrouter_reasoning_effort': 'none'}}))
     assert app.state.repo.read_role_settings(created.id)['editor']['provider']['openrouter_reasoning_effort'] == 'none'
     ok(call(server, 'update_settings', {'story_id': created.id, 'section': 'editor', 'expected_fingerprint': editor_fingerprint(server, created.id),
+                                        'fields': {'model': 'qwen/qwen3.7-plus', 'openrouter_reasoning_effort': None}}))
+    assert 'openrouter_reasoning_effort' not in app.state.repo.read_role_settings(created.id)['editor']['provider']
+    ok(call(server, 'update_settings', {'story_id': created.id, 'section': 'editor', 'expected_fingerprint': editor_fingerprint(server, created.id),
+                                        'fields': {'openrouter_reasoning_effort': 'none'}}))
+    ok(call(server, 'update_settings', {'story_id': created.id, 'section': 'editor', 'expected_fingerprint': editor_fingerprint(server, created.id),
                                         'fields': {'provider': 'local', 'model': 'm1'}}))
     assert 'openrouter_reasoning_effort' not in app.state.repo.read_role_settings(created.id)['editor']['provider']
 
@@ -53,3 +58,5 @@ def test_setup_models_sets_the_editor_reasoning_by_the_owner_rule():
     for rule in ('`default_enabled` is not `true`, change nothing', '`mandatory` is false → `none`',
                  'non-empty list → its last element', '`efforts` is null → `low`', '`efforts` is empty → change nothing'):
         assert rule in step, rule
+    # A model change drops the old model's level, so a "change nothing" branch never leaves a stale one.
+    assert 'add `openrouter_reasoning_effort: null`' in skill[:skill.index('**Editor reasoning (OpenRouter only).**')]
