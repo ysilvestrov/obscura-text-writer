@@ -11,8 +11,7 @@ from .providers.models import RoleSettings
 from .prompt_contracts import compatible_contract, expected_contract, validate_role_prompt
 from .evaluation.story_adapter import EvaluationSettings, validate_evaluation_settings
 
-ROLES=('planner','writer','editor','memory')
-STAGES=dict(zip(ROLES,('brief','draft','edit','memory')))
+from .roles import ROLES, ROLE_STAGE as STAGES
 MAX_BYTES=2*1024*1024
 
 

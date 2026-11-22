@@ -17,6 +17,7 @@ from .bridge_marker import RUN_OWNER_ONLY, BridgeForbidden, author_only_path, fr
 from ..storage.repository import Repository
 from ..book.lineage import lineage_scope
 from ..generation.worker import RunCoordinator
+from ..roles import ROLES, ROLE_LABEL_KEYS
 
 
 def create_app(settings: AppSettings, *, gateway_factory=None,evaluator_factory=None) -> FastAPI:
@@ -62,7 +63,7 @@ def create_app(settings: AppSettings, *, gateway_factory=None,evaluator_factory=
     def app_window():
         # DESKTOP-001-S08: only the desktop window sends external links to the browser.
         return getattr(app.state,'app_window',None) is not None
-    app.state.templates.env.globals.update(t=ui_translate,ui_locale=request_locale,app_links=app_links,long_prose=long_prose,edition=edition,app_window=app_window)
+    app.state.templates.env.globals.update(t=ui_translate,ui_locale=request_locale,app_links=app_links,long_prose=long_prose,edition=edition,app_window=app_window,roles=ROLES,role_label_keys=ROLE_LABEL_KEYS)
     app.mount("/static",StaticFiles(directory=str(root.joinpath("static"))),name="static")
 
     def error_response(request,detail,status_code):

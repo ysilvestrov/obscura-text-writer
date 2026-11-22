@@ -6,13 +6,14 @@ from urllib.parse import urlsplit
 from .models import ProviderSettings
 from ..rating.levels import AXES, effective_rating
 
-POLICY_ROLES = ('planner', 'writer', 'editor', 'memory')
-STAGE_POLICY_ROLE = {'prepare': 'planner', 'brief': 'planner', 'impact_delta': 'planner', 'impact_check': 'planner',
-    'impact_part': 'planner', 'review_part': 'planner', 'publication_suggest': 'writer', 'timeline_summary': 'memory', 'draft': 'writer',
-    'rewrite': 'writer', 'edit': 'editor', 'classify': 'editor', 'memory': 'memory'}
+from ..roles import ROLES as POLICY_ROLES, ROLE_LABELS, STAGE_ROLE
+
+# Scene stages from the registry plus stages outside the scene pipeline.
+STAGE_POLICY_ROLE = {**STAGE_ROLE, 'impact_delta': 'planner', 'impact_check': 'planner',
+    'impact_part': 'planner', 'review_part': 'planner', 'publication_suggest': 'writer', 'timeline_summary': 'memory',
+    'rewrite': 'writer', 'classify': 'editor'}
 # Stages whose material spans several scenes: the request rating also counts the scenes behind `input_refs`.
 MULTI_SCENE_STAGES = frozenset({'impact_delta', 'impact_check', 'impact_part', 'review_part', 'publication_suggest', 'timeline_summary'})
-ROLE_LABELS = {'planner': 'Планувальник', 'writer': 'Письменник', 'editor': 'Редактор', 'memory': 'Пам’ять'}
 
 CONSENT_REQUIRED = ('Модель «{model}» не має позначки Uncensored, а рейтинг цього запиту {rating}. '
     'Підтвердьте в налаштуваннях ролі «{role}», що погоджуєтеся на виклики цієї моделі для дорослого змісту, або виберіть іншу модель.')

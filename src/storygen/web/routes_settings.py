@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Request
 from pydantic import Field
 
-from ..authoring.blueprints import ROLES, apply_blueprint, get_role_settings, save_role_settings, update_story_profile, save_shared_provider
+from ..roles import ROLES, ROLE_STAGE
+from ..authoring.blueprints import apply_blueprint, get_role_settings, save_role_settings, update_story_profile, save_shared_provider
 from ..domain import DomainModel
 from ..generation.models import StoryBlueprint, StyleProfile, default_style_profile
 from ..generation.prompts import default_prompt, role_prompt, expected_contract
@@ -70,11 +71,11 @@ def read_settings(story_id: str,request: Request):
     repo=request.app.state.repo
     story=repo.get_story(story_id)
     roles=get_role_settings(repo,story_id)
-    prompts={role: repo.read_text(config.prompt_version_id) if config.prompt_version_id else role_prompt({'planner':'brief','writer':'draft','editor':'edit','memory':'memory'}[role],config,story.language) for role,config in roles.items()}
+    prompts={role: repo.read_text(config.prompt_version_id) if config.prompt_version_id else role_prompt(ROLE_STAGE[role],config,story.language) for role,config in roles.items()}
     profile=StyleProfile.model_validate_json(repo.read_text(story.style_version_id)) if story.style_version_id else default_style_profile(story.language)
     planner=roles.get('planner')
     preparation=repo.read_text(planner.prepare_prompt_version_id) if planner and planner.prepare_prompt_version_id else default_prompt('prepare',story.language)
-    contracts={role:repo.get_version(config.prompt_version_id).prompt_contract if config.prompt_version_id else expected_contract({'planner':'brief','writer':'draft','editor':'edit','memory':'memory'}[role],config) for role,config in roles.items()}
+    contracts={role:repo.get_version(config.prompt_version_id).prompt_contract if config.prompt_version_id else expected_contract(ROLE_STAGE[role],config) for role,config in roles.items()}
     prepare_contract=repo.get_version(planner.prepare_prompt_version_id).prompt_contract if planner and planner.prepare_prompt_version_id else expected_contract('prepare',planner) if planner else None
     return {'story':story,'roles':roles,'profile':profile,'prompts':prompts,'prepare_prompt':preparation,'prompt_contracts':contracts,'prepare_prompt_contract':prepare_contract}
 
@@ -101,8 +102,8 @@ def with_model_warnings(story,warnings):
 
 
 def configure_prompts(repo,story_id,change,settings):
-    if change.role not in {'planner','writer','editor','memory'}:raise ValueError('Невідома роль')
-    stage={'planner':'brief','writer':'draft','editor':'edit','memory':'memory'}[change.role]
+    if change.role not in ROLES:raise ValueError('Невідома роль')
+    stage=ROLE_STAGE[change.role]
     if change.upgrade_memory_wire and (change.role!='memory' or settings.memory_mode!='evidence_delta'):
         raise ValueError('Перехід на v4 можливий лише для власного промпту пам’яті за доказами')
     if change.confirm_prompt_contract and change.prompt_text is None and settings.prompt_version_id:
@@ -110,7 +111,7 @@ def configure_prompts(repo,story_id,change,settings):
         if ref.story_id!=story_id or ref.kind!='prompt':raise ValueError('Чужий промпт')
         change=change.model_copy(update={'prompt_text':repo.read_text(ref.id)})
     if change.prompt_text is not None:
-        standard=role_prompt({'planner':'brief','writer':'draft','editor':'edit','memory':'memory'}.get(change.role,'brief'),settings,repo.get_story(story_id).language)
+        standard=role_prompt(ROLE_STAGE.get(change.role,'brief'),settings,repo.get_story(story_id).language)
         if not change.prompt_text.strip() or change.prompt_text==standard:
             settings=settings.model_copy(update={'prompt_version_id':None})
         else:

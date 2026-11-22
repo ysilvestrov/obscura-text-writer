@@ -4,6 +4,7 @@ import json
 from ..domain import RevisionConflict, new_id, now
 from ..providers.models import RoleSettings
 from .settings_store import write_roles_in_transaction
+from ..roles import ROLE_SET
 
 
 def _read(db,key):
@@ -52,7 +53,7 @@ def operation(repo,action,**data):
             if story.revision!=data['expected_revision']:raise RevisionConflict('Налаштування твору вже змінено')
             _read(db,f"role_profile:{data['profile_id']}:{data['version']}")
             roles={key:RoleSettings.model_validate(value) for key,value in data['roles'].items()}
-            if set(roles)!={'planner','writer','editor','memory'}:raise ValueError('Потрібні чотири ролі')
+            if set(roles)!=ROLE_SET:raise ValueError('Потрібні чотири ролі')
             write_roles_in_transaction(repo,db,story.id,roles)
             if data['evaluator'] is not None:
                 from ..evaluation.story_adapter import EvaluationSettings,validate_evaluation_settings

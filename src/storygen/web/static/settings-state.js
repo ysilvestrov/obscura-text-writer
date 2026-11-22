@@ -1,10 +1,11 @@
+import {ROLES} from './roles.js';
 export function settingsSignature(value){
   if(Array.isArray(value))return '['+value.map(settingsSignature).join(',')+']';
   if(value&&typeof value==='object')return '{'+Object.keys(value).sort().map(k=>JSON.stringify(k)+':'+settingsSignature(value[k])).join(',')+'}';
   return JSON.stringify(value);
 }
 export function settingsRoute(search){
-  const query=new URLSearchParams(search),role=['planner','writer','editor','memory'].includes(query.get('role'))?query.get('role'):'planner';
+  const query=new URLSearchParams(search),role=ROLES.includes(query.get('role'))?query.get('role'):'planner';
   const section=['writing','models','evaluator','budget','profiles'].includes(query.get('section'))?query.get('section'):'models';
   return {section,role};
 }

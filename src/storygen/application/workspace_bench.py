@@ -22,6 +22,7 @@ from ..memory.service import save_scene_memory
 from ..providers.models import RoleSettings
 from ..run_models import RunRequest
 from ..storage.repository import Repository
+from ..roles import ROLES
 
 # Package location: src/storygen/application/workspace_bench.py -> repository root.
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -32,7 +33,7 @@ CAST_TITLE = 'Synthetic workspace bench (cast)'
 CAST_CARDS = 8
 CAST_ENTRIES = 6
 BENCH_RATING = ContentRating(sexual=0, violence=0, themes=0)
-BENCH_ROLES = ('planner', 'writer', 'editor', 'memory')
+BENCH_ROLES = ROLES
 # Local provider with builtin prompts: readiness stays offline and needs no budget limit. The window is
 # wide enough for a 300-scene memory and plan, so preview reaches build_context and returns ready=True.
 BENCH_ROLE = dict(provider=dict(provider='local', model='bench-local'), context_tokens=262144,

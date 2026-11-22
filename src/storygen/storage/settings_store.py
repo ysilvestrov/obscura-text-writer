@@ -1,7 +1,7 @@
 from ..domain import RevisionConflict, VersionRef
 from ..providers.models import RoleSettings
 
-ROLES = {'planner', 'writer', 'editor', 'memory'}
+from ..roles import ROLE_SET, ROLE_STAGE
 
 
 def read_role_settings(repo, story_id):
@@ -12,7 +12,7 @@ def read_role_settings(repo, story_id):
 
 
 def write_role_settings(repo, story_id, updates, expected_revision):
-    if set(updates) - ROLES:
+    if set(updates) - ROLE_SET:
         raise ValueError('Невідома роль')
     settings = {role: RoleSettings.model_validate(raw) for role, raw in updates.items()}
     with repo.db.connection() as db:
@@ -36,7 +36,7 @@ def write_roles_in_transaction(repo,db,story_id,settings):
         from ..prompt_contracts import validate_role_prompt
         from .context_view import ContextView
         view=ContextView(repo,db,story_id)
-        validate_role_prompt(view,story_id,{'planner':'brief','writer':'draft','editor':'edit','memory':'memory'}[role],item)
+        validate_role_prompt(view,story_id,ROLE_STAGE[role],item)
         if role=='planner':validate_role_prompt(view,story_id,'prepare',item)
         db.execute('INSERT OR REPLACE INTO role_settings VALUES(?,?,?)', (story_id, role, item.model_dump_json()))
 
