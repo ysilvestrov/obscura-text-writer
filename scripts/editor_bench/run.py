@@ -143,7 +143,7 @@ def paid(only):
             continue
         result = stand.run_loop(bench, text_id, c)
         gold = broken[text_id][1]
-        result['score'] = score(gold, broken[text_id][0], result['edited']) if result.get('edited') else None
+        result['score'] = _scored(result, broken[text_id])
         with out.open('a', encoding='utf-8') as f:
             f.write(json.dumps(result, ensure_ascii=False) + '\n')
         print(f'{text_id} {c.code}: {result["state"]}, проходів {len(result.get("passes", []))}, '
@@ -152,29 +152,94 @@ def paid(only):
             raise SystemExit(f'Збій стенду ({result["error"]}); прогін зупинено без повторів')
 
 
-def report():
-    rows = [json.loads(line) for line in (stand.ROOT / 'results.jsonl').read_text(encoding='utf-8').splitlines() if line]
-    models = {}
+def _scored(row, broken_gold):
+    """The score of one loop, or None when no pass completed: such a loop edited nothing and counts as a failure."""
+    broken, gold = broken_gold
+    if not row.get('edited') or not any(p['state'] == 'completed' for p in row.get('passes', [])):
+        return None
+    return score(gold, broken, row['edited'])
+
+
+def rescore(rows, broken):
+    """Recompute every score from the saved edited text (offline, after a scorer change)."""
+    return [r | {'score': _scored(r, broken[r['text']])} for r in rows]
+
+
+def aggregate(rows, texts):
+    """Per model over the given text ids: fixed per category, gold size, other, off-gold, pass seconds, failures and the
+    ledger's counted cost (failed passes included). Counts only."""
+    result = {}
     for r in rows:
-        models.setdefault(r['model'], []).append(r)
-    print('| Модель | Тексти | Виправлено: орф. / пункт. / рус. | Інакше | Поза еталоном | Проходів | Прохід, с (медіана / p90) | Відмови / збої | Вартість, $ |')
-    print('|---|---|---|---|---|---|---|---|---|')
-    for model, items in models.items():
-        scored = [r['score'] for r in items if r.get('score')]
-        fixed = {c: sum(s[c]['fixed'] for s in scored) for c in CATEGORIES}
-        total = {c: sum(s[c]['fixed'] + s[c]['missed'] + s[c]['other'] for s in scored) for c in CATEGORIES}
-        other = sum(s[c]['other'] for s in scored for c in CATEGORIES)
-        off = sum(s['off_gold_tokens'] for s in scored)
-        passes = [p for r in items for p in r.get('passes', [])]
-        seconds = sorted(p['seconds'] for p in passes if p.get('seconds') is not None and p['state'] == 'completed')
-        median = statistics.median(seconds) if seconds else None
-        p90 = seconds[min(len(seconds) - 1, int(0.9 * len(seconds)))] if seconds else None
-        refusals = sum(p.get('refusal', False) for p in passes)
-        failures = sum(1 for p in passes if p['state'] != 'completed') + sum(r['state'] == 'stand_error' for r in items)
-        cost = sum(float(p['cost']) for p in passes if p.get('cost') is not None)
-        share = ' / '.join(f'{fixed[c]}/{total[c]}' for c in CATEGORIES)
-        print(f'| `{model}` | {",".join(r["text"] for r in items)} | {share} | {other} | {off} | {len(passes)} | '
-              f'{median if median is not None else "—"} / {p90 if p90 is not None else "—"} | {refusals} / {failures} | {cost:.4f} |')
+        if r['text'] not in texts:
+            continue
+        m = result.setdefault(r['model'], {'texts': [], 'fixed': {c: 0 for c in CATEGORIES},
+                                           'lenient': {c: 0 for c in CATEGORIES}, 'gold': 0, 'other': 0, 'off_gold': 0,
+                                           'passes': 0, 'seconds': [], 'refusals': 0, 'failures': 0, 'failed_loops': 0,
+                                           'loops': 0, 'cost_usd': 0.0, 'words_kept': []})
+        m['texts'].append(r['text'])
+        m['loops'] += 1
+        m['failed_loops'] += r['state'] not in ('needs_review', 'completed')
+        # A loop with no completed pass edited nothing: it is a failure, not "0 fixed".
+        s = r.get('score') if any(p['state'] == 'completed' for p in r.get('passes', [])) else None
+        if s:
+            for c in CATEGORIES:
+                m['fixed'][c] += s[c]['fixed']
+                m['lenient'][c] += s[c].get('fixed_lenient', 0)
+                m['gold'] += s[c]['fixed'] + s[c]['missed'] + s[c]['other']
+                m['other'] += s[c]['other']
+            m['off_gold'] += s['off_gold_tokens']
+            m['words_kept'].append(s.get('words_kept', 1.0))
+        for p in r.get('passes', []):
+            m['passes'] += 1
+            m['refusals'] += bool(p.get('refusal'))
+            m['failures'] += p['state'] != 'completed'
+            if p['state'] == 'completed' and p.get('seconds') is not None:
+                m['seconds'].append(p['seconds'])
+            m['cost_usd'] += (p.get('accounting') or {}).get('counted_nanos') or 0
+    for m in result.values():
+        m['cost_usd'] = round(m['cost_usd'] / 1e9, 6)
+        kept = m.pop('words_kept')
+        m['words_kept_min'] = min(kept) if kept else None
+        seconds = sorted(m.pop('seconds'))
+        m['median_seconds'] = statistics.median(seconds) if seconds else None
+        m['p90_seconds'] = seconds[min(len(seconds) - 1, int(0.9 * len(seconds)))] if seconds else None
+    return result
+
+
+def _results():
+    return [json.loads(line) for line in (stand.ROOT / 'results.jsonl').read_text(encoding='utf-8').splitlines() if line]
+
+
+def rescore_file():
+    rows = rescore(_results(), {k: inject(v, SEED) for k, v in load_texts().items()})
+    (stand.ROOT / 'results.jsonl').write_text(''.join(json.dumps(r, ensure_ascii=False) + '\n' for r in rows), encoding='utf-8')
+    print(f'Переоцінено циклів: {len(rows)}')
+
+
+def report():
+    rows = _results()
+    for title, texts in (('Загальні тексти N, V, T', 'NVT'), ('Сексуальна вісь S (лише Venice)', 'S')):
+        print(f'\n### {title}\n')
+        print('| Модель | Оцінено / циклів | М\'яко: орф. / пункт. / рус. | М\'яко разом | Строго разом | Поза еталоном, токенів '
+              '| Слів лишилось, мін. | Проходів | Прохід, с (медіана / p90) | Відмови / збої проходів | Вартість, $ |')
+        print('|---|---|---|---|---|---|---|---|---|---|---|')
+        for model, m in aggregate(rows, texts).items():
+            per = m['gold'] // 3
+            share = ' / '.join(f"{m['lenient'][c]}/{per}" for c in CATEGORIES) if m['gold'] else '—'
+            lenient = f"{sum(m['lenient'].values())}/{m['gold']}" if m['gold'] else '—'
+            strict = f"{sum(m['fixed'].values())}/{m['gold']}" if m['gold'] else '—'
+            sec = f"{m['median_seconds']:.0f} / {m['p90_seconds']:.0f}" if m['median_seconds'] is not None else '—'
+            kept = f"{m['words_kept_min']:.0%}" if m['words_kept_min'] is not None else '—'
+            print(f"| `{model}` | {m['gold'] // 30}/{m['loops']} | {share} | {lenient} | {strict} | {m['off_gold']} | {kept} | {m['passes']} | {sec} | "
+                  f"{m['refusals']} / {m['failures']} | {m['cost_usd']:.4f} |")
+    print('\n### М\'яко разом за текстами\n')
+    print('| Модель | ' + ' | '.join(TEXTS) + ' |')
+    print('|---|' + '---|' * len(TEXTS))
+    per_text = {t: aggregate(rows, t) for t in TEXTS}
+    for model in aggregate(rows, ''.join(TEXTS)):
+        cells = [f"{sum(per_text[t][model]['lenient'].values())}/{per_text[t][model]['gold']}" if model in per_text[t] and per_text[t][model]['gold']
+                 else ('збій' if model in per_text[t] else '') for t in TEXTS]
+        print(f'| `{model}` | ' + ' | '.join(cells) + ' |')
 
 
 def main(argv=None):
@@ -183,9 +248,12 @@ def main(argv=None):
     group.add_argument('--plan', action='store_true')
     group.add_argument('--paid', action='store_true')
     group.add_argument('--report', action='store_true')
+    group.add_argument('--rescore', action='store_true', help='recompute scores from results.jsonl; no model is called')
     parser.add_argument('--texts', default=''.join(TEXTS), help='which texts to run with --paid, e.g. NVT')
     args = parser.parse_args(argv)
     stand.isolated(stand.ROOT)
+    if args.rescore:
+        return rescore_file()
     plan() if args.plan else paid(set(args.texts)) if args.paid else report()
 
 

@@ -1,5 +1,6 @@
 """Editor bench (#260 part 2): the error injector and the scorer, without any network."""
 import random
+import re
 import sys
 from pathlib import Path
 
@@ -61,14 +62,14 @@ def test_a_text_too_short_for_the_mistakes_is_refused():
 def test_an_editor_that_restores_the_original_fixes_everything():
     broken, gold = inject(text(), seed=5)
     result = score(gold, broken, text())
-    assert {c: result[c] for c in CATEGORIES} == {c: {'fixed': 10, 'missed': 0, 'other': 0} for c in CATEGORIES}
+    assert {c: result[c] for c in CATEGORIES} == {c: {'fixed': 10, 'missed': 0, 'other': 0, 'fixed_lenient': 10} for c in CATEGORIES}
     assert result['off_gold_tokens'] == 0
 
 
 def test_an_editor_that_changes_nothing_misses_everything():
     broken, gold = inject(text(), seed=5)
     result = score(gold, broken, broken)
-    assert {c: result[c] for c in CATEGORIES} == {c: {'fixed': 0, 'missed': 10, 'other': 0} for c in CATEGORIES}
+    assert {c: result[c] for c in CATEGORIES} == {c: {'fixed': 0, 'missed': 10, 'other': 0, 'fixed_lenient': 0} for c in CATEGORIES}
     assert result['off_gold_tokens'] == 0
 
 
@@ -100,3 +101,29 @@ def test_a_wrong_correction_counts_as_other():
     edited = broken[:m.start] + m.right + 'х' + broken[m.start + len(m.wrong):]
     result = score(gold, broken, edited)
     assert result[m.category]['other'] == 1
+
+
+def test_a_fix_with_a_neighbouring_change_is_lenient_but_not_strict():
+    broken, gold = inject(text(), seed=2)
+    m, found = next((g, f) for g in gold if g.category == 'spelling'
+                    for f in [re.match(r'(\s+)([^\W\d]+)', broken[g.start + len(g.wrong):])] if f)
+    tail = broken[m.start + len(m.wrong):]
+    gap, word = found.groups()
+    edited = broken[:m.start] + m.right + gap + 'Бриз' + tail[len(gap) + len(word):]
+    result = score(gold, broken, edited)
+    assert result[m.category]['other'] == 1 and result[m.category]['fixed'] == 0
+    assert result[m.category]['fixed_lenient'] == 1
+
+
+def test_a_wrong_correction_is_not_lenient_either():
+    broken, gold = inject(text(), seed=2)
+    m = gold[0]
+    edited = broken[:m.start] + m.right + 'х' + broken[m.start + len(m.wrong):]
+    assert score(gold, broken, edited)[m.category]['fixed_lenient'] == 0
+
+
+def test_the_share_of_words_kept_shows_a_shortened_text():
+    broken, gold = inject(text(), seed=2)
+    assert score(gold, broken, broken)['words_kept'] == 1.0
+    half = broken[:len(broken) // 2]
+    assert 0.45 < score(gold, broken, half)['words_kept'] < 0.55
