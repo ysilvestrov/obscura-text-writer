@@ -435,6 +435,10 @@ def build_context(repo,scene_id: str,stage: str,settings: RoleSettings,*,editor_
         warnings.append(OTHER_MATERIAL_WARNING)
     character_text,character_warnings,character_refs=character_material(repo,story,scene)
     if character_text:sections.append(character_text)
+    from ..storage.locations import shown_locations, view_locations
+    # MEMORY-LOCATIONS-S06: author descriptions of the scene's places for the planner and the writer (never memory).
+    shown=shown_locations(view_locations(repo),scene.location_ids)
+    if shown:sections.append(label('scene_locations',language)+'\n'+'\n'.join('— '+path+(': '+text if text else '') for path,text in shown))
     warnings.extend(character_warnings);refs.extend(character_refs)
     from ..characters.acquaintance import acquaintance_material
     acquaintance_text,acquaintance_warnings=acquaintance_material(repo,story,scene,stage)

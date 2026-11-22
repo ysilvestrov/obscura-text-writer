@@ -23,6 +23,7 @@ CODES={
     'target_unknown':'Update/retire посилається на невідомий, закритий або незмінний claim',
     'target_meta':'Update/retire змінює категорію або scope чинного claim',
     'target_twice':'Один claim змінено кілька разів за відповідь',
+    'location_unknown':'Невідома локація: location_ids містить локацію поза дозволеним списком сцени або повтор',
     'scope_unknown':'Невідомий scope персонажа: character_ids містить персонажа поза дозволеним списком сцени',
     'flashback_only_facts':'Спогад додає лише факти (flashback_only_facts)',
 }

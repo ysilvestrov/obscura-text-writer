@@ -263,7 +263,7 @@ def _author_events(base,edits,ctx,allowed):
                 occurrence=0
                 while True:
                     event=_change_event('update',claim.claim_id,edit.text,claim.category,claim.character_ids,prose_id,quote,
-                        slot=claim.slot,source_kind='author',evidence_version_id=evidence,occurrence=occurrence)
+                        slot=claim.slot,source_kind='author',evidence_version_id=evidence,occurrence=occurrence,location_ids=claim.location_ids)
                     if event.event_id not in event_ids:break
                     occurrence+=1
                 events.append(event)
@@ -272,7 +272,7 @@ def _author_events(base,edits,ctx,allowed):
             if claim is None or claim.category!='open_threads':raise ValueError(UNKNOWN_TARGET)
             # The retire carries the resolution text; with a quote the resolution is also a fact (I3), linked for I5.
             events.append(_change_event('retire',claim.claim_id,edit.text,claim.category,[],prose_id,quote,
-                source_kind='author',evidence_version_id=evidence))
+                source_kind='author',evidence_version_id=evidence,location_ids=claim.location_ids))
             if quote is not None:add('facts',edit.text,quote,evidence_version_id=evidence,resolves_claim_id=claim.claim_id)
     return events
 

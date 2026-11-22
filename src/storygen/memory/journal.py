@@ -28,6 +28,8 @@ class MemoryEvent(DomainModel):
     source_kind: Literal['prose','author'] = 'prose'
     evidence_version_id: str | None = None
     resolves_claim_id: str | None = None
+    # MEMORY-LOCATIONS: cards of the story the record belongs to; a field of the claim, kept by every change of it.
+    location_ids: list[str] = Field(default_factory=list)
 
     @model_validator(mode='before')
     @classmethod
@@ -56,6 +58,7 @@ class MemoryEvent(DomainModel):
     def omit_defaults(self, handler):
         data=handler(self)
         if not data.get('supporting_quotes'):data.pop('supporting_quotes',None)
+        if not data.get('location_ids'):data.pop('location_ids',None)
         for key in ('slot','evidence_version_id','resolves_claim_id','quote'):
             if data.get(key) is None:data.pop(key,None)
         if data.get('source_kind')=='prose':data.pop('source_kind',None)
@@ -144,6 +147,8 @@ def replay_memory(journal: MemoryJournal) -> dict[str,MemoryEvent]:
                 raise ValueError('Не можна змінювати категорію або scope claim')
             if previous.slot!=event.slot:
                 raise ValueError('Не можна змінювати слот claim')
+            if previous.location_ids!=event.location_ids:
+                raise ValueError('Не можна змінювати локації claim')
             if event.operation=='retire':
                 if event.slot:slots.discard((event.character_ids[0],event.slot))
                 del active[event.claim_id]
@@ -211,7 +216,7 @@ def duplicate_key(category,text,quote,supporting=(),*,slot=None,source_kind='pro
     return (category,text,quote,tuple(supporting),tuple(sorted(extras.items())))
 
 
-def _add_event(category,text,prose_id,quote,occurrence,characters=(),supporting=(),*,slot=None,source_kind='prose',evidence_version_id=None,resolves_claim_id=None):
+def _add_event(category,text,prose_id,quote,occurrence,characters=(),supporting=(),*,slot=None,source_kind='prose',evidence_version_id=None,resolves_claim_id=None,location_ids=()):
     value=[category,text,prose_id,quote,occurrence]
     if supporting:value.append(list(supporting))
     extras=_extras(quote,slot,source_kind,evidence_version_id,resolves_claim_id)
@@ -220,7 +225,7 @@ def _add_event(category,text,prose_id,quote,occurrence,characters=(),supporting=
     return MemoryEvent(event_id=stable_id('me_',['add',claim]),claim_id=claim,
         operation='add',category=category,text=text,character_ids=list(characters),
         source_version_id=prose_id,quote=quote,supporting_quotes=list(supporting),slot=slot,
-        source_kind=source_kind,evidence_version_id=evidence_version_id,resolves_claim_id=resolves_claim_id)
+        source_kind=source_kind,evidence_version_id=evidence_version_id,resolves_claim_id=resolves_claim_id,location_ids=list(location_ids))
 
 
 def change_event_id(action,claim_id,text,prose_id,quote,supporting=(),*,slot=None,source_kind='prose',evidence_version_id=None,resolves_claim_id=None,occurrence=0):
@@ -233,16 +238,17 @@ def change_event_id(action,claim_id,text,prose_id,quote,supporting=(),*,slot=Non
     return stable_id('me_',value)
 
 
-def _change_event(action,claim_id,text,category,character_ids,prose_id,quote,supporting=(),*,slot=None,source_kind='prose',evidence_version_id=None,resolves_claim_id=None,occurrence=0):
+def _change_event(action,claim_id,text,category,character_ids,prose_id,quote,supporting=(),*,slot=None,source_kind='prose',evidence_version_id=None,resolves_claim_id=None,occurrence=0,location_ids=()):
     return MemoryEvent(event_id=change_event_id(action,claim_id,text,prose_id,quote,supporting,slot=slot,
             source_kind=source_kind,evidence_version_id=evidence_version_id,resolves_claim_id=resolves_claim_id,occurrence=occurrence),
         claim_id=claim_id,operation=action,category=category,text=text,character_ids=list(character_ids),
         source_version_id=prose_id,quote=quote,supporting_quotes=list(supporting),slot=slot,
-        source_kind=source_kind,evidence_version_id=evidence_version_id,resolves_claim_id=resolves_claim_id)
+        source_kind=source_kind,evidence_version_id=evidence_version_id,resolves_claim_id=resolves_claim_id,location_ids=list(location_ids))
 
 
 def _nonstandard(event):
-    return bool(event.slot or event.source_kind!='prose' or event.evidence_version_id or event.resolves_claim_id or event.quote is None)
+    return bool(event.slot or event.source_kind!='prose' or event.evidence_version_id or event.resolves_claim_id or event.quote is None
+        or event.location_ids)
 
 
 def _extend(previous,prose_id,events,schema_version=None):
@@ -269,7 +275,7 @@ def apply_operations(previous,delta,prose_id,prose,allowed_character_ids):
             events.append(_add_event(op.category,op.text,prose_id,quote,occurrence,op.character_ids))
         else:
             events.append(_change_event(op.action,op.claim_id,op.text,op.category,op.character_ids,prose_id,quote,
-                slot=getattr(active.get(op.claim_id),'slot',None)))
+                slot=getattr(active.get(op.claim_id),'slot',None),location_ids=getattr(active.get(op.claim_id),'location_ids',())))
     return _extend(previous,prose_id,events)
 
 
@@ -371,17 +377,32 @@ def validate_memory_journal(journal,source_versions,previous=None):
     return journal
 
 
+def _inherit_places(data,raw):
+    """MEMORY-LOCATIONS: a change written by hand without location_ids takes those of its claim."""
+    events=data.get('events')
+    if not isinstance(events,list):return raw
+    places={};filled=False
+    for event in events:
+        if not isinstance(event,dict) or not isinstance(event.get('claim_id'),str):continue
+        if event.get('operation')=='add':places[event['claim_id']]=event.get('location_ids',[])
+        elif 'location_ids' not in event and places.get(event['claim_id']):
+            event['location_ids']=list(places[event['claim_id']]);filled=True
+    return json.dumps(data,ensure_ascii=False) if filled else raw
+
+
 def normalize_manual_memory(raw,previous,prose_id,prose,allowed_character_ids,*,tracked=()):
     data=decode_memory(raw)
     if not isinstance(data,dict):raise ValueError('Потрібен JSON об’єкт пам’яті')
     if 'schema_version' not in data:
         return merge_legacy_snapshot(previous,MemorySnapshot.model_validate(data),prose_id,prose)
+    raw=_inherit_places(data,raw)
     journal=load_memory(raw)
     if journal.events[:len(previous.events)]!=previous.events:
         raise ValueError('Нова пам’ять змінила журнал попередніх сцен')
     if journal.source_prose_ids!=previous.source_prose_ids+[prose_id]:
         raise ValueError('Пам’ять посилається на інші джерела прози')
     events=[];mapping={};duplicates={};change_ids=set();known={e.claim_id for e in previous.events}
+    places={c.claim_id:c.location_ids for c in replay_memory(previous).values()}  # MEMORY-LOCATIONS: kept by changes
     for event in journal.events[len(previous.events):]:
         if event.source_version_id!=prose_id or (event.evidence_version_id is None and any(
                 q not in prose for q in [event.quote,*event.supporting_quotes] if q is not None)):
@@ -401,15 +422,16 @@ def normalize_manual_memory(raw,previous,prose_id,prose,allowed_character_ids,*,
                 evidence_version_id=event.evidence_version_id,resolves_claim_id=link)
             occurrence=duplicates.get(key,0);duplicates[key]=occurrence+1
             canonical=_add_event(event.category,event.text,prose_id,event.quote,occurrence,event.character_ids,event.supporting_quotes,
-                slot=event.slot,source_kind=event.source_kind,evidence_version_id=event.evidence_version_id,resolves_claim_id=link)
-            mapping[event.claim_id]=canonical.claim_id;known.add(canonical.claim_id)
+                slot=event.slot,source_kind=event.source_kind,evidence_version_id=event.evidence_version_id,resolves_claim_id=link,
+                location_ids=event.location_ids)
+            mapping[event.claim_id]=canonical.claim_id;known.add(canonical.claim_id);places[canonical.claim_id]=canonical.location_ids
         else:
             claim=mapping.get(event.claim_id,event.claim_id)
             args=(event.operation,claim,event.text,prose_id,event.quote,event.supporting_quotes)
             kwargs=dict(slot=event.slot,source_kind=event.source_kind,evidence_version_id=event.evidence_version_id,resolves_claim_id=link)
             occurrence=0
             while change_event_id(*args,**kwargs,occurrence=occurrence) in change_ids:occurrence+=1
-            canonical=event.model_copy(update={'claim_id':claim,'resolves_claim_id':link,
+            canonical=event.model_copy(update={'claim_id':claim,'resolves_claim_id':link,'location_ids':list(places.get(claim,event.location_ids)),
                 'event_id':change_event_id(*args,**kwargs,occurrence=occurrence)})
             change_ids.add(canonical.event_id)
         events.append(canonical)

@@ -93,6 +93,30 @@ def suggestions(db, story_id: str) -> list[tuple[str,str]]:
     return found
 
 
+def view_locations(view) -> dict[str,StoryLocation]:
+    """Cards of the view's story; every ContextView loads them with the rest of its snapshot."""
+    return view.locations
+
+
+def scene_neighbourhood(cards: dict[str,StoryLocation], location_ids) -> list[str]:
+    from ..locations import neighbourhood
+    return neighbourhood({id:place(c) for id,c in cards.items()},location_ids)
+
+
+def shown_locations(cards: dict[str,StoryLocation], location_ids) -> list[list[str]]:
+    """[path, description] of the scene locations and their ancestors, ancestors first, merged cards as their target."""
+    merged={c.id:c.merged_into for c in cards.values()};out=[];seen=set()
+    for id in location_ids:
+        chain=[];id=canonical(merged,id)
+        while id in cards and id not in chain:
+            chain.append(id);parent=cards[id].parent_id
+            id=canonical(merged,parent) if parent else None
+        for item in reversed(chain):
+            if item not in seen:
+                seen.add(item);out.append([cards[item].path,cards[item].description])
+    return out
+
+
 def backfill(db):
     """Migration 007: location cards and Scene.location_ids of every scene, the trashed ones too; no revision moves."""
     for row in db.execute('SELECT id,story_id,payload FROM scenes').fetchall():
