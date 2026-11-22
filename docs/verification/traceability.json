@@ -97,6 +97,12 @@
         "tests/storage/test_prose_acceptance_bulk.py::test_change_after_preview_rejects_everything",
         "tests/storage/test_prose_acceptance_bulk.py::test_open_book_review_blocks_bulk_acceptance",
         "tests/storage/test_prose_acceptance_bulk.py::test_nothing_waiting_gives_an_empty_preview",
+        "tests/storage/test_prose_acceptance_bulk.py::test_one_click_also_accepts_later_scenes_the_acceptance_makes_wait",
+        "tests/storage/test_prose_acceptance_bulk.py::test_model_prose_with_dependency_edges_stays_accepted",
+        "tests/storage/test_prose_acceptance_bulk.py::test_parts_arcs_and_a_changed_order_leave_nothing_waiting",
+        "tests/storage/test_prose_acceptance_bulk.py::test_second_pass_after_an_upstream_change_accepts_everything_again",
+        "tests/storage/test_prose_acceptance_bulk.py::test_preview_writes_nothing_and_an_unlisted_scene_changed_after_it_rejects_everything",
+        "tests/storage/test_prose_acceptance_bulk.py::test_scene_still_waiting_after_its_own_acceptance_stops_without_changes",
         "tests/storage/test_prose_acceptance_bulk.py::test_http_preview_accept_and_stale_fingerprint"
       ],
       "manual": {

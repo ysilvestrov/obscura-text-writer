@@ -72,8 +72,11 @@ def _waiting_prose(view):
 
 
 def _bulk_preview(view):
+    """The prose waiting now and a fingerprint of the whole book: the waiting previews plus the prose head and revision
+    of every active scene, so an unlisted scene the acceptance cascade reaches cannot change unseen either."""
     rows=[(scene,_preview(view,scene.id,id)) for scene,id in _waiting_prose(view)]
-    fingerprint=hashlib.sha256(json.dumps([p.preview_fingerprint for _,p in rows]).encode()).hexdigest()
+    book=[[scene.id,scene.heads.get('prose'),scene.revision] for scene in view.list_scenes(view.story.id)]
+    fingerprint=hashlib.sha256(json.dumps([[p.preview_fingerprint for _,p in rows],book]).encode()).hexdigest()
     return rows,fingerprint
 
 
@@ -87,6 +90,29 @@ def preview_prose_acceptance(repo, story_id):
     return dict(scenes=_scene_rows(rows),fingerprint=fingerprint)
 
 
+def _accept_cascade(repo, db, story_id):
+    """Accept waiting prose one scene at a time, the first waiting scene in reading order, until none waits.
+
+    A scene's author baseline records the acceptance ID of every earlier scene's prose, so accepting one scene makes
+    later scenes that were current a moment ago wait (`source_baseline_changed`, or `needs_review` from the dependency
+    edges). The list is therefore read again after every acceptance instead of being fixed up front (DATA-010-S02;
+    the defect of 22.11.2026 left such scenes stale after the click)."""
+    accepted=[]
+    while True:
+        view=ContextView(repo,db,story_id)
+        rows=_waiting_prose(view)
+        if not rows:
+            return accepted
+        scene,version_id=rows[0]
+        if any(a['scene_id']==scene.id for a in accepted):
+            # An author decision does not clear every reason (e.g. a changed review authority): stop, change nothing.
+            reasons=', '.join(sorted({r.reason for r in resolve_freshness(view,version_id).reasons})) or 'needs_review'
+            raise ValueError(f'Прозу сцени «{scene.title}» не можна прийняти масово: вона застаріла й після прийняття ({reasons})')
+        preview=_preview(view,scene.id,version_id)
+        record=_record_acceptance(repo,db,view,repo._active_scene(db,scene.id),preview,None)
+        accepted.append(dict(scene_id=scene.id,title=scene.title,version_id=record.version_id,acceptance_id=record.id))
+
+
 def accept_all_prose(repo, story_id, fingerprint):
     with repo.db.connection() as db:
         db.execute('BEGIN IMMEDIATE')
@@ -95,21 +121,19 @@ def accept_all_prose(repo, story_id, fingerprint):
             run=Run.model_validate_json(raw)
             if run.request.mode=='impact' and run.state in ACTIVE_RUN_STATES:
                 raise ValueError('Спершу завершіть перевірку книги, що вже триває')
-        rows,current=_bulk_preview(ContextView(repo,db,story_id))
+        _,current=_bulk_preview(ContextView(repo,db,story_id))
         if current!=fingerprint:
             raise RevisionConflict('Прозу книги змінено після перегляду. Перегляньте прийняття заново')
-        accepted=[]
-        # A scene's author baseline holds the earlier scenes' prose with their acceptance IDs: each scene is
-        # previewed again after the earlier ones were accepted, in reading order, so none is stale afterwards.
-        for scene,_ in rows:
-            view=ContextView(repo,db,story_id)
-            fresh=_preview(view,scene.id,scene.heads['prose'])
-            result=_accept_in_transaction(repo,db,view,repo._active_scene(db,scene.id),fresh,None)
-            accepted.append(dict(scene_id=scene.id,title=scene.title,version_id=result.version.id,acceptance_id=result.acceptance.id))
-        return dict(accepted=accepted)
+        return dict(accepted=_accept_cascade(repo,db,story_id))
 
 
 def _accept_in_transaction(repo, db, view, scene, preview, note):
+        record=_record_acceptance(repo,db,view,scene,preview,note)
+        current=ContextView(repo,db,scene.story_id)
+        return AcceptanceResult(scene=current.effective_scene(scene.id),version=current.get_version(record.version_id),acceptance=record)
+
+
+def _record_acceptance(repo, db, view, scene, preview, note):
         version_id=preview.version_id
         ref=view.get_version(version_id)
         record=AcceptanceRecord(id=new_id(),story_id=scene.story_id,scene_id=scene.id,version_id=ref.id,created_at=now(),
@@ -128,5 +152,4 @@ def _accept_in_transaction(repo, db, view, scene, preview, note):
             scene.needs_review=False
             repo._save_scene(db,scene)
         repo._touch_story(db,scene.story_id)
-        current=ContextView(repo,db,scene.story_id)
-        return AcceptanceResult(scene=current.effective_scene(scene.id),version=current.get_version(ref.id),acceptance=record)
+        return record
