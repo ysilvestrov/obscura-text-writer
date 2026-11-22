@@ -72,6 +72,11 @@ def forbidden_gateway(*args, **kwargs):
                 yield GenerationEvent(type='delta',text='{"edits":[]}')
                 yield GenerationEvent(type='terminal',finish_reason='stop')
                 return
+            if context.stage=='draft' and context.settings.provider.model=='synthetic-writer':
+                # A long draft: the page is taller than the window, so where the workspace scrolls is visible.
+                yield GenerationEvent(type='delta',text='\n\n'.join(f'Абзац {n}: Лєра йшла парком і рахувала ліхтарі, поки вечір густішав над озером.' for n in range(1,61)))
+                yield GenerationEvent(type='terminal',finish_reason='stop')
+                return
             if context.stage!='rewrite' or context.settings.provider.model!='synthetic-rewrite':raise AssertionError('Only synthetic rewrite is allowed')
             yield GenerationEvent(type='delta',text='Лєра побачила **сузір’я**.\n\nВечір був _спокійним_.')
             yield GenerationEvent(type='terminal',finish_reason='stop')
@@ -275,6 +280,18 @@ def main():
             draft=repo.save_version(story.id,scene.id,'draft',text,[brief.id],source_run_id='synthetic',content_format=format)
             repo.set_head(scene.id,'draft',draft.id,scene.revision)
             return {'story_id':story.id,'scene_id':scene.id,'draft_id':draft.id}
+
+        @app.post('/test-draft-writer')
+        def draft_writer_fixture():
+            import json
+            from storygen.authoring.blueprints import save_role_settings
+            from storygen.providers.models import RoleSettings,ProviderSettings
+            story=rated_story('Вечірній парк')
+            scene=repo.create_scene(story.id,SceneCreate(title='Ліхтарі',beats='Лєра йде парком.'))
+            brief=repo.save_version(story.id,scene.id,'brief',json.dumps(dict(objective='Прогулянка',beats=[f'Крок {n}: Лєра проходить ще одну алею парку й зупиняється біля ліхтаря.' for n in range(1,26)],constraints=[],proposed_changes=[]),ensure_ascii=False),[])
+            repo.set_head(scene.id,'brief',brief.id,scene.revision)
+            save_role_settings(repo,story.id,'writer',RoleSettings(provider=ProviderSettings(model='synthetic-writer'),context_tokens=32768),repo.get_story(story.id).revision)
+            return {'story_id':story.id,'scene_id':scene.id}
 
         @app.post('/test-editor-no-changes')
         def editor_no_changes():

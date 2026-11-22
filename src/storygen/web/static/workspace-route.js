@@ -88,6 +88,15 @@ async function launch(options,primaryAction=false){
   if(run){pending={...capture,id:run.id,target:options.mode==='edit_loop'?'review':options.stage};await complete(run)}
   return run;
 }
+// WORKSPACE-PRIMARY-SCROLL: the new material opens from its top, under the sticky tabs and toolbar.
+// The page keeps the scroll offset of the previous, often longer material otherwise and lands below the new text.
+function revealMaterial(){
+  const material=document.querySelector('#workspace-material'),sticky=document.querySelector('#workspace .workspace-sticky');
+  if(!material||document.querySelector('#workspace')?.classList.contains('focus-mode'))return;
+  const covered=sticky&&getComputedStyle(sticky).position==='sticky'?sticky.getBoundingClientRect().bottom:0;
+  const top=material.getBoundingClientRect().top-Math.max(0,covered);
+  if(top<0)scrollBy({top});
+}
 async function complete(run){
   if(!pending||pending.id!==run.id||!['completed','needs_review','alternative'].includes(run.state))return;
   const captured=pending;pending=null;
@@ -95,7 +104,7 @@ async function complete(run){
   await refresh();
   if(state.scene?.id===captured.sceneId&&state.mode===captured.mode&&!state.dirty&&!state.saving&&state.bufferOrigin!=='history'){
     // The material loader may have refreshed the same completed head; never replace newer typing.
-    if(state.bufferEpoch===captured.epoch||state.mode===captured.target)await invokeWorkspaceCommand('show',captured.target);
+    if(state.bufferEpoch===captured.epoch||state.mode===captured.target){await invokeWorkspaceCommand('show',captured.target);revealMaterial()}
   }
 }
 primary.onclick=async()=>{
