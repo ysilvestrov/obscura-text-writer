@@ -34,7 +34,9 @@ The editors come from a comparison on 2026-11-22 (Obscura repository, `docs/rese
 
 - **Venice.** `glm-5-3-flash-uncensored` fixed as many mistakes as `qwen-3-6-plus` (the previous Balanced and Quality editor), on the sexual-content text too. It was about five times faster and a quarter of the price, and it kept the text whole, so every budget uses it. `qwen-3-6-plus` is the replacement of the same quality.
 - **OpenRouter.** `google/gemma-4-31b-it` fixed the most mistakes and was the cheapest working editor. `openai/gpt-6.1-sol`, the previous Quality editor, did no better on the one text it ran at about 48 times the cost. `anthropic/claude-haiku-5.5` is close, but it is the Quality writer's family.
-- **Not as editors.** With the 8192-token output limit, `z-ai/glm-5.3-flash`, `qwen/qwen3.8-flash` and `qwen/qwen3.7-plus` spend the whole limit on reasoning and return no text. Obscura has no reasoning switch for OpenRouter yet, so do not use them as editors.
+- **Reasoning models.** With the provider's default reasoning and the 8192-token output limit, `z-ai/glm-5.3-flash`, `qwen/qwen3.8-flash` and `qwen/qwen3.7-plus` spend the whole limit on reasoning and return no text. A re-run on 2026-11-22 with the role's reasoning set:
+  - `qwen/qwen3.8-flash` and `qwen/qwen3.7-plus` with reasoning `none` fixed as many mistakes as `google/gemma-4-31b-it`, but were slower (51 s and 70 s per pass against 30 s); `qwen3.7-plus` cost three times as much. `qwen/qwen3.8-flash` with reasoning `none` is the replacement of the same quality and close in price.
+  - `z-ai/glm-5.3-flash` cannot turn reasoning off; with `low` it once returned only the first fifth of the scene as a finished pass. Do not use it as an editor.
 
 ## Families for replacements
 
