@@ -5625,6 +5625,99 @@
       ]
     },
     {
+      "id": "MEMORY-LOCATIONS-S01",
+      "requirement": "MEMORY-LOCATIONS",
+      "scope": "Роздільники, «і/та/and», вкладеність, нормалізація, ID, схожість, canonical і околиця.",
+      "tests": [
+        "tests/memory/test_locations_parse.py::test_commas_semicolons_arrows_and_sequence_words_separate_locations",
+        "tests/memory/test_locations_parse.py::test_and_words_stay_inside_a_name",
+        "tests/memory/test_locations_parse.py::test_sequence_word_inside_a_word_is_not_a_separator",
+        "tests/memory/test_locations_parse.py::test_slash_nests_a_location",
+        "tests/memory/test_locations_parse.py::test_empty_values_give_no_locations",
+        "tests/memory/test_locations_parse.py::test_repeats_by_key_are_dropped_in_order",
+        "tests/memory/test_locations_parse.py::test_normalize_ignores_case_spaces_quotes_and_final_punctuation",
+        "tests/memory/test_locations_parse.py::test_id_is_deterministic_per_story_and_key"
+      ]
+    },
+    {
+      "id": "MEMORY-LOCATIONS-S02",
+      "requirement": "MEMORY-LOCATIONS",
+      "scope": "Картки й Scene.location_ids зі збереження і створення плану, перше написання, рядок прибрано, пряма застарілість legacy-версій, міграція 6→7 зі сценою в кошику, цілісність; застарілість пам’яті через селектор location_ids.",
+      "tests": [
+        "tests/storage/test_story_locations.py::test_plan_save_creates_cards_with_parents_and_scene_location_ids",
+        "tests/storage/test_story_locations.py::test_the_first_spelling_stays_the_shown_path",
+        "tests/storage/test_story_locations.py::test_a_plan_without_a_location_line_has_no_locations",
+        "tests/storage/test_story_locations.py::test_scene_created_with_a_plan_gets_locations",
+        "tests/storage/test_story_locations.py::test_a_changed_location_line_stales_legacy_versions_like_a_changed_cast",
+        "tests/storage/test_story_locations.py::test_migration_from_6_backfills_every_scene_without_new_revisions",
+        "tests/storage/test_story_locations.py::test_integrity_flags_a_scene_with_a_missing_location_card",
+        "tests/generation/test_location_context.py::test_location_line_change_stales_memory"
+      ]
+    },
+    {
+      "id": "MEMORY-LOCATIONS-S03",
+      "requirement": "MEMORY-LOCATIONS",
+      "scope": "Злиття (цикл, самозлиття), розділення, підказки й відхилення на рівні сховища; застарілість за околицею. API й панель — PR 2.",
+      "tests": [
+        "tests/storage/test_story_locations.py::test_merge_split_description_and_dismissed_pairs",
+        "tests/memory/test_locations_parse.py::test_similar",
+        "tests/memory/test_locations_parse.py::test_canonical_follows_merges_and_stops_on_a_cycle",
+        "tests/memory/test_locations_parse.py::test_neighbourhood_has_ancestors_descendants_and_merged_ids",
+        "tests/generation/test_location_context.py::test_merge_in_the_neighbourhood_stales_and_outside_does_not"
+      ]
+    },
+    {
+      "id": "MEMORY-LOCATIONS-S04",
+      "requirement": "MEMORY-LOCATIONS",
+      "scope": "location_ids у журналі (серіалізація, зміни, replay), межі й схема wire v4, location_unknown, стара відповідь, закриття лінії, ручне збереження, злиття арок, розділ дозволених локацій етапу memory, факт розв’язки й стан після unknown успадковують локації, повтор чи порожній ID відхиляється.",
+      "tests": [
+        "tests/memory/test_memory_locations.py::test_empty_location_ids_are_not_serialized_and_old_journals_read",
+        "tests/memory/test_memory_locations.py::test_a_change_keeps_the_location_of_its_claim_and_replay_rejects_another",
+        "tests/memory/test_memory_locations.py::test_bounds_and_schema_list_locations_only_when_the_scene_has_some",
+        "tests/memory/test_memory_locations.py::test_wire_v4_adds_carry_allowed_locations",
+        "tests/memory/test_memory_locations.py::test_an_answer_without_location_ids_is_accepted_for_a_scene_with_locations",
+        "tests/memory/test_memory_locations.py::test_unknown_or_repeated_location_is_a_violation",
+        "tests/memory/test_memory_locations.py::test_wire_changes_inherit_the_claim_location",
+        "tests/memory/test_memory_locations.py::test_closing_a_thread_keeps_its_location_on_the_retire",
+        "tests/memory/test_memory_locations.py::test_manual_save_keeps_new_locations_and_fills_changes_from_their_claim",
+        "tests/memory/test_memory_locations.py::test_author_merge_of_arcs_keeps_the_record_location",
+        "tests/generation/test_location_context.py::test_memory_stage_allows_the_scene_places_and_their_ancestors",
+        "tests/generation/test_location_context.py::test_memory_stage_of_a_scene_without_places_is_unchanged",
+        "tests/memory/test_memory_locations.py::test_wire_closing_a_thread_gives_the_resolution_fact_its_location",
+        "tests/memory/test_memory_locations.py::test_a_slot_turning_unknown_keeps_its_location_on_the_atmosphere_state",
+        "tests/memory/test_memory_locations.py::test_author_closing_a_thread_gives_the_resolution_fact_its_location",
+        "tests/memory/test_memory_locations.py::test_replay_rejects_repeated_or_blank_locations",
+        "tests/memory/test_memory_locations.py::test_manual_save_rejects_a_change_with_another_location"
+      ]
+    },
+    {
+      "id": "MEMORY-LOCATIONS-S05",
+      "requirement": "MEMORY-LOCATIONS",
+      "scope": "Шар place у classify і select_memory, проєкція станів відсутніх в околиці, звужений каталог, запит письма з пам’яттю місця.",
+      "tests": [
+        "tests/memory/test_selection_place.py::test_place_layer_follows_present",
+        "tests/memory/test_selection_place.py::test_records_of_the_neighbourhood_go_to_place_and_higher_layers_keep_theirs",
+        "tests/memory/test_selection_place.py::test_without_a_neighbourhood_nothing_changes",
+        "tests/memory/test_selection_place.py::test_place_is_taken_before_general_and_facts",
+        "tests/memory/test_selection_place.py::test_projection_keeps_a_state_of_an_absent_character_in_the_neighbourhood",
+        "tests/memory/test_selection_place.py::test_narrow_catalog_keeps_states_and_facts_of_the_neighbourhood",
+        "tests/generation/test_location_context.py::test_writing_memory_keeps_a_state_of_an_absent_character_in_the_same_place"
+      ]
+    },
+    {
+      "id": "MEMORY-LOCATIONS-S06",
+      "requirement": "MEMORY-LOCATIONS",
+      "scope": "Розділ «ЛОКАЦІЇ СЦЕНИ» в brief/draft/повному edit, без нього в memory й edit латками, англійська мітка, сцена без локацій, застарілість за описом, поле locations у MCP writing-context і його відбиток, селектори локацій знімка ручного збереження.",
+      "tests": [
+        "tests/generation/test_location_context.py::test_section_lists_scene_locations_with_ancestors_and_descriptions",
+        "tests/generation/test_location_context.py::test_memory_and_patches_get_no_section_and_english_label",
+        "tests/generation/test_location_context.py::test_scene_without_locations_has_no_section_and_no_new_selectors",
+        "tests/generation/test_location_context.py::test_description_change_stales_brief_of_scenes_that_show_it_only",
+        "tests/generation/test_location_context.py::test_writing_context_lists_locations_and_a_description_changes_the_fingerprint",
+        "tests/generation/test_location_context.py::test_manual_snapshot_has_the_location_selectors"
+      ]
+    },
+    {
       "id": "MEMORY-SUMMARY-S01",
       "requirement": "MEMORY-SUMMARY",
       "scope": "Блоки пласкої книги й книги з частинами, кошик, пороги рекомендації й заміни, старий payload.",

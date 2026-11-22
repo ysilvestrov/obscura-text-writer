@@ -12,7 +12,7 @@ def story_cards(repo,db,story_id):
 
 
 def apply_description(repo,db,scene,text,*,include_title=True,cards=None):
-    previous=(scene.title,scene.character_ids.copy())
+    previous=(scene.title,scene.character_ids.copy(),scene.location_ids.copy())
     parsed=parse_scene_description(text)
     if include_title:
         creating=not db.execute('SELECT 1 FROM scenes WHERE id=?',(scene.id,)).fetchone()
@@ -30,7 +30,9 @@ def apply_description(repo,db,scene,text,*,include_title=True,cards=None):
     if parsed.participants is not None:
         if cards is None:cards=story_cards(repo,db,scene.story_id)
         scene.character_ids=resolve_participants(parsed.participants,cards)[0]
-    if previous!=(scene.title,scene.character_ids):
+    from .locations import plan_location_ids
+    scene.location_ids=plan_location_ids(db,scene.story_id,text)
+    if previous!=(scene.title,scene.character_ids,scene.location_ids):
         roots=[id for head,id in getattr(scene,'heads',{}).items() if head!='plan']
         for id in roots:
             ref=repo._get(db,'versions',id,VersionRef)

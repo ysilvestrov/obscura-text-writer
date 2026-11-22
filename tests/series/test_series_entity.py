@@ -95,12 +95,12 @@ def test_migration_from_5_creates_the_table(tmp_path):
     path = tmp_path / 'db.sqlite'
     Database(path)
     with sqlite3.connect(path) as db:
-        assert db.execute('PRAGMA user_version').fetchone()[0] == 6
-        db.execute('DROP TABLE series')
+        assert db.execute('PRAGMA user_version').fetchone()[0] == 7
+        db.execute('DROP TABLE series');db.execute('DROP TABLE location_dismissals');db.execute('DROP TABLE story_locations')
         db.execute('PRAGMA user_version=5')
     Database(path)
     with sqlite3.connect(path) as db:
-        assert db.execute('PRAGMA user_version').fetchone()[0] == 6
+        assert db.execute('PRAGMA user_version').fetchone()[0] == 7
         assert db.execute("SELECT name FROM sqlite_master WHERE name='series'").fetchone()
 
 

@@ -13,7 +13,7 @@ from storygen.storage.integrity import check_integrity
 from storygen.storage.integrity import readonly_database
 
 
-@pytest.mark.parametrize('schema',[2,3,4,5,6])
+@pytest.mark.parametrize('schema',[2,3,4,5,6,7])
 def test_publication_cold_backup_restore_schema2_and_3(tmp_path,schema):
     source=tmp_path/'source'
     if schema==2:
@@ -30,6 +30,10 @@ def test_publication_cold_backup_restore_schema2_and_3(tmp_path,schema):
         cover=repo.publication('upload_cover',story_id=story.id,content=blob.getvalue())
         repo.publication('save_card',story_id=story.id,data=PublicationData(author_ids=[author.id],cover_id=cover.id),expected_revision=0,expected_signature_revisions={author.id:0})
         repo.publication('update_signature',id=author.id,expected_revision=0,archived=True)
+        if schema<7:
+            with repo.db.connection() as db:
+                db.execute('DROP TABLE location_dismissals');db.execute('DROP TABLE story_locations')
+                db.execute('PRAGMA user_version=6')
         if schema<6:
             with repo.db.connection() as db:
                 db.execute('DROP TABLE series')

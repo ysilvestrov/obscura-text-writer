@@ -10,7 +10,7 @@ from typing import Mapping
 from .projection import MemoryItem, render_memory
 from ..generation.context_labels import label
 
-LAYERS=('core','hero_recent','threads','present','general','facts','summary','timeline','atmosphere','fts')
+LAYERS=('core','hero_recent','threads','present','place','general','facts','summary','timeline','atmosphere','fts')
 TIMELINE_WINDOW=20
 RECENT_SCENES=3
 ATMOSPHERE_SHARE=0.10
@@ -42,6 +42,8 @@ class SelectionInput:
     lineage_numbers: Mapping[int,int] = field(default_factory=dict)
     # CHARACTER-NAMES: every name available in the scene (comma separated) for finding mentions; None means names.
     match_names: Mapping[str,str] | None = None
+    # MEMORY-LOCATIONS: every location id of the scene's neighbourhood; records there form the `place` layer.
+    place: frozenset = frozenset()
 
 
 def scenes_back(scene_number: int, source_number: int, lineage_numbers: Mapping[int,int] | None = None) -> int:
@@ -103,17 +105,21 @@ def classify(inp: SelectionInput) -> dict[str,list[MemoryItem]]:
     cast_stems,hero_stems,other_stems=stems(cast),stems(heroes),stems(cast-heroes)
     for item in inp.items:
         kind=inp.kinds.get(item.claim_id)
+        here=bool(inp.place.intersection(item.location_ids))
         if item.section=='core' or kind=='core':layer='core'
         elif kind=='atmosphere':layer='atmosphere'
         elif item.section=='timeline':layer='timeline'
         elif item.section=='character_states':
             ids=set(item.character_ids)
-            if ids&heroes:layer='hero_recent' if _recent(inp,item) else 'atmosphere'
-            elif ids&cast:layer='present'
+            if ids&heroes and _recent(inp,item):layer='hero_recent'
+            elif ids&cast and not ids&heroes:layer='present'
+            elif here:layer='place'
+            elif ids&heroes:layer='atmosphere'
             elif not ids:layer='general'
             else:layer='fts'
         elif item.section=='open_threads':
-            layer='threads' if mentions(item.text,cast_stems) else 'fts'
+            layer='threads' if mentions(item.text,cast_stems) else 'place' if here else 'fts'
+        elif here:layer='place'
         elif item.section=='facts' and mentions(item.text,cast_stems):
             hero_only=mentions(item.text,hero_stems) and not mentions(item.text,other_stems)
             layer='atmosphere' if hero_only else 'facts'
@@ -184,7 +190,7 @@ def select_memory(inp: SelectionInput, char_budget: int) -> MemorySelection:
         dropped[layer]+=1
         return 0
 
-    for layer in ('hero_recent','threads','present','general','facts'):
+    for layer in ('hero_recent','threads','present','place','general','facts'):
         for item in layers[layer]:take(layer,item)
     # MEMORY-SUMMARY: a summary replaces its whole block, the entries inside the window too; latest block first.
     summaries={}
@@ -237,7 +243,8 @@ class NarrowCatalog:
     immutable_shown: int
 
 
-def narrow_catalog(journal, cast, tracked, names, prose: str, scene_number: int, source_numbers: Mapping[str,int], lineage_numbers: Mapping[int,int] | None = None) -> NarrowCatalog:
+def narrow_catalog(journal, cast, tracked, names, prose: str, scene_number: int, source_numbers: Mapping[str,int], lineage_numbers: Mapping[int,int] | None = None,
+        place=()) -> NarrowCatalog:
     """Claims the memory stage still sees when its full catalog overflows (MEMORY-SELECT-S07): the core and every thread,
     states of the cast and general states, up to NARROW_FTS_STATES other states ranked by the scene prose, facts that
     mention a participant and the timeline of the last TIMELINE_WINDOW scenes."""
@@ -245,7 +252,7 @@ def narrow_catalog(journal, cast, tracked, names, prose: str, scene_number: int,
     active=list(replay_memory(journal).values())
     every,cast=set(tracked),set(cast)
     stems=tuple(s for cid in sorted(cast) for s in name_stems(names.get(cid,'')))
-    keep=set();pool=[];mutable=immutable=absent=0
+    keep=set();pool=[];mutable=immutable=absent=0;place=frozenset(place)
     for event in active:
         if event.slot and event.character_ids[0] in every:
             # Core slots: a participant's is always shown; an absent tracked character's is in neither catalog (nor in
@@ -254,10 +261,10 @@ def narrow_catalog(journal, cast, tracked, names, prose: str, scene_number: int,
             else:absent+=1
         elif event.category=='open_threads':keep.add(event.claim_id)
         elif event.category=='character_states':
-            if not event.character_ids or cast&set(event.character_ids):keep.add(event.claim_id);mutable+=1
+            if not event.character_ids or cast&set(event.character_ids) or place.intersection(event.location_ids):keep.add(event.claim_id);mutable+=1
             else:pool.append(event)
         elif event.category=='facts':
-            if mentions(event.text,stems):keep.add(event.claim_id);immutable+=1
+            if mentions(event.text,stems) or place.intersection(event.location_ids):keep.add(event.claim_id);immutable+=1
         elif event.category=='timeline':
             number=source_numbers.get(event.source_version_id)
             if number is None or scenes_back(scene_number,number,lineage_numbers)<=TIMELINE_WINDOW:keep.add(event.claim_id);immutable+=1

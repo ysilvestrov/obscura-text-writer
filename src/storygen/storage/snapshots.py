@@ -8,6 +8,30 @@ from ..rating.levels import effective_rating, from_wire, is_lower, to_wire
 RATING_SCOPES = frozenset({'brief', 'draft', 'prose_edit', 'patches', 'author_rewrite'})
 # Scopes whose result is prose of the scene (STORY-LANGUAGE-S04): a brief and memory do not depend on the prose language.
 PROSE_LANGUAGE_SCOPES = frozenset({'draft', 'prose_edit', 'patches', 'author_rewrite'})
+# MEMORY-LOCATIONS: scopes whose memory selection uses the scene's location neighbourhood, and those whose request
+# carries «ЛОКАЦІЇ СЦЕНИ». Both selectors are written only when non-empty, so snapshots of scenes without locations
+# stay byte for byte the same; a missing selector is never compared.
+LOCATION_SCOPES = frozenset({'memory', 'brief', 'draft', 'prose_edit', 'author_text', 'author_rewrite'})
+LOCATION_CONTEXT_SCOPES = frozenset({'brief', 'draft', 'prose_edit', 'author_rewrite'})
+
+
+def location_selectors(view, scene, scope, select):
+    from .locations import scene_neighbourhood, shown_locations, view_locations
+    cards=view_locations(view)
+    near=scene_neighbourhood(cards,scene.location_ids)
+    if near:select('scene',scene.id,'location_neighbourhood',near)
+    shown=shown_locations(cards,scene.location_ids) if scope in LOCATION_CONTEXT_SCOPES else []
+    if shown:select('scene',scene.id,'location_context',dict(shown))  # path -> description
+
+
+def location_value(view, owner, field):
+    from .locations import scene_neighbourhood, shown_locations, view_locations
+    scene=view.peek_scene(owner);cards=view_locations(view)
+    if field=='location_ids':return list(scene.location_ids)
+    if field=='location_neighbourhood':return scene_neighbourhood(cards,scene.location_ids)
+    return dict(shown_locations(cards,scene.location_ids))
+
+
 # SCENE-NARRATOR: the scopes whose request carries «ОПОВІДАЧ СЦЕНИ» (an external MCP draft adds it in _manual_snapshot).
 NARRATOR_SCOPES = frozenset({'brief', 'draft', 'prose_edit', 'author_rewrite'})
 
@@ -43,6 +67,8 @@ def build_dependency_snapshot(
     elif scope == 'memory':
         if settings.memory_mode=='evidence_delta':
             select('scene',scene.id,'character_ids',scene.character_ids)
+            # MEMORY-LOCATIONS: memory never selects its own plan head, so the parsed locations are its input.
+            select('scene',scene.id,'location_ids',list(scene.location_ids))
             memory_core_selectors(view,story,scene,scenes,select)
             character_names_selector(view,story,scene,scenes,select)
         prefix = previous_scenes(story, scenes, scene) + [scene]
@@ -127,6 +153,8 @@ def build_dependency_snapshot(
         select('scene', scene.id, 'prose_language', prose_language(story, scene))
     if scope in NARRATOR_SCOPES:
         narrator_selector(view, story, scene, select)
+    if scene is not None and scope in LOCATION_SCOPES:
+        location_selectors(view, scene, scope, select)
     # PERF-001: only scalar fields of the versions are read, so no deep copy; the stale call order is the one of get_version.
     from .context_view import version_and_stale
     def ref(id):
@@ -313,6 +341,8 @@ def selector_value(view, selector: DependencySelector):
     if kind=='scene' and field=='narrator':
         from ..narration import effective_narrator, narrator_value
         return narrator_value(effective_narrator(view.peek_scene(owner), core_cards(view, view.peek_story(view.story.id)))[0])
+    if kind=='scene' and field in {'location_ids','location_neighbourhood','location_context'}:
+        return location_value(view, owner, field)
     if kind=='scene' and field=='prose_language':
         from ..language import prose_language
         return prose_language(view.peek_story(view.story.id), view.peek_scene(owner))
@@ -657,6 +687,7 @@ def build_author_baseline(view, scene_id: str) -> DependencySnapshot:
         select('scene',scene.id,field,getattr(scene,field))
     from ..memory.forwarding import projection_policy
     select('scene',scene.id,'memory_projection_policy',projection_policy(view,scene.id))
+    location_selectors(view,scene,'author_text',select)
     previous=previous_scenes(story,scenes,scene)
     for item in previous:
         id=item.heads.get('prose');select('head',item.id,'prose',id);include(id)

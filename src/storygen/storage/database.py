@@ -6,7 +6,7 @@ from pathlib import Path
 
 
 # The schema version a start brings every database to (DESKTOP-001-S03 backs up older ones first).
-SCHEMA_VERSION = 6
+SCHEMA_VERSION = 7
 
 
 class _Generation:
@@ -73,6 +73,15 @@ class Database:
             if db.execute("PRAGMA user_version").fetchone()[0] == 5:
                 sql=files("storygen.storage").joinpath("migrations/006_series.sql").read_text(encoding="utf-8")
                 db.executescript("BEGIN IMMEDIATE;\n"+sql+"\nPRAGMA user_version=6;\nCOMMIT;")
+            if db.execute("PRAGMA user_version").fetchone()[0] == 6:
+                sql=files("storygen.storage").joinpath("migrations/007_locations.sql").read_text(encoding="utf-8")
+                db.execute('BEGIN IMMEDIATE')
+                # MEMORY-LOCATIONS: tables, cards and Scene.location_ids of every scene in one transaction.
+                for statement in sql.split(';'):
+                    if statement.strip():db.execute(statement)
+                from .locations import backfill
+                backfill(db)
+                db.execute('PRAGMA user_version=7')
             if db.execute("PRAGMA user_version").fetchone()[0] != SCHEMA_VERSION:
                 raise ValueError("Непідтримувана версія бази даних")
 

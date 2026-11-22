@@ -69,7 +69,7 @@ class SharedState:
 SHARED_FIELDS = ('files', 'story', 'scenes', 'versions', 'impact_records', 'impact_applications', 'impact_proofs',
                  'review_reports', 'review_acceptances', 'review_operations', 'review_proofs', 'review_authority',
                  'review_authority_operations', 'sources', 'source_files', 'acceptances', 'acceptance_records',
-                 'blob_cache', 'preamble_cache', 'journal_cache', 'memo_cache', 'immutable')
+                 'blob_cache', 'preamble_cache', 'journal_cache', 'memo_cache', 'immutable', 'locations')
 
 
 class ContextView:
@@ -103,6 +103,8 @@ class ContextView:
         self.sources = {row[0]:row[1] for row in db.execute('SELECT kind,version_id FROM active_sources WHERE story_id=?',(story_id,))}
         from .import_store import source_files
         self.source_files=source_files(db,story_id)
+        from .locations import load_locations
+        self.locations=load_locations(db,story_id)  # MEMORY-LOCATIONS: cards, merges and descriptions of the story
 
         from ..dependency_models import AcceptanceRecord
         self.acceptances={}

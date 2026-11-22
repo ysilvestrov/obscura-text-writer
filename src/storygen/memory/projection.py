@@ -74,6 +74,7 @@ class MemoryItem:
     character_ids: tuple[str,...]
     slot: str | None
     source_scene: int | None     # scene of the event that produced this line
+    location_ids: tuple[str,...] = ()  # MEMORY-LOCATIONS: cards of the record
 
 
 def _timeline_events(journal):
@@ -119,14 +120,16 @@ def same_day_source_ids(journal: MemoryJournal, tracked) -> list[str]:
 
 def memory_items(journal: MemoryJournal, character_ids: list[str], source_scene_numbers: dict[str,int], *, hidden_claim_ids=(),
         forwarded_claim_ids=(), tracked=(), names=None, language='uk', scene_day: str | None = None,
-        source_days: dict[int,str | None] | None = None) -> tuple[list[MemoryItem],dict]:
+        source_days: dict[int,str | None] | None = None, place=()) -> tuple[list[MemoryItem],dict]:
+    """place: the scene's location neighbourhood (MEMORY-LOCATIONS); a state of an absent character there stays."""
     from .core import SLOTS
     from .forwarding import effective_hidden
     active=replay_memory(journal)
     hidden=effective_hidden(journal,hidden_claim_ids,forwarded=forwarded_claim_ids)
     items=[];omitted=0;core_lines=0
     item=lambda event,section,line,owner=None:MemoryItem(event.claim_id,section,owner,line,event.text,tuple(event.character_ids),
-        event.slot,source_scene_numbers.get(event.source_version_id))
+        event.slot,source_scene_numbers.get(event.source_version_id),tuple(event.location_ids))
+    place=frozenset(place)
     # The core is a mandatory layer: first, never filtered by the scene cast, only by MEMORY-FORWARD.
     slots={(e.character_ids[0],e.slot):e for e in active.values() if e.slot and e.character_ids[0] in tracked}
     for cid in tracked:
@@ -145,7 +148,8 @@ def memory_items(journal: MemoryJournal, character_ids: list[str], source_scene_
                 and not (e.slot and e.character_ids[0] in tracked)]
         for event in entries:
             if event.claim_id in hidden:continue
-            if category=='character_states' and character_ids and event.character_ids and not set(character_ids).intersection(event.character_ids):
+            if (category=='character_states' and character_ids and event.character_ids and not set(character_ids).intersection(event.character_ids)
+                    and not place.intersection(event.location_ids)):
                 omitted+=1;continue
             scene=source_scene_numbers.get(event.source_version_id)
             prefix=label('memory_scene_prefix',language,number=scene) if category=='timeline' and scene is not None else ''
@@ -174,9 +178,10 @@ def render_memory(items, tracked, names=None, *, timeline_note: str | None = Non
 
 def project_memory(journal: MemoryJournal, character_ids: list[str], source_scene_numbers: dict[str,int], *, hidden_claim_ids=(),
         forwarded_claim_ids=(), tracked=(), names=None, language='uk', scene_day: str | None = None,
-        source_days: dict[int,str | None] | None = None) -> MemoryProjection:
+        source_days: dict[int,str | None] | None = None, place=()) -> MemoryProjection:
     items,metrics=memory_items(journal,character_ids,source_scene_numbers,hidden_claim_ids=hidden_claim_ids,
-        forwarded_claim_ids=forwarded_claim_ids,tracked=tracked,names=names,language=language,scene_day=scene_day,source_days=source_days)
+        forwarded_claim_ids=forwarded_claim_ids,tracked=tracked,names=names,language=language,scene_day=scene_day,source_days=source_days,
+        place=place)
     text=render_memory(items,tracked,names,language=language)
     return MemoryProjection(text,{'projection_version':'memory-uk-v3','journal_chars':metrics['journal_chars'],
         'event_count':metrics['event_count'],'active_claim_count':metrics['active_claim_count'],
