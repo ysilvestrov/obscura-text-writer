@@ -10,7 +10,6 @@ from storygen.storage import locations as store
 from storygen.storage.database import SCHEMA_VERSION
 from storygen.storage.repository import Repository
 
-pytestmark=pytest.mark.req('MEMORY-LOCATIONS')
 
 
 def lid(story,*parts):
@@ -26,6 +25,7 @@ def cards(repo,story):
     with repo.db.connection() as db:return store.load_locations(db,story.id)
 
 
+@pytest.mark.req('MEMORY-LOCATIONS')
 def test_plan_save_creates_cards_with_parents_and_scene_location_ids(tmp_path):
     repo,story,scene=make(tmp_path)
     saved=repo.update_scene_plan(scene.id,'Сцена 1: Ранок\nЛокація: Дім / кухня, потім двір.\nДії: сніданок.',scene.revision)
@@ -37,6 +37,7 @@ def test_plan_save_creates_cards_with_parents_and_scene_location_ids(tmp_path):
     assert found[lid(story,'двір')].parent_id is None and found[lid(story,'двір')].description==''
 
 
+@pytest.mark.req('MEMORY-LOCATIONS')
 def test_the_first_spelling_stays_the_shown_path(tmp_path):
     repo,story,scene=make(tmp_path)
     saved=repo.update_scene_plan(scene.id,'Локація: Маєток Джорджа',scene.revision)
@@ -45,6 +46,7 @@ def test_the_first_spelling_stays_the_shown_path(tmp_path):
     assert cards(repo,story)[saved.location_ids[0]].path=='Маєток Джорджа'
 
 
+@pytest.mark.req('MEMORY-LOCATIONS')
 def test_a_plan_without_a_location_line_has_no_locations(tmp_path):
     repo,story,scene=make(tmp_path)
     saved=repo.update_scene_plan(scene.id,'Локація: Дім',scene.revision)
@@ -53,12 +55,14 @@ def test_a_plan_without_a_location_line_has_no_locations(tmp_path):
     assert lid(story,'Дім') in cards(repo,story)  # cards stay for the merge panel
 
 
+@pytest.mark.req('MEMORY-LOCATIONS')
 def test_scene_created_with_a_plan_gets_locations(tmp_path):
     repo=Repository(tmp_path);story=repo.create_story(StoryCreate(title='Твір'))
     scene=repo.create_scene(story.id,SceneCreate(title='Сцена',beats='Локація: Ліс'))
     assert repo.get_scene(scene.id).location_ids==[lid(story,'Ліс')]
 
 
+@pytest.mark.req('MEMORY-LOCATIONS')
 def test_a_changed_location_line_stales_legacy_versions_like_a_changed_cast(tmp_path):
     repo,story,scene=make(tmp_path)
     saved=repo.update_scene_plan(scene.id,'Локація: Дім',scene.revision)
@@ -73,6 +77,7 @@ def test_a_changed_location_line_stales_legacy_versions_like_a_changed_cast(tmp_
     assert repo.get_version(brief.id).stale
 
 
+@pytest.mark.req('MEMORY-LOCATIONS')
 def test_merge_split_description_and_dismissed_pairs(tmp_path):
     repo,story,scene=make(tmp_path)
     repo.update_scene_plan(scene.id,'Локація: Квартира Джорджа, Квартира Джоржа',scene.revision)
@@ -92,6 +97,7 @@ def test_merge_split_description_and_dismissed_pairs(tmp_path):
         assert store.suggestions(db,story.id)==[]
 
 
+@pytest.mark.req('MEMORY-LOCATIONS')
 def test_migration_from_6_backfills_every_scene_without_new_revisions(tmp_path):
     repo,story,scene=make(tmp_path)
     trashed=repo.create_scene(story.id,SceneCreate(title='У кошику'))
@@ -114,6 +120,7 @@ def test_migration_from_6_backfills_every_scene_without_new_revisions(tmp_path):
         assert set(store.load_locations(db,story.id))=={lid(story,'Дім'),lid(story,'Дім','кухня'),lid(story,'Ліс')}
 
 
+@pytest.mark.req('MEMORY-LOCATIONS')
 def test_integrity_flags_a_scene_with_a_missing_location_card(tmp_path):
     from storygen.storage.integrity import check_integrity
     repo,story,scene=make(tmp_path)

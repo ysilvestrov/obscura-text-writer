@@ -9,7 +9,6 @@ from storygen.memory.wire_v4 import check_v4, memory_wire_v4_schema, schema_boun
 from tests.memory.test_wire_v4 import (BOUNDS, PREV, PROSE, MOOD, T1, answer, bad, chg, core, dec, new, padd, run, sadd,
     tdec, threads)
 
-pytestmark = pytest.mark.req('MEMORY-LOCATIONS')
 
 KITCHEN, HOUSE, FOREST = 'loc_kitchen', 'loc_house', 'loc_forest'
 LBOUNDS = schema_bounds_v4(PREV, PROSE, ['h'], ['h'], {'h': False}, location_ids=[KITCHEN, HOUSE])
@@ -19,6 +18,7 @@ def located(item, *ids):
     return {**item, 'location_ids': list(ids)}
 
 
+@pytest.mark.req('MEMORY-LOCATIONS')
 def test_empty_location_ids_are_not_serialized_and_old_journals_read():
     event = _add_event('facts', 'Ключ у кишені', 'p1', 'q', 0)
     assert 'location_ids' not in json.loads(event.model_dump_json())
@@ -28,6 +28,7 @@ def test_empty_location_ids_are_not_serialized_and_old_journals_read():
     assert MemoryEvent.model_validate_json(event.model_dump_json()).location_ids == []
 
 
+@pytest.mark.req('MEMORY-LOCATIONS')
 def test_a_change_keeps_the_location_of_its_claim_and_replay_rejects_another():
     state = _add_event('character_states', 'Втомлена', 'p1', 'q', 0, ['h'], location_ids=[KITCHEN])
     update = _change_event('update', state.claim_id, 'Сердита', state.category, state.character_ids, 'p2', 'r',
@@ -39,6 +40,7 @@ def test_a_change_keeps_the_location_of_its_claim_and_replay_rejects_another():
         replay_memory(MemoryJournal(schema_version=3, source_prose_ids=['p1', 'p2'], events=[state, moved]))
 
 
+@pytest.mark.req('MEMORY-LOCATIONS')
 def test_bounds_and_schema_list_locations_only_when_the_scene_has_some():
     assert 'location_ids' not in BOUNDS
     assert LBOUNDS['location_ids'] == [KITCHEN, HOUSE]
@@ -50,6 +52,7 @@ def test_bounds_and_schema_list_locations_only_when_the_scene_has_some():
         assert item['location_ids'] == {'type': 'array', 'items': {'type': 'string', 'enum': [KITCHEN, HOUSE]}}
 
 
+@pytest.mark.req('MEMORY-LOCATIONS')
 def test_wire_v4_adds_carry_allowed_locations():
     data = answer(facts_add=[located(padd('Лист на столі', ['f000005']), KITCHEN)],
                   character_states_add=[located(sadd('Змерзла', ['f000004'], ['h']), HOUSE)])
@@ -57,17 +60,20 @@ def test_wire_v4_adds_carry_allowed_locations():
     assert {e.text: e.location_ids for e in new(journal)} == {'Лист на столі': [KITCHEN], 'Змерзла': [HOUSE]}
 
 
+@pytest.mark.req('MEMORY-LOCATIONS')
 def test_an_answer_without_location_ids_is_accepted_for_a_scene_with_locations():
     journal = run(answer(facts_add=[padd('Лист на столі', ['f000005'])]), bounds=LBOUNDS)
     assert new(journal)[0].location_ids == []
 
 
+@pytest.mark.req('MEMORY-LOCATIONS')
 def test_unknown_or_repeated_location_is_a_violation():
     assert ('facts.add[0]', 'location_unknown') in bad(answer(facts_add=[located(padd('Лист', ['f000005']), FOREST)]), bounds=LBOUNDS)
     assert ('facts.add[0]', 'location_unknown') in bad(answer(facts_add=[located(padd('Лист', ['f000005']), KITCHEN, KITCHEN)]), bounds=LBOUNDS)
     assert ('facts.add[0]', 'location_unknown') in bad(answer(facts_add=[located(padd('Лист', ['f000005']), KITCHEN)]))
 
 
+@pytest.mark.req('MEMORY-LOCATIONS')
 def test_wire_changes_inherit_the_claim_location():
     placed = MOOD.model_copy(update={'location_ids': [KITCHEN]})
     prev = PREV.model_copy(update={'events': [placed if e.claim_id == MOOD.claim_id else e for e in PREV.events]})
@@ -77,6 +83,7 @@ def test_wire_changes_inherit_the_claim_location():
     assert replay_memory(journal)[MOOD.claim_id].location_ids == [KITCHEN]
 
 
+@pytest.mark.req('MEMORY-LOCATIONS')
 def test_closing_a_thread_keeps_its_location_on_the_retire():
     placed = T1.model_copy(update={'location_ids': [HOUSE]})
     prev = PREV.model_copy(update={'events': [placed if e.claim_id == T1.claim_id else e for e in PREV.events]})
@@ -87,6 +94,7 @@ def test_closing_a_thread_keeps_its_location_on_the_retire():
     assert retire.location_ids == [HOUSE]
 
 
+@pytest.mark.req('MEMORY-LOCATIONS')
 def test_manual_save_keeps_new_locations_and_fills_changes_from_their_claim():
     placed = MOOD.model_copy(update={'location_ids': [KITCHEN]})
     prev = MemoryJournal(schema_version=3, source_prose_ids=['p1'], events=[placed])
@@ -99,6 +107,7 @@ def test_manual_save_keeps_new_locations_and_fills_changes_from_their_claim():
     assert events[0].location_ids == [HOUSE] and events[1].location_ids == [KITCHEN]
 
 
+@pytest.mark.req('MEMORY-LOCATIONS')
 def test_author_merge_of_arcs_keeps_the_record_location():
     from storygen.memory.merge import Conflict, MergePlan, _author_events
     placed = MOOD.model_copy(update={'location_ids': [KITCHEN]})

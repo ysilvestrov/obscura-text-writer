@@ -12,7 +12,6 @@ from storygen.storage import locations as store
 from storygen.storage.repository import Repository
 from storygen.storage.snapshots import build_dependency_snapshot, resolve_freshness
 
-pytestmark = pytest.mark.req('MEMORY-LOCATIONS')
 
 BRIEF = '{"objective":"Юлія чекає","beats":["Юлія чекає"],"constraints":[],"proposed_changes":[],"introduced":[]}'
 HEAD = 'ЛОКАЦІЇ СЦЕНИ'
@@ -55,6 +54,7 @@ def with_brief(repo, story, scene):
     return repo.get_scene(scene.id)
 
 
+@pytest.mark.req('MEMORY-LOCATIONS')
 def test_section_lists_scene_locations_with_ancestors_and_descriptions(tmp_path):
     repo, story, scene, _ = setup(tmp_path)
     assert section(build_context(repo, scene.id, 'brief', role()).user_text) == '— Дім\n— Дім / кухня'
@@ -65,6 +65,7 @@ def test_section_lists_scene_locations_with_ancestors_and_descriptions(tmp_path)
     assert section(build_context(repo, scene.id, 'draft', role()).user_text) == section(brief)
 
 
+@pytest.mark.req('MEMORY-LOCATIONS')
 def test_memory_and_patches_get_no_section_and_english_label(tmp_path):
     repo, story, scene, _ = setup(tmp_path)
     scene = with_brief(repo, story, scene)
@@ -76,6 +77,7 @@ def test_memory_and_patches_get_no_section_and_english_label(tmp_path):
     assert 'SCENE LOCATIONS\n— House' in build_context(repo, scene.id, 'brief', role()).user_text
 
 
+@pytest.mark.req('MEMORY-LOCATIONS')
 def test_scene_without_locations_has_no_section_and_no_new_selectors(tmp_path):
     repo, story, scene, _ = setup(tmp_path, beats='Хто бере участь: Юлія\nЮлія чекає.')
     bundle = build_context(repo, scene.id, 'brief', role())
@@ -97,6 +99,7 @@ def memory_version(repo, story, scene):
     return repo.save_version(story.id, scene.id, 'memory', '{}', [], dependency_snapshot=snap)
 
 
+@pytest.mark.req('MEMORY-LOCATIONS')
 def test_description_change_stales_brief_of_scenes_that_show_it_only(tmp_path):
     repo, story, scene, second = setup(tmp_path)
     brief = saved(repo, story, scene, 'brief', build_context(repo, scene.id, 'brief', role()))
@@ -106,6 +109,7 @@ def test_description_change_stales_brief_of_scenes_that_show_it_only(tmp_path):
     assert 'location_context' in stale_fields(repo, story, brief)
 
 
+@pytest.mark.req('MEMORY-LOCATIONS')
 def test_location_line_change_stales_memory(tmp_path):
     repo, story, scene, _ = setup(tmp_path)
     ref = memory_version(repo, story, scene)
@@ -114,6 +118,7 @@ def test_location_line_change_stales_memory(tmp_path):
     assert 'location_ids' in stale_fields(repo, story, ref)
 
 
+@pytest.mark.req('MEMORY-LOCATIONS')
 def test_merge_in_the_neighbourhood_stales_and_outside_does_not(tmp_path):
     repo, story, scene, second = setup(tmp_path, other='Локація: Ліс, Ліс біля озера, Хата')
     mem = memory_version(repo, story, scene)
@@ -134,6 +139,7 @@ def memory_scene(tmp_path, beats):
     return repo, repo.get_story(item.id), repo.get_scene(scene.id)
 
 
+@pytest.mark.req('MEMORY-LOCATIONS')
 def test_memory_stage_allows_the_scene_places_and_their_ancestors(tmp_path):
     repo, story, scene = memory_scene(tmp_path, 'Локація: Дім / кухня')
     context = build_context(repo, scene.id, 'memory', role())
@@ -145,6 +151,7 @@ def test_memory_stage_allows_the_scene_places_and_their_ancestors(tmp_path):
     assert HEAD + '\n' not in context.user_text
 
 
+@pytest.mark.req('MEMORY-LOCATIONS')
 def test_memory_stage_of_a_scene_without_places_is_unchanged(tmp_path):
     repo, story, scene = memory_scene(tmp_path, 'Вдома')
     context = build_context(repo, scene.id, 'memory', role())
@@ -152,6 +159,7 @@ def test_memory_stage_of_a_scene_without_places_is_unchanged(tmp_path):
     assert 'LOCATION_IDS' not in context.user_text
 
 
+@pytest.mark.req('MEMORY-LOCATIONS')
 def test_writing_memory_keeps_a_state_of_an_absent_character_in_the_same_place(tmp_path):
     from storygen.memory.journal import MemoryJournal, _add_event
     repo, story, first, second = setup(tmp_path, other='Локація: Дім / кухня')
