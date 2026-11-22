@@ -94,6 +94,7 @@ def scene(**kw):
 class View:
     def __init__(self,j,scenes,versions):
         self.j,self.scenes,self.versions=j,scenes,versions
+        self.locations={}  # MEMORY-LOCATIONS: every ContextView carries the story location cards
     def get_scene(self,id):return next(s for s in self.scenes if s.id==id)
     peek_scene=get_scene
     def list_scenes(self,story_id):return list(self.scenes)

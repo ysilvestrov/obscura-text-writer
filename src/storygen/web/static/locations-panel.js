@@ -1,4 +1,5 @@
-// MEMORY-LOCATIONS-S07: the «Locations» section of the story side panel. Cards come from «Локація:» lines of scene plans;
+// MEMORY-LOCATIONS-S07: the «Locations» section of the memory panel (story-level, like timeline summaries; the right
+// side panel holds only scene sections, WORKSPACE-TOOLS). Cards come from «Локація:» lines of scene plans;
 // the author merges look-alikes, splits them back, hides a suggestion and writes a description for the planner and the
 // writer. Every change is CAS on the story revision; a refused save keeps the typed description.
 import {t,msg,uiText,uiAttr,diagnostic} from './i18n.js';
@@ -13,7 +14,12 @@ const drafts=new Map();  // card id -> typed description not saved yet
 
 const node=(tag,render,className)=>{const n=document.createElement(tag);if(className)n.className=className;if(render)uiText(n,'textContent',render);return n};
 function button(render,onclick,primary=false){const b=node('button',render,primary?'':'secondary');b.type='button';b.disabled=busy;b.onclick=onclick;return b}
-const box=()=>document.querySelector('#story-locations');
+function box(){
+  const panel=document.querySelector('#memory-view');if(!panel)return null;
+  let section=panel.querySelector('#story-locations');
+  if(!section){section=document.createElement('section');section.id='story-locations';section.className='story-locations';panel.append(section)}
+  return section;
+}
 
 function description(row){
   const wrap=node('details',null,'location-description');
@@ -41,7 +47,7 @@ function chooser(row){
 
 function draw(){
   const section=box();if(!section)return;
-  section.replaceChildren(node('p',()=>t('locations.hint'),'hint'));
+  section.replaceChildren(node('h3',()=>t('locations.title')),node('p',()=>t('locations.hint'),'hint'));
   const rows=locationRows(data);
   if(!rows.length){section.append(node('p',()=>t('locations.empty')));return}
   const hints=suggestionRows(data);
@@ -76,7 +82,7 @@ function draw(){
 }
 
 async function load(){
-  if(!state.storyId||!box())return;
+  if(!state.storyId||!document.querySelector('#memory-view'))return;
   if(storyId!==state.storyId){drafts.clear();choosing=null;storyId=state.storyId}
   try{data=await api(`/api/stories/${state.storyId}/locations`)}catch(e){data=null}
   draw();

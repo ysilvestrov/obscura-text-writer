@@ -4,12 +4,10 @@ import {test,expect} from '../../../frontend/browser-test.mjs';
 // saves a description; a location change does not make the next memory-kind change a conflict.
 test.use({locale:'uk-UA'});
 
-async function openPanel(page,request,material='plan'){
+async function openPanel(page,request){
   const fixture=await(await request.post('/test-locations')).json();
-  await page.goto(`/stories/${fixture.story_id}?scene=${fixture.scene_id}&material=${material}`);
-  const section=page.locator('details.tool-section[data-section="locations"]');
-  if(!await section.evaluate(node=>node.open))await section.locator(':scope > summary').click();
-  const panel=page.locator('#story-locations');
+  await page.goto(`/stories/${fixture.story_id}?scene=${fixture.scene_id}&material=memory`);
+  const panel=page.locator('#memory-view #story-locations');
   await expect(panel.locator('.location-row')).toHaveCount(4);
   return {fixture,panel};
 }
@@ -56,7 +54,7 @@ test('a description is saved and a conflict keeps the typed text',async({page,re
 });
 
 test('a location change does not turn the next memory-kind change into a conflict',async({page,request})=>{
-  const {panel}=await openPanel(page,request,'memory');
+  const {panel}=await openPanel(page,request);
   const kind=page.locator('select.memory-kind').first();
   await expect(kind).toBeVisible();
   const yard=row(panel,'двір');

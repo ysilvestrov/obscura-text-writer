@@ -121,13 +121,14 @@ def capture(base,ids,languages):
                         page.goto(f'{base}/stories/{story}?scene={scene}&material=brief');page.wait_for_load_state('networkidle')
                         page.locator('#brief-form').wait_for(state='visible');shot(page,folder/'brief-form-desktop.png',shots)
                     if suffix=='desktop':
-                        # MEMORY-LOCATIONS-S07: the «Locations» section of the side panel with a suggestion and a description.
-                        section=page.locator('details.tool-section[data-section=locations]')
-                        if not section.evaluate('node=>node.open'):section.locator(':scope > summary').click()
+                        # MEMORY-LOCATIONS-S07: the «Locations» section of the memory panel with a suggestion and a description.
+                        page.set_viewport_size({'width':1280,'height':2400})  # the whole section without the sticky tabs over it
+                        page.goto(f'{base}/stories/{story}?scene={scene}&material=memory');page.wait_for_load_state('networkidle')
+                        section=page.locator('#memory-view #story-locations')
                         section.locator('.location-row').first.wait_for();section.locator('.location-description').first.locator('summary').click()
                         section.scroll_into_view_if_needed();page.wait_for_timeout(300)
                         section.screenshot(path=str(folder/'locations-desktop.png'));shots.append(folder/'locations-desktop.png')
-                        section.locator(':scope > summary').click()
+                        page.set_viewport_size(viewport);page.goto(f'{base}/stories/{story}?scene={scene}&material=draft');page.wait_for_load_state('networkidle')
                     page.locator('#story-menu-toggle').click();page.locator('#story-menu').wait_for();shot(page,folder/f'story-menu-{suffix}.png',shots)
                     if suffix=='desktop':
                         for path,name in [(f'/stories/{story}/revision','revision'),(f'/stories/{story}/characters','characters'),

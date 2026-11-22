@@ -34,7 +34,7 @@ The memory model marks records with the scene's places. When memory does not fit
 
 ![The «Locations» section with a similar-name suggestion and a place description](../../images/site/en/locations-desktop.png)
 
-The cards are in the **Locations** section of the story side panel:
+The cards are in the **Locations** section at the bottom of the **Memory** tab of any scene:
 
 - **Location description** is optional text of up to 2000 characters. The planner and the writer see it (also through MCP); the memory model does not. Changing it makes the briefs and drafts of scenes in that place and the places inside it outdated.
 - **Similar names** suggests possible duplicates, such as the typo "Pier" / "Peir". **Merge** makes the later card part of the first one; **Not alike** hides the suggestion for good.

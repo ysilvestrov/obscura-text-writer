@@ -23,7 +23,8 @@ def test_panel_rows_and_shared_revision():
 @pytest.mark.req('MEMORY-LOCATIONS')
 def test_story_page_has_the_section_and_both_languages_have_the_texts():
     page = (ROOT / 'src/storygen/web/templates/story.html').read_text(encoding='utf-8')
-    assert '/static/locations-panel.js' in page and 'data-section="locations"' in page and 'id="story-locations"' in page
+    assert '/static/locations-panel.js' in page
+    assert 'data-section="locations"' not in page  # WORKSPACE-TOOLS: the side panel holds only scene sections
     catalog = json.loads((STATIC / 'i18n.json').read_text(encoding='utf-8'))
     keys = {k for k in catalog['uk'] if k.startswith('locations.')} | {'memory.locations'}
     assert keys <= set(catalog['en']) and len(keys) > 20
