@@ -29,7 +29,7 @@ Spec-review: —
 - Для моделі з `mandatory: true` OpenRouter відхиляє `effort: "none"`. Якщо `supported_efforts` немає, модель «не дає вибору рівня». `[проба]` П2
 - `reasoning.exclude` лише ховає роздуми з відповіді: токени «все одно оплачуються й зараховуються в max_tokens». Для нашої проблеми це не допомагає. `[проба]` П2
 - Нове поле в налаштуваннях провайдера без окремих заходів ламає збережені маніфести перевірки впливу: падає `test_legacy_wire2_raw_proof_without_counter`. `[проба]` П4
-- Для трьох моделей із тесту редакторів вимкнення чи зниження reasoning дає текст у межах 512 токенів виходу. `[проба]` П5 — **чекає на запуск**; до запуску це `[виведення]`.
+- `effort: "none"` вимикає reasoning у qwen3.7-plus і qwen3.8-flash: 0 reasoning-токенів, правильний текст. GLM-5.3-flash з `none` отримує 400 «Reasoning is mandatory for this endpoint and cannot be disabled.», а з `low` витрачає 20 reasoning-токенів і повертає текст. `[проба]` П5
 - Якщо роутер OpenRouter відправить запит провайдерові моделі, який не підтримує `reasoning`, той параметр мовчки ігнорує. `provider.require_parameters` у документації про `reasoning` не згадано. `[виведення]` з П2
 
 ### Ключові рішення
@@ -85,12 +85,23 @@ Spec-review: —
 
 **П4. Відбитки (безкоштовно).** У тимчасовій копії в `ProviderSettings` додано лише `openrouter_reasoning_effort: ... | None = None`. Прогін `pytest -x tests/impact tests/review tests/mcp tests/providers`: 35 passed, 1 failed — `tests/impact/test_local_token_counting.py::test_legacy_wire2_raw_proof_without_counter`, `ValueError: Невідповідний fingerprint маніфесту` (`impact/chunk_validation.py:40`). Причина: `settings_for_manifest` хешує `manifest.settings.model_dump()`. Ті самі `model_dump()` налаштувань ролі потрапляють у `generation/context.py:227` (відбиток контексту сцени), `review/planning.py:80` і `role_profiles.py`. Зміну відкочено.
 
-**П5. Платна проба (погоджена власником 22.11.2026: ≤ 6 запитів, max_tokens 512).** Скрипт `C:\tmp\or-probe\or_probe.py`: короткий нейтральний текст для виправлення, по два варіанти reasoning на модель.
+**П5. Платна проба (погоджена власником 22.11.2026, запустив власник; 7 запитів, бо перший запуск упав на виведенні після першого запиту; max_tokens 512; $0.000195 за повторний прогін).** Скрипт `C:\tmp\or-probe\or_probe.py`: короткий нейтральний текст для виправлення, по два варіанти reasoning на модель.
 - glm-5.3-flash: `effort low` і `effort none` (очікується відмова).
 - qwen3.7-plus: `effort none` і `enabled false`.
 - qwen3.8-flash: `effort none` і `max_tokens 64`.
 
-Записує статус, finish_reason, довжину тексту, reasoning_tokens і вартість. **Результат: чекає на запуск.** Від нього залежить wire-форма «вимкнено» (`{effort: "none"}` чи `{enabled: false}`).
+Результат (`C:	mp\or-probe\probe-output.jsonl`):
+
+| Модель | reasoning | Статус | finish | completion / reasoning токенів |
+|---|---|---|---|---|
+| glm-5.3-flash | effort low | 200 (InferenceNet) | stop | 46 / 20 |
+| glm-5.3-flash | effort none | 400 «Reasoning is mandatory for this endpoint and cannot be disabled.» | — | — |
+| qwen3.7-plus | effort none | 200 (Alibaba) | stop | 21 / 0 |
+| qwen3.7-plus | enabled false | 200 (Alibaba) | stop | 21 / 0 |
+| qwen3.8-flash | effort none | 200 (Alibaba) | stop | 21 / 0 |
+| qwen3.8-flash | max_tokens 64 | 200 (Alibaba) | stop | 88 / 64 |
+
+Усі відповіді 200 дали правильне виправлення. `effort: "none"` і `enabled: false` діють однаково, тож вибрано задокументовану форму `{effort: "none"}`. qwen3.7-plus без `supported_efforts` усе одно приймає `none`: відсутність переліку означає «рівень вибрати не можна», а не «вимкнути не можна». Одна коротка відповідь на модель не доводить, що редакторський прохід сцени вкладеться в ліміт; це доведе лише повторний тест редакторів.
 
 ### Технічний опис
 
@@ -104,7 +115,7 @@ Spec-review: —
 **Запит.** `openrouter_reasoning(settings)` поруч із `venice_reasoning`:
 - `None` → `{}`;
 - рівень → `{'reasoning': {'effort': value}}`;
-- `none` → wire-форма за П5.
+- `none` → `{'reasoning': {'effort': 'none'}}` (П5).
 
 Його викликає `generation_request` для `provider == 'openrouter'`. `evaluation_request` не змінюється. `sdk_arguments` уже переносить `reasoning` в `extra_body`.
 
@@ -170,8 +181,8 @@ Spec-review: —
 | Заявка | Де записано | Що доводить | Сила |
 |---|---|---|---|
 | Порожнє поле не змінює відбитки й маніфести | Інваріант I1, SPEC OPENROUTER-REASONING-S03 | Регресійний тест на legacy-маніфест wire2 і відбиток контексту з порожнім полем (П4 показав, що без заходів падає) | сильна після тесту |
-| Модель з `mandatory` відхиляє `none` | Форма й скіл ховають «вимкнено» | Документація (П2, дослівно) + П5 для glm-5.3-flash | сильна після П5 |
-| Вимкнення чи зниження reasoning повертає текст для трьох моделей | Мета, «На чому стоїть рішення» | П5 | **слабка до П5** |
+| Модель з `mandatory` відхиляє `none` | Форма й скіл ховають «вимкнено» | Документація (П2, дослівно) + П5: 400 для glm-5.3-flash | сильна |
+| `effort: "none"` вимикає reasoning, а `low` його зменшує | Мета, «На чому стоїть рішення», wire-форма | П5: 0 і 20 reasoning-токенів на коротких запитах | сильна для коротких запитів; що весь прохід редактора вкладеться в ліміт, не стверджується |
 | Можливості моделі в `ModelOption.reasoning` | Каталог, форма, MCP | Живий каталог (П3) — зовнішні дані, можуть змінитися | середня: читається щоразу з каталогу, не кешується як істина |
 
 ## Рев'ю спеки
