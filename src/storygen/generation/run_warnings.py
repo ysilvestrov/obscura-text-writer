@@ -1,16 +1,7 @@
 """MODEL-RETIREMENT-S02: carry an attempt's model-retirement warning into the run, on every execution path."""
-from ..run_models import merge_warnings
+from ..run_models import merge_warnings, loop_status  # noqa: F401 (loop_status: editor_loop imports it from here)
 
 RETIREMENT_KEY='model_retirement_warnings'
-ACCEPTED='Підсумкові правки прийнято.'
-
-
-def loop_status(warning,status):
-    """The editor loop's status line (stop reason or acceptance) replaces the previous one; other warnings stay."""
-    from .editor_loop import STOP_NAMES
-    statuses=tuple(STOP_NAMES.values())+(ACCEPTED,)
-    kept=[line for line in (warning or '').splitlines() if not line.startswith(statuses)]
-    return merge_warnings('\n'.join(kept),[status])
 
 
 def stage_retirement(attempt,gateway,model):

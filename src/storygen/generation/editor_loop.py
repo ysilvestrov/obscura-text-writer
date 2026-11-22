@@ -174,8 +174,7 @@ def initialize(worker,run):
         worker._save(current)
 
 
-STOP_NAMES={'no_changes':'Редактор не запропонував нових змін','limit':'Досягнуто ліміту проходів','cycle':'Виявлено повтор попереднього тексту',
-    'pass_failed':'Цикл зупинено після невдалого проходу; показано результати успішних'}
+from ..run_models import EDITOR_STOP_NAMES as STOP_NAMES
 
 
 def stop_after_failure(worker,run,attempt):
