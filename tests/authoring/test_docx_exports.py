@@ -109,7 +109,7 @@ def test_docx_markdown_runs_and_controls(tmp_path):
 def test_docx_language_document_and_scene(tmp_path):
     repo, story = flat_book(tmp_path, 'Текст.\n', language='uk', card_language='en')
     _, content = rendered(repo, story)
-    assert re.search(r'<w:rPrDefault>.*?<w:lang w:val="en"', part(content, 'word/styles.xml'), re.S)
+    assert re.search(r'<w:rPrDefault>.*?<w:lang w:val="en-US"', part(content, 'word/styles.xml'), re.S)
     assert '<w:lang w:val="uk-UA"/>' in part(content, 'word/document.xml')
     repo, story = flat_book(tmp_path / 'same', 'Text.\n', language='uk', card_language='en-GB', scene_language='en')
     _, content = rendered(repo, story)
@@ -204,3 +204,11 @@ def test_export_dialog_offers_docx_and_rtf():
     texts = [table for table in catalog.values() if isinstance(table, dict) and 'export.docx_option' in table]
     assert len(texts) == 2 and {t['export.docx_option'] for t in texts} == {'Рукопис Word (.docx)', 'Word manuscript (.docx)'}
     assert {t['export.rtf_option'] for t in texts} == {'Рукопис RTF (.rtf)', 'RTF manuscript (.rtf)'}
+
+
+@pytest.mark.parametrize('card,expected', [('uk', 'uk-UA'), ('en', 'en-US'), ('en-GB', 'en-GB'), ('fr', 'fr')])
+def test_docx_bare_language_gets_a_region_for_word(tmp_path, card, expected):
+    # Word treats a bare "uk" as a neutral language id (34), not Ukrainian (1058), and proofing may not apply.
+    repo, story = flat_book(tmp_path, 'Текст.\n', card_language=card)
+    _, content = rendered(repo, story)
+    assert re.search(rf'<w:rPrDefault>.*?<w:lang w:val="{expected}"/>', part(content, 'word/styles.xml'), re.S)

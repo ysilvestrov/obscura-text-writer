@@ -35,6 +35,11 @@ def valid_text(text):
 def primary(tag):return tag.split('-')[0].lower()
 
 
+def word_language(tag):
+    """A bare uk/en card tag gets its region: Word reads a bare tag as a neutral language and may skip proofing."""
+    return SCENE_LANG.get(tag.lower(),tag) if '-' not in tag else tag
+
+
 def _run(text,*,bold=False,italic=False,lang=None):
     properties=('<w:b/>' if bold else '')+('<w:i/>' if italic else '')+(f'<w:lang w:val="{lang}"/>' if lang else '')
     pieces=[]
@@ -85,7 +90,7 @@ def _document(book):
 
 
 def _styles(book):
-    p=PROFILE;font=p['font'];lang=escape(book.snapshot.publication.card.language,{'"':'&quot;'})
+    p=PROFILE;font=p['font'];lang=escape(word_language(book.snapshot.publication.card.language),{'"':'&quot;'})
     heading=lambda id,name,level,size:(f'<w:style w:type="paragraph" w:styleId="{id}"><w:name w:val="{name}"/><w:basedOn w:val="Normal"/>'
         f'<w:next w:val="Normal"/><w:qFormat/><w:pPr><w:keepNext/><w:pageBreakBefore/><w:spacing w:after="240"/><w:ind w:firstLine="0"/>'
         f'<w:outlineLvl w:val="{level}"/></w:pPr><w:rPr><w:b/><w:sz w:val="{size}"/></w:rPr></w:style>')
