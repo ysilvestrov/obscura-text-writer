@@ -113,7 +113,7 @@ async function load(onlyRole=null){
           const retiring=snapshot.story.model_warnings;
           settingsSaved(role);await load(role);
           if(shared)for(const other of others)other.serverBaseline=structuredClone(roleScope(snapshot,other.dataset.role));
-          if(retiring?.length)notice(retiring.join(' '),'warning');else notice(shared?t("m_34d0e77fcf4b"):t("m_3face1913579"));
+          if(retiring?.length)notice(retiring.map(diagnostic).join(' '),'warning');else notice(shared?t("m_34d0e77fcf4b"):t("m_3face1913579"));
         });
       }catch(e){settingsFormError(role,e);notice(e.message,'error')}
     };

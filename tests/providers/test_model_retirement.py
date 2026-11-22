@@ -169,3 +169,21 @@ def test_server_texts_match_the_interface_catalog_so_english_can_translate_them(
     with pytest.raises(VeniceModelUnavailable) as censored:
         validate_model(catalog(row), 'm', False)
     assert str(censored.value) == fill('models.not_uncensored', 'm')
+
+
+@pytest.mark.req('MODEL-RETIREMENT')
+def test_role_check_collects_each_retiring_part_once(monkeypatch):
+    from storygen.providers import schema_support
+    from storygen.providers.models import ModelOption
+    notices = {'main': ModelRetirement(date=date(2026, 12, 1), replacement='r1'),
+               'variant': ModelRetirement(date=date(2026, 12, 11))}
+    monkeypatch.setattr(schema_support, 'discover_models', lambda settings, http_client=None, **kw:
+                        [ModelOption(id=key, retirement=value) for key, value in notices.items()] + [ModelOption(id='kept')])
+    part = lambda model: SimpleNamespace(provider=ProviderSettings(provider='venice', model=model), context_tokens=8192, max_output_tokens=1024)
+    role = part('main')
+    role.low_rating_variant, role.classification = part('variant'), part('main')
+    message, warnings = schema_support.role_check(role)
+    assert message is None
+    assert warnings == [retirement_warning('main', notices['main']), retirement_warning('variant', notices['variant'])]
+    role.low_rating_variant, role.classification = None, part('kept')
+    assert schema_support.role_check(role) == (None, [retirement_warning('main', notices['main'])])

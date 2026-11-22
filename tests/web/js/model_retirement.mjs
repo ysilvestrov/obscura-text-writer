@@ -18,3 +18,14 @@ assert.deepEqual(modelBadges({id:'kept',privacy:'private'}).map(b=>b.kind),['pri
 setLocale('en');
 assert.equal(retirementLabel(retiring),'The provider retires this model on 01.12.2026; replacement: glm.');
 console.log('model retirement check passed');
+// Several warnings (one per line in run.warning, one per item on save) translate one by one, never as one mangled match.
+const {diagnosticLines,diagnostic}=await import(pathToFileURL(process.argv[2]+'/src/storygen/web/static/i18n.js'));
+const w1='Провайдер прибирає модель «m1» 01.12.2026; заміна: «r1». Змініть модель у налаштуваннях ролі.';
+const w2='Провайдер прибирає модель «m2» 11.12.2026. Змініть модель у налаштуваннях ролі.';
+const e1=diagnostic(w1),e2=diagnostic(w2);
+assert.ok(e1.startsWith('The provider')&&!/[а-яі]/i.test(e1),e1);
+assert.ok(e2.startsWith('The provider')&&!/[а-яі]/i.test(e2),e2);
+assert.equal(diagnosticLines(w1+'\n'+w2),e1+'\n'+e2);
+assert.equal(diagnosticLines(w1),e1);
+assert.equal(diagnosticLines(null),null);
+console.log('multi-warning translation check passed');

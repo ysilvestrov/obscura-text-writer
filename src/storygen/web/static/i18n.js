@@ -36,6 +36,8 @@ export function diagnostic(text){
   for(const[uk,en]of [['Некоректні дані: ','Invalid data: '],['Помилка редактора: ','Editor error: '],['Помилка планувальника: ','Planner error: ']])for(const prefix of [uk,en])if(text.startsWith(prefix))return (getLocale()==='en'?en:uk)+diagnostic(text.slice(prefix.length));
   return text;
 }
+// A run warning holds one warning per line (merge_warnings): translate each line alone, so two warnings never match one pattern.
+export function diagnosticLines(text){return typeof text==='string'&&text.includes('\n')?text.split('\n').map(diagnostic).join('\n'):diagnostic(text)}
 function remember(element,property,render,attribute=false){
   let entries=byElement.get(element);if(!entries){entries=new Map();byElement.set(element,entries)}
   const key=(attribute?'attr:':'')+property;let entry=entries.get(key);

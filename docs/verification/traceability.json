@@ -7844,7 +7844,8 @@
         "tests/web/test_model_retirement_save.py::test_saving_a_model_without_a_notice_has_no_warning_field",
         "tests/web/test_model_retirement_save.py::test_catalog_trouble_saves_without_a_warning",
         "tests/web/test_model_picker.py::test_model_picker_marks_a_retiring_model",
-        "tests/mcp/test_bridge_settings.py::test_model_list_carries_the_provider_retirement_notice"
+        "tests/mcp/test_bridge_settings.py::test_model_list_carries_the_provider_retirement_notice",
+        "tests/providers/test_model_retirement.py::test_role_check_collects_each_retiring_part_once"
       ]
     }
   ]
