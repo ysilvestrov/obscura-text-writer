@@ -132,7 +132,9 @@ def paid(only):
     texts = {k: v for k, v in texts.items() if k in only}
     rows = [r for r in rows if r[0] in only]
     broken = broken_texts(texts)
-    bench = stand.open_bench(stand.ROOT / 'data', {k: v[0] for k, v in broken.items()}, CAP_USD)
+    casts = {k: json.loads((texts_dir() / f'{k}.cast.json').read_text(encoding='utf-8'))
+             for k in texts if (texts_dir() / f'{k}.cast.json').exists()}
+    bench = stand.open_bench(stand.ROOT / 'data', {k: v[0] for k, v in broken.items()}, CAP_USD, casts)
     out = stand.ROOT / 'results.jsonl'
     for text_id, c, worst in rows:
         left = float(CAP_USD) - stand.exposure_usd(bench)

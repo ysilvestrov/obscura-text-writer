@@ -4,6 +4,7 @@ One synthetic single-scene story per text (a second scene would need the first o
 between loops. Each loop runs with a run budget equal to what is left of the whole test's cap, so Obscura's own accounting
 stops a call that would exceed it. Nothing here reads the owner's data.
 """
+import json
 import os
 import time
 from dataclasses import dataclass, field
@@ -87,12 +88,16 @@ class Bench:
     stories: dict = field(default_factory=dict)  # text id -> (story id, scene id)
 
 
-def open_bench(data_dir, texts: dict, limit_usd: str) -> Bench:
+# The rating axis each text stands for (sexual, violence, themes); a rating is required before any generation.
+RATINGS = {'N': (0, 0, 0), 'V': (0, 2, 0), 'T': (0, 0, 2), 'S': (2, 0, 0)}
+
+
+def open_bench(data_dir, texts: dict, limit_usd: str, casts: dict | None = None) -> Bench:
     """One story per text: its broken version as accepted prose, a neutral brief and the whole-test budget. A later
     call on the same folder reuses the stories it made (bench.json), so the cap covers every part of the test."""
     import json
     from storygen.billing.models import money
-    from storygen.domain import SceneCreate, StoryCreate
+    from storygen.domain import ContentRating, SceneCreate, StoryCreate
     from storygen.storage.repository import Repository
     root = isolated(data_dir)
     repo = Repository(root)
@@ -104,7 +109,17 @@ def open_bench(data_dir, texts: dict, limit_usd: str) -> Bench:
         if text_id in bench.stories:
             continue
         story = repo.create_story(StoryCreate(title=f'Editor bench {text_id}'))
-        scene = repo.create_scene(story.id, SceneCreate(title=text_id, beats='Події сцени'))
+        cast = (casts or {}).get(text_id, [])
+        scene = repo.create_scene(story.id, SceneCreate(title=text_id, beats='Події сцени', character_ids=[c['id'] for c in cast]))
+        if cast:
+            # A sexual rating needs the scene's cast with adult ages (rating guard); the cards come from the local text folder.
+            cards = [{'schema_version': 2, 'id': c['id'], 'name': c['name'], 'entries': [
+                {'id': c['id'] + '0', 'text': 'Вік: ' + str(c['age']), 'availability': 'timeless', 'available_from_scene_id': None,
+                 'origin': 'author', 'sources': []}]} for c in cast]
+            cards_ref = repo.save_version(story.id, None, 'character_cards', json.dumps(cards, ensure_ascii=False), [])
+            repo.publish_story_material(story.id, 'characters_version_id', cards_ref.id, repo.get_story(story.id).revision)
+        repo.update_story_rating(story.id, ContentRating(**dict(zip(('sexual', 'violence', 'themes'), RATINGS.get(text_id, (0, 0, 0))))),
+                                 repo.get_story(story.id).revision)
         brief = repo.save_version(story.id, scene.id, 'brief', BRIEF, [])
         repo.set_head(scene.id, 'brief', brief.id, repo.get_scene(scene.id).revision)
         ref = repo.save_version(story.id, scene.id, 'manual', text, [])
@@ -129,6 +144,9 @@ def configure_editor(bench: Bench, story_id: str, candidate: Candidate):
     settings = RoleSettings(provider=provider, temperature=0.2, context_tokens=candidate.context_tokens,
                             max_output_tokens=candidate.max_output_tokens)
     save_role_settings(bench.repo, story_id, 'editor', settings, bench.repo.get_story(story_id).revision)
+    # The owner approved these models for the test: the author's consent for a model without uncensored=true.
+    from storygen.providers.policy import endpoint
+    bench.repo.model_policy('set_consent', role='editor', provider=provider.provider, base_url=endpoint(provider), model=provider.model)
 
 
 def run_loop(bench: Bench, text_id: str, candidate: Candidate, gateway_factory=None) -> dict:

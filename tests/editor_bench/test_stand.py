@@ -83,3 +83,24 @@ def test_a_second_part_reuses_the_bench_and_its_budget(bench_root):
     first = stand.open_bench(bench_root / 'data', {'N': text()}, '3')
     again = stand.open_bench(bench_root / 'data', {'N': text(), 'S': text()}, '3')
     assert again.stories['N'] == first.stories['N'] and set(again.stories) == {'N', 'S'}
+
+
+@pytest.mark.parametrize('text_id', ['V', 'S'])
+def test_rated_texts_run_with_consent_and_an_adult_cast(bench_root, monkeypatch, text_id):
+    monkeypatch.setenv('PYTHON_KEYRING_BACKEND', 'keyring.backends.fail.Keyring')
+    broken, _ = inject(text(), seed=4)
+
+    class Fake:
+        def stream(self, ctx, cancel):
+            yield GenerationEvent(type='delta', text=text())
+            yield GenerationEvent(type='terminal', finish_reason='stop')
+
+    cast = {'S': [{'id': 'A', 'name': 'Перша', 'age': 30}, {'id': 'B', 'name': 'Другий', 'age': 'дорослий'}]}
+    bench = stand.open_bench(bench_root / 'data', {text_id: broken}, '3', cast)
+    story = bench.repo.get_story(bench.stories[text_id][0])
+    assert tuple(story.content_rating.model_dump().values()) == stand.RATINGS[text_id]
+    # A cloud model without uncensored=true: the stand records the consent the owner gave in chat.
+    from storygen.providers import policy
+    monkeypatch.setattr(policy, 'needs_consent', lambda settings, uncensored, rating: any(rating))
+    result = stand.run_loop(bench, text_id, stand.Candidate('local', 'fake', 'prompt_json'), gateway_factory=lambda s: Fake())
+    assert result['state'] == 'needs_review', result
