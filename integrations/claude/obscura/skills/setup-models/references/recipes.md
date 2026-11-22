@@ -30,7 +30,7 @@ Venice removes `gemma-4-uncensored` on 2026-12-01; its catalog names `glm-5-3-fl
 
 ## Editors: why one per provider
 
-The editors come from a comparison on 2026-11-22 (`docs/research/2026-11-22-editor-models-uk.md`): Obscura's own five-pass edit loop on Ukrainian prose with 30 planted spelling, punctuation and russism mistakes per text.
+The editors come from a comparison on 2026-11-22 (Obscura repository, `docs/research`, editor models for Ukrainian): Obscura's own five-pass edit loop on Ukrainian prose with 30 planted spelling, punctuation and russism mistakes per text.
 
 - **Venice.** `glm-5-3-flash-uncensored` fixed as many mistakes as `qwen-3-6-plus` (the previous Balanced and Quality editor), on the sexual-content text too. It was about five times faster and a quarter of the price, and it kept the text whole, so every budget uses it. `qwen-3-6-plus` is the replacement of the same quality.
 - **OpenRouter.** `google/gemma-4-31b-it` fixed the most mistakes and was the cheapest working editor. `openai/gpt-6.1-sol`, the previous Quality editor, did no better on the one text it ran at about 48 times the cost. `anthropic/claude-haiku-5.5` is close, but it is the Quality writer's family.
