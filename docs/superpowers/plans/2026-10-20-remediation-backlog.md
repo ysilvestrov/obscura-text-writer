@@ -4,7 +4,19 @@
 
 Цей документ замінює порядок хвиль із [попереднього плану](2026-10-20-architecture-remediation.md). Технічний аналіз і регресійні приклади попереднього плану залишаються джерелом деталей. Ідентифікатори T-01…T-20 збережено для простежуваності; R-01…R-27 — самостійні пакети робіт.
 
-**Актуальна черга, 20.11.2026 (рішення власника в чаті):** «32, 39, 42, 37 і давай закриємо все про пам'ять з #60, далі 40»; #31 — у кінець черги. Пункти #75 (R-30) і #76 (R-31) виконано. [#93](https://github.com/ysilvestrov/obscura-text-writer/issues/93) (платне приймання англійської, до $3): власник поповнив рахунок і погодив витрати 20.11.2026, виконується перед #32.
+**Актуальна черга, 22.11.2026 (перепланування, погоджено власником у чаті):** із черги 20.11 виконано #32, #236 і #67 (локації); предмети винесено з #67 в окрему задачу [#262](https://github.com/ysilvestrov/obscura-text-writer/issues/262). #39 закрито: ціль 3 с на 300 сценах досягнуто, решту (перше відкриття після запису 1,24–1,32 с на 68 сценах проти цілі 1 с) власник прийняв як відоме обмеження PERF-001-S03.
+
+1. [#260](https://github.com/ysilvestrov/obscura-text-writer/issues/260) — Venice прибирає gemma-4-uncensored з 01.12.2026: (а) перевірити, чи модель не є дефолтом; (б) план і бюджет тесту моделей на роль редактора для української — платні виклики лише після згоди.
+2. [#264](https://github.com/ysilvestrov/obscura-text-writer/issues/264) — перевірка цілісності даних власника падає з `invalid_series`, тож `backup` відмовляє (P0: резервування); діагностика лише читанням на копії.
+3. [#259](https://github.com/ysilvestrov/obscura-text-writer/issues/259) — workflow: менше merge-конфліктів паралельних гілок (аналіз історії й зміни процесу).
+4. Пам'ять з #60: [#69](https://github.com/ysilvestrov/obscura-text-writer/issues/69) — строк дії й заміщення станів поза слотами ядра; далі [#262](https://github.com/ysilvestrov/obscura-text-writer/issues/262) — предмети (поверх механізму локацій); далі [#70](https://github.com/ysilvestrov/obscura-text-writer/issues/70) — калібрування оцінки токенів для ролей без профілю.
+5. [#203](https://github.com/ysilvestrov/obscura-text-writer/issues/203) — R-40 скіл `revise`.
+6. [#220](https://github.com/ysilvestrov/obscura-text-writer/issues/220) — R-41 розкласти нотатки на план.
+7. [#31](https://github.com/ysilvestrov/obscura-text-writer/issues/31) — довга форма; перед специфікацією переглянути обсяг, бо серії й «Нова книга серії» вже існують (міграція 006).
+
+Чекають на власника: [#176](https://github.com/ysilvestrov/obscura-text-writer/issues/176) — R-37, PR 2 після трьох ID (тег AW, мітка конверсії, потік G); [#119](https://github.com/ysilvestrov/obscura-text-writer/issues/119) — фінальний PR після проходження перевірки в Partner Center. Відкладено: [#61](https://github.com/ysilvestrov/obscura-text-writer/issues/61).
+
+**Попередня черга, 20.11.2026 (рішення власника в чаті):** «32, 39, 42, 37 і давай закриємо все про пам'ять з #60, далі 40»; #31 — у кінець черги. Пункти #75 (R-30) і #76 (R-31) виконано. [#93](https://github.com/ysilvestrov/obscura-text-writer/issues/93) (платне приймання англійської, до $3): власник поповнив рахунок і погодив витрати 20.11.2026, виконується перед #32.
 
 1. [#32](https://github.com/ysilvestrov/obscura-text-writer/issues/32) — R-26 англійська локалізація CLI.
 2. [#39](https://github.com/ysilvestrov/obscura-text-writer/issues/39) — залишок швидкості робочого простору (PERF-001-S03).
