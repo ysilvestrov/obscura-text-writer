@@ -199,3 +199,21 @@ def test_manual_snapshot_has_the_location_selectors(tmp_path):
     mcp = {s.field for s in _manual_snapshot(repo, scene, 'draft', day_selectors=True).selectors}
     assert 'location_neighbourhood' in author and 'location_context' not in author
     assert {'location_neighbourhood', 'location_context'} <= mcp
+
+
+@pytest.mark.req('MEMORY-LOCATIONS')
+def test_memory_view_rows_name_their_locations_as_the_merge_target(tmp_path):
+    from storygen.memory.forwarding import memory_view
+    from storygen.memory.journal import MemoryJournal, _add_event
+    repo, story, first, _ = setup(tmp_path, other='Локація: Хата')
+    prose = repo.save_version(story.id, first.id, 'manual', 'Олег чекав у кухні.', [])
+    repo.set_head(first.id, 'prose', prose.id, repo.get_scene(first.id).revision)
+    events = [_add_event('facts', 'Плита гаряча', prose.id, 'Олег чекав у кухні.', 0, location_ids=[lid(story, 'Хата')]),
+              _add_event('facts', 'Надворі ніч', prose.id, 'Олег чекав у кухні.', 0)]
+    memory = repo.save_version(story.id, first.id, 'memory',
+                               MemoryJournal(schema_version=3, source_prose_ids=[prose.id], events=events).model_dump_json(), [prose.id])
+    repo.set_head(first.id, 'memory', memory.id, repo.get_scene(first.id).revision)
+    rows = {r['text']: r['locations'] for r in memory_view(repo, first.id)['rows']}
+    assert rows == {'Плита гаряча': ['Хата'], 'Надворі ніч': []}
+    write(repo, lambda db: store.merge_location(db, story.id, lid(story, 'Хата'), lid(story, 'Дім', 'кухня')))
+    assert {r['text']: r['locations'] for r in memory_view(repo, first.id)['rows']}['Плита гаряча'] == ['Дім / кухня']

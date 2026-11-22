@@ -22,9 +22,25 @@ An author entry without a quotation is a truth of the world the reader has not s
 
 ## When memory does not fit
 
-While the request fits the role limits, memory is passed in full. Otherwise the application selects the most important part and warns you: the protagonist core always in full, then recent protagonist states, open lines involving the scene participants, other participants' states, facts, the timeline of the last 20 scenes and "atmosphere". If even the core does not fit, the request is not sent.
+While the request fits the role limits, memory is passed in full. Otherwise the application selects the most important part and warns you: the protagonist core always in full, then recent protagonist states, open lines involving the scene participants, other participants' states, facts, records about the scene's place, the timeline of the last 20 scenes and "atmosphere". If even the core does not fit, the request is not sent.
 
 The **Type** column guides the selection: **Auto**, **Core** (always shown) or **Atmosphere** (only within a small share). The choice is saved at once and applies to the whole story.
+
+## Locations
+
+The `Location:` line of a scene plan names where the scene happens: `Location: Lighthouse / lamp room`. Separate several places with a comma, a semicolon, `→` or the words "then" and "later": `Location: Pier, then lighthouse`. A slash nests one place in another, so `Lighthouse / lamp room` gives two cards, "Lighthouse" and "Lighthouse / lamp room". "and" stays part of a name ("Bed and breakfast"). Cards appear on their own when you save the plan; the same name (ignoring case and extra spaces) is the same card.
+
+The memory model marks records with the scene's places. When memory does not fit, a later scene in the same place, in a place that contains it or in one inside it gets those records, including the state of a character who is not in the scene. Records made before this change have no places.
+
+![The «Locations» section with a similar-name suggestion and a place description](../../images/site/en/locations-desktop.png)
+
+The cards are in the **Locations** section at the bottom of the **Memory** tab of any scene:
+
+- **Location description** is optional text of up to 2000 characters. The planner and the writer see it (also through MCP); the memory model does not. Changing it makes the briefs and drafts of scenes in that place and the places inside it outdated.
+- **Similar names** suggests possible duplicates, such as the typo "Pier" / "Peir". **Merge** makes the later card part of the first one; **Not alike** hides the suggestion for good.
+- **Merge into…** merges a card with any other. Plan texts stay as they are; versions of the scenes the merge affects become outdated. **Split** undoes the merge.
+
+Nothing is merged without your decision. If the story was changed in another tab, saving is refused and the typed description stays in the field. The memory table shows each record's places as "Locations: …", and search finds a record by a place name too.
 
 ## Timeline summaries
 

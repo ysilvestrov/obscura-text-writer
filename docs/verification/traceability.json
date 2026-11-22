@@ -5728,6 +5728,33 @@
       ]
     },
     {
+      "id": "MEMORY-LOCATIONS-S07",
+      "requirement": "MEMORY-LOCATIONS",
+      "scope": "API локацій (перелік, злиття, розділення, «не схожі», опис, CAS, 409, кошик, застарілість через HTTP), підказки без пар предок–нащадок, рядки панелі й спільна ревізія (node), підключення сторінки й тексти uk/en, локації в рядках таблиці пам’яті. Playwright locations.spec.mjs запускається вручну (verify.py його не виконує).",
+      "tests": [
+        "tests/web/test_locations_api.py::test_list_has_cards_with_their_scenes_and_suggestions",
+        "tests/web/test_locations_api.py::test_story_without_locations_has_an_empty_list",
+        "tests/web/test_locations_api.py::test_merge_redirects_scenes_and_split_returns_them",
+        "tests/web/test_locations_api.py::test_merge_into_a_merged_card_shows_the_final_target",
+        "tests/web/test_locations_api.py::test_dismissed_pair_is_not_suggested_again",
+        "tests/web/test_locations_api.py::test_description_is_saved_trimmed_and_limited",
+        "tests/web/test_locations_api.py::test_stale_revision_is_a_conflict_and_changes_nothing",
+        "tests/web/test_locations_api.py::test_unknown_card_self_merge_and_cycle_are_refused",
+        "tests/web/test_locations_api.py::test_a_trashed_scene_is_not_listed",
+        "tests/web/test_locations_api.py::test_writes_through_the_api_make_shown_versions_stale",
+        "tests/web/test_locations_api.py::test_no_suggestion_between_a_card_and_its_ancestor_through_a_merge",
+        "tests/web/test_locations_ui.py::test_panel_rows",
+        "tests/web/test_locations_ui.py::test_story_page_has_the_section_and_both_languages_have_the_texts",
+        "tests/web/test_locations_ui.py::test_server_messages_match_the_catalog",
+        "tests/generation/test_location_context.py::test_memory_view_rows_name_their_locations_as_the_merge_target",
+        "tests/web/test_memory_table_ui.py::test_memory_table_selection_conflict_and_async_save"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#locations-panel",
+        "reason": "Злиття з підтвердженням, конфлікт опису й спільну ревізію панелей у браузері перевіряє Playwright, який verify.py не запускає."
+      }
+    },
+    {
       "id": "MEMORY-SUMMARY-S01",
       "requirement": "MEMORY-SUMMARY",
       "scope": "Блоки пласкої книги й книги з частинами, кошик, пороги рекомендації й заміни, старий payload.",

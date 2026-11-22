@@ -1,0 +1,36 @@
+// MEMORY-LOCATIONS-S07: rows of the «Locations» panel from GET /api/stories/{id}/locations (pure).
+// Nested cards follow their parent; a merged card is shown under its final target and can only be split back.
+// Parents and targets are followed through merges, so a chain А→Б→В or a parent merged into its own child keeps the tree.
+export function locationRows(data){
+  const cards=data?.locations||[],byId=new Map(cards.map(c=>[c.id,c])),rows=[],seen=new Set();
+  const canonical=id=>{const chain=new Set();while(id&&byId.get(id)?.merged_into&&!chain.has(id)){chain.add(id);id=byId.get(id).merged_into}return id};
+  // Where a card hangs: a merged card under its final target, an unmerged one under its parent's final target.
+  const home=card=>{
+    const place=card.merged_into?canonical(card.id):card.parent_id?canonical(card.parent_id):null;
+    return place&&place!==card.id&&byId.has(place)?place:null;
+  };
+  const under=id=>[
+    ...cards.filter(c=>!c.merged_into&&home(c)===id),
+    ...cards.filter(c=>c.merged_into&&home(c)===id),
+  ];
+  const visit=(card,depth)=>{
+    if(seen.has(card.id))return;seen.add(card.id);
+    const merged=!!card.merged_into;
+    rows.push({id:card.id,path:card.path,depth,merged,targetPath:card.target_path||null,description:card.description||'',
+      scenes:(card.scenes||[]).map(s=>`${s.position+1}. ${s.title}`).join(', '),
+      canMerge:!merged,canSplit:merged,editable:!merged});
+    for(const child of under(card.id))visit(child,depth+1);
+  };
+  for(const card of cards)if(!card.merged_into&&!home(card))visit(card,0);
+  for(const card of cards)visit(card,0);  // anything a broken chain left out
+  return rows;
+}
+
+export function mergeTargets(data,id){
+  // In panel order: unmerged cards only (a merged card is split first), never the card itself.
+  return locationRows(data).filter(r=>!r.merged&&r.id!==id).map(r=>({id:r.id,path:r.path}));
+}
+
+export function suggestionRows(data){
+  return (data?.suggestions||[]).map(s=>({a:s.a,b:s.b,aPath:s.a_path,bPath:s.b_path}));
+}

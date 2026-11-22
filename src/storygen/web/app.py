@@ -144,6 +144,8 @@ def create_app(settings: AppSettings, *, gateway_factory=None,evaluator_factory=
     app.include_router(series_router)
     from .routes_timeline_summaries import router as timeline_summaries_router
     app.include_router(timeline_summaries_router)
+    from .routes_locations import router as locations_router
+    app.include_router(locations_router)
     from .routes_memory_merges import router as memory_merges_router
     app.include_router(memory_merges_router)
     from .routes_settings import router as settings_router
