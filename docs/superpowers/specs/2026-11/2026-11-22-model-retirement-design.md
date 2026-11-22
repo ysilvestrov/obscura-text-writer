@@ -1,7 +1,7 @@
 # Прибрані моделі провайдера й тест редакторів для української (#260)
 
 Дата: 2026-11-22
-Статус: чекає на затвердження
+Статус: затверджено (22.11.2026)
 Spec-review: agy/gemini-4-argon @ 78daebe (author: claude) — 3 findings: 3 fixed, 0 rejected (fallback: codex — usage limit)
 
 ## Для власника
