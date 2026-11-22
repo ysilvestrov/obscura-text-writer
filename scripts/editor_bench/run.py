@@ -98,8 +98,21 @@ def matrix(texts, options):
     return rows
 
 
+def isolate_credentials():
+    """Turn the OS credential store off for this process: a key missing from ENV_FILE must not come from the owner's store."""
+    import os
+    os.environ['PYTHON_KEYRING_BACKEND'] = 'keyring.backends.fail.Keyring'
+
+
+def require_keys():
+    """Load both provider keys from ENV_FILE; stop when one is missing."""
+    missing = sorted(set(stand.KEY_NAMES) - set(stand.load_keys(ENV_FILE)))
+    if missing:
+        raise SystemExit(f'Бракує ключів у {ENV_FILE}: {", ".join(missing)}')
+
+
 def plan():
-    stand.load_keys(ENV_FILE)
+    require_keys()
     texts = load_texts()
     options = catalog()
     print('Тексти:', {k: f'{len(v.split())} слів' for k, v in texts.items()} or 'немає')
@@ -211,7 +224,9 @@ def _results():
 
 
 def rescore_file():
-    rows = rescore(_results(), {k: inject(v, SEED) for k, v in load_texts().items()})
+    broken = {k: inject(v, SEED) for k, v in load_texts().items()}
+    stand.open_bench(stand.ROOT / 'data', {k: v[0] for k, v in broken.items()}, CAP_USD)  # refuses a text changed since the run
+    rows = rescore(_results(), broken)
     (stand.ROOT / 'results.jsonl').write_text(''.join(json.dumps(r, ensure_ascii=False) + '\n' for r in rows), encoding='utf-8')
     print(f'Переоцінено циклів: {len(rows)}')
 
@@ -251,6 +266,7 @@ def main(argv=None):
     group.add_argument('--rescore', action='store_true', help='recompute scores from results.jsonl; no model is called')
     parser.add_argument('--texts', default=''.join(TEXTS), help='which texts to run with --paid, e.g. NVT')
     args = parser.parse_args(argv)
+    isolate_credentials()
     stand.isolated(stand.ROOT)
     if args.rescore:
         return rescore_file()

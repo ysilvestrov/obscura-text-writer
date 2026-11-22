@@ -52,7 +52,7 @@ def test_a_loop_runs_through_the_product_and_scores(bench_root, monkeypatch):
 
     bench = stand.open_bench(bench_root / 'data', {'N': broken}, '3')
     result = stand.run_loop(bench, 'N', stand.Candidate('local', 'fake', 'prompt_json'), gateway_factory=lambda settings: Fake())
-    assert result['state'] in {'needs_review', 'completed'}, result
+    assert result['state'] == 'needs_review', result
     assert result['stop_reason'] == 'no_changes' and len(result['passes']) == 2 == len(calls)
     assert all(p['seconds'] is not None for p in result['passes'])
     counts = score(gold, broken, result['edited'])
@@ -104,3 +104,23 @@ def test_rated_texts_run_with_consent_and_an_adult_cast(bench_root, monkeypatch,
     monkeypatch.setattr(policy, 'needs_consent', lambda settings, uncensored, rating: any(rating))
     result = stand.run_loop(bench, text_id, stand.Candidate('local', 'fake', 'prompt_json'), gateway_factory=lambda s: Fake())
     assert result['state'] == 'needs_review', result
+
+
+def test_a_changed_text_is_refused_on_reuse(bench_root):
+    stand.open_bench(bench_root / 'data', {'N': text()}, '3')
+    with pytest.raises(ValueError, match='змінився'):
+        stand.open_bench(bench_root / 'data', {'N': text() + 'Ще речення.\n'}, '3')
+
+
+def test_the_cli_turns_the_credential_store_off_and_needs_both_keys(tmp_path, monkeypatch):
+    from editor_bench import run
+    monkeypatch.setenv('PYTHON_KEYRING_BACKEND', 'keyring.backends.Windows.WinVaultKeyring')
+    for name in stand.KEY_NAMES:
+        monkeypatch.delenv(name, raising=False)
+    env = tmp_path / '.env'
+    env.write_text('VENICE_API_KEY=v-test\n', encoding='utf-8')
+    monkeypatch.setattr(run, 'ENV_FILE', env)
+    run.isolate_credentials()
+    assert os.environ['PYTHON_KEYRING_BACKEND'] == 'keyring.backends.fail.Keyring'
+    with pytest.raises(SystemExit, match='OPENROUTER_API_KEY'):
+        run.require_keys()

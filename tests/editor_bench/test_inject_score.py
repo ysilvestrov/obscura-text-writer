@@ -127,3 +127,12 @@ def test_the_share_of_words_kept_shows_a_shortened_text():
     assert score(gold, broken, broken)['words_kept'] == 1.0
     half = broken[:len(broken) // 2]
     assert 0.45 < score(gold, broken, half)['words_kept'] < 0.55
+
+
+def test_an_unplanted_word_rewritten_next_to_a_mistake_counts_off_gold():
+    from editor_bench.inject import Mistake
+    broken = 'Тут baad neighbor stays.'
+    gold = [Mistake('spelling', 'Тут baad neighbor stays.', 4, 'baad', 'good')]
+    assert score(gold, broken, 'Тут good neighbor stays.')['off_gold_tokens'] == 0
+    assert score(gold, broken, 'Тут good replacement stays.')['off_gold_tokens'] == 1
+    assert score(gold, broken, 'Тут.')['off_gold_tokens'] == 2  # the mistake's own word counts as 'other'

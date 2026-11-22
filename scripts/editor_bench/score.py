@@ -45,7 +45,8 @@ def score(gold, broken: str, edited: str) -> dict:
     for m in gold:
         inside = [i for i, (_, s, e) in enumerate(a) if s < m.start + len(m.wrong) and e > m.start]
         lo, hi = inside[0], inside[-1] + 1
-        regions.append((lo, hi))
+        # The tokens a fix of this mistake may change: its own span or its right form, whichever is longer.
+        regions.append((lo, hi, max(hi - lo, len(_tokens(m.right)))))
         touching = [op for op in changed if _touches(op, lo, hi)]
         if not touching:
             result[m.category]['missed'] += 1
@@ -56,8 +57,9 @@ def score(gold, broken: str, edited: str) -> dict:
         expected = [t[0] for t in _tokens(broken[s:m.start] + m.right + broken[m.start + len(m.wrong):e])]
         result[m.category]['fixed' if got == expected else 'other'] += 1
         result[m.category]['fixed_lenient'] += _contains(got, [t[0] for t in _tokens(m.right)]) and not _contains(got, [t[0] for t in _tokens(m.wrong)])
-    result['off_gold_tokens'] = sum(max(op[2] - op[1], op[4] - op[3]) for op in changed
-                                    if not any(_touches(op, lo, hi) for lo, hi in regions))
-    # A deletion that spans a mistake is counted as "other", not off-gold; the word share shows a shortened text.
+    # A change grouped with a mistake still counts its tokens beyond what fixing that mistake may change.
+    result['off_gold_tokens'] = sum(max(0, max(op[2] - op[1], op[4] - op[3]) - sum(allow for lo, hi, allow in regions if _touches(op, lo, hi)))
+                                    for op in changed)
+    # The word share shows a shortened text as a whole.
     result['words_kept'] = round(len(edited.split()) / max(1, len(broken.split())), 3)
     return result

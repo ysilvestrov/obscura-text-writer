@@ -107,6 +107,10 @@ def open_bench(data_dir, texts: dict, limit_usd: str, casts: dict | None = None)
         bench.stories = {k: tuple(v) for k, v in json.loads(index.read_text(encoding='utf-8')).items()}
     for text_id, text in texts.items():
         if text_id in bench.stories:
+            # Every loop edits the scene's prose head, so a reused story must hold exactly the text being scored.
+            scene_id = bench.stories[text_id][1]
+            if repo.read_text(repo.get_scene(scene_id).heads['prose']) != text:
+                raise ValueError(f'Текст {text_id} змінився після створення стенду; оцінка не збігалася б із тим, що редагували')
             continue
         story = repo.create_story(StoryCreate(title=f'Editor bench {text_id}'))
         cast = (casts or {}).get(text_id, [])
