@@ -103,18 +103,21 @@ def scene_neighbourhood(cards: dict[str,StoryLocation], location_ids) -> list[st
     return neighbourhood({id:place(c) for id,c in cards.items()},location_ids)
 
 
-def shown_locations(cards: dict[str,StoryLocation], location_ids) -> list[list[str]]:
-    """[path, description] of the scene locations and their ancestors, ancestors first, merged cards as their target."""
-    merged={c.id:c.merged_into for c in cards.values()};out=[];seen=set()
+def scene_cards(cards: dict[str,StoryLocation], location_ids) -> list[str]:
+    """Card ids of the scene locations and their ancestors, ancestors first, merged cards as their target."""
+    merged={c.id:c.merged_into for c in cards.values()};out=[]
     for id in location_ids:
         chain=[];id=canonical(merged,id)
         while id in cards and id not in chain:
             chain.append(id);parent=cards[id].parent_id
             id=canonical(merged,parent) if parent else None
-        for item in reversed(chain):
-            if item not in seen:
-                seen.add(item);out.append([cards[item].path,cards[item].description])
+        out+=[item for item in reversed(chain) if item not in out]
     return out
+
+
+def shown_locations(cards: dict[str,StoryLocation], location_ids) -> list[list[str]]:
+    """[path, description] of scene_cards: what «ЛОКАЦІЇ СЦЕНИ» shows."""
+    return [[cards[id].path,cards[id].description] for id in scene_cards(cards,location_ids)]
 
 
 def backfill(db):

@@ -123,3 +123,30 @@ def test_merge_in_the_neighbourhood_stales_and_outside_does_not(tmp_path):
     write(repo, lambda db: store.merge_location(db, story.id, lid(story, 'Хата'), lid(story, 'Дім', 'кухня')))
     assert 'location_neighbourhood' in stale_fields(repo, story, mem)
     assert 'location_neighbourhood' in stale_fields(repo, story, brief)
+
+
+def memory_scene(tmp_path, beats):
+    repo = Repository(tmp_path)
+    item = repo.create_story(StoryCreate(title='Каталог'))
+    scene = repo.create_scene(item.id, SceneCreate(title='1', beats=beats, character_ids=[]))
+    prose = repo.save_version(item.id, scene.id, 'manual', 'Анна вдома.', [])
+    repo.set_head(scene.id, 'prose', prose.id, repo.get_scene(scene.id).revision)
+    return repo, repo.get_story(item.id), repo.get_scene(scene.id)
+
+
+def test_memory_stage_allows_the_scene_places_and_their_ancestors(tmp_path):
+    repo, story, scene = memory_scene(tmp_path, 'Локація: Дім / кухня')
+    context = build_context(repo, scene.id, 'memory', role())
+    places = [lid(story, 'Дім'), lid(story, 'Дім', 'кухня')]
+    assert json.loads(context.fragments['memory_schema_bounds'])['location_ids'] == places
+    head = 'ДОЗВОЛЕНІ LOCATION_IDS'
+    line = next(part for part in context.user_text.split('\n\n') if part.startswith(head))
+    assert json.loads(line.split('\n', 1)[1]) == {places[0]: 'Дім', places[1]: 'Дім / кухня'}
+    assert HEAD + '\n' not in context.user_text
+
+
+def test_memory_stage_of_a_scene_without_places_is_unchanged(tmp_path):
+    repo, story, scene = memory_scene(tmp_path, 'Вдома')
+    context = build_context(repo, scene.id, 'memory', role())
+    assert 'location_ids' not in context.fragments['memory_schema_bounds']
+    assert 'LOCATION_IDS' not in context.user_text
