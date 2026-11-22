@@ -1,7 +1,8 @@
 # R-44 (підготовка) — Єдиний реєстр ролей моделей
 
 Дата: 2026-11-22
-Статус: чернетка
+Статус: очікує затвердження
+Spec-review: codex/gpt-6.1-sol @ a4c482e (author: claude) — 2 findings: 2 fixed, 0 rejected
 
 GitHub [#269](https://github.com/ysilvestrov/obscura-text-writer/issues/269). Перший PR пакета R-44: рефакторинг без зміни поведінки перед додаванням п'ятої ролі «Ревізор». Сама валідація книги описана в окремій специфікації R-44.
 
@@ -50,27 +51,27 @@ ROLE_LABELS = {'planner': 'Планувальник', 'writer': 'Письмен�
 | Місце | Що там | Після |
 |---|---|---|
 | `role_profiles.py:14` | `ROLES`, `STAGES` | імпорт `ROLES`, `ROLE_STAGE` |
-| `storage/settings_store.py:4`, `:39` | множина ролей, роль → етап | імпорт |
+| `storage/settings_store.py:4`, `:39` | множина ролей (`set(updates) - ROLES` у `:15`), роль → етап | `ROLE_SET = frozenset(ROLES)` для різниці множин, `ROLE_STAGE` |
 | `storage/role_profile_store.py:55` | множина ролей у перевірці `apply` | `set(ROLES)` |
 | `providers/policy.py:9`, `:10-12`, `:15` | `POLICY_ROLES`, `STAGE_POLICY_ROLE`, `ROLE_LABELS` | `POLICY_ROLES = ROLES`, `STAGE_POLICY_ROLE = {**STAGE_ROLE, …}`, `ROLE_LABELS` з реєстру |
 | `generation/pipeline.py:6` | `STAGE_ROLES` | `STAGE_ROLES = STAGE_ROLE` |
 | `application/statistics.py:71` | етап → роль | `STAGE_ROLE[stage]` |
 | `application/workspace_bench.py:35` | `BENCH_ROLES` | `BENCH_ROLES = ROLES` |
-| `authoring/blueprints.py:7` | множина ролей | імпорт |
+| `authoring/blueprints.py:7` | множина ролей (належність і `sorted(ROLES)`) | імпорт; `sorted` дає той самий порядок |
 | `mcp/bridge.py:47` | `ROLES` | імпорт |
 | `web/routes_settings.py:73`, `:77`, `:104-105`, `:113` | множина й роль → етап (чотири копії) | `ROLES`, `ROLE_STAGE` |
 | `static/settings-state.js:7` | масив ролей | `ROLES` |
-| `static/settings.js:65` | роль → етап | `ROLE_STAGE` |
+| `static/settings.js:28`, `:65` | форми ролей перебирають ключі мапи підписів `names`; роль → етап | форми перебирають `ROLES`, підпис — `names[role]`; `ROLE_STAGE` |
 | `static/workspace-links.js:3` | множина ролей | `new Set(ROLES)` |
 | `static/workspace-navigation.js:10`, `:35`, `:39`, `:44` | масив ролей, етап → роль (з `prepare`, `edit_loop`) | `ROLES`, `{...STAGE_ROLE, edit_loop: 'editor'}` |
 | `templates/settings.html:25` | чотири кнопки ролей | цикл за `ROLES` |
 
-Підписи в `role-profiles.js:15`, `settings-workspace.js:10`, `settings.js:13`, `workspace-navigation.js:32` лишаються: це різні ключі каталогу перекладів.
+Підписи в `role-profiles.js:15`, `settings-workspace.js:10`, `settings.js:13`, `workspace-navigation.js:32` лишаються: це різні ключі каталогу перекладів. Але жодна мапа підписів більше не визначає, які ролі існують: перелік ролей у браузері береться лише з `ROLES`, а мапа лише дає підпис для ролі. Тест вимагає, щоб кожна з чотирьох мап мала підпис для кожної ролі реєстру, тож нова роль без підпису в якомусь місці валить тест, а не тихо зникає з інтерфейсу.
 
 ### Інваріанти
 
 - Значення й порядок кожної колишньої копії не змінюються; наявні тести проходять без правок очікувань (`detent:pr-slicing`: рефакторинг окремим PR).
-- `ROLES` — кортеж; місця, що використовували множину для перевірки належності, отримують ту саму відповідь.
+- `ROLES` — кортеж. Перевірка належності (`in`) і `sorted()` працюють з ним так само, як з множиною; споживачі з арифметикою множин (`set(updates) - ROLES` у `settings_store.py`) отримують `frozenset(ROLES)`. Тест сховища налаштувань зберігає налаштування однієї ролі (регрес на `TypeError`).
 - `ROLE_STAGE` і `STAGE_ROLE` узгоджені: `STAGE_ROLE[ROLE_STAGE[r]] == r` для кожної ролі.
 
 ### SPEC.MD
@@ -82,6 +83,7 @@ ROLE_LABELS = {'planner': 'Планувальник', 'writer': 'Письмен�
 ### Тести
 
 - Новий `tests/test_roles.py`: узгодженість `ROLE_STAGE`/`STAGE_ROLE`; Node-скрипт `tests/web/js/roles.mjs` імпортує `roles.js` і друкує JSON, тест порівнює з `roles.py`.
+- Тест повноти підписів: у кожній з чотирьох JS-мап підписів є ключ `get <роль>()` для кожної ролі з `ROLES`.
 - Пошуковий тест: у `src/storygen` (крім `roles.py` і `roles.js`) немає літерала з усіма чотирма назвами ролей поспіль.
 - Решта — наявний набір без змін.
 
@@ -93,7 +95,11 @@ ROLE_LABELS = {'planner': 'Планувальник', 'writer': 'Письмен�
 | Підписи в JS — не копії | Різні ключі каталогу для редактора (`m_65d42cf1679c`, `m_19e99ed8f039`, `m_15d82eb3de76`) |
 | Поведінка не змінюється | Наявний набір тестів проходить без зміни очікувань |
 | Браузер і сервер не розійдуться | `tests/test_roles.py` порівнює `roles.js` з `roles.py` |
+| Нова роль не загубиться в інтерфейсі | Форми налаштувань перебирають `ROLES`; тест повноти підписів |
 
 ## Рев'ю спеки
 
-Буде заповнено після перехресного рецензування.
+| # | Зауваження | Рішення |
+|---|---|---|
+| 1 | Кортеж `ROLES` ламає `set(updates) - ROLES` у `settings_store.py:15` (`TypeError` на будь-якому збереженні) | Виправлено: для арифметики множин — `frozenset(ROLES)`; інваріант і регресійний тест збереження ролі |
+| 2 | `settings.js:28` будує форми за ключами мапи підписів, тож вона лишається прихованим реєстром ролей: нова роль отримає кнопку без форми | Виправлено: форми перебирають `ROLES`, мапи лише дають підпис; тест повноти підписів для всіх чотирьох мап |
