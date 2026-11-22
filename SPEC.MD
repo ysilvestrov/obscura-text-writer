@@ -38,6 +38,7 @@ Storygen автоматизує створення українського оп
 - [MODEL-004 — Блокування після відмови моделі](#model-004)
 - [MODEL-005 — Каталог моделей у налаштуваннях](#model-005)
 - [MODEL-RETIREMENT — Модель, яку провайдер прибирає](#model-retirement)
+- [OPENROUTER-REASONING — Reasoning ролі з провайдером OpenRouter](#openrouter-reasoning)
 - [BUDGET-001 — Явні ліміти й резерв виклику](#budget-001)
 - [BUDGET-002 — Достовірне завершення обліку](#budget-002)
 - [PIPE-001 — Послідовність сцени](#pipe-001)
@@ -574,6 +575,66 @@ PATCH `/api/stories/{id}` SHALL приймати лише title/expected_revisio
 - WHEN автор зберігає роль чи спільного провайдера, відкриває список моделей або чат читає `get_settings(models_for_role)`
 - THEN збереження проходить і відповідь містить `model_warnings`, picker показує позначку з датою й заміною, а MCP повертає `retirement`
 - AND без повідомлення чи за недоступного каталогу поля `model_warnings` немає.
+
+<a id="openrouter-reasoning"></a>
+### Requirement: OPENROUTER-REASONING — Reasoning ролі з провайдером OpenRouter
+
+Роль із провайдером OpenRouter SHALL мати налаштування reasoning: `ProviderSettings.openrouter_reasoning_effort` — `None` (типове для моделі) або `none` / `minimal` / `low` / `medium` / `high` / `xhigh` / `max`. Непорожнє значення дозволене лише для `provider=openrouter`; для інших провайдерів збереження відхиляється. `generation_request` для OpenRouter додає `reasoning:{effort:<значення>}`; `none` вимикає reasoning задокументованою формою OpenRouter (проба 22.11.2026: `effort:"none"` дав 0 reasoning-токенів у qwen3.7-plus і qwen3.8-flash, а `enabled:false` діяв так само). SDK переносить `reasoning` в `extra_body`. `provider.require_parameters` до такого запиту не додається, бо в документації OpenRouter він не пов'язаний з `reasoning` і звузив би роутинг інших параметрів. Запити оцінювача (`EvaluatorConfig`) поле не мають; профіль класифікатора та окрема модель письменника отримують його разом із `ProviderSettings`.
+
+- **Відбитки.** Порожнє поле не потрапляє в жоден `model_dump()` (`model_serializer` у `ProviderSettings`). Тому збережені ролі, відбитки контексту сцени, штампи маніфестів перевірки впливу (wire 1 і 2) й плани перевірки, створені до появи поля, лишаються дійсними. Задане поле входить у дамп, тож його зміна, як і будь-яка зміна налаштувань ролі, робить контекст сцени новим.
+- **Каталог.** `ModelOption.reasoning` (`ReasoningCapability`: `mandatory`, `default_enabled`, `efforts`, `default_effort`) береться лише з об'єкта `reasoning` рядка каталогу OpenRouter. Відсутній `supported_efforts` означає `efforts=[]` (рівень вибрати не можна), `null` — `efforts=None` (будь-який рівень); невідомі рівні відкидаються, некоректний об'єкт дає `None`. Для Venice і local `reasoning=None`.
+- **Форма.** Форма ролі й профілю класифікатора для OpenRouter показує поле «Reasoning». Варіанти: «Типове для моделі»; «Вимкнено», якщо модель не має обов'язкового reasoning; рівні з `efforts`. До завантаження списку моделей видно лише типове й збережене значення. Збережене значення, якого модель не дозволяє, лишається видимим із позначкою «модель не підтримує». Для інших провайдерів форма надсилає `null`.
+- **MCP.** `update_settings` приймає `openrouter_reasoning_effort`; зміна провайдера, у якій поле не передано, його скидає. `get_settings(models_for_role)` повертає `reasoning` у полях моделей.
+- **Скіл.** `setup-models` після звірки моделі ставить reasoning лише для редактора з OpenRouter і лише коли `default_enabled=true`: без обов'язкового reasoning — `none`; з обов'язковим — найнижчий рівень з `efforts`, за `efforts=None` — `low`, за порожнього переліку нічого не змінює й каже автору.
+
+Сервер під час збереження ролі каталог не перевіряє. Якщо модель не приймає значення (наприклад, `none` для моделі з обов'язковим reasoning), OpenRouter відповідає 400 «Reasoning is mandatory for this endpoint and cannot be disabled.», і запуск показує помилку провайдера. Відомі обмеження: бюджету `reasoning.max_tokens` немає; каталог описує модель, а не кожного провайдера за нею, і провайдер без підтримки параметра може його проігнорувати; що вимкнений чи знижений reasoning вміщує повний прохід редактора в ліміт, не перевірено — для цього потрібен повторний тест редакторів.
+
+<a id="openrouter-reasoning-s01"></a>
+#### Scenario: OPENROUTER-REASONING-S01 — Рівень reasoning у запиті
+- GIVEN роль з провайдером OpenRouter і `openrouter_reasoning_effort` = рівень від `minimal` до `max`
+- WHEN будується запит генерації
+- THEN тіло містить `reasoning:{effort:<рівень>}`, а виклик SDK — те саме в `extra_body`
+- AND ролі Venice й local такого поля від цього налаштування не отримують.
+
+<a id="openrouter-reasoning-s02"></a>
+#### Scenario: OPENROUTER-REASONING-S02 — Вимкнення reasoning
+- GIVEN роль з провайдером OpenRouter і `openrouter_reasoning_effort=none`
+- WHEN будується запит генерації
+- THEN тіло містить `reasoning:{effort:"none"}`.
+
+<a id="openrouter-reasoning-s03"></a>
+#### Scenario: OPENROUTER-REASONING-S03 — Порожнє поле нічого не змінює
+- GIVEN роль без `openrouter_reasoning_effort` або збережена до появи поля
+- WHEN будується запит, дамп налаштувань, відбиток контексту чи штамп маніфесту перевірки впливу
+- THEN у запиті немає `reasoning`, у дампі немає поля, а збережений legacy-маніфест wire 2 проходить перевірку штампу
+- AND задане значення є в дампі й читається назад.
+
+<a id="openrouter-reasoning-s04"></a>
+#### Scenario: OPENROUTER-REASONING-S04 — Варіанти форми за каталогом моделі
+- GIVEN каталог OpenRouter повідомляє для вибраної моделі об'єкт `reasoning`
+- WHEN форма ролі будує поле «Reasoning»
+- THEN для обов'язкового reasoning немає варіанта «Вимкнено», а рівні — лише з `efforts`; без `efforts` — лише типове й «Вимкнено»; за `efforts=null` — усі рівні
+- AND недозволене збережене значення показано з позначкою, а для провайдера, відмінного від OpenRouter, payload містить `null`.
+
+<a id="openrouter-reasoning-s05"></a>
+#### Scenario: OPENROUTER-REASONING-S05 — Каталог і MCP
+- GIVEN рядок каталогу OpenRouter з об'єктом `reasoning`
+- WHEN застосунок будує список моделей і чат читає `get_settings(models_for_role)` чи пише `update_settings`
+- THEN `ModelOption.reasoning` має `mandatory`, `default_enabled`, `efforts`, `default_effort`, а MCP повертає їх у полі `reasoning`
+- AND `update_settings` зберігає поле, а зміна провайдера на інший його скидає.
+
+<a id="openrouter-reasoning-s06"></a>
+#### Scenario: OPENROUTER-REASONING-S06 — Поле поза OpenRouter
+- GIVEN налаштування провайдера Venice або local
+- WHEN у них задано `openrouter_reasoning_effort`
+- THEN валідація відхиляє налаштування.
+
+<a id="openrouter-reasoning-s07"></a>
+#### Scenario: OPENROUTER-REASONING-S07 — Скіл налаштовує reasoning редактора
+- GIVEN скіл `setup-models` звірив модель редактора з провайдером OpenRouter
+- WHEN модель має reasoning, увімкнений за замовчуванням
+- THEN скіл ставить `none`, якщо reasoning не обов'язковий, інакше найнижчий дозволений рівень (`low` за `efforts=null`)
+- AND за порожнього переліку рівнів чи без reasoning за замовчуванням скіл поле не змінює.
 
 <a id="budget-001"></a>
 ### Requirement: BUDGET-001 — Явні ліміти й резерв виклику
@@ -2669,6 +2730,8 @@ DependencySnapshot v1 містить scope, типізовані finite selector
 ### A4. Конфігурація моделей і шлюз генерації
 
 Для Venice `venice_disable_thinking=true` передає і legacy `venice_parameters.disable_thinking=true`, і рекомендоване `reasoning:{enabled:false}` через спільні generation/evaluation request builders та SDK extra_body. З false поле reasoning не додається. За активного вимкнення reasoning wire-контракт входить у evaluator_fingerprint; старий допуск не переноситься на новий запит автоматично. Ця опція не гарантує підтримки будь-якою моделлю: можливості перевіряються за актуальним каталогом провайдера.
+
+Для OpenRouter `openrouter_reasoning_effort` передає `reasoning:{effort}` (`none` вимикає reasoning) лише в generation request builder; порожнє поле не додає ні поля запиту, ні ключа в дамп налаштувань — див. [OPENROUTER-REASONING](#openrouter-reasoning).
 
 | Провайдер | Base URL | Ключ / timeout |
 | --- | --- | --- |

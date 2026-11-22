@@ -7912,6 +7912,71 @@
         "tests/mcp/test_bridge_settings.py::test_model_list_carries_the_provider_retirement_notice",
         "tests/providers/test_model_retirement.py::test_role_check_collects_each_retiring_part_once"
       ]
+    },
+    {
+      "id": "OPENROUTER-REASONING-S01",
+      "requirement": "OPENROUTER-REASONING",
+      "scope": "Рівень reasoning OpenRouter у запиті й extra_body; Venice не отримує поля.",
+      "tests": [
+        "tests/providers/test_openrouter_reasoning.py::test_effort_goes_into_request_and_sdk_extra_body",
+        "tests/providers/test_openrouter_reasoning.py::test_other_providers_never_get_openrouter_reasoning"
+      ]
+    },
+    {
+      "id": "OPENROUTER-REASONING-S02",
+      "requirement": "OPENROUTER-REASONING",
+      "scope": "none вимикає reasoning задокументованою формою effort.",
+      "tests": [
+        "tests/providers/test_openrouter_reasoning.py::test_none_disables_reasoning_with_documented_effort"
+      ]
+    },
+    {
+      "id": "OPENROUTER-REASONING-S03",
+      "requirement": "OPENROUTER-REASONING",
+      "scope": "Порожнє поле не змінює запит, дамп, відбитки й legacy-маніфест; задане читається назад.",
+      "tests": [
+        "tests/providers/test_openrouter_reasoning.py::test_empty_field_leaves_request_and_dump_unchanged",
+        "tests/providers/test_openrouter_reasoning.py::test_set_field_is_in_dump_so_fingerprints_follow_it",
+        "tests/providers/test_openrouter_reasoning.py::test_stored_role_without_field_reads_as_empty",
+        "tests/impact/test_local_token_counting.py::test_legacy_wire2_raw_proof_without_counter"
+      ]
+    },
+    {
+      "id": "OPENROUTER-REASONING-S04",
+      "requirement": "OPENROUTER-REASONING",
+      "scope": "Варіанти форми за каталогом моделі; позначка недозволеного значення; null поза OpenRouter.",
+      "tests": [
+        "tests/web/test_model_picker.py::test_openrouter_reasoning_choices_follow_the_model"
+      ]
+    },
+    {
+      "id": "OPENROUTER-REASONING-S05",
+      "requirement": "OPENROUTER-REASONING",
+      "scope": "Можливості reasoning з каталогу OpenRouter; MCP пише поле, скидає його при зміні провайдера й показує можливості.",
+      "tests": [
+        "tests/providers/test_openrouter_reasoning.py::test_catalog_reads_mandatory_reasoning_with_its_efforts",
+        "tests/providers/test_openrouter_reasoning.py::test_catalog_omitted_efforts_mean_no_level_choice_and_null_means_all",
+        "tests/providers/test_openrouter_reasoning.py::test_catalog_drops_unknown_efforts_and_ignores_malformed_objects",
+        "tests/providers/test_openrouter_reasoning.py::test_catalog_reasoning_is_openrouter_only",
+        "tests/mcp/test_bridge_openrouter_reasoning.py::test_update_settings_sets_and_provider_switch_clears_the_field",
+        "tests/mcp/test_bridge_openrouter_reasoning.py::test_model_list_carries_the_reasoning_capability"
+      ]
+    },
+    {
+      "id": "OPENROUTER-REASONING-S06",
+      "requirement": "OPENROUTER-REASONING",
+      "scope": "Поле для Venice і local відхиляється валідацією.",
+      "tests": [
+        "tests/providers/test_openrouter_reasoning.py::test_field_is_rejected_for_other_providers"
+      ]
+    },
+    {
+      "id": "OPENROUTER-REASONING-S07",
+      "requirement": "OPENROUTER-REASONING",
+      "scope": "Скіл setup-models налаштовує reasoning редактора за правилом власника.",
+      "tests": [
+        "tests/mcp/test_bridge_openrouter_reasoning.py::test_setup_models_sets_the_editor_reasoning_by_the_owner_rule"
+      ]
     }
   ]
 }

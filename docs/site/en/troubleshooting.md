@@ -18,6 +18,7 @@
 | "Set an explicit story budget limit first" | Set the total limit in **Call budget**. See [Call budget](models.md#call-budget). |
 | "No valid pricing" | Press **Update from catalog** or save manual pricing. |
 | "Insufficient … budget" | Raise the total or the per-run limit. The reserve is conservative and counts the full response. |
+| "Output limit exhausted… reasoning" | The model spent the whole response limit on reasoning. For OpenRouter turn **Reasoning** off or lower it in the role; for Venice use reasoning effort; for a local model, thinking. See [Reasoning on OpenRouter](models.md#reasoning-on-openrouter). |
 | Key or authentication error | Check the key in `.env` and restart the server. |
 | The request does not fit the context | Shorten the materials, lower the response reserve or choose a model with a larger real context. Text is never silently cut. |
 

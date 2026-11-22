@@ -40,3 +40,16 @@ def test_model_list_carries_the_reasoning_capability(tmp_path, monkeypatch):
     data = ok(call(build_server(http), 'get_settings', {'story_id': created.id, 'models_for_role': 'editor'}))
     assert {item['id']: item['reasoning'] for item in data['models']} == {
         'glm': {'mandatory': True, 'default_enabled': True, 'efforts': ['max', 'high', 'low'], 'default_effort': 'max'}, 'plain': None}
+
+
+@pytest.mark.req('OPENROUTER-REASONING')
+def test_setup_models_sets_the_editor_reasoning_by_the_owner_rule():
+    from pathlib import Path
+    from storygen.mcp.bridge import PROVIDER_FIELDS
+    skill = (Path(__file__).resolve().parents[2] / 'integrations/claude/obscura/skills/setup-models/SKILL.md').read_text(encoding='utf-8')
+    step = skill[skill.index('**Editor reasoning (OpenRouter only).**'):skill.index('The role must be written')]
+    assert 'openrouter_reasoning_effort' in step and 'openrouter_reasoning_effort' in PROVIDER_FIELDS
+    # Only a model that reasons by default; off when allowed; the lowest listed level otherwise; nothing when no level exists.
+    for rule in ('`default_enabled` is not `true`, change nothing', '`mandatory` is false → `none`',
+                 'non-empty list → its last element', '`efforts` is null → `low`', '`efforts` is empty → change nothing'):
+        assert rule in step, rule
