@@ -143,6 +143,9 @@ def save_pass_result(repo,attempt,ctx,original,text):
     run=repo.get_run(ctx.fragments['edit_loop_run_id'])
     if (run.request.mode!='edit_loop' and not pipeline(run)) or run.story_id!=ctx.story_id or scene_id(run)!=ctx.scene_id or ctx.fragments.get('edit_loop_task_cursor','')!=task_key(run):
         raise ValueError('Невідповідний запуск багатопрохідної редактури')
+    if original!=text:
+        from .editor_output import shrink_check
+        shrink_check(text,original,repo.read_text(progress(run)['base_version_id']))
     if original==text:
         attempt.context['edit_loop_stop']='no_changes'
         attempt.result_version_id=ctx.fragments['copyedit_draft_id']

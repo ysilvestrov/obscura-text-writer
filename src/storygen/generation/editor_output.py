@@ -11,6 +11,29 @@ class EditorProtocolError(ValueError):
     pass
 
 
+# EDIT-LOOP-STOP-S05: a pass of the editor loop keeps at least this share of words of both the pass input and the
+# loop's initial copy; a shorter reply is an excerpt, not an edited scene.
+SHRINK_SHARE=0.6
+
+
+class EditorShrinkError(ValueError):
+    """Counts only: the message never carries scene text (MEMORY-004)."""
+    def __init__(self,kept,total,reference):
+        self.kept,self.total,self.reference=kept,total,reference
+        share=round(100*kept/total)
+        where='тексту на вході проходу' if reference=='pass' else 'початкового тексту циклу'
+        super().__init__(f'Слів у відповіді редактора: {kept} із {total} ({share}%), а межа — {round(100*SHRINK_SHARE)}% {where}; '
+            'схоже на уривок замість повної сцени, тож прохід відхилено. Скоротити сцену можна вручну або переписуванням')
+
+
+def shrink_check(text,pass_input,initial):
+    kept=len(text.split())
+    for reference,source in (('pass',pass_input),('initial',initial)):
+        total=len(source.split())
+        if total and kept<SHRINK_SHARE*total:
+            raise EditorShrinkError(kept,total,reference)
+
+
 def parse_editor_output(text,warnings=None):
     warnings=warnings if warnings is not None else []
     content=unwrap_model_json(text.strip())
@@ -63,6 +86,8 @@ def editor_failure(exc):
         message=f'Правка {exc.edit_index} із {exc.edit_count}{location}: {cause}. Увесь набір відхилено без застосування. Для цієї моделі можна обрати редактуру з diff замість JSON-правок'
         return {'category':'guard','message':message,'edit_index':exc.edit_index,'edit_count':exc.edit_count,
             'fragment_id':exc.fragment_id,'anchor_reason':exc.anchor_reason}
+    if isinstance(exc,EditorShrinkError):
+        return {'category':'guard','message':str(exc),'words_kept':exc.kept,'words_total':exc.total,'shrink_reference':exc.reference}
     if str(exc)=='Редактор не запропонував змін':
         return {'category':'no_changes','message':str(exc)+'; прийняття недоступне, поточний текст не змінено'}
     if isinstance(exc,json.JSONDecodeError):
