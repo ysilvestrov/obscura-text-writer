@@ -43,10 +43,12 @@ class Candidate:
     response_mode: str = 'json_schema'
     context_tokens: int = 32768
     max_output_tokens: int = 8192
+    reasoning_effort: str | None = None  # OpenRouter's reasoning effort (OPENROUTER-REASONING); None keeps the model's default
 
     @property
     def code(self):
-        return f'{self.provider}:{self.model}'
+        suffix = f'@reasoning={self.reasoning_effort}' if self.reasoning_effort else ''
+        return f'{self.provider}:{self.model}{suffix}'
 
 
 @dataclass
@@ -144,7 +146,8 @@ def configure_editor(bench: Bench, story_id: str, candidate: Candidate):
     from storygen.providers.models import ProviderSettings, RoleSettings
     provider = ProviderSettings(provider=candidate.provider, model=candidate.model, response_mode=candidate.response_mode,
                                 timeout=PASS_TIMEOUT, include_usage=True,
-                                venice_disable_thinking=candidate.provider == 'venice')
+                                venice_disable_thinking=candidate.provider == 'venice',
+                                **({'openrouter_reasoning_effort': candidate.reasoning_effort} if candidate.reasoning_effort else {}))
     settings = RoleSettings(provider=provider, temperature=0.2, context_tokens=candidate.context_tokens,
                             max_output_tokens=candidate.max_output_tokens)
     save_role_settings(bench.repo, story_id, 'editor', settings, bench.repo.get_story(story_id).revision)
@@ -167,7 +170,7 @@ def run_loop(bench: Bench, text_id: str, candidate: Candidate, gateway_factory=N
     run = worker.enqueue(RunRequest(story_id=story_id, scene_id=scene_id, mode='edit_loop', edit_pass_limit=PASS_LIMIT,
                                     edit_workflow='loop', editor_source_head='prose',
                                     editor_source_version_id=bench.repo.get_scene(scene_id).heads['prose'],
-                                    budget_limit_usd=f'{left:.6f}'), f'bench-{text_id}-{candidate.model}'[:200])
+                                    budget_limit_usd=f'{left:.6f}'), f'bench-{text_id}-{candidate.code}'[:200])
     started = time.perf_counter()
     try:
         worker._execute(run.id)
@@ -183,6 +186,8 @@ def run_loop(bench: Bench, text_id: str, candidate: Candidate, gateway_factory=N
         'loop_seconds': round(time.perf_counter() - started, 3),
         'passes': [{'state': a.state, 'finish_reason': a.finish_reason, 'cost': a.usage.get('cost'),
                     'accounting': {k: v for k, v in (a.context.get('accounting') or {}).items() if k.endswith(('_nanos', 'usd', 'source', 'state'))},
+                    'reasoning_tokens': (a.usage.get('completion_tokens_details') or {}).get('reasoning_tokens') or a.usage.get('reasoning_tokens'),
+                    'output_tokens': a.usage.get('completion_tokens') or a.usage.get('output_tokens'),
                     'refusal': bool(a.context.get('generation_failure', {}).get('category', '').startswith('refusal')),
                     'failure': (a.context.get('generation_failure') or {}).get('category') or (a.error and 'error'),
                     'seconds': t.seconds, 'first_token_seconds': t.first_token_seconds}

@@ -3,6 +3,8 @@
   python scripts/editor_bench/run.py --plan     catalog check and worst-case cost; no model is called
   python scripts/editor_bench/run.py --paid     run the matrix (asks nothing: the owner approved it in chat)
   python scripts/editor_bench/run.py --report   aggregates from results.jsonl, without any text
+  --suite reasoning   the #260 re-run of three OpenRouter editors with a reasoning effort (OPENROUTER-REASONING):
+                      its own key file, data folder, results file and cap
 
 Texts live in C:\\tmp\\editor-bench\\texts\\{N,V,T,S}.txt and never enter the repository. Without --paid no model is called.
 """
@@ -29,6 +31,9 @@ OPENROUTER = ['z-ai/glm-5.3-flash', 'qwen/qwen3.8-flash', 'google/gemma-4-31b-it
               'anthropic/claude-haiku-5.5', 'qwen/qwen3.7-plus', 'openai/gpt-6.1-sol']
 TEXTS = {'N': (V, O), 'V': (V, O), 'T': (V, O), 'S': (V,)}  # the sexual-axis text goes to Venice only
 NEUTRAL_ONLY = {'openai/gpt-6.1-sol'}  # the Quality editor: one text keeps the worst case within the cap
+EFFORT = {}  # model -> OpenRouter reasoning effort; empty for the #260 matrix
+DATA_DIR = stand.ROOT / 'data'
+RESULTS = stand.ROOT / 'results.jsonl'
 CHARS_PER_TOKEN = 2.5
 PROMPT_OVERHEAD_TOKENS = 2500
 
@@ -62,6 +67,8 @@ def catalog():
     from storygen.providers.models import ProviderSettings
     options = {}
     for provider, models in ((V, VENICE), (O, OPENROUTER)):
+        if not models:
+            continue
         listed = {m.id: m for m in discover_models(ProviderSettings(provider=provider, model=models[0]))}
         for model in models:
             options[(provider, model)] = listed.get(model)
@@ -72,7 +79,7 @@ def candidate(provider, model, option):
     schema = option.supports_schema is not False if option else True
     context = min(option.context_tokens or 32768, 65536) if option else 32768
     output = min(option.max_output_tokens or 8192, 8192, context // 4) if option else 8192
-    return stand.Candidate(provider, model, 'json_schema' if schema else 'prompt_json', context, output)
+    return stand.Candidate(provider, model, 'json_schema' if schema else 'prompt_json', context, output, EFFORT.get(model))
 
 
 def matrix(texts, options):
@@ -105,8 +112,9 @@ def isolate_credentials():
 
 
 def require_keys():
-    """Load both provider keys from ENV_FILE; stop when one is missing."""
-    missing = sorted(set(stand.KEY_NAMES) - set(stand.load_keys(ENV_FILE)))
+    """Load the keys of the providers in the matrix from ENV_FILE; stop when one is missing."""
+    needed = {name for name, models in (('VENICE_API_KEY', VENICE), ('OPENROUTER_API_KEY', OPENROUTER)) if models}
+    missing = sorted(needed - set(stand.load_keys(ENV_FILE)))
     if missing:
         raise SystemExit(f'Бракує ключів у {ENV_FILE}: {", ".join(missing)}')
 
@@ -138,6 +146,7 @@ def plan():
 def paid(only):
     rows, total = plan()
     texts = load_texts()
+    texts = {k: v for k, v in texts.items() if k in TEXTS}
     if set(texts) != set(TEXTS):
         raise SystemExit(f'Бракує текстів: {sorted(set(TEXTS) - set(texts))}')
     if total > float(CAP_USD):
@@ -147,8 +156,8 @@ def paid(only):
     broken = broken_texts(texts)
     casts = {k: json.loads((texts_dir() / f'{k}.cast.json').read_text(encoding='utf-8'))
              for k in texts if (texts_dir() / f'{k}.cast.json').exists()}
-    bench = stand.open_bench(stand.ROOT / 'data', {k: v[0] for k, v in broken.items()}, CAP_USD, casts)
-    out = stand.ROOT / 'results.jsonl'
+    bench = stand.open_bench(DATA_DIR, {k: v[0] for k, v in broken.items()}, CAP_USD, casts)
+    out = RESULTS
     for text_id, c, worst in rows:
         left = float(CAP_USD) - stand.exposure_usd(bench)
         if worst > left:
@@ -220,14 +229,14 @@ def aggregate(rows, texts):
 
 
 def _results():
-    return [json.loads(line) for line in (stand.ROOT / 'results.jsonl').read_text(encoding='utf-8').splitlines() if line]
+    return [json.loads(line) for line in RESULTS.read_text(encoding='utf-8').splitlines() if line]
 
 
 def rescore_file():
     broken = {k: inject(v, SEED) for k, v in load_texts().items()}
-    stand.open_bench(stand.ROOT / 'data', {k: v[0] for k, v in broken.items()}, CAP_USD)  # refuses a text changed since the run
+    stand.open_bench(DATA_DIR, {k: v[0] for k, v in broken.items()}, CAP_USD)  # refuses a text changed since the run
     rows = rescore(_results(), broken)
-    (stand.ROOT / 'results.jsonl').write_text(''.join(json.dumps(r, ensure_ascii=False) + '\n' for r in rows), encoding='utf-8')
+    RESULTS.write_text(''.join(json.dumps(r, ensure_ascii=False) + '\n' for r in rows), encoding='utf-8')
     print(f'Переоцінено циклів: {len(rows)}')
 
 
@@ -257,6 +266,20 @@ def report():
         print(f'| `{model}` | ' + ' | '.join(cells) + ' |')
 
 
+def use_reasoning_suite():
+    """Three OpenRouter editors that spent the whole 8192-token output on reasoning in #260, now with an effort set:
+    glm's reasoning is mandatory (lowest level `low`), both qwen models allow `none`. The same texts, seed and limits."""
+    global VENICE, OPENROUTER, TEXTS, NEUTRAL_ONLY, EFFORT, CAP_USD, ENV_FILE, DATA_DIR, RESULTS
+    EFFORT = {'z-ai/glm-5.3-flash': 'low', 'qwen/qwen3.8-flash': 'none', 'qwen/qwen3.7-plus': 'none'}
+    VENICE, OPENROUTER = [], list(EFFORT)
+    TEXTS = {'N': (O,), 'V': (O,), 'T': (O,)}
+    NEUTRAL_ONLY = set()
+    CAP_USD = '0.5'  # approved by the owner in chat on 2026-11-22: 9 loops, up to 45 passes
+    ENV_FILE = stand.ROOT / '.env.reasoning'
+    DATA_DIR = stand.ROOT / 'data-reasoning'
+    RESULTS = stand.ROOT / 'results-reasoning.jsonl'
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     group = parser.add_mutually_exclusive_group(required=True)
@@ -265,7 +288,10 @@ def main(argv=None):
     group.add_argument('--report', action='store_true')
     group.add_argument('--rescore', action='store_true', help='recompute scores from results.jsonl; no model is called')
     parser.add_argument('--texts', default=''.join(TEXTS), help='which texts to run with --paid, e.g. NVT')
+    parser.add_argument('--suite', choices=('260', 'reasoning'), default='260')
     args = parser.parse_args(argv)
+    if args.suite == 'reasoning':
+        use_reasoning_suite()
     isolate_credentials()
     stand.isolated(stand.ROOT)
     if args.rescore:
