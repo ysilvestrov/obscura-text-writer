@@ -48,7 +48,7 @@ ROLES = ('planner', 'writer', 'editor', 'memory')
 SETTINGS_SECTIONS = ('writing',) + ROLES
 WRITING_FIELDS = ('target_words', 'ending_goal', 'genre', 'tone', 'point_of_view', 'tense', 'rules', 'previous_tail_chars', 'tone_sample')
 PROVIDER_FIELDS = ('provider', 'model', 'base_url', 'timeout', 'response_mode', 'include_usage', 'local_disable_thinking',
-                   'venice_include_system_prompt', 'venice_disable_thinking', 'venice_reasoning_effort')
+                   'venice_include_system_prompt', 'venice_disable_thinking', 'venice_reasoning_effort', 'openrouter_reasoning_effort')
 ROLE_FIELDS = ('context_tokens', 'max_output_tokens', 'max_input_chars', 'temperature', 'future_plan_mode', 'future_plan_count', 'stop_sequences')
 EDITOR_FIELDS = ('edit_mode', 'edit_review', 'edit_pass_limit')
 DEFAULT_KEYS = ('OPENROUTER_API_KEY', 'VENICE_API_KEY')
@@ -746,7 +746,7 @@ def build_server(http: httpx.Client | None, client_name: str | None = None, *, c
             if models_query:
                 models = [item for item in models if models_query.lower() in str(item.get('id', '')).lower()]
             models.sort(key=lambda item: str(item.get('id', '')))
-            result['models'] = [{key: item.get(key) for key in ('id', 'context_tokens', 'max_output_tokens', 'tariff', 'uncensored', 'retirement')}
+            result['models'] = [{key: item.get(key) for key in ('id', 'context_tokens', 'max_output_tokens', 'tariff', 'uncensored', 'retirement', 'reasoning')}
                                 for item in models[:MODELS_LIMIT]]
             result['models_total'] = len(models)
         return result
@@ -757,6 +757,8 @@ def build_server(http: httpx.Client | None, client_name: str | None = None, *, c
         section: writing (target_words, ending_goal, genre, tone, point_of_view, tense, rules, previous_tail_chars, tone_sample) або
         роль planner/writer/editor/memory (provider, model, base_url лише для local, timeout, response_mode, include_usage,
         local_disable_thinking, venice_include_system_prompt, venice_disable_thinking, venice_reasoning_effort,
+        openrouter_reasoning_effort (лише OpenRouter: none вимикає reasoning, рівні minimal…max; дозволене моделлю — у полі reasoning
+        списку моделей: mandatory=true забороняє none, efforts=[] — рівень вибрати не можна, null — будь-який),
         context_tokens, max_output_tokens, max_input_chars, temperature, future_plan_mode, future_plan_count,
         stop_sequences; для editor ще edit_mode, edit_review, edit_pass_limit — максимум проходів редактури 1–10). Нова роль потребує provider і model. Назву ключа, промпти,
         оцінювача й бюджет змінює лише автор. Моделі не викликає, але від моделі залежить вартість наступних запусків."""
@@ -793,6 +795,9 @@ def build_server(http: httpx.Client | None, client_name: str | None = None, *, c
             if provider.get('provider') != previous:
                 # The new provider's own key and address: the stored ones belong to the old provider (SECURITY-002).
                 provider.pop('key_env', None)
+                if 'openrouter_reasoning_effort' not in fields:
+                    # OPENROUTER-REASONING: the field belongs to OpenRouter; another provider rejects it.
+                    provider.pop('openrouter_reasoning_effort', None)
                 if 'base_url' not in fields:
                     provider.pop('base_url', None)
             if 'base_url' in fields and provider.get('provider') != 'local':

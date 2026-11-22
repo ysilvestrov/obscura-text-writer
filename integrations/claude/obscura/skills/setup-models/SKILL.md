@@ -57,9 +57,16 @@ First keep, from the `get_settings` you just read, the current `provider`, `mode
 
 Then for each role in turn:
 1. `get_settings(story_id)` again and take this role's fresh `fingerprint`;
-2. `update_settings(story_id, section=<role>, expected_fingerprint, fields={provider, model})`. For a role that is already configured, add `context_tokens: 8192` and `max_output_tokens: 2048`: Obscura refuses a model whose window is smaller than the role's saved limits, and step 4 raises them again;
+2. `update_settings(story_id, section=<role>, expected_fingerprint, fields={provider, model})`. For a role that is already configured, add `context_tokens: 8192` and `max_output_tokens: 2048`: Obscura refuses a model whose window is smaller than the role's saved limits, and step 4 raises them again. If the role carries an `openrouter_reasoning_effort`, add `openrouter_reasoning_effort: null`: the old level belongs to the old model, and step 5 sets the editor's again;
 3. `get_settings(story_id, models_for_role=<role>, models_query=<exact model id>)` and look for an exact `id` match in `models`. Check its `tariff` against the budget and, if uncensored is needed, `uncensored`. If the match has a `retirement` (the provider removes the model on `date`, with an optional `replacement`), tell the author the date and treat the model as unsuitable (step 8), offering the `replacement` first when there is one.
 4. **Limits.** A new role gets Obscura's default window of 8192 tokens, too small for editing a scene or updating memory. On a match, `update_settings(fields={context_tokens, max_output_tokens})` with the fresh fingerprint: `context_tokens` = the model's `context_tokens`, at most 131072; `max_output_tokens` = the model's `max_output_tokens`, at most 8192 and always less than `context_tokens` (otherwise a quarter of it). An unknown (null) limit takes the maximum. If Obscura refuses the limits, halve them and try once more. These are upper bounds, not the size of each request.
+5. **Editor reasoning (OpenRouter only).** A model that reasons by default can spend the whole output limit on reasoning and return no text. For the `editor` role with provider `openrouter`, read the match's `reasoning`. If it is null, or `default_enabled` is not `true`, change nothing. Otherwise `update_settings(fields={openrouter_reasoning_effort})` with the fresh fingerprint:
+   - `mandatory` is false → `none` (reasoning off);
+   - `mandatory` is true and `efforts` is a non-empty list → its last element (the list goes from highest to lowest);
+   - `mandatory` is true and `efforts` is null → `low`;
+   - `mandatory` is true and `efforts` is empty → change nothing; tell the author this model's reasoning cannot be set.
+
+   Tell the author in one line what you set and that they can change it in the role's «Reasoning» field. Leave the other roles' reasoning as it is.
 
 The role must be written before it can be checked: the server lists models only for a configured role. Writing changes no money by itself; the next runs will cost what the model costs.
 
@@ -76,4 +83,4 @@ A model is unsuitable when its `id` is not in the list, `uncensored` is false wh
 
 ## 9. Summary
 
-List, for every role: what `changed` (from → to), the price per 1M tokens, and any role left unchecked. Remind the author that the next runs will be paid to the provider at these prices, and that the next step is writing scenes with the `draft-scene` skill.
+List, for every role: what `changed` (from → to), the price per 1M tokens, the editor's reasoning setting if step 7.5 changed it, and any role left unchecked. Remind the author that the next runs will be paid to the provider at these prices, and that the next step is writing scenes with the `draft-scene` skill.

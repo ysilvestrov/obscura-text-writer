@@ -14,6 +14,8 @@ export function variantPayload(form){
   // Options stored for the same provider (key name, vendor flags) survive a save; another provider starts from its defaults.
   const base=form.writerVariantBase?.provider?.provider===provider?form.writerVariantBase.provider:{key_env:null,include_usage:false};
   const result={provider:{...base,provider,model:f.variant_model.value.trim(),base_url:f.variant_base_url.value,timeout,response_mode:f.response_mode.value}};
+  // OPENROUTER-REASONING: the variant's own model has no Reasoning control here, so it uses the model default.
+  delete result.provider.openrouter_reasoning_effort;
   for(const name of NUMBERS)result[name]=Number(f[`variant_${name}`].value);
   result.timeout=timeout;
   return result;

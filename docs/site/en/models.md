@@ -47,6 +47,18 @@ Obscura never changes the model by itself. A model marked "Retiring" can be chos
 
 If a role or connection uses the **JSON Schema** response mode, the JSON Schema filter is on and locked, and models the catalog marks as lacking schema support are visible but cannot be chosen. Models with unknown support (for example, all local ones) can be chosen and saved; a hint beside them says "JSON Schema support is unknown: check the model yourself." Changing the response mode rebuilds the list at once. If the already chosen model does not support JSON Schema, the form will not save, and the server also rejects such a save with an explanation: choose another model or the "JSON by prompt" mode. If the catalog is unavailable or support is unknown, saving is allowed. Before a call the app checks the model against the catalog only for Venice; for OpenRouter and local models check schema support yourself. In "JSON by prompt" mode the filter is ordinary and optional.
 
+### Reasoning on OpenRouter
+
+Some OpenRouter models (Qwen and GLM among them) "think" first and only then write the answer. The reasoning counts toward the role's output limit and is paid for. If the model spends the whole limit on it, there is no text, and the stage stops with an "Output limit exhausted" error.
+
+A role with the OpenRouter provider has a **Reasoning** field in its form. The choices come from the model list, so press **Get model list** first and pick the model:
+
+- **Model default** — Obscura sends nothing, and the model behaves as usual.
+- **Off** — reasoning is turned off. This choice is missing when the model's reasoning is mandatory.
+- **minimal … max** — the reasoning level; only the levels the model accepts are shown.
+
+A saved value the chosen model does not accept is marked "not supported by the model": pick another one. Reasoning that is off or lower leaves more of the limit for text, but it can affect the role's quality. The `setup-models` skill sets reasoning on its own only for the editor, and says so. The separate writer model for scenes 0-1 has no such field and runs with its model's default reasoning.
+
 ## Consent for a model without Uncensored
 
 A cloud model (Venice, OpenRouter) that the provider has not marked as Uncensored may refuse explicit text. So when the request rating is above 0 on at least one axis, the application does not call such a model until you agree. The request rating is the highest level on each axis among the story rating and the scene of the stage; material of earlier scenes (memory, the end of the previous prose) does not raise it. Impact, review and publication-suggestion stages read several scenes, so their rating also counts those scenes. For a 0/0/0 story with one 2/0/0 scene, consent is needed only for that scene.

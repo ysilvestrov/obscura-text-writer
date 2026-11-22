@@ -2579,3 +2579,20 @@ Inherited whitespace у ліцензійному тексті tokenizers із ma
 - Рецепти `setup-models` оновлено: одна модель-редактор на провайдера для всіх бюджетів.
 - Знахідка: `z-ai/glm-5.3-flash`, `qwen/qwen3.8-flash` і `qwen/qwen3.7-plus` за межі виходу 8192 витрачають увесь вихід на reasoning і не повертають тексту. Перемикача reasoning для OpenRouter в Obscura немає — кандидат в окрему задачу.
 - SPEC.MD не змінюється: це дослідження без зміни архітектури. Сайт рецептів не згадує.
+
+## 2026-11-22 — Reasoning для ролей OpenRouter (OPENROUTER-REASONING), продовження знахідки #260
+
+- Спека: [2026-11-22-openrouter-reasoning-design.md](../specs/2026-11/2026-11-22-openrouter-reasoning-design.md), затверджено власником 22.11.2026 (оцінка: власник S, автор M). Гілка `claude/openrouter-reasoning`, PR #276.
+- Проби:
+  - живий каталог OpenRouter: 151 із 354 моделей з reasoning мають його обов'язковим (GLM-5.3-flash — лише `max`/`high`/`low`);
+  - платна проба з дозволу власника, $0.000195: `effort:"none"` дає 0 reasoning-токенів у двох Qwen, GLM з `none` → 400, з `low` повертає текст;
+  - нове поле без заходів ламало legacy-маніфест перевірки впливу.
+- Реалізовано:
+  - `ProviderSettings.openrouter_reasoning_effort` → `reasoning:{effort}`;
+  - порожнє поле поза всіма дампами (`model_serializer`);
+  - `ModelOption.reasoning` з каталогу;
+  - поле «Reasoning» у формах ролі й класифікатора за можливостями моделі; окрема модель письменника рівень не успадковує;
+  - MCP `update_settings`/`get_settings`;
+  - скіл `setup-models` ставить reasoning редактора за правилом власника.
+- Документація: SPEC.MD OPENROUTER-REASONING S01–S07, traceability, ручна процедура браузерного тесту, сайт `models` і `troubleshooting` uk/en. Знімок налаштувань моделей не змінено: на ньому локальний провайдер, де поля немає.
+- Не входить: повернення трьох моделей у рецепти — потрібен повторний тест редакторів.
