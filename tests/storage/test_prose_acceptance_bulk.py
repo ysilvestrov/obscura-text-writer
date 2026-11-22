@@ -126,3 +126,133 @@ def test_http_preview_accept_and_stale_fingerprint(tmp_path):
     assert accepted.status_code==200 and len(accepted.json()['accepted'])==2
     assert client.get(f'/api/stories/{story.id}/impact').json()['pending']==[]
     assert client.post(url,json={'fingerprint':data['fingerprint']}).status_code==409
+
+
+# Defect of 22.11.2026 (book V-K): the list was fixed before the first acceptance, but a scene's author baseline
+# records the acceptance ID of the earlier prose, so accepting one scene made current later scenes wait
+# (`source_baseline_changed`). One click must now leave nothing waiting.
+def rename(repo,scene_id):
+    scene=repo.get_scene(scene_id)
+    repo.update_scene_metadata(scene.id,{'title':scene.title+' *'},scene.revision)
+
+
+def snapshot(repo,story):
+    return {s.id:(s.heads.get('prose'),s.revision,s.needs_review,repo.read_text(s.heads['prose'])) for s in repo.list_scenes(story.id)}
+
+
+def accept_once_and_check(repo,story):
+    texts={s.id:repo.read_text(s.heads['prose']) for s in repo.list_scenes(story.id)}
+    before=len(repo.list_acceptances(story.id))
+    preview,result=accept_all(repo,story)
+    # The listed scenes are accepted in reading order; the later scenes their acceptance makes wait come with them.
+    ids=[a['scene_id'] for a in result['accepted']]
+    listed=[s['scene_id'] for s in preview['scenes']]
+    assert [id for id in ids if id in listed]==listed
+    assert waiting(repo,story)==[]
+    assert repo.preview_prose_acceptance(story.id)['scenes']==[]
+    view=repo.context_view(story.id)
+    assert all(v['prose']=='current' for v in scene_status(view).values())
+    for scene in repo.list_scenes(story.id):
+        assert not view.is_stale(scene.heads['prose']) and not view.effective_scene(scene.id).needs_review
+        assert repo.read_text(scene.heads['prose'])==texts[scene.id]
+    assert len(repo.list_acceptances(story.id))-before==len(result['accepted'])
+    return [a['title'] for a in result['accepted']]
+
+
+@pytest.mark.req('DATA-010')
+def test_one_click_also_accepts_later_scenes_the_acceptance_makes_wait(tmp_path):
+    repo,story=book(tmp_path,5)
+    first,second,*_=repo.list_scenes(story.id)
+    rename(repo,second.id)
+    # Before the fix: only scene 2 was accepted and scenes 3–5 waited afterwards.
+    assert [s['title'] for s in repo.preview_prose_acceptance(story.id)['scenes']]==['Сцена 2 *']
+    assert accept_once_and_check(repo,story)==['Сцена 2 *','Сцена 3','Сцена 4','Сцена 5']
+    assert first.id not in {r.scene_id for r in repo.list_acceptances(story.id)}
+
+
+@pytest.mark.req('DATA-010')
+def test_model_prose_with_dependency_edges_stays_accepted(tmp_path):
+    repo,story=book(tmp_path,1)
+    first=repo.list_scenes(story.id)[0]
+    previous=first.heads['prose']
+    stale_kept=[]
+    for n in (2,3,4):
+        scene=repo.create_scene(story.id,SceneCreate(title=f'Сцена {n}',beats=f'План {n}'))
+        prose=repo.save_version(story.id,scene.id,'edited',f'Модельна проза {n}.',[previous])
+        scene=repo.get_scene(scene.id);scene.heads['prose']=prose.id
+        with repo.db.connection() as db:
+            db.execute('BEGIN IMMEDIATE');repo._save_scene(db,scene)
+        stale_kept.append(repo.save_version(story.id,scene.id,'memory','{}',[prose.id]).id)
+        previous=prose.id
+    rename(repo,first.id)
+    accept_once_and_check(repo,story)
+    # Accepting prose confirms no memory: the memory the new decisions invalidated stays stale.
+    assert all(repo.get_version(id).stale for id in stale_kept)
+
+
+def arced_book(tmp_path,arcs,parts):
+    from storygen.domain import Arc, BookStructure, Part
+    repo=Repository(tmp_path)
+    story=repo.create_story(StoryCreate(title='Арки'))
+    scenes=[repo.create_scene(story.id,SceneCreate(title=f'Сцена {n+1}',beats=f'План {n+1}')) for n in range(len(arcs))]
+    structure=BookStructure(parts=[Part(id=f'p{i}',arcs=[Arc(id=a) for a in part]) for i,part in enumerate(parts,1)])
+    with repo.db.connection() as db:
+        db.execute('BEGIN IMMEDIATE')
+        current=repo._active_story(db,story.id)
+        repo._save_story(db,current.model_copy(update={'book_structure':structure,'scene_arcs':dict(zip([s.id for s in scenes],arcs))}))
+    for n,scene in enumerate(scenes):
+        save_manual_prose(repo,scene.id,f'Проза {n+1}.',repo.get_scene(scene.id).revision)
+    return repo,repo.get_story(story.id)
+
+
+@pytest.mark.req('DATA-010')
+@pytest.mark.parametrize('arcs,parts',[('AABB',[['A'],['B']]),('ABAB',[['A','B']]),('AABBA',[['A','B']])])
+@pytest.mark.parametrize('reorder',[False,True])
+def test_parts_arcs_and_a_changed_order_leave_nothing_waiting(tmp_path,arcs,parts,reorder):
+    repo,story=arced_book(tmp_path,arcs,parts)
+    if reorder:
+        swap(repo,story)
+    rename(repo,repo.list_scenes(story.id)[0].id)
+    assert accept_once_and_check(repo,story)
+
+
+@pytest.mark.req('DATA-010')
+def test_second_pass_after_an_upstream_change_accepts_everything_again(tmp_path):
+    repo,story=book(tmp_path,4)
+    swap(repo,story)
+    assert len(accept_once_and_check(repo,story))==4
+    rename(repo,repo.list_scenes(story.id)[1].id)
+    assert accept_once_and_check(repo,story)==['Сцена 1 *','Сцена 3','Сцена 4']
+
+
+@pytest.mark.req('DATA-010')
+def test_preview_writes_nothing_and_an_unlisted_scene_changed_after_it_rejects_everything(tmp_path):
+    repo,story=book(tmp_path,4)
+    rename(repo,repo.list_scenes(story.id)[1].id)
+    before=snapshot(repo,story)
+    preview=repo.preview_prose_acceptance(story.id)
+    assert [s['title'] for s in preview['scenes']]==['Сцена 2 *']
+    assert snapshot(repo,story)==before and repo.list_acceptances(story.id)==[]
+    # Scene 4 is not listed but the cascade would accept it: its change after the preview is a conflict too.
+    fourth=repo.list_scenes(story.id)[3]
+    save_manual_prose(repo,fourth.id,'Інша проза 4.',fourth.revision)
+    before=snapshot(repo,story)
+    with pytest.raises(RevisionConflict):
+        repo.accept_all_prose(story.id,preview['fingerprint'])
+    assert snapshot(repo,story)==before and repo.list_acceptances(story.id)==[]
+
+
+@pytest.mark.req('DATA-010')
+def test_scene_still_waiting_after_its_own_acceptance_stops_without_changes(tmp_path,monkeypatch):
+    from storygen.storage import acceptance
+    repo,story=book(tmp_path,3)
+    rename(repo,repo.list_scenes(story.id)[0].id)
+    first=repo.list_scenes(story.id)[0]
+    real=acceptance._waiting_prose
+    # A reason the author decision does not clear (e.g. a changed review authority) keeps scene 1 waiting.
+    monkeypatch.setattr(acceptance,'_waiting_prose',lambda view:[(view.get_scene(first.id),first.heads['prose'])]+[r for r in real(view) if r[0].id!=first.id])
+    before=snapshot(repo,story)
+    preview=repo.preview_prose_acceptance(story.id)
+    with pytest.raises(ValueError,match='Сцена 1'):
+        repo.accept_all_prose(story.id,preview['fingerprint'])
+    assert snapshot(repo,story)==before and repo.list_acceptances(story.id)==[]
