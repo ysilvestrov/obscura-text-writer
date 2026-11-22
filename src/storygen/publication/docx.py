@@ -172,8 +172,20 @@ def validate(content,book):
             xml={name:archive.read(name) for name in REQUIRED}
         for data in xml.values():ET.fromstring(data)
         document=ET.fromstring(xml['word/document.xml'])
-        found=[e.get(f'{{{W}}}name') for e in document.iter(f'{{{W}}}bookmarkStart') if (e.get(f'{{{W}}}name') or '').startswith(BOOKMARK_PREFIX)]
-        if found!=[BOOKMARK_PREFIX+chapter.entry['scene_id'] for chapter in book.chapters]:raise ValueError('scene bookmarks')
+        name,mark=f'{{{W}}}name',f'{{{W}}}id'
+        found=[e.get(name) for e in document.iter(f'{{{W}}}bookmarkStart') if (e.get(name) or '').startswith(BOOKMARK_PREFIX)]
+        # Each scene bookmark opens and closes (same id) inside its own Heading2 paragraph.
+        closed=[]
+        for paragraph in document.iter(f'{{{W}}}p'):
+            starts=[e for e in paragraph.iter(f'{{{W}}}bookmarkStart') if (e.get(name) or '').startswith(BOOKMARK_PREFIX)]
+            if not starts:continue
+            style=paragraph.find(f'{{{W}}}pPr/{{{W}}}pStyle')
+            ends={e.get(mark) for e in paragraph.iter(f'{{{W}}}bookmarkEnd')}
+            if len(starts)!=1 or style is None or style.get(f'{{{W}}}val')!='Heading2' or starts[0].get(mark) not in ends:
+                raise ValueError('scene bookmark placement')
+            closed.append(starts[0].get(name))
+        expected=[BOOKMARK_PREFIX+chapter.entry['scene_id'] for chapter in book.chapters]
+        if found!=expected or closed!=expected:raise ValueError('scene bookmarks')
         custom=ET.fromstring(xml['docProps/custom.xml'])
         values={e.get('name'):''.join(e.itertext()) for e in custom}
         if values.get('ObscuraStoryId')!=book.snapshot.story.id or values.get('ObscuraExportId')!=book.export_id:raise ValueError('identity')

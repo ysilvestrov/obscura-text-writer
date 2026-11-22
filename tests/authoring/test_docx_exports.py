@@ -41,6 +41,17 @@ def paragraphs(content):
     return result
 
 
+def runs(content):
+    """(text, bold, italic) of each run that carries text."""
+    root = ET.fromstring(part(content, 'word/document.xml'))
+    result = []
+    for r in root.iter(W + 'r'):
+        text = ''.join(t.text or '' for t in r.iter(W + 't'))
+        if text:
+            result.append((text, r.find(f'{W}rPr/{W}b') is not None, r.find(f'{W}rPr/{W}i') is not None))
+    return result
+
+
 def bookmarks(content):
     return re.findall(r'w:bookmarkStart [^>]*w:name="([^"]+)"', part(content, 'word/document.xml'))
 
@@ -95,8 +106,9 @@ def test_docx_markdown_runs_and_controls(tmp_path):
     repo, story = flat_book(tmp_path, 'Слово *курсив* і **жирний**.\n', content_format='markdown')
     _, content = rendered(repo, story)
     document = part(content, 'word/document.xml')
-    assert re.search(r'<w:i/>.*?<w:t xml:space="preserve">курсив</w:t>', document)
-    assert re.search(r'<w:b/>.*?<w:t xml:space="preserve">жирний</w:t>', document)
+    found = runs(content)
+    assert ('курсив', False, True) in found and ('жирний', True, False) in found
+    assert ('Слово ', False, False) in found
     assert ('Heading2', 'Сцена <1> & "друга"') in paragraphs(content)
     repo, story = flat_book(tmp_path / 'plain', '\nліва\tправа <&>\nрядок\n\n')
     _, content = rendered(repo, story)
@@ -129,8 +141,7 @@ def test_docx_untitled_part_and_title_page(tmp_path):
     book, content = rendered(repo, story)
     found = paragraphs(content)
     assert [text for style, text in found if style == 'Heading1'] == ['Дім', 'Частина 2']
-    words = sum(chapter.entry['word_count'] for chapter in book.chapters)
-    assert (None, f'Слів: {words}') in found
+    assert (None, 'Слів: 6') in found  # «Три слова тут.» in two scenes
 
 
 def test_docx_incomplete_without_service_words(tmp_path):
@@ -161,6 +172,26 @@ def test_docx_validate_rejects_foreign_ids(tmp_path):
         docx.validate(content, replace(book, chapters=tuple(reversed(book.chapters))))
     with pytest.raises(ValueError):
         docx.validate(b'not a zip', book)
+
+
+def _rewrite(content, change):
+    output = io.BytesIO()
+    with zipfile.ZipFile(io.BytesIO(content)) as source, zipfile.ZipFile(output, 'w') as target:
+        for name in source.namelist():
+            data = source.read(name)
+            target.writestr(name, change(data.decode('utf-8')).encode('utf-8') if name == 'word/document.xml' else data)
+    return output.getvalue()
+
+
+def test_docx_validate_requires_closed_bookmarks_on_scene_headings(tmp_path):
+    repo, story = seeded(tmp_path, count=2)
+    book, content = rendered(repo, story)
+    with pytest.raises(ValueError):
+        docx.validate(_rewrite(content, lambda xml: re.sub(r'<w:bookmarkEnd w:id="\d+"/>', '', xml)), book)
+    with pytest.raises(ValueError):  # an end with another id
+        docx.validate(_rewrite(content, lambda xml: xml.replace('<w:bookmarkEnd w:id="1"/>', '<w:bookmarkEnd w:id="9"/>')), book)
+    with pytest.raises(ValueError):  # a bookmark moved off its scene heading
+        docx.validate(_rewrite(content, lambda xml: xml.replace('<w:pStyle w:val="Heading2"/>', '', 1)), book)
 
 
 @pytest.mark.parametrize('format,validation', [('docx', 'OOXML structure + scene bookmarks'), ('rtf', 'RTF 1.9 text')])
