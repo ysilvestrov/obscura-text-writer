@@ -17,5 +17,17 @@ test('creating a draft from the end of a long brief opens the draft from its top
     first:[...document.querySelectorAll('#workspace-material p')].find(p=>p.textContent.startsWith('Абзац 1:'))?.getBoundingClientRect().top,
     height:innerHeight}));
   // The material starts right under the sticky tabs and toolbar: not hidden by them and not below the window.
-  await expect.poll(async()=>{const w=await where();return w.material>=w.toolbar-1&&w.first>=w.toolbar&&w.first<w.height}).toBe(true);
+  await expect.poll(async()=>{const w=await where();return Math.abs(w.material-w.toolbar)<=1&&w.first>=w.toolbar&&w.first<w.height}).toBe(true);
+});
+
+test('a draft whose top is already in view does not move the page',async({page,request})=>{
+  const fixture=await(await request.post('/test-draft-writer')).json();
+  await page.goto(`/stories/${fixture.story_id}?scene=${fixture.scene_id}&material=brief`);
+  const primary=page.locator('#workspace-primary');
+  await expect(primary).toBeEnabled();
+  await page.evaluate(()=>scrollTo(0,0));
+  await primary.click();
+  await expect(page.locator('#workspace-material')).toContainText('Абзац 60');
+  await expect.poll(()=>page.evaluate(()=>document.activeElement?.closest?.('#workspace-material')!==null)).toBe(true);
+  expect(await page.evaluate(()=>scrollY)).toBe(0);
 });
