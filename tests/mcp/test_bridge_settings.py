@@ -273,7 +273,7 @@ def test_mcp_writing_settings_carry_the_sample(tmp_path):
     assert changed['settings']['tone_sample'] == 'Short, dry sentences.' and changed['settings']['tone'] == writing['tone']
 
 
-@pytest.mark.req('MODEL-RETIREMENT-S04')
+@pytest.mark.req('MODEL-RETIREMENT')
 def test_model_list_carries_the_provider_retirement_notice(tmp_path, monkeypatch):
     from datetime import date
     from storygen.providers.models import ModelRetirement

@@ -24,7 +24,7 @@ def lines(warning):
     return (warning or '').splitlines()
 
 
-@pytest.mark.req('MODEL-RETIREMENT-S02')
+@pytest.mark.req('MODEL-RETIREMENT')
 def test_edit_loop_warns_about_the_editor_model(tmp_path):
     repo, scene, draft, worker, run, calls = loop_tests.seeded(tmp_path, ['{"edits":[]}'])
     retiring(worker, {'synthetic'})
@@ -34,7 +34,7 @@ def test_edit_loop_warns_about_the_editor_model(tmp_path):
     assert any(line.startswith('Редактор не запропонував нових змін') for line in lines(warning))
 
 
-@pytest.mark.req('MODEL-RETIREMENT-S02')
+@pytest.mark.req('MODEL-RETIREMENT')
 def test_scene_pipeline_keeps_the_writer_warning_after_the_editor_finishes(tmp_path):
     repo, scenes, worker, run, calls = workflow_tests.setup_workflow(tmp_path)
     retiring(worker, {'writer'})
@@ -45,7 +45,7 @@ def test_scene_pipeline_keeps_the_writer_warning_after_the_editor_finishes(tmp_p
     assert sum('Спроб:' in line for line in lines(current.warning)) == 1
 
 
-@pytest.mark.req('MODEL-RETIREMENT-S02')
+@pytest.mark.req('MODEL-RETIREMENT')
 def test_the_next_scene_replaces_the_stop_line_and_keeps_the_retirement_warning(tmp_path):
     from storygen.generation.copyedit_review import copyedit_preview, select_copyedits
     repo, scenes, worker, run, calls = workflow_tests.setup_workflow(tmp_path)
@@ -62,7 +62,7 @@ def test_the_next_scene_replaces_the_stop_line_and_keeps_the_retirement_warning(
     assert sum(line.startswith('Провайдер прибирає модель «writer»') for line in lines(warning)) == 1
 
 
-@pytest.mark.req('MODEL-RETIREMENT-S02')
+@pytest.mark.req('MODEL-RETIREMENT')
 def test_a_model_without_a_notice_adds_no_warning(tmp_path):
     repo, scene, draft, worker, run, calls = loop_tests.seeded(tmp_path, ['{"edits":[]}'])
     retiring(worker, set())
@@ -70,7 +70,7 @@ def test_a_model_without_a_notice_adds_no_warning(tmp_path):
     assert not any(line.startswith('Провайдер прибирає') for line in lines(worker.get_run(run.id).warning))
 
 
-@pytest.mark.req('MODEL-RETIREMENT-S02')
+@pytest.mark.req('MODEL-RETIREMENT')
 def test_impact_review_warns_about_the_planner_model(tmp_path):
     from tests.impact.test_runner import runner
     repo, story, first, second, ref, worker, run, calls = runner(tmp_path)
@@ -81,7 +81,7 @@ def test_impact_review_warns_about_the_planner_model(tmp_path):
     assert 'Провайдер прибирає модель «synthetic-impact» 01.12.2026; заміна: «glm-test». Змініть модель у налаштуваннях ролі.' in lines(current.warning)
 
 
-@pytest.mark.req('MODEL-RETIREMENT-S02')
+@pytest.mark.req('MODEL-RETIREMENT')
 def test_impact_review_in_parts_warns_about_the_planner_model(tmp_path):
     from tests.impact.test_chunk_runner import chunk_runner
     repo, story, second, worker, run, calls, preview = chunk_runner(tmp_path)
@@ -92,7 +92,7 @@ def test_impact_review_in_parts_warns_about_the_planner_model(tmp_path):
     assert sum(line.startswith('Провайдер прибирає модель «synthetic-impact»') for line in lines(current.warning)) == 1
 
 
-@pytest.mark.req('MODEL-RETIREMENT-S02')
+@pytest.mark.req('MODEL-RETIREMENT')
 def test_book_review_call_carries_the_warning(monkeypatch):
     import threading
     from types import SimpleNamespace

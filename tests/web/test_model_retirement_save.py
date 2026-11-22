@@ -18,7 +18,7 @@ def catalog(monkeypatch, retirement=None, fail=False):
     monkeypatch.setattr(schema_support, 'discover_models', fake)
 
 
-@pytest.mark.req('MODEL-RETIREMENT-S04')
+@pytest.mark.req('MODEL-RETIREMENT')
 def test_saving_a_retiring_model_succeeds_with_a_warning(client, story_id, monkeypatch):
     catalog(monkeypatch, ModelRetirement(date=date(2026, 12, 1), replacement='glm-test'))
     for response in (save_role(client, story_id), save_shared(client, story_id)):
@@ -27,14 +27,14 @@ def test_saving_a_retiring_model_succeeds_with_a_warning(client, story_id, monke
         assert response.json()['revision'] >= 1
 
 
-@pytest.mark.req('MODEL-RETIREMENT-S04')
+@pytest.mark.req('MODEL-RETIREMENT')
 def test_saving_a_model_without_a_notice_has_no_warning_field(client, story_id, monkeypatch):
     catalog(monkeypatch)
     for response in (save_role(client, story_id), save_shared(client, story_id)):
         assert response.status_code == 200 and 'model_warnings' not in response.json()
 
 
-@pytest.mark.req('MODEL-RETIREMENT-S04')
+@pytest.mark.req('MODEL-RETIREMENT')
 def test_catalog_trouble_saves_without_a_warning(client, story_id, monkeypatch):
     catalog(monkeypatch, fail=True)
     for response in (save_role(client, story_id), save_shared(client, story_id)):

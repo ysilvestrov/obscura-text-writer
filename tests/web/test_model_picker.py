@@ -10,7 +10,7 @@ def test_model_picker_badges_filters_and_selectability():
     assert result.returncode==0,result.stderr
 
 
-@pytest.mark.req('MODEL-RETIREMENT-S04')
+@pytest.mark.req('MODEL-RETIREMENT')
 def test_model_picker_marks_a_retiring_model():
     root=Path(__file__).resolve().parents[2]
     result=subprocess.run(['node',str(root/'tests/web/js/model_retirement.mjs'),str(root)],capture_output=True,encoding='utf-8',timeout=20)
