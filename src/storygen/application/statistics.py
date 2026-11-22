@@ -1,6 +1,7 @@
 """Read-only scene statistics. No gateways, dispatch or budget reservations."""
 import re
 import unicodedata
+from ..roles import STAGE_ROLE
 from ..memory.journal import load_memory,replay_memory,CATEGORIES
 
 
@@ -68,7 +69,7 @@ def scene_statistics(repo,scene_id,stage,editor_source_head=None,editor_source_v
     previous=before.ancestors
     prior=memory_statistics(view,previous[-1],before.memory_id,merged=bool(before.merge_key)) if previous else memory_statistics(view,scene,None,first=True)
     current=memory_statistics(view,scene,scene.heads.get('memory'))
-    role=roles.get({'brief':'planner','draft':'writer','edit':'editor','memory':'memory'}[stage])
+    role=roles.get(STAGE_ROLE[stage])
     context={'available':False,'reason':'Роль не налаштована'}
     if role:
         from ..generation.role_routing import WRITER_STAGES,settings_for

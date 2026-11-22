@@ -4,7 +4,7 @@ from ..domain import RevisionConflict, Story
 from ..generation.models import StoryBlueprint, StyleProfile, complete_style_profile, default_style_profile
 from ..providers.models import RoleSettings
 
-ROLES={'planner','writer','editor','memory'}
+from ..roles import ROLES
 
 
 def save_shared_provider(repo,story_id,provider,expected_revision,current_role=None,current_settings=None):

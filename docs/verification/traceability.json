@@ -255,6 +255,18 @@
       }
     },
     {
+      "id": "MODEL-001-S03",
+      "requirement": "MODEL-001",
+      "scope": "Єдиний реєстр ролей: збіг roles.js з roles.py, відсутність вбудованих переліків ролей, повнота підписів і кнопки налаштувань. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/test_roles.py::test_role_stage_maps_agree",
+        "tests/test_roles.py::test_browser_registry_matches_server",
+        "tests/test_roles.py::test_no_inline_role_lists_outside_registry",
+        "tests/test_roles.py::test_every_label_map_names_every_role",
+        "tests/test_roles.py::test_settings_page_has_a_button_per_role"
+      ]
+    },
+    {
       "id": "MODEL-002-S01",
       "requirement": "MODEL-002",
       "scope": "Відмова провайдера. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",

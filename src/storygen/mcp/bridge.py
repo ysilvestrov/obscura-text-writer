@@ -25,6 +25,7 @@ from .. import skill_bundles
 from ..publication_models import PublicationData
 from .edition import edition_refusal
 from .launch import DEFAULT_URL, Connection, ObscuraUnavailable
+from ..roles import ROLES
 
 LOOPBACK = {'127.0.0.1', 'localhost', '::1'}
 FALLBACK_CLIENT = 'MCP client'
@@ -44,7 +45,6 @@ COVER_EXTENSIONS = ('.png', '.jpg', '.jpeg')
 COVER_MAX_BYTES = 10 * 1024 * 1024
 COVER_PALETTES = ('ink', 'paper', 'wine', 'forest')
 DRIVE_REMOTE = 4
-ROLES = ('planner', 'writer', 'editor', 'memory')
 SETTINGS_SECTIONS = ('writing',) + ROLES
 WRITING_FIELDS = ('target_words', 'ending_goal', 'genre', 'tone', 'point_of_view', 'tense', 'rules', 'previous_tail_chars', 'tone_sample')
 PROVIDER_FIELDS = ('provider', 'model', 'base_url', 'timeout', 'response_mode', 'include_usage', 'local_disable_thinking',

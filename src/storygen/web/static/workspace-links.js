@@ -1,6 +1,7 @@
 import {t,msg,labelEntries,getLocale,uiText,uiAttr,uiHTML} from './i18n.js';
 import {usd} from './budget-format.js';
-const roles=new Set(['planner','writer','editor','memory']);
+import {ROLES} from './roles.js';
+const roles=new Set(ROLES);
 const modes=new Set(['plan','brief','draft','review','prose','memory']);
 const safeId=value=>typeof value==='string'&&/^[\p{L}\p{N}_-]{1,200}$/u.test(value);
 export function settingsLink(story,scene,mode,role){

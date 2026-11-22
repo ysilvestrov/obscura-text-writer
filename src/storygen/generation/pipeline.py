@@ -1,9 +1,10 @@
 from ..generation.models import StoryBlueprint
 from .context import build_context, make_context
 from .stages import execute_stage
+from ..roles import STAGE_ROLE
 
 STAGES=('brief','draft','edit','memory')
-STAGE_ROLES={'prepare':'planner','brief':'planner','draft':'writer','edit':'editor','memory':'memory'}
+STAGE_ROLES=STAGE_ROLE
 
 
 def generate_scene(repo,scene_id: str,role_settings: dict,gateway_factory,cancel,on_event,run_id=None) -> list:
