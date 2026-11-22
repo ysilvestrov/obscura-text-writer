@@ -124,3 +124,26 @@ def test_the_cli_turns_the_credential_store_off_and_needs_both_keys(tmp_path, mo
     assert os.environ['PYTHON_KEYRING_BACKEND'] == 'keyring.backends.fail.Keyring'
     with pytest.raises(SystemExit, match='OPENROUTER_API_KEY'):
         run.require_keys()
+
+
+def test_the_reasoning_suite_sends_each_editor_its_effort(bench_root, monkeypatch):
+    """The #260 re-run (OPENROUTER-REASONING): its own files and cap, three OpenRouter editors, the effort in the role."""
+    from editor_bench import run
+    for name in ('VENICE', 'OPENROUTER', 'TEXTS', 'NEUTRAL_ONLY', 'EFFORT', 'CAP_USD', 'ENV_FILE', 'DATA_DIR', 'RESULTS'):
+        monkeypatch.setattr(run, name, getattr(run, name))
+    run.use_reasoning_suite()
+    assert run.VENICE == [] and set(run.TEXTS) == {'N', 'V', 'T'} and run.CAP_USD == '0.5'
+    assert {run.ENV_FILE.name, run.DATA_DIR.name, run.RESULTS.name} == {'.env.reasoning', 'data-reasoning', 'results-reasoning.jsonl'}
+    glm = run.candidate('openrouter', 'z-ai/glm-5.3-flash', None)
+    assert glm.reasoning_effort == 'low' and glm.code == 'openrouter:z-ai/glm-5.3-flash@reasoning=low'
+    assert run.candidate('openrouter', 'qwen/qwen3.7-plus', None).reasoning_effort == 'none'
+
+    from storygen.authoring.blueprints import get_role_settings
+    from storygen.providers.requests import openrouter_reasoning
+    bench = stand.open_bench(bench_root / 'data', {'N': text()}, '3')
+    story_id = bench.stories['N'][0]
+    for model, effort in run.EFFORT.items():
+        stand.configure_editor(bench, story_id, run.candidate('openrouter', model, None))
+        provider = get_role_settings(bench.repo, story_id)['editor'].provider
+        assert provider.openrouter_reasoning_effort == effort
+        assert openrouter_reasoning(provider) == {'reasoning': {'effort': effort}}
