@@ -4,10 +4,9 @@
 // writer. Every change is CAS on the story revision; a refused save keeps the typed description.
 import {t,msg,uiText,uiAttr,diagnostic} from './i18n.js';
 import {api,json,notice} from './api.js';
-import {state} from './editor.js';
+import {state,refresh} from './editor.js';
 import {confirmDialog} from './dialogs.js';
 import {locationRows,mergeTargets,suggestionRows} from './locations.js';
-import {announceRevision,followRevision} from './story-revision.js';
 
 let data=null,storyId=null,choosing=null,busy=false;
 const drafts=new Map();  // card id -> typed description not saved yet
@@ -93,8 +92,10 @@ async function change(path,method,body,done){
   const before=data.story_revision;busy=true;draw();
   try{
     data=await api(`/api/stories/${state.storyId}/locations${path}`,json(method,{...body,expected_revision:before}));
-    announceRevision(state.storyId,data.story_revision);
-    notice(msg(done));return true;
+    notice(msg(done));
+    // The story revision moved and versions may be outdated: the page state, scene statuses and the memory table reload.
+    void refresh();
+    return true;
   }catch(e){notice(diagnostic(e.message),'error');await load();return false}  // drafts survive the reload
   finally{busy=false;draw()}
 }
@@ -110,6 +111,5 @@ async function save(row,text){
   draw();
 }
 
-followRevision(()=>data&&storyId===state.storyId?{storyId,get:()=>data.story_revision,set:value=>{data.story_revision=value}}:null);
 document.addEventListener('scene-selected',load);
 document.addEventListener('story-refreshed',load);

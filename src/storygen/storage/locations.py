@@ -86,10 +86,16 @@ def suggestions(db, story_id: str) -> list[tuple[str,str]]:
     """Pairs of unmerged cards that look alike and were not dismissed, each as (first created, second)."""
     every=load_locations(db,story_id);cards=[c for c in every.values() if not c.merged_into]
     dismissed={(r[0],r[1]) for r in db.execute('SELECT a,b FROM location_dismissals WHERE story_id=?',(story_id,))}
+    merged={c.id:c.merged_into for c in every.values()}
     def ancestors(card):
-        seen=set()
-        while card.parent_id and card.parent_id not in seen and card.parent_id in every:
-            seen.add(card.parent_id);card=every[card.parent_id]
+        # Followed through merges: a parent merged elsewhere makes its target an ancestor too.
+        seen=set();parent=card.parent_id
+        while parent:
+            for id in (parent,canonical(merged,parent)):
+                if id in every:seen.add(id)
+            parent=canonical(merged,parent)
+            if parent not in every or every[parent].parent_id in seen:break
+            parent=every[parent].parent_id
         return seen
     lineage={c.id:ancestors(c) for c in cards}
     found=[]

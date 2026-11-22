@@ -1,10 +1,17 @@
 // MEMORY-LOCATIONS-S07: rows of the «Locations» panel from GET /api/stories/{id}/locations (pure).
-// Nested cards follow their parent; a merged card is shown under its target and can only be split back.
+// Nested cards follow their parent; a merged card is shown under its final target and can only be split back.
+// Parents and targets are followed through merges, so a chain А→Б→В or a parent merged into its own child keeps the tree.
 export function locationRows(data){
-  const cards=data?.locations||[],known=new Set(cards.map(c=>c.id)),rows=[],seen=new Set();
+  const cards=data?.locations||[],byId=new Map(cards.map(c=>[c.id,c])),rows=[],seen=new Set();
+  const canonical=id=>{const chain=new Set();while(id&&byId.get(id)?.merged_into&&!chain.has(id)){chain.add(id);id=byId.get(id).merged_into}return id};
+  // Where a card hangs: a merged card under its final target, an unmerged one under its parent's final target.
+  const home=card=>{
+    const place=card.merged_into?canonical(card.id):card.parent_id?canonical(card.parent_id):null;
+    return place&&place!==card.id&&byId.has(place)?place:null;
+  };
   const under=id=>[
-    ...cards.filter(c=>!c.merged_into&&c.parent_id===id),
-    ...cards.filter(c=>c.merged_into===id),
+    ...cards.filter(c=>!c.merged_into&&home(c)===id),
+    ...cards.filter(c=>c.merged_into&&home(c)===id),
   ];
   const visit=(card,depth)=>{
     if(seen.has(card.id))return;seen.add(card.id);
@@ -14,7 +21,7 @@ export function locationRows(data){
       canMerge:!merged,canSplit:merged,editable:!merged});
     for(const child of under(card.id))visit(child,depth+1);
   };
-  for(const card of cards)if(!card.merged_into&&(!card.parent_id||!known.has(card.parent_id)))visit(card,0);
+  for(const card of cards)if(!card.merged_into&&!home(card))visit(card,0);
   for(const card of cards)visit(card,0);  // anything a broken chain left out
   return rows;
 }

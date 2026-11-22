@@ -11,7 +11,7 @@ STATIC = ROOT / 'src/storygen/web/static'
 
 
 @pytest.mark.req('MEMORY-LOCATIONS')
-def test_panel_rows_and_shared_revision():
+def test_panel_rows():
     node = shutil.which('node')
     if not node:
         pytest.skip('Node потрібен для перевірки ES module')

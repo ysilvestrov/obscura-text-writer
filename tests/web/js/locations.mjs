@@ -30,10 +30,10 @@ assert.deepEqual(m.suggestionRows(undefined),[]);
 assert.deepEqual(m.locationRows({locations:[card('lost','Х / Y',{parent_id:'gone'})]}).map(r=>[r.id,r.depth]),[['lost',0]]);
 console.log('ok');
 
-const r=await import(pathToFileURL(process.argv[2]+'/src/storygen/web/static/story-revision.js'));
-const panels={a:{storyId:'s',rev:4},b:{storyId:'s',rev:3},c:{storyId:'other',rev:4}};
-for(const p of Object.values(panels))r.followRevision(()=>({storyId:p.storyId,get:()=>p.rev,set:v=>{p.rev=v}}));
-r.followRevision(()=>null);
-r.announceRevision('s',5);
-assert.deepEqual([panels.a.rev,panels.b.rev,panels.c.rev],[5,3,4],'only a panel one step behind on the same story follows');
-console.log('revision ok');
+// Merges follow the final target: a parent merged into its own child does not invert the tree, and a chain А→Б→В
+// shows А and Б under В.
+const inverted=m.locationRows({locations:[card('a','Маяк',{merged_into:'b',target_path:'Маяк / ліхтарна'}),card('b','Маяк / ліхтарна',{parent_id:'a'})]});
+assert.deepEqual(inverted.map(r=>[r.id,r.depth]),[['b',0],['a',1]]);
+const chain=m.locationRows({locations:[card('x','А',{merged_into:'y',target_path:'В'}),card('y','Б',{merged_into:'z',target_path:'В'}),card('z','В'),card('k','Б / кухня',{parent_id:'y'})]});
+assert.deepEqual(chain.map(r=>[r.id,r.depth]),[['z',0],['k',1],['x',1],['y',1]]);
+console.log('merge tree ok');

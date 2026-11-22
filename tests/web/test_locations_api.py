@@ -142,3 +142,15 @@ def test_writes_through_the_api_make_shown_versions_stale(tmp_path):
     client.post(f'{base(story)}/{lid(story, "Квартира Джоржа")}/merge',
                 json={'into': lid(story, 'Квартира Джорджа', 'вітальня'), 'expected_revision': data['story_revision']})
     assert client.get(f'/api/versions/{memory.id}').json()['version']['stale'] is True
+
+
+@pytest.mark.req('MEMORY-LOCATIONS')
+def test_no_suggestion_between_a_card_and_its_ancestor_through_a_merge(tmp_path):
+    client, repo, story, *_ = setup(tmp_path)
+    repo.create_scene(story.id, SceneCreate(title='Сад', beats='Локація: Маєток', character_ids=[]))
+    repo.create_scene(story.id, SceneCreate(title='Зала', beats='Локація: Старий маєток / вітальня', character_ids=[]))
+    story = repo.get_story(story.id)
+    old, manor, room = lid(story, 'Старий маєток'), lid(story, 'Маєток'), lid(story, 'Старий маєток', 'вітальня')
+    data = client.post(f'{base(story)}/{old}/merge', json={'into': manor, 'expected_revision': story.revision}).json()
+    pairs = {frozenset((s['a'], s['b'])) for s in data['suggestions']}
+    assert frozenset((manor, room)) not in pairs

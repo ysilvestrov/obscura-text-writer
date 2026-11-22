@@ -64,5 +64,17 @@ test('a location change does not turn the next memory-kind change into a conflic
   await expect(page.locator('#notice')).toContainText('Опис збережено.');
   await kind.selectOption('atmosphere');
   await expect(page.locator('#notice')).toContainText('Тип запису збережено');
-  await expect(page.locator('.memory-locations').first()).toContainText('Локації: Квартира Джорджа / вітальня');
+  const fact=page.locator('.memory-locations').first();
+  await expect(fact).toContainText('Локації: Квартира Джорджа / вітальня');
+  // A merge reloads the memory table: the row names the target at once.
+  const room=row(panel,'Квартира Джорджа / вітальня');
+  await room.getByRole('button',{name:'Злити в…'}).click();
+  await room.locator('select').selectOption({label:'двір'});
+  await room.getByRole('button',{name:'Злити'}).click();
+  await page.locator('.app-dialog').getByRole('button',{name:'Злити'}).click();
+  await expect(page.locator('#notice')).toContainText('Локації злито.');
+  await expect(fact).toContainText('Локації: двір');
+  // The table reloaded with the new story revision, so the next type mark is not a conflict.
+  await kind.selectOption('core');
+  await expect(page.locator('#notice')).toContainText('Тип запису збережено');
 });

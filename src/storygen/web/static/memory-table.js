@@ -2,7 +2,6 @@ import {confirmDialog} from './dialogs.js';
 import {createTextEditor} from './text-editor.js';
 import {installCoreReview,confirmUnsaved} from './core-review.js';
 import {live,t,msg,labelEntries,getLocale,uiText,uiAttr,uiHTML,diagnostic} from './i18n.js';
-import {announceRevision,followRevision} from './story-revision.js';
 export function installMemoryTable({state,api,json,notice,refresh,loadBuffer}){
   const panel=document.querySelector('#memory-view');
   if(!panel)return {active:()=>false,save:async()=>{}};
@@ -53,7 +52,6 @@ export function installMemoryTable({state,api,json,notice,refresh,loadBuffer}){
     const text=latest.heads.memory?(await api(`/api/versions/${latest.heads.memory}`)).text:'';
     if(state.scene?.id===sceneId&&!state.dirty)loadBuffer(latest,'memory',text);
   }
-  followRevision(()=>data?.story_revision!=null?{storyId:data.scene.story_id,get:()=>data.story_revision,set:value=>{data.story_revision=value}}:null);
   const coreReview=installCoreReview({container:reviewBox,api,json,notice,refresh:reloadAfterReview});
   state.coreReview={dirty:coreReview.dirty,discard:coreReview.discard};
   let key=null,data=null,pending={},advanced=false,loading=false,rawText='',loadedSceneId=null,loadedMemoryId=null;
@@ -87,7 +85,7 @@ export function installMemoryTable({state,api,json,notice,refresh,loadBuffer}){
       const snapshot=data,captured=currentKey(),kind=select.value||null;kindBusy=true;draw();
       try{
         const story=await api(`/api/stories/${snapshot.scene.story_id}/memory-kind`,json('PUT',{claim_id:row.claim_id,kind,expected_revision:snapshot.story_revision,scene_id:snapshot.scene.id}));
-        snapshot.story_revision=story.revision;announceRevision(snapshot.scene.story_id,story.revision);row.kind=kind;notice(t('memory.kind_saved'));
+        snapshot.story_revision=story.revision;row.kind=kind;notice(t('memory.kind_saved'));void refresh();
       }catch(error){
         notice(error.message,'error');
         if(currentKey()===captured&&!state.dirty){kindBusy=false;void load();return;}
@@ -141,7 +139,11 @@ export function installMemoryTable({state,api,json,notice,refresh,loadBuffer}){
     if(JSON.stringify(scenes().map(scene=>[scene.id,scene.position,scene.title]))!==sceneListKey){sceneOptions();draw();}
     controls();
     const editingSameJson=advanced&&state.scene.id===loadedSceneId&&state.scene.heads.memory===loadedMemoryId;
-    if(currentKey()!==key&&!editingSameJson)void load();
+    // MEMORY-LOCATIONS-S07: a story-level change (locations, summaries, settings) moved the story revision; reload the
+    // clean table so its locations, freshness and the revision for type marks are current.
+    const storyMoved=data&&!advanced&&!state.dirty&&!loading&&!kindBusy&&state.view?.story?.revision!=null
+      &&data.story_revision!=null&&state.view.story.revision!==data.story_revision;
+    if((currentKey()!==key&&!editingSameJson)||storyMoved)void load();
   }
   toggle.onclick=async()=>{
     if(state.saving||loading)return;
