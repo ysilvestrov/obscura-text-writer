@@ -122,7 +122,7 @@ def create_app(settings: AppSettings, *, gateway_factory=None,evaluator_factory=
     @app.exception_handler(RequestValidationError)
     async def invalid_request(request,exc):
         fields=[]
-        allowed={'provider','model','base_url','timeout','key_env','include_usage','response_mode','venice_include_system_prompt','venice_disable_thinking','local_disable_thinking','venice_reasoning_effort','context_tokens','max_output_tokens','max_input_chars','temperature'}
+        allowed={'provider','model','base_url','timeout','key_env','include_usage','response_mode','venice_include_system_prompt','venice_disable_thinking','local_disable_thinking','venice_reasoning_effort','openrouter_reasoning_effort','context_tokens','max_output_tokens','max_input_chars','temperature'}
         for error in exc.errors():
             loc=error.get('loc',())
             if len(loc)>=3 and tuple(loc[:3])==('body','settings','classification'):

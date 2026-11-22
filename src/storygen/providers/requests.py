@@ -30,6 +30,12 @@ def venice_reasoning(settings):
     return {'reasoning':{'effort':effort}} if effort else {}
 
 
+def openrouter_reasoning(settings):
+    """OPENROUTER-REASONING: the documented `reasoning.effort`; 'none' disables reasoning (probe П5)."""
+    effort=getattr(settings,'openrouter_reasoning_effort',None)
+    return {'reasoning':{'effort':effort}} if effort else {}
+
+
 def streams(stage, settings, context=None):
     """Whether the stage's request streams: the captured body decides, else the same rule as `generation_request`."""
     body = getattr(context, 'api_request', None)
@@ -59,6 +65,8 @@ def generation_request(stage, settings, system, user, fragments):
     if provider.provider == 'venice':
         body['venice_parameters'] = venice_options(provider)
         body.update(venice_reasoning(provider))
+    if provider.provider == 'openrouter':
+        body.update(openrouter_reasoning(provider))
     structured = stage in {'prepare', 'brief', 'memory','classify','publication_suggest','impact_delta','impact_check','impact_part'} or (stage == 'edit' and settings.edit_mode == 'patches')
     if provider.response_mode == 'json_schema' and structured:
         wire3_bounds = wire4_bounds = None

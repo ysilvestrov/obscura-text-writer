@@ -2,7 +2,7 @@ from datetime import date
 from typing import Annotated, Literal
 from urllib.parse import urlparse
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import Field, field_validator, model_serializer, model_validator
 
 from ..domain import DomainModel
 from ..billing.models import Tariff
@@ -20,11 +20,24 @@ class ProviderSettings(DomainModel):
     local_disable_thinking: bool = False
     venice_disable_thinking: bool = False
     venice_reasoning_effort: Literal['none','low','medium','high','xhigh','max'] | None = None
+    # OPENROUTER-REASONING: None sends nothing; 'none' disables reasoning (models with mandatory reasoning reject it).
+    openrouter_reasoning_effort: Literal['none','minimal','low','medium','high','xhigh','max'] | None = None
+
+    @model_serializer(mode='wrap')
+    def without_unset_openrouter_reasoning(self, handler):
+        # OPENROUTER-REASONING-S03: an unset field stays out of every dump, so stored roles, scene-context
+        # fingerprints and impact manifest stamps made before the field existed keep matching.
+        data = handler(self)
+        if isinstance(data, dict) and data.get('openrouter_reasoning_effort') is None:
+            data.pop('openrouter_reasoning_effort', None)
+        return data
 
     @model_validator(mode='after')
     def endpoint(self):
         if self.venice_disable_thinking and self.venice_reasoning_effort is not None:
             raise ValueError('Оберіть або вимкнення thinking, або reasoning effort')
+        if self.openrouter_reasoning_effort is not None and self.provider!='openrouter':
+            raise ValueError('Reasoning OpenRouter задається лише для провайдера OpenRouter')
         endpoints={'local':'http://localhost:1235/v1','openrouter':'https://openrouter.ai/api/v1','venice':'https://api.venice.ai/api/v1'}
         self.base_url=self.base_url or endpoints[self.provider]
         self.key_env=self.key_env or ('VENICE_API_KEY' if self.provider=='venice' else 'OPENROUTER_API_KEY')
@@ -109,6 +122,17 @@ class ModelRetirement(DomainModel):
     replacement: str | None = None
 
 
+REASONING_EFFORTS = ('max','xhigh','high','medium','low','minimal')
+
+
+class ReasoningCapability(DomainModel):
+    """OPENROUTER-REASONING: what the catalog says the model allows (efforts: None = all levels, [] = no level choice)."""
+    mandatory: bool = False
+    default_enabled: bool | None = None
+    efforts: list[Literal['max','xhigh','high','medium','low','minimal']] | None = None
+    default_effort: str | None = None
+
+
 class ModelOption(DomainModel):
     id: str
     name: str | None = None
@@ -120,3 +144,4 @@ class ModelOption(DomainModel):
     tee: bool = False
     supports_schema: bool | None = None
     retirement: ModelRetirement | None = None
+    reasoning: ReasoningCapability | None = None

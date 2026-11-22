@@ -1,5 +1,5 @@
 """Public catalog metadata and known limits; never infer missing prices/caps."""
-from .models import ModelOption
+from .models import ModelOption, REASONING_EFFORTS, ReasoningCapability
 from ..billing.models import Tariff
 from ..billing.pricing import from_catalog, ENDPOINTS
 
@@ -11,6 +11,20 @@ class ModelLimitsError(ValueError):
 def known_limit(value):
     if isinstance(value,str) and value.isascii() and value.isdecimal() and len(value)<=20:value=int(value)
     return value if type(value) is int and value > 0 else None
+
+
+def reasoning_capability(provider, row):
+    """OPENROUTER-REASONING: the catalog's `reasoning` object; omitted `supported_efforts` means no level choice."""
+    data = row.get('reasoning') if provider == 'openrouter' else None
+    if not isinstance(data, dict):
+        return None
+    efforts = data.get('supported_efforts', [])
+    if efforts is not None:
+        efforts = [value for value in efforts if value in REASONING_EFFORTS] if isinstance(efforts, list) else []
+    default_effort = data.get('default_effort')
+    return ReasoningCapability(mandatory=data.get('mandatory') is True,
+        default_enabled=data['default_enabled'] if isinstance(data.get('default_enabled'), bool) else None,
+        efforts=efforts, default_effort=default_effort if isinstance(default_effort, str) else None)
 
 
 def model_option(provider, row, repo=None):
@@ -46,7 +60,7 @@ def model_option(provider, row, repo=None):
     elif provider == 'openrouter' and isinstance(row.get('supported_parameters'),list):
         schema = 'structured_outputs' in row['supported_parameters']
     from .retirement import retirement_from
-    return ModelOption(id=row['id'], name=name if isinstance(name,str) and name else None, context_tokens=known_limit(context),
+    return ModelOption(reasoning=reasoning_capability(provider,row),id=row['id'], name=name if isinstance(name,str) and name else None, context_tokens=known_limit(context),
         max_output_tokens=known_limit(output), uncensored=uncensored, tariff=tariff, privacy=privacy, tee=tee, supports_schema=schema,
         retirement=retirement_from(provider,row))
 
