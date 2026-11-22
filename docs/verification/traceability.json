@@ -3534,6 +3534,20 @@
       }
     },
     {
+      "id": "EDIT-LOOP-STOP-S05",
+      "requirement": "EDIT-LOOP-STOP",
+      "scope": "Межа 60% слів щодо входу проходу й початкової копії; failed guard без draft, чинна зупинка pass_failed, recovery без виклику, комплексний запуск без пам’яті.",
+      "tests": [
+        "tests/generation/test_editor_shrink_guard.py::test_message_names_counts_and_reference_without_text",
+        "tests/generation/test_editor_shrink_guard.py::test_excerpt_after_success_offers_last_good_candidate",
+        "tests/generation/test_editor_shrink_guard.py::test_excerpt_on_first_pass_fails_without_proposal_or_prose",
+        "tests/generation/test_editor_shrink_guard.py::test_gradual_erosion_is_checked_against_the_initial_copy",
+        "tests/generation/test_editor_shrink_guard.py::test_pass_just_above_threshold_is_a_candidate",
+        "tests/generation/test_editor_shrink_guard.py::test_rejected_pass_recovers_locally_without_another_call",
+        "tests/generation/test_editor_shrink_guard.py::test_remaining_workflow_stops_on_excerpt_before_memory"
+      ]
+    },
+    {
       "id": "EDIT-LOOP-STOP-S04",
       "requirement": "EDIT-LOOP-STOP",
       "scope": "Успішний no_changes публікує прозу; збереження формату, recovery, CAS, атомарність, відсутність публікації помилок.",
