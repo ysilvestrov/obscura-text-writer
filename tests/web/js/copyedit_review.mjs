@@ -78,7 +78,8 @@ const diffApi=async(url,options)=>{
   return diffData;
 };
 const diffState={scene:{id:'s'},dirty:false,saving:false};
-const diffPanel=mountCopyeditReview({host:diffHost,state:diffState,api:diffApi,json:(method,value)=>({method,body:JSON.stringify(value)}),notice:()=>{},onApplied:async()=>{}});
+let diffAvailability=null;
+const diffPanel=mountCopyeditReview({host:diffHost,state:diffState,api:diffApi,json:(method,value)=>({method,body:JSON.stringify(value)}),notice:()=>{},onApplied:async()=>{},onAvailability:value=>{diffAvailability=value}});
 await diffPanel.reload();
 const diffNodes=()=>descendants(diffHost);
 const diffCheck=()=>diffNodes().find(e=>e.tagName==='input');
@@ -87,10 +88,10 @@ assert.equal(diffCheck().checked,false);
 const diffShow=()=>diffNodes().find(e=>e.tagName==='button'&&e.textContent==='Переглянути виправлений текст');
 diffCheck().checked=true;diffCheck().onchange();assert.equal(diffApply().disabled,true);
 // R20-WORKSPACE-S09: until the assembled text is previewed, the preview is the highlighted step.
-assert.equal(diffShow().className,'');
+assert.equal(diffShow().className,'');assert.equal(diffAvailability.ready,false);
 await diffShow().onclick();
 assert.deepEqual(selectedBody.selected_indices,[0]);assert.equal(diffApply().disabled,false);
-assert.equal(diffShow().className,'secondary');
+assert.equal(diffShow().className,'secondary');assert.equal(diffAvailability.ready,true);
 diffCheck().checked=false;diffCheck().onchange();assert.equal(diffShow().className,'');
 diffCheck().checked=true;diffCheck().onchange();await diffShow().onclick();assert.equal(diffShow().className,'secondary');
 diffData.classification={changes:[{index:0,category:'meaning',assessment:'uncertain',explanation:'<script>advice</script>'}]};

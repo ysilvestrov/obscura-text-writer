@@ -4348,7 +4348,8 @@
       "requirement": "R20-WORKSPACE",
       "scope": "Стиль кнопки перегляду й доступність прийняття до та після перегляду зібраного тексту; назви кнопок — у i18n.json.",
       "tests": [
-        "tests/web/test_copyedit_review_ui.py::test_copyedit_panel_selection_and_dirty_guards"
+        "tests/web/test_copyedit_review_ui.py::test_copyedit_panel_selection_and_dirty_guards",
+        "tests/web/test_workspace_route.py::test_workspace_route_save_and_source_regressions"
       ]
     },
     {

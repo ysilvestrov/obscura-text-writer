@@ -13,6 +13,8 @@ assert.match(primaryAction(state).label,/новий варіант пам/);
 // R20-WORKSPACE: the repeat action on the draft tab is a short «Редагувати».
 {const repeat={scene:{id:'c',heads:{draft:'d',prose:'p'}},mode:'draft',dirty:false};
 assert.equal(primaryAction(repeat).label,'Редагувати');
+// R20-WORKSPACE-S09: the review tab's primary action is «Прийняти правки».
+assert.equal(primaryAction({scene:{id:'c',heads:{}},mode:'review',dirty:false}).label,'Прийняти правки');
 assert.equal(primaryAction({...repeat,dirty:true}).label,'Зберегти й редагувати');
 assert.equal(primaryAction({...repeat,scene:{id:'c',heads:{draft:'d'}}}).label,'Зберегти й редагувати');}
 state.mode='draft';state.dirty=true;calls.length=0;
