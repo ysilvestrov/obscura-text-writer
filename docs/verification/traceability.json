@@ -1501,6 +1501,64 @@
       ]
     },
     {
+      "id": "EXPORT-DOCX-S01",
+      "requirement": "EXPORT-DOCX",
+      "scope": "Структура рукопису DOCX: титул, частини й сцени зі стилями Word і розривами сторінок, розмітка, мова, сцени з кошика.",
+      "tests": [
+        "tests/authoring/test_docx_exports.py::test_docx_parts_and_styles",
+        "tests/authoring/test_docx_exports.py::test_docx_trash_scene_absent",
+        "tests/authoring/test_docx_exports.py::test_docx_markdown_runs_and_controls",
+        "tests/authoring/test_docx_exports.py::test_docx_language_document_and_scene",
+        "tests/authoring/test_docx_exports.py::test_docx_untitled_part_and_title_page"
+      ]
+    },
+    {
+      "id": "EXPORT-DOCX-S02",
+      "requirement": "EXPORT-DOCX",
+      "scope": "Приховані закладки сцен і властивості файлу для імпорту R-46; validate відхиляє чужі ідентичності; неповна книга без службових слів.",
+      "tests": [
+        "tests/authoring/test_docx_exports.py::test_docx_scene_bookmarks_and_custom_properties",
+        "tests/authoring/test_docx_exports.py::test_docx_validate_rejects_foreign_ids",
+        "tests/authoring/test_docx_exports.py::test_docx_incomplete_without_service_words",
+        "tests/authoring/test_docx_exports.py::test_docx_invalid_xml_character_raises"
+      ]
+    },
+    {
+      "id": "EXPORT-DOCX-S03",
+      "requirement": "EXPORT-DOCX",
+      "scope": "RTF: заголовок і сторінка, екранування, сурогатні пари, розмітка, мова, недопустимий символ.",
+      "tests": [
+        "tests/authoring/test_rtf_exports.py::test_rtf_header_and_page",
+        "tests/authoring/test_rtf_exports.py::test_rtf_escaping",
+        "tests/authoring/test_rtf_exports.py::test_rtf_runs_and_scene_order",
+        "tests/authoring/test_rtf_exports.py::test_rtf_language",
+        "tests/authoring/test_rtf_exports.py::test_rtf_line_breaks_in_markdown",
+        "tests/authoring/test_rtf_exports.py::test_rtf_invalid_xml_character_raises"
+      ]
+    },
+    {
+      "id": "EXPORT-DOCX-S04",
+      "requirement": "EXPORT-DOCX",
+      "scope": "Формати docx/rtf у export_story, маршруті завантаження, MCP export_book і діалозі.",
+      "tests": [
+        "tests/authoring/test_docx_exports.py::test_export_story_docx_and_rtf_manifest",
+        "tests/authoring/test_docx_exports.py::test_download_docx_rtf_mime_and_name",
+        "tests/authoring/test_docx_exports.py::test_export_dialog_offers_docx_and_rtf",
+        "tests/mcp/test_bridge_publication.py::test_export_book_writes_docx_and_rtf_manuscripts",
+        "tests/mcp/test_bridge_publication.py::test_export_format_is_checked_before_request"
+      ]
+    },
+    {
+      "id": "EXPORT-DOCX-S05",
+      "requirement": "EXPORT-DOCX",
+      "scope": "Відкриття DOCX і RTF у Microsoft Word і збереження міток після редагування з рецензуванням.",
+      "tests": [],
+      "manual": {
+        "procedure": "docs/verification/manual.md#docx-word",
+        "reason": "Microsoft Word недоступний у CI; автоматичні тести перевіряють лише структуру файлів."
+      }
+    },
+    {
       "id": "SECURITY-001-S01",
       "requirement": "SECURITY-001",
       "scope": "Чужий сайт змінює локальні дані. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
@@ -3493,10 +3551,11 @@
     {
       "id": "EXPORT-CLEAN-S01",
       "requirement": "EXPORT-CLEAN",
-      "scope": "Чистий авторський експорт у п’яти форматах; попередження лише в окремому manifest.",
+      "scope": "Чистий авторський експорт у семи форматах; попередження лише в окремому manifest; мітки імпорту DOCX не є службовими вставками.",
       "tests": [
         "tests/authoring/test_clean_publication.py::test_author_approved_stale_book_has_no_internal_warning_in_content_or_metadata",
         "tests/authoring/test_clean_publication.py::test_empty_author_approved_book_remains_valid_without_internal_placeholder",
+        "tests/authoring/test_docx_exports.py::test_docx_incomplete_without_service_words",
         "tests/authoring/test_exports.py::test_export_blocks_partial_stale_or_missing_scene_by_default"
       ]
     },

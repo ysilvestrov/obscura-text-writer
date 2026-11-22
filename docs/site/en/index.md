@@ -21,7 +21,7 @@ The application runs on your computer. Stories are stored locally; a cloud provi
 - [Age rating](content-rating.md): explicitness levels and character age.
 - [Models and budget](models.md): roles, providers, costs and local models.
 - [Evaluator](evaluator.md): automatic scene checks.
-- [Publication and export](publication.md): the story card, FB2, EPUB, PDF.
+- [Publication and export](publication.md): the story card, FB2, EPUB, PDF, a DOCX manuscript.
 - [Chat clients (MCP)](mcp.md): drafts from Claude or Codex without an API key of your own.
 - [Story language and length](story-language.md): Ukrainian and English stories.
 - [Troubleshooting](troubleshooting.md): what to do when something does not work.

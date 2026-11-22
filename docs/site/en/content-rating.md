@@ -48,7 +48,7 @@ The rating of a scene (or of the story, when the scene has none of its own) also
 
 ## Label in FB2 and EPUB
 
-When exporting FB2 or EPUB, the highest level among the story rating and the exported scenes is used: 0 gives `0+`, 1 gives `16+`, 2 gives `18+`. The label goes into the file metadata, not the text. MD, TXT and PDF carry no label. If the story rating is not set, there is no label and the export manifest contains a warning.
+When exporting FB2 or EPUB, the highest level among the story rating and the exported scenes is used: 0 gives `0+`, 1 gives `16+`, 2 gives `18+`. The label goes into the file metadata, not the text. MD, TXT, PDF, DOCX and RTF carry no label. If the story rating is not set, there is no label and the export manifest contains a warning.
 
 ## Microsoft Store build
 

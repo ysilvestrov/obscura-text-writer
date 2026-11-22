@@ -26,14 +26,20 @@ The card can also be filled in from a [chat client](mcp.md#publishing-from-the-c
 
 ## Export
 
-Open **☰ Story actions → Export…** and choose a format: MD, TXT, FB2, EPUB or PDF. The file is created on your computer.
+Open **☰ Story actions → Export…** and choose a format: MD, TXT, FB2, EPUB, PDF, a Word manuscript (DOCX) or an RTF manuscript. The file is created on your computer.
 
 - FB2 needs an author and at least one genre in the card.
-- Bold and italics from the text carry over to FB2, EPUB and PDF; TXT removes formatting marks.
+- Bold and italics from the text carry over to FB2, EPUB, PDF, DOCX and RTF; TXT removes formatting marks.
 - FB2 and EPUB receive an age label from the [rating](content-rating.md#label-in-fb2-and-epub).
 - If some scenes need review or have no prose, export requires your explicit permission. The book contains no internal marks: warnings stay only in the separate manifest.
 
 A finished file does not change when you edit the text: create a new export.
+
+### Manuscript for an editor (DOCX and RTF)
+
+DOCX and RTF are for handing the book to an outside editor; for print, use PDF. The manuscript uses the layout editors expect: A4, Times New Roman 12 pt, 1.5 line spacing, page numbers at the bottom. The title page holds the title, the authors and the word count; every part and every scene starts on a new page, and the headings use the Word styles Heading 1 and Heading 2, so the structure shows in the navigation pane. The text language comes from the publication card, so Word checks spelling in the right language.
+
+DOCX carries invisible scene marks: Obscura will use them to sort a returned edit back into scenes. The marks survive ordinary editing and track changes, but disappear together with a scene heading if the editor deletes it. RTF has no such marks; it is for editors without Word.
 
 The book file downloads under a name made of the author, the title and the export date, for example `Author — Title — 2026-11-21.epub`. Several authors are joined with “and” in an English card; commas, full stops and characters Windows does not allow in file names become spaces, and a long title is shortened. Without an author the name starts with the title.
 

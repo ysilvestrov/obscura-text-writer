@@ -45,7 +45,7 @@ Show the filled card as one summary, with your own decisions marked, and wait fo
 
 ## 5. Export
 
-1. A card with the format: FB2, EPUB or PDF (`fb2`, `epub`, `pdf`; `md` and `txt` also exist). FB2 needs an author and a genre in the card.
+1. A card with the format: FB2, EPUB or PDF (`fb2`, `epub`, `pdf`; `md` and `txt` also exist). For handing the book to an outside editor, offer the Word manuscript `docx` (or `rtf` for editors without Word). FB2 needs an author and a genre in the card.
 2. `export_book(story_id, format, allow_incomplete)`, with `allow_incomplete=true` only if the author agreed in step 1.
 3. Give the author the `download_url`, the `word_count` and any `warnings`. In Obscura the same export is under ☰ «Дії твору» → «Експорт…».
 
