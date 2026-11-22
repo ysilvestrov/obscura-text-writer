@@ -186,8 +186,8 @@ def run_loop(bench: Bench, text_id: str, candidate: Candidate, gateway_factory=N
         'loop_seconds': round(time.perf_counter() - started, 3),
         'passes': [{'state': a.state, 'finish_reason': a.finish_reason, 'cost': a.usage.get('cost'),
                     'accounting': {k: v for k, v in (a.context.get('accounting') or {}).items() if k.endswith(('_nanos', 'usd', 'source', 'state'))},
-                    'reasoning_tokens': (a.usage.get('completion_tokens_details') or {}).get('reasoning_tokens') or a.usage.get('reasoning_tokens'),
-                    'output_tokens': a.usage.get('completion_tokens') or a.usage.get('output_tokens'),
+                    'reasoning_tokens': (a.usage.get('completion_tokens_details') or {}).get('reasoning_tokens'),  # None: not reported
+                    'output_tokens': a.usage.get('completion_tokens'),
                     'refusal': bool(a.context.get('generation_failure', {}).get('category', '').startswith('refusal')),
                     'failure': (a.context.get('generation_failure') or {}).get('category') or (a.error and 'error'),
                     'seconds': t.seconds, 'first_token_seconds': t.first_token_seconds}
