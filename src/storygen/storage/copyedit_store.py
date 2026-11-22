@@ -94,7 +94,8 @@ def commit_copyedit_selection(
                 loop_run.state='completed'
                 loop_run.cursor=len(loop_run.tasks)
             loop_run.error=None
-            loop_run.warning='Підсумкові правки прийнято.'+(' Пам’ять і оцінювання оновлюються окремо.' if standalone else '')
+            from ..generation.run_warnings import ACCEPTED,loop_status
+            loop_run.warning=loop_status(loop_run.warning,ACCEPTED+(' Пам’ять і оцінювання оновлюються окремо.' if standalone else ''))
             db.execute(
                 'UPDATE runs SET state=?,payload=? WHERE id=?',
                 (loop_run.state,loop_run.model_dump_json(),loop_run.id)

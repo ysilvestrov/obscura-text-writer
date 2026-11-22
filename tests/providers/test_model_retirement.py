@@ -112,3 +112,60 @@ def test_a_censored_model_keeps_its_own_message():
 def test_a_retiring_model_still_passes_the_catalog_check():
     spec = validate_model(catalog(venice_row('gemma-test', {'removesAt': '2020-01-01T00:00:00.000Z'})), 'gemma-test', False)
     assert spec['deprecation']['removesAt'].startswith('2020')
+
+
+def _stream(text='Готово.'):
+    import json as _json
+    chunks = [{'id': 'r', 'object': 'chat.completion.chunk', 'created': 0, 'model': 'm', 'choices': [{'index': 0, 'delta': {'content': text}, 'finish_reason': None}]},
+              {'id': 'r', 'object': 'chat.completion.chunk', 'created': 0, 'model': 'm', 'choices': [{'index': 0, 'delta': {}, 'finish_reason': 'stop'}]},
+              {'id': 'r', 'object': 'chat.completion.chunk', 'created': 0, 'model': 'm', 'choices': [], 'usage': {'prompt_tokens': 5, 'completion_tokens': 3, 'total_tokens': 8}}]
+    return httpx.Response(200, headers={'content-type': 'text/event-stream'},
+        content=''.join('data: ' + _json.dumps(c, ensure_ascii=False) + '\n\n' for c in chunks) + 'data: [DONE]\n\n')
+
+
+def _bundle(provider, model):
+    from storygen.generation.context import ContextBundle
+    from storygen.providers.models import RoleSettings
+    settings = RoleSettings(provider=ProviderSettings(provider=provider, model=model, include_usage=True))
+    return ContextBundle(story_id='s', scene_id='c', stage='draft', scene_revision=0, story_revision=0, settings=settings,
+        system_text='Промпт', user_text='Текст.', input_refs=[], fingerprint='f', estimated_tokens=10)
+
+
+@pytest.mark.req('MODEL-RETIREMENT-S02')
+@pytest.mark.parametrize('provider,model,catalog_rows,expected', [
+    ('venice', 'gemma-test', [venice_row('gemma-test', {'removesAt': '2026-12-01T00:00:00.000Z', 'replacementModelId': 'glm-test'})],
+     ModelRetirement(date=date(2026, 12, 1), replacement='glm-test')),
+    ('venice', 'glm-test', [venice_row('glm-test')], None),
+    ('openrouter', 'vendor/model', [{'id': 'vendor/model', 'object': 'model', 'created': 0, 'owned_by': 'x', 'context_length': 100000, 'expiration_date': '2026-12-11'}],
+     ModelRetirement(date=date(2026, 12, 11), replacement=None)),
+    ('openrouter', 'vendor/model', [{'id': 'vendor/model', 'object': 'model', 'created': 0, 'owned_by': 'x', 'context_length': 100000, 'expiration_date': None}], None),
+])
+def test_the_gateway_remembers_the_retirement_of_the_model_it_called(monkeypatch, accounted_call, provider, model, catalog_rows, expected):
+    import threading
+    from storygen.providers.streaming import build_generation_gateway
+    monkeypatch.setenv('VENICE_API_KEY', 'test'); monkeypatch.setenv('OPENROUTER_API_KEY', 'test')
+    def handler(request):
+        return httpx.Response(200, json={'data': catalog_rows}) if request.method == 'GET' else _stream()
+    ctx = _bundle(provider, model)
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        gateway = build_generation_gateway(ctx.settings.provider, client, accounted_call(provider, model))
+        events = list(gateway.stream(ctx, threading.Event()))
+    assert events[-1].type == 'terminal'
+    assert gateway.retirement == expected
+
+
+@pytest.mark.req('MODEL-RETIREMENT-S02')
+def test_server_texts_match_the_interface_catalog_so_english_can_translate_them():
+    import json as _json
+    from pathlib import Path
+    uk = _json.loads((Path(__file__).resolve().parents[2] / 'src/storygen/web/static/i18n.json').read_text(encoding='utf-8'))['uk']
+    fill = lambda key, *values: uk[key].replace('{p0}', values[0]).replace('{p1}', values[1] if len(values) > 1 else '').replace('{p2}', values[2] if len(values) > 2 else '')
+    assert retirement_warning('m', ModelRetirement(date=date(2026, 12, 1), replacement='r')) == fill('models.retiring_warning', 'm', '01.12.2026', 'r')
+    assert retirement_warning('m', ModelRetirement(date=date(2026, 12, 1))) == fill('models.retiring_warning_no_replacement', 'm', '01.12.2026')
+    with pytest.raises(VeniceModelUnavailable) as missing:
+        validate_model(catalog(), 'm', False, require_uncensored=False)
+    assert str(missing.value) == fill('models.missing_in_catalog', 'm')
+    row = venice_row('m'); row['model_spec']['uncensored'] = False
+    with pytest.raises(VeniceModelUnavailable) as censored:
+        validate_model(catalog(row), 'm', False)
+    assert str(censored.value) == fill('models.not_uncensored', 'm')

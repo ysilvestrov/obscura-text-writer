@@ -1,0 +1,20 @@
+// MODEL-RETIREMENT-S04: the picker marks a model the provider retires, with the date and the replacement.
+import assert from 'node:assert/strict';
+import {pathToFileURL} from 'node:url';
+globalThis.document={querySelector:()=>null,addEventListener:()=>{}};
+const {modelBadges,retirementLabel}=await import(pathToFileURL(process.argv[2]+'/src/storygen/web/static/model-picker.js'));
+const {t,setLocale}=await import(pathToFileURL(process.argv[2]+'/src/storygen/web/static/i18n.js'));
+const retiring={id:'gemma',privacy:'private',uncensored:true,supports_schema:true,retirement:{date:'2026-12-01',replacement:'glm'}};
+const bare={id:'vendor/x',privacy:'unknown',retirement:{date:'2026-12-11',replacement:null}};
+assert.deepEqual(modelBadges(retiring).map(b=>b.kind),['uncensored','private','schema','retiring']);
+const badge=modelBadges(retiring).at(-1);
+assert.equal(t(badge.key,badge.params),'Прибирають 01.12.2026');
+assert.equal(retirementLabel(retiring),'Провайдер прибирає модель 01.12.2026; заміна: glm.');
+assert.equal(retirementLabel(bare),'Провайдер прибирає модель 11.12.2026.');
+assert.equal(retirementLabel({id:'kept',retirement:null}),'');
+assert.equal(retirementLabel({id:'odd',retirement:{date:'soon'}}),'');
+assert.equal(retirementLabel(null),'');
+assert.deepEqual(modelBadges({id:'kept',privacy:'private'}).map(b=>b.kind),['private']);
+setLocale('en');
+assert.equal(retirementLabel(retiring),'The provider retires this model on 01.12.2026; replacement: glm.');
+console.log('model retirement check passed');

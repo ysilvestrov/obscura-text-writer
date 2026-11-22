@@ -109,9 +109,11 @@ async function load(onlyRole=null){
           body.expected_revision=await checkScope(role,form.serverBaseline,shared);
           if(shared){body.provider=provider();snapshot.story=await api(`/api/stories/${id}/settings/shared-provider`,json('PUT',body));for(const other of others){other.applyProvider(body.provider);settingsRebaseFields(other.dataset.role,providerNames)}}
           else snapshot.story=await api(`/api/stories/${id}/settings`,json('PUT',body));
+          // MODEL-RETIREMENT-S04: read before load() replaces the snapshot; a retiring model is named instead of the plain success.
+          const retiring=snapshot.story.model_warnings;
           settingsSaved(role);await load(role);
           if(shared)for(const other of others)other.serverBaseline=structuredClone(roleScope(snapshot,other.dataset.role));
-          notice(shared?t("m_34d0e77fcf4b"):t("m_3face1913579"));
+          if(retiring?.length)notice(retiring.join(' '),'warning');else notice(shared?t("m_34d0e77fcf4b"):t("m_3face1913579"));
         });
       }catch(e){settingsFormError(role,e);notice(e.message,'error')}
     };

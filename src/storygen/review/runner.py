@@ -67,6 +67,8 @@ def call(worker,run,stage,context):
     worker.event(run.id,'stage_started',dict(stage=stage,scene_id=context.scene_id,phase=run.impact['phase'],model=context.settings.provider.model,provider=context.settings.provider.provider,estimated_tokens=context.estimated_tokens))
     a=execute_stage(worker.repo,context.scene_id,stage,context,worker.gateway_factory(context.settings.provider),worker.cancel_event,
         lambda text:worker.event(run.id,'delta',dict(stage=stage,scene_id=context.scene_id,text=text)),run.id,task_cursor=run.cursor)
+    from ..generation.run_warnings import carry
+    carry(worker,run.id,a,stage,context.scene_id)
     worker.event(run.id,'stage_finished',dict(attempt_id=a.id,state=a.state,usage=a.usage,finish_reason=a.finish_reason))
     if a.state!='completed':
         current=worker.get_run(run.id);current.impact['failed_attempt']=a.id

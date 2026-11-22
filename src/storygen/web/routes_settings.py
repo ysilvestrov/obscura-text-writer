@@ -7,7 +7,7 @@ from ..generation.models import StoryBlueprint, StyleProfile, default_style_prof
 from ..generation.prompts import default_prompt, role_prompt, expected_contract
 from ..providers.discovery import discover_models
 from ..providers.models import ProviderSettings, RoleSettings
-from ..providers.schema_support import catalog_problem, role_problem
+from ..providers.schema_support import catalog_check, role_check
 
 router=APIRouter()
 
@@ -44,8 +44,11 @@ def shared_provider(story_id: str,change: SharedProviderChange,request: Request)
     rows=get_role_settings(repo,story_id)
     if change.role and settings is not None:rows[change.role]=settings
     rows={role:rows.get(role,RoleSettings(provider=change.provider)) for role in ROLES}
-    message=catalog_problem(change.provider,[(row.context_tokens,row.max_output_tokens) for row in rows.values()])
-    if not message and change.role and settings is not None:message=role_problem(settings.model_copy(update={'provider':change.provider}))
+    message,warning=catalog_check(change.provider,[(row.context_tokens,row.max_output_tokens) for row in rows.values()])
+    warnings=[warning] if warning else []
+    if not message and change.role and settings is not None:
+        message,extra=role_check(settings.model_copy(update={'provider':change.provider}))
+        warnings+=[item for item in extra if item not in warnings]
     if message:raise ValueError(message)
     if change.profile is not None or change.target_words is not None:raise ValueError('Профіль і обсяг зберігаються окремо')
     if change.role:
@@ -53,7 +56,7 @@ def shared_provider(story_id: str,change: SharedProviderChange,request: Request)
         settings=configure_prompts(repo,story_id,change,settings)
     elif settings is not None or change.prompt_text is not None or change.prepare_prompt_text is not None:
         raise ValueError('Оберіть роль для налаштувань промпту')
-    return save_shared_provider(repo,story_id,change.provider,change.expected_revision,change.role,settings)
+    return with_model_warnings(save_shared_provider(repo,story_id,change.provider,change.expected_revision,change.role,settings),warnings)
 
 
 @router.get('/stories/{story_id}/settings')
@@ -86,10 +89,15 @@ def write_settings(story_id: str,change: SettingsChange,request: Request):
     if not change.role or change.settings is None or change.profile is not None:
         raise ValueError('Збережіть окремо профіль або одну роль')
     # Catalog lookup is a network call: do it before any write (configure_prompts stores prompt versions).
-    message=role_problem(change.settings)
+    message,warnings=role_check(change.settings)
     if message:raise ValueError(message)
     settings=configure_prompts(repo,story_id,change,change.settings)
-    return save_role_settings(repo,story_id,change.role,settings,change.expected_revision)
+    return with_model_warnings(save_role_settings(repo,story_id,change.role,settings,change.expected_revision),warnings)
+
+
+def with_model_warnings(story,warnings):
+    """MODEL-RETIREMENT-S04: the saved story, plus `model_warnings` only when the provider retires a saved model."""
+    return {**story.model_dump(mode='json'),'model_warnings':warnings} if warnings else story
 
 
 def configure_prompts(repo,story_id,change,settings):

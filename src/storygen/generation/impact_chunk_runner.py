@@ -107,6 +107,8 @@ def execute(worker,id):
                 worker.event(id,'stage_started',{'stage':'impact_part','phase':task['phase'],'part':run.cursor+1,'parts':len(run.tasks),'scene_id':task['scene_id'],'model':context.settings.provider.model,'provider':context.settings.provider.provider,'estimated_tokens':context.estimated_tokens})
                 attempt=execute_stage(worker.repo,task['scene_id'],'impact_part',context,worker.gateway_factory(context.settings.provider),worker.cancel_event,
                     lambda text:worker.event(id,'delta',{'text':text,'stage':'impact_part','scene_id':task['scene_id']}),id,task_cursor=run.cursor)
+                from .run_warnings import carry
+                carry(worker,id,attempt,'impact_part',task['scene_id'])
                 worker.event(id,'stage_finished',{'attempt_id':attempt.id,'state':attempt.state,'usage':attempt.usage,'finish_reason':attempt.finish_reason})
             if attempt.state!='completed':
                 current=worker.get_run(id);current.state='cancelled' if worker.cancel_event.is_set() else 'failed';current.error=attempt.error;worker._save(current);worker.event(id,'state',{'state':current.state,'error':current.error});return

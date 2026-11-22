@@ -9,12 +9,25 @@ export function privacyLevel(model){
   return Object.hasOwn(PRIVACY_RANK,model.privacy)?model.privacy:'unknown';
 }
 
+// MODEL-RETIREMENT-S04: the provider's own removal date from the catalog, shown as DD.MM.YYYY; anything else is unknown.
+const retirementDay=model=>{const day=/^(\d{4})-(\d{2})-(\d{2})$/.exec(String(model?.retirement?.date||''));return day?`${day[3]}.${day[2]}.${day[1]}`:null};
+
 export function modelBadges(model){
   const kinds=[];
   if(model.uncensored===true)kinds.push('uncensored');
   kinds.push(privacyLevel(model));
   if(model.supports_schema===true)kinds.push('schema');
-  return kinds.map(kind=>({kind,key:`models.badge_${kind}`}));
+  const badges=kinds.map(kind=>({kind,key:`models.badge_${kind}`}));
+  const day=retirementDay(model);
+  if(day)badges.push({kind:'retiring',key:'models.badge_retiring',params:{p0:day}});
+  return badges;
+}
+
+export function retirementLabel(model){
+  const day=retirementDay(model);
+  if(!day)return '';
+  const replacement=model.retirement.replacement;
+  return replacement?t('models.retiring_info',{p0:day,p1:replacement}):t('models.retiring_info_no_replacement',{p0:day});
 }
 
 export const providerReportsPrivacy=provider=>provider==='venice';
@@ -69,7 +82,7 @@ const SORT_KEYS={name:m=>String(m.name||m.id).toLowerCase(),context:m=>Number.is
 const COLUMNS=[['name','models.col_model'],[null,'models.col_badges'],['context','models.col_context'],['input','models.col_input'],['output','models.col_output']];
 let pickerCount=0;
 function el(tag,props={},...children){const node=document.createElement(tag);for(const[k,v]of Object.entries(props))if(k in node&&!k.includes('-'))node[k]=v;else node.setAttribute(k,v);node.append(...children);return node}
-const badgeList=model=>el('span',{className:'model-badges'},...modelBadges(model).map(b=>el('span',{className:`model-badge model-badge-${b.kind}`},t(b.key))));
+const badgeList=model=>el('span',{className:'model-badges'},...modelBadges(model).map(b=>el('span',{className:`model-badge model-badge-${b.kind}`},t(b.key,b.params))));
 
 export function mountModelPicker({host,modelInput,providerInput,baseUrlInput,responseModeInput=null,limitInputs={}}){
   const uid=`model-picker-${++pickerCount}`;host.classList.add('model-picker');
@@ -119,7 +132,7 @@ export function mountModelPicker({host,modelInput,providerInput,baseUrlInput,res
   }
   function renderChosen(){
     const model=current();code.textContent=modelInput.value||'—';badges.replaceChildren(...(model?[badgeList(model)]:[]));
-    uiText(info,'textContent',()=>bound()&&!model&&modelInput.value?t('models.not_in_catalog'):modelMetadataLabel(model));
+    uiText(info,'textContent',()=>bound()&&!model&&modelInput.value?t('models.not_in_catalog'):[modelMetadataLabel(model),retirementLabel(model)].filter(Boolean).join(' '));
     syncLimitBounds();const key=message||validate();uiText(blocked,'textContent',()=>pickerMessage(key));blocked.hidden=!key;
     const unknown=!key&&schemaUnknown(model,context());uiText(schemaHint,'textContent',()=>unknown?t('models.schema_unknown'):'');schemaHint.hidden=!unknown;
   }

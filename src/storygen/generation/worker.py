@@ -581,7 +581,7 @@ class RunCoordinator:
                     current=self.get_run(id)
                     current.state='cancelled' if stage in {'publication_suggest','rewrite','timeline_summary'} and (self.cancel_event.is_set() or current.state in {'cancellation_requested','cancelled'}) else attempt.state
                     current.error=attempt.error
-                    warnings=attempt.context.get('publication_warnings',[])+attempt.context.get('broken_text_warnings',[])
+                    warnings=attempt.context.get('publication_warnings',[])+attempt.context.get('broken_text_warnings',[])+attempt.context.get('model_retirement_warnings',[])
                     if warnings:
                         current.warning=merge_warnings(current.warning,warnings)
                         self.event(id,'context_warning',{'warnings':warnings,'stage':stage,'scene_id':None})
@@ -688,7 +688,7 @@ class RunCoordinator:
             )
             with self.condition:
                 current=self.get_run(id)
-                warnings=attempt.context.get('memory_warnings',[])+attempt.context.get('editor_warnings',[])+attempt.context.get('planner_warnings',[])+attempt.context.get('broken_text_warnings',[])
+                warnings=attempt.context.get('memory_warnings',[])+attempt.context.get('editor_warnings',[])+attempt.context.get('planner_warnings',[])+attempt.context.get('broken_text_warnings',[])+attempt.context.get('model_retirement_warnings',[])
                 if warnings:
                     current.warning=merge_warnings(current.warning,warnings)
                     self._save(current)
