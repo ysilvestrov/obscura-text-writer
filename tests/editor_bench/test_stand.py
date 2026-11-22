@@ -77,3 +77,9 @@ def test_the_next_model_edits_the_same_broken_text(bench_root, monkeypatch):
     assert first['state'] == second['state'] == 'needs_review', (first, second)
     assert seen[0] and seen[2], seen  # each model's first pass reads the broken text
     assert score(gold, broken, second['edited'])['off_gold_tokens'] == 0
+
+
+def test_a_second_part_reuses_the_bench_and_its_budget(bench_root):
+    first = stand.open_bench(bench_root / 'data', {'N': text()}, '3')
+    again = stand.open_bench(bench_root / 'data', {'N': text(), 'S': text()}, '3')
+    assert again.stories['N'] == first.stories['N'] and set(again.stories) == {'N', 'S'}

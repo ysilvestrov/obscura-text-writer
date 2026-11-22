@@ -122,13 +122,15 @@ def plan():
     return rows, total
 
 
-def paid():
+def paid(only):
     rows, total = plan()
     texts = load_texts()
     if set(texts) != set(TEXTS):
         raise SystemExit(f'Бракує текстів: {sorted(set(TEXTS) - set(texts))}')
     if total > float(CAP_USD):
         raise SystemExit('Найгірший випадок перевищує ліміт; скоротіть матрицю')
+    texts = {k: v for k, v in texts.items() if k in only}
+    rows = [r for r in rows if r[0] in only]
     broken = broken_texts(texts)
     bench = stand.open_bench(stand.ROOT / 'data', {k: v[0] for k, v in broken.items()}, CAP_USD)
     out = stand.ROOT / 'results.jsonl'
@@ -179,9 +181,10 @@ def main(argv=None):
     group.add_argument('--plan', action='store_true')
     group.add_argument('--paid', action='store_true')
     group.add_argument('--report', action='store_true')
+    parser.add_argument('--texts', default=''.join(TEXTS), help='which texts to run with --paid, e.g. NVT')
     args = parser.parse_args(argv)
     stand.isolated(stand.ROOT)
-    plan() if args.plan else paid() if args.paid else report()
+    plan() if args.plan else paid(set(args.texts)) if args.paid else report()
 
 
 if __name__ == '__main__':

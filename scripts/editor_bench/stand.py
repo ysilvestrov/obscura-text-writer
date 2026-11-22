@@ -88,13 +88,21 @@ class Bench:
 
 
 def open_bench(data_dir, texts: dict, limit_usd: str) -> Bench:
-    """One fresh story per text: its broken version as accepted prose, a neutral brief and the whole-test budget."""
+    """One story per text: its broken version as accepted prose, a neutral brief and the whole-test budget. A later
+    call on the same folder reuses the stories it made (bench.json), so the cap covers every part of the test."""
+    import json
     from storygen.billing.models import money
     from storygen.domain import SceneCreate, StoryCreate
     from storygen.storage.repository import Repository
-    repo = Repository(isolated(data_dir))
+    root = isolated(data_dir)
+    repo = Repository(root)
     bench = Bench(repo, limit_usd)
+    index = root / 'bench.json'
+    if index.exists():
+        bench.stories = {k: tuple(v) for k, v in json.loads(index.read_text(encoding='utf-8')).items()}
     for text_id, text in texts.items():
+        if text_id in bench.stories:
+            continue
         story = repo.create_story(StoryCreate(title=f'Editor bench {text_id}'))
         scene = repo.create_scene(story.id, SceneCreate(title=text_id, beats='Події сцени'))
         brief = repo.save_version(story.id, scene.id, 'brief', BRIEF, [])
@@ -103,6 +111,7 @@ def open_bench(data_dir, texts: dict, limit_usd: str) -> Bench:
         repo.set_head(scene.id, 'prose', ref.id, repo.get_scene(scene.id).revision)
         repo.billing('limit', scope='story:' + story.id, limit_nanos=money(limit_usd), expected_revision=0)
         bench.stories[text_id] = (story.id, scene.id)
+    index.write_text(json.dumps(bench.stories), encoding='utf-8')
     return bench
 
 
