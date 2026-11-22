@@ -161,3 +161,46 @@ def test_docx_validate_rejects_foreign_ids(tmp_path):
         docx.validate(content, replace(book, chapters=tuple(reversed(book.chapters))))
     with pytest.raises(ValueError):
         docx.validate(b'not a zip', book)
+
+
+@pytest.mark.parametrize('format,validation', [('docx', 'OOXML structure + scene bookmarks'), ('rtf', 'RTF 1.9 text')])
+def test_export_story_docx_and_rtf_manifest(tmp_path, format, validation):
+    import hashlib, json
+    from storygen.application.exports import export_story
+    repo, story = seeded(tmp_path, count=2)
+    path = export_story(repo, story.id, format)
+    manifest = json.loads(path.with_suffix('.manifest.json').read_text(encoding='utf-8'))
+    assert path.suffix == '.' + format and manifest['format'] == format and manifest['validation'] == validation
+    assert manifest['format_details'] == {'profile': docx.PROFILE}
+    assert manifest['output_sha256'] == hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+@pytest.mark.parametrize('format,mime', [('docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'),
+                                         ('rtf', 'application/rtf')])
+def test_download_docx_rtf_mime_and_name(tmp_path, format, mime):
+    from urllib.parse import unquote
+    from fastapi.testclient import TestClient
+    from storygen.application.settings import AppSettings
+    from storygen.web.app import create_app
+    repo, story = seeded(tmp_path, count=1, cover=False)
+    with TestClient(create_app(AppSettings(data_dir=tmp_path)), base_url='http://127.0.0.1:8765') as client:
+        urls = client.post(f'/api/stories/{story.id}/export', json={'format': format}).json()
+        response = client.get(urls['download_url'])
+        assert response.status_code == 200 and response.headers['content-type'].startswith(mime)
+        header = response.headers['content-disposition']
+        assert f'filename="{urls["download_url"].rsplit("/", 1)[-1]}"' in header
+        readable = unquote(header.split("filename*=UTF-8''", 1)[1])
+        assert readable.startswith('Псевдонім & Їжак — Публічна назва — 20') and readable.endswith('.' + format)
+
+
+def test_export_dialog_offers_docx_and_rtf():
+    import json
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[2] / 'src' / 'storygen' / 'web'
+    template = (root / 'templates' / 'story.html').read_text(encoding='utf-8')
+    assert '<option value="docx" data-i18n="export.docx_option">' in template
+    assert '<option value="rtf" data-i18n="export.rtf_option">' in template
+    catalog = json.loads((root / 'static' / 'i18n.json').read_text(encoding='utf-8'))
+    texts = [table for table in catalog.values() if isinstance(table, dict) and 'export.docx_option' in table]
+    assert len(texts) == 2 and {t['export.docx_option'] for t in texts} == {'Рукопис Word (.docx)', 'Word manuscript (.docx)'}
+    assert {t['export.rtf_option'] for t in texts} == {'Рукопис RTF (.rtf)', 'RTF manuscript (.rtf)'}
