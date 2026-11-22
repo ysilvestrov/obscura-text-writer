@@ -30,7 +30,7 @@ When you change early scenes, the outline or the characters, later materials may
 
 If you know that all the current prose of the book is your final text, a model check is not required. The **Accept all prose as the author's** button appears when the prose of at least one scene is waiting for a check.
 
-- The confirmation names the number and the titles of the scenes. The texts stay the same, and the check conclusions for these scenes become outdated.
+- The confirmation names the number and the titles of the scenes. The prose of later scenes that rely on them is accepted too, as it would otherwise become outdated. After one click no prose of the book is waiting for a check. The texts stay the same, and the check conclusions for the accepted scenes become outdated.
 - Only prose is accepted. Outdated briefs and memory remain and need updating separately.
 - Every scene gets an entry in the history of author decisions, as after accepting a single version.
 - All scenes are accepted together or none: if a scene changes after the confirmation is shown, nothing is accepted and you press the button again.
