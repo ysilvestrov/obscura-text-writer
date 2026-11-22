@@ -150,3 +150,18 @@ def test_memory_stage_of_a_scene_without_places_is_unchanged(tmp_path):
     context = build_context(repo, scene.id, 'memory', role())
     assert 'location_ids' not in context.fragments['memory_schema_bounds']
     assert 'LOCATION_IDS' not in context.user_text
+
+
+def test_writing_memory_keeps_a_state_of_an_absent_character_in_the_same_place(tmp_path):
+    from storygen.memory.journal import MemoryJournal, _add_event
+    repo, story, first, second = setup(tmp_path, other='Локація: Дім / кухня')
+    prose = repo.save_version(story.id, first.id, 'manual', 'Олег чекав у кухні.', [])
+    repo.set_head(first.id, 'prose', prose.id, repo.get_scene(first.id).revision)
+    events = [_add_event('character_states', 'Олег чекає біля плити', prose.id, 'Олег чекав у кухні.', 0, ['o'],
+                         location_ids=[lid(story, 'Дім', 'кухня')])]
+    memory = repo.save_version(story.id, first.id, 'memory',
+                               MemoryJournal(schema_version=3, source_prose_ids=[prose.id], events=events).model_dump_json(), [prose.id])
+    repo.set_head(first.id, 'memory', memory.id, repo.get_scene(first.id).revision)
+    assert 'Олег чекає біля плити' in build_context(repo, second.id, 'brief', role()).user_text
+    repo.update_scene_plan(second.id, 'Хто бере участь: Юлія\nЛокація: Ліс', repo.get_scene(second.id).revision)
+    assert 'Олег чекає біля плити' not in build_context(repo, second.id, 'brief', role()).user_text
