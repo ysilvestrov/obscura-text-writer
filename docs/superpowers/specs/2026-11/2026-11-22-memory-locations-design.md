@@ -1,7 +1,7 @@
 # Явні локації в пам'яті (#67, частина 1)
 
 Дата: 2026-11-22
-Статус: на затвердженні
+Статус: затверджено (22.11.2026)
 Spec-review: agy/gemini-4-argon @ 62304f7 (author: claude) — 5 findings: 5 fixed, 0 rejected (fallback: codex — usage limit)
 
 ## Для власника
