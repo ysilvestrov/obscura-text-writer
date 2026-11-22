@@ -1,7 +1,7 @@
 # R-43 — Експорт DOCX і RTF для редактури
 
 Дата: 2026-11-22
-Статус: чекає на затвердження
+Статус: затверджено 2026-11-22
 Spec-review: codex/gpt-6.1-sol @ e61f9dd (author: claude) — 4 findings: 4 fixed, 0 rejected
 
 GitHub [#268](https://github.com/ysilvestrov/obscura-text-writer/issues/268). Перший із чотирьох пакетів сценарію «редактура книги зовнішнім редактором» (R-43 → R-44 → R-45 → R-46).
