@@ -83,3 +83,32 @@ def invalidate_links(repo, story_id: str, scene_ids: list[str], reason: dict) ->
                                                     reason=cause, created_at=stamp))
             written.append(scene_id)
     return written
+
+
+def write_auditor_verdict(repo, story_id: str, scene_id: str, link: str, *, fingerprint: str | None, marker: int | None,
+                          outcome: str, confidence: int | None = None, discrepancies=(), reason: str | None = None,
+                          attempt_id: str | None = None, run_id: str | None = None) -> tuple[str, str | None]:
+    """VALID-LINKS: the auditor's verdict in one transaction with CAS. ('written', id); ('stale', None) when the link
+    fingerprint differs from `fingerprint` or, with a `marker`, an invalidation of this scene has a rowid above it;
+    ('structural', None) when link_state itself reports the link unavailable (no previous memory, carry, no memory):
+    such a state clears with its cause, while a record would outlive it under the same fingerprint."""
+    from .link_records import load_latest_invalidation_rowid
+    with repo.db.connection() as db:
+        db.execute('BEGIN IMMEDIATE')
+        view = ContextView(repo, db, story_id)
+        state = link_state(view, scene_id, link)
+        if state.status == 'unavailable' and state.source is None:
+            return 'structural', None
+        if fingerprint is None or state.status == 'missing' or state.fingerprint != fingerprint:
+            return 'stale', None
+        if marker is not None and load_latest_invalidation_rowid(db, story_id) > marker and any(
+                record.scene_id == scene_id and view.link_order[record.id] > marker for record in view.link_invalidations):
+            return 'stale', None
+        verdict = LinkVerdict(id=new_verdict_id(), story_id=story_id, scene_id=scene_id, link=link, inputs=state.inputs,
+                              fingerprint=fingerprint, source='auditor', outcome=outcome, confidence=confidence,
+                              discrepancies=list(discrepancies), reason=reason, attempt_id=attempt_id, run_id=run_id,
+                              created_at=now())
+        write_verdict(db, verdict)
+        if link == 'memory' and outcome == 'valid':
+            _record_equivalence(db, view, scene_id, verdict)  # Z3 kept after a prose change (design §4)
+    return 'written', verdict.id

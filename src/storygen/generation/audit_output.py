@@ -33,3 +33,12 @@ def parse_audit(raw: str) -> AuditResponse:
 
 def outcome(response: AuditResponse) -> Literal['valid', 'discrepancy']:
     return 'valid' if response.confidence >= VALID_CONFIDENCE and not response.discrepancies else 'discrepancy'
+
+
+def verdict_discrepancies(response: AuditResponse) -> list:
+    """The discrepancies as LinkVerdict stores them; an item the record cannot hold (empty text) is a wrong answer."""
+    from ..storage.link_records import Discrepancy as Stored
+    try:
+        return [Stored.model_validate(item.model_dump()) for item in response.discrepancies]
+    except ValidationError as exc:
+        raise ValueError('Відповідь Ревізора не відповідає схемі: кожна розбіжність потребує непорожнього тексту') from exc

@@ -146,7 +146,7 @@ def build_audit_context(repo, scene_id: str, link: LinkName, *, view=None) -> Co
     state = link_state(view, scene_id, link)
     if state.status == 'missing':
         raise ValueError(MISSING_LINK)
-    if state.status == 'unavailable':
+    if state.status == 'unavailable' and state.source is None:  # an auditor's overflow verdict is measured again
         return AuditUnavailable(state.reason, dict(state.inputs), state.fingerprint)
     marker = _invalidation_marker(view)  # from the same view as the fingerprint
     story = view.get_story(view.story.id)
