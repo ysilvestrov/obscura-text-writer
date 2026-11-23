@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 
 from ..storage.link_records import LinkName
 from .audit_output import LINK_STAGE
+from .auditor_settings import CUSTOM_PROMPT
 from .context import ContextBundle
 
 NOT_CONFIGURED = 'Роль не налаштовано: Ревізор'
@@ -17,7 +18,6 @@ MISSING_LINK = 'Зв’язок сцени ще не має обох компо�
 FOREIGN_PREVIOUS = 'Пам’ять попередньої сцени незавершена або належить іншій сцені чи твору'
 FOREIGN_SOURCE = 'Пам’ять попередньої сцени містить невідоме або стороннє джерело'
 UNREADABLE = 'Матеріал перевірки не прочитано'
-CUSTOM_PROMPT = 'Промпт ролі потребує оновлення: Ревізор'
 OVERFLOW_CHARS = 'Вхід перевірки перевищує ліміт Ревізора: {chars} символів із {limit}'
 OVERFLOW_TOKENS = 'Вхід перевірки перевищує ліміт Ревізора: приблизно {tokens} токенів із {limit}'
 # Fields of a memory event that name versions (event_id is derived from them): left out, as in links.memory_digest.
@@ -85,17 +85,15 @@ def _reference(view, story, scene, scenes, refs):
     return '\n\n'.join(parts)
 
 
-def _system_text(view, story, settings, link, refs):
+def _system_text(repo, view, story, settings, link, refs):
+    """The custom prompt passes PROMPT-CONTRACT here, before the API call, as at role save and preflight."""
     from ..language import load_prompt
-    from .auditor_settings import prompt_version_for
-    custom = prompt_version_for(settings, LINK_STAGE[link])
-    if not custom:
+    from .auditor_settings import validate_auditor_prompt
+    ref = validate_auditor_prompt(repo, story.id, settings, LINK_STAGE[link])
+    if ref is None:
         return load_prompt(f'audit_{link}_v1', story.language)
-    ref = view.versions.get(custom)
-    if ref is None or ref.story_id != story.id or ref.kind != 'prompt' or not ref.complete:
-        raise ValueError(CUSTOM_PROMPT)
-    refs.append(custom)
-    return view.read_text(custom)
+    refs.append(ref.id)
+    return view.read_text(ref.id)
 
 
 def _inputs(view, story, scene, link, refs):
@@ -165,7 +163,7 @@ def build_audit_context(repo, scene_id: str, link: LinkName, *, view=None) -> Co
         return AuditUnavailable(UNREADABLE, dict(state.inputs), state.fingerprint)
     except ValueError as exc:
         return AuditUnavailable(str(exc) or UNREADABLE, dict(state.inputs), state.fingerprint)
-    system = _system_text(view, story, settings, link, refs)
+    system = _system_text(repo, view, story, settings, link, refs)
     user = json.dumps(payload, ensure_ascii=False)
     body = generation_request(stage, settings, system, user, {})
     prediction = token_estimate(repo, settings.provider.provider, settings.provider.base_url, body)

@@ -7950,9 +7950,18 @@
       }
     },
     {
+      "id": "VALID-AUDITOR-S08",
+      "requirement": "VALID-AUDITOR",
+      "scope": "Чужий, без призначення, з контрактом іншого етапу чи відсутній власний промпт Ревізора відхиляє побудову контексту до виклику текстом validate_role_prompt.",
+      "tests": [
+        "tests/generation/test_audit_context.py::test_invalid_custom_prompt_refuses_the_context",
+        "tests/generation/test_audit_context.py::test_missing_custom_prompt_version_refuses_the_context"
+      ]
+    },
+    {
       "id": "VALID-RUN-S01",
       "requirement": "VALID-RUN",
-      "scope": "Запит audit, зв’язки в порядку читання, calls лише з викликом, похідний Ревізор, відмови валідної сцени й без Ревізора, carry_pending без виклику, текст згоди.",
+      "scope": "Запит audit, зв’язки в порядку читання, calls лише з викликом, похідний Ревізор, відмови валідної сцени й без Ревізора, промпти лише етапів із викликом за PROMPT-CONTRACT, carry_pending без виклику, текст згоди, роль audit → auditor для посилання налаштувань.",
       "tests": [
         "tests/generation/test_audit_run.py::test_request_needs_a_scene_and_scope",
         "tests/generation/test_audit_run.py::test_pending_links_in_reading_order_skip_valid_and_missing",
@@ -7964,11 +7973,14 @@
         "tests/generation/test_audit_run.py::test_without_editor_and_auditor_the_role_is_not_configured",
         "tests/generation/test_audit_run.py::test_carry_pending_link_counts_but_gets_no_call",
         "tests/generation/test_audit_run.py::test_coordinator_readiness_offers_the_audit_operation",
+        "tests/generation/test_audit_run.py::test_preview_refuses_an_invalid_prompt_of_a_called_stage",
+        "tests/generation/test_audit_run.py::test_preview_checks_only_the_prompts_of_called_stages",
+        "tests/web/test_workspace_navigation.py::test_workspace_settings_links_and_usage_are_explicit",
         "tests/web/test_editor_loop_ui.py::test_loop_limit_and_confirmation_only_name_editor"
       ],
       "manual": {
         "procedure": "docs/verification/manual.md#scene-audit-browser",
-        "reason": "check_docs.py індексує лише pytest; Playwright case tests/web/browser/scene-audit.spec.mjs (кнопка «Перевірити сцену», перегляд зі зв’язками й моделлю, «Скасувати») виконується окремим runner, цей зв’язок не є доказом виконання."
+        "reason": "check_docs.py індексує лише pytest; Playwright case tests/web/browser/scene-audit.spec.mjs (кнопка «Перевірити сцену», перегляд зі зв’язками й моделлю, «Скасувати», план запуску «План: … · до N викл.» без «невідомо») виконується окремим runner, цей зв’язок не є доказом виконання."
       }
     },
     {
@@ -8001,7 +8013,7 @@
     {
       "id": "VALID-RUN-S04",
       "requirement": "VALID-RUN",
-      "scope": "stale ≤ 3 поспіль, пауза й скасування між викликами, скасований виклик ≠ збій, явний повтор після збою, interrupted після рестарту.",
+      "scope": "stale ≤ 3 поспіль, пауза й скасування між викликами, скасований виклик ≠ збій, явний повтор після збою, interrupted після рестарту, недійсний промпт → failed без виклику.",
       "tests": [
         "tests/generation/test_audit_run.py::test_stale_verdict_rechecks_the_link",
         "tests/generation/test_audit_run.py::test_three_stale_verdicts_in_a_row_fail_the_run",
@@ -8009,7 +8021,8 @@
         "tests/generation/test_audit_run.py::test_cancel_between_calls",
         "tests/generation/test_audit_run.py::test_cancelled_call_is_not_a_model_failure",
         "tests/generation/test_audit_run.py::test_model_failure_fails_the_run_and_needs_an_explicit_repeat",
-        "tests/generation/test_audit_run.py::test_restart_interrupts_a_running_audit"
+        "tests/generation/test_audit_run.py::test_restart_interrupts_a_running_audit",
+        "tests/generation/test_audit_run.py::test_invalid_prompt_fails_the_run_before_any_call"
       ]
     }
   ]

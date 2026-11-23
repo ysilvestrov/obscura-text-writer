@@ -350,3 +350,45 @@ def test_check_after_card_invalidation_calls_the_auditor_again(tmp_path):
     assert run.state == 'completed', (run.state, run.error, run.checkpoint)
     assert [c.stage for c in gateway.contexts] == ['audit_brief', 'audit_prose']
     assert scene_validity(repo.context_view(story.id), scene.id) == 'valid'
+
+
+@pytest.mark.req('VALID-RUN')
+@pytest.mark.parametrize('case', ['incompatible', 'no_contract', 'foreign'])
+def test_preview_refuses_an_invalid_prompt_of_a_called_stage(tmp_path, case):
+    from tests.generation.test_audit_context import bad_prompt, force_auditor, prompt_error
+    repo, story, (scene,) = unchecked_scene(tmp_path)  # brief and prose are called
+    changes, stage = bad_prompt(repo, story, case)
+    settings = force_auditor(repo, story, **changes)
+    result = preview(repo, request(story, scene))
+    assert result['ready'] is False
+    assert result['reason'] == prompt_error(repo, story, settings, stage)
+    with pytest.raises(ValueError, match='ромпт'):
+        RunCoordinator(repo).enqueue(request(story, scene), 'bad-prompt')
+
+
+def test_preview_checks_only_the_prompts_of_called_stages(tmp_path):
+    from storygen.domain import PromptContract
+    from tests.generation.test_audit_context import force_auditor
+    repo, story, (scene,) = unchecked_scene(tmp_path)  # brief and prose are called, memory is valid
+    main = repo.save_version(story.id, None, 'prompt', 'Власний промпт прози.', [],
+                             prompt_contract=PromptContract(stage='audit_prose', mode='json', schema_version=1))
+    wrong = repo.save_version(story.id, None, 'prompt', 'Промпт прози на місці пам’яті.', [],
+                              prompt_contract=PromptContract(stage='audit_prose', mode='json', schema_version=1))
+    # The main prompt is not checked as the brief prompt, and the memory link takes no call.
+    force_auditor(repo, story, prompt_version_id=main.id, stage_prompt_version_ids={'audit_memory': wrong.id})
+    result = preview(repo, request(story, scene))
+    assert result['ready'] is True, result['reason']
+
+
+@pytest.mark.req('VALID-RUN')
+def test_invalid_prompt_fails_the_run_before_any_call(tmp_path):
+    from tests.generation.test_audit_context import bad_prompt, force_auditor, prompt_error
+    repo, story, (scene,) = unchecked_scene(tmp_path)
+    gateway = Answers(answer(95))
+    worker, run = start(repo, story, scene, gateway)
+    changes, stage = bad_prompt(repo, story, 'no_contract')  # the prompt goes bad after the run was enqueued
+    settings = force_auditor(repo, story, **changes)
+    run = drive(worker, run.id)
+    assert run.state == 'failed' and gateway.contexts == []
+    assert run.error == prompt_error(repo, story, settings, stage)
+    assert run.checkpoint['outcome'] == 'failed' and run.checkpoint['link'] == 'brief'

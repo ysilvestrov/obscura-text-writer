@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {settingsLink,returnLink,usageText,compactBudgetText} from '../../../src/storygen/web/static/workspace-links.js';
 import {activateStageTab,setStageTabStops} from '../../../src/storygen/web/static/workspace-tabs.js';
-import {runSettingsRole} from '../../../src/storygen/web/static/roles.js';
+import {runSettingsRole,operationRole} from '../../../src/storygen/web/static/roles.js';
 const link=settingsLink('s','c','draft','editor');
 assert.equal(new URL(link,'http://local').pathname,'/stories/s/settings');
 assert.equal(returnLink('s',new URL(link,'http://local').search),'/stories/s?scene=c&material=draft');
@@ -31,4 +31,10 @@ assert.equal(runSettingsRole({request:{mode:'publication_suggest'},tasks:[{stage
 assert.equal(runSettingsRole(null),null);
 assert.equal(runSettingsRole({request:{mode:'audit',audit_scope:'scene'},tasks:[{stage:'audit'}],cursor:0}),'auditor');
 assert.equal(runSettingsRole({request:{mode:'audit',audit_scope:'scene'},tasks:[{stage:'audit'}],cursor:1}),'auditor');
+// A refused operation names the role of its stage or mode: «Перевірити сцену» dispatches stage 'audit'.
+assert.equal(operationRole('audit'),'auditor');
+assert.equal(operationRole('edit_loop'),'editor');
+assert.equal(operationRole('draft'),'writer');
+assert.equal(operationRole('audit_memory'),'auditor');
+assert.equal(operationRole('publication_suggest'),null);
 console.log('Workspace links and missing usage regressions passed');

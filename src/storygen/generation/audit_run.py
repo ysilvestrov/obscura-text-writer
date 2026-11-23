@@ -39,7 +39,8 @@ def readiness(repo, request, view=None, resume=False) -> dict:
     from ..providers.policy import request_rating
     from ..rating.guard import enforce_edition_limit
     from .audit_context import MISSING_LINK, NOT_CONFIGURED
-    from .auditor_settings import resolve_auditor
+    from .audit_output import LINK_STAGE
+    from .auditor_settings import resolve_auditor, validate_auditor_prompt
     from .readiness import _check_model_policy
     result = {'ready': False, 'reason': None, 'roles': {}, 'calls': 0, 'evaluator': None, 'warnings': [], 'links': []}
     try:
@@ -61,6 +62,10 @@ def readiness(repo, request, view=None, resume=False) -> dict:
         result['roles'] = {'auditor': settings.provider.model_dump(include={'provider', 'model'})}
         result['calls'] = _calls(states, links)
         if result['calls']:
+            # PROMPT-CONTRACT: the prompts of the stages this run may call; context build checks again before each call.
+            for link in links:
+                if _called(states[link]):
+                    validate_auditor_prompt(repo, story.id, settings, LINK_STAGE[link])
             rated = view.get_story(story.id)
             enforce_edition_limit(rated, view.get_scene(scene.id))
             _check_model_policy(repo, 'auditor', settings.provider, request_rating(view, rated, [scene.id]))

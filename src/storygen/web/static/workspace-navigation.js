@@ -1,6 +1,6 @@
 import {t,msg,labelEntries,getLocale,uiText,uiAttr,uiHTML} from './i18n.js';
 import {settingsLink,returnLink} from './workspace-links.js';
-import {ROLES,STAGE_ROLE,runSettingsRole} from './roles.js';
+import {ROLES,operationRole,runSettingsRole} from './roles.js';
 
 const settings=document.querySelector('.settings-page');
 if(settings){
@@ -33,11 +33,11 @@ if(workspace){
     link.hidden=!href;if(href){link.href=href;uiText(link,"textContent",()=>(t("m_1a02bd37b311")+({get planner(){return t("m_1e464d8b93dd")},get writer(){return t("m_496366aa31cf")},get editor(){return t("m_15d82eb3de76")},get memory(){return t("m_de7953232eda")},get auditor(){return t("m_491497217576")}}[role])))}
   }
   link.onclick=event=>{if(state.dirty||state.saving){event.preventDefault();document.dispatchEvent(new CustomEvent('workspace-navigation-blocked'));void import('./api.js').then(({notice})=>notice(msg("m_df05df152938"),'warning'))}};
-  document.addEventListener('workspace-operation-error',event=>show(STAGE_ROLE[event.detail.stage]));
+  document.addEventListener('workspace-operation-error',event=>show(operationRole(event.detail.stage)));
   document.addEventListener('workspace-readiness',()=>{
     const operation={plan:'brief',brief:'draft',draft:'edit_loop',prose:'memory'}[state.mode];
     const result=state.workspaceReadiness?.operations[operation];
-    if(result&&!result.ready&&/контекст|reasoning|токен|налашт|модель|timeout/i.test(result.reason||''))show({...STAGE_ROLE,edit_loop:'editor'}[operation]);
+    if(result&&!result.ready&&/контекст|reasoning|токен|налашт|модель|timeout/i.test(result.reason||''))show(operationRole(operation));
     else if(state.workspaceRun?.state!=='failed')link.hidden=true;
   });
   document.addEventListener('workspace-run-state',event=>{

@@ -2,6 +2,7 @@
 from ..providers.models import RoleSettings
 
 AUDITOR_TEMPERATURE = 0.2
+CUSTOM_PROMPT = 'Промпт ролі потребує оновлення: Ревізор'
 STAGE_PROMPT_KEYS = ('audit_brief', 'audit_memory')
 
 
@@ -32,3 +33,14 @@ def prompt_version_for(settings: RoleSettings, stage: str) -> str | None:
     if stage in STAGE_PROMPT_KEYS:
         return settings.stage_prompt_version_ids.get(stage)
     raise ValueError('Невідомий етап перевірки')
+
+
+def validate_auditor_prompt(repo, story_id: str, settings: RoleSettings, stage: str):
+    """PROMPT-CONTRACT for one audit stage: ownership, type, freshness and contract of its custom prompt, with the texts
+    validate_role_prompt gives other roles; a version that no longer exists reads as CUSTOM_PROMPT. None for the builtin."""
+    from ..prompt_contracts import validate_role_prompt
+    try:
+        return validate_role_prompt(repo, story_id, stage,
+                                    settings.model_copy(update={'prompt_version_id': prompt_version_for(settings, stage)}))
+    except KeyError:
+        raise ValueError(CUSTOM_PROMPT) from None

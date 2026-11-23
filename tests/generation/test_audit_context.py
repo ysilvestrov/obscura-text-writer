@@ -186,3 +186,61 @@ def test_english_story_uses_english_prompt(tmp_path):
     auditor(repo, story)
     context = build_audit_context(repo, scene.id, 'brief')
     assert context.system_text.startswith('You are a story auditor')
+
+
+def force_auditor(repo, story, **changes):
+    """Writes the auditor row past save_role_settings, as a row saved before its prompt went bad would read."""
+    from storygen.authoring.blueprints import get_role_settings
+    current = get_role_settings(repo, story.id)['auditor'].model_copy(update=changes)
+    with repo.db.connection() as db:
+        db.execute('INSERT OR REPLACE INTO role_settings VALUES(?,?,?)', (story.id, 'auditor', current.model_dump_json()))
+    return current
+
+
+def bad_prompt(repo, story, case):
+    """(settings changes, stage) of a custom auditor prompt that PROMPT-CONTRACT refuses."""
+    if case == 'incompatible':  # an audit_brief prompt as the main audit_prose prompt
+        prompt = repo.save_version(story.id, None, 'prompt', 'Промпт завдання.', [],
+                                   prompt_contract=PromptContract(stage='audit_brief', mode='json', schema_version=1))
+        return {'prompt_version_id': prompt.id}, 'audit_prose'
+    if case == 'no_contract':
+        prompt = repo.save_version(story.id, None, 'prompt', 'Промпт без призначення.', [])
+        return {'stage_prompt_version_ids': {'audit_brief': prompt.id}}, 'audit_brief'
+    other = repo.create_story(StoryCreate(title='Інший твір'))
+    prompt = repo.save_version(other.id, None, 'prompt', 'Чужий промпт.', [],
+                               prompt_contract=PromptContract(stage='audit_brief', mode='json', schema_version=1))
+    return {'stage_prompt_version_ids': {'audit_brief': prompt.id}}, 'audit_brief'
+
+
+def prompt_error(repo, story, settings, stage):
+    """The text validate_role_prompt gives other roles for the same prompt."""
+    from storygen.generation.auditor_settings import prompt_version_for
+    from storygen.prompt_contracts import validate_role_prompt
+    with pytest.raises(ValueError) as error:
+        validate_role_prompt(repo, story.id, stage,
+                             settings.model_copy(update={'prompt_version_id': prompt_version_for(settings, stage)}))
+    return str(error.value)
+
+
+@pytest.mark.req('VALID-AUDITOR')
+@pytest.mark.parametrize('case', ['incompatible', 'no_contract', 'foreign'])
+def test_invalid_custom_prompt_refuses_the_context(tmp_path, case):
+    repo, story, (scene,) = book(tmp_path)
+    auditor(repo, story)
+    save_manual_brief(repo, repo.get_scene(scene.id))
+    changes, stage = bad_prompt(repo, story, case)
+    settings = force_auditor(repo, story, **changes)
+    link = stage.removeprefix('audit_')
+    expected = prompt_error(repo, story, settings, stage)
+    with pytest.raises(ValueError) as error:
+        build_audit_context(repo, scene.id, link)
+    assert str(error.value) == expected
+
+
+def test_missing_custom_prompt_version_refuses_the_context(tmp_path):
+    repo, story, (scene,) = book(tmp_path)
+    auditor(repo, story)
+    save_manual_brief(repo, repo.get_scene(scene.id))
+    force_auditor(repo, story, stage_prompt_version_ids={'audit_brief': 'missing-version'})
+    with pytest.raises(ValueError, match='Промпт ролі потребує оновлення: Ревізор'):
+        build_audit_context(repo, scene.id, 'brief')
