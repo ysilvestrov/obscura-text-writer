@@ -8,7 +8,7 @@
 
 ## Microsoft Store
 
-Obscura is available in the Microsoft Store: [Obscura Text Writer](https://apps.microsoft.com/detail/9NQBVZW2SW2X?hl=en-US). It installs from there without Python or a console, with the bridge for chat clients and the Claude skills included, and updates through the Store. The free Store version has limits (long prose, series, ratings above the edition limit), described in [Chat clients (MCP)](mcp.md#the-microsoft-store-version). For the full set of features, install the application from source with the steps below.
+Obscura is available in the Microsoft Store: [Obscura Text Writer](https://apps.microsoft.com/detail/9NQBVZW2SW2X?hl=en-US). It installs from there without Python or a console, with the bridge for chat clients and the Claude skills included, and updates through the Store. The free Store version has no [parts and arcs](book-structure.md), no [book series](series.md) and no level 2 of sexual content ([Age rating](content-rating.md)). The workspace has no buttons for running several scenes automatically: a chat over [MCP](mcp.md#the-microsoft-store-version) runs several stages or scenes in a row. What the paid version adds is described on the [Paid version](paid.md) page. For the full set of features, install the application from source with the steps below.
 
 Obscura connects to chat clients (Claude Desktop, Claude Code) with the “Connect to Claude” button in the library; see [Chat clients (MCP)](mcp.md).
 
