@@ -175,6 +175,10 @@ class RunCoordinator:
             telemetry={'roles':readiness.get('roles',{}),'calls':readiness.get('calls')} if readiness is not None else None
             if telemetry is not None and readiness.get('evaluator'):
                 telemetry['evaluator']=readiness['evaluator']
+            if telemetry is not None and request.mode=='audit':
+                telemetry['cost_bound_usd']=(readiness.get('cost') or {}).get('total_usd')
+                if request.audit_scope=='story':
+                    telemetry['scenes']=readiness.get('invalid_scenes')
             candidate=Run(id=new_id(),story_id=request.story_id,request_id=request_id,request=request,tasks=tasks,planned_telemetry=telemetry,origin=origin)
             run,created=self.repo.enqueue_run(candidate)
             if created:
@@ -336,6 +340,11 @@ class RunCoordinator:
             result=self.run_readiness(id)
             if not result['ready']:
                 raise ValueError(result['reason'])
+            from .run_progress import extend_plan,progress_from_events,visited_scene_ids
+            events=self.repo.list_run_events(id)
+            progress=progress_from_events(run,events)
+            if progress is not None:
+                run.planned_telemetry=extend_plan(run.planned_telemetry,progress,result,visited_scene_ids(events))
             run.state='queued'
             run.error=None
             self.repo.requeue_run(run)

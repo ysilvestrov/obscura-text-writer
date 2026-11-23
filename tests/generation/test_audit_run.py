@@ -177,7 +177,8 @@ def test_two_unchecked_links_take_two_calls_and_the_scene_becomes_valid(tmp_path
     gateway = Answers(answer(95), answer(96))
     worker, run = start(repo, story, scene, gateway)
     assert run.tasks == [{'scene_id': scene.id, 'stage': 'audit'}]
-    assert run.planned_telemetry == {'roles': {'auditor': {'provider': 'local', 'model': 'auditor'}}, 'calls': 2}
+    assert run.planned_telemetry == {'roles': {'auditor': {'provider': 'local', 'model': 'auditor'}}, 'calls': 2,
+                                     'cost_bound_usd': None}
     run = drive(worker, run.id)
     assert run.state == 'completed', run.error
     assert [c.stage for c in gateway.contexts] == ['audit_brief', 'audit_prose']
@@ -474,7 +475,8 @@ def test_book_run_checks_the_next_invalid_scene_and_stops_on_its_discrepancy(tmp
     gateway = Answers(answer(95))
     worker, run = start_book(repo, story, gateway)
     assert run.tasks == [{'scene_id': None, 'stage': 'audit'}]
-    assert run.planned_telemetry == {'roles': {'auditor': {'provider': 'local', 'model': 'auditor'}}, 'calls': 2}
+    assert run.planned_telemetry == {'roles': {'auditor': {'provider': 'local', 'model': 'auditor'}}, 'calls': 2,
+                                     'cost_bound_usd': None, 'scenes': 2}
     run = drive(worker, run.id)
     assert run.state == 'needs_review', (run.state, run.error)
     assert [(c.scene_id, c.stage) for c in gateway.contexts] == [(s2.id, 'audit_prose')]

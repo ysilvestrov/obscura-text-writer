@@ -4,7 +4,7 @@
 не читається. Один словник живить і `GET /api/runs/{id}['progress']`, і подію `progress`.
 """
 import math
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import Decimal, ROUND_CEILING, ROUND_HALF_UP
 
 PROGRESS_EVENTS = ('stage_started', 'stage_finished', 'audit_step')
 _CENT = Decimal('0.0001')
@@ -96,3 +96,22 @@ def emit_progress(coordinator, run_id):
     data = run_progress(coordinator.repo, coordinator.repo.get_run(run_id))
     if data is not None:
         coordinator.event(run_id, 'progress', data)
+
+
+def extend_plan(plan, progress, readiness, visited):
+    """Доповнює план запуску при продовженні (PROGRESS-UX §1): виконані виклики плюс виклики перегляду продовження."""
+    if plan is None or not readiness.get('calls', 0):
+        return plan
+    extended = dict(plan)
+    extended['calls'] = progress['calls']['done'] + readiness['calls']
+    if 'cost_bound_usd' in plan:
+        total = (readiness.get('cost') or {}).get('total_usd')
+        if progress['spent_known'] and total is not None:
+            bound = Decimal(progress['spent_usd']) + Decimal(str(total))
+            extended['cost_bound_usd'] = str(bound.quantize(_CENT, rounding=ROUND_CEILING))
+        else:
+            extended['cost_bound_usd'] = None
+    if 'scenes' in plan:
+        fresh = {link['scene_id'] for link in readiness.get('links') or [] if link.get('scene_id')} - set(visited)
+        extended['scenes'] = len(visited) + len(fresh)
+    return extended

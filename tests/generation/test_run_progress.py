@@ -143,3 +143,60 @@ def test_single_scene_audit_progress_is_one_of_one(tmp_path):
     run = Run(id='r', story_id=story.id, request_id='q', tasks=[], request=audit_request(story, s3))
     progress = progress_from_events(run, [])
     assert progress['scene'] == {'id': s3.id, 'index': 1, 'total': 1}
+
+
+def test_extend_plan_rules():
+    from storygen.generation.run_progress import extend_plan
+    plan = {'roles': {}, 'calls': 4, 'cost_bound_usd': '2.1000', 'scenes': 16}
+    done = {'calls': {'done': 5, 'planned': 4}, 'spent_usd': '0.0200', 'spent_known': True}
+    resume = {'calls': 3, 'cost': {'total_usd': '0.3000'},
+              'links': [{'scene_id': 's5'}, {'scene_id': 's6'}, {'scene_id': 's6'}]}
+    visited = ['s1', 's2', 's3', 's4', 's5']
+    assert extend_plan(plan, done, resume, visited) == {'roles': {}, 'calls': 8, 'cost_bound_usd': '0.3200', 'scenes': 6}
+    assert extend_plan(plan, {**done, 'spent_known': False}, resume, visited)['cost_bound_usd'] is None
+    assert extend_plan(plan, done, {**resume, 'cost': {'total_usd': None}}, visited)['cost_bound_usd'] is None
+    assert extend_plan(plan, done, {**resume, 'calls': 0}, visited) == plan
+    assert extend_plan(None, done, resume, visited) is None
+    assert extend_plan({'roles': {}, 'calls': 3}, {**done, 'calls': {'done': 1, 'planned': 3}}, {'calls': 2}, []) == {'roles': {}, 'calls': 3}
+    assert extend_plan(plan, done, {**resume, 'cost': {'total_usd': '0.00001'}}, visited)['cost_bound_usd'] == '0.0201'  # ceiling
+
+
+def test_enqueue_stores_the_cost_bound_and_scenes_of_the_preview(tmp_path, monkeypatch):
+    repo, story, _, _ = four_scenes(tmp_path)
+    worker, run = start_book(repo, story, Answers(answer(95)))
+    assert run.planned_telemetry == {'roles': {'auditor': {'provider': 'local', 'model': 'auditor'}}, 'calls': 2,
+                                     'cost_bound_usd': None, 'scenes': 2}
+    monkeypatch.setattr('storygen.generation.audit_cost.upper_bound',
+                        lambda repo, settings, calls: {'per_call_usd': '0.0309', 'total_usd': '0.0618', 'reason': None})
+    repo2, story2, _, _ = four_scenes(tmp_path / 'priced')
+    _, priced = start_book(repo2, story2, Answers(answer(95)))
+    assert priced.planned_telemetry['cost_bound_usd'] == '0.0618'
+
+
+def test_resume_extends_the_plan_without_counting_a_visited_scene_twice(tmp_path):
+    from storygen.storage.links import link_state
+    from tests.generation.test_audit_run import decide_link
+    repo, story, (s1, s2, s3, s4), _ = four_scenes(tmp_path)
+    worker, run = start_book(repo, story, Answers(answer(95)))
+    assert drive(worker, run.id).checkpoint['scene_id'] == s3.id  # one call (s2 prose), stop on s3 brief
+    decide_link(repo, s3.id, 'brief', 'approve', link_state(repo.context_view(story.id), s3.id, 'brief').fingerprint)
+    resumed = worker.resume(run.id)
+    assert resumed.planned_telemetry == {'roles': {'auditor': {'provider': 'local', 'model': 'auditor'}}, 'calls': 2,
+                                         'cost_bound_usd': None, 'scenes': 2}
+    assert repo.get_run(run.id).planned_telemetry == resumed.planned_telemetry
+
+
+def test_finishing_resume_keeps_the_plan(tmp_path):
+    from storygen.storage.links import link_state
+    from tests.generation.test_audit_run import decide_link
+    repo, story, (s1, s2, s3, s4), _ = four_scenes(tmp_path)
+    worker, run = start_book(repo, story, Answers(answer(95)))
+    drive(worker, run.id)
+    for link in ('brief', 'prose', 'memory'):
+        state = link_state(repo.context_view(story.id), s3.id, link)
+        if state.status != 'unavailable':
+            decide_link(repo, s3.id, link, 'approve', state.fingerprint)
+    before = repo.get_run(run.id).planned_telemetry
+    assert worker.run_readiness(run.id)['calls'] == 0  # the resume preview has nothing left to call
+    worker.resume(run.id)
+    assert repo.get_run(run.id).planned_telemetry == before
