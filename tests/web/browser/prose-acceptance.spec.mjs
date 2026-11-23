@@ -13,7 +13,10 @@ test('the story menu accepts all waiting prose as the author\'s',async({page,req
   const view=await(await request.get(`/api/stories/${story.id}`)).json();
   const moved=await request.put(`/api/stories/${story.id}/scene-order`,{data:{scene_ids:view.scenes.map(s=>s.id).reverse(),expected_revision:(view.story??view).revision}});
   expect(moved.ok(),await moved.text()).toBeTruthy();
-  await page.goto(`/stories/${story.id}`);
+  const first=view.scenes.find(s=>s.title==='Ранок');
+  // The open prose buffer must take the revision the acceptance gave the scene, so a later save does not conflict.
+  await page.goto(`/stories/${story.id}?scene=${first.id}&material=prose`);
+  await expect(page.locator('.ProseMirror')).toContainText('Ранок: світло на воді.');
   await page.locator('#story-menu-toggle').click();
   const button=page.locator('#story-menu-accept-prose');
   await expect(button).toBeVisible();
@@ -26,4 +29,9 @@ test('the story menu accepts all waiting prose as the author\'s',async({page,req
   await expect.poll(async()=>(await(await request.get(`/api/stories/${story.id}/prose-acceptance`)).json()).scenes).toEqual([]);
   await page.locator('#story-menu-toggle').click();
   await expect(button).toBeHidden();
+  await page.keyboard.press('Escape');
+  await page.locator('.ProseMirror').fill('Ранок: світло на воді й тиша.');
+  const saved=page.waitForResponse(r=>r.url().endsWith(`/api/scenes/${first.id}/prose`)&&r.request().method()==='POST');
+  await page.locator('#save-text').click();
+  expect((await saved).status()).toBe(200);
 });

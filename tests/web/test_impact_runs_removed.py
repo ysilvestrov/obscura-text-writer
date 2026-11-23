@@ -85,3 +85,9 @@ def test_stopped_impact_run_is_cancelled_on_start_and_blocks_nothing(tmp_path, s
         assert (saved.state, saved.error) == ('cancelled', IMPACT_REMOVED)
         assert repo.update_story_language(story.id, 'en', repo.get_story(story.id).revision).language == 'en'
     assert [a.stage for a in repo.list_attempts(story.id, run.id)] == ['impact_part', 'review_part']
+
+
+@pytest.mark.req('R28-REMOVED')
+def test_removal_reason_is_translated_for_the_english_interface():
+    from storygen.web.localization import diagnostic
+    assert diagnostic(IMPACT_REMOVED, 'en') == 'The impact check has been removed; use book validation instead'

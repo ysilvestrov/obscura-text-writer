@@ -2485,7 +2485,8 @@
     "locations.error.unknown": "Невідома локація",
     "locations.error.self": "Локацію не можна злити саму в себе",
     "locations.error.conflict": "Твір уже змінено. Оновіть локації; зміну не збережено.",
-    "locations.error.long": "Опис локації довший за {p0} знаків"
+    "locations.error.long": "Опис локації довший за {p0} знаків",
+    "d_dce17d6f2598": "Перевірку впливу вилучено; скористайтеся валідацією книги"
   },
   "en": {
     "ui.save": "Save",
@@ -4973,6 +4974,7 @@
     "locations.error.unknown": "Unknown location",
     "locations.error.self": "A location cannot be merged into itself",
     "locations.error.conflict": "The story has changed. Reload the locations; the change was not saved.",
-    "locations.error.long": "The location description is longer than {p0} characters"
+    "locations.error.long": "The location description is longer than {p0} characters",
+    "d_dce17d6f2598": "The impact check has been removed; use book validation instead"
   }
 }

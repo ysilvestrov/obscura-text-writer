@@ -432,7 +432,7 @@ IMPORT-NUMBER-S03. Автоматична частина — Playwright `tests/w
 <a id="prose-accept-browser"></a>
 ## Прийняття всієї прози з меню твору
 
-DATA-010-S02. Автоматична частина — Playwright `tests/web/browser/prose-acceptance.spec.mjs` (один case на desktop і mobile: дві сцени з прозою, перестановка робить прозу застарілою; у меню твору пункт «Прийняти всю прозу як авторську» видимий, підтвердження називає «Вечір», «Ранок», після прийняття `GET /prose-acceptance` повертає порожній перелік, а пункт зникає). Запуск: `cd frontend; ./node_modules/.bin/playwright test -c playwright.config.mjs ../tests/web/browser/prose-acceptance.spec.mjs`. Цей зв’язок не є доказом виконання; фактичний запуск фіксується окремо.
+DATA-010-S02. Автоматична частина — Playwright `tests/web/browser/prose-acceptance.spec.mjs` (один case на desktop і mobile: дві сцени з прозою, перестановка робить прозу застарілою; у меню твору пункт «Прийняти всю прозу як авторську» видимий, підтвердження називає «Вечір», «Ранок», після прийняття `GET /prose-acceptance` повертає порожній перелік, а пункт зникає; відкрита проза сцени «Ранок» після прийняття редагується й зберігається без 409). Запуск: `cd frontend; ./node_modules/.bin/playwright test -c playwright.config.mjs ../tests/web/browser/prose-acceptance.spec.mjs`. Цей зв’язок не є доказом виконання; фактичний запуск фіксується окремо.
 
 <a id="claude-skills"></a>
 ## Скіли Obscura для Claude: сценарії поведінки
