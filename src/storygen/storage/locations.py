@@ -177,12 +177,14 @@ def change_locations(repo, story_id: str, expected_revision: int, action) -> dic
     return {**locations_view(repo,story_id),'dependent_scene_ids':[id for id in after if after[id]!=before.get(id)]}
 
 
-def _shown_by_scene(db, story_id: str) -> dict[str,list]:
-    """{scene id: «ЛОКАЦІЇ СЦЕНИ» rows} of the active scenes in book order: a scene depends on a location change
-    when what its context shows changes (its own card, a merge target or an ancestor's description). Only scenes with a
+def _shown_by_scene(db, story_id: str) -> dict[str,tuple]:
+    """{scene id: («ЛОКАЦІЇ СЦЕНИ» rows, location neighbourhood)} of the active scenes in book order: a scene depends on
+    a location change when what its context shows changes (its own card, a merge target or an ancestor's description)
+    or the neighbourhood that selects nearby memory changes (a card merged into one of its places). Only scenes with a
     brief: without one Z1 and Z2 are missing and the invalidation would write nothing."""
     from ..domain import Scene
     cards=load_locations(db,story_id)
     scenes=[Scene.model_validate_json(r[0]) for r in db.execute(
         'SELECT payload FROM scenes WHERE story_id=? ORDER BY position,id',(story_id,))]
-    return {scene.id:shown_locations(cards,scene.location_ids) for scene in scenes if not scene.trashed_at and scene.heads.get('brief')}
+    return {scene.id:(shown_locations(cards,scene.location_ids),sorted(scene_neighbourhood(cards,scene.location_ids)))
+            for scene in scenes if not scene.trashed_at and scene.heads.get('brief')}

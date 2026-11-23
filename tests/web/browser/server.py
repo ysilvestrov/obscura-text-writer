@@ -403,7 +403,7 @@ def main():
             from storygen.storage.link_decisions import decide_link
             from storygen.storage.links import scene_links
             story=rated_story('Маяк на пагорбі')
-            scene=repo.create_scene(story.id,SceneCreate(title='Ранок',beats='Маяк'))
+            scene=repo.create_scene(story.id,SceneCreate(title='Ранок',beats='Маяк\nЛокація: Пагорб'))
             entry={'id':None,'text':'Доглядачка маяка.','availability':'timeless','available_from_scene_id':None,'origin':'author','sources':[]}
             cards=save_character_material(repo,story.id,[{'id':None,'schema_version':2,'name':'Олена','entries':[entry]}],repo.get_story(story.id).revision)
             repo.update_scene_metadata(scene.id,{'character_ids':[cards['cards'][0]['id']]},repo.get_scene(scene.id).revision)

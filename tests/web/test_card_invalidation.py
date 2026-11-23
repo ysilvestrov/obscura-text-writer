@@ -117,8 +117,9 @@ def test_location_change_reports_dependent(tmp_path):
         assert change('PUT', '/' + lid('двір'), description='Тісний двір ') == []  # same text after strip
         # A parent card is shown to the scenes of the places inside it.
         assert change('PUT', '/' + lid('Квартира Джорджа'), description='Третій поверх') == [room.id]
-        assert change('POST', f'/{lid("Квартира Джоржа")}/merge', into=lid('Квартира Джорджа')) == [yard.id]
-        assert change('POST', f'/{lid("Квартира Джоржа")}/split') == [yard.id]
+        # The merged card's scene shows another path; the target's scenes see its memory as nearby (neighbourhood).
+        assert change('POST', f'/{lid("Квартира Джоржа")}/merge', into=lid('Квартира Джорджа')) == [room.id, yard.id]
+        assert change('POST', f'/{lid("Квартира Джоржа")}/split') == [room.id, yard.id]
         assert change('POST', '/dismiss', a=lid('Квартира Джорджа'), b=lid('Квартира Джоржа')) == []
         assert change('PUT', '/' + lid('Сад'), description='Яблуні') == []  # the garden scene has no brief yet
         assert 'dependent_scene_ids' not in client.get(base).json()
