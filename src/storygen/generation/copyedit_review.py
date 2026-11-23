@@ -55,8 +55,11 @@ def select_copyedits(repo, scene_id, attempt_id, selected_indices, expected_revi
     text = apply_proposal(original,proposal,indices)
     snapshot = DependencySnapshot.model_validate(attempt.context['dependency_snapshot'])
     source_ref=repo.get_version(attempt.context['copyedit_proposal']['draft_id'])
+    origin = attempt.context.get('external_origin')  # a chat edit: the selection is still the model's text (VALID-LINKS)
+    from ..domain import ExternalOrigin
     ref = repo.save_version(attempt.story_id, scene_id, 'edited', text, attempt.context['input_refs'],
-                            attempt.run_id, dependency_snapshot=snapshot,content_format=source_ref.content_format)
+                            attempt.run_id, dependency_snapshot=snapshot,content_format=source_ref.content_format,
+                            external_origin=ExternalOrigin.model_validate(origin) if origin else None)
     from .language import language_warnings, scene_prose_language
     return repo.commit_copyedit_selection(attempt_id, ref, indices, expected_revision, fingerprint, language_warnings(text, scene_prose_language(repo, scene_id)))
 

@@ -85,6 +85,27 @@ def test_manual_draft_in_the_chain_breaks_construction(tmp_path):
     assert statuses(repo, story, scene)['prose'] == ('unchecked', None, None)
 
 
+@pytest.mark.req('VALID-LINKS')
+@pytest.mark.parametrize('mode', ['patches', 'prose'])
+def test_edit_of_accepted_author_prose_is_not_construction(tmp_path, mode):
+    # Final review 2a: an edit whose source is the author's prose still records head/draft = the model draft; the chain
+    # must follow the version actually edited, so a model edit cannot turn author prose into a valid-by-construction link.
+    from storygen.generation import editor_loop
+    from storygen.storage.acceptance import preview_acceptance, accept_version
+    repo, story, (scene,) = book(tmp_path)
+    save_manual_prose(repo, scene.id, 'Авторський текст повністю іншої сцени.', repo.get_scene(scene.id).revision)
+    current = repo.get_scene(scene.id)
+    preview = preview_acceptance(repo, scene.id, current.heads['prose'])
+    accept_version(repo, scene.id, current.heads['prose'], preview.expected_revision, preview.preview_fingerprint)
+    current = repo.get_scene(scene.id)
+    context = editor_loop.context(repo, scene.id, RoleSettings(provider=ProviderSettings(model='editor'), edit_mode=mode),
+                                  current.heads['prose'])
+    edited = repo.save_version(story.id, scene.id, 'edited', 'Авторський текст, вичитаний.', context.input_refs,
+                               run_for(repo, story, scene, 'edit-' + mode), dependency_snapshot=context.dependency_snapshot)
+    repo.set_head(scene.id, 'prose', edited.id, current.revision)
+    assert statuses(repo, story, scene)['prose'] == ('unchecked', None, None)
+
+
 def save_manual_brief(repo, scene):
     text = json.dumps({'objective': 'Інше', 'beats': ['Студія'], 'constraints': [], 'proposed_changes': []}, ensure_ascii=False)
     ref = repo.save_version(scene.story_id, scene.id, 'brief', text, [])

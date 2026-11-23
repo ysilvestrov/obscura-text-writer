@@ -14,6 +14,7 @@ from .link_records import LINKS, LinkName
 Status = Literal['valid', 'unchecked', 'discrepancy', 'unavailable', 'missing']
 MAX_CHAIN = 50
 EDIT_SCOPES = {'prose_edit', 'patches'}
+TEXT_KINDS = {'draft', 'edited', 'manual'}
 
 
 @dataclass(frozen=True)
@@ -139,11 +140,26 @@ def _prose_by_construction(view, scene, story, before, p0):
                     and _same_p0(view, snapshot, story, scene, before, p0))
         if snapshot.scope not in EDIT_SCOPES:
             return False
-        draft = _selector(snapshot, 'head', scene.id, 'draft')
-        if draft is None or not draft.expected:
+        ref = _edited_source(view, scene, ref, snapshot)
+        if ref is None:
             return False
-        ref = view.versions.get(draft.expected)
     return False
+
+
+def _edited_source(view, scene, ref, snapshot):
+    """The version an edit was made from: the scene's text among the snapshot refs (an edit of the prose head records
+    head/draft as the old draft, but refs carry the text actually edited); head/draft only when refs name none. Of
+    several texts, any not made by a model breaks the chain."""
+    sources = [view.versions[i] for i in snapshot.refs if i != ref.id and i in view.versions
+               and view.versions[i].scene_id == scene.id and view.versions[i].kind in TEXT_KINDS]
+    draft = _selector(snapshot, 'head', scene.id, 'draft')
+    if len(sources) > 1:
+        if not all(model_made(source) for source in sources):
+            return None
+        return next((source for source in sources if draft and source.id == draft.expected), sources[0])
+    if sources:
+        return sources[0]
+    return view.versions.get(draft.expected) if draft is not None and draft.expected else None
 
 
 def _memory_by_construction(view, scene):

@@ -6705,11 +6705,11 @@
         "tests/memory/test_foreign_flashbacks.py::test_meeting_scene_shows_a_fact_once",
         "tests/memory/test_foreign_flashbacks.py::test_lineage_flashback_is_not_foreign",
         "tests/memory/test_foreign_flashbacks.py::test_limit_of_forty_facts_warns",
-        "tests/memory/test_foreign_flashbacks.py::test_flashback_without_fresh_memory_is_skipped_then_stales_the_scene",
-        "tests/memory/test_foreign_flashbacks.py::test_new_flashback_memory_stales_the_scene",
-        "tests/memory/test_foreign_flashbacks.py::test_unset_flag_stales_the_scene",
-        "tests/memory/test_foreign_flashbacks.py::test_flag_set_later_stales_an_old_snapshot",
-        "tests/memory/test_foreign_flashbacks.py::test_moment_change_inside_visibility_stales_the_scene",
+        "tests/memory/test_foreign_flashbacks.py::test_flashback_without_fresh_memory_is_skipped_then_changes_the_snapshot_not_the_brief_head",
+        "tests/memory/test_foreign_flashbacks.py::test_new_flashback_memory_changes_the_snapshot_not_the_brief_head",
+        "tests/memory/test_foreign_flashbacks.py::test_unset_flag_changes_the_snapshot_not_the_brief_head",
+        "tests/memory/test_foreign_flashbacks.py::test_flag_set_later_changes_an_old_snapshot_not_the_brief_head",
+        "tests/memory/test_foreign_flashbacks.py::test_moment_change_inside_visibility_changes_the_snapshot_not_the_brief_head",
         "tests/memory/test_foreign_flashbacks.py::test_flashback_without_facts_is_an_input_ref"
       ]
     },
@@ -7483,10 +7483,11 @@
     {
       "id": "VALID-LINKS-S03",
       "requirement": "VALID-LINKS",
-      "scope": "Ручна проза чи ручна чернетка в ланцюжку знімають побудову З2 (і З3 для нової прози).",
+      "scope": "Ручна проза чи ручна чернетка в ланцюжку знімають побудову З2 (і З3 для нової прози); редактура прийнятої авторської прози теж не валідна за побудовою.",
       "tests": [
         "tests/storage/test_links.py::test_manual_prose_unchecks_prose_and_memory_links",
-        "tests/storage/test_links.py::test_manual_draft_in_the_chain_breaks_construction"
+        "tests/storage/test_links.py::test_manual_draft_in_the_chain_breaks_construction",
+        "tests/storage/test_links.py::test_edit_of_accepted_author_prose_is_not_construction"
       ]
     },
     {
@@ -7551,7 +7552,8 @@
       "scope": "Тексти чату створені моделлю; чернетки автора — ні.",
       "tests": [
         "tests/storage/test_links.py::test_chat_texts_are_model_made_and_author_drafts_are_not",
-        "tests/storage/test_links.py::test_chat_mode_scene_holds_the_prose_link_by_construction"
+        "tests/storage/test_links.py::test_chat_mode_scene_holds_the_prose_link_by_construction",
+        "tests/generation/test_copyedit_review.py::test_chat_patch_selection_keeps_the_external_origin"
       ]
     },
     {

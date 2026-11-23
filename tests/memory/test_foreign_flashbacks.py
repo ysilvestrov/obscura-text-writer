@@ -9,7 +9,9 @@ from storygen.memory.journal import MemoryJournal
 from storygen.providers.streaming import GenerationEvent
 from tests.memory.merge_helpers import arc_book, fact, save_scene_journal, write_memory
 from tests.memory.test_core_review import role
-from tests.link_helpers import approve_links
+from storygen.domain import new_id
+from storygen.run_models import Run, RunRequest
+from storygen.storage.snapshots import compare_snapshot
 
 HEADER = 'МИНУЛЕ ІНШИХ АРОК'
 
@@ -26,11 +28,19 @@ def brief_text(repo, scene):
 
 def write_brief(repo, scene):
     context = build_context(repo, scene.id, 'brief', role())
-    attempt = execute_stage(repo, scene.id, 'brief', context, Gateway(), threading.Event(), lambda _: None)
+    # VALID-LINKS: a real Run row, so the brief is model-made and "not stale" below can fail (an author brief never is).
+    run = Run(id=new_id(), story_id=scene.story_id, request_id='brief-' + new_id(),
+              request=RunRequest(story_id=scene.story_id, scene_id=scene.id, mode='stage', stage='brief'), state='completed', tasks=[])
+    repo.enqueue_run(run)
+    attempt = execute_stage(repo, scene.id, 'brief', context, Gateway(), threading.Event(), lambda _: None, run.id)
     assert attempt.state == 'completed', attempt.error
-    # The stage runs without a Run row, so the brief stands in for a generated one: the author confirms its link.
-    approve_links(repo, scene.story_id)
+    assert repo.get_version(attempt.result_version_id).source_run_id == run.id
     return attempt.result_version_id
+
+
+def changed(repo, story, brief):
+    """The snapshot comparison non-head versions still get (a draft built on the same inputs would be stale)."""
+    return bool(compare_snapshot(repo.context_view(story.id), repo.get_version(brief).dependency_snapshot))
 
 
 def two_arcs(tmp_path, flashback='Початок: Рік -5 (спогад)', present='Початок: Рік 1', **kw):
@@ -98,45 +108,45 @@ def test_limit_of_forty_facts_warns(tmp_path):
     assert any('показано 40 фактів із 42' in w for w in context.context_warnings)
 
 
-def test_flashback_without_fresh_memory_is_skipped_then_stales_the_scene(tmp_path):
+def test_flashback_without_fresh_memory_is_skipped_then_changes_the_snapshot_not_the_brief_head(tmp_path):
     repo, story, scenes = two_arcs(tmp_path, only={2})
     assert HEADER not in brief_text(repo, scenes[1])
     brief = write_brief(repo, scenes[1])
     assert not repo.get_version(brief).stale
     write_memory(repo, story.id, only={1, 3})
     # VALID-LINKS: a brief head is marked by its Z1 link (plan + previous memory); foreign flashbacks are not part of it
-    assert not repo.get_version(brief).stale
+    assert not repo.get_version(brief).stale and changed(repo, story, brief)
 
 
-def test_new_flashback_memory_stales_the_scene(tmp_path):
+def test_new_flashback_memory_changes_the_snapshot_not_the_brief_head(tmp_path):
     repo, story, scenes = two_arcs(tmp_path)
     brief = write_brief(repo, scenes[1])
     assert not repo.get_version(brief).stale
     save_scene_journal(repo, repo.get_scene(scenes[0].id), MemoryJournal(), [fact('Інша давня подія', scenes[0].heads['prose'])])
     # VALID-LINKS: a brief head is marked by its Z1 link (plan + previous memory); foreign flashbacks are not part of it
-    assert not repo.get_version(brief).stale
+    assert not repo.get_version(brief).stale and changed(repo, story, brief)
 
 
-def test_unset_flag_stales_the_scene(tmp_path):
+def test_unset_flag_changes_the_snapshot_not_the_brief_head(tmp_path):
     repo, story, scenes = two_arcs(tmp_path, flashback='Початок: Рік -5')
     first = repo.update_scene_metadata(scenes[0].id, {'flashback': True}, scenes[0].revision)
     brief = write_brief(repo, scenes[1])
     assert HEADER in brief_text(repo, scenes[1]) and not repo.get_version(brief).stale
     repo.update_scene_metadata(first.id, {'flashback': False}, first.revision)
     # VALID-LINKS: a brief head is marked by its Z1 link (plan + previous memory); foreign flashbacks are not part of it
-    assert not repo.get_version(brief).stale
+    assert not repo.get_version(brief).stale and changed(repo, story, brief)
 
 
-def test_flag_set_later_stales_an_old_snapshot(tmp_path):
+def test_flag_set_later_changes_an_old_snapshot_not_the_brief_head(tmp_path):
     repo, story, scenes = two_arcs(tmp_path, flashback='Початок: Рік -5')
     brief = write_brief(repo, scenes[1])
     assert not any(s.field == 'flashback_facts' for s in repo.get_version(brief).dependency_snapshot.selectors)
     repo.update_scene_metadata(scenes[0].id, {'flashback': True}, scenes[0].revision)
     # VALID-LINKS: a brief head is marked by its Z1 link (plan + previous memory); foreign flashbacks are not part of it
-    assert not repo.get_version(brief).stale
+    assert not repo.get_version(brief).stale and changed(repo, story, brief)
 
 
-def test_moment_change_inside_visibility_stales_the_scene(tmp_path):
+def test_moment_change_inside_visibility_changes_the_snapshot_not_the_brief_head(tmp_path):
     from storygen.memory.flashbacks import flashback_facts_value
     repo, story, scenes = two_arcs(tmp_path)
     view = repo.context_view(story.id)
@@ -150,7 +160,7 @@ def test_moment_change_inside_visibility_stales_the_scene(tmp_path):
     assert not repo.get_version(brief).stale
     repo.update_scene_plan(scene.id, 'Початок: Рік -4 (спогад)', scene.revision, expected_plan_version_id=scene.heads.get('plan'))
     # VALID-LINKS: a brief head is marked by its Z1 link (plan + previous memory); foreign flashbacks are not part of it
-    assert not repo.get_version(brief).stale
+    assert not repo.get_version(brief).stale and changed(repo, story, brief)
 
 
 def test_flashback_without_facts_is_an_input_ref(tmp_path):
