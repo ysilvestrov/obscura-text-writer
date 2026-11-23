@@ -8,7 +8,7 @@ export function acceptanceReason(state,ref){
 }
 let closePreview=()=>{};
 export function closeAcceptancePreview(){closePreview()}
-const reasons={get review_basis_changed(){return t("review.basis_changed")},get selector_changed(){return t("m_8b91b89ae0c0")},get selector_unavailable(){return t("m_de55f106214d")},get source_baseline_changed(){return t("m_050f9db160c7")},get source_stale(){return t("m_f25bde6a2fc5")},get legacy_stale(){return t("m_9c6aa2eab83a")},get incomplete(){return t("m_9490802988fa")},get integrity_error(){return t("m_0c212402e872")},get source_unavailable(){return t("m_de55f106214d")},get dependency_cycle(){return t("m_29def73798da")}};
+const reasons={get selector_changed(){return t("m_8b91b89ae0c0")},get selector_unavailable(){return t("m_de55f106214d")},get source_baseline_changed(){return t("m_050f9db160c7")},get source_stale(){return t("m_f25bde6a2fc5")},get legacy_stale(){return t("m_9c6aa2eab83a")},get incomplete(){return t("m_9490802988fa")},get integrity_error(){return t("m_0c212402e872")},get source_unavailable(){return t("m_de55f106214d")},get dependency_cycle(){return t("m_29def73798da")}};
 const value=v=>v==null?t("m_554e24318ede"):Array.isArray(v)?v.join(', '):String(v);
 export async function openAcceptance({state,ref,api,json,panel,notice,onAccepted}){
   const reason=acceptanceReason(state,ref);if(reason)throw new Error(reason);

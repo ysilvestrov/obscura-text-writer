@@ -261,8 +261,7 @@ def _scene_select(repo, story_id, scene_id):
     """The GET requests the editor sends after a scene is selected (scene-selected listeners), through the app.
 
     readiness?operation=brief and /runs (runs.js, plan mode), versions (versions.js), statistics (scene-statistics.js),
-    comments (author-comments.js), copyedit and rewrite lists (change-review.js), evaluator (evaluation.js), and the
-    review session reads (review-session.js) when the story has one. The TestClient is not entered as a context
+    comments (author-comments.js), copyedit and rewrite lists (change-review.js) and evaluator (evaluation.js). The TestClient is not entered as a context
     manager, so the app lifespan (worker start) never runs and nothing is enqueued.
     Returns {label: ((status, json), seconds)}; labels carry no ids.
     """

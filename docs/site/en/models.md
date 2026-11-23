@@ -61,7 +61,7 @@ A saved value the chosen model does not accept is marked "not supported by the m
 
 ## Consent for a model without Uncensored
 
-A cloud model (Venice, OpenRouter) that the provider has not marked as Uncensored may refuse explicit text. So when the request rating is above 0 on at least one axis, the application does not call such a model until you agree. The request rating is the highest level on each axis among the story rating and the scene of the stage; material of earlier scenes (memory, the end of the previous prose) does not raise it. Impact, review and publication-suggestion stages read several scenes, so their rating also counts those scenes. For a 0/0/0 story with one 2/0/0 scene, consent is needed only for that scene.
+A cloud model (Venice, OpenRouter) that the provider has not marked as Uncensored may refuse explicit text. So when the request rating is above 0 on at least one axis, the application does not call such a model until you agree. The request rating is the highest level on each axis among the story rating and the scene of the stage; material of earlier scenes (memory, the end of the previous prose) does not raise it. Publication-suggestion and timeline-summary stages read several scenes, so their rating also counts those scenes. For a 0/0/0 story with one 2/0/0 scene, consent is needed only for that scene.
 
 Under the chosen model in the role settings (and in the evaluation classification settings for the Editor role) a warning with an "I agree…" checkbox appears. The checkbox acts at once, without the **Save:** button. Consent belongs to the "role + model + API address" pair and applies in all stories; another role, model or address needs its own consent. Clearing the checkbox blocks calls again. Local models need no consent.
 
@@ -106,6 +106,6 @@ Role settings and the writing profile can also be changed from a [chat client](m
 
 ## Local models
 
-A local model costs nothing, but large books need many calls and time. Tested profile for an 8 GB GPU: **Huihui-Qwen3.5-9B-abliterated Q4_K_M** with a 131072 context in Bionic, the **Planner** role, address `http://localhost:1235/v1`, response reserve 12288, temperature 0.1, JSON Schema and **Disable thinking (reasoning_effort=none)** enabled. This profile was tested for [impact review](revision.md); other roles can keep using cloud models.
+A local model costs nothing, but large books need many calls and time. Tested profile for an 8 GB GPU: **Huihui-Qwen3.5-9B-abliterated Q4_K_M** with a 131072 context in Bionic, the **Planner** role, address `http://localhost:1235/v1`, response reserve 12288, temperature 0.1, JSON Schema and **Disable thinking (reasoning_effort=none)** enabled. Other roles can keep using cloud models.
 
 The context estimate is conservative. If an answer does not fit its reserve or a quotation is not found in the text, the stage stops and keeps the finished parts; there are no automatic retries.

@@ -115,11 +115,3 @@ def test_context_fingerprint_does_not_depend_on_the_pass_limit(tmp_path, monkeyp
     assert build_context(repo, item.id, 'draft', role.model_copy(update={'edit_pass_limit': 2})).fingerprint == base
     payloads = [o['settings'] for o in seen if isinstance(o, dict) and 'settings' in o and 'system' in o]
     assert payloads and all('edit_pass_limit' not in p for p in payloads)
-
-
-@pytest.mark.req('EDIT-LOOP')
-def test_impact_manifest_stamp_ignores_the_pass_limit():
-    from storygen.impact.chunking import settings_for_manifest
-    from types import SimpleNamespace
-    role = RoleSettings(provider=ProviderSettings(model='m'), edit_pass_limit=3)
-    assert 'edit_pass_limit' not in settings_for_manifest(SimpleNamespace(settings=role, wire_schema_version=2))

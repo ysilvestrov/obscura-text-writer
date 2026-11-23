@@ -5,14 +5,9 @@ from pathlib import Path
 from ..domain import MemoryConfirmation, RevisionConflict, now, Scene, SceneCreate, Story, StoryCreate, VersionRef, StageAttempt, new_id
 from .database import Database
 from .files import FileStore
-from . import review_authority
 
 
 class Repository:
-    def impact(self,action,**data):
-        from .impact_store import operation
-        return operation(self,action,**data)
-
     def get_comment_state(self,scene_id):
         from .comment_store import get_comment_state
         return get_comment_state(self,scene_id)
@@ -235,12 +230,6 @@ class Repository:
         with self.db.connection() as db:
             db.execute('BEGIN')
             return read_view(self, db, story_id)
-
-    def review(self,action,**kwargs):
-        from . import review_store
-        commands={'priority_decide':review_authority.priority_decide,'priorities':review_authority.snapshot,'operation':review_store.operation,'publish_scene':review_store.publish_scene,
-            'save_report':review_store.save_report,'save_dispositions':review_store.save_dispositions}
-        return commands[action](self,**kwargs)
 
     def preview_acceptance(self, scene_id, version_id):
         from .acceptance import preview_acceptance

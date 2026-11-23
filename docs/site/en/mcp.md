@@ -254,7 +254,7 @@ In a story with the **Obscura writes** mode the chat can ask Obscura to run one 
 - First the chat shows a preview: which models will work, how many calls there will be, warnings and the remaining story budget. It starts the run only after your consent in the chat.
 - **A run costs money** at the rates of the role models. Cloud providers need a story budget limit, as for the buttons. The chat can pass a limit for one run. Obscura does not estimate the amount in advance: the preview shows the models and the budget.
 - The run goes in the background. The chat checks its status with a separate request; it reads the finished text like other scene texts, and card suggestions come with the run status.
-- The chat can cancel only a run it started itself. Pausing, resuming, your runs, a whole scene, the rest of the story, preparation, evaluation, the impact check and the book review stay with you: Obscura refuses such requests from the chat.
+- The chat can cancel only a run it started itself. Pausing, resuming, your runs, a whole scene, the rest of the story, preparation and evaluation stay with you: Obscura refuses such requests from the chat.
 - If the previous memory needs your confirmation, the memory stage does not start: the chat advises you to confirm it in Obscura.
 - You accept changes that wait for your decision in Obscura, as after a run started with a button.
 

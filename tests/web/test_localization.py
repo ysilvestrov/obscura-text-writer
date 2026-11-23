@@ -40,14 +40,6 @@ def test_diagnostics_do_not_translate_author_parameters():
     assert diagnostic('Джерело <script>author</script>','en') == 'Джерело <script>author</script>'
 
 
-def test_review_memory_guard_translates_only_its_message():
-    from storygen.web.localization import diagnostic
-    text='Пам’ять сцени «Авторська назва» містить авторські записи або вибір «передавати далі», які автоматична перебудова може втратити. Оновіть пам’ять цієї сцени вручну зі збереженням потрібних записів, потім відновіть перегляд.'
-    translated=diagnostic(text,'en')
-    assert translated.startswith('Memory for scene “Авторська назва”')
-    assert 'Update that scene’s memory manually' in translated
-
-
 def test_catalog_parameters_are_not_recursively_substituted():
     from storygen.web.localization import translate,catalogs
     import re

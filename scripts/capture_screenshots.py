@@ -131,7 +131,7 @@ def capture(base,ids,languages):
                         page.set_viewport_size(viewport);page.goto(f'{base}/stories/{story}?scene={scene}&material=draft');page.wait_for_load_state('networkidle')
                     page.locator('#story-menu-toggle').click();page.locator('#story-menu').wait_for();shot(page,folder/f'story-menu-{suffix}.png',shots)
                     if suffix=='desktop':
-                        for path,name in [(f'/stories/{story}/revision','revision'),(f'/stories/{story}/characters','characters'),
+                        for path,name in [(f'/stories/{story}/characters','characters'),
                                           (f'/stories/{story}/settings?section=models','settings-models'),(f'/stories/{story}/publication','publication')]:
                             page.goto(base+path);page.wait_for_load_state('networkidle');shot(page,folder/f'{name}-desktop.png',shots)
                         # R16-COVER-S04: the cover panel after "Create text cover"; the card itself stays unsaved.

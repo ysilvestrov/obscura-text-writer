@@ -38,30 +38,3 @@ test('long scene list collapses above imports without losing dirty text or selec
   expect(mutations).toBe(0);
 });
 
-test('latest scene reports collapse and retain state across language and refresh',async({page,request})=>{
-  const f=await(await request.post('/test-impact')).json();
-  let includeReports=true;
-  await page.route(`**/api/stories/${f.story_id}/impact`,async route=>{const response=await route.fetch(),body=await response.json();body.pending.push({scene_title:'Synthetic blocker scene',material:'prose',blockers:['Synthetic prerequisite unavailable']});body.reports=includeReports?['brief','prose'].map(material=>({id:'synthetic-'+material,scene_id:f.scene_id,scene_title:'Сцена: Вечір',material,current:material==='prose',verdict:'no_impact',explanation:'Передумови перевірено.',protocol:1,delta:null,findings:[],memory_check_current:false,memory_evidence_status:'valid',memory_needs_update:false})):[];await route.fulfill({response,json:body});});
-  await page.goto(`/stories/${f.story_id}/revision`);
-  const history=page.locator('#impact-report-list');
-  await expect(history).toHaveAttribute('open','');
-  await expect(history.locator('.impact-report')).toHaveCount(2);
-  await expect(history.locator('[data-reject-impact]')).toBeVisible();
-  await history.locator(':scope > summary').click({timeout:3000});
-  await expect(history).not.toHaveAttribute('open','');
-  await expect(history.locator('[data-reject-impact]')).toBeHidden();
-  await expect(page.locator('#impact-reports > p').filter({hasText:'Synthetic prerequisite unavailable'})).toBeVisible();
-  await expect(history.locator('#review-session')).toHaveCount(0);
-  await page.locator('[data-ui-locale=en]').click();
-  await expect(history).not.toHaveAttribute('open','');
-  await expect(history.locator('summary')).toHaveText('Latest results');
-  await page.evaluate(()=>import('/static/editor.js').then(m=>m.refresh()));
-  await expect(history).not.toHaveAttribute('open','');
-  await page.locator('#impact-panel').screenshot({path:`docs/images/collapsed-reports-${test.info().project.name}.png`});
-  await history.locator(':scope > summary').focus();await page.keyboard.press('Enter');
-  await expect(history).toHaveAttribute('open','');
-  await expect(history.locator('[data-reject-impact]')).toBeVisible();
-  includeReports=false;await page.evaluate(()=>import('/static/editor.js').then(m=>m.refresh()));
-  await expect(history).toHaveCount(0);
-  await expect(page.locator('#impact-reports > p').filter({hasText:'Synthetic prerequisite unavailable'})).toBeVisible();
-});

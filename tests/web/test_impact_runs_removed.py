@@ -23,7 +23,7 @@ def saved_impact_run(repo, story, scene, state='needs_review'):
     return run
 
 
-@pytest.mark.req('DATA-010')
+@pytest.mark.req('R28-REMOVED')
 def test_new_impact_run_is_refused(tmp_path):
     app = create_app(AppSettings(data_dir=tmp_path))
     story = app.state.repo.create_story(StoryCreate(title='Книга'))
@@ -35,7 +35,7 @@ def test_new_impact_run_is_refused(tmp_path):
     assert app.state.repo.list_runs(story.id) == []
 
 
-@pytest.mark.req('DATA-010')
+@pytest.mark.req('R28-REMOVED')
 def test_saved_impact_run_and_attempts_stay_readable(tmp_path):
     app = create_app(AppSettings(data_dir=tmp_path))
     repo = app.state.repo
@@ -58,7 +58,7 @@ def test_saved_impact_run_and_attempts_stay_readable(tmp_path):
         assert client.get(f'/stories/{story.id}').status_code == 200
 
 
-@pytest.mark.req('DATA-010')
+@pytest.mark.req('R28-REMOVED')
 def test_queued_impact_run_from_an_old_session_is_interrupted_not_executed(tmp_path):
     app = create_app(AppSettings(data_dir=tmp_path))
     repo = app.state.repo

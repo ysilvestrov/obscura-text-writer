@@ -5,7 +5,6 @@ from storygen.authoring.blueprints import update_story_profile
 from storygen.domain import SceneCreate, StoryCreate
 from storygen.generation.context import build_context
 from storygen.generation.models import StyleProfile
-from storygen.impact.planning import capture_target
 from storygen.providers.models import ProviderSettings, RoleSettings
 from storygen.storage.repository import Repository
 from storygen.storage.snapshots import compare_snapshot

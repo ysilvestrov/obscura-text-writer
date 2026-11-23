@@ -76,7 +76,7 @@ def test_story_toolbar_has_three_icon_actions_and_a_disclosure_menu(tmp_path):
     assert 'class="context-panel"' in html and 'publication-panel' not in html
 
 
-@pytest.mark.req('WORKSPACE-TOOLS')
+@pytest.mark.req('R28-REMOVED')
 def test_old_book_check_link_leads_to_the_story(tmp_path):
     """R-28 is removed (R-44 PR 1): bookmarks and old MCP links to the book check page open the story."""
     from fastapi.testclient import TestClient

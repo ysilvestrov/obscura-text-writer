@@ -20,9 +20,9 @@ test('a finished run collapses to one line and opens its details on click',async
 });
 
 test('a running run with many long models keeps the mark and the timer on the summary line',async({page,request},testInfo)=>{
-  const f=await(await request.post('/test-impact')).json();
+  const f=await(await request.post('/test-book')).json();
   const long=n=>({provider:'synthetic-provider-with-a-long-name',model:`synthetic-model-${n}-with-a-very-long-identifier`});
-  const run={id:'collapse-running-run',story_id:f.story_id,state:'running',warning:'Synthetic running warning',created_at:new Date(Date.now()-5000).toISOString(),cursor:0,tasks:[{stage:'impact_part',phase:'check',scene_id:f.scene_id}],request:{mode:'impact',stage:null},impact:{protocol:2},
+  const run={id:'collapse-running-run',story_id:f.story_id,state:'running',warning:'Synthetic running warning',created_at:new Date(Date.now()-5000).toISOString(),cursor:0,tasks:[{stage:'draft',scene_id:f.scene_id}],request:{mode:'stage',stage:'draft',scene_id:f.scene_id},
     planned_telemetry:{roles:{planner:long(1),writer:long(2),editor:long(3),memory:long(4)},evaluator:long(5)}};
   await page.route(`**/api/stories/${f.story_id}/runs`,route=>route.fulfill({json:{runs:[run]}}));
   await page.route('**/api/runs/collapse-running-run',route=>route.fulfill({json:{run,attempts:[],partial:''}}));
@@ -48,8 +48,8 @@ test('a running run with many long models keeps the mark and the timer on the su
 });
 
 test('a failed run shows its error at once and can be collapsed',async({page,request})=>{
-  const f=await(await request.post('/test-impact')).json();
-  const run={id:'collapse-failed-run',story_id:f.story_id,state:'failed',error:'Synthetic collapse failure',created_at:new Date().toISOString(),cursor:0,tasks:[{stage:'impact_part',phase:'check',scene_id:f.scene_id}],request:{mode:'impact',stage:null},impact:{protocol:2}};
+  const f=await(await request.post('/test-book')).json();
+  const run={id:'collapse-failed-run',story_id:f.story_id,state:'failed',error:'Synthetic collapse failure',created_at:new Date().toISOString(),cursor:0,tasks:[{stage:'draft',scene_id:f.scene_id}],request:{mode:'stage',stage:'draft',scene_id:f.scene_id}};
   await page.route(`**/api/stories/${f.story_id}/runs`,route=>route.fulfill({json:{runs:[run]}}));
   await page.route('**/api/runs/collapse-failed-run',route=>route.fulfill({json:{run,attempts:[],partial:''}}));
   await page.route('**/api/runs/collapse-failed-run/readiness',route=>route.fulfill({json:{ready:false,reason:'Synthetic not ready'}}));

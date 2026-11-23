@@ -219,13 +219,6 @@ def view_scene_tracked(view,scene):
         inferred=view_inferred_tracked(view))))
 
 
-def view_scene_names(view,scene):
-    """scene_names of a view scene over the view's own cards and scenes, once per scene; a new dict."""
-    from ..characters.names import scene_names
-    from .context_view import memo
-    return dict(memo(view,('names',scene.id),lambda:scene_names(core_cards(view,view.story),view.peek_scenes(view.story.id),scene)))
-
-
 def narrator_selector(view, story, scene, select):
     from ..narration import effective_narrator, narrator_value
     select('scene', scene.id, 'narrator', narrator_value(effective_narrator(scene, core_cards(view, story))[0]))

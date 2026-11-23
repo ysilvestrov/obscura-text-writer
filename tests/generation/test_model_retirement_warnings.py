@@ -68,24 +68,3 @@ def test_a_model_without_a_notice_adds_no_warning(tmp_path):
     retiring(worker, set())
     worker._execute(run.id)
     assert not any(line.startswith('Провайдер прибирає') for line in lines(worker.get_run(run.id).warning))
-
-
-@pytest.mark.req('MODEL-RETIREMENT')
-def test_book_review_call_carries_the_warning(monkeypatch):
-    import threading
-    from types import SimpleNamespace
-    from storygen.generation import stages
-    from storygen.review import runner as review_runner
-    from storygen.run_models import Run, RunRequest
-    run = Run(id='r1', request_id='q', request=RunRequest(story_id='s', mode='impact'), story_id='s', state='running', tasks=[], impact={'phase': 'review'})
-    saved, events = {'r1': run}, []
-    worker = SimpleNamespace(repo=None, condition=threading.RLock(), cancel_event=threading.Event(),
-        gateway_factory=lambda provider: SimpleNamespace(retirement=RETIRING), get_run=lambda id: saved[id],
-        _save=lambda current: saved.__setitem__(current.id, current), event=lambda *args: events.append(args))
-    attempt = SimpleNamespace(id='a', state='completed', usage={}, finish_reason='stop', error=None,
-        context={'model_retirement_warnings': ['Провайдер прибирає модель «local-review» 01.12.2026; заміна: «glm-test». Змініть модель у налаштуваннях ролі.']})
-    monkeypatch.setattr(stages, 'execute_stage', lambda *args, **kwargs: attempt)
-    context = SimpleNamespace(scene_id='c', estimated_tokens=1, settings=SimpleNamespace(provider=SimpleNamespace(provider='local', model='local-review')))
-    assert review_runner.call(worker, run, 'review_part', context) is attempt
-    assert 'Провайдер прибирає модель «local-review»' in saved['r1'].warning
-    assert any(event[1] == 'context_warning' for event in events)

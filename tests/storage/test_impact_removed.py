@@ -37,7 +37,7 @@ def old_records(repo,story,version_id,scene_id):
     return rows
 
 
-@pytest.mark.req('DATA-010')
+@pytest.mark.req('R28-REMOVED')
 def test_old_impact_and_review_records_do_not_clear_or_break_staleness(tmp_path):
     repo,story=stale_book(tmp_path)
     scene=repo.list_scenes(story.id)[0]
@@ -57,7 +57,7 @@ def test_old_impact_and_review_records_do_not_clear_or_break_staleness(tmp_path)
     assert set(rows)<=kept
 
 
-@pytest.mark.req('DATA-010')
+@pytest.mark.req('R28-REMOVED')
 def test_get_version_without_snapshot_ignores_old_review_acceptance(tmp_path):
     repo=Repository(tmp_path)
     story=repo.create_story(StoryCreate(title='Стара'))

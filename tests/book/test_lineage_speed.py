@@ -143,7 +143,7 @@ def test_story_request_builds_the_structured_map_at_most_once(tmp_path, monkeypa
     client, repo, story, scenes = setup(tmp_path, n=6)
     assert put(client, story, scenes, ['a1', 'a2', 'a1', 'a2', 'b1', 'b1']).status_code == 200
     calls = _counting(monkeypatch)
-    for url in (f'/api/stories/{story.id}', f'/api/stories/{story.id}/impact', f'/api/stories/{story.id}/trash',
+    for url in (f'/api/stories/{story.id}', f'/api/stories/{story.id}/trash',
                 f'/api/scenes/{scenes[4].id}/versions', f'/api/scenes/{scenes[4].id}/statistics?stage=draft',
                 f'/api/stories/{story.id}/readiness?scene_id={scenes[4].id}'):
         calls.clear()

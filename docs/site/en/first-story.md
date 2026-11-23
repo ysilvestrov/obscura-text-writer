@@ -36,7 +36,7 @@ The status row above the text shows the scene status and the run progress, along
 
 ## Story actions
 
-Everything that concerns the whole story lives in the **☰ Story actions** menu next to the title: **Book check**, **Card and publication**, **Export…**, the budget and rename. Export to Markdown, TXT, FB2, EPUB, PDF, DOCX or RTF is available as soon as scenes have accepted text.
+Everything that concerns the whole story lives in the **☰ Story actions** menu next to the title: **Accept all prose as the author's** (when some prose is outdated), **Card and publication**, **Export…**, the budget and rename. Export to Markdown, TXT, FB2, EPUB, PDF, DOCX or RTF is available as soon as scenes have accepted text.
 
 ## Next
 
