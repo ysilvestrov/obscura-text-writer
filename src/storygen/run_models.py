@@ -31,8 +31,11 @@ class RunRequest(DomainModel):
     story_id: str
     scene_id: str | None = None
     mode: Literal['stage','scene','remaining','prepare','rebuild_memory','evaluate','classify','edit_loop','publication_suggest','rewrite','impact','timeline_summary','memory_carry','audit'] = 'scene'
-    # 'audit' (VALID-LINKS, R-44 PR 3): the auditor checks the links of scene_id; 'story' comes with the book validation.
-    audit_scope: Literal['scene'] | None = None
+    # 'audit' (VALID-LINKS): the auditor checks the links of scene_id ('scene', R-44 PR 3) or of the whole book in
+    # reading order ('story', R-44 PR 4, scene_id None). The plan fingerprint is that of the preview the author saw:
+    # required for 'story', optional for 'scene' (the scene button of PR 3); Worker.enqueue compares a given one.
+    audit_scope: Literal['scene','story'] | None = None
+    audit_plan_fingerprint: str | None = Field(default=None,pattern=r'^[a-f0-9]{64}$')
     # 'memory_carry': the model-free carry of a new memory into later journals; scene_id is the first scene to carry.
     # 'impact' (R-28) stays readable for saved runs; Worker.enqueue refuses it (IMPACT_REMOVED, R-44 PR 1).
     impact_plan_fingerprint: str | None = Field(default=None,pattern=r'^[a-f0-9]{64}$')
@@ -79,10 +82,18 @@ class RunRequest(DomainModel):
             raise ValueError('Пропозиція публікації належить усьому твору, не окремій сцені')
         if (self.mode=='audit')!=(self.audit_scope is not None):
             raise ValueError('Обсяг перевірки задається лише для перевірки Ревізором, і там він обов’язковий')
+        if self.audit_plan_fingerprint is not None and self.mode!='audit':
+            raise ValueError('Відбиток плану перевірки дозволений лише для перевірки Ревізором')
+        if self.audit_scope=='story':
+            if self.scene_id is not None:
+                raise ValueError('Валідація книги належить усьому твору, не окремій сцені')
+            if self.audit_plan_fingerprint is None:
+                raise ValueError('Спершу перегляньте план валідації книги')
         if self.budget_limit_usd is not None:
             from .billing.models import money
             money(self.budget_limit_usd)
-        if self.mode in {'stage','scene','remaining','rebuild_memory','classify','edit_loop','memory_carry','audit'} and not self.scene_id:
+        if (self.mode in {'stage','scene','remaining','rebuild_memory','classify','edit_loop','memory_carry'}
+                or self.audit_scope=='scene') and not self.scene_id:
             raise ValueError('Оберіть початкову сцену')
         if self.mode=='stage' and not self.stage:
             raise ValueError('Оберіть етап')

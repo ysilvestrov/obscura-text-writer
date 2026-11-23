@@ -392,3 +392,190 @@ def test_invalid_prompt_fails_the_run_before_any_call(tmp_path):
     assert run.state == 'failed' and gateway.contexts == []
     assert run.error == prompt_error(repo, story, settings, stage)
     assert run.checkpoint['outcome'] == 'failed' and run.checkpoint['link'] == 'brief'
+
+
+# R-44 PR 4: the scope `story` validates the whole book in reading order.
+
+def book_request(story_id, fingerprint='0' * 64):
+    return RunRequest(story_id=story_id, mode='audit', audit_scope='story', audit_plan_fingerprint=fingerprint)
+
+
+def book_plan(repo, story):
+    return RunCoordinator(repo).readiness(story.id, operation='audit_story')['operations']['audit_story']
+
+
+def start_book(repo, story, gateway, request_id='book'):
+    worker = RunCoordinator(repo, gateway_factory=lambda _: gateway)
+    run = worker.enqueue(book_request(story.id, book_plan(repo, story)['plan_fingerprint']), request_id)
+    return worker, run
+
+
+def four_scenes(tmp_path):
+    """s1 valid; s2 only Z2 unchecked; s3 Z1 discrepancy and Z2 unchecked; s4 without components (missing)."""
+    from storygen.domain import SceneCreate
+    repo, story, (s1, s2, s3) = book(tmp_path, 3)
+    auditor(repo, story)
+    save_manual_brief(repo, repo.get_scene(s2.id))
+    decide_link(repo, s2.id, 'brief', 'approve', link_state(repo.context_view(story.id), s2.id, 'brief').fingerprint)
+    save_manual_brief(repo, repo.get_scene(s3.id))
+    worker, run = start(repo, story, s3, Answers(DISCREPANCY), 'scene-s3')
+    assert drive(worker, run.id).state == 'needs_review'
+    s4 = repo.create_scene(story.id, SceneCreate(title='Сцена 4', beats='Студія'))
+    return repo, story, (s1, s2, s3, s4), run.id
+
+
+def test_story_scope_request_rules():
+    with pytest.raises(ValueError):
+        RunRequest(story_id='s', scene_id='c', mode='audit', audit_scope='story', audit_plan_fingerprint='0' * 64)
+    with pytest.raises(ValueError):
+        RunRequest(story_id='s', mode='audit', audit_scope='story')
+    with pytest.raises(ValueError):
+        RunRequest(story_id='s', scene_id='c', mode='stage', stage='brief', audit_plan_fingerprint='0' * 64)
+    assert RunRequest(story_id='s', scene_id='c', mode='audit', audit_scope='scene',
+                      audit_plan_fingerprint='0' * 64).audit_plan_fingerprint == '0' * 64
+    assert book_request('s').scene_id is None
+
+
+def test_book_pending_in_reading_order_skips_valid_and_missing(tmp_path):
+    from storygen.generation.audit_run import book_pending
+    repo, story, (s1, s2, s3, s4), _ = four_scenes(tmp_path)
+    assert book_pending(repo.context_view(story.id)) == [(s2.id, 'prose'), (s3.id, 'brief'), (s3.id, 'prose')]
+
+
+def test_book_preview_counts_calls_scenes_and_fingerprints_the_plan(tmp_path):
+    repo, story, (s1, s2, s3, s4), _ = four_scenes(tmp_path)
+    result = preview(repo, book_request(story.id))
+    assert result['ready'] is True, result['reason']
+    assert result['calls'] == 2  # the discrepancy takes no call
+    assert result['invalid_scenes'] == 2
+    assert result['links'] == [
+        {'scene_id': s2.id, 'link': 'prose', 'status': 'unchecked', 'reason': None},
+        {'scene_id': s3.id, 'link': 'brief', 'status': 'discrepancy', 'reason': 'Місце не збігається'},
+        {'scene_id': s3.id, 'link': 'prose', 'status': 'unchecked', 'reason': None}]
+    assert result['roles'] == {'auditor': {'provider': 'local', 'model': 'auditor'}}
+    fingerprint = result['plan_fingerprint']
+    assert len(fingerprint) == 64 and preview(repo, book_request(story.id))['plan_fingerprint'] == fingerprint
+    assert book_plan(repo, story)['plan_fingerprint'] == fingerprint
+    auditor(repo, story, provider=ProviderSettings(model='auditor-2'))
+    assert preview(repo, book_request(story.id))['plan_fingerprint'] != fingerprint
+
+
+def test_valid_book_is_not_ready(tmp_path):
+    repo, story, _ = book(tmp_path, 2)
+    auditor(repo, story)
+    result = preview(repo, book_request(story.id))
+    assert result['ready'] is False and result['reason'] == 'Книга вже валідна' and result['calls'] == 0
+    with pytest.raises(ValueError, match='Книга вже валідна'):
+        RunCoordinator(repo).enqueue(book_request(story.id), 'valid-book')
+
+
+def test_book_run_checks_the_next_invalid_scene_and_stops_on_its_discrepancy(tmp_path):
+    repo, story, (s1, s2, s3, s4), _ = four_scenes(tmp_path)
+    gateway = Answers(answer(95))
+    worker, run = start_book(repo, story, gateway)
+    assert run.tasks == [{'scene_id': None, 'stage': 'audit'}]
+    assert run.planned_telemetry == {'roles': {'auditor': {'provider': 'local', 'model': 'auditor'}}, 'calls': 2}
+    run = drive(worker, run.id)
+    assert run.state == 'needs_review', (run.state, run.error)
+    assert [(c.scene_id, c.stage) for c in gateway.contexts] == [(s2.id, 'audit_prose')]
+    assert run.checkpoint['scene_id'] == s3.id and run.checkpoint['phase'] == 'awaiting_author'
+    assert (run.checkpoint['link'], run.checkpoint['outcome']) == ('brief', 'discrepancy')
+    steps = [(e.data['scene_id'], e.data['link'], e.data['outcome']) for e in worker.list_events(run.id)
+             if e.type == 'audit_step']
+    assert steps == [(s2.id, 'prose', 'valid'), (s3.id, 'brief', 'discrepancy')]
+
+
+def test_resume_reads_the_reading_order_again(tmp_path):
+    """Review Focus 2: the author approves Z1 of s3, then edits the prose of s1; the run continues from s1."""
+    from storygen.generation.dependencies import save_manual_prose
+    repo, story, (s1, s2, s3, s4), _ = four_scenes(tmp_path)
+    gateway = Answers(answer(95))
+    worker, run = start_book(repo, story, gateway)
+    assert drive(worker, run.id).checkpoint['scene_id'] == s3.id
+    decide_link(repo, s3.id, 'brief', 'approve', link_state(repo.context_view(story.id), s3.id, 'brief').fingerprint)
+    save_manual_prose(repo, s1.id, 'Олена увійшла до старої бібліотеки.', repo.get_scene(s1.id).revision)
+    worker.resume(run.id)
+    run = drive(worker, run.id)
+    assert run.state == 'completed', (run.state, run.error, run.checkpoint)
+    called = [(c.scene_id, c.stage) for c in gateway.contexts]
+    assert called[1] == (s1.id, 'audit_prose')
+    assert called == [(s2.id, 'audit_prose'), (s1.id, 'audit_prose'), (s1.id, 'audit_memory'), (s3.id, 'audit_prose')]
+    view = repo.context_view(story.id)
+    assert [scene_validity(view, s.id) for s in (s1, s2, s3)] == ['valid', 'valid', 'valid']
+
+
+def test_new_book_validation_supersedes_a_stopped_audit_of_the_story(tmp_path):
+    repo, story, scenes, stopped = four_scenes(tmp_path)
+    worker, run = start_book(repo, story, Answers(answer(95)))
+    assert repo.get_run(stopped).state == 'cancelled'
+    assert [e.data for e in worker.list_events(stopped) if e.type == 'superseded'] == [{'run_id': run.id}]
+    assert run.state == 'queued'
+
+
+def test_book_run_with_a_changed_plan_is_refused_without_a_call(tmp_path):
+    from storygen.domain import RevisionConflict
+    repo, story, scenes, _ = four_scenes(tmp_path)
+    fingerprint = book_plan(repo, story)['plan_fingerprint']
+    auditor(repo, story, provider=ProviderSettings(model='auditor-2'))
+    gateway = Answers(answer(95))
+    worker = RunCoordinator(repo, gateway_factory=lambda _: gateway)
+    with pytest.raises(RevisionConflict, match='План перевірки змінився. Перегляньте його ще раз'):
+        worker.enqueue(book_request(story.id, fingerprint), 'stale-plan')
+    assert repo.find_run_by_request_id('stale-plan') is None and gateway.contexts == []
+
+
+def test_scene_run_checks_a_given_plan_fingerprint(tmp_path):
+    from storygen.domain import RevisionConflict
+    repo, story, (scene,) = unchecked_scene(tmp_path)
+    current = preview(repo, request(story, scene))['plan_fingerprint']
+    worker = RunCoordinator(repo, gateway_factory=lambda _: Answers(answer(95)))
+    with pytest.raises(RevisionConflict, match='План перевірки змінився'):
+        worker.enqueue(request(story, scene).model_copy(update={'audit_plan_fingerprint': '0' * 64}), 'old')
+    run = worker.enqueue(request(story, scene).model_copy(update={'audit_plan_fingerprint': current}), 'fresh')
+    assert run.state == 'queued'
+
+
+def auditor_unavailable(repo, story, scene, link, reason):
+    from tests.storage.test_link_records import store, verdict
+    state = link_state(repo.context_view(story.id), scene.id, link)
+    record = verdict(story.id, scene.id, link=link, fingerprint=state.fingerprint, inputs=dict(state.inputs),
+                     source='auditor', outcome='unavailable', reason=reason)
+    store(repo, record)
+    return record.id
+
+
+def test_structural_auditor_unavailable_takes_no_call(tmp_path):
+    from storygen.generation.audit_context import FOREIGN_SOURCE, OVERFLOW_CHARS
+    repo, story, (scene,) = unchecked_scene(tmp_path)
+    verdict_id = auditor_unavailable(repo, story, scene, 'prose', FOREIGN_SOURCE)
+    assert preview(repo, request(story, scene))['calls'] == 1
+    assert preview(repo, book_request(story.id))['calls'] == 1
+    gateway = Answers(answer(95))
+    worker, run = start(repo, story, scene, gateway)
+    run = drive(worker, run.id)
+    assert run.state == 'needs_review' and [c.stage for c in gateway.contexts] == ['audit_brief']
+    assert run.checkpoint == {'scene_id': scene.id, 'link': 'prose', 'outcome': 'unavailable', 'verdict_id': verdict_id,
+                              'reason': FOREIGN_SOURCE, 'phase': 'awaiting_author'}
+    auditor_unavailable(repo, story, scene, 'prose', OVERFLOW_CHARS.format(chars=500000, limit=400000))
+    assert preview(repo, request(story, scene))['calls'] == 1  # the brief is valid now; an overflow is measured again
+
+
+def test_failed_book_call_needs_an_explicit_repeat(tmp_path):
+    repo, story, (scene,) = unchecked_scene(tmp_path)
+    gateway = Answers('не JSON', answer(95))
+    worker, run = start_book(repo, story, gateway)
+    run = drive(worker, run.id)
+    assert run.state == 'failed' and run.checkpoint['scene_id'] == scene.id
+    with pytest.raises(ValueError, match='явне рішення'):
+        worker.resume(run.id)
+    worker.resume(run.id, repeat_interrupted=True)
+    run = drive(worker, run.id)
+    assert run.state == 'completed' and len(gateway.contexts) == 3
+
+
+def test_coordinator_readiness_offers_the_book_audit_operation(tmp_path):
+    repo, story, (scene,) = unchecked_scene(tmp_path)
+    operations = RunCoordinator(repo).readiness(story.id, operation='audit_story')['operations']
+    assert list(operations) == ['audit_story'] and operations['audit_story']['ready'] is True
+    assert operations['audit_story']['calls'] == 2 and operations['audit_story']['invalid_scenes'] == 1
+    assert 'audit_story' not in RunCoordinator(repo).readiness(story.id, scene.id)['operations']

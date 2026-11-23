@@ -87,7 +87,7 @@ class RunCoordinator:
         elif request.mode=='classify':
             tasks=[{'scene_id':request.scene_id,'stage':'classify'}]
         elif request.mode=='audit':
-            tasks=[{'scene_id':request.scene_id,'stage':'audit'}]  # audit_run picks the link on every step
+            tasks=[{'scene_id':request.scene_id,'stage':'audit'}]  # audit_run picks the link (and the scene) on every step
         elif request.mode=='memory_carry':
             start=next(s for s in scenes if s.id==request.scene_id)
             tasks=[{'scene_id':s.id,'stage':'memory_carry'} for s in scenes if s.position>=start.position]
@@ -162,6 +162,10 @@ class RunCoordinator:
                 readiness=preview(self.repo,request)
                 if not readiness['ready']:
                     raise ValueError(readiness['reason'])
+                if request.mode=='audit' and request.audit_plan_fingerprint is not None and \
+                        request.audit_plan_fingerprint!=readiness.get('plan_fingerprint'):
+                    from .audit_run import PLAN_CHANGED
+                    raise RevisionConflict(PLAN_CHANGED)  # the author saw another plan: nothing is queued or paid
             telemetry={'roles':readiness.get('roles',{}),'calls':readiness.get('calls')} if readiness is not None else None
             if telemetry is not None and readiness.get('evaluator'):
                 telemetry['evaluator']=readiness['evaluator']
@@ -177,7 +181,14 @@ class RunCoordinator:
         return run
 
     def _supersede(self,new: Run) -> None:
-        """RUN-SUPERSEDE: a new run of one stage of a scene cancels stopped runs waiting at that same stage of that scene."""
+        """RUN-SUPERSEDE: a new run of one stage of a scene cancels stopped runs waiting at that same stage of that scene;
+        a new book validation cancels the audit runs of that story waiting for the author (VALID-RUN)."""
+        if new.request.mode=='audit' and new.request.audit_scope=='story':
+            for run in self.list_runs(new.story_id):
+                if run.id!=new.id and run.request.mode=='audit' and run.state=='needs_review':
+                    self.event(run.id,'superseded',{'run_id':new.id})
+                    self.cancel(run.id)
+            return
         if new.request.mode not in {'stage','edit_loop'} or not new.request.scene_id:
             return
         scene_id=new.request.scene_id
@@ -204,13 +215,13 @@ class RunCoordinator:
             # model_construct permits the unselected-scene state in a read-only preview.
             request=RunRequest.model_construct(
                 story_id=story_id,
-                scene_id=scene_id,
-                mode='stage' if name in STAGES else name,
+                scene_id=None if name=='audit_story' else scene_id,
+                mode='stage' if name in STAGES else 'audit' if name=='audit_story' else name,
                 stage=name if name in STAGES else None,
                 edit_workflow='loop' if name in {'scene','remaining'} else 'single',
                 editor_source_head=editor_source_head if name=='edit_loop' else None,
                 editor_source_version_id=editor_source_version_id if name=='edit_loop' else None,
-                audit_scope='scene' if name=='audit' else None
+                audit_scope={'audit':'scene','audit_story':'story'}.get(name)
             )
             # One captured view serves every operation of this request.
             if view is None:view=self.repo.context_view(story_id)
@@ -278,7 +289,8 @@ class RunCoordinator:
                 if (
                     task
                     and (attempt.stage == task['stage'] or task['stage'] == 'audit' and attempt.stage in AUDIT_STAGES)
-                    and attempt.scene_id == task.get('scene_id')
+                    # A book audit task has no scene: its attempts belong to the scenes it checked, one at a time.
+                    and (attempt.scene_id == task.get('scene_id') or task['stage'] == 'audit' and task.get('scene_id') is None)
                     and attempt.context.get('run_cursor', run.cursor) == run.cursor
                 ):
                     latest[attempt.context.get('checkpoint_key','stage')]=attempt
