@@ -332,3 +332,21 @@ def test_coordinator_readiness_offers_the_audit_operation(tmp_path):
     operations = RunCoordinator(repo).readiness(story.id, scene.id, operation='audit')['operations']
     assert list(operations) == ['audit'] and operations['audit']['ready'] is True and operations['audit']['calls'] == 2
     assert 'audit' not in RunCoordinator(repo).readiness(story.id, scene.id)['operations']
+
+
+@pytest.mark.req('VALID-CARDS')
+def test_check_after_card_invalidation_calls_the_auditor_again(tmp_path):
+    from storygen.storage.link_decisions import invalidate_links
+    repo, story, (scene,) = unchecked_scene(tmp_path)
+    brief = link_state(repo.context_view(story.id), scene.id, 'brief')
+    decide_link(repo, scene.id, 'brief', 'approve', brief.fingerprint)
+    worker, run = start(repo, story, scene, Answers(DISCREPANCY), 'first')
+    assert drive(worker, run.id).state == 'needs_review'
+    assert link_state(repo.context_view(story.id), scene.id, 'prose').status == 'discrepancy'
+    invalidate_links(repo, story.id, [scene.id], {'kind': 'character', 'ids': ['c1']})
+    gateway = Answers(answer(95), answer(96))
+    worker, run = start(repo, story, scene, gateway, 'second')
+    run = drive(worker, run.id)
+    assert run.state == 'completed', (run.state, run.error, run.checkpoint)
+    assert [c.stage for c in gateway.contexts] == ['audit_brief', 'audit_prose']
+    assert scene_validity(repo.context_view(story.id), scene.id) == 'valid'

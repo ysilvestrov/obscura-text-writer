@@ -60,8 +60,9 @@ class InvalidationTargetMissing(KeyError):
 
 def invalidate_links(repo, story_id: str, scene_ids: list[str], reason: dict) -> list[str]:
     """VALID-LINKS rule (г): the author's «Так» after a card or location change. One transaction; for every scene one
-    LinkInvalidation of Z1 and Z2 with their current fingerprints (a missing or unavailable link is skipped, a scene with
-    neither writes nothing). Returns the scenes that got a record."""
+    LinkInvalidation of Z1 and Z2 with their current fingerprints (a missing link and link_state's own unavailable are
+    skipped, an auditor's unavailable verdict is covered; a scene with neither writes nothing). Returns the scenes that
+    got a record."""
     from .link_records import InvalidationReason, LinkInvalidation, write_invalidation, CARD_LINKS
     cause = InvalidationReason.model_validate(reason)
     written = []
@@ -75,7 +76,8 @@ def invalidate_links(repo, story_id: str, scene_ids: list[str], reason: dict) ->
         stamp = now()
         for scene_id in dict.fromkeys(scene_ids):
             states = scene_links(view, scene_id)
-            links = [link for link in CARD_LINKS if states[link].status not in {'missing', 'unavailable'}]
+            links = [link for link in CARD_LINKS if states[link].status != 'missing'
+                     and not (states[link].status == 'unavailable' and states[link].source is None)]
             if not links:
                 continue
             write_invalidation(db, LinkInvalidation(id=new_verdict_id(), story_id=story_id, scene_id=scene_id, links=links,

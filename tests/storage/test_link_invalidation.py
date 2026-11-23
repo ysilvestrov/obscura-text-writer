@@ -121,3 +121,50 @@ def test_invalidation_skips_missing_links(tmp_path):
     assert invalidate_links(repo, story.id, [scene.id, empty.id], REASON) == [scene.id]
     view = repo.context_view(story.id)
     assert [(r.scene_id, r.links) for r in view.link_invalidations] == [(scene.id, ['brief', 'prose'])]
+
+
+def _auditor_verdict(repo, story, scene, link, outcome, **changes):
+    state = scene_links(repo.context_view(story.id), scene.id)[link]
+    _write(repo, verdict(story.id, scene.id, link=link, fingerprint=state.fingerprint, inputs=state.inputs,
+                         source='auditor', outcome=outcome, **changes))
+
+
+@pytest.mark.req('VALID-CARDS')
+def test_invalidation_unchecks_an_older_auditor_discrepancy(tmp_path):
+    # The author fixes the card and answers «Так»: the old complaint no longer counts, the next check calls again.
+    repo, story, (scene,) = book(tmp_path)
+    save_manual_brief(repo, scene)  # Z1 and Z2 are not valid by construction
+    _auditor_verdict(repo, story, scene, 'prose', 'discrepancy', confidence=99, reason='Колір очей',
+                     discrepancies=[{'text': 'Колір очей суперечить картці', 'quote': None}])
+    assert statuses(repo, story, scene)['prose'] == ('discrepancy', 'auditor')
+    assert invalidate_links(repo, story.id, [scene.id], REASON) == [scene.id]
+    assert statuses(repo, story, scene)['prose'] == ('unchecked', None)
+    assert scene_validity(repo.context_view(story.id), scene.id) == 'unchecked'
+
+
+@pytest.mark.req('VALID-CARDS')
+def test_invalidation_unchecks_an_older_auditor_overflow(tmp_path):
+    repo, story, (scene,) = book(tmp_path)
+    save_manual_brief(repo, scene)
+    _auditor_verdict(repo, story, scene, 'prose', 'unavailable', reason='Вхід Ревізора перевищує ліміт')
+    assert statuses(repo, story, scene)['prose'] == ('unavailable', 'auditor')
+    assert invalidate_links(repo, story.id, [scene.id], REASON) == [scene.id]
+    view = repo.context_view(story.id)
+    assert view.link_invalidations[-1].links == ['brief', 'prose']
+    assert statuses(repo, story, scene)['prose'] == ('unchecked', None)
+    assert scene_validity(view, scene.id) == 'unchecked'
+
+
+@pytest.mark.req('VALID-CARDS')
+def test_invalidation_leaves_an_auditor_memory_verdict(tmp_path):
+    # A card invalidation covers only Z1 and Z2, so a Z3 verdict of the auditor keeps its result.
+    from storygen.generation.dependencies import save_manual_prose
+    repo, story, (scene,) = book(tmp_path)
+    save_manual_prose(repo, scene.id, 'Олена увійшла до старої бібліотеки.', repo.get_scene(scene.id).revision)
+    memory = scene_links(repo.context_view(story.id), scene.id)['memory']
+    _write(repo, verdict(story.id, scene.id, link='memory', fingerprint=memory.fingerprint, inputs=memory.inputs,
+                         source='auditor', outcome='discrepancy', confidence=99, reason='Пам’ять',
+                         discrepancies=[{'text': 'Пам’ять не відповідає прозі', 'quote': None}]))
+    invalidate_links(repo, story.id, [scene.id], REASON)
+    assert statuses(repo, story, scene)['memory'] == ('discrepancy', 'auditor')
+    assert scene_validity(repo.context_view(story.id), scene.id) == 'discrepancy'

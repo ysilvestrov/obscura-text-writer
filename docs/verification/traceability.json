@@ -7814,6 +7814,17 @@
       ]
     },
     {
+      "id": "VALID-CARDS-S07",
+      "requirement": "VALID-CARDS",
+      "scope": "Правило (г): старший висновок Ревізора discrepancy чи unavailable для З1/З2 стає unchecked після підтвердженої інвалідації, З3 не зачіпається, наступна перевірка сцени знову викликає Ревізора.",
+      "tests": [
+        "tests/storage/test_link_invalidation.py::test_invalidation_unchecks_an_older_auditor_discrepancy",
+        "tests/storage/test_link_invalidation.py::test_invalidation_unchecks_an_older_auditor_overflow",
+        "tests/storage/test_link_invalidation.py::test_invalidation_leaves_an_auditor_memory_verdict",
+        "tests/generation/test_audit_run.py::test_check_after_card_invalidation_calls_the_auditor_again"
+      ]
+    },
+    {
       "id": "ROLE-PROFILES-S06",
       "requirement": "ROLE-PROFILES",
       "scope": "Схема 3 з Ревізором: capture/apply, старі схеми не чіпають рядок Ревізора, узгодженість схеми й набору ролей, промпти етапів і сирі UUID.",
