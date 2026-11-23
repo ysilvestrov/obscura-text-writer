@@ -143,6 +143,28 @@ def ads_settings(manifest):
     return {name:section[name] for name in ADS_FORMATS}
 
 
+# DOCS-SITE: the official dark Microsoft Store badge, a local copy per language, under the menu of every page.
+STORE_ID=re.compile(r'[0-9A-Z]{12}')
+STORE_HL={'uk':'uk-UA','en':'en-US'}
+STORE_ALT={'uk':'Завантажити з Microsoft Store','en':'Download from the Microsoft Store'}
+
+
+def store_settings(manifest):
+    """None without a `store` section; otherwise its product id, or the build stops."""
+    section=manifest.get('store')
+    if section is None:return None
+    value=section.get('product_id') if isinstance(section,dict) else None
+    if not isinstance(value,str) or not STORE_ID.fullmatch(value):raise ValueError('site.json: store.product_id має формат [0-9A-Z]{12}')
+    return value
+
+
+def store_badge(manifest,lang,base):
+    product=store_settings(manifest)
+    if not product:return ''
+    return (f'<p class="store-badge"><a href="https://apps.microsoft.com/detail/{product}?hl={STORE_HL[lang]}">'
+            f'<img src="{base}store-badge-{lang}.svg" alt="{STORE_ALT[lang]}" width="161" height="44"></a></p>\n')
+
+
 def consent_script(ads,base):
     return (f'<script src="{base}consent.js" defer data-ads="{ads["google_ads"]}" data-conversion="{ads["conversion_label"]}" '
             f'data-ga4="{ads["ga4"]}" data-privacy="privacy.html"></script>\n')
@@ -208,7 +230,7 @@ def page_html(template,manifest,lang,slug,content,scripts=''):
     home='index.html' if 'index' in titles else f'{pages[0]["slug"]}.html'
     values={'lang':lang,'title':html.escape(titles[slug]),'base':base,'home':home,'switch':switch,'nav':nav,'alt':switch_href,
             'meta':head_meta(manifest,lang,slug,f'{titles[slug]} · Obscura Text Writer'),
-            'scripts':scripts,'consent':consent_button(ads,lang),'content':content,'nav_label':LABELS[lang]['nav'],'lang_label':LABELS[lang]['lang']}
+            'scripts':scripts,'consent':consent_button(ads,lang),'store':store_badge(manifest,lang,base),'content':content,'nav_label':LABELS[lang]['nav'],'lang_label':LABELS[lang]['lang']}
     content=values.pop('content');out=template
     for key,value in values.items():out=out.replace('{'+key+'}',value)
     return out.replace('{content}',content)  # last: page text may contain literal {placeholders}
@@ -229,7 +251,8 @@ def build(root=ROOT,out=None):
             if page_form(page):content+=waitlist_form(manifest,lang);scripts=TURNSTILE_SCRIPT+'\n'
             target.write_text(page_html(template,manifest,lang,page['slug'],content,scripts),encoding='utf-8',newline='\n')
             written.append(target)
-    for name in ('site.css','site.js')+ICONS+(('consent.js',) if ads_settings(manifest) else ()):shutil.copyfile(root/SITE/name,out/name);written.append(out/name)
+    badges=tuple(f'store-badge-{lang}.svg' for lang in manifest['languages']) if store_settings(manifest) else ()
+    for name in ('site.css','site.js')+ICONS+badges+(('consent.js',) if ads_settings(manifest) else ()):shutil.copyfile(root/SITE/name,out/name);written.append(out/name)
     images=root/IMAGES
     if images.is_dir():
         for image in sorted(p for p in images.rglob('*') if p.is_file()):
