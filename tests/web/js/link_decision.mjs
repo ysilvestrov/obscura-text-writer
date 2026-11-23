@@ -40,8 +40,15 @@ assert.deepEqual(pendingLinks(view(noPrevious,{previous_scene_id:'gone'}),'s2',s
 // The carry: pending has no action; failed asks for a new memory of this scene.
 assert.deepEqual(pendingLinks(view({memory:link('unavailable','carry_pending')}),'s2',scenes),[
   {key:'memory',text:'link.carry_pending',params:{},actions:[]}]);
+// Failed: a new memory of this scene, or rebuilding the memory from this scene onwards (MEMORY-CARRY).
 assert.deepEqual(pendingLinks(view({memory:link('unavailable','carry_failed')}),'s2',scenes),[
-  {key:'memory',text:'link.carry_failed',params:{},actions:[memory('s2','link.new_memory')]}]);
+  {key:'memory',text:'link.carry_failed',params:{},actions:[memory('s2','link.new_memory'),{type:'rebuild',sceneId:'s2',label:'link.rebuild_memory'}]}]);
+// A stalled carry (paused, failed, interrupted) is the latest carry run: resume it or cancel it from the row.
+for(const state of ['paused','failed','interrupted'])
+  assert.deepEqual(pendingLinks(view({memory:link('unavailable','carry_pending')},{carry_run:{id:'r1',state}}),'s2',scenes),[
+    {key:'memory',text:'link.carry_stalled',params:{},actions:[
+      {type:'carry',runId:'r1',command:'resume',label:'link.carry_resume'},
+      {type:'carry',runId:'r1',command:'cancel',label:'link.carry_cancel'}]}]);
 
 // Missing links and decided outcomes get no row; an unavailable link never offers an approval.
 assert.deepEqual(pendingLinks(view({brief:link('missing'),prose:link('missing'),memory:link('missing')}),'s2',scenes),[]);

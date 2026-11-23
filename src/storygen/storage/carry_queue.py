@@ -24,26 +24,40 @@ def enqueue_carry(db, scene: Scene, memory_id: str) -> Run | None:
     """On the open transaction of a new memory head (author or stage): a carry run over the later scenes when one of
     them has memory. An active carry run that has not passed the first later scene already covers it; one that has
     passed it is superseded by the new run (it stops itself at its next step)."""
-    scenes = [Scene.model_validate_json(row[0]) for row in db.execute(
-        'SELECT payload FROM scenes WHERE story_id=? ORDER BY position,id', (scene.story_id,))]
-    active = [s for s in scenes if not s.trashed_at]
-    later = [s for s in active if s.position > scene.position]
-    if not any(s.heads.get('memory') for s in later):
-        return None
     # The head revision keeps a version selected again (A → B → A → B) from reusing the finished run of its first time.
     request_id = f"carry:{memory_id}:{scene.head_revisions.get('memory', 0)}"
+    return _enqueue(db, scene.story_id, lambda s: s.position > scene.position, request_id)
+
+
+def enqueue_merge_carry(db, story_id: str, target_ids, version_id: str) -> Run | None:
+    """On the open transaction that publishes a memory merge: a carry run from the first scene that starts from the
+    merge point, so the journals built on an earlier merge (or stopped before it) extend the new one."""
+    targets = set(target_ids)
+    return _enqueue(db, story_id, lambda s: s.id in targets, f'carry:merge:{version_id}', from_first=True)
+
+
+def _enqueue(db, story_id: str, covers, request_id: str, from_first: bool = False) -> Run | None:
+    """`covers`: the scenes to carry; with `from_first`, every scene from the first covered one onwards."""
+    scenes = [Scene.model_validate_json(row[0]) for row in db.execute(
+        'SELECT payload FROM scenes WHERE story_id=? ORDER BY position,id', (story_id,))]
+    active = [s for s in scenes if not s.trashed_at]
+    later = [s for s in active if covers(s)]
+    if from_first and later:
+        later = [s for s in active if s.position >= later[0].position]
+    if not any(s.heads.get('memory') for s in later):
+        return None
     if db.execute('SELECT 1 FROM runs WHERE request_id=?', (request_id,)).fetchone():
         return None
     start = later[0]
     position = {s.id: s.position for s in active}
-    for run in load_carry_runs(db, scene.story_id):
+    for run in load_carry_runs(db, story_id):
         if run.state not in ACTIVE:
             continue
         ahead = [task['scene_id'] for task in run.tasks[run.cursor:] if task.get('scene_id') in position]
         if ahead and position[ahead[0]] <= start.position:
             return run
-    run = Run(id=new_id(), story_id=scene.story_id, request_id=request_id,
-              request=RunRequest(story_id=scene.story_id, scene_id=start.id, mode='memory_carry'),
+    run = Run(id=new_id(), story_id=story_id, request_id=request_id,
+              request=RunRequest(story_id=story_id, scene_id=start.id, mode='memory_carry'),
               tasks=[{'scene_id': s.id, 'stage': 'memory_carry'} for s in later],
               planned_telemetry={'roles': {}, 'calls': 0})
     db.execute('INSERT INTO runs VALUES(?,?,?,?,?)', (run.id, run.story_id, run.request_id, run.state, run.model_dump_json()))

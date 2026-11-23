@@ -20,7 +20,8 @@ function render(){
     for(const action of item.actions){
       const button=document.createElement('button');button.type='button';button.className='secondary';button.disabled=busy;
       uiText(button,'textContent',()=>t(action.label));
-      button.onclick=()=>void(action.type==='approve'?decide(action):createMemory(action.sceneId));
+      button.onclick=()=>void(action.type==='approve'?decide(action):action.type==='carry'?carry(action)
+        :createMemory(action.sceneId,action.type==='rebuild'?{mode:'rebuild_memory'}:{mode:'stage',stage:'memory'}));
       row.append(' ',button);
     }
     host.append(row);
@@ -45,9 +46,19 @@ async function decide(action){
   }catch(error){notice(error.message,'error')}
   finally{busy=false;await refresh();render()}
 }
-// The memory stage of the named scene through the usual run preview and consent. The run command works on the open
-// scene, so another scene (the previous one) is opened first; a cancelled switch (unsaved text) launches nothing.
-async function createMemory(sceneId){
+// MEMORY-CARRY: a stalled carry is resumed (no model, no cost) or cancelled; the scenes it covers stop waiting either way.
+async function carry(action){
+  if(busy)return;
+  busy=true;render();
+  try{
+    await api(`/api/runs/${action.runId}/${action.command}`,json('POST',action.command==='resume'?{repeat_interrupted:true}:{}));
+  }catch(error){notice(error.message,'error')}
+  finally{busy=false;carryPolls=0;await refresh();render()}
+}
+// The memory stage (or «Перебудувати пам’ять») of the named scene through the usual run preview and consent. The run
+// command works on the open scene, so another scene (the previous one) is opened first; a cancelled switch (unsaved
+// text) launches nothing.
+async function createMemory(sceneId,options){
   if(busy)return;
   try{
     if(state.scene?.id!==sceneId){
@@ -56,7 +67,7 @@ async function createMemory(sceneId){
       await selectScene(target);
       if(state.scene?.id!==sceneId)return;
     }
-    await invokeWorkspaceCommand('run',{mode:'stage',stage:'memory'});
+    await invokeWorkspaceCommand('run',options);
   }catch(error){if(error.name!=='AbortError')notice(error.message,'error')}
 }
 document.addEventListener('story-refreshed',render);

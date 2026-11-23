@@ -379,3 +379,72 @@ def test_stop_warning_names_the_real_reason():
     text = stop_warning('Ранок', 'Пам’ять сцени не має власного джерела.\nДругий рядок')
     assert text == 'Перенос пам’яті зупинено на сцені «Ранок»: Пам’ять сцени не має власного джерела. Другий рядок — створіть нову пам’ять цієї сцени'
     assert '\n' not in text
+
+
+@pytest.mark.req('VALID-MEMORY')
+def test_stalled_carry_can_be_resumed_or_cancelled(tmp_path):
+    from storygen.generation.worker import RunCoordinator
+    from storygen.storage.material_status import material_status
+    repo, story, scenes = book(tmp_path, 3)
+    new_memory(repo, scenes[0])
+    (run,) = carry_runs(repo, story.id)
+    worker = RunCoordinator(repo)
+    for stalled in ('paused', 'failed', 'interrupted'):
+        run.state = stalled
+        repo.save_run(run)
+        row = material_status(repo.context_view(story.id))[scenes[1].id]
+        assert row['links']['memory']['reason'] == 'carry_pending'
+        assert row['carry_run'] == {'id': run.id, 'state': stalled}
+    # A failed carry (three conflicts in a row, a scene trashed mid-step) can be cancelled: its scenes stop waiting.
+    assert worker.cancel(run.id).state == 'cancelled'
+    assert state(repo, story, scenes[1]) != 'pending'
+    assert 'carry_run' not in material_status(repo.context_view(story.id))[scenes[1].id]
+    # A paused carry resumes without a paid call and carries the scenes.
+    repo2, story2, scenes2 = book(tmp_path / 'resume', 3)
+    new_memory(repo2, scenes2[0])
+    (paused,) = carry_runs(repo2, story2.id)
+    paused.state = 'paused'
+    repo2.save_run(paused)
+    assert RunCoordinator(repo2).resume(paused.id, True).state == 'queued'
+    run_carries(repo2, story2.id)
+    assert all(state(repo2, story2, s) == 'current' for s in scenes2[1:])
+
+
+@pytest.mark.req('VALID-MEMORY')
+def test_carried_memory_keeps_the_source_run_of_its_memory(tmp_path):
+    # A carried copy is not a new model result: an author-written memory stays author-written (STORY-LANGUAGE lock).
+    repo, story, scenes = book(tmp_path, 3)
+    old = repo.get_scene(scenes[1].id).heads['memory']
+    new_memory(repo, scenes[0])
+    run_carries(repo, story.id)
+    carried = repo.get_scene(scenes[1].id).heads['memory']
+    view = repo.context_view(story.id)
+    assert carried != old and view.versions[carried].memory_carry_of == old
+    assert view.versions[carried].source_run_id == view.versions[old].source_run_id
+
+
+@pytest.mark.req('VALID-MEMORY')
+def test_confirming_a_merge_carries_the_scenes_after_it(tmp_path):
+    from storygen.storage.memory_merges import merge_point, save_merge
+    from tests.memory.merge_helpers import arc_book, fact, save_scene_journal
+    repo, story, scenes = arc_book(tmp_path, 'A B A+B A+B', [['A', 'B']], only={1, 2})
+    point = merge_point(story, repo.list_scenes(story.id), scene_id=scenes[2].id)
+    heads = lambda: [repo.get_scene(s.id).heads['memory'] for s in scenes[:2]]
+    story, version_id = save_merge(repo, story.id, point.key, {}, story.revision, heads())
+    previous = MemoryJournal.model_validate(json.loads(repo.read_text(version_id))['journal'])
+    for scene in scenes[2:]:
+        scene = repo.get_scene(scene.id)
+        save_scene_journal(repo, scene, previous, [fact(f'Подія {scene.title}', scene.heads['prose'])])
+        previous = journal_of(repo, scene)
+    run_carries(repo, story.id)
+    new_memory(repo, scenes[0], 'Анна йде містом уночі')
+    assert run_carries(repo, story.id)[-1].checkpoint['stopped_scene_id'] == scenes[2].id
+    third = repo.get_scene(scenes[2].id).heads['memory']
+    # The author confirms the merge, as the stop warning asks: the scenes after the merge point are carried.
+    story = repo.get_story(story.id)
+    story, version_id = save_merge(repo, story.id, point.key, {}, story.revision, heads())
+    assert run_carries(repo, story.id)[-1].state == 'completed'
+    assert repo.get_scene(scenes[2].id).heads['memory'] != third
+    merged = MemoryJournal.model_validate(json.loads(repo.read_text(version_id))['journal'])
+    assert journal_of(repo, scenes[2]).events[:len(merged.events)] == merged.events
+    assert all(state(repo, story, s) == 'current' for s in scenes[2:])

@@ -80,7 +80,7 @@ def carry_step(repo, story_id: str, scene_id: str, run_id: str) -> dict:
         try:
             version = repo.commit_memory_carry(scene_id, carried.model_dump_json(), carried_from=memory_id,
                                                expected_revision=scene.revision, expected_previous_id=before.memory_id,
-                                               input_refs=refs, dependency_snapshot=snapshot, source_run_id=run_id,
+                                               input_refs=refs, dependency_snapshot=snapshot, source_run_id=old.source_run_id,
                                                memory_confirmation=old.memory_confirmation)
         except RevisionConflict:
             continue  # the author changed the scene meanwhile: read it again; their change stays

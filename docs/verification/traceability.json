@@ -7654,7 +7654,8 @@
         "tests/memory/test_memory_carry.py::test_carry_step_enqueues_no_carry",
         "tests/memory/test_memory_carry.py::test_carry_skips_scene_without_memory",
         "tests/memory/test_memory_carry.py::test_carry_step_respects_scene_revision",
-        "tests/memory/test_memory_carry.py::test_carry_through_merge_and_series_start"
+        "tests/memory/test_memory_carry.py::test_carry_through_merge_and_series_start",
+        "tests/memory/test_memory_carry.py::test_carried_memory_keeps_the_source_run_of_its_memory"
       ]
     },
     {
@@ -7683,12 +7684,16 @@
     {
       "id": "VALID-MEMORY-S07",
       "requirement": "VALID-MEMORY",
-      "scope": "Черга переносу: витіснення, request_id з ревізією голови, зупинений перенос, рестарт → queued, публічний API 422, MCP без режиму.",
+      "scope": "Черга переносу: витіснення, request_id з ревізією голови, зупинений перенос (продовження, скасування й невдалого), рестарт → queued або cancelled, перенос після підтвердження злиття, source_run_id, публічний API 422, MCP без режиму.",
       "tests": [
         "tests/memory/test_memory_carry.py::test_carry_restarts_from_an_earlier_change",
         "tests/memory/test_memory_carry.py::test_selecting_a_memory_again_carries_again",
         "tests/memory/test_memory_carry.py::test_stalled_carry_keeps_its_scenes_pending",
         "tests/generation/test_memory_carry_run.py::test_restart_requeues_a_carry",
+        "tests/generation/test_memory_carry_run.py::test_restart_finishes_a_requested_cancel_of_a_carry",
+        "tests/memory/test_memory_carry.py::test_stalled_carry_can_be_resumed_or_cancelled",
+        "tests/memory/test_memory_carry.py::test_confirming_a_merge_carries_the_scenes_after_it",
+        "tests/memory/test_memory_carry.py::test_carried_memory_keeps_the_source_run_of_its_memory",
         "tests/web/test_memory_carry_api.py::test_public_runs_api_refuses_memory_carry",
         "tests/web/test_memory_carry_api.py::test_mcp_start_run_cannot_name_the_carry"
       ]
@@ -7696,10 +7701,11 @@
     {
       "id": "VALID-MEMORY-S08",
       "requirement": "VALID-MEMORY",
-      "scope": "Рядки й дії панелі для З3 і недоступних зв’язків (pendingLinks), previous_scene_id у перегляді твору.",
+      "scope": "Рядки й дії панелі для З3 і недоступних зв’язків (pendingLinks: зокрема «Перебудувати пам’ять» і дії зупиненого переносу), previous_scene_id і carry_run у перегляді твору.",
       "tests": [
         "tests/web/test_link_decision_ui.py::test_link_panel_actions",
-        "tests/web/test_link_decisions.py::test_story_view_names_the_previous_scene_without_memory"
+        "tests/web/test_link_decisions.py::test_story_view_names_the_previous_scene_without_memory",
+        "tests/memory/test_memory_carry.py::test_stalled_carry_can_be_resumed_or_cancelled"
       ],
       "manual": {
         "procedure": "docs/verification/manual.md#link-decision-browser",

@@ -70,7 +70,8 @@ For memory and missing memory the panel offers other actions:
 - **This scene has no memory yet** — **Create memory** runs the memory stage of this scene.
 - **The previous scene “…” has no memory** — the brief and prose of this scene cannot be checked. **Create memory** opens that scene and offers to run its memory stage. If the scene continues a memory merge, the panel only explains what is missing.
 - **The memory is being carried over…** — after the previous scene gets a new memory, Obscura updates the memory of later scenes on its own ([carrying memory to later scenes](memory.md#carrying-memory-to-later-scenes)). Until the carry reaches the scene, model runs for it are refused with the explanation “Memory is being carried”, while you can still read and edit the text. The note disappears on its own when the carry ends; if it takes longer than two minutes, refresh the page.
-- **The memory was not carried over** — the carry stopped at this scene. **Create a new memory** builds its memory on the new memory of the previous scene, and the carry continues. Such a memory cannot be kept.
+- **The memory was not carried over** — the carry stopped at this scene. **Create a new memory** builds its memory on the new memory of the previous scene, and the carry continues; **Rebuild memory** has a model create the memory of this scene and of all later scenes. Such a memory cannot be kept.
+- **The memory carry stopped before this scene** — the carry is paused, ended with an error or was interrupted. **Resume carry** (no cost) or **Cancel carry**: after a cancel, model runs are available, and the scene memory stays built on the old memory of the previous scene.
 
 In full-screen mode the panel is hidden.
 

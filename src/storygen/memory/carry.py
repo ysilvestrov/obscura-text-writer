@@ -108,6 +108,13 @@ def _compute(view) -> dict:
     return states
 
 
+def stalled_carry(view):
+    """The latest carry run of the story when it stopped before its end (paused, failed, interrupted): its remaining
+    scenes stay pending until it is resumed or cancelled."""
+    runs = getattr(view, 'memory_carries', None) or []
+    return runs[-1] if runs and runs[-1].state in STALLED else None
+
+
 def carry_states(view) -> dict:
     """{scene_id: state} for the scenes a carry run covers or stopped at; a scene outside carry runs is absent."""
     from ..storage.context_view import memo

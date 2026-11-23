@@ -41,3 +41,15 @@ def test_restart_requeues_a_carry(tmp_path):
     (carry,) = carry_runs(repo, story.id)
     assert carry.state == 'queued'
     assert state(repo, story, scenes[1]) == 'pending'
+
+
+@pytest.mark.req('VALID-MEMORY')
+def test_restart_finishes_a_requested_cancel_of_a_carry(tmp_path):
+    repo, story, scenes = book(tmp_path, 2)
+    new_memory(repo, scenes[0])
+    (carry,) = carry_runs(repo, story.id)
+    carry.state = 'cancellation_requested'
+    repo.save_run(carry)
+    RunCoordinator(repo).recover_interrupted()
+    assert repo.get_run(carry.id).state == 'cancelled'
+    assert state(repo, story, scenes[1]) != 'pending'

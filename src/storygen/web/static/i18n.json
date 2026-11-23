@@ -2520,6 +2520,10 @@
     "link.no_previous_memory_other": "Немає пам’яті, яку продовжує ця сцена (потрібне злиття пам’яті або пам’ять попередньої сцени), тож завдання й прозу не можна перевірити.",
     "link.carry_pending": "Пам’ять переноситься…",
     "link.carry_failed": "Пам’ять не перенесено: пізніші факти цієї сцени посилаються на записи, яких немає в новій пам’яті попередньої сцени.",
+    "link.rebuild_memory": "Перебудувати пам’ять",
+    "link.carry_stalled": "Перенос пам’яті зупинився до цієї сцени. Продовжте його або скасуйте; модельні етапи сцени чекають на нього.",
+    "link.carry_resume": "Продовжити перенос",
+    "link.carry_cancel": "Скасувати перенос",
     "run.mode_memory_carry": "Перенос пам’яті",
     "run.memory_carry_plan": "Без моделі й витрат: пам’ять пізніших сцен оновлюється з нової пам’яті попередньої сцени.",
     "d_22a8bff5cc3b": "Перенос пам’яті зупинено на сцені «{p0}»: {p1} — створіть нову пам’ять цієї сцени"
@@ -5045,6 +5049,10 @@
     "link.no_previous_memory_other": "There is no memory for this scene to continue (a memory merge or the previous scene’s memory is needed), so the brief and prose cannot be checked.",
     "link.carry_pending": "The memory is being carried over…",
     "link.carry_failed": "The memory was not carried over: later facts of this scene refer to records the new memory of the previous scene does not have.",
+    "link.rebuild_memory": "Rebuild memory",
+    "link.carry_stalled": "The memory carry stopped before this scene. Resume or cancel it; the model stages of this scene wait for it.",
+    "link.carry_resume": "Resume carry",
+    "link.carry_cancel": "Cancel carry",
     "run.mode_memory_carry": "Memory carry",
     "run.memory_carry_plan": "No model and no cost: the memory of later scenes is updated from the new memory of the previous scene.",
     "d_22a8bff5cc3b": "The memory carry stopped at scene “{p0}”: {p1} — create a new memory for this scene"

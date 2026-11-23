@@ -234,6 +234,8 @@ class RunCoordinator:
         with self.condition:
             run=self.get_run(id)
             target = CANCEL_TRANSITIONS.get(run.state)
+            if run.request.mode == 'memory_carry' and run.state == 'failed':
+                target = 'cancelled'  # MEMORY-CARRY: a failed carry keeps later scenes waiting until it is cancelled
             if target is None:
                 return run
             run.state = target
@@ -346,6 +348,12 @@ class RunCoordinator:
                     # R28-REMOVED: nothing can continue an old impact run, and the workspace no longer shows it.
                     run.state='cancelled'
                     run.error=IMPACT_REMOVED
+                    self._save(run)
+                    self.event(run.id,'state',{'state':run.state})
+                    recovered.append(run)
+                elif run.request.mode=='memory_carry' and run.state=='cancellation_requested':
+                    # MEMORY-CARRY: the author asked to stop it; an interrupted carry would keep its scenes pending.
+                    run.state='cancelled'
                     self._save(run)
                     self.event(run.id,'state',{'state':run.state})
                     recovered.append(run)
