@@ -223,6 +223,20 @@ def test_trashed_scene_links_are_missing(tmp_path):
 
 
 @pytest.mark.req('VALID-LINKS')
+@pytest.mark.parametrize('change', [
+    lambda repo, story, scenes: repo.set_scene_trashed(story.id, scenes[0].id, repo.get_scene(scenes[0].id).revision, False),
+    lambda repo, story, scenes: repo.reorder_scenes(story.id, [scenes[1].id, scenes[0].id], repo.get_story(story.id).revision),
+], ids=['trash', 'reorder'])
+def test_scene_that_becomes_first_loses_construction(tmp_path, change):
+    # The brief and prose of scene 2 were made after scene 1's memory; once scene 2 is first, that P0 is gone.
+    repo, story, scenes = book(tmp_path, 2)
+    assert statuses(repo, story, scenes[1])['brief'] == ('valid', 'construction', None)
+    change(repo, story, scenes)
+    result = statuses(repo, story, repo.get_scene(scenes[1].id))
+    assert result['brief'][1] != 'construction' and result['prose'][1] != 'construction'
+
+
+@pytest.mark.req('VALID-LINKS')
 def test_author_verdict_with_current_fingerprint_validates(tmp_path):
     repo, story, (scene,) = book(tmp_path)
     save_manual_brief(repo, scene)

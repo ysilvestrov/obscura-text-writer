@@ -97,6 +97,12 @@ def _recorded_p0(snapshot, story, scene, before):
     if before.ancestors:
         selector = _selector(snapshot, 'head', before.ancestors[-1].id, 'memory')
         return selector.expected if selector else None
+    # Now first (moved to the front, or its predecessor trashed): a snapshot made after another scene still names that
+    # scene's memory, so the recorded P0 differs from the absent current one.
+    earlier = next((selector for selector in snapshot.selectors if selector.kind == 'head' and selector.field == 'memory'
+                    and selector.owner_id != scene.id and isinstance(selector.expected, str) and selector.expected), None)
+    if earlier is not None:
+        return earlier.expected
     series = _selector(snapshot, 'scene', scene.id, 'series_start')
     if series is not None and isinstance(series.expected, str) and series.expected:
         return series.expected

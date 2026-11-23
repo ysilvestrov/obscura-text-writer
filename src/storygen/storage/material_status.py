@@ -12,12 +12,14 @@ def material_status(view):
     plain earlier scene (no merge, no series start) — the panel offers to create that scene's memory.
     carry_run: {id, state} of the stalled latest carry run while the scene's memory waits for it — the panel offers to
     resume or cancel it (MEMORY-CARRY).
+    carry_failed_scene_id: the failed scene a waiting scene's memory depends on, when the carry stopped there before
+    reaching it — the panel offers a new memory or a rebuild of that scene.
 
     Read-only: shared view models (peek_*) and the recomputed stale flag; get_version would deep-copy each head."""
     def stale(id):
         view.peek_version(id)
         return view.is_stale(id)
-    from ..memory.carry import stalled_carry
+    from ..memory.carry import carry_blocker, stalled_carry
     stalled=stalled_carry(view)
     rows={}
     for scene in view.peek_scenes(view.story.id):
@@ -34,7 +36,10 @@ def material_status(view):
         if any(state.reason=='no_previous_memory' for state in states.values()):
             previous=_plain_previous(view,scene)
             if previous:values['previous_scene_id']=previous
-        if stalled and states['memory'].reason=='carry_pending':
+        blocker=carry_blocker(view,scene.id) if states['memory'].reason=='carry_pending' else None
+        if blocker:
+            values['carry_failed_scene_id']=blocker
+        elif stalled and states['memory'].reason=='carry_pending':
             values['carry_run']={'id':stalled.id,'state':stalled.state}
         rows[scene.id]=values
     return rows

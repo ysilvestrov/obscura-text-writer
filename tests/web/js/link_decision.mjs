@@ -50,6 +50,10 @@ for(const state of ['paused','failed','interrupted'])
       {type:'carry',runId:'r1',command:'resume',label:'link.carry_resume'},
       {type:'carry',runId:'r1',command:'cancel',label:'link.carry_cancel'}]}]);
 
+// A scene the stopped carry did not reach waits for the failed scene: a new memory or a rebuild of that scene.
+assert.deepEqual(pendingLinks(view({memory:link('unavailable','carry_pending')},{carry_failed_scene_id:'s1'}),'s2',scenes),[
+  {key:'memory',text:'link.carry_blocked',params:{p0:'Ранок'},actions:[memory('s1','link.new_memory'),{type:'rebuild',sceneId:'s1',label:'link.rebuild_memory'}]}]);
+
 // Missing links and decided outcomes get no row; an unavailable link never offers an approval.
 assert.deepEqual(pendingLinks(view({brief:link('missing'),prose:link('missing'),memory:link('missing')}),'s2',scenes),[]);
 assert.deepEqual(pendingLinks(view({memory:link('unavailable','unknown_reason')}),'s2',scenes),[]);

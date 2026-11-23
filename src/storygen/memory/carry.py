@@ -10,6 +10,7 @@ from .journal import MemoryJournal, _extend, validate_memory_journal
 
 CARRY_PENDING = 'Пам’ять переноситься: модельні етапи цієї сцени стануть доступні, коли перенос пам’яті дійде до неї'
 CARRY_MISSING = 'Записи сцени посилаються на твердження, яких немає в новій пам’яті попередньої сцени'
+CARRY_BLOCKED = 'Перенос пам’яті зупинився на сцені «{p0}»: модельні етапи пізніших сцен чекають, доки ви створите нову пам’ять тієї сцени або перебудуєте пам’ять від неї'
 ACTIVE = frozenset({'queued', 'running', 'pause_requested', 'cancellation_requested'})
 STALLED = frozenset({'paused', 'failed', 'interrupted'})
 MAX_CHAIN = 200
@@ -81,21 +82,32 @@ def _differs(view, reader, scene, before):
 def _compute(view) -> dict:
     from .previous import _peek_view, previous_memory
     runs = getattr(view, 'memory_carries', None) or []
-    remaining, failures = set(), set()
+    remaining, failures, after = set(), set(), {}
     for index, run in enumerate(runs):
         # A paused, failed or interrupted carry still covers its remaining scenes until a later carry run replaces it.
         if run.state in ACTIVE or (run.state in STALLED and index == len(runs) - 1):
             remaining.update(task.get('scene_id') for task in run.tasks[run.cursor:])
         checkpoint = run.checkpoint or {}
         if checkpoint.get('failed_scene_id'):
-            failures.add((checkpoint['failed_scene_id'], checkpoint.get('memory_id')))
+            key = (checkpoint['failed_scene_id'], checkpoint.get('memory_id'))
+            failures.add(key)
+            # The scenes the stopped run did not reach still inherit the old memory: they wait while the stop holds.
+            ids = [task.get('scene_id') for task in run.tasks]
+            start = ids.index(key[0]) + 1 if key[0] in ids else len(ids)
+            after.setdefault(key, set()).update(ids[start:])
     failed_scenes = {scene_id for scene_id, _ in failures}
+    waiting = set().union(*after.values()) if after else set()
     if not remaining and not failures:
         return {}
     reader = _peek_view(view)
-    states = {}
+    states, blockers = {}, {}
     for scene in sorted((s for s in view.scenes.values() if not s.trashed_at), key=lambda s: (s.position, s.id)):
-        if (scene.id not in remaining and scene.id not in failed_scenes) or not scene.heads.get('memory'):
+        if scene.id not in remaining | failed_scenes | waiting or not scene.heads.get('memory'):
+            continue
+        blocker = next((key[0] for key, ids in after.items() if scene.id in ids and states.get(key[0]) == 'failed'
+                        and view.scenes[key[0]].heads.get('memory') == key[1]), None)
+        if blocker is not None:
+            states[scene.id], blockers[scene.id] = 'pending', blocker
             continue
         before = previous_memory(view, scene, peek=True, require=False)
         differs = _differs(view, reader, scene, before)
@@ -105,7 +117,7 @@ def _compute(view) -> dict:
             states[scene.id] = 'current'
         elif differs and (scene.id, scene.heads['memory']) in failures:
             states[scene.id] = 'failed'
-    return states
+    return {'states': states, 'blockers': blockers}
 
 
 def stalled_carry(view):
@@ -115,10 +127,35 @@ def stalled_carry(view):
     return runs[-1] if runs and runs[-1].state in STALLED else None
 
 
-def carry_states(view) -> dict:
-    """{scene_id: state} for the scenes a carry run covers or stopped at; a scene outside carry runs is absent."""
+def _computed(view) -> dict:
     from ..storage.context_view import memo
-    return memo(view, ('carry_states',), lambda: _compute(view))
+    return memo(view, ('carry_states',), lambda: _compute(view) or {'states': {}, 'blockers': {}})
+
+
+def carry_states(view) -> dict:
+    """{scene_id: state} for the scenes a carry run covers or stopped at; a scene outside carry runs is absent. A scene
+    after a failed scene that the stopped run did not reach is `pending` while the failure holds."""
+    return _computed(view)['states']
+
+
+def carry_blocker(view, scene_id: str) -> str | None:
+    """The failed scene a `pending` scene waits for (the stopped run did not reach it), else None."""
+    return _computed(view)['blockers'].get(scene_id)
+
+
+def carry_refusal(view, scene_id: str) -> str:
+    """The refusal text for a scene that waits: the failed scene it waits for, or «Пам’ять переноситься»."""
+    states = carry_states(view)
+    scene = view.scenes.get(scene_id)
+    candidates = [scene_id]
+    if scene is not None and not scene.trashed_at:
+        from .previous import previous_memory
+        candidates.append(_predecessor(previous_memory(view, scene, peek=True, require=False)))
+    for candidate in candidates:
+        blocker = carry_blocker(view, candidate) if states.get(candidate) == 'pending' else None
+        if blocker:
+            return CARRY_BLOCKED.replace('{p0}', view.scenes[blocker].title)
+    return CARRY_PENDING
 
 
 def carry_state(view, scene_id: str) -> CarryState | None:
@@ -155,8 +192,9 @@ def require_not_carrying(repo, scene_id: str) -> None:
     """MCP-BRIDGE: a chat stage result or chat draft waits for the carry like a model stage (409)."""
     from ..domain import RevisionConflict
     scene = repo.get_scene(scene_id)
-    if carry_blocks(repo.context_view(scene.story_id), scene_id):
-        raise RevisionConflict(CARRY_PENDING)
+    view = repo.context_view(scene.story_id)
+    if carry_blocks(view, scene_id):
+        raise RevisionConflict(carry_refusal(view, scene_id))
 
 
 def carried_to(view, old_id: str | None, new_id: str | None) -> bool:

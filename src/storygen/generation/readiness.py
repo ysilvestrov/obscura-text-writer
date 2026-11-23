@@ -52,9 +52,10 @@ def preview(repo, request, view=None):
     if request.mode=='memory_carry':
         return dict(ready=True,reason=None,roles={},calls=0,evaluator=None,warnings=[])
     if request.mode in {'rewrite','edit_loop'} and request.scene_id:
-        from ..memory.carry import CARRY_PENDING, carry_blocks
-        if carry_blocks(view if view is not None else repo.context_view(request.story_id),request.scene_id):
-            return dict(ready=False,reason=CARRY_PENDING,roles={},calls=0,evaluator=None)
+        from ..memory.carry import carry_blocks, carry_refusal
+        carry_view=view if view is not None else repo.context_view(request.story_id)
+        if carry_blocks(carry_view,request.scene_id):
+            return dict(ready=False,reason=carry_refusal(carry_view,request.scene_id),roles={},calls=0,evaluator=None)
     if request.mode=='rewrite':
         from .assisted_writing import readiness
         return readiness(repo,request)
@@ -88,9 +89,10 @@ def preview(repo, request, view=None):
         targets=[s for s in scenes if s.position>=scene.position] if request.mode in {'remaining','rebuild_memory'} else [scene]
         if view is not None:
             # MEMORY-CARRY: model stages wait while the memory of the scene, or the one it extends, is still to be carried.
-            from ..memory.carry import CARRY_PENDING, carry_blocks
-            if any(carry_blocks(view,target.id) for target in targets if target is not None):
-                raise ValueError(CARRY_PENDING)
+            from ..memory.carry import carry_blocks, carry_refusal
+            waiting=next((target for target in targets if target is not None and carry_blocks(view,target.id)),None)
+            if waiting is not None:
+                raise ValueError(carry_refusal(view,waiting.id))
         result['calls']=len(stages)*len(targets)
         if request.mode in {'scene','remaining'} and request.edit_workflow=='loop':
             result.update(edit_loop_scenes=len(targets),edit_pass_limit=request.edit_pass_limit)

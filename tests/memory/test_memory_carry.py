@@ -63,9 +63,9 @@ def memory_on_previous(repo, scene, keep=lambda event: True, extra=()):
     save_scene_memory(repo, scene.id, journal.model_dump_json(), scene.revision)
 
 
-def failed_book(tmp_path):
+def failed_book(tmp_path, count=3):
     """Scene 2 resolves an open thread of scene 1; the author then renames that thread in a new memory of scene 1."""
-    repo, story, scenes = book(tmp_path, 3)
+    repo, story, scenes = book(tmp_path, count)
     first = repo.get_scene(scenes[0].id)
     thread = _add_event('open_threads', 'Хто залишив книжку?', first.heads['prose'], QUOTE, 0)
     journal = journal_of(repo, first)
@@ -282,20 +282,29 @@ def test_carry_does_not_launder_memory_links(tmp_path):
     third = view.scenes[scenes[2].id]
     assert not view.is_stale(third.heads['draft'])
     assert statuses(repo, story, scenes[2]) == {link: ('valid', 'construction', None) for link in ('brief', 'prose', 'memory')}
+
+
+def keep_memory(repo, story, scene):
+    link = link_state(repo.context_view(story.id), scene.id, 'memory')
+    decide_link(repo, scene.id, 'memory', 'approve', link.fingerprint)
+
+
+@pytest.mark.req('VALID-MEMORY')
+@pytest.mark.parametrize('decide, expected', [
+    (lambda repo, story, scene: None, ('unchecked', None, None)),
+    (keep_memory, ('valid', 'author', None)),
+], ids=['unchecked', 'kept'])
+def test_carry_keeps_the_memory_link_of_a_hand_edited_scene(tmp_path, decide, expected):
     # An unchecked Z3 stays unchecked; a Z3 the author kept stays valid.
-    for keep in (False, True):
-        repo, story, scenes = book(tmp_path / str(keep), 3)
-        second = repo.get_scene(scenes[1].id)
-        save_manual_prose(repo, second.id, 'Олена увійшла до нової бібліотеки вночі.', second.revision)
-        if keep:
-            link = link_state(repo.context_view(story.id), second.id, 'memory')
-            decide_link(repo, second.id, 'memory', 'approve', link.fingerprint)
-        expected = ('valid', 'author', None) if keep else ('unchecked', None, None)
-        assert statuses(repo, story, second)['memory'] == expected
-        new_memory(repo, scenes[0])
-        run_carries(repo, story.id)
-        assert state(repo, story, second) == 'current'
-        assert statuses(repo, story, second)['memory'] == expected
+    repo, story, scenes = book(tmp_path, 3)
+    second = repo.get_scene(scenes[1].id)
+    save_manual_prose(repo, second.id, 'Олена увійшла до нової бібліотеки вночі.', second.revision)
+    decide(repo, story, second)
+    assert statuses(repo, story, second)['memory'] == expected
+    new_memory(repo, scenes[0])
+    run_carries(repo, story.id)
+    assert state(repo, story, second) == 'current'
+    assert statuses(repo, story, second)['memory'] == expected
 
 
 @pytest.mark.req('VALID-MEMORY')
@@ -448,3 +457,25 @@ def test_confirming_a_merge_carries_the_scenes_after_it(tmp_path):
     merged = MemoryJournal.model_validate(json.loads(repo.read_text(version_id))['journal'])
     assert journal_of(repo, scenes[2]).events[:len(merged.events)] == merged.events
     assert all(state(repo, story, s) == 'current' for s in scenes[2:])
+
+
+@pytest.mark.req('VALID-MEMORY')
+def test_scenes_after_a_failed_carry_wait_for_it(tmp_path):
+    from storygen.memory.carry import carry_blocker, carry_blocks
+    from storygen.storage.material_status import material_status
+    repo, story, scenes = failed_book(tmp_path, 4)
+    run_carries(repo, story.id)
+    view = repo.context_view(story.id)
+    assert state(repo, story, scenes[1]) == 'failed'
+    # Scenes 3 and 4 still inherit the old memory of scene 1: their model stages wait, naming the failed scene.
+    for scene in scenes[2:]:
+        assert carry_state(view, scene.id) == 'pending' and carry_blocks(view, scene.id)
+        assert carry_blocker(view, scene.id) == scenes[1].id
+        assert material_status(view)[scene.id]['carry_failed_scene_id'] == scenes[1].id
+        assert 'carry_run' not in material_status(view)[scene.id]
+    result = preview(repo, RunRequest(story_id=story.id, scene_id=scenes[3].id, mode='stage', stage='memory'), view)
+    assert not result['ready'] and scenes[1].title in result['reason'] and 'перебудуєте' in result['reason']
+    # A new memory of scene 2 lifts the stop, and the carry reaches scenes 3 and 4.
+    memory_on_previous(repo, scenes[1], keep=lambda event: event.operation == 'add')
+    run_carries(repo, story.id)
+    assert all(state(repo, story, s) == 'current' for s in scenes[1:])

@@ -7497,6 +7497,7 @@
       "tests": [
         "tests/storage/test_links.py::test_manual_memory_keeps_scene_and_unchecks_next",
         "tests/storage/test_links.py::test_same_own_events_keep_next_scene_valid",
+        "tests/storage/test_links.py::test_scene_that_becomes_first_loses_construction",
         "tests/storage/test_link_freshness.py::test_generated_brief_after_previous_memory_change_is_stale_with_link_reason",
         "tests/storage/test_link_freshness.py::test_previous_memory_change_does_not_stale_next_memory_head"
       ]
@@ -7651,6 +7652,7 @@
         "tests/memory/test_memory_carry.py::test_carry_journal_extends_the_new_previous_journal_with_own_events",
         "tests/memory/test_memory_carry.py::test_carry_keeps_own_events_and_digest",
         "tests/memory/test_memory_carry.py::test_carry_does_not_launder_memory_links",
+        "tests/memory/test_memory_carry.py::test_carry_keeps_the_memory_link_of_a_hand_edited_scene",
         "tests/memory/test_memory_carry.py::test_carry_step_enqueues_no_carry",
         "tests/memory/test_memory_carry.py::test_carry_skips_scene_without_memory",
         "tests/memory/test_memory_carry.py::test_carry_step_respects_scene_revision",
@@ -7667,6 +7669,7 @@
         "tests/memory/test_memory_carry.py::test_new_memory_clears_carry_failed_and_continues",
         "tests/memory/test_memory_carry.py::test_carry_reasons_name_the_scene_and_action",
         "tests/memory/test_memory_carry.py::test_stop_warning_names_the_real_reason",
+        "tests/memory/test_memory_carry.py::test_scenes_after_a_failed_carry_wait_for_it",
         "tests/memory/test_memory_carry.py::test_carry_through_merge_and_series_start"
       ]
     },

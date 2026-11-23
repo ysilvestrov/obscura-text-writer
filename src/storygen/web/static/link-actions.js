@@ -30,6 +30,12 @@ export function pendingLinks(materialStatus,sceneId,scenes=[]){
     const rule=state?.status==='unchecked'?UNCHECKED[link]:link==='memory'&&state?.status==='unavailable'?MEMORY_UNAVAILABLE[state.reason]:null;
     if(!rule)continue;
     const actions=[];
+    const failed=state.reason==='carry_pending'&&row.carry_failed_scene_id&&scenes.find(scene=>scene.id===row.carry_failed_scene_id);
+    if(failed){
+      items.push({key:link,text:'link.carry_blocked',params:{p0:failed.title},actions:[
+        {type:'memory',sceneId:failed.id,label:'link.new_memory'},{type:'rebuild',sceneId:failed.id,label:'link.rebuild_memory'}]});
+      continue;
+    }
     if(state.reason==='carry_pending'&&row.carry_run){
       const runId=row.carry_run.id;
       items.push({key:link,text:'link.carry_stalled',params:{},actions:[

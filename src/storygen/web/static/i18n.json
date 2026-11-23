@@ -1001,6 +1001,7 @@
     "d_35addb880ffb": "Сцена «{p0}»: у зв’язках знайдено розбіжність — перегляньте її перед запуском",
     "d_ec1709023030": "Сцена «{p0}»: немає пам’яті попередньої сцени — спершу оновіть її",
     "d_3b7326c38999": "Пам’ять переноситься: модельні етапи цієї сцени стануть доступні, коли перенос пам’яті дійде до неї",
+    "d_6cb19d2d6697": "Перенос пам’яті зупинився на сцені «{p0}»: модельні етапи пізніших сцен чекають, доки ви створите нову пам’ять тієї сцени або перебудуєте пам’ять від неї",
     "d_078cbe6a1358": "Сцена «{p0}»: пам’ять переноситься на нову пам’ять попередньої сцени — дочекайтеся завершення переносу",
     "d_379b035eef74": "Сцена «{p0}»: пам’ять не вдалося перенести на нову пам’ять попередньої сцени — створіть нову пам’ять цієї сцени",
     "d_ea209b763a88": "Пам’ять сцени не перенесено на нову пам’ять попередньої сцени, і рішення автора її не залишить — створіть нову пам’ять цієї сцени",
@@ -2524,6 +2525,7 @@
     "link.carry_stalled": "Перенос пам’яті зупинився до цієї сцени. Продовжте його або скасуйте; модельні етапи сцени чекають на нього.",
     "link.carry_resume": "Продовжити перенос",
     "link.carry_cancel": "Скасувати перенос",
+    "link.carry_blocked": "Перенос пам’яті зупинився на сцені «{p0}», тож пам’ять цієї сцени ще спирається на стару. Створіть нову пам’ять тієї сцени або перебудуйте пам’ять від неї.",
     "run.mode_memory_carry": "Перенос пам’яті",
     "run.memory_carry_plan": "Без моделі й витрат: пам’ять пізніших сцен оновлюється з нової пам’яті попередньої сцени.",
     "d_22a8bff5cc3b": "Перенос пам’яті зупинено на сцені «{p0}»: {p1} — створіть нову пам’ять цієї сцени"
@@ -3530,6 +3532,7 @@
     "d_35addb880ffb": "Scene “{p0}”: a discrepancy was found in its links — review it before running",
     "d_ec1709023030": "Scene “{p0}”: the previous scene has no memory — update it first",
     "d_3b7326c38999": "Memory is being carried: model stages of this scene become available once the memory carry reaches it",
+    "d_6cb19d2d6697": "The memory carry stopped at scene “{p0}”: model stages of later scenes wait until you create a new memory for that scene or rebuild memory from it",
     "d_078cbe6a1358": "Scene “{p0}”: its memory is being carried onto the new memory of the previous scene — wait for the carry to finish",
     "d_379b035eef74": "Scene “{p0}”: its memory could not be carried onto the new memory of the previous scene — create a new memory for this scene",
     "d_ea209b763a88": "The scene memory was not carried onto the new memory of the previous scene, and an author decision cannot keep it — create a new memory for this scene",
@@ -5053,6 +5056,7 @@
     "link.carry_stalled": "The memory carry stopped before this scene. Resume or cancel it; the model stages of this scene wait for it.",
     "link.carry_resume": "Resume carry",
     "link.carry_cancel": "Cancel carry",
+    "link.carry_blocked": "The memory carry stopped at scene “{p0}”, so this scene’s memory still relies on the old one. Create a new memory for that scene or rebuild memory from it.",
     "run.mode_memory_carry": "Memory carry",
     "run.memory_carry_plan": "No model and no cost: the memory of later scenes is updated from the new memory of the previous scene.",
     "d_22a8bff5cc3b": "The memory carry stopped at scene “{p0}”: {p1} — create a new memory for this scene"

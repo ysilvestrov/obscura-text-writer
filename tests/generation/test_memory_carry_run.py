@@ -34,13 +34,27 @@ def test_one_run_generates_three_scenes_without_refusal(tmp_path):
 
 @pytest.mark.req('VALID-MEMORY')
 def test_restart_requeues_a_carry(tmp_path):
-    repo, story, scenes = book(tmp_path, 2)
+    repo, story, scenes = book(tmp_path, 3)
     new_memory(repo, scenes[0])
-    worker = RunCoordinator(repo)
-    worker.recover_interrupted()
     (carry,) = carry_runs(repo, story.id)
-    assert carry.state == 'queued'
+    carry.state = 'running'
+    repo.save_run(carry)
+    RunCoordinator(repo).recover_interrupted()
+    assert repo.get_run(carry.id).state == 'queued'
     assert state(repo, story, scenes[1]) == 'pending'
+    # A carry interrupted past its first scene continues from its cursor: the scene it passed is not carried again.
+    repo, story, scenes = book(tmp_path / 'cursor', 3)
+    new_memory(repo, scenes[0])
+    (carry,) = carry_runs(repo, story.id)
+    carry.state, carry.cursor = 'pause_requested', 1
+    repo.save_run(carry)
+    RunCoordinator(repo).recover_interrupted()
+    carry = repo.get_run(carry.id)
+    assert (carry.state, carry.cursor) == ('queued', 1)
+    second = repo.get_scene(scenes[1].id).heads['memory']
+    run_carries(repo, story.id)
+    assert repo.get_run(carry.id).state == 'completed'
+    assert repo.get_scene(scenes[1].id).heads['memory'] == second
 
 
 @pytest.mark.req('VALID-MEMORY')

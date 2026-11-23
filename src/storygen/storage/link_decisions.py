@@ -25,8 +25,8 @@ def decide_link(repo, scene_id: str, link: str, action: str, fingerprint: str) -
         if state.reason == 'carry_failed':
             raise RevisionConflict(CARRY_FAILED)
         if state.reason == 'carry_pending':
-            from ..memory.carry import CARRY_PENDING
-            raise RevisionConflict(CARRY_PENDING)
+            from ..memory.carry import carry_refusal
+            raise RevisionConflict(carry_refusal(view, scene_id))
         if state.status in {'missing', 'unavailable'} or state.fingerprint != fingerprint:
             raise RevisionConflict('Зв’язок сцени змінився; оновіть сторінку')
         if state.status != 'valid':

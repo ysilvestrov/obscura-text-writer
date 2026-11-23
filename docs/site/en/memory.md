@@ -84,6 +84,8 @@ The carry stops when a scene's records refer to a fact the new memory of the pre
 
 If the carry was paused, ended with an error, or the application was closed while it was being cancelled, the panel of a scene it has not reached shows **The memory carry stopped** with **Resume carry** and **Cancel carry**. Resuming costs nothing. After a cancel, model runs for these scenes are available again, but their memory stays built on the old memory of the previous scene.
 
+The scenes after the one where the carry failed wait too: their memory still relies on the old one. Their panel names the scene where the carry stopped and offers **Create a new memory** or **Rebuild memory** for it.
+
 If you changed the prose but the facts stayed the same, press **Keep the earlier memory** in the panel below the text ([scene status](workspace.md#scene-status-valid-or-unchecked)). The next scene then does not ask for confirmation because of this prose change.
 
 ## Advanced editing
