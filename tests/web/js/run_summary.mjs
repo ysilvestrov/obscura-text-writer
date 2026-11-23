@@ -62,3 +62,12 @@ assert.equal(runCostText(addRunCost(costs,'r2','b1',{cost:{usd:1.5}}),'r2'),'$1.
 assert.equal(runCostText(addRunCost(null,'r3','c1',{prompt_tokens:3}),'r3'),'$—','usage without a price stays reachable through the tooltip');
 assert.equal(addRunCost(null,'r4','d1',{}),null,'no usage, nothing to show');
 console.log('ok');
+
+// needs_review is disclosed like failed: it opens by itself once, the author's collapse is remembered, the next stop opens it again.
+{
+  const review={id:'r5',state:'needs_review'};let p={expandedRun:null,collapsedFailure:null};
+  assert.equal(runExpanded(review,p),true,'needs_review opens once by itself');
+  p=toggleRunExpansion(review,p);assert.equal(runExpanded(review,p),false,'the author collapses it');
+  p=syncRunPrefs({id:'r5',state:'queued'},p);assert.equal(runExpanded({id:'r5',state:'running'},p),false);
+  assert.equal(runExpanded({id:'r5',state:'needs_review'},p),true,'the next stop opens it again');
+}

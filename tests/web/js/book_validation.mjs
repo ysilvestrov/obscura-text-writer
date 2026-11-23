@@ -80,3 +80,22 @@ assert.equal(stoppedAuditScene({...stopped,checkpoint:{scene_id:'gone'}},scenes)
 assert.equal(stoppedAuditScene(stopped,undefined),null);
 assert.equal(stoppedAuditScene(null,scenes),null);
 console.log('Book validation helpers passed');
+
+// Visible progress: the menu follows the latest book validation; a stopped one keeps the resume button in the row only if its scene is gone.
+{
+  const {latestBookRun,bookResumeInRow}=await import(pathToFileURL(root+'/src/storygen/web/static/book-validation-state.js'));
+  const bookRun=(id,state)=>({id,state,request:{mode:'audit',audit_scope:'story'},checkpoint:{scene_id:'s1'}});
+  const gen={id:'g',state:'paused',request:{mode:'scene'}};
+  assert.deepEqual(bookMenuState(2,bookRun('b','running')),{key:'book_validation.menu_running',params:{},disabled:true});
+  assert.deepEqual(bookMenuState(2,bookRun('b','needs_review')),{key:'book_validation.menu_stopped',params:{},disabled:false,show:true});
+  assert.deepEqual(bookMenuState(2,bookRun('b','paused')),{key:'book_validation.menu_stopped',params:{},disabled:false,show:true});
+  assert.deepEqual(bookMenuState(2,bookRun('b','failed')),{key:'book_validation.menu_count',params:{p0:2},disabled:false});
+  assert.equal(latestBookRun([bookRun('b','needs_review'),gen],gen).id,'b','a later generation run does not hide the stopped validation');
+  assert.equal(latestBookRun([bookRun('b','running')],bookRun('b','needs_review')).state,'needs_review','the fuller current run wins');
+  assert.equal(latestBookRun([],bookRun('n','queued')).id,'n');
+  assert.equal(latestBookRun([gen],gen),null);
+  const stopScenes=[{id:'s1',position:0}];
+  assert.equal(bookResumeInRow({...bookRun('b','needs_review')},stopScenes),false);
+  assert.equal(bookResumeInRow({...bookRun('b','needs_review')},[]),true,'the stop scene is in the trash');
+  assert.equal(bookResumeInRow(gen,stopScenes),true);
+}

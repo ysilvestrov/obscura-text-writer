@@ -29,22 +29,25 @@ export function runNoticeMark(run){
   return (run?.warning||run?.error)&&run.state!=='failed'?'⚠':'';
 }
 
-// Collapsed by default. Entering failed discloses the error even if the author collapsed this run while it ran;
+// A failed run and a run stopped for review (needs_review) share one disclosure rule.
+const DISCLOSED=new Set(['failed','needs_review']);
+
+// Collapsed by default. Entering failed or needs_review discloses the error even if the author collapsed this run while it ran;
 // only collapsing an error already shown is remembered (until another run).
 export function runExpanded(run,{expandedRun,collapsedFailure}){
   if(!run)return false;
-  return expandedRun===run.id||(run.state==='failed'&&collapsedFailure!==run.id);
+  return expandedRun===run.id||(DISCLOSED.has(run.state)&&collapsedFailure!==run.id);
 }
 
-// A resumed run keeps its id: once it leaves failed, a remembered collapse no longer applies, so failing again opens the new error.
+// A resumed run keeps its id: once it leaves failed or needs_review, a remembered collapse no longer applies, so failing again opens the new error.
 export function syncRunPrefs(run,prefs){
-  if(run&&run.state!=='failed'&&prefs.collapsedFailure===run.id)return {...prefs,collapsedFailure:null};
+  if(run&&!DISCLOSED.has(run.state)&&prefs.collapsedFailure===run.id)return {...prefs,collapsedFailure:null};
   return prefs;
 }
 
 export function toggleRunExpansion(run,prefs){
   if(!run)return prefs;
-  if(run.state==='failed')return {...prefs,expandedRun:null,collapsedFailure:runExpanded(run,prefs)?run.id:null};
+  if(DISCLOSED.has(run.state))return {...prefs,expandedRun:null,collapsedFailure:runExpanded(run,prefs)?run.id:null};
   return {...prefs,expandedRun:prefs.expandedRun===run.id?null:run.id};
 }
 
@@ -63,7 +66,7 @@ export function addRunCost(costs,runId,attemptId,usage){
   return {runId,byAttempt:{...base.byAttempt,[key]:usageUsd(usage)},lastUsage:usage};
 }
 
-const dollars=value=>`$${value<0.01?value.toFixed(4):value.toFixed(2)}`;
+export const dollars=value=>`$${value<0.01?value.toFixed(4):value.toFixed(2)}`;
 export function runCostText(costs,runId){
   if(costs?.runId!==runId||!costs.lastUsage)return '';
   const known=Object.values(costs.byAttempt).filter(value=>value!==null),last=usageUsd(costs.lastUsage);
