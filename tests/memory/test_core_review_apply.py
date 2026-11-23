@@ -199,7 +199,11 @@ def test_edits_keep_next_scene_memory_fresh(tmp_path):
     m3 = repo.get_scene(s3.id).heads['memory']
     assert resolve_freshness(repo.context_view(story.id), m3).stale is False
     apply_core_review(repo, scene.id, body(scene, slot_edit('carried', 'keep')))
-    # VALID-LINKS: a changed previous memory marks the next brief/prose links, not the next memory head (Z3 is prose only)
+    # VALID-LINKS: a changed previous memory marks the next brief/prose links, not the next memory head (Z3 is prose
+    # only) once MEMORY-CARRY has carried it onto the new journal.
+    from tests.memory.test_memory_carry import run_carries
+    run_carries(repo, story.id)
+    m3 = repo.get_scene(s3.id).heads['memory']
     assert resolve_freshness(repo.context_view(story.id), m3).stale is False
 
 

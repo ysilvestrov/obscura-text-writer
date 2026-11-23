@@ -209,6 +209,8 @@ class VersionRef(DomainModel):
     author_lineage: AuthorLineage | None = None
     ghost_rewrite: GhostRewriteStats | None = None
     external_origin: ExternalOrigin | None = None
+    # MEMORY-CARRY: the memory version this one carries onto a new previous journal (same own events and digest).
+    memory_carry_of: str | None = None
     created_at: str = Field(default_factory=now)
 
     @model_validator(mode='after')

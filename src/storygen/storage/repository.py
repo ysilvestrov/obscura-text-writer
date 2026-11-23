@@ -511,8 +511,43 @@ class Repository:
             if head=='prose':
                 scene.needs_review=False
                 self._save_scene(db,scene)
+            if head=='memory':
+                from .carry_queue import enqueue_carry
+                enqueue_carry(db,scene,version_id)  # MEMORY-CARRY: in the transaction that changes the head
             self._touch_story(db,scene.story_id)
         return scene
+
+    def commit_memory_carry(self,scene_id: str,text: str,*,carried_from: str,expected_revision: int,expected_previous_id: str,
+                            input_refs: list[str],dependency_snapshot,source_run_id: str | None,memory_confirmation) -> VersionRef:
+        """MEMORY-CARRY: one carry step — the carried memory version and the head in one transaction, CAS on the scene
+        revision, the memory head it carries and the previous memory it was carried onto. Freshness is not re-checked
+        (the version keeps its scene's snapshot, so validity is unchanged), dependents are not invalidated (the digest is
+        the same) and no further carry is queued."""
+        scene=self.get_scene(scene_id)
+        data=text.encode('utf-8')
+        id=new_id()
+        version=VersionRef(id=id,story_id=scene.story_id,scene_id=scene_id,kind='memory',format='json',sha256=hashlib.sha256(data).hexdigest(),
+            relative_path=f'stories/{scene.story_id}/versions/{id}.json',input_refs=input_refs,source_run_id=source_run_id,
+            dependency_snapshot=dependency_snapshot,memory_confirmation=memory_confirmation,memory_carry_of=carried_from)
+        self.files.write(version.relative_path,data)
+        conflict='Сцену змінено під час переносу пам’яті'
+        with self.db.connection() as db:
+            db.execute('BEGIN IMMEDIATE')
+            scene=self._active_scene(db,scene_id)
+            if scene.revision!=expected_revision or scene.heads.get('memory')!=carried_from:
+                raise RevisionConflict(conflict)
+            from .context_view import ContextView
+            from ..memory.previous import previous_memory
+            view=ContextView(self,db,scene.story_id)
+            if previous_memory(view,view.peek_scene(scene_id),peek=True,require=False).memory_id!=expected_previous_id:
+                raise RevisionConflict(conflict)
+            self._insert_version_row(db,version)
+            scene.heads['memory']=version.id
+            scene.head_revisions['memory']=scene.head_revisions.get('memory',0)+1
+            scene.revision+=1
+            self._save_scene(db,scene)
+            self._touch_story(db,scene.story_id)
+        return version
 
     def confirm_memory(self,scene_id: str,version_id: str,expected_revision: int) -> VersionRef:
         """Author confirmation of the scene's current memory head: metadata only, no file/sha/revision change."""
@@ -624,6 +659,9 @@ class Repository:
                     if previous and previous!=result_ref.id:
                         from .invalidation import invalidate_in_transaction
                         invalidate_in_transaction(self,db,[previous],exclude=[result_ref.id])
+                    if attempt.stage=='memory':
+                        from .carry_queue import enqueue_carry
+                        enqueue_carry(db,scene,result_ref.id)  # MEMORY-CARRY: in the transaction that changes the head
                     if attempt.stage=='edit':
                         scene.needs_review=False
                         self._save_scene(db,scene)

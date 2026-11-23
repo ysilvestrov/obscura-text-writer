@@ -195,6 +195,8 @@ def manual_draft(scene_id: str,body: DraftChange,request: Request):
     if body.external_origin is not None:
         from .bridge_marker import guard_scene_write
         guard_scene_write(request,scene_id)
+        from ..memory.carry import require_not_carrying
+        require_not_carrying(request.app.state.repo,scene_id)  # MEMORY-CARRY: a chat draft waits like a model stage
     if body.comment_set is not None:
         repo=request.app.state.repo
         format=body.content_format or (repo.get_version(body.expected_source_version_id).content_format if body.expected_source_version_id else 'plain')

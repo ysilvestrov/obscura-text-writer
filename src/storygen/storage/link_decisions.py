@@ -7,6 +7,7 @@ from .links import link_state, scene_validity
 # Z3 «keep the previous memory» also records a prose equivalence. An unavailable link (carry_failed, no memory) is a
 # conflict: only a new memory of the scene clears it.
 DECIDABLE = {'brief', 'prose', 'memory'}
+CARRY_FAILED = 'Пам’ять сцени не перенесено на нову пам’ять попередньої сцени, і рішення автора її не залишить — створіть нову пам’ять цієї сцени'
 
 
 class LinkDecisionRefused(ValueError):
@@ -21,6 +22,11 @@ def decide_link(repo, scene_id: str, link: str, action: str, fingerprint: str) -
         db.execute('BEGIN IMMEDIATE')
         view = ContextView(repo, db, scene.story_id)
         state = link_state(view, scene_id, link)
+        if state.reason == 'carry_failed':
+            raise RevisionConflict(CARRY_FAILED)
+        if state.reason == 'carry_pending':
+            from ..memory.carry import CARRY_PENDING
+            raise RevisionConflict(CARRY_PENDING)
         if state.status in {'missing', 'unavailable'} or state.fingerprint != fingerprint:
             raise RevisionConflict('Зв’язок сцени змінився; оновіть сторінку')
         if state.status != 'valid':

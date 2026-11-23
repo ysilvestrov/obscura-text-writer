@@ -315,6 +315,9 @@ STALE_LINK={
     ('memory','unchecked'):'Сцена «{p0}»: пам’ять не перевірено проти прози — затвердьте пам’ять або оновіть її',
     'discrepancy':'Сцена «{p0}»: у зв’язках знайдено розбіжність — перегляньте її перед запуском',
     'unavailable':'Сцена «{p0}»: немає пам’яті попередньої сцени — спершу оновіть її',
+    # MEMORY-CARRY: the memory head of a scene the carry has not reached, or could not carry.
+    ('memory','carry_pending'):'Сцена «{p0}»: пам’ять переноситься на нову пам’ять попередньої сцени — дочекайтеся завершення переносу',
+    ('memory','carry_failed'):'Сцена «{p0}»: пам’ять не вдалося перенести на нову пам’ять попередньої сцени — створіть нову пам’ять цієї сцени',
 }
 
 
@@ -328,7 +331,11 @@ def stale_material_message(view,ref) -> str:
     if not reasons or not all(reason.startswith('link_') for reason in reasons):
         return STALE_CONTEXT
     status=next(s for s in ('discrepancy','unavailable','unchecked') if 'link_'+s in reasons)
-    text=STALE_LINK.get(status) or STALE_LINK.get((HEAD_LINK.get(ref.kind),status))
+    text=None
+    if status=='unavailable' and HEAD_LINK.get(ref.kind)=='memory':
+        from ..storage.links import link_state
+        text=STALE_LINK.get(('memory',link_state(view,ref.scene_id,'memory').reason))
+    text=text or STALE_LINK.get(status) or STALE_LINK.get((HEAD_LINK.get(ref.kind),status))
     if text is None:
         return STALE_CONTEXT
     return text.replace('{p0}',view.get_scene(ref.scene_id).title)

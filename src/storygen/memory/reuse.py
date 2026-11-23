@@ -31,6 +31,13 @@ def _candidate(view,scene_id):
     owner_ok=ref.kind=='memory_merge' and ref.scene_id is None if before.merge_key else ref.kind=='memory' and ref.scene_id==previous[-1].id
     if not owner_ok or ref.story_id!=scene.story_id or not ref.complete:
         raise ValueError('Попередня пам’ять незавершена або належить іншій сцені')
+    if ref.stale and not before.merge_key and hasattr(view,'freshness_cache'):
+        # MEMORY-CARRY: a previous memory still to be carried, or one the carry could not apply, is not extended; the
+        # refusal names the scene and what the author can do.
+        from ..storage.links import link_state
+        if link_state(view,previous[-1].id,'memory').reason in {'carry_pending','carry_failed'}:
+            from ..generation.context import stale_material_message
+            raise ValueError(stale_material_message(view,ref))
     journal=read_previous_journal(view,before)
     # Only kind/scene_id/story_id/complete/sha256 are read below; a Repository (execute_stage) has no peek_version.
     peek=getattr(view,'peek_version',view.get_version)

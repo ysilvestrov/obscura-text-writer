@@ -86,6 +86,9 @@ class RunCoordinator:
             tasks=[{'scene_id':request.scene_id,'stage':'edit'} for _ in range(request.edit_pass_limit)]
         elif request.mode=='classify':
             tasks=[{'scene_id':request.scene_id,'stage':'classify'}]
+        elif request.mode=='memory_carry':
+            start=next(s for s in scenes if s.id==request.scene_id)
+            tasks=[{'scene_id':s.id,'stage':'memory_carry'} for s in scenes if s.position>=start.position]
         else:
             start=next(s for s in scenes if s.id==request.scene_id)
             targets=[start] if request.mode in {'stage','scene'} else [s for s in scenes if s.position>=start.position]
@@ -346,6 +349,14 @@ class RunCoordinator:
                     self._save(run)
                     self.event(run.id,'state',{'state':run.state})
                     recovered.append(run)
+                elif run.request.mode=='memory_carry' and run.state in {'running','pause_requested','queued'}:
+                    # MEMORY-CARRY: a model-free carry has nothing to repeat at a cost; it continues after a restart, so
+                    # its scenes stay pending instead of silently diverging (Ruling, R-44 PR 2b Task 3).
+                    if run.state!='queued':
+                        run.state='queued'
+                        self._save(run)
+                        self.event(run.id,'state',{'state':run.state})
+                    recovered.append(run)
                 elif run.state in {'running','cancellation_requested','pause_requested','queued'}:
                     run.state='interrupted'
                     run.error='Попередню сесію перервано. Автоматичного повтору запитів немає.'
@@ -466,6 +477,9 @@ class RunCoordinator:
             raise ValueError(IMPACT_REMOVED)
         if self.get_run(id).request.mode=='edit_loop':
             from .editor_loop import execute
+            return execute(self,id)
+        if self.get_run(id).request.mode=='memory_carry':
+            from .memory_carry import execute
             return execute(self,id)
         while True:
             with self.condition:

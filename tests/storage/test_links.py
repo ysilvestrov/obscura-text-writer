@@ -146,7 +146,11 @@ def test_manual_memory_keeps_scene_and_unchecks_next(tmp_path):
     assert statuses(repo, story, scenes[0])['memory'] == ('valid', 'construction', None)
     after = statuses(repo, story, scenes[1])
     assert after['brief'][0] == 'unchecked' and after['prose'][0] == 'unchecked'
-    assert after['memory'] == ('valid', 'construction', None)
+    # MEMORY-CARRY: the next memory waits for the carry, then holds by construction again.
+    assert after['memory'] == ('unavailable', None, 'carry_pending')
+    from tests.memory.test_memory_carry import run_carries
+    run_carries(repo, story.id)
+    assert statuses(repo, story, scenes[1])['memory'] == ('valid', 'construction', None)
 
 
 @pytest.mark.req('VALID-LINKS')

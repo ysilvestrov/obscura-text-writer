@@ -82,5 +82,9 @@ def test_previous_memory_change_does_not_stale_next_memory_head(tmp_path):
     journal = json.loads(memory_text(repo, scenes[0]))
     journal['events'][-1]['text'] = 'Олена в бібліотеці вночі'
     save_scene_memory(repo, scenes[0].id, json.dumps(journal, ensure_ascii=False), repo.get_scene(scenes[0].id).revision)
+    # MEMORY-CARRY: until the carry reaches it the next memory waits (Z3 unavailable); the carried head is fresh.
+    assert stale(repo, story, heads(repo, scenes[1])['memory']).stale
+    from tests.memory.test_memory_carry import run_carries
+    run_carries(repo, story.id)
     assert not stale(repo, story, heads(repo, scenes[1])['memory']).stale
     assert stale(repo, story, heads(repo, scenes[1])['brief']).stale  # Z1 of the next scene: previous memory changed

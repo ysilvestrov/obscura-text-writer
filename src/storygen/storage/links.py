@@ -229,6 +229,12 @@ def _compute(view, scene_id):
         fingerprint = _digest([link] + [inputs[key] for key in inputs])
         if link in {'brief', 'prose'} and p0_required and before.memory_id is None:
             return LinkState(link, 'unavailable', None, 'no_previous_memory', inputs, fingerprint)
+        if link == 'memory':
+            # MEMORY-CARRY: a memory still to be carried, or one the carry could not apply to the new previous journal.
+            from ..memory.carry import carry_states
+            carry = carry_states(view).get(scene_id)  # only scenes of carry runs: no journal compare otherwise
+            if carry in {'pending', 'failed'}:
+                return LinkState(link, 'unavailable', None, 'carry_' + carry, inputs, fingerprint)
         if construction():
             return LinkState(link, 'valid', 'construction', inputs=inputs, fingerprint=fingerprint)
         return _from_verdicts(view, scene_id, link, fingerprint, inputs)

@@ -67,3 +67,10 @@ assert.equal(diagnostic('Некоректні дані: Сцена «Ранок�
   'Invalid data: Scene “Ранок”: the prose has not been checked — approve its match with the brief or accept the prose as your own');
 setLocale('uk');
 console.log('Stale link diagnostics passed');
+
+// MEMORY-CARRY: a context refused because the previous memory could not be carried names the scene in English too.
+setLocale('en');
+assert.equal(diagnostic('Некоректні дані: Сцена «Ранок»: пам’ять не вдалося перенести на нову пам’ять попередньої сцени — створіть нову пам’ять цієї сцени'),
+  'Invalid data: Scene “Ранок”: its memory could not be carried onto the new memory of the previous scene — create a new memory for this scene');
+setLocale('uk');
+console.log('Memory carry diagnostics passed');

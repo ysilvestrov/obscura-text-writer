@@ -466,6 +466,10 @@ def compare_snapshot(view, snapshot: DependencySnapshot | dict) -> list[Dependen
                 changed=is_lower(from_wire(current),from_wire(selector.expected))
             else:
                 changed=current != selector.expected
+            if changed and selector.kind=='head' and selector.field=='memory':
+                # MEMORY-CARRY: a carried memory is the same component (same own events and digest).
+                from ..memory.carry import carried_to
+                changed=not carried_to(view, selector.expected, current)
             if (changed and selector.field=='style_version_id' and snapshot.scope in SAMPLE_BLIND_SCOPES
                     and sample_only_change(view.read_text, selector.expected, current)):
                 changed=False
@@ -498,6 +502,12 @@ def compare_snapshot(view, snapshot: DependencySnapshot | dict) -> list[Dependen
                     and ref.story_id==view.story.id and any(s.kind=='scene' and s.owner_id==ref.scene_id and s.field=='title' for s in snapshot.selectors))
             if snapshot.scope=='author_rewrite' and id==snapshot.frozen_author_source_id and not frozen:
                 raise ValueError('Невідповідне історичне джерело')
+            if stale and ref.kind=='memory':
+                # MEMORY-CARRY: a memory carried since is read through its carried head (Z3 of the scene).
+                from ..memory.carry import carry_successor
+                successor=carry_successor(view, id)
+                if successor is not None:
+                    stale=view.is_stale(successor)
             if stale and language_only(view.freshness_cache.get(id) or freshness(view,id)):
                 # STORY-LANGUAGE-S03: the source's facts are unchanged; only its own scene must be rewritten.
                 stale=False

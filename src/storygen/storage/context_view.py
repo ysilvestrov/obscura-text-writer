@@ -66,7 +66,7 @@ class SharedState:
 
 
 # Captured models and caches of values that depend only on the snapshot; never the walk state or sentinel caches.
-SHARED_FIELDS = ('files', 'story', 'scenes', 'versions', 'sources', 'source_files', 'acceptances', 'acceptance_records', 'link_verdicts', 'prose_equivalences',
+SHARED_FIELDS = ('files', 'story', 'scenes', 'versions', 'sources', 'source_files', 'acceptances', 'acceptance_records', 'link_verdicts', 'prose_equivalences', 'memory_carries',
                  'blob_cache', 'preamble_cache', 'journal_cache', 'memo_cache', 'immutable', 'locations')
 
 
@@ -111,6 +111,8 @@ class ContextView:
         from .link_records import load_verdicts, load_equivalences
         self.link_verdicts=load_verdicts(db,story_id,self.scenes)  # VALID-LINKS: author and auditor verdicts
         self.prose_equivalences=load_equivalences(db,story_id,self.scenes,self.versions)  # Z3 kept over a prose change
+        from .carry_queue import load_carry_runs
+        self.memory_carries=load_carry_runs(db,story_id)  # MEMORY-CARRY: run state is part of a scene's carry state
 
     def shared_state(self):
         """The state to publish for this view's generation; the view itself is unchanged until adopt()."""
