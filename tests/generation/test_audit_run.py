@@ -684,3 +684,37 @@ def test_cloud_book_validation_needs_a_story_budget_limit(tmp_path):
     repo.model_policy('set_consent', role='auditor', provider='openrouter', base_url=endpoint(provider), model='venice/free')
     result = preview(repo, book_request(story.id))
     assert result['ready'] is False and result['reason'] == 'Спершу задайте явний ліміт бюджету в налаштуваннях'
+
+
+def mcp_book(repo, story, gateway, request_id):
+    worker = RunCoordinator(repo, gateway_factory=lambda _: gateway)
+    return worker, worker.enqueue(book_request(story.id, book_plan(repo, story)['plan_fingerprint']), request_id, origin='mcp')
+
+
+def test_mcp_book_validation_keeps_the_authors_stopped_audit(tmp_path):
+    """Review of PR 4 Task 4: the chat may not cancel the author's runs, so its validation does not supersede them."""
+    repo, story, scenes, authors = four_scenes(tmp_path)
+    assert repo.get_run(authors).state == 'needs_review' and repo.get_run(authors).origin is None
+    worker, run = mcp_book(repo, story, Answers(answer(95)), 'mcp-book')
+    assert run.state == 'queued' and run.origin == 'mcp'
+    assert repo.get_run(authors).state == 'needs_review'
+    assert [e for e in worker.list_events(authors) if e.type == 'superseded'] == []
+
+
+def test_later_mcp_book_validation_supersedes_an_earlier_mcp_one(tmp_path):
+    repo, story, scenes, authors = four_scenes(tmp_path)
+    worker, first = mcp_book(repo, story, Answers(answer(95)), 'mcp-1')
+    assert drive(worker, first.id).state == 'needs_review'
+    worker, second = mcp_book(repo, story, Answers(answer(95)), 'mcp-2')
+    assert repo.get_run(first.id).state == 'cancelled'
+    assert [e.data for e in worker.list_events(first.id) if e.type == 'superseded'] == [{'run_id': second.id}]
+    assert repo.get_run(authors).state == 'needs_review'
+
+
+def test_authors_book_validation_supersedes_an_mcp_audit(tmp_path):
+    repo, story, scenes, authors = four_scenes(tmp_path)
+    worker, mcp = mcp_book(repo, story, Answers(answer(95)), 'mcp-book')
+    assert drive(worker, mcp.id).state == 'needs_review'
+    worker, run = start_book(repo, story, Answers(answer(95)), 'author-book')
+    assert repo.get_run(mcp.id).state == 'cancelled' and repo.get_run(authors).state == 'cancelled'
+    assert [e.data for e in worker.list_events(mcp.id) if e.type == 'superseded'] == [{'run_id': run.id}]
