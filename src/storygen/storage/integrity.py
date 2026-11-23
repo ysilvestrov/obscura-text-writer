@@ -199,6 +199,8 @@ def check_integrity(root: Path) -> IntegrityReport:
                     decisions[record.id]=record
                 except (ValueError,TypeError):
                     report.add('invalid_acceptance',key,'Invalid format or ownership of an author decision')
+            from .link_records import check_verdicts
+            check_verdicts(db,scenes,report)
             for ref in versions.values():
                 if ref.dependency_snapshot:
                     for id,baseline in ref.dependency_snapshot.ref_baselines.items():
