@@ -25,6 +25,7 @@ def make_site(root,pages=None):
     manifest={'languages':['uk','en'],'pages':[{'slug':slug,'title':{'uk':slug,'en':slug}} for slug in pages]}
     (site/'site.json').write_text(json.dumps(manifest,ensure_ascii=False),encoding='utf-8')
     for name in ['template.html','site.css','site.js']:(site/name).write_text((ROOT/'docs/site'/name).read_text(encoding='utf-8'),encoding='utf-8')
+    for name in ['favicon.svg','apple-touch-icon.png']:shutil.copyfile(ROOT/'docs/site'/name,site/name)
     (root/'docs/images/site').mkdir(parents=True,exist_ok=True)
     return site
 
@@ -56,6 +57,7 @@ def test_build_is_relative_and_deterministic(tmp_path):
     build(tmp_path,tmp_path/'a');build(tmp_path,tmp_path/'b')
     files=sorted(p.relative_to(tmp_path/'a') for p in (tmp_path/'a').rglob('*') if p.is_file())
     assert Path('install.html') in files and Path('en/install.html') in files and Path('site.css') in files
+    assert Path('favicon.svg') in files and Path('apple-touch-icon.png') in files
     for rel in files:assert (tmp_path/'a'/rel).read_bytes()==(tmp_path/'b'/rel).read_bytes(),rel
     for rel in [p for p in files if p.suffix=='.html']:
         html=(tmp_path/'a'/rel).read_text(encoding='utf-8')
@@ -66,6 +68,7 @@ def test_build_is_relative_and_deterministic(tmp_path):
             if path:assert ((tmp_path/'a'/rel).parent/path).resolve().is_file(),(rel,target)
     en=(tmp_path/'a/en/install.html').read_text(encoding='utf-8')
     assert '<html lang="en" data-alt="../install.html">' in en and 'href="../install.html"' in en and 'href="../site.css"' in en
+    assert '<link rel="icon" href="../favicon.svg" type="image/svg+xml">' in en and 'href="../apple-touch-icon.png"' in en
     uk=(tmp_path/'a/install.html').read_text(encoding='utf-8')
     assert '<html lang="uk" data-alt="en/install.html">' in uk and 'href="en/install.html"' in uk
 
@@ -354,3 +357,10 @@ def test_bad_or_second_nav_icon_stops_the_build(tmp_path,icons):
         if icon or icons==['','💰']:page['nav_icon']=icon
     (site/'site.json').write_text(json.dumps(manifest,ensure_ascii=False),encoding='utf-8')
     with pytest.raises(ValueError,match='site.json'):build(tmp_path,tmp_path/'_site')
+
+
+@pytest.mark.req('DOCS-SITE')
+def test_site_icons_match_the_application_icon():
+    static=ROOT/'src/storygen/web/static'
+    assert (ROOT/'docs/site/favicon.svg').read_bytes()==(static/'favicon.svg').read_bytes()
+    assert (ROOT/'docs/site/apple-touch-icon.png').read_bytes()==(static/'app-icon.png').read_bytes()

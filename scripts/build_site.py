@@ -19,6 +19,8 @@ if __package__ in (None,''):sys.path.insert(0,str(Path(__file__).resolve().paren
 from scripts.site_common import IMAGES, LABELS, SITE, WAITLIST_PRIVACY_ANCHOR, heading_id, heading_text, load_manifest, page_path, page_slug
 
 ROOT=Path(__file__).resolve().parents[1]
+# Copies of the application icon (src/storygen/web/static/favicon.svg and app-icon.png); a test keeps them equal.
+ICONS=('favicon.svg','apple-touch-icon.png')
 
 
 def is_external(href):return bool(urlsplit(href).scheme) or href.startswith('//')
@@ -227,7 +229,7 @@ def build(root=ROOT,out=None):
             if page_form(page):content+=waitlist_form(manifest,lang);scripts=TURNSTILE_SCRIPT+'\n'
             target.write_text(page_html(template,manifest,lang,page['slug'],content,scripts),encoding='utf-8',newline='\n')
             written.append(target)
-    for name in ('site.css','site.js')+(('consent.js',) if ads_settings(manifest) else ()):shutil.copyfile(root/SITE/name,out/name);written.append(out/name)
+    for name in ('site.css','site.js')+ICONS+(('consent.js',) if ads_settings(manifest) else ()):shutil.copyfile(root/SITE/name,out/name);written.append(out/name)
     images=root/IMAGES
     if images.is_dir():
         for image in sorted(p for p in images.rglob('*') if p.is_file()):
@@ -264,6 +266,8 @@ def not_found_html(base):
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
 <title>Сторінку не знайдено · Page not found · Obscura Text Writer</title>
+<link rel="icon" href="{esc}favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="{esc}apple-touch-icon.png">
 <link rel="stylesheet" href="{esc}site.css">
 </head>
 <body>
