@@ -613,8 +613,11 @@ def _compute_freshness(view, version_id: str) -> FreshnessResult:
         link=_head_link(view, ref)
         if link is not None:
             # VALID-LINKS: the current brief, prose or memory of an active scene is stale exactly when its incoming link
-            # does not hold; prose the author accepted as their own is never stale (the scene stays unchecked).
-            if not (link=='prose' and acceptance is not None and acceptance.action=='accept_prose'):
+            # does not hold. Prose the author accepted as their own and a brief the author wrote are never stale (owner,
+            # 23.11.2026): they do not block model runs, the scene stays unchecked and validation checks them.
+            from .links import model_made
+            authored=(link=='prose' and acceptance is not None and acceptance.action=='accept_prose') or (link=='brief' and not model_made(ref))
+            if not authored:
                 from .links import link_state
                 status=link_state(view, ref.scene_id, link).status
                 # A missing link (a scene without a brief) keeps the scene out of validation, not stale (spec 1, 3).

@@ -21,7 +21,9 @@ def test_edit_generated_brief_after_forwarding_can_save_with_cas_and_review(tmp_
     target=repo.set_head(target.id,'brief',old.id,target.revision)
     claim=memory_view(repo,scenes[1].id)['rows'][0]['claim_id']
     apply(repo,scenes[1],{claim:False})
-    assert repo.get_version(old.id).stale
+    # VALID-LINKS: as the head, a brief saved without a run is the author's (never stale); a forwarding choice is
+    # not a link component either.
+    assert not repo.get_version(old.id).stale
     original['objective']='Авторська правка'
     original['proposed_changes']=['Змінити план'] if proposals else []
     body={'text':json.dumps(original),'expected_revision':target.revision}
@@ -30,10 +32,12 @@ def test_edit_generated_brief_after_forwarding_can_save_with_cas_and_review(tmp_
         assert result.status_code==200,result.text
         data=result.json();ref=repo.get_version(data['version']['id'])
         assert ref.id!=old.id and ref.manual_projection_policy==[claim]
-        # VALID-LINKS: a brief saved by the author is not valid by construction; as the head it is stale until approved
-        assert ref.stale is (not proposals)
+        # VALID-LINKS: a brief the author saved is never stale (owner, 23.11.2026); its link stays unchecked
+        assert not ref.stale
         assert json.loads(repo.read_text(ref.id))['objective']=='Авторська правка'
-        assert repo.get_version(old.id).stale
+        # VALID-LINKS: a replaced brief compares its snapshot (the forwarding choice changed); a pending proposal
+        # keeps the old brief as the author's head, which is never stale.
+        assert repo.get_version(old.id).stale is (not proposals)
         if proposals:
             assert data['needs_review'] and repo.get_scene(target.id).heads['brief']==old.id
             accepted=client.post(f'/api/scenes/{target.id}/accept-brief',json={'version_id':ref.id,'expected_revision':target.revision})

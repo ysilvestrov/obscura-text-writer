@@ -59,6 +59,8 @@ def core_review_fixture(repo,story):
         _add_event('character_states','Ключ',p1.id,'У кишені ключ.',0,['A'],slot='carried'),thread])
     memory=repo.save_version(story.id,s1.id,'memory',journal.model_dump_json(),[p1.id])
     repo.set_head(s1.id,'memory',memory.id,repo.get_scene(s1.id).revision)
+    from tests.link_helpers import approve_links
+    approve_links(repo,story.id)  # VALID-LINKS: hand-made memory stands for confirmed
     p2=repo.save_version(story.id,s2.id,'manual',CORE_PROSE2,[])
     repo.set_head(s2.id,'prose',p2.id,repo.get_scene(s2.id).revision)
     core=core_unchanged('A')
@@ -259,6 +261,8 @@ def main():
             from storygen.memory.summary_blocks import summary_blocks
             from storygen.storage.timeline_summaries import publish_summary, save_summary_version
             story = seed_long_story(repo, 22, 21, title='Довга дорога')
+            from tests.link_helpers import approve_links
+            approve_links(repo, story.id)  # VALID-LINKS: hand-made memory stands for confirmed
             scenes = repo.list_scenes(story.id)
             block = summary_blocks(story, scenes)[0]
             ref = save_summary_version(repo, story.id, block, [s.heads['memory'] for s in scenes[:10]], 'Анна приїхала до міста.', 'model', 'uk')

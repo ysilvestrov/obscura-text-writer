@@ -86,8 +86,9 @@ def _selector(snapshot, kind, owner, field_name):
     return None
 
 
-def _recorded_p0(snapshot, story, before):
-    """The previous memory a snapshot was made from: the inverse of snapshots.previous_memory_selector."""
+def _recorded_p0(snapshot, story, scene, before):
+    """The previous memory a snapshot was made from: the inverse of snapshots.previous_memory_selector, and for a first
+    scene the series start it recorded (scene/series_start), so leaving or joining a series changes it."""
     if before.merge_key:
         selector = _selector(snapshot, 'story', story.id, 'memory_merge_heads')
         value = (selector.expected or {}).get(before.merge_key) if selector and isinstance(selector.expected, dict) else None
@@ -95,13 +96,16 @@ def _recorded_p0(snapshot, story, before):
     if before.ancestors:
         selector = _selector(snapshot, 'head', before.ancestors[-1].id, 'memory')
         return selector.expected if selector else None
+    series = _selector(snapshot, 'scene', scene.id, 'series_start')
+    if series is not None and isinstance(series.expected, str) and series.expected:
+        return series.expected
     if before.series_start and before.memory_id in snapshot.refs:
         return before.memory_id
     return None
 
 
-def _same_p0(view, snapshot, story, before, current_p0):
-    return p0_identity(view, _recorded_p0(snapshot, story, before)) == current_p0
+def _same_p0(view, snapshot, story, scene, before, current_p0):
+    return p0_identity(view, _recorded_p0(snapshot, story, scene, before)) == current_p0
 
 
 def _plan_matches(snapshot, scene):
@@ -117,7 +121,7 @@ def _brief_by_construction(view, scene, story, before, p0):
     ref = view.versions.get(scene.heads['brief'])
     snapshot = ref.dependency_snapshot if ref else None
     return bool(model_made(ref) and snapshot and snapshot.scope == 'brief'
-                and _plan_matches(snapshot, scene) and _same_p0(view, snapshot, story, before, p0))
+                and _plan_matches(snapshot, scene) and _same_p0(view, snapshot, story, scene, before, p0))
 
 
 def _prose_by_construction(view, scene, story, before, p0):
@@ -132,7 +136,7 @@ def _prose_by_construction(view, scene, story, before, p0):
         if snapshot.scope == 'draft' or (snapshot.scope == 'author_text' and ref.kind == 'draft' and ref.external_origin):
             brief = _selector(snapshot, 'head', scene.id, 'brief')
             return (brief is not None and brief.expected == scene.heads['brief']
-                    and _same_p0(view, snapshot, story, before, p0))
+                    and _same_p0(view, snapshot, story, scene, before, p0))
         if snapshot.scope not in EDIT_SCOPES:
             return False
         draft = _selector(snapshot, 'head', scene.id, 'draft')

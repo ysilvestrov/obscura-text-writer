@@ -105,4 +105,5 @@ def test_card_resync_invalidates_legacy_derived_head(tmp_path):
     changed=repo.save_version(story.id,None,'character_cards',json.dumps(payload,ensure_ascii=False),[])
     repo.publish_story_material(story.id,'characters_version_id',changed.id,repo.get_story(story.id).revision)
     assert repo.get_scene(scene.id).character_ids==['new-lera']
-    assert repo.get_version(legacy.id).stale
+    # VALID-LINKS: a brief the author wrote is never stale; cards do not change validity (spec 10).
+    assert not repo.get_version(legacy.id).stale
