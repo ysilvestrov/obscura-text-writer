@@ -125,3 +125,57 @@ def test_export_rejects_corrupt_prose_even_when_incomplete_allowed(tmp_path):
     repo.files.resolve(ref.relative_path).write_text('Пошкоджено.', encoding='utf-8')
     with pytest.raises(StorageCorruption):
         export_story(repo, story.id, 'md', allow_incomplete=True)
+
+
+# R-44 PR 4: export completeness follows the validity of links (VALID-LINKS, PR 2): unaccepted prose with an unchecked
+# Z2 needs review; accepted prose and prose without a brief (Z1 missing) do not.
+STALE_SCENE = 'Сцена застаріла або потребує перегляду'
+
+
+def _prose_link(repo, story, scene):
+    from storygen.storage.links import link_state
+    return link_state(repo.context_view(story.id), scene.id, 'prose')
+
+
+def _brief_link(repo, story, scene):
+    from storygen.storage.links import link_state
+    return link_state(repo.context_view(story.id), scene.id, 'brief')
+
+
+def test_unaccepted_prose_with_unchecked_prose_link_blocks_export(tmp_path):
+    from storygen.publication.book import capture
+    from tests.storage.test_links import book, save_manual_brief
+    repo, story, (scene,) = book(tmp_path)
+    save_manual_brief(repo, scene)
+    assert _prose_link(repo, story, scene).status == 'unchecked'
+    assert capture(repo, story.id, 'md', True).warnings == (STALE_SCENE,)
+    with pytest.raises(ValueError, match='неповний'):
+        export_story(repo, story.id, 'md')
+    path = export_story(repo, story.id, 'md', allow_incomplete=True)
+    assert json.loads(path.with_suffix('.manifest.json').read_text(encoding='utf-8'))['warnings'] == [STALE_SCENE]
+
+
+def test_accepted_prose_exports_without_warning(tmp_path):
+    from storygen.publication.book import capture
+    from tests.storage.test_links import book, save_manual_brief
+    repo, story, (scene,) = book(tmp_path)
+    save_manual_brief(repo, scene)
+    prose = repo.get_scene(scene.id).heads['prose']
+    preview = repo.preview_acceptance(scene.id, prose)
+    repo.accept_version(scene.id, prose, preview.expected_revision, preview.preview_fingerprint)
+    # Acceptance does not validate Z2, but accepted prose is never stale, so the export needs no review.
+    assert _prose_link(repo, story, scene).status == 'unchecked'
+    assert repo.context_view(story.id).get_version(prose).stale is False
+    assert capture(repo, story.id, 'md', False).warnings == ()
+    assert export_story(repo, story.id, 'md').exists()
+
+
+def test_prose_without_brief_exports_without_warning(tmp_path):
+    from storygen.publication.book import capture
+    repo = Repository(tmp_path)
+    story = repo.create_story(StoryCreate(title='Твір'))
+    scene = repo.create_scene(story.id, SceneCreate(title='Без завдання'))
+    save_manual_prose(repo, scene.id, 'Олена увійшла до студії.', 0)
+    assert _brief_link(repo, story, scene).status == 'missing'
+    assert capture(repo, story.id, 'md', False).warnings == ()
+    assert export_story(repo, story.id, 'md').exists()

@@ -92,7 +92,7 @@ def test_chat_mode_and_unknown_action_are_refused(tmp_path, ready):
     refused = call(server, 'start_run', {'story_id': story.id, 'action': 'brief', 'scene_id': scene.id})
     assert refused.is_error and CHAT_WRITES in text(refused)
     unknown = call(server, 'start_run', {'story_id': story.id, 'action': 'scene', 'scene_id': scene.id})
-    assert unknown.is_error and 'brief, draft, edit, memory, publication_suggest' in text(unknown)
+    assert unknown.is_error and 'brief, draft, edit, memory, publication_suggest, audit' in text(unknown)
     assert app.state.coordinator.list_runs() == []
 
 
