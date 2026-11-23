@@ -109,20 +109,51 @@ def _same_p0(view, snapshot, story, scene, before, current_p0):
     return p0_identity(view, _recorded_p0(snapshot, story, scene, before)) == current_p0
 
 
-def _plan_matches(snapshot, scene):
+def _text_hash(text: str) -> str:
+    """A plan or beats without its scene number: renumbering (SCENE-RENUMBER) rewrites only the number of the first
+    non-empty line, so the identity of the plan as a component survives it."""
+    from ..plan_renumber import renumber_plan
+    return hashlib.sha256(renumber_plan(text or '', 0).encode('utf-8')).hexdigest()
+
+
+def _plan_version_identity(view, plan_id: str) -> str:
+    def build():
+        try:
+            return 'plan:' + _text_hash(view.read_text(plan_id))
+        except (ValueError, KeyError, OSError):
+            return 'unreadable:' + plan_id
+    return memo(view, ('plan_identity', plan_id), build)
+
+
+def plan_identity(view, scene) -> str | None:
+    """The input `plan` of Z1: the hash of the current plan head text without the scene number, or of the beats when the
+    scene has no plan head."""
     plan = scene.heads.get('plan')
     if plan:
-        selector = _selector(snapshot, 'head', scene.id, 'plan')
-        return selector is not None and selector.expected == plan
-    selector = _selector(snapshot, 'scene', scene.id, 'beats')
-    return selector is not None and selector.expected == scene.beats
+        return _plan_version_identity(view, plan)
+    return 'beats:' + _text_hash(scene.beats)
+
+
+def _plan_matches(view, snapshot, scene):
+    """The plan a brief was made from is the current one up to the scene number."""
+    plan = _selector(snapshot, 'head', scene.id, 'plan')
+    if plan is not None and isinstance(plan.expected, str) and plan.expected:
+        recorded = _plan_version_identity(view, plan.expected)
+        if recorded.startswith('unreadable:'):
+            return False
+    else:
+        beats = _selector(snapshot, 'scene', scene.id, 'beats')
+        if beats is None or not isinstance(beats.expected, str):
+            return False
+        recorded = 'beats:' + _text_hash(beats.expected)
+    return recorded == plan_identity(view, scene)
 
 
 def _brief_by_construction(view, scene, story, before, p0):
     ref = view.versions.get(scene.heads['brief'])
     snapshot = ref.dependency_snapshot if ref else None
     return bool(model_made(ref) and snapshot and snapshot.scope == 'brief'
-                and _plan_matches(snapshot, scene) and _same_p0(view, snapshot, story, scene, before, p0))
+                and _plan_matches(view, snapshot, scene) and _same_p0(view, snapshot, story, scene, before, p0))
 
 
 def _prose_by_construction(view, scene, story, before, p0):
@@ -203,7 +234,7 @@ def _compute(view, scene_id):
         return _from_verdicts(view, scene_id, link, fingerprint, inputs)
 
     states['brief'] = build('brief', bool(heads.get('brief')),
-                            {'plan': heads.get('plan'), 'p0': p0, 'brief': heads.get('brief')},
+                            {'plan': plan_identity(view, scene), 'p0': p0, 'brief': heads.get('brief')},
                             lambda: _brief_by_construction(view, scene, story, before, p0))
     states['prose'] = build('prose', bool(heads.get('brief') and heads.get('prose')),
                             {'brief': heads.get('brief'), 'p0': p0, 'prose': heads.get('prose')},

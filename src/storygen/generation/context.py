@@ -306,6 +306,34 @@ def writer_day_change(scene,scenes,tracked,names,language,story=None):
     return '\n\n'.join(notes) or None
 
 
+STALE_CONTEXT='Контекст містить застарілий матеріал; потрібне оновлення'
+# VALID-LINKS: a head refused because its incoming link does not hold names its scene and what the author can do.
+# One full sentence per case with only the title as {p0}, so the UI catalog translates the whole text.
+STALE_LINK={
+    ('brief','unchecked'):'Сцена «{p0}»: завдання не перевірено проти плану й пам’яті попередньої сцени — затвердьте завдання або оновіть його',
+    ('prose','unchecked'):'Сцена «{p0}»: прозу не перевірено — затвердьте відповідність завданню або прийміть прозу як авторську',
+    ('memory','unchecked'):'Сцена «{p0}»: пам’ять не перевірено проти прози — затвердьте пам’ять або оновіть її',
+    'discrepancy':'Сцена «{p0}»: у зв’язках знайдено розбіжність — перегляньте її перед запуском',
+    'unavailable':'Сцена «{p0}»: немає пам’яті попередньої сцени — спершу оновіть її',
+}
+
+
+def stale_material_message(view,ref) -> str:
+    """The refusal text for a stale material: the scene and action when the head is stale only because its link does not
+    hold (snapshots.freshness reasons link_*), the general text otherwise."""
+    if not ref.complete or not ref.scene_id or not hasattr(view,'freshness_cache'):
+        return STALE_CONTEXT
+    from ..storage.snapshots import freshness, HEAD_LINK
+    reasons={reason.reason for reason in freshness(view,ref.id).reasons}
+    if not reasons or not all(reason.startswith('link_') for reason in reasons):
+        return STALE_CONTEXT
+    status=next(s for s in ('discrepancy','unavailable','unchecked') if 'link_'+s in reasons)
+    text=STALE_LINK.get(status) or STALE_LINK.get((HEAD_LINK.get(ref.kind),status))
+    if text is None:
+        return STALE_CONTEXT
+    return text.replace('{p0}',view.get_scene(ref.scene_id).title)
+
+
 def build_context(repo,scene_id: str,stage: str,settings: RoleSettings,*,editor_source_id: str | None=None,memory_approval: str | None=None,view=None) -> ContextBundle:
     if memory_approval is not None and stage!='memory':
         raise ValueError('Підтвердження пам’яті дозволено лише для її оновлення')
@@ -331,7 +359,7 @@ def build_context(repo,scene_id: str,stage: str,settings: RoleSettings,*,editor_
     def add(label,id):
         ref=repo.get_version(id)
         if (ref.stale and not (stage=='memory' and ref.kind in {'edited','manual'}) and not (stage=='rewrite' and id==editor_source_id)) or not ref.complete:
-            raise ValueError('Контекст містить застарілий матеріал; потрібне оновлення')
+            raise ValueError(stale_material_message(repo,ref))
         refs.append(id)
         sections.append(f'{label} [version_id={id}]\n'+repo.read_text(id))
     if stage=='memory':

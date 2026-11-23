@@ -249,3 +249,68 @@ def test_chat_mode_scene_holds_the_prose_link_by_construction(tmp_path):
     assert statuses(repo, story, scene)['prose'] == ('valid', 'construction', None)
     save_manual_brief(repo, scene)  # the chat draft was written from the old brief
     assert statuses(repo, story, scene)['prose'] == ('unchecked', None, None)
+
+
+def numbered_book(tmp_path):
+    """Own numbering from 2 (as an imported plan may have): scene «А» with a plan head, «Б» and «Д» with numbered beats
+    only, all generated, and a trailing empty «Кінець». Trashing the trailing scene renumbers every scene before it
+    without changing their previous memories (an insertion before a scene would change its P0)."""
+    repo = Repository(tmp_path)
+    story = repo.create_story(StoryCreate(title='Твір'))
+    first = repo.create_scene(story.id, SceneCreate(title='А', beats='Сцена 2: А'))
+    repo.update_scene_plan(first.id, 'Сцена 2: А\nСтудія.', repo.get_scene(first.id).revision)
+    middle = repo.create_scene(story.id, SceneCreate(title='Б', beats='Сцена 3: Б\nСтудія.'))
+    third = repo.create_scene(story.id, SceneCreate(title='Д', beats='Сцена 4: Д\nСтудія.'))
+    for scene in (first, middle, third):
+        attempts = generate_scene(repo, scene.id, roles(), lambda _, s=scene: FakeGateway(repo, s.id), threading.Event(),
+                                  lambda *_: None, run_id=run_for(repo, story, scene, 'gen-' + scene.id))
+        assert all(a.state == 'completed' for a in attempts), [(a.stage, a.state, a.error) for a in attempts]
+    tail = repo.create_scene(story.id, SceneCreate(title='Кінець', beats='Сцена 5: Кінець'))
+    return repo, story, [repo.get_scene(s.id) for s in (first, middle, third, tail)]
+
+
+@pytest.mark.req('VALID-LINKS')
+def test_renumber_keeps_the_brief_link(tmp_path):
+    from storygen.authoring.trash import trash_scene
+    from storygen.scene_description import explicit_scene_number
+    repo, story, (first, middle, third, tail) = numbered_book(tmp_path)
+    save_manual_brief(repo, third)
+    state = link_state(repo.context_view(story.id), third.id, 'brief')
+    with repo.db.connection() as db:
+        db.execute('BEGIN IMMEDIATE')
+        write_verdict(db, verdict(story.id, third.id, 'brief', state.fingerprint, inputs=state.inputs))
+    assert statuses(repo, story, third)['brief'] == ('valid', 'author', None)
+    old_plan = repo.get_scene(first.id).heads['plan']
+    trash_scene(repo, story.id, tail.id, repo.get_scene(tail.id).revision)
+    renumbered = repo.get_scene(first.id)
+    assert renumbered.heads['plan'] != old_plan
+    assert explicit_scene_number(repo.read_text(renumbered.heads['plan'])) == 1
+    assert explicit_scene_number(repo.get_scene(middle.id).beats) == 2
+    assert statuses(repo, story, first)['brief'] == ('valid', 'construction', None)
+    assert statuses(repo, story, middle)['brief'] == ('valid', 'construction', None)
+    assert statuses(repo, story, third)['brief'] == ('valid', 'author', None)
+
+
+@pytest.mark.req('VALID-LINKS')
+def test_real_plan_edit_still_unchecks_the_brief(tmp_path):
+    repo, story, (first, middle, _, _) = numbered_book(tmp_path)
+    repo.update_scene_plan(first.id, 'Сцена 2: А\nБібліотека.', repo.get_scene(first.id).revision)
+    assert statuses(repo, story, first)['brief'] == ('unchecked', None, None)
+    current = repo.get_scene(middle.id)  # beats without a plan head (legacy scene): changed in place
+    with repo.db.connection() as db:
+        payload = current.model_copy(update={'beats': 'Сцена 3: Б\nБібліотека.'})
+        db.execute('UPDATE scenes SET payload=? WHERE id=?', (payload.model_dump_json(), middle.id))
+    assert statuses(repo, story, middle)['brief'] == ('unchecked', None, None)
+
+
+@pytest.mark.req('VALID-LINKS')
+def test_insertion_renumbers_scenes_without_unchecking_them(tmp_path):
+    from storygen.scene_description import explicit_scene_number
+    repo, story, (first, middle, third, _) = numbered_book(tmp_path)
+    repo.create_scene(story.id, SceneCreate(title='Вставка', position=1), plan_template=True)
+    # The insertion renumbers the list from 1: «А» (first, same P0) gets a new plan version with number 1.
+    assert explicit_scene_number(repo.read_text(repo.get_scene(first.id).heads['plan'])) == 1
+    assert statuses(repo, story, first)['brief'] == ('valid', 'construction', None)
+    # «Б» has a new predecessor without memory; «Д» keeps «Б» before it.
+    assert statuses(repo, story, middle)['brief'] == ('unavailable', None, 'no_previous_memory')
+    assert statuses(repo, story, third)['brief'] == ('valid', 'construction', None)

@@ -60,3 +60,10 @@ assert.equal(diagnostic('Некоректні дані: Модель «a/b» у�
   'Invalid data: Model “a/b” already refused the “Memory” role on content for a request rated 1/0/0. Calls rated 2/0/0 are blocked: clear the mark in the role settings or choose another model.');
 setLocale('uk');
 console.log('Model policy block diagnostics passed');
+
+// VALID-LINKS: a context refused for an unchecked link names the scene in English too.
+setLocale('en');
+assert.equal(diagnostic('Некоректні дані: Сцена «Ранок»: прозу не перевірено — затвердьте відповідність завданню або прийміть прозу як авторську'),
+  'Invalid data: Scene “Ранок”: the prose has not been checked — approve its match with the brief or accept the prose as your own');
+setLocale('uk');
+console.log('Stale link diagnostics passed');
