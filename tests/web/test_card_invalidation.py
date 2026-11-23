@@ -1,4 +1,5 @@
 """Card and location changes report the dependent scenes; only the author's POST /links/invalidate unchecks their links."""
+import pytest
 from fastapi.testclient import TestClient
 from storygen.application.settings import AppSettings
 from storygen.domain import SceneCreate
@@ -32,6 +33,7 @@ def cast(repo, scene_id, **changes):
     repo.update_scene_metadata(scene_id, changes, repo.get_scene(scene_id).revision)
 
 
+@pytest.mark.req('VALID-CARDS')
 def test_character_save_reports_changed_and_dependent(tmp_path):
     repo, story, scenes = book(tmp_path, 3)
     with client_for(tmp_path) as client:
@@ -58,6 +60,7 @@ def test_character_save_reports_changed_and_dependent(tmp_path):
         assert 'changed_character_ids' not in client.get(f'/api/stories/{story.id}/characters').json()
 
 
+@pytest.mark.req('VALID-CARDS')
 def test_saving_cards_alone_changes_no_link(tmp_path):
     repo, story, (scene,) = book(tmp_path)
     with client_for(tmp_path) as client:
@@ -69,6 +72,7 @@ def test_saving_cards_alone_changes_no_link(tmp_path):
         assert material_status(client, story.id, scene.id)['validity'] == 'valid'  # the author said «Ні»
 
 
+@pytest.mark.req('VALID-CARDS')
 def test_invalidate_route_unchecks_scenes(tmp_path):
     repo, story, scenes = book(tmp_path, 2)
     with client_for(tmp_path) as client:
@@ -82,6 +86,7 @@ def test_invalidate_route_unchecks_scenes(tmp_path):
         assert material_status(client, story.id, scenes[0].id)['validity'] == 'valid'
 
 
+@pytest.mark.req('VALID-CARDS')
 def test_invalidate_route_refuses_foreign_or_unknown_scenes(tmp_path):
     repo, story, (scene,) = book(tmp_path)
     from storygen.domain import StoryCreate
@@ -98,6 +103,7 @@ def test_invalidate_route_refuses_foreign_or_unknown_scenes(tmp_path):
         assert material_status(client, story.id, scene.id)['validity'] == 'valid'  # nothing was written
 
 
+@pytest.mark.req('VALID-CARDS')
 def test_location_change_reports_dependent(tmp_path):
     repo, story, _ = book(tmp_path, 0)
     room = repo.create_scene(story.id, SceneCreate(title='Ранок', beats='Локація: Квартира Джорджа / вітальня'))

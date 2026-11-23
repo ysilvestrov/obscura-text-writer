@@ -1,3 +1,4 @@
+import pytest
 import threading
 from storygen.storage.snapshots import freshness
 from storygen.storage.links import scene_links, scene_validity
@@ -21,6 +22,7 @@ def fingerprint(repo, story, scene, link):
     return scene_links(repo.context_view(story.id), scene.id)[link].fingerprint
 
 
+@pytest.mark.req('VALID-CARDS')
 def test_invalidation_unchecks_construction_and_author_verdicts(tmp_path):
     repo, story, scenes = book(tmp_path, 2)
     generated, approved = scenes
@@ -54,6 +56,7 @@ def test_invalidation_unchecks_construction_and_author_verdicts(tmp_path):
         assert scene_validity(repo.context_view(story.id), scene.id) == 'valid'
 
 
+@pytest.mark.req('VALID-CARDS')
 def test_invalidation_with_old_fingerprint_is_inert(tmp_path):
     repo, story, (scene,) = book(tmp_path)
     invalidate_links(repo, story.id, [scene.id], REASON)
@@ -65,6 +68,7 @@ def test_invalidation_with_old_fingerprint_is_inert(tmp_path):
     assert statuses(repo, story, scene) == {link: ('valid', 'construction') for link in ('brief', 'prose', 'memory')}
 
 
+@pytest.mark.req('VALID-CARDS')
 def test_invalidation_for_another_fingerprint_does_not_apply(tmp_path):
     repo, story, (scene,) = book(tmp_path)
     record = LinkInvalidation(id=new_verdict_id(), story_id=story.id, scene_id=scene.id, links=['brief'],
@@ -82,6 +86,7 @@ def _write(repo, *records):
             (write_invalidation if isinstance(record, LinkInvalidation) else write_verdict)(db, record)
 
 
+@pytest.mark.req('VALID-CARDS')
 def test_approval_right_after_invalidation_wins(tmp_path):
     # Insertion order decides, not created_at: both records carry the same timestamp.
     repo, story, (scene,) = book(tmp_path)
@@ -98,6 +103,7 @@ def test_approval_right_after_invalidation_wins(tmp_path):
     assert statuses(repo, story, scene)['brief'] == ('valid', 'author')
 
 
+@pytest.mark.req('VALID-CARDS')
 def test_invalidation_keeps_a_later_discrepancy(tmp_path):
     repo, story, (scene,) = book(tmp_path)
     state = scene_links(repo.context_view(story.id), scene.id)['brief']
@@ -107,6 +113,7 @@ def test_invalidation_keeps_a_later_discrepancy(tmp_path):
     assert statuses(repo, story, scene)['brief'] == ('discrepancy', 'auditor')
 
 
+@pytest.mark.req('VALID-CARDS')
 def test_invalidation_skips_missing_links(tmp_path):
     from storygen.domain import SceneCreate
     repo, story, (scene,) = book(tmp_path)

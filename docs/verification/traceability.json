@@ -7468,9 +7468,7 @@
       "tests": [
         "tests/storage/test_links.py::test_generated_scene_is_valid_by_construction",
         "tests/storage/test_links.py::test_generated_second_scene_is_valid_by_construction",
-        "tests/storage/test_links.py::test_patches_edit_chain_is_construction",
-        "tests/storage/test_links.py::test_renumber_keeps_the_brief_link",
-        "tests/storage/test_links.py::test_insertion_renumbers_scenes_without_unchecking_them"
+        "tests/storage/test_links.py::test_patches_edit_chain_is_construction"
       ]
     },
     {
@@ -7489,8 +7487,7 @@
       "tests": [
         "tests/storage/test_links.py::test_manual_prose_unchecks_prose_and_memory_links",
         "tests/storage/test_links.py::test_manual_draft_in_the_chain_breaks_construction",
-        "tests/storage/test_links.py::test_edit_of_accepted_author_prose_is_not_construction",
-        "tests/generation/test_stale_context_message.py::test_unchecked_author_prose_names_its_action_and_other_stale_text_stays"
+        "tests/storage/test_links.py::test_edit_of_accepted_author_prose_is_not_construction"
       ]
     },
     {
@@ -7501,8 +7498,7 @@
         "tests/storage/test_links.py::test_manual_memory_keeps_scene_and_unchecks_next",
         "tests/storage/test_links.py::test_same_own_events_keep_next_scene_valid",
         "tests/storage/test_link_freshness.py::test_generated_brief_after_previous_memory_change_is_stale_with_link_reason",
-        "tests/storage/test_link_freshness.py::test_previous_memory_change_does_not_stale_next_memory_head",
-        "tests/generation/test_stale_context_message.py::test_stale_context_names_the_scene_and_action"
+        "tests/storage/test_link_freshness.py::test_previous_memory_change_does_not_stale_next_memory_head"
       ]
     },
     {
@@ -7511,8 +7507,7 @@
       "scope": "Чернетка не змінює зв'язків; не-голова порівнює знімок.",
       "tests": [
         "tests/storage/test_links.py::test_draft_change_keeps_validity",
-        "tests/storage/test_link_freshness.py::test_non_head_versions_keep_snapshot_comparison",
-        "tests/storage/test_links.py::test_real_plan_edit_still_unchecks_the_brief"
+        "tests/storage/test_link_freshness.py::test_non_head_versions_keep_snapshot_comparison"
       ]
     },
     {
@@ -7549,7 +7544,7 @@
       ],
       "manual": {
         "procedure": "docs/verification/manual.md#link-decision-browser",
-        "reason": "check_docs.py індексує лише pytest; Playwright case tests/web/browser/link-decision.spec.mjs (панель «Затвердити завдання»/«Затвердити відповідність» відкритої сцени) виконується окремим runner, цей зв’язок не є доказом виконання."
+        "reason": "check_docs.py індексує лише pytest; перший Playwright case tests/web/browser/link-decision.spec.mjs (панель «Затвердити завдання»/«Затвердити відповідність» відкритої сцени, після обох затверджень лишається рядок «Створити пам’ять» сцени без пам’яті) виконується окремим runner, цей зв’язок не є доказом виконання."
       }
     },
     {
@@ -7597,6 +7592,179 @@
         "tests/storage/test_link_records.py::test_fsck_reports_foreign_scene_verdict",
         "tests/storage/test_link_records.py::test_view_refuses_verdict_under_a_foreign_key",
         "tests/storage/test_link_records.py::test_fsck_reports_foreign_equivalence",
+        "tests/storage/test_link_records.py::test_fsck_reports_foreign_invalidation",
+        "tests/storage/test_link_records.py::test_invalidation_rejects_links_without_fingerprints"
+      ]
+    },
+    {
+      "id": "VALID-LINKS-S13",
+      "requirement": "VALID-LINKS",
+      "scope": "Перенумерування (кошик, вставка) не змінює ідентичності плану й З1; правка тексту плану змінює.",
+      "tests": [
+        "tests/storage/test_links.py::test_renumber_keeps_the_brief_link",
+        "tests/storage/test_links.py::test_insertion_renumbers_scenes_without_unchecking_them",
+        "tests/storage/test_links.py::test_real_plan_edit_still_unchecks_the_brief"
+      ]
+    },
+    {
+      "id": "VALID-LINKS-S14",
+      "requirement": "VALID-LINKS",
+      "scope": "Відмова build_context за неперевіреним зв’язком називає сцену й дію; інша причина — загальний текст.",
+      "tests": [
+        "tests/generation/test_stale_context_message.py::test_stale_context_names_the_scene_and_action",
+        "tests/generation/test_stale_context_message.py::test_unchecked_author_prose_names_its_action_and_other_stale_text_stays"
+      ]
+    },
+    {
+      "id": "VALID-MEMORY-S01",
+      "requirement": "VALID-MEMORY",
+      "scope": "Рішення для З3: авторський висновок і ProseEquivalence у тій самій транзакції; API; fsck invalid_prose_equivalence.",
+      "tests": [
+        "tests/memory/test_prose_equivalence.py::test_author_keeps_memory_after_prose_edit",
+        "tests/web/test_link_decisions.py::test_author_keeps_memory_through_the_api",
+        "tests/storage/test_link_records.py::test_fsck_reports_foreign_equivalence"
+      ]
+    },
+    {
+      "id": "VALID-MEMORY-S02",
+      "requirement": "VALID-MEMORY",
+      "scope": "Рівноцінні пари знімають блокування й підтвердження наступної сцени; транзитивне замикання в межах сцени.",
+      "tests": [
+        "tests/memory/test_prose_equivalence.py::test_kept_memory_unblocks_the_next_scene",
+        "tests/memory/test_prose_equivalence.py::test_equivalence_chain_is_transitive",
+        "tests/memory/test_prose_equivalence.py::test_equivalent_pairs_close_a_chain_within_one_scene"
+      ]
+    },
+    {
+      "id": "VALID-MEMORY-S03",
+      "requirement": "VALID-MEMORY",
+      "scope": "Пам’ять без знімка можна залишити; рівноцінність не пишеться; наступна сцена розблокована.",
+      "tests": [
+        "tests/memory/test_prose_equivalence.py::test_memory_without_snapshot_can_be_kept"
+      ]
+    },
+    {
+      "id": "VALID-MEMORY-S04",
+      "requirement": "VALID-MEMORY",
+      "scope": "Механічний перенос: власні записи й memory_digest без змін, валідність незмінна, пропуск без пам’яті, CAS-повтор, серія, крок не ставить переносу.",
+      "tests": [
+        "tests/memory/test_memory_carry.py::test_carry_journal_extends_the_new_previous_journal_with_own_events",
+        "tests/memory/test_memory_carry.py::test_carry_keeps_own_events_and_digest",
+        "tests/memory/test_memory_carry.py::test_carry_does_not_launder_memory_links",
+        "tests/memory/test_memory_carry.py::test_carry_step_enqueues_no_carry",
+        "tests/memory/test_memory_carry.py::test_carry_skips_scene_without_memory",
+        "tests/memory/test_memory_carry.py::test_carry_step_respects_scene_revision",
+        "tests/memory/test_memory_carry.py::test_carry_through_merge_and_series_start"
+      ]
+    },
+    {
+      "id": "VALID-MEMORY-S05",
+      "requirement": "VALID-MEMORY",
+      "scope": "Невдалий перенос: checkpoint, carry_failed, відмова рішення 409, тексти зі сценою, нова пам’ять продовжує; зупинка на злитті.",
+      "tests": [
+        "tests/memory/test_memory_carry.py::test_carry_fails_on_missing_claim",
+        "tests/memory/test_memory_carry.py::test_new_memory_clears_carry_failed_and_continues",
+        "tests/memory/test_memory_carry.py::test_carry_reasons_name_the_scene_and_action",
+        "tests/memory/test_memory_carry.py::test_stop_warning_names_the_real_reason",
+        "tests/memory/test_memory_carry.py::test_carry_through_merge_and_series_start"
+      ]
+    },
+    {
+      "id": "VALID-MEMORY-S06",
+      "requirement": "VALID-MEMORY",
+      "scope": "Відмова «Пам’ять переноситься»: readiness, контекст, чернетка й результат етапу з чату 409; запуск, що виконується, не відмовляє.",
+      "tests": [
+        "tests/memory/test_memory_carry.py::test_model_stages_refused_while_carrying",
+        "tests/memory/test_memory_carry.py::test_chat_stage_result_refused_while_carrying",
+        "tests/memory/test_memory_carry.py::test_carry_reasons_name_the_scene_and_action",
+        "tests/generation/test_memory_carry_run.py::test_one_run_generates_three_scenes_without_refusal"
+      ]
+    },
+    {
+      "id": "VALID-MEMORY-S07",
+      "requirement": "VALID-MEMORY",
+      "scope": "Черга переносу: витіснення, request_id з ревізією голови, зупинений перенос, рестарт → queued, публічний API 422, MCP без режиму.",
+      "tests": [
+        "tests/memory/test_memory_carry.py::test_carry_restarts_from_an_earlier_change",
+        "tests/memory/test_memory_carry.py::test_selecting_a_memory_again_carries_again",
+        "tests/memory/test_memory_carry.py::test_stalled_carry_keeps_its_scenes_pending",
+        "tests/generation/test_memory_carry_run.py::test_restart_requeues_a_carry",
+        "tests/web/test_memory_carry_api.py::test_public_runs_api_refuses_memory_carry",
+        "tests/web/test_memory_carry_api.py::test_mcp_start_run_cannot_name_the_carry"
+      ]
+    },
+    {
+      "id": "VALID-MEMORY-S08",
+      "requirement": "VALID-MEMORY",
+      "scope": "Рядки й дії панелі для З3 і недоступних зв’язків (pendingLinks), previous_scene_id у перегляді твору.",
+      "tests": [
+        "tests/web/test_link_decision_ui.py::test_link_panel_actions",
+        "tests/web/test_link_decisions.py::test_story_view_names_the_previous_scene_without_memory"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#link-decision-browser",
+        "reason": "check_docs.py індексує лише pytest; другий і третій Playwright cases tests/web/browser/link-decision.spec.mjs («Залишити попередню пам’ять» розблоковує наступну сцену; «Створити пам’ять» відкриває попередню сцену й питає згоди) виконуються окремим runner, цей зв’язок не є доказом виконання."
+      }
+    },
+    {
+      "id": "VALID-CARDS-S01",
+      "requirement": "VALID-CARDS",
+      "scope": "Правило (г): інвалідація знімає побудову й висновки автора; пізніший валідний висновок перемагає за rowid; пізніша розбіжність лишається.",
+      "tests": [
+        "tests/storage/test_link_invalidation.py::test_invalidation_unchecks_construction_and_author_verdicts",
+        "tests/storage/test_link_invalidation.py::test_approval_right_after_invalidation_wins",
+        "tests/storage/test_link_invalidation.py::test_invalidation_keeps_a_later_discrepancy"
+      ]
+    },
+    {
+      "id": "VALID-CARDS-S02",
+      "requirement": "VALID-CARDS",
+      "scope": "Інвалідація з іншим чи старим відбитком не діє; нова генерація знову валідна.",
+      "tests": [
+        "tests/storage/test_link_invalidation.py::test_invalidation_with_old_fingerprint_is_inert",
+        "tests/storage/test_link_invalidation.py::test_invalidation_for_another_fingerprint_does_not_apply"
+      ]
+    },
+    {
+      "id": "VALID-CARDS-S03",
+      "requirement": "VALID-CARDS",
+      "scope": "POST /links/invalidate: усе або нічого, 404 і 422 без запису, пропуск missing/unavailable, відповідь scene_ids.",
+      "tests": [
+        "tests/web/test_card_invalidation.py::test_invalidate_route_unchecks_scenes",
+        "tests/web/test_card_invalidation.py::test_invalidate_route_refuses_foreign_or_unknown_scenes",
+        "tests/storage/test_link_invalidation.py::test_invalidation_skips_missing_links"
+      ]
+    },
+    {
+      "id": "VALID-CARDS-S04",
+      "requirement": "VALID-CARDS",
+      "scope": "PUT characters: changed_character_ids і dependent_scene_ids (склад, оповідач, вилучена картка, лише сцени із завданням); збереження саме валідності не змінює.",
+      "tests": [
+        "tests/web/test_card_invalidation.py::test_character_save_reports_changed_and_dependent",
+        "tests/web/test_card_invalidation.py::test_saving_cards_alone_changes_no_link"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#card-invalidation-browser",
+        "reason": "check_docs.py індексує лише pytest; Playwright cases tests/web/browser/card-invalidation.spec.mjs (діалог після збереження картки, «Так» і «Ні») виконуються окремим runner, цей зв’язок не є доказом виконання."
+      }
+    },
+    {
+      "id": "VALID-CARDS-S05",
+      "requirement": "VALID-CARDS",
+      "scope": "Зміни локацій: dependent_scene_ids за показаними локаціями й околицею до/після; dismiss і незмінний опис — порожньо.",
+      "tests": [
+        "tests/web/test_card_invalidation.py::test_location_change_reports_dependent"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#card-invalidation-browser",
+        "reason": "check_docs.py індексує лише pytest; Playwright case tests/web/browser/card-invalidation.spec.mjs (діалог після збереження опису локації й «Так») виконується окремим runner, цей зв’язок не є доказом виконання."
+      }
+    },
+    {
+      "id": "VALID-CARDS-S06",
+      "requirement": "VALID-CARDS",
+      "scope": "Модель LinkInvalidation відхиляє невідповідні відбитки, З3 й іншу причину; fsck invalid_link_invalidation.",
+      "tests": [
         "tests/storage/test_link_records.py::test_fsck_reports_foreign_invalidation",
         "tests/storage/test_link_records.py::test_invalidation_rejects_links_without_fingerprints"
       ]

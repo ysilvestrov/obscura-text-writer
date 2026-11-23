@@ -8,6 +8,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 @pytest.mark.req('VALID-LINKS')
+@pytest.mark.req('VALID-MEMORY')
 def test_link_panel_actions():
     node = shutil.which('node')
     if not node:

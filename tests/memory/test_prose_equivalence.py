@@ -25,6 +25,7 @@ def brief_context(repo, scene):
     return build_context(repo, scene.id, 'brief', RoleSettings(provider=ProviderSettings(model='planner')))
 
 
+@pytest.mark.req('VALID-MEMORY')
 def test_author_keeps_memory_after_prose_edit(tmp_path):
     repo, story, (scene,) = book(tmp_path)
     old = repo.get_scene(scene.id).heads['prose']
@@ -39,6 +40,7 @@ def test_author_keeps_memory_after_prose_edit(tmp_path):
     assert record.verdict_id == verdict.id
 
 
+@pytest.mark.req('VALID-MEMORY')
 def test_kept_memory_unblocks_the_next_scene(tmp_path):
     repo, story, scenes = book(tmp_path, 2)
     edit_prose(repo, scenes[0], 'Олена увійшла до старої бібліотеки.')
@@ -48,6 +50,7 @@ def test_kept_memory_unblocks_the_next_scene(tmp_path):
     brief_context(repo, scenes[1])
 
 
+@pytest.mark.req('VALID-MEMORY')
 def test_memory_without_snapshot_can_be_kept(tmp_path):
     # Final review 2a, Important 3: a memory without a snapshot blocked the next scene with no author decision.
     repo, story, scenes = book(tmp_path, 2)
@@ -63,6 +66,7 @@ def test_memory_without_snapshot_can_be_kept(tmp_path):
     brief_context(repo, scenes[1])
 
 
+@pytest.mark.req('VALID-MEMORY')
 def test_equivalence_chain_is_transitive(tmp_path):
     repo, story, scenes = book(tmp_path, 2)
     first = repo.get_scene(scenes[0].id).heads['prose']
@@ -75,6 +79,7 @@ def test_equivalence_chain_is_transitive(tmp_path):
     assert _candidate(view, scenes[1].id)[3] is False
 
 
+@pytest.mark.req('VALID-MEMORY')
 def test_equivalent_pairs_close_a_chain_within_one_scene(tmp_path):
     repo, story, scenes = book(tmp_path, 2)
     a, b, c = (repo.get_scene(scenes[0].id).heads['prose'], edit_prose(repo, scenes[0], 'Друга.'),

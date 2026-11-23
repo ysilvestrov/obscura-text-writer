@@ -97,6 +97,7 @@ def test_view_refuses_verdict_under_a_foreign_key(tmp_path):
 
 
 @pytest.mark.req('VALID-LINKS')
+@pytest.mark.req('VALID-MEMORY')
 def test_fsck_reports_foreign_equivalence(tmp_path):
     from storygen.storage.link_records import ProseEquivalence, write_equivalence
     repo, story, scene = one_scene(tmp_path)
@@ -121,6 +122,7 @@ def test_fsck_reports_foreign_equivalence(tmp_path):
 
 
 @pytest.mark.req('VALID-LINKS')
+@pytest.mark.req('VALID-CARDS')
 def test_fsck_reports_foreign_invalidation(tmp_path):
     from storygen.storage.link_records import LinkInvalidation, write_invalidation
     repo, story, scene = one_scene(tmp_path)
@@ -144,6 +146,7 @@ def test_fsck_reports_foreign_invalidation(tmp_path):
 
 
 @pytest.mark.req('VALID-LINKS')
+@pytest.mark.req('VALID-CARDS')
 def test_invalidation_rejects_links_without_fingerprints():
     from storygen.storage.link_records import LinkInvalidation
     base = dict(id='i', story_id='s', scene_id='c', reason={'kind': 'character', 'ids': ['x']}, created_at='t')

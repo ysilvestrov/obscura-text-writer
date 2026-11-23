@@ -82,6 +82,7 @@ def failed_book(tmp_path):
     return repo, story, scenes
 
 
+@pytest.mark.req('VALID-MEMORY')
 def test_carry_journal_extends_the_new_previous_journal_with_own_events():
     previous = MemoryJournal(source_prose_ids=['p1'], events=[_add_event('facts', 'Нове', 'p1', 'Олена', 0)])
     old = _add_event('facts', 'Старе', 'p1', 'Олена', 0)
@@ -94,6 +95,7 @@ def test_carry_journal_extends_the_new_previous_journal_with_own_events():
                                                                                     update]))
 
 
+@pytest.mark.req('VALID-MEMORY')
 def test_carry_keeps_own_events_and_digest(tmp_path):
     repo, story, scenes = book(tmp_path, 3)
     second, third = scenes[1], scenes[2]
@@ -116,6 +118,7 @@ def test_carry_keeps_own_events_and_digest(tmp_path):
     assert after['brief'] == ('valid', 'construction', None) and after['prose'] == ('valid', 'construction', None)
 
 
+@pytest.mark.req('VALID-MEMORY')
 def test_carry_fails_on_missing_claim(tmp_path):
     repo, story, scenes = failed_book(tmp_path)
     second, third = (repo.get_scene(s.id) for s in scenes[1:])
@@ -130,6 +133,7 @@ def test_carry_fails_on_missing_claim(tmp_path):
         decide_link(repo, second.id, 'memory', 'approve', current.fingerprint)
 
 
+@pytest.mark.req('VALID-MEMORY')
 def test_new_memory_clears_carry_failed_and_continues(tmp_path):
     repo, story, scenes = failed_book(tmp_path)
     run_carries(repo, story.id)
@@ -142,6 +146,7 @@ def test_new_memory_clears_carry_failed_and_continues(tmp_path):
     assert state(repo, story, scenes[2]) == 'current'
 
 
+@pytest.mark.req('VALID-MEMORY')
 def test_model_stages_refused_while_carrying(tmp_path):
     from fastapi.testclient import TestClient
     from storygen.application.settings import AppSettings
@@ -166,6 +171,7 @@ def test_model_stages_refused_while_carrying(tmp_path):
     assert response.status_code == 409 and CARRYING in response.json()['detail']
 
 
+@pytest.mark.req('VALID-MEMORY')
 def test_carry_restarts_from_an_earlier_change(tmp_path):
     repo, story, scenes = book(tmp_path, 4)
     new_memory(repo, scenes[1])
@@ -182,6 +188,7 @@ def test_carry_restarts_from_an_earlier_change(tmp_path):
         assert state(repo, story, scene) == 'current'
 
 
+@pytest.mark.req('VALID-MEMORY')
 def test_carry_step_respects_scene_revision(tmp_path, monkeypatch):
     from storygen.storage.repository import Repository
     repo, story, scenes = book(tmp_path, 2)
@@ -202,6 +209,7 @@ def test_carry_step_respects_scene_revision(tmp_path, monkeypatch):
     assert state(repo, story, scenes[1]) == 'current'
 
 
+@pytest.mark.req('VALID-MEMORY')
 def test_carry_skips_scene_without_memory(tmp_path):
     repo, story, scenes = book(tmp_path, 3)
     second = repo.get_scene(scenes[1].id)
@@ -217,6 +225,7 @@ def test_carry_skips_scene_without_memory(tmp_path):
     assert repo.get_scene(scenes[2].id).heads['memory'] == third_memory
 
 
+@pytest.mark.req('VALID-MEMORY')
 def test_carry_through_merge_and_series_start(tmp_path):
     from storygen.memory.series_start import read_series_start
     from storygen.storage import series as store
@@ -261,6 +270,7 @@ def test_carry_through_merge_and_series_start(tmp_path):
     assert state(repo, story, third) != 'failed'
 
 
+@pytest.mark.req('VALID-MEMORY')
 def test_carry_does_not_launder_memory_links(tmp_path):
     from tests.link_helpers import approve_links
     repo, story, scenes = book(tmp_path / 'clean', 3)
@@ -288,6 +298,7 @@ def test_carry_does_not_launder_memory_links(tmp_path):
         assert statuses(repo, story, second)['memory'] == expected
 
 
+@pytest.mark.req('VALID-MEMORY')
 def test_carry_step_enqueues_no_carry(tmp_path):
     repo, story, scenes = book(tmp_path, 3)
     heads = [repo.get_scene(s.id).heads['memory'] for s in scenes[1:]]
@@ -298,6 +309,7 @@ def test_carry_step_enqueues_no_carry(tmp_path):
     assert len(carry_runs(repo, story.id)) == 1
 
 
+@pytest.mark.req('VALID-MEMORY')
 def test_carry_reasons_name_the_scene_and_action(tmp_path):
     from storygen.generation.context import build_context
     from storygen.providers.models import ProviderSettings, RoleSettings
@@ -311,6 +323,7 @@ def test_carry_reasons_name_the_scene_and_action(tmp_path):
     assert repo.get_scene(scenes[1].id).title in str(error.value)
 
 
+@pytest.mark.req('VALID-MEMORY')
 def test_selecting_a_memory_again_carries_again(tmp_path):
     repo, story, scenes = book(tmp_path, 2)
     old = repo.get_scene(scenes[0].id).heads['memory']
@@ -325,6 +338,7 @@ def test_selecting_a_memory_again_carries_again(tmp_path):
     assert len(carry_runs(repo, story.id)) == 3
 
 
+@pytest.mark.req('VALID-MEMORY')
 def test_stalled_carry_keeps_its_scenes_pending(tmp_path):
     repo, story, scenes = book(tmp_path, 2)
     new_memory(repo, scenes[0])
@@ -340,6 +354,7 @@ def test_stalled_carry_keeps_its_scenes_pending(tmp_path):
     assert state(repo, story, scenes[1]) == 'current'
 
 
+@pytest.mark.req('VALID-MEMORY')
 def test_chat_stage_result_refused_while_carrying(tmp_path):
     from fastapi.testclient import TestClient
     from storygen.application.settings import AppSettings
@@ -352,6 +367,7 @@ def test_chat_stage_result_refused_while_carrying(tmp_path):
     assert response.status_code == 409 and CARRYING in response.json()['detail']
 
 
+@pytest.mark.req('VALID-MEMORY')
 def test_stop_warning_names_the_real_reason():
     from storygen.generation.memory_carry import FAILED, stop_warning
     from storygen.memory.carry import CARRY_MISSING

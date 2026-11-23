@@ -1,4 +1,5 @@
 """The memory carry in the queue: a multi-stage run is not refused by the carry it queues itself (neutral texts)."""
+import pytest
 from storygen.authoring.blueprints import save_role_settings
 from storygen.generation.worker import RunCoordinator
 from storygen.run_models import RunRequest
@@ -7,6 +8,7 @@ from tests.memory.test_memory_carry import carry_runs, new_memory, run_carries, 
 from tests.storage.test_links import book, roles
 
 
+@pytest.mark.req('VALID-MEMORY')
 def test_one_run_generates_three_scenes_without_refusal(tmp_path):
     repo, story, scenes = book(tmp_path, 3)
     for name, settings in roles().items():
@@ -30,6 +32,7 @@ def test_one_run_generates_three_scenes_without_refusal(tmp_path):
     assert all(state(repo, story, s) == 'current' for s in scenes[1:])
 
 
+@pytest.mark.req('VALID-MEMORY')
 def test_restart_requeues_a_carry(tmp_path):
     repo, story, scenes = book(tmp_path, 2)
     new_memory(repo, scenes[0])

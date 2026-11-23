@@ -71,6 +71,7 @@ def test_stale_fingerprint_is_409_and_writes_nothing(tmp_path):
 
 
 @pytest.mark.req('VALID-LINKS')
+@pytest.mark.req('VALID-MEMORY')
 def test_author_keeps_memory_through_the_api(tmp_path):
     repo, story, scene = setup(tmp_path)
     save_manual_prose(repo, scene.id, 'Інша проза.', repo.get_scene(scene.id).revision)
@@ -113,6 +114,7 @@ def test_approving_a_valid_link_writes_nothing(tmp_path):
 
 
 @pytest.mark.req('VALID-LINKS')
+@pytest.mark.req('VALID-MEMORY')
 def test_story_view_names_the_previous_scene_without_memory(tmp_path):
     from storygen.domain import StoryCreate, SceneCreate
     from storygen.storage.repository import Repository

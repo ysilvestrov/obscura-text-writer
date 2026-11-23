@@ -64,6 +64,16 @@ A brief, prose or memory becomes outdated only when what it was made from change
 
 When a brief or prose is unchecked, a panel below the scene text offers **Approve brief** and **Approve match**. Press them once you are sure the brief follows the plan and the prose follows the brief. Approving prose does not make it the author’s text and does not change it. If the scene changed after the panel was shown, Obscura approves nothing, shows an error and refreshes the panel.
 
+For memory and missing memory the panel offers other actions:
+
+- **The memory is not confirmed: the prose changed after it.** If the prose change did not touch the facts, press **Keep the earlier memory**: the scene memory stays, and the next scene no longer asks you to update it because of this change. If the facts changed, press **Create a new memory** — the memory stage runs after a preview and your consent.
+- **This scene has no memory yet** — **Create memory** runs the memory stage of this scene.
+- **The previous scene “…” has no memory** — the brief and prose of this scene cannot be checked. **Create memory** opens that scene and offers to run its memory stage. If the scene continues a memory merge, the panel only explains what is missing.
+- **The memory is being carried over…** — after the previous scene gets a new memory, Obscura updates the memory of later scenes on its own ([carrying memory to later scenes](memory.md#carrying-memory-to-later-scenes)). Until the carry reaches the scene, model runs for it are refused with the explanation “Memory is being carried”, while you can still read and edit the text. The note disappears on its own when the carry ends; if it takes longer than two minutes, refresh the page.
+- **The memory was not carried over** — the carry stopped at this scene. **Create a new memory** builds its memory on the new memory of the previous scene, and the carry continues. Such a memory cannot be kept.
+
+In full-screen mode the panel is hidden.
+
 ## Editor
 
 Draft and Prose have a formatting toolbar: **B** (`Ctrl+B`), *I* (`Ctrl+I`), undo (`Ctrl+Z`) and redo (`Ctrl+Y`). **Save** creates a new version and does not erase earlier ones. Pasting brings in plain text only. The browser warns you before you leave with unsaved edits.
