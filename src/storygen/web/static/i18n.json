@@ -2486,7 +2486,12 @@
     "locations.error.self": "Локацію не можна злити саму в себе",
     "locations.error.conflict": "Твір уже змінено. Оновіть локації; зміну не збережено.",
     "locations.error.long": "Опис локації довший за {p0} знаків",
-    "d_dce17d6f2598": "Перевірку впливу вилучено; скористайтеся валідацією книги"
+    "d_dce17d6f2598": "Перевірку впливу вилучено; скористайтеся валідацією книги",
+    "link.brief_unchecked": "Завдання не підтверджено: його не перевірено проти плану й пам’яті попередньої сцени.",
+    "link.prose_unchecked": "Проза не підтверджена: її відповідність завданню не перевірено.",
+    "link.approve_brief": "Затвердити завдання",
+    "link.approve_prose": "Затвердити відповідність",
+    "link.approved": "Зв’язок затверджено."
   },
   "en": {
     "ui.save": "Save",
@@ -4975,6 +4980,11 @@
     "locations.error.self": "A location cannot be merged into itself",
     "locations.error.conflict": "The story has changed. Reload the locations; the change was not saved.",
     "locations.error.long": "The location description is longer than {p0} characters",
-    "d_dce17d6f2598": "The impact check has been removed; use book validation instead"
+    "d_dce17d6f2598": "The impact check has been removed; use book validation instead",
+    "link.brief_unchecked": "The brief is not confirmed: it has not been checked against the plan and the previous scene's memory.",
+    "link.prose_unchecked": "The prose is not confirmed: its match with the brief has not been checked.",
+    "link.approve_brief": "Approve brief",
+    "link.approve_prose": "Approve match",
+    "link.approved": "Link approved."
   }
 }

@@ -376,3 +376,19 @@ def core_review_fragments(scene_id: str,request: Request,q: str='',source_scene_
     except ValueError as error:
         # A query outside the scene prefix is a request the author must change, not malformed data.
         return JSONResponse({'detail':diagnostic(str(error),request_locale(request)),'detail_original':str(error)},status_code=422)
+
+
+class LinkDecision(DomainModel):
+    action: Literal['approve']
+    fingerprint: str = Field(pattern=r'^[a-f0-9]{64}$')
+
+
+@router.post('/api/scenes/{scene_id}/links/{link}/decision')
+def link_decision(scene_id: str,link: Literal['brief','prose','memory'],body: LinkDecision,request: Request):
+    """VALID-LINKS-S08: the author approves a link of the scene for its current fingerprint."""
+    from fastapi import HTTPException
+    from ..storage.link_decisions import LinkDecisionRefused, decide_link
+    try:
+        return decide_link(request.app.state.repo,scene_id,link,body.action,body.fingerprint)
+    except LinkDecisionRefused as error:
+        raise HTTPException(422,str(error)) from error
