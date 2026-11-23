@@ -127,7 +127,7 @@ def test_export_rejects_corrupt_prose_even_when_incomplete_allowed(tmp_path):
         export_story(repo, story.id, 'md', allow_incomplete=True)
 
 
-# R-44 PR 4: export completeness follows the validity of links (VALID-LINKS, PR 2): unaccepted prose with an unchecked
+# R-44 PR 4: export completeness follows the freshness of the prose head (the stale mark, VALID-LINKS, PR 2): unaccepted prose with an unchecked
 # Z2 needs review; accepted prose and prose without a brief (Z1 missing) do not.
 STALE_SCENE = 'Сцена застаріла або потребує перегляду'
 

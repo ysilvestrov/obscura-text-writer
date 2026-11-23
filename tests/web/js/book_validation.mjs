@@ -5,9 +5,21 @@ const {invalidSceneCount,bookMenuState}=await import(pathToFileURL(root+'/src/st
 const {confirmationText,auditConfirmationText}=await import(pathToFileURL(root+'/src/storygen/web/static/run-readiness.js'));
 const {runModeKey,stoppedAuditScene}=await import(pathToFileURL(root+'/src/storygen/web/static/run-summary.js'));
 
-// R-44 book validation, design §12: the menu counts the scenes whose validity is unchecked or discrepancy.
-const status={a:{validity:'unchecked'},b:{validity:'discrepancy'},c:{validity:'valid'},d:{validity:'incomplete'}};
-assert.equal(invalidSceneCount(status),2);
+// R-44 book validation, design §12: the menu counts the scenes with a link in unchecked, discrepancy or unavailable
+// (the rule of the server's book_pending and of the preview's invalid_scenes), whatever the scene's validity.
+const status={
+  a:{validity:'unchecked',links:{brief:{status:'unchecked'},prose:{status:'valid'}}},
+  b:{validity:'discrepancy',links:{brief:{status:'discrepancy'}}},
+  c:{validity:'valid',links:{brief:{status:'valid'},prose:{status:'valid'}}},
+  d:{validity:'incomplete',links:{brief:{status:'unchecked'}}},      // brief-only scene with an unchecked brief link: counts
+  e:{validity:'unchecked',links:{brief:{status:'valid'},prose:{status:'unavailable'}}},  // only unavailable: counts
+  f:{validity:'incomplete',links:{}},                                // no links: does not count
+  g:{validity:'incomplete'},                                         // no links key: does not count
+  h:{validity:'unchecked',links:{brief:{status:'valid'},memory:{status:'missing'}}}};  // valid or missing only: does not count
+assert.equal(invalidSceneCount(status),4);
+assert.equal(invalidSceneCount({d:status.d}),1);
+assert.equal(invalidSceneCount({e:status.e}),1);
+assert.equal(invalidSceneCount({c:status.c,f:status.f,g:status.g,h:status.h}),0);
 assert.equal(invalidSceneCount({}),0);
 assert.equal(invalidSceneCount(undefined),0);
 assert.deepEqual(bookMenuState(2),{key:'book_validation.menu_count',params:{p0:2},disabled:false});

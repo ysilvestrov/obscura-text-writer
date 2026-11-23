@@ -1,10 +1,11 @@
 // R-44 book validation, design §12: pure rules of the story menu item; book-validation.js renders them.
-const INVALID=new Set(['unchecked','discrepancy']);
+const PENDING=new Set(['unchecked','discrepancy','unavailable']);
 
-// The menu counts the scenes the author sees as invalid in the story view. The preview's `invalid_scenes` counts the
-// scenes the run would visit, which may differ (an `incomplete` scene, a scene whose only pending link is unavailable).
+// The menu counts the scenes the run would visit: those with any link in unchecked, discrepancy or unavailable
+// (server: audit_run.book_pending and the preview's `invalid_scenes`), whatever the scene's validity, so a brief-only
+// (`incomplete`) scene with an unchecked brief link counts. An item without `links` counts as 0.
 export function invalidSceneCount(materialStatus){
-  return Object.values(materialStatus||{}).filter(item=>INVALID.has(item?.validity)).length;
+  return Object.values(materialStatus||{}).filter(item=>Object.values(item?.links||{}).some(link=>PENDING.has(link?.status))).length;
 }
 
 // The label key and state of the item: unknown before the view loads, «Книга валідна» and inactive at 0.
