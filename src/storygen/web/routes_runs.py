@@ -3,6 +3,7 @@ import json
 from typing import Literal
 
 from fastapi import APIRouter, HTTPException, Request
+from pydantic import model_validator
 from fastapi.responses import StreamingResponse
 
 from ..domain import DomainModel
@@ -59,6 +60,24 @@ def readiness(story_id: str,request: Request,scene_id: str | None = None,
               editor_source_head: Literal['draft','prose'] | None = None,editor_source_version_id: str | None = None,
               operation: Literal['prepare','brief','draft','edit','memory','scene','remaining','rebuild_memory','edit_loop','audit','audit_story'] | None = None):
     return request.app.state.coordinator.readiness(story_id,scene_id,editor_source_head,editor_source_version_id,operation)
+
+
+class AuditPreview(DomainModel):
+    scope: Literal['scene','story']
+    scene_id: str | None = None
+
+    @model_validator(mode='after')
+    def scene_matches_scope(self):
+        if (self.scope=='scene')!=(self.scene_id is not None):
+            raise ValueError('Перевірка сцени потребує scene_id, валідація книги — без нього')
+        return self
+
+
+@router.post('/api/stories/{story_id}/audit/preview')
+def audit_preview(story_id: str,body: AuditPreview,request: Request):
+    # Design §9: read-only; the readiness of the audit run with its plan fingerprint and upper bound on cost.
+    operation='audit' if body.scope=='scene' else 'audit_story'
+    return request.app.state.coordinator.readiness(story_id,body.scene_id,operation=operation)['operations'][operation]
 
 
 @router.post('/api/stories/{story_id}/prepare')

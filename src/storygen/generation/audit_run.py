@@ -92,12 +92,13 @@ def readiness(repo, request, view=None, resume=False) -> dict:
     from ..providers.policy import request_rating
     from ..rating.guard import enforce_edition_limit
     from .audit_context import MISSING_LINK, NOT_CONFIGURED
+    from .audit_cost import empty, upper_bound
     from .audit_output import LINK_STAGE
     from .auditor_settings import resolve_auditor, validate_auditor_prompt
     from .readiness import _check_model_policy
     book = request.audit_scope == 'story'
     result = {'ready': False, 'reason': None, 'roles': {}, 'calls': 0, 'evaluator': None, 'warnings': [], 'links': [],
-              'plan_fingerprint': None}
+              'plan_fingerprint': None, 'cost': empty()}
     if book:
         result['invalid_scenes'] = 0
     try:
@@ -130,6 +131,8 @@ def readiness(repo, request, view=None, resume=False) -> dict:
                   if _will_call(repo, view, scene_id, link, states[scene_id][link])]
         # An upper bound: an earlier discrepancy or unavailable link stops the run before the later links are called.
         result['calls'] = len(called)
+        # Design §9: priced before the refusals below, so a run refused for its limit still shows what it may cost.
+        result['cost'] = upper_bound(repo, settings, result['calls'])
         if called:
             # PROMPT-CONTRACT: the prompts of the stages this run may call; context build checks again before each call.
             for stage in dict.fromkeys(LINK_STAGE[link] for _, link in called):
