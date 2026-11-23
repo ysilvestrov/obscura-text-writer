@@ -94,3 +94,27 @@ def test_view_refuses_verdict_under_a_foreign_key(tmp_path):
         db.execute('INSERT INTO app_settings VALUES(?,?)', ('link_verdict:' + story.id + ':other', record.model_dump_json()))
     with pytest.raises(ValueError):
         repo.context_view(story.id)
+
+
+@pytest.mark.req('VALID-LINKS')
+def test_fsck_reports_foreign_equivalence(tmp_path):
+    from storygen.storage.link_records import ProseEquivalence, write_equivalence
+    repo, story, scene = one_scene(tmp_path)
+    other = repo.create_story(StoryCreate(title='Інший'))
+    foreign = repo.create_scene(other.id, SceneCreate(title='Чужа', beats='x'))
+    first = repo.save_version(story.id, scene.id, 'manual', 'Перша.', [])
+    second = repo.save_version(story.id, scene.id, 'manual', 'Друга.', [])
+    record = ProseEquivalence(id=new_verdict_id(), story_id=story.id, scene_id=scene.id, old_prose_id=first.id,
+                              new_prose_id=second.id, verdict_id='v', created_at='2026-11-23T00:00:00+00:00')
+    with repo.db.connection() as db:
+        db.execute('BEGIN IMMEDIATE')
+        write_equivalence(db, record)
+    assert repo.context_view(story.id).prose_equivalences == [record]
+    assert not any(i.code == 'invalid_prose_equivalence' for i in check_integrity(repo.root).issues)
+    raw = record.model_dump(); raw['scene_id'] = foreign.id
+    with repo.db.connection() as db:
+        db.execute('UPDATE app_settings SET payload=? WHERE key=?',
+                   (json.dumps(raw), 'prose_equivalence:' + story.id + ':' + record.id))
+    assert any(i.code == 'invalid_prose_equivalence' for i in check_integrity(repo.root).issues)
+    with pytest.raises(ValueError):
+        repo.context_view(story.id)

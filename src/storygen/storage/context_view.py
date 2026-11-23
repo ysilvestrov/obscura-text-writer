@@ -66,7 +66,7 @@ class SharedState:
 
 
 # Captured models and caches of values that depend only on the snapshot; never the walk state or sentinel caches.
-SHARED_FIELDS = ('files', 'story', 'scenes', 'versions', 'sources', 'source_files', 'acceptances', 'acceptance_records', 'link_verdicts',
+SHARED_FIELDS = ('files', 'story', 'scenes', 'versions', 'sources', 'source_files', 'acceptances', 'acceptance_records', 'link_verdicts', 'prose_equivalences',
                  'blob_cache', 'preamble_cache', 'journal_cache', 'memo_cache', 'immutable', 'locations')
 
 
@@ -108,8 +108,9 @@ class ContextView:
                 raise ValueError('Невідповідна версія журналу прийняття')
             self.acceptances[record.version_id]=record
             self.acceptance_records.append(record)
-        from .link_records import load_verdicts
+        from .link_records import load_verdicts, load_equivalences
         self.link_verdicts=load_verdicts(db,story_id,self.scenes)  # VALID-LINKS: author and auditor verdicts
+        self.prose_equivalences=load_equivalences(db,story_id,self.scenes,self.versions)  # Z3 kept over a prose change
 
     def shared_state(self):
         """The state to publish for this view's generation; the view itself is unchanged until adopt()."""

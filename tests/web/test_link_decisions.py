@@ -71,12 +71,16 @@ def test_stale_fingerprint_is_409_and_writes_nothing(tmp_path):
 
 
 @pytest.mark.req('VALID-LINKS')
-def test_memory_link_decision_is_refused_for_now(tmp_path):
+def test_author_keeps_memory_through_the_api(tmp_path):
     repo, story, scene = setup(tmp_path)
     save_manual_prose(repo, scene.id, 'Інша проза.', repo.get_scene(scene.id).revision)
     with client_for(tmp_path) as client:
         state = links(client, story.id, scene.id)['links']['memory']
-        assert decide(client, scene.id, 'memory', state['fingerprint']).status_code == 422
+        assert state['status'] == 'unchecked'
+        response = decide(client, scene.id, 'memory', state['fingerprint'])
+        assert response.status_code == 200, response.text
+        assert response.json()['link'] == {**state, 'status': 'valid', 'source': 'author'}
+    assert len(repo.context_view(story.id).prose_equivalences) == 1
 
 
 @pytest.mark.req('VALID-LINKS')

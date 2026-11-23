@@ -64,7 +64,10 @@ def _candidate(view,scene_id):
     validate_memory_journal(journal,sources)
     provenance=list(ref.dependency_snapshot.memory_provenance) if ref.dependency_snapshot else []
     pairs=approved_source_pairs(provenance)
-    needs_confirmation=ref.stale or any(old!=selected and (old,selected) not in pairs for old,selected in zip(ids,current))
+    from ..storage.link_records import equivalent_pairs
+    # VALID-LINKS: a prose change the auditor or the author kept for the ancestor's memory needs no confirmation here.
+    needs_confirmation=ref.stale or any(old!=selected and (old,selected) not in pairs|equivalent_pairs(view,item.id)
+                                        for item,old,selected in zip(previous,ids,current))
     baseline={'scene_id':scene.id,'revision':scene.revision,'heads':scene.heads,'characters':scene.character_ids,
               'prefix':[(s.id,s.heads.get('prose')) for s in previous],
               'memory_id':ref.id,'memory_sha256':ref.sha256,'stale':ref.stale,

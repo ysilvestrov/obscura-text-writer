@@ -7536,7 +7536,7 @@
         "tests/web/test_link_decisions.py::test_author_approves_manual_brief",
         "tests/web/test_link_decisions.py::test_author_approves_prose_without_accepting_it",
         "tests/web/test_link_decisions.py::test_stale_fingerprint_is_409_and_writes_nothing",
-        "tests/web/test_link_decisions.py::test_memory_link_decision_is_refused_for_now",
+        "tests/web/test_link_decisions.py::test_author_keeps_memory_through_the_api",
         "tests/web/test_link_decisions.py::test_missing_link_cannot_be_approved",
         "tests/web/test_link_decisions.py::test_unknown_action_or_link_is_422",
         "tests/web/test_link_decisions.py::test_approving_a_valid_link_writes_nothing"
@@ -7588,7 +7588,8 @@
         "tests/storage/test_link_records.py::test_latest_verdict_wins_per_fingerprint",
         "tests/storage/test_link_records.py::test_verdict_rejects_bad_values",
         "tests/storage/test_link_records.py::test_fsck_reports_foreign_scene_verdict",
-        "tests/storage/test_link_records.py::test_view_refuses_verdict_under_a_foreign_key"
+        "tests/storage/test_link_records.py::test_view_refuses_verdict_under_a_foreign_key",
+        "tests/storage/test_link_records.py::test_fsck_reports_foreign_equivalence"
       ]
     }
   ]
