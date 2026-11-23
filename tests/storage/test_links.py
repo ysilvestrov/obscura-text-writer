@@ -137,15 +137,15 @@ def test_draft_change_keeps_validity(tmp_path):
     assert statuses(repo, story, scene) == ALL_VALID
 
 
-def test_chat_stage_result_is_model_made_and_save_draft_is_not(tmp_path):
+def test_chat_texts_are_model_made_and_author_drafts_are_not(tmp_path):
     repo, story, (scene,) = book(tmp_path)
     view = repo.context_view(story.id)
     heads = view.scenes[scene.id].heads
     brief = view.versions[heads['brief']]
     assert model_made(brief.model_copy(update={'source_run_id': None, 'external_origin': ExternalOrigin(client='Claude')}))
-    draft = save_manual_draft(repo, scene.id, 'Чернетка з чату.', repo.get_scene(scene.id).revision)
-    assert draft.dependency_snapshot.scope == 'author_text'
-    assert not model_made(draft.model_copy(update={'external_origin': ExternalOrigin(client='Claude')}))
+    draft = save_manual_draft(repo, scene.id, 'Авторська чернетка.', repo.get_scene(scene.id).revision)
+    assert draft.dependency_snapshot.scope == 'author_text' and not model_made(draft)
+    assert model_made(draft.model_copy(update={'external_origin': ExternalOrigin(client='Claude')}))
 
 
 def test_missing_previous_memory_is_unavailable(tmp_path):
@@ -195,3 +195,21 @@ def test_author_verdict_with_current_fingerprint_validates(tmp_path):
     assert statuses(repo, story, scene)['brief'] == ('valid', 'author', None)
     save_manual_brief(repo, scene)  # a new brief: the old verdict no longer applies
     assert statuses(repo, story, scene)['brief'] == ('unchecked', None, None)
+
+
+def test_chat_mode_scene_holds_the_prose_link_by_construction(tmp_path):
+    # A chat writes the draft through MCP save_draft (bound to the writing context) and the edit as a chat stage result.
+    from storygen.application.writing_context import context_fingerprint
+    repo, story, (scene,) = book(tmp_path)
+    current = repo.get_scene(scene.id)
+    origin = ExternalOrigin(client='Claude')
+    save_manual_draft(repo, scene.id, 'Олена прийшла з чату.', current.revision, external_origin=origin,
+                      expected_context_fingerprint=context_fingerprint(repo, scene.id),
+                      expected_draft_version_id=current.heads['draft'])
+    context = build_context(repo, scene.id, 'edit', RoleSettings(provider=ProviderSettings(model='chat')))
+    edited = repo.save_version(story.id, scene.id, 'edited', 'Олена увійшла з чату.', context.input_refs,
+                               dependency_snapshot=context.dependency_snapshot, external_origin=origin)
+    repo.set_head(scene.id, 'prose', edited.id, repo.get_scene(scene.id).revision)
+    assert statuses(repo, story, scene)['prose'] == ('valid', 'construction', None)
+    save_manual_brief(repo, scene)  # the chat draft was written from the old brief
+    assert statuses(repo, story, scene)['prose'] == ('unchecked', None, None)

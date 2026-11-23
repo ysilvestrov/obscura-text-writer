@@ -1734,10 +1734,10 @@
     "brief.accepted": "Завдання прийнято. Готовність чернетки оновлено.",
     "editor.no_changes_saved": "Редактор не запропонував нових змін. Спроб: {p0} із {p1}. Прозу збережено автоматично без змін.",
     "prose_accept.button": "Прийняти всю прозу як авторську",
-    "prose_accept.confirm": "Прийняти прозу {p0} сцен як авторську: {p1}? Разом із ними прийметься проза наступних сцен, які спираються на ці й інакше стали б застарілими. Тексти не зміняться. Висновки перевірки для цих сцен стануть неактуальними, а завдання й пам’ять не підтверджуються.",
+    "prose_accept.confirm": "Прийняти прозу {p0} сцен як авторську: {p1}? Тексти не зміняться. Проза стане фінальною й придатною для наступних сцен, але зв’язки цих сцен лишаться неперевіреними.",
     "prose_accept.accept": "Прийняти прозу",
     "prose_accept.done": "Прозу прийнято як авторську. Сцен: {p0}.",
-    "prose_accept.none": "Немає прози, що чекає перевірки.",
+    "prose_accept.none": "Немає прози, що чекає прийняття.",
     "context.limit.0": "Перевищено операційний ліміт входу: {p0} символів, дозволено {p1}; приблизно {p2} токенів, доступно {p3}. Текст не обрізано.",
     "context.limit.0.memory": "Перевищено операційний ліміт входу: {p0} символів, дозволено {p1}; приблизно {p2} токенів, доступно {p3}. Текст не обрізано. Проєкція пам’яті: {p4} символів.",
     "context.limit.1": "Перевищено токенний ліміт входу: {p0} символів, дозволено {p1}; приблизно {p2} токенів, доступно {p3}. Текст не обрізано.",
@@ -2491,7 +2491,10 @@
     "link.prose_unchecked": "Проза не підтверджена: її відповідність завданню не перевірено.",
     "link.approve_brief": "Затвердити завдання",
     "link.approve_prose": "Затвердити відповідність",
-    "link.approved": "Зв’язок затверджено."
+    "link.approved": "Зв’язок затверджено.",
+    "scene_status.valid": "Валідна",
+    "scene_status.unchecked": "Не перевірено",
+    "scene_status.discrepancy": "Розбіжність"
   },
   "en": {
     "ui.save": "Save",
@@ -4228,10 +4231,10 @@
     "brief.accepted": "Brief accepted. Draft readiness refreshed.",
     "editor.no_changes_saved": "The editor proposed no further changes. Attempts: {p0} of {p1}. Prose was saved automatically without changes.",
     "prose_accept.button": "Accept all prose as the author's",
-    "prose_accept.confirm": "Accept the prose of {p0} scenes as the author's: {p1}? The prose of later scenes that rely on these and would otherwise become outdated is accepted with them. The texts stay the same. The check conclusions for these scenes become outdated, and briefs and memory are not confirmed.",
+    "prose_accept.confirm": "Accept the prose of {p0} scenes as the author's: {p1}? The texts will not change. The prose becomes final and usable by later scenes, but the links of these scenes stay unchecked.",
     "prose_accept.accept": "Accept prose",
     "prose_accept.done": "Prose accepted as the author's. Scenes: {p0}.",
-    "prose_accept.none": "No prose is waiting for a check.",
+    "prose_accept.none": "No prose is waiting to be accepted.",
     "context.limit.0": "Operational input character limit exceeded: {p0} characters, limit {p1}; approximately {p2} tokens, available {p3}. Text was not truncated.",
     "context.limit.0.memory": "Operational input character limit exceeded: {p0} characters, limit {p1}; approximately {p2} tokens, available {p3}. Text was not truncated. Memory projection: {p4} characters.",
     "context.limit.1": "Input token limit exceeded: {p0} characters, limit {p1}; approximately {p2} tokens, available {p3}. Text was not truncated.",
@@ -4985,6 +4988,9 @@
     "link.prose_unchecked": "The prose is not confirmed: its match with the brief has not been checked.",
     "link.approve_brief": "Approve brief",
     "link.approve_prose": "Approve match",
-    "link.approved": "Link approved."
+    "link.approved": "Link approved.",
+    "scene_status.valid": "Valid",
+    "scene_status.unchecked": "Unchecked",
+    "scene_status.discrepancy": "Discrepancy"
   }
 }

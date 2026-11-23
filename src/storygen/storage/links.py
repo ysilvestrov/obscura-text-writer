@@ -13,7 +13,6 @@ from .link_records import LINKS, LinkName
 
 Status = Literal['valid', 'unchecked', 'discrepancy', 'unavailable', 'missing']
 MAX_CHAIN = 50
-AUTHOR_SCOPES = {'author_text', 'author_rewrite'}
 EDIT_SCOPES = {'prose_edit', 'patches'}
 
 
@@ -70,13 +69,14 @@ def p0_identity(view, memory_id: str | None) -> str | None:
 
 
 def model_made(ref) -> bool:
-    """A Obscura stage (run id) or a chat stage result (external origin on a stage snapshot). MCP save_draft is an author
-    text: its snapshot scope is author_text."""
+    """An Obscura stage (run id) or text from an external client (external origin): a chat stage result, or a chat
+    draft saved through MCP save_draft against the writing-context fingerprint. The author's own texts and Ghost Mode
+    carry neither."""
     if ref is None:
         return False
     snapshot = ref.dependency_snapshot
     return ref.source_run_id is not None or (
-        ref.external_origin is not None and snapshot is not None and snapshot.scope not in AUTHOR_SCOPES)
+        ref.external_origin is not None and snapshot is not None and snapshot.scope != 'author_rewrite')
 
 
 def _selector(snapshot, kind, owner, field_name):
@@ -128,7 +128,8 @@ def _prose_by_construction(view, scene, story, before, p0):
         snapshot = ref.dependency_snapshot if ref else None
         if not model_made(ref) or snapshot is None:
             return False
-        if snapshot.scope == 'draft':
+        # The writer's draft: a draft stage, or a chat draft (author_text scope with an external origin and head/brief).
+        if snapshot.scope == 'draft' or (snapshot.scope == 'author_text' and ref.kind == 'draft' and ref.external_origin):
             brief = _selector(snapshot, 'head', scene.id, 'brief')
             return (brief is not None and brief.expected == scene.heads['brief']
                     and _same_p0(view, snapshot, story, before, p0))

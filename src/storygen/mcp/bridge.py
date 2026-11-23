@@ -99,13 +99,20 @@ def client_label(name: str | None) -> str:
     return cleaned or FALLBACK_CLIENT
 
 
-def scene_state(scene: dict, prose: str | None) -> str:
-    """Port of sceneStatusKey in web/static/workspace-status.js: the same words the scene list shows.
-    `prose` is the scene's prose entry in the story view's material_status."""
+def scene_state(scene: dict, status: dict | None) -> str:
+    """sceneStatusKey of web/static/workspace-status.js in the words MCP clients already know (VALID-LINKS):
+    valid → prose, unchecked and discrepancy → needs_review. `status` is the scene's material_status row; the
+    validity and links themselves go to the client as separate fields."""
     heads = scene.get('heads') or {}
+    status = status or {}
     if not heads.get('prose') and not heads.get('draft'):
         return 'no_text' if heads.get('brief') else 'not_started'
-    if scene.get('needs_review') or prose == 'pending':
+    validity = status.get('validity')
+    if validity in {'unchecked', 'discrepancy'}:
+        return 'needs_review'
+    if validity == 'valid':
+        return 'prose'
+    if scene.get('needs_review') or status.get('prose') == 'pending':
         return 'needs_review'
     return 'prose' if heads.get('prose') else 'draft'
 
@@ -342,7 +349,8 @@ def build_server(http: httpx.Client | None, client_name: str | None = None, *, c
 
     @server.tool()
     def get_story(story_id: str) -> dict[str, Any]:
-        """Сцени історії по порядку: id, позиція, назва, revision і стан (тими самими словами, що в списку сцен)."""
+        """Сцени історії по порядку: id, позиція, назва, revision, стан (not_started, no_text, draft, prose,
+        needs_review), валідність сцени (valid, unchecked, discrepancy, incomplete) і статуси її зв'язків brief/prose/memory."""
         data = request('GET', f'/api/stories/{identifier(story_id)}')
         materials = data.get('material_status') or {}
         story = data['story']
@@ -355,7 +363,10 @@ def build_server(http: httpx.Client | None, client_name: str | None = None, *, c
             return {'part_id': part['id'], 'part_title': part['title'], 'arc_id': arc['id'], 'arc_title': arc['title'],
                     'arc_ids': scene.get('arc_ids') or ([arc['id']] if arc['id'] else [])}
         scenes = [{'id': s['id'], 'position': s['position'], 'title': s['title'], 'revision': s['revision'],
-                   'state': scene_state(s, (materials.get(s['id']) or {}).get('prose')), **place(s)} for s in data['scenes']]
+                   'state': scene_state(s, materials.get(s['id'])),
+                   'validity': (materials.get(s['id']) or {}).get('validity'),
+                   'links': {link: value['status'] for link, value in ((materials.get(s['id']) or {}).get('links') or {}).items()},
+                   **place(s)} for s in data['scenes']]
         names = data.get('character_names') or {}
         return {'id': story['id'], 'title': story['title'], 'language': story.get('language'),
                 'language_locked': data.get('language_locked'), 'revision': story.get('revision'),

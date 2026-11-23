@@ -1,11 +1,14 @@
 import {t} from './i18n.js';
 // UI-FEEDBACK: one scene-status vocabulary for the scene list and the status row (#89).
-const KEYS={not_started:'m_521bdc3a57e0',no_text:'m_4b3a60e43929',draft:'m_4de0a8f8a92b',prose:'m_79679b4689c4',needs_review:'m_f3522e6a9fcc'};
-// materialStatus is the story view's material_status: stale prose ('pending') needs review like a flagged scene.
+const KEYS={not_started:'m_521bdc3a57e0',no_text:'m_4b3a60e43929',draft:'m_4de0a8f8a92b',prose:'m_79679b4689c4',
+  valid:'scene_status.valid',unchecked:'scene_status.unchecked',discrepancy:'scene_status.discrepancy'};
+// VALID-LINKS: a scene with a brief and prose shows the validity of its links (material_status of the story view);
+// an unfinished scene shows how far its text got. Stale prose of an unfinished scene is still unchecked.
 export function sceneStatusKey(scene,materialStatus={}){
-  const heads=scene.heads||{},prose=(materialStatus||{})[scene.id]?.prose;
+  const heads=scene.heads||{},row=(materialStatus||{})[scene.id]||{};
   if(!heads.prose&&!heads.draft)return heads.brief?'no_text':'not_started';
-  if(scene.needs_review||prose==='pending')return 'needs_review';
+  if(['valid','unchecked','discrepancy'].includes(row.validity))return row.validity;
+  if(scene.needs_review||row.prose==='pending')return 'unchecked';
   return heads.prose?'prose':'draft';
 }
 export function sceneStatus(scene,materialStatus){const key=sceneStatusKey(scene,materialStatus);return {key,label:t(KEYS[key])}}

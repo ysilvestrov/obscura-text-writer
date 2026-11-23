@@ -7,11 +7,15 @@ const cases=[
   [scene({},true),{},'not_started','Не почато'],
   [scene({brief:'b'}),{},'no_text','Немає тексту'],
   [scene({brief:'b',draft:'d'}),{},'draft','Є чернетка'],
-  [scene({brief:'b',draft:'d'},true),{},'needs_review','Потребує перегляду'],
-  [scene({draft:'d',prose:'p'}),{},'prose','Текст створено'],
-  [scene({draft:'d',prose:'p'},true),{s1:{prose:'pending'}},'needs_review','Потребує перегляду'],
-  // R-44 PR 1: stale prose without the scene flag (an older version) also needs review; R-28 verdicts are gone.
-  [scene({draft:'d',prose:'p'}),{s1:{prose:'pending'}},'needs_review','Потребує перегляду'],
+  [scene({brief:'b',draft:'d'}),{s1:{validity:'incomplete'}},'draft','Є чернетка'],
+  [scene({draft:'d',prose:'p'}),{s1:{validity:'incomplete',prose:'current'}},'prose','Текст створено'],
+  // VALID-LINKS: a scene with a brief and prose shows the validity of its links.
+  [scene({brief:'b',draft:'d',prose:'p'}),{s1:{validity:'valid'}},'valid','Валідна'],
+  [scene({brief:'b',draft:'d',prose:'p'}),{s1:{validity:'unchecked'}},'unchecked','Не перевірено'],
+  [scene({brief:'b',draft:'d',prose:'p'}),{s1:{validity:'discrepancy'}},'discrepancy','Розбіжність'],
+  // Without a validity (an older view), stale prose or the scene flag is still unchecked.
+  [scene({draft:'d',prose:'p'},true),{},'unchecked','Не перевірено'],
+  [scene({draft:'d',prose:'p'}),{s1:{prose:'pending'}},'unchecked','Не перевірено'],
   [scene({draft:'d',prose:'p'}),{s1:{prose:'current'}},'prose','Текст створено'],
 ];
 for(const [input,impact,key,label] of cases)assert.deepEqual(sceneStatus(input,impact),{key,label},JSON.stringify(input));
