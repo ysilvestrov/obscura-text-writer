@@ -11,8 +11,10 @@ from .providers.models import RoleSettings
 from .prompt_contracts import compatible_contract, expected_contract, validate_role_prompt
 from .evaluation.story_adapter import EvaluationSettings, validate_evaluation_settings
 
-from .roles import ROLES, ROLE_STAGE as STAGES
+from .roles import ROLES, ROLE_SET, ROLE_STAGE as STAGES
 MAX_BYTES=2*1024*1024
+# Presets of schema versions 1 and 2 carry the four base roles; version 3 adds the auditor (MODEL-001).
+BASE_ROLES=ROLE_SET-{'auditor'}
 
 
 class PortablePrompt(DomainModel):
@@ -28,14 +30,15 @@ class PortablePrompt(DomainModel):
 
 class PortableRole(DomainModel):
     settings: RoleSettings
-    prompt: PortablePrompt
+    # None only for the auditor: its stage prompts do not travel in a preset yet and a preset leaves them at the built-in ones.
+    prompt: PortablePrompt | None = None
     prepare_prompt: PortablePrompt | None = None
 
 
 class ProfileDocument(DomainModel):
     format: Literal['obscura-role-profile']='obscura-role-profile'
-    # 2 only when the writer carries a low-rating model (MODEL-001); version 1 stays importable unchanged.
-    schema_version: Literal[1,2]=1
+    # 2 only when the writer carries a low-rating model, 3 when the preset carries the auditor (MODEL-001); versions 1 and 2 stay importable unchanged.
+    schema_version: Literal[1,2,3]=1
     name: str = Field(min_length=1,max_length=100)
     # Story language the prompts were written for; None for profiles exported before #32.
     language: Literal['uk','en'] | None = None
@@ -45,8 +48,8 @@ class ProfileDocument(DomainModel):
     @model_validator(mode='after')
     def portable(self):
         self.name=self.name.strip()
-        if not self.name or set(self.roles)!=set(ROLES):
-            raise ValueError('Потрібна назва і рівно чотири основні ролі')
+        if not self.name or set(self.roles)!=(ROLE_SET if self.schema_version>=3 else BASE_ROLES):
+            raise ValueError('Потрібна назва й повний набір ролей: чотири основні, а в комплекті версії 3 ще й Ревізор')
         providers=[]
         for name,role in self.roles.items():
             settings=role.settings
@@ -54,9 +57,11 @@ class ProfileDocument(DomainModel):
                 if name!='writer':raise ValueError(VARIANT_WRITER_ONLY)
                 if self.schema_version<2:raise ValueError('Комплект версії 1 не може містити окрему модель письменника.')
                 providers.append(settings.low_rating_variant.provider.key_env)
-            if settings.prompt_version_id is not None or settings.prepare_prompt_version_id is not None:
+            if settings.prompt_version_id is not None or settings.prepare_prompt_version_id is not None or settings.stage_prompt_version_ids:
                 raise ValueError('UUID промптів не переноситься між творами')
-            if not compatible_contract(expected_contract(STAGES[name],settings),role.prompt.contract):
+            if role.prompt is None and name!='auditor':
+                raise ValueError('Потрібен промпт ролі')
+            if role.prompt is not None and not compatible_contract(expected_contract(STAGES[name],settings),role.prompt.contract):
                 raise ValueError('Несумісний контракт промпту профілю')
             if name=='planner':
                 if role.prepare_prompt is None or role.prepare_prompt.contract!=expected_contract('prepare',settings):
@@ -103,10 +108,14 @@ def capture_profile(repo,story_id,name,expected_revision,include_evaluator=False
     story=repo.get_story(story_id)
     if story.revision!=expected_revision:raise RevisionConflict('Налаштування твору вже змінено')
     settings=repo.read_role_settings(story_id)
-    if set(settings)!=set(ROLES):raise ValueError('Спершу налаштуйте всі чотири ролі')
+    if not BASE_ROLES<=set(settings):raise ValueError('Спершу налаштуйте чотири основні ролі')
     roles={}
-    for name_role in ROLES:
+    # The auditor travels only when the story has saved settings of its own for it.
+    for name_role in [name for name in ROLES if name in settings]:
         role=RoleSettings.model_validate(settings[name_role])
+        if name_role=='auditor':
+            roles[name_role]={'settings':{**role.model_dump(),'prompt_version_id':None,'prepare_prompt_version_id':None,'stage_prompt_version_ids':{}},'prompt':None,'prepare_prompt':None}
+            continue
         def portable(stage,id):
             ref=validate_role_prompt(repo,story_id,stage,role)
             # A custom memory prompt keeps its stored v2/v3 wire contract when exported.
@@ -120,7 +129,7 @@ def capture_profile(repo,story_id,name,expected_revision,include_evaluator=False
         if evaluator is None:raise ValueError('Оцінювач не налаштовано')
         evaluator=EvaluationSettings.model_validate(evaluator).model_dump()
         evaluator['profile'].update(calibrated=False,evaluator_fingerprint=None,calibration_fingerprint=None)
-    version=2 if roles['writer']['settings'].get('low_rating_variant') else 1
+    version=3 if 'auditor' in roles else 2 if roles['writer']['settings'].get('low_rating_variant') else 1
     document=_document(dict(schema_version=version,name=name,language=story.language,roles=roles,evaluator=evaluator))
     return repo.role_profiles('save',document=document.model_dump(),profile_id=profile_id,expected_version=expected_version,
                               source_story_id=story_id,source_revision=expected_revision)
@@ -149,7 +158,7 @@ def preview_profile(repo,story_id,profile_id,version,expected_revision):
     return {'id':profile_id,'version':version,'name':doc.name,'expected_revision':expected_revision,
             'roles':{key:value.settings.model_dump() for key,value in doc.roles.items()},
             'evaluator':doc.evaluator.model_dump() if doc.evaluator else None,
-            'prompts':{key:{'prompt':value.prompt.model_dump(),'prepare_prompt':value.prepare_prompt.model_dump() if value.prepare_prompt else None} for key,value in doc.roles.items()},
+            'prompts':{key:{'prompt':value.prompt.model_dump() if value.prompt else None,'prepare_prompt':value.prepare_prompt.model_dump() if value.prepare_prompt else None} for key,value in doc.roles.items()},
             'warnings':warnings}
 
 

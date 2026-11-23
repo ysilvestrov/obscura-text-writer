@@ -237,7 +237,8 @@
       "requirement": "MODEL-001",
       "scope": "Одна модель для всіх ролей. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
       "tests": [
-        "tests/web/test_bulk_and_toggle.py::test_shared_provider_is_atomic_preserves_role_prompts_and_modes"
+        "tests/web/test_bulk_and_toggle.py::test_shared_provider_is_atomic_preserves_role_prompts_and_modes",
+        "tests/generation/test_auditor_settings.py::test_shared_provider_writes_the_auditor_only_when_it_has_a_row"
       ]
     },
     {
@@ -288,7 +289,21 @@
         "tests/test_roles.py::test_browser_registry_matches_server",
         "tests/test_roles.py::test_no_inline_role_lists_outside_registry",
         "tests/test_roles.py::test_every_label_map_names_every_role",
-        "tests/test_roles.py::test_settings_page_has_a_button_per_role"
+        "tests/test_roles.py::test_settings_page_has_a_button_per_role",
+        "tests/test_roles.py::test_auditor_is_the_fifth_role",
+        "tests/generation/test_auditor_settings.py::test_auditor_without_row_takes_editor_provider_and_planner_limits",
+        "tests/generation/test_auditor_settings.py::test_derived_auditor_needs_the_editor_and_falls_back_to_defaults_without_planner",
+        "tests/generation/test_auditor_settings.py::test_prompt_version_for_picks_the_stage_prompt",
+        "tests/generation/test_auditor_settings.py::test_stage_prompts_only_for_auditor_audit_brief_and_memory",
+        "tests/generation/test_auditor_settings.py::test_stage_prompt_of_another_story_is_rejected",
+        "tests/test_role_profiles_auditor.py::test_capture_without_auditor_keeps_version_1_and_has_no_auditor",
+        "tests/test_role_profiles_auditor.py::test_capture_with_auditor_writes_version_3_and_apply_copies_its_settings",
+        "tests/test_role_profiles_auditor.py::test_capture_with_auditor_and_variant_writes_version_3",
+        "tests/test_role_profiles_auditor.py::test_older_presets_leave_the_existing_auditor_row_unchanged",
+        "tests/test_role_profiles_auditor.py::test_schema_version_and_auditor_must_agree",
+        "tests/test_role_profiles_auditor.py::test_auditor_prompt_uuids_are_not_portable",
+        "tests/test_role_profiles_auditor.py::test_apply_rejects_a_role_set_that_is_neither_five_nor_four",
+        "tests/generation/test_auditor_settings.py::test_settings_api_reads_a_story_without_and_with_an_auditor_row"
       ]
     },
     {
@@ -336,7 +351,9 @@
         "tests/providers/test_model_policy.py::test_consent_is_keyed_by_role_endpoint_and_exact_model",
         "tests/providers/test_streaming_policy.py::test_gateway_lets_consented_venice_model_through",
         "tests/web/test_model_policy_api.py::test_consent_roundtrip",
-        "tests/web/test_model_policy_ui.py::test_model_policy_consent_visibility_and_texts"
+        "tests/web/test_model_policy_ui.py::test_model_policy_consent_visibility_and_texts",
+        "tests/generation/test_auditor_settings.py::test_audit_stages_use_the_auditor_consent_key_per_scene",
+        "tests/generation/test_auditor_settings.py::test_auditor_policy_texts_are_in_both_catalogs"
       ],
       "manual": {
         "procedure": "docs/verification/manual.md#model-policy-browser",

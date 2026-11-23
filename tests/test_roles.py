@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from storygen.roles import ROLE_LABEL_KEYS, ROLE_LABELS, ROLE_SET, ROLE_STAGE, ROLES, STAGE_ROLE
+from storygen.roles import ROLE_LABEL_KEYS, ROLE_LABELS, ROLE_SET, ROLE_STAGE, ROLE_STAGES, ROLES, STAGE_ROLE
 
 ROOT = Path(__file__).resolve().parents[1]
 STATIC = ROOT / 'src/storygen/web/static'
@@ -24,6 +24,17 @@ def test_role_stage_maps_agree():
     for locale in ('uk', 'en'):
         for key in ROLE_LABEL_KEYS.values():
             assert isinstance(catalog[locale].get(key), str) and catalog[locale][key].strip(), (locale, key)
+
+
+def test_auditor_is_the_fifth_role():
+    assert ROLES[-1] == 'auditor' and ROLE_LABELS['auditor'] == 'Ревізор'
+    assert ROLE_STAGE['auditor'] == 'audit_prose'
+    assert {STAGE_ROLE[s] for s in ('audit_brief', 'audit_prose', 'audit_memory')} == {'auditor'}
+    assert ROLE_STAGES['auditor'] == ('audit_brief', 'audit_prose', 'audit_memory')
+    assert ROLE_STAGES['planner'] == ('prepare', 'brief') and ROLE_STAGES['writer'] == ('draft',)
+    assert ROLE_STAGES['editor'] == ('edit',) and ROLE_STAGES['memory'] == ('memory',)
+    # Every stage of the registry belongs to exactly its role.
+    assert {stage: role for role, stages in ROLE_STAGES.items() for stage in stages} == STAGE_ROLE
 
 
 def test_settings_page_has_a_button_per_role(tmp_path):
@@ -43,7 +54,8 @@ def test_browser_registry_matches_server():
         pytest.skip('Node потрібен для перевірки roles.js')
     result = subprocess.run([node, str(ROOT / 'tests/web/js/roles.mjs')], cwd=ROOT, capture_output=True, encoding='utf-8', errors='replace', timeout=15)
     assert result.returncode == 0, result.stderr
-    assert json.loads(result.stdout) == {'ROLES': list(ROLES), 'ROLE_STAGE': ROLE_STAGE, 'STAGE_ROLE': STAGE_ROLE}
+    assert json.loads(result.stdout) == {'ROLES': list(ROLES), 'ROLE_STAGE': ROLE_STAGE, 'STAGE_ROLE': STAGE_ROLE,
+        'ROLE_STAGES': {role: list(stages) for role, stages in ROLE_STAGES.items()}}
 
 
 @pytest.mark.parametrize('name', LABEL_MAPS)
@@ -88,13 +100,14 @@ def js_role_lists(source):
 
 
 def test_role_list_detector_ignores_order_and_layout():
-    assert python_role_lists("X = ('writer', 'planner',\n     'memory', 'editor')\n") == [1]
-    assert python_role_lists("X = {'brief': 'planner', 'draft': 'writer', 'edit': 'editor', 'memory': 'memory'}\n") == [1]
-    assert python_role_lists('"""planner, writer, editor, memory"""\n') == []
-    assert python_role_lists("X = {**STAGE_ROLE, 'a': 'planner', 'b': 'writer', 'c': 'editor', 'd': 'memory'}\n") == []
-    assert js_role_lists("const a=[\n 'memory',\n 'writer','planner','editor'];") == [1]
-    assert js_role_lists("const s={editor:'edit',planner:'brief',\nwriter:'draft',memory:'memory'};") == [1]
-    assert js_role_lists("const l={get planner(){return t('a')},get writer(){return t('b')},get editor(){return t('c')},get memory(){return t('d')}};") == []
+    assert python_role_lists("X = ('writer', 'planner',\n     'memory', 'auditor', 'editor')\n") == [1]
+    assert python_role_lists("X = {'brief': 'planner', 'draft': 'writer', 'edit': 'editor', 'memory': 'memory', 'audit_prose': 'auditor'}\n") == [1]
+    assert python_role_lists("X = ('writer', 'planner', 'memory', 'editor')\n") == []
+    assert python_role_lists('"""planner, writer, editor, memory, auditor"""\n') == []
+    assert python_role_lists("X = {**STAGE_ROLE, 'a': 'planner', 'b': 'writer', 'c': 'editor', 'd': 'memory', 'e': 'auditor'}\n") == []
+    assert js_role_lists("const a=[\n 'memory',\n 'writer','planner','auditor','editor'];") == [1]
+    assert js_role_lists("const s={editor:'edit',planner:'brief',\nwriter:'draft',memory:'memory',auditor:'audit_prose'};") == [1]
+    assert js_role_lists("const l={get planner(){return t('a')},get writer(){return t('b')},get editor(){return t('c')},get memory(){return t('d')},get auditor(){return t('e')}};") == []
 
 
 def test_no_inline_role_lists_outside_registry():

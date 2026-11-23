@@ -12,7 +12,7 @@ import {mountProviderKey,keyName} from './provider-key.js';
 import {mountOpenrouterReasoning,providerReasoning} from './openrouter-reasoning.js';
 import {mountWriterVariant} from './writer-variant.js';
 const root=document.querySelector('[data-story-id]'),id=root.dataset.storyId;
-const names={get planner(){return t("m_38c94c25c4af")},get writer(){return t("m_75515c07207a")},get editor(){return t("m_19e99ed8f039")},get memory(){return t("m_aa1cfb48cc30")}};
+const names={get planner(){return t("m_38c94c25c4af")},get writer(){return t("m_75515c07207a")},get editor(){return t("m_19e99ed8f039")},get memory(){return t("m_aa1cfb48cc30")},get auditor(){return t("m_2a1a4e4b0a6f")}};
 // Roles come from the registry; `names` only gives each one its label here.
 const roleNames=Object.defineProperties({},Object.fromEntries(ROLES.map(role=>[role,{get:()=>names[role],enumerable:true}])));
 const defaults={provider:{provider:'local',base_url:'http://localhost:1235/v1',model:'',timeout:3600,key_env:'OPENROUTER_API_KEY',include_usage:false,response_mode:'prompt_json'},context_tokens:8192,max_output_tokens:2048,max_input_chars:80000,temperature:0.7,prompt_version_id:null,prepare_prompt_version_id:null};
@@ -52,7 +52,7 @@ async function load(onlyRole=null){
     uiInsertHTML(form,'beforeend','<fieldset class="openrouter-options"><legend>OpenRouter</legend><label>Reasoning<select name="openrouter_reasoning_effort"></select></label><p class="settings-hint"><span data-i18n="openrouter.reasoning.hint">Варіанти беруться зі списку моделей OpenRouter. Вимкнений або знижений reasoning лишає більше вихідного ліміту на текст.</span></p></fieldset>');
     const classification=role==='editor'?mountClassification(form,config.classification):null;
     const vendorVisibility=()=>{form.querySelector('.venice-options').hidden=form.elements.provider.value!=='venice';form.querySelector('.local-options').hidden=form.elements.provider.value!=='local';form.querySelector('.openrouter-options').hidden=form.elements.provider.value!=='openrouter'};
-    uiInsertHTML(form,'beforeend',"<label><input type=\"checkbox\" name=\"shared_provider\"> <span data-i18n=\"m_eebf11e6a0f9\">Застосувати цю модель та її підключення до всіх 4 ролей</span></label><p><span data-i18n=\"m_326a237b045f\">Промпти, режими та ліміти інших ролей зберігаються.</span></p>");
+    uiInsertHTML(form,'beforeend',"<label><input type=\"checkbox\" name=\"shared_provider\"> <span data-i18n=\"m_b58fd882415d\">Застосувати цю модель та її підключення до всіх ролей</span></label><p><span data-i18n=\"m_326a237b045f\">Промпти, режими та ліміти інших ролей зберігаються.</span></p>");
     const save=document.createElement('button');save.type='submit';save.className='scope-submit';uiText(save,"textContent",()=>(t("m_32c3e22963bc")));form.append(save);
     uiText(form.querySelector('h2'),"textContent",()=>(name));
     if(role==='editor')form.elements.edit_mode.value=config.edit_mode||'prose';
@@ -121,7 +121,7 @@ async function load(onlyRole=null){
           const retiring=snapshot.story.model_warnings;
           settingsSaved(role);await load(role);
           if(shared)for(const other of others)other.serverBaseline=structuredClone(roleScope(snapshot,other.dataset.role));
-          if(retiring?.length)notice(retiring.map(diagnostic).join(' '),'warning');else notice(shared?t("m_34d0e77fcf4b"):t("m_3face1913579"));
+          if(retiring?.length)notice(retiring.map(diagnostic).join(' '),'warning');else notice(shared?t("m_3806da0da0af"):t("m_3face1913579"));
         });
       }catch(e){settingsFormError(role,e);notice(e.message,'error')}
     };

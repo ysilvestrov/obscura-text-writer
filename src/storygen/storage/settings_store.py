@@ -28,7 +28,9 @@ def write_role_settings(repo, story_id, updates, expected_revision):
 
 def write_roles_in_transaction(repo,db,story_id,settings):
     for role, item in settings.items():
-        for id in [item.prompt_version_id, item.prepare_prompt_version_id]:
+        if item.stage_prompt_version_ids and role!='auditor':
+            raise ValueError('Окремі промпти етапів належать лише Ревізору')
+        for id in [item.prompt_version_id, item.prepare_prompt_version_id, *item.stage_prompt_version_ids.values()]:
             if id:
                 ref = repo._get(db, 'versions', id, VersionRef)
                 if ref.story_id != story_id or ref.kind != 'prompt':
@@ -36,7 +38,12 @@ def write_roles_in_transaction(repo,db,story_id,settings):
         from ..prompt_contracts import validate_role_prompt
         from .context_view import ContextView
         view=ContextView(repo,db,story_id)
-        validate_role_prompt(view,story_id,ROLE_STAGE[role],item)
+        if role=='auditor':
+            # Built-in prompts need no check; a custom one is checked against the contract of its own stage.
+            if item.prompt_version_id:validate_role_prompt(view,story_id,ROLE_STAGE[role],item)
+            for stage,id in item.stage_prompt_version_ids.items():
+                validate_role_prompt(view,story_id,stage,item.model_copy(update={'prompt_version_id':id}))
+        else:validate_role_prompt(view,story_id,ROLE_STAGE[role],item)
         if role=='planner':validate_role_prompt(view,story_id,'prepare',item)
         db.execute('INSERT OR REPLACE INTO role_settings VALUES(?,?,?)', (story_id, role, item.model_dump_json()))
 

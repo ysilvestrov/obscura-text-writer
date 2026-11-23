@@ -30,7 +30,7 @@ if(workspace){
   const link=document.querySelector('#workspace-error-settings');
   function show(role){
     const href=state.scene&&settingsLink(state.storyId,state.scene.id,state.mode,role);
-    link.hidden=!href;if(href){link.href=href;uiText(link,"textContent",()=>(t("m_1a02bd37b311")+({get planner(){return t("m_1e464d8b93dd")},get writer(){return t("m_496366aa31cf")},get editor(){return t("m_15d82eb3de76")},get memory(){return t("m_de7953232eda")}}[role])))}
+    link.hidden=!href;if(href){link.href=href;uiText(link,"textContent",()=>(t("m_1a02bd37b311")+({get planner(){return t("m_1e464d8b93dd")},get writer(){return t("m_496366aa31cf")},get editor(){return t("m_15d82eb3de76")},get memory(){return t("m_de7953232eda")},get auditor(){return t("m_491497217576")}}[role])))}
   }
   link.onclick=event=>{if(state.dirty||state.saving){event.preventDefault();document.dispatchEvent(new CustomEvent('workspace-navigation-blocked'));void import('./api.js').then(({notice})=>notice(msg("m_df05df152938"),'warning'))}};
   document.addEventListener('workspace-operation-error',event=>show(STAGE_ROLE[event.detail.stage]));

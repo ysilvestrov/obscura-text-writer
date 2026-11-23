@@ -2,7 +2,7 @@ from fastapi import APIRouter, Request
 from pydantic import Field
 
 from ..roles import ROLES, ROLE_STAGE
-from ..authoring.blueprints import apply_blueprint, get_role_settings, save_role_settings, update_story_profile, save_shared_provider
+from ..authoring.blueprints import apply_blueprint, get_role_settings, save_role_settings, update_story_profile, save_shared_provider, shared_roles
 from ..domain import DomainModel
 from ..generation.models import StoryBlueprint, StyleProfile, default_style_profile
 from ..generation.prompts import default_prompt, role_prompt, expected_contract
@@ -44,7 +44,7 @@ def shared_provider(story_id: str,change: SharedProviderChange,request: Request)
     # Roles not saved yet get RoleSettings defaults in save_shared_provider: check those limits too.
     rows=get_role_settings(repo,story_id)
     if change.role and settings is not None:rows[change.role]=settings
-    rows={role:rows.get(role,RoleSettings(provider=change.provider)) for role in ROLES}
+    rows={role:rows.get(role,RoleSettings(provider=change.provider)) for role in shared_roles(rows)}
     message,warning=catalog_check(change.provider,[(row.context_tokens,row.max_output_tokens) for row in rows.values()])
     warnings=[warning] if warning else []
     if not message and change.role and settings is not None:
@@ -71,11 +71,13 @@ def read_settings(story_id: str,request: Request):
     repo=request.app.state.repo
     story=repo.get_story(story_id)
     roles=get_role_settings(repo,story_id)
-    prompts={role: repo.read_text(config.prompt_version_id) if config.prompt_version_id else role_prompt(ROLE_STAGE[role],config,story.language) for role,config in roles.items()}
+    # The auditor's built-in prompts and contracts arrive with its audit stages; until then only a saved custom prompt is listed.
+    prompted={role:config for role,config in roles.items() if role!='auditor' or config.prompt_version_id}
+    prompts={role: repo.read_text(config.prompt_version_id) if config.prompt_version_id else role_prompt(ROLE_STAGE[role],config,story.language) for role,config in prompted.items()}
     profile=StyleProfile.model_validate_json(repo.read_text(story.style_version_id)) if story.style_version_id else default_style_profile(story.language)
     planner=roles.get('planner')
     preparation=repo.read_text(planner.prepare_prompt_version_id) if planner and planner.prepare_prompt_version_id else default_prompt('prepare',story.language)
-    contracts={role:repo.get_version(config.prompt_version_id).prompt_contract if config.prompt_version_id else expected_contract(ROLE_STAGE[role],config) for role,config in roles.items()}
+    contracts={role:repo.get_version(config.prompt_version_id).prompt_contract if config.prompt_version_id else expected_contract(ROLE_STAGE[role],config) for role,config in prompted.items()}
     prepare_contract=repo.get_version(planner.prepare_prompt_version_id).prompt_contract if planner and planner.prepare_prompt_version_id else expected_contract('prepare',planner) if planner else None
     return {'story':story,'roles':roles,'profile':profile,'prompts':prompts,'prepare_prompt':preparation,'prompt_contracts':contracts,'prepare_prompt_contract':prepare_contract}
 

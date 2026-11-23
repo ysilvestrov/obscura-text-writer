@@ -20,7 +20,7 @@ export function groupRoleFields(form,role){
   const others=[...form.children].filter(node=>node!==main&&node!==details&&node!==prompts&&node!==horizon&&node!==openrouter&&node.tagName!=='H2'&&node.tagName!=='DETAILS'&&!node.classList.contains('scope-submit'));
   for(const node of others)details.append(node);
   form.append(main,reserve);if(horizon)form.append(horizon);if(vendor)form.append(vendor);if(openrouter)form.append(openrouter);form.append(details,prompts);
-  const shared=form.elements.shared_provider?.closest('label');if(shared){const group=document.createElement('details');uiHTML(group,"<summary><span data-i18n=\"m_f92138dded91\">Підключення для всіх чотирьох ролей</span></summary>",{});group.append(shared);const hint=document.createElement('p');hint.className='settings-hint';uiText(hint,"textContent",()=>(t("m_4ead690f330a")));group.append(hint);form.append(group)}
+  const shared=form.elements.shared_provider?.closest('label');if(shared){const group=document.createElement('details');uiHTML(group,"<summary><span data-i18n=\"m_c11bbc12e4e1\">Підключення для всіх ролей</span></summary>",{});group.append(shared);const hint=document.createElement('p');hint.className='settings-hint';uiText(hint,"textContent",()=>(t("m_4ead690f330a")));group.append(hint);form.append(group)}
   const extra=[...form.querySelectorAll(':scope > details')].filter(d=>d!==details&&d!==prompts);for(const d of extra)form.append(d);
   form.addEventListener('settings-reset',capacity);
   return reserve;

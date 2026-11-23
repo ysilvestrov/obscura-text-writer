@@ -7,6 +7,11 @@ from ..providers.models import RoleSettings
 from ..roles import ROLES
 
 
+def shared_roles(rows):
+    """Roles a shared provider writes: all but an auditor without a row of its own, which borrows the editor's provider."""
+    return sorted(role for role in ROLES if role!='auditor' or 'auditor' in rows)
+
+
 def save_shared_provider(repo,story_id,provider,expected_revision,current_role=None,current_settings=None):
     if current_role is not None and (current_role not in ROLES or current_settings is None):
         raise ValueError('Невідома роль для спільного збереження')
@@ -15,7 +20,7 @@ def save_shared_provider(repo,story_id,provider,expected_revision,current_role=N
         raise ValueError(VARIANT_WRITER_ONLY)
     rows=get_role_settings(repo,story_id)
     if current_role:rows[current_role]=current_settings
-    updates={role:rows.get(role,RoleSettings(provider=provider)).model_copy(update={'provider':provider}).model_dump() for role in sorted(ROLES)}
+    updates={role:rows.get(role,RoleSettings(provider=provider)).model_copy(update={'provider':provider}).model_dump() for role in shared_roles(rows)}
     return repo.write_role_settings(story_id,updates,expected_revision)
 
 
