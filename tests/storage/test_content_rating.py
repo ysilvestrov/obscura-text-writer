@@ -67,7 +67,8 @@ def test_story_lowering_invalidates_only_inheriting_scenes(tmp_path):
     b = repo.update_scene_rating(b.id, R(sexual=2, violence=2, themes=2), b.revision)
     assert clean(repo, a, adep) and clean(repo, b, bdep)
     repo.update_story_rating(story.id, R(sexual=0, violence=2, themes=2), repo.get_story(story.id).revision)
-    assert repo.get_version(adep.id).stale and repo.get_scene(a.id).needs_review
+    # VALID-LINKS: the stored needs_review flag is not read; only a stale prose head marks the scene (none here)
+    assert repo.get_version(adep.id).stale and not repo.get_scene(a.id).needs_review
     assert clean(repo, b, bdep)
 
 
@@ -85,7 +86,8 @@ def test_scene_override_and_reset(tmp_path):
     a = repo.update_scene_rating(a.id, R(sexual=2, violence=2, themes=2), repo.get_scene(a.id).revision)
     assert clean(repo, a, adep)  # raised
     a = repo.update_scene_rating(a.id, R(sexual=0, violence=0, themes=0), a.revision)
-    assert repo.get_version(adep.id).stale and repo.get_scene(a.id).needs_review
+    # VALID-LINKS: the stored needs_review flag is not read; only a stale prose head marks the scene (none here)
+    assert repo.get_version(adep.id).stale and not repo.get_scene(a.id).needs_review
     # reset to story rating (1,1,1) is a raise relative to (0,0,0): no new invalidation
     with repo.db.connection() as db:
         v = repo.get_version(adep.id); v.stale = False

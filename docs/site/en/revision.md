@@ -14,10 +14,10 @@ In the Microsoft Store edition the version history lists only drafts, edits and 
 
 ## Accept all prose as the author's
 
-If you know that all the current prose of the book is your final text, open the **☰ Story actions → Accept all prose as the author's** menu item. It appears when the prose of at least one scene is outdated or needs review.
+If you know that all the current prose of the book is your final text, open the **☰ Story actions → Accept all prose as the author's** menu item. It appears when the prose of at least one scene is unchecked: written by hand, or its brief changed.
 
-- The confirmation names the number and the titles of the scenes. The prose of later scenes that rely on them is accepted too, as it would otherwise become outdated. After one press no prose of the book waits for review. The texts do not change.
-- Only prose is accepted. Outdated briefs and memory remain and need updating separately.
+- The confirmation names the number and the titles of the scenes. After one press no prose of the book waits for review. The texts do not change, and the scenes stay “Unchecked”: accepting means this is your text, not that it follows the brief. Accepted prose no longer becomes outdated after changes upstream.
+- Only prose is accepted. Unchecked briefs and memory remain and need approving or updating separately.
 - Every scene gets an entry in the history of author decisions, as after accepting a single version.
 - All scenes are accepted together or none: if a scene changes after the confirmation is shown, nothing is accepted and you press the menu item again.
 

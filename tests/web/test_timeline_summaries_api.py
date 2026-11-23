@@ -6,6 +6,7 @@ from storygen.memory.summary_blocks import summary_blocks
 from storygen.storage.timeline_summaries import publish_summary, save_summary_version
 from storygen.web.app import create_app
 from tests.memory.summary_helpers import long_story
+from tests.link_helpers import approve_links
 
 
 def setup(tmp_path, count=25, memory_until=21, publish=True):
@@ -13,6 +14,7 @@ def setup(tmp_path, count=25, memory_until=21, publish=True):
     app = create_app(AppSettings(data_dir=tmp_path / 'data', env_file=tmp_path / 'absent.env'))
     repo = app.state.repo
     story = repo.list_stories()[0]
+    approve_links(repo, story.id)
     if publish:
         scenes = repo.list_scenes(story.id)
         block = summary_blocks(story, scenes)[0]

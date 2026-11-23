@@ -15,6 +15,7 @@ from storygen.prompt_contracts import brief_introduced_contract, expected_contra
 from storygen.providers.models import ProviderSettings, RoleSettings
 from storygen.rating.instructions import higher_scenes_block, rating_block
 from storygen.storage.repository import Repository
+from tests.link_helpers import approve_links
 
 CYRILLIC = re.compile('[Ѐ-ӿ]')
 
@@ -157,6 +158,7 @@ def test_ukrainian_composed_system_messages_unchanged(tmp_path):
     repo.set_head(second.id, 'draft', draft.id, repo.get_scene(second.id).revision)
     prose2 = repo.save_version(story.id, second.id, 'manual', 'Анна чекала.', [draft.id])
     repo.set_head(second.id, 'prose', prose2.id, repo.get_scene(second.id).revision)
+    approve_links(repo, story.id)
     cases = {'brief': ('brief', {}), 'draft': ('draft', {}), 'edit:prose': ('edit', {}),
              'edit:patches': ('edit', {'edit_mode': 'patches'}), 'edit:diff': ('edit', {'edit_mode': 'diff'}),
              'memory': ('memory', {}), 'rewrite': ('rewrite', {})}

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {pathToFileURL} from 'node:url';
 const root=process.argv[2];
-const {runSummaryText,runNoticeMark,runExpanded,toggleRunExpansion,syncRunPrefs,usageUsd,addRunCost,runCostText}=await import(pathToFileURL(root+'/src/storygen/web/static/run-summary.js'));
+const {runSummaryText,runModeKey,runNoticeMark,runExpanded,toggleRunExpansion,syncRunPrefs,usageUsd,addRunCost,runCostText}=await import(pathToFileURL(root+'/src/storygen/web/static/run-summary.js'));
 
 // The one-line summary: state, the planned models when known, a warning mark when the run has a warning.
 const plan={roles:{writer:{provider:'venice',model:'gemma'}},evaluator:{provider:'local',model:'judge'}};
@@ -14,6 +14,12 @@ assert.equal(runSummaryText({state:'completed',planned_telemetry:{roles:{}}},'З
 // A failed run shows its error below, expanded; the mark is for warnings that would otherwise stay hidden.
 assert.equal(runSummaryText({state:'failed',error:'boom',warning:'w'},'Помилка'),'Помилка');
 assert.equal(runNoticeMark({state:'failed',error:'boom',warning:'w'}),'');
+// MEMORY-CARRY: the model-free carry run names itself before its state; it has no models to list.
+const carry={state:'running',request:{mode:'memory_carry'},planned_telemetry:{roles:{},calls:0}};
+assert.equal(runModeKey(carry),'run.mode_memory_carry');
+assert.equal(runModeKey({state:'running',request:{mode:'stage',stage:'memory'}}),null);
+assert.equal(runModeKey({state:'running'}),null);
+assert.equal(runSummaryText(carry,'Генерація','Перенос пам’яті'),'Перенос пам’яті · Генерація');
 
 // Expansion: collapsed by default, a failed run opens by itself even after it was collapsed while running.
 let prefs={expandedRun:null,collapsedFailure:null};

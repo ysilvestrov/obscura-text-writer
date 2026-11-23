@@ -195,6 +195,8 @@ def manual_draft(scene_id: str,body: DraftChange,request: Request):
     if body.external_origin is not None:
         from .bridge_marker import guard_scene_write
         guard_scene_write(request,scene_id)
+        from ..memory.carry import require_not_carrying
+        require_not_carrying(request.app.state.repo,scene_id)  # MEMORY-CARRY: a chat draft waits like a model stage
     if body.comment_set is not None:
         repo=request.app.state.repo
         format=body.content_format or (repo.get_version(body.expected_source_version_id).content_format if body.expected_source_version_id else 'plain')
@@ -376,3 +378,34 @@ def core_review_fragments(scene_id: str,request: Request,q: str='',source_scene_
     except ValueError as error:
         # A query outside the scene prefix is a request the author must change, not malformed data.
         return JSONResponse({'detail':diagnostic(str(error),request_locale(request)),'detail_original':str(error)},status_code=422)
+
+
+class LinkDecision(DomainModel):
+    action: Literal['approve']
+    fingerprint: str = Field(pattern=r'^[a-f0-9]{64}$')
+
+
+@router.post('/api/scenes/{scene_id}/links/{link}/decision')
+def link_decision(scene_id: str,link: Literal['brief','prose','memory'],body: LinkDecision,request: Request):
+    """VALID-LINKS-S08: the author approves a link of the scene for its current fingerprint."""
+    from fastapi import HTTPException
+    from ..storage.link_decisions import LinkDecisionRefused, decide_link
+    try:
+        return decide_link(request.app.state.repo,scene_id,link,body.action,body.fingerprint)
+    except LinkDecisionRefused as error:
+        raise HTTPException(422,str(error)) from error
+
+
+from ..storage.link_records import InvalidationReason
+
+
+class LinkInvalidationBody(DomainModel):
+    scene_ids: list[str] = Field(min_length=1,max_length=5000)
+    reason: InvalidationReason
+
+
+@router.post('/api/stories/{story_id}/links/invalidate')
+def link_invalidation(story_id: str,body: LinkInvalidationBody,request: Request):
+    """VALID-LINKS rule (г): the author's «Так» after a card or location change unchecks Z1 and Z2 of these scenes."""
+    from ..storage.link_decisions import invalidate_links
+    return {'scene_ids':invalidate_links(request.app.state.repo,story_id,body.scene_ids,body.reason.model_dump())}

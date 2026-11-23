@@ -6,6 +6,7 @@ import pytest
 from storygen.memory.journal import MemoryJournal
 from storygen.storage.book_structure import put_structure
 from tests.generation.test_context_selection import story_with_memory
+from tests.link_helpers import approve_links
 
 SLOT_TEXT = 'Синій халат'
 HERO = 'Роль: Головна героїня'
@@ -32,6 +33,7 @@ def arcs_book(tmp_path):
     memory = repo.save_version(story_id, second.id, 'memory', later.model_dump_json(), [prose.id, own.id])
     repo.set_head(second.id, 'memory', memory.id, repo.get_scene(second.id).revision)
     slot = next(e.claim_id for e in journal.events if e.text == SLOT_TEXT)
+    approve_links(repo, story_id)
     return repo, story_id, first, repo.get_scene(second.id), slot
 
 

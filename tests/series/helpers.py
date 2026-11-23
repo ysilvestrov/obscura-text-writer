@@ -3,6 +3,7 @@ import json
 
 from storygen.domain import SceneCreate, StoryCreate
 from storygen.memory.journal import MemoryJournal, _add_event
+from tests.memory.snapshot_helpers import memory_snapshot
 from storygen.storage import series as store
 
 CARD_SOURCE = '# Анна\nАнна — лікарка.'
@@ -31,7 +32,8 @@ def memory(repo, scene, previous, events):
     scene = repo.get_scene(scene.id)
     journal = MemoryJournal(schema_version=3, source_prose_ids=previous.source_prose_ids + [scene.heads['prose']],
                             events=previous.events + events)
-    saved = repo.save_version(scene.story_id, scene.id, 'memory', journal.model_dump_json(), journal.source_prose_ids)
+    saved = repo.save_version(scene.story_id, scene.id, 'memory', journal.model_dump_json(), journal.source_prose_ids,
+                              dependency_snapshot=memory_snapshot(repo, scene.id, journal.source_prose_ids))
     repo.set_head(scene.id, 'memory', saved.id, repo.get_scene(scene.id).revision)
     return journal
 

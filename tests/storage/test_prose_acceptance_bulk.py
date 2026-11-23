@@ -3,13 +3,24 @@ import pytest
 from storygen.domain import StoryCreate, SceneCreate, RevisionConflict
 from storygen.generation.dependencies import save_manual_prose
 from storygen.storage.repository import Repository
+from tests.link_helpers import approve_links
 
 
-def book(tmp_path, count=3):
+def hand_brief(repo,scene_id):
+    # VALID-LINKS: prose waits when its brief→prose link is invalid; prose with no brief (link missing) is never listed,
+    # so every waiting scene gets a hand-made brief under its manual prose.
+    scene=repo.get_scene(scene_id)
+    brief=repo.save_version(scene.story_id,scene.id,'brief',f'Завдання: {scene.title}',[])
+    return repo.set_head(scene.id,'brief',brief.id,scene.revision)
+
+
+def book(tmp_path, count=3, briefs=True):
     repo=Repository(tmp_path)
     story=repo.create_story(StoryCreate(title='Перевірка'))
     for n in range(count):
         scene=repo.create_scene(story.id,SceneCreate(title=f'Сцена {n+1}',beats=f'План {n+1}'))
+        if briefs:
+            scene=hand_brief(repo,scene.id)
         save_manual_prose(repo,scene.id,f'Проза {n+1}.',scene.revision)
     return repo,story
 
@@ -21,10 +32,11 @@ def swap(repo,story):
 
 
 def waiting(repo,story):
-    """Stale brief and prose heads (prose also when the scene needs review), in reading order."""
+    """Stale prose heads (also when the scene needs review), in reading order."""
+    # VALID-LINKS: the hand-made briefs stay unchecked (bulk acceptance confirms prose only), so only prose is counted
     view=repo.context_view(story.id);out=[]
     for scene in view.list_scenes(story.id):
-        for material in ('brief','prose'):
+        for material in ('prose',):
             id=scene.heads.get(material)
             if id and (view.is_stale(id) or (material=='prose' and view.effective_scene(scene.id).needs_review)):out.append(material)
     return out
@@ -61,6 +73,8 @@ def test_only_prose_is_accepted_and_fresh_prose_gets_no_record(tmp_path):
     brief=repo.save_version(story.id,first.id,'brief','{}',[first.heads['prose']])
     memory=repo.save_version(story.id,first.id,'memory','{}',[first.heads['prose']])
     save_manual_prose(repo,first.id,'Нова проза 1.',repo.get_scene(first.id).revision)
+    # VALID-LINKS: fresh prose is prose whose brief→prose link holds; the author confirms scene 1's links
+    approve_links(repo,story.id,{first.id})
     assert repo.get_version(brief.id).stale and repo.get_version(memory.id).stale
     waiting_ids=[s['scene_id'] for s in repo.preview_prose_acceptance(story.id)['scenes']]
     assert waiting_ids==[second.id]
@@ -98,7 +112,8 @@ def test_saved_impact_run_does_not_block_bulk_acceptance(tmp_path):
 
 @pytest.mark.req('DATA-010')
 def test_nothing_waiting_gives_an_empty_preview(tmp_path):
-    repo,story=book(tmp_path,2)
+    # VALID-LINKS: prose without a brief has no brief→prose link to check and is not listed
+    repo,story=book(tmp_path,2,briefs=False)
     preview,result=accept_all(repo,story)
     assert preview['scenes']==[] and result['accepted']==[]
 
@@ -112,7 +127,7 @@ def test_http_preview_accept_and_stale_fingerprint(tmp_path):
     repo=app.state.repo
     story=repo.create_story(StoryCreate(title='HTTP'))
     for n in range(2):
-        scene=repo.create_scene(story.id,SceneCreate(title=f'S{n}'))
+        scene=hand_brief(repo,repo.create_scene(story.id,SceneCreate(title=f'S{n}')).id)
         save_manual_prose(repo,scene.id,f'P{n}.',scene.revision)
     swap(repo,story)
     client=TestClient(app,base_url='http://127.0.0.1:8765')
@@ -159,9 +174,11 @@ def accept_once_and_check(repo,story):
 def test_one_click_also_accepts_later_scenes_the_acceptance_makes_wait(tmp_path):
     repo,story=book(tmp_path,5)
     first,second,*_=repo.list_scenes(story.id)
+    # VALID-LINKS: an acceptance changes no later link, so later scenes wait from the start (their links are invalid)
+    # rather than after the acceptance; scene 1's links are confirmed, so it stays unlisted
+    approve_links(repo,story.id,{first.id})
     rename(repo,second.id)
-    # Before the fix: only scene 2 was accepted and scenes 3–5 waited afterwards.
-    assert [s['title'] for s in repo.preview_prose_acceptance(story.id)['scenes']]==['Сцена 2 *']
+    assert [s['title'] for s in repo.preview_prose_acceptance(story.id)['scenes']]==['Сцена 2 *','Сцена 3','Сцена 4','Сцена 5']
     assert accept_once_and_check(repo,story)==['Сцена 2 *','Сцена 3','Сцена 4','Сцена 5']
     assert first.id not in {r.scene_id for r in repo.list_acceptances(story.id)}
 
@@ -197,7 +214,8 @@ def arced_book(tmp_path,arcs,parts):
         current=repo._active_story(db,story.id)
         repo._save_story(db,current.model_copy(update={'book_structure':structure,'scene_arcs':dict(zip([s.id for s in scenes],arcs))}))
     for n,scene in enumerate(scenes):
-        save_manual_prose(repo,scene.id,f'Проза {n+1}.',repo.get_scene(scene.id).revision)
+        scene=hand_brief(repo,scene.id)
+        save_manual_prose(repo,scene.id,f'Проза {n+1}.',scene.revision)
     return repo,repo.get_story(story.id)
 
 
@@ -217,21 +235,25 @@ def test_second_pass_after_an_upstream_change_accepts_everything_again(tmp_path)
     repo,story=book(tmp_path,4)
     swap(repo,story)
     assert len(accept_once_and_check(repo,story))==4
-    rename(repo,repo.list_scenes(story.id)[1].id)
-    assert accept_once_and_check(repo,story)==['Сцена 1 *','Сцена 3','Сцена 4']
+    # VALID-LINKS: accepted prose never waits again after an upstream change; only new prose makes a scene wait
+    second=repo.list_scenes(story.id)[1]
+    save_manual_prose(repo,second.id,'Нова проза.',second.revision)
+    assert accept_once_and_check(repo,story)==['Сцена 1']
 
 
 @pytest.mark.req('DATA-010')
 def test_preview_writes_nothing_and_an_unlisted_scene_changed_after_it_rejects_everything(tmp_path):
     repo,story=book(tmp_path,4)
+    # VALID-LINKS: scene 1's links are confirmed, so scenes 2–4 (invalid links) are listed and scene 1 is not
+    approve_links(repo,story.id,{repo.list_scenes(story.id)[0].id})
     rename(repo,repo.list_scenes(story.id)[1].id)
     before=snapshot(repo,story)
     preview=repo.preview_prose_acceptance(story.id)
-    assert [s['title'] for s in preview['scenes']]==['Сцена 2 *']
+    assert [s['title'] for s in preview['scenes']]==['Сцена 2 *','Сцена 3','Сцена 4']
     assert snapshot(repo,story)==before and repo.list_acceptances(story.id)==[]
-    # Scene 4 is not listed but the cascade would accept it: its change after the preview is a conflict too.
-    fourth=repo.list_scenes(story.id)[3]
-    save_manual_prose(repo,fourth.id,'Інша проза 4.',fourth.revision)
+    # Scene 1 is not listed: its change after the preview is a conflict too.
+    first=repo.list_scenes(story.id)[0]
+    save_manual_prose(repo,first.id,'Інша проза 1.',first.revision)
     before=snapshot(repo,story)
     with pytest.raises(RevisionConflict):
         repo.accept_all_prose(story.id,preview['fingerprint'])

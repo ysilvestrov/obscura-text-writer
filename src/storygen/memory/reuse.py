@@ -31,6 +31,13 @@ def _candidate(view,scene_id):
     owner_ok=ref.kind=='memory_merge' and ref.scene_id is None if before.merge_key else ref.kind=='memory' and ref.scene_id==previous[-1].id
     if not owner_ok or ref.story_id!=scene.story_id or not ref.complete:
         raise ValueError('Попередня пам’ять незавершена або належить іншій сцені')
+    if ref.stale and not before.merge_key and hasattr(view,'freshness_cache'):
+        # MEMORY-CARRY: a previous memory still to be carried, or one the carry could not apply, is not extended; the
+        # refusal names the scene and what the author can do.
+        from ..storage.links import link_state
+        if link_state(view,previous[-1].id,'memory').reason in {'carry_pending','carry_failed'}:
+            from ..generation.context import stale_material_message
+            raise ValueError(stale_material_message(view,ref))
     journal=read_previous_journal(view,before)
     # Only kind/scene_id/story_id/complete/sha256 are read below; a Repository (execute_stage) has no peek_version.
     peek=getattr(view,'peek_version',view.get_version)
@@ -64,7 +71,10 @@ def _candidate(view,scene_id):
     validate_memory_journal(journal,sources)
     provenance=list(ref.dependency_snapshot.memory_provenance) if ref.dependency_snapshot else []
     pairs=approved_source_pairs(provenance)
-    needs_confirmation=ref.stale or any(old!=selected and (old,selected) not in pairs for old,selected in zip(ids,current))
+    from ..storage.link_records import equivalent_pairs
+    # VALID-LINKS: a prose change the auditor or the author kept for the ancestor's memory needs no confirmation here.
+    needs_confirmation=ref.stale or any(old!=selected and (old,selected) not in pairs|equivalent_pairs(view,item.id)
+                                        for item,old,selected in zip(previous,ids,current))
     baseline={'scene_id':scene.id,'revision':scene.revision,'heads':scene.heads,'characters':scene.character_ids,
               'prefix':[(s.id,s.heads.get('prose')) for s in previous],
               'memory_id':ref.id,'memory_sha256':ref.sha256,'stale':ref.stale,

@@ -10,6 +10,7 @@ from storygen.generation.worker import RunCoordinator
 from storygen.generation.copyedit_review import copyedit_preview
 from storygen.generation.editor_output import shrink_check,EditorShrinkError,editor_failure
 from storygen.run_models import RunRequest
+from tests.link_helpers import approve_links
 
 # Ten sentences, 50 words: 60% is 30 words.
 SENTENCES=[f'Речення {i} має п’ять слів.' for i in range(10)]
@@ -136,6 +137,7 @@ def single_edit_scene(tmp_path,mode):
     draft=repo.save_version(story.id,scene.id,'draft',SOURCE,[brief.id])
     repo.set_head(scene.id,'draft',draft.id,repo.get_scene(scene.id).revision)
     save_role_settings(repo,story.id,'editor',RoleSettings(provider=ProviderSettings(model='synthetic'),edit_mode=mode),repo.get_story(story.id).revision)
+    approve_links(repo,story.id)
     return repo,repo.get_scene(scene.id)
 
 

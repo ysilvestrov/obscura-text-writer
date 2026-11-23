@@ -20,6 +20,8 @@ from storygen.storage.repository import Repository
 from storygen.web.app import create_app
 from tests.generation.test_model_policy_stages import ADULTS, BRIEF, FakeGateway
 from tests.generation.test_scene_pipeline import FakeGateway as PipelineGateway
+from tests.link_helpers import approve_links
+from tests.generation.test_scene_pipeline import pipeline_run
 
 
 def R(s, v, t):
@@ -107,6 +109,7 @@ def make_repo(tmp_path, story_rating, scene_rating=None):
         repo.update_scene_rating(item.id, scene_rating, repo.get_scene(item.id).revision)
     ref = repo.save_version(created.id, item.id, 'brief', BRIEF, [])
     repo.set_head(item.id, 'brief', ref.id, repo.get_scene(item.id).revision)
+    approve_links(repo, created.id)
     return repo, repo.get_scene(item.id)
 
 
@@ -137,7 +140,7 @@ def run_pipeline(tmp_path, rating):
     def factory(p):
         providers.append(p.model)
         return gateway
-    generate_scene(repo, item.id, roles, factory, threading.Event(), lambda *_: None)
+    generate_scene(repo, item.id, roles, factory, threading.Event(), lambda *_: None, pipeline_run(repo, item))
     return providers, [c.stage for c in gateway.contexts]
 
 

@@ -9,6 +9,7 @@ from storygen.memory.journal import MemoryJournal
 from storygen.providers.models import ProviderSettings, RoleSettings
 from storygen.storage.repository import Repository
 from tests.memory.wire_helpers import core_unchanged, v4_response
+from tests.link_helpers import approve_links
 
 SLOT_NAMES = [s.name for s in SLOTS]
 
@@ -36,6 +37,7 @@ def two_scenes(tmp_path, first, second):
     repo.set_head(scenes[0].id, 'memory', memory.id, repo.get_scene(scenes[0].id).revision)
     p2 = repo.save_version(story.id, scenes[1].id, 'manual', 'Анна на роботі.', [])
     repo.set_head(scenes[1].id, 'prose', p2.id, repo.get_scene(scenes[1].id).revision)
+    approve_links(repo, story.id)
     return repo, story, repo.get_scene(scenes[1].id)
 
 

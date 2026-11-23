@@ -26,6 +26,8 @@ export function controlReason(action,run){
   if(!run)return t("m_35691ee7bea3");
   if(run.cancelled_before_enqueue&&['resume','repeat'].includes(action))return t("m_aa885dcd2fb6");
   const allowed={pause:['queued','running'],cancel:['queued','running','pause_requested','paused','interrupted','needs_review','alternative'],resume:['paused','needs_review','alternative'],repeat:['failed','interrupted','cancelled']};
+  // MEMORY-CARRY: a failed carry keeps later scenes waiting, so it can be cancelled.
+  if(action==='cancel'&&run.request?.mode==='memory_carry'&&run.state==='failed')return '';
   return allowed[action]?.includes(run.state)?'':t("m_aa885dcd2fb6");
 }
 export function materialReason(action,state,runs){

@@ -3,7 +3,7 @@ from storygen.storage.repository import Repository
 from storygen.generation.dependencies import save_manual_prose, select_prose
 
 
-def test_edit_scene_two_invalidates_downstream_not_other_story(tmp_path):
+def test_edit_scene_two_unchecks_its_memory_not_downstream_or_other_story(tmp_path):
     repo=Repository(tmp_path)
     story=repo.create_story(StoryCreate(title='Перший'));other=repo.create_story(StoryCreate(title='Другий'))
     a=repo.create_scene(story.id,SceneCreate(title='Два'));b=repo.create_scene(story.id,SceneCreate(title='Три'))
@@ -12,8 +12,10 @@ def test_edit_scene_two_invalidates_downstream_not_other_story(tmp_path):
     downstream=repo.save_version(story.id,b.id,'edited','Третя сцена',[mem.id]);repo.set_head(b.id,'prose',downstream.id,0)
     untouched=repo.save_version(other.id,None,'canon','Інший твір',[])
     new=save_manual_prose(repo,a.id,'Авторська нова правка',2)
-    assert repo.get_version(mem.id).stale and repo.get_version(downstream.id).stale
-    assert repo.get_scene(b.id).needs_review
+    # VALID-LINKS: new prose unchecks the memory link of its own scene; the later prose has no brief (link missing) and
+    # its previous memory did not change, so it stays fresh.
+    assert repo.get_version(mem.id).stale and not repo.get_version(downstream.id).stale
+    assert not repo.get_scene(b.id).needs_review
     assert repo.read_text(downstream.id)=='Третя сцена'
     assert not repo.get_version(untouched.id).stale
     assert repo.get_scene(a.id).heads['prose']==new.id

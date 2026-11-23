@@ -5,6 +5,7 @@ from storygen.domain import PromptContract, SceneCreate, StoryCreate
 from storygen.generation.context import build_context, stage_system_text
 from storygen.providers.models import ProviderSettings, RoleSettings
 from storygen.storage.repository import Repository
+from tests.link_helpers import approve_links
 
 BRIEF = '{"objective":"Марта лагодить маяк","beats":["Марта лагодить маяк"],"constraints":[],"proposed_changes":[],"introduced":[]}'
 ROLE = RoleSettings(provider=ProviderSettings(model='test'), context_tokens=262144)
@@ -19,6 +20,7 @@ def scene_with_draft(tmp_path, content_format='markdown'):
     repo.set_head(scene.id, 'brief', brief.id, repo.get_scene(scene.id).revision)
     draft = repo.save_version(story.id, scene.id, 'draft', 'Марта піднялася на маяк.', [brief.id], content_format=content_format)
     repo.set_head(scene.id, 'draft', draft.id, repo.get_scene(scene.id).revision)
+    approve_links(repo, story.id)
     return repo, story, repo.get_scene(scene.id)
 
 

@@ -4,6 +4,7 @@ from storygen.storage.repository import Repository
 from storygen.providers.models import RoleSettings, ProviderSettings
 from storygen.generation.context import build_context
 from storygen.memory.models import MemorySnapshot
+from tests.link_helpers import approve_links
 
 
 def setup_memory(tmp_path):
@@ -16,6 +17,7 @@ def setup_memory(tmp_path):
     repo.set_head(scenes[0].id, 'memory', memory.id, 1)
     p2 = repo.save_version(story.id, scenes[1].id, 'manual', 'Друга проза', [])
     repo.set_head(scenes[1].id, 'prose', p2.id, 0)
+    approve_links(repo, story.id)
     role = RoleSettings(provider=ProviderSettings(model='frozen'),memory_mode='snapshot')
     context = build_context(repo, scenes[1].id, 'memory', role)
     return repo, story, scenes, context
@@ -176,5 +178,6 @@ def test_memory_does_not_inherit_unread_future_plan_from_prose(tmp_path):
     repo.set_head(scene.id,'prose',prose.id,scene.revision)
     context=build_context(repo,scene.id,'memory',role)
     repo.update_scene_plan(scenes[5].id,'Майбутній план',0)
-    assert repo.get_version(prose.id).stale
+    # VALID-LINKS: a prose head is marked only by its brief→prose link, not by a future plan in its snapshot
+    assert not repo.get_version(prose.id).stale
     assert publish(repo,context)[0].state=='completed'

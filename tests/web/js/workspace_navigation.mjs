@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {settingsLink,returnLink,usageText,compactBudgetText} from '../../../src/storygen/web/static/workspace-links.js';
 import {activateStageTab,setStageTabStops} from '../../../src/storygen/web/static/workspace-tabs.js';
+import {runSettingsRole} from '../../../src/storygen/web/static/roles.js';
 const link=settingsLink('s','c','draft','editor');
 assert.equal(new URL(link,'http://local').pathname,'/stories/s/settings');
 assert.equal(returnLink('s',new URL(link,'http://local').search),'/stories/s?scene=c&material=draft');
@@ -21,4 +22,11 @@ assert.deepEqual(historyTabs.map(t=>t.attrs.tabindex),['-1','0','-1']);
 assert.ok(historyTabs.every(t=>t.attrs['aria-selected']===undefined));
 setStageTabStops(historyTabs,'unknown');
 assert.deepEqual(historyTabs.map(t=>t.attrs.tabindex),['0','-1','-1']);
+// The settings link under a failed or warned run names the role of its stage; the model-free carry has none.
+assert.equal(runSettingsRole({request:{mode:'memory_carry'},tasks:[{stage:'memory_carry'}],cursor:0}),null);
+assert.equal(runSettingsRole({request:{mode:'edit_loop'},tasks:[],cursor:0}),'editor');
+assert.equal(runSettingsRole({request:{mode:'scene'},tasks:[{stage:'draft'}],cursor:0}),'writer');
+assert.equal(runSettingsRole({request:{mode:'stage',stage:'memory'}}),'memory');
+assert.equal(runSettingsRole({request:{mode:'publication_suggest'},tasks:[{stage:'publication_suggest'}],cursor:0}),null);
+assert.equal(runSettingsRole(null),null);
 console.log('Workspace links and missing usage regressions passed');

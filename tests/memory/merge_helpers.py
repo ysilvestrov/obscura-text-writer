@@ -4,6 +4,7 @@ from storygen.domain import SceneCreate, StoryCreate
 from storygen.memory.journal import MemoryJournal, _add_event, _change_event, _extend, load_memory
 from storygen.storage.book_structure import put_structure
 from storygen.storage.repository import Repository
+from tests.memory.snapshot_helpers import memory_snapshot
 
 QUOTE = 'Анна йде містом'
 
@@ -57,6 +58,8 @@ def write_memory(repo, story_id, events=None, *, only=None):
 
 def save_scene_journal(repo, scene, previous, new_events, refs=()):
     journal = _extend(previous, scene.heads['prose'], new_events, 3)
-    memory = repo.save_version(scene.story_id, scene.id, 'memory', journal.model_dump_json(), list(journal.source_prose_ids) + list(refs))
+    inputs = list(dict.fromkeys(list(journal.source_prose_ids) + list(refs)))
+    memory = repo.save_version(scene.story_id, scene.id, 'memory', journal.model_dump_json(), inputs,
+                               dependency_snapshot=memory_snapshot(repo, scene.id, inputs))
     repo.set_head(scene.id, 'memory', memory.id, repo.get_scene(scene.id).revision)
     return memory

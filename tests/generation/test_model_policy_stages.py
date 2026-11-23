@@ -13,6 +13,7 @@ from storygen.providers.models import ProviderSettings, RoleSettings
 from storygen.providers.policy import ModelPolicyBlocked, endpoint
 from storygen.providers.streaming import GenerationEvent
 from storygen.storage.repository import Repository
+from tests.link_helpers import approve_links
 
 BRIEF = '{"objective":"Подія","beats":["Подія"]}'
 ADULTS = {'schema_version': 2, 'id': 'A', 'name': 'Анна', 'entries': [{'id': 'A0', 'text': 'Вік: 30',
@@ -56,6 +57,7 @@ def setup(tmp_path, story_rating=R(0, 0, 0), scene_ratings=(None,), model='x/y')
         scenes.append(repo.get_scene(scene.id))
     role = writer_role(model)
     save_role_settings(repo, story.id, 'writer', role, repo.get_story(story.id).revision)
+    approve_links(repo, story.id)
     return repo, scenes
 
 
@@ -111,6 +113,7 @@ def accept_scene(repo, scene, prose_ids):
     journal = MemoryJournal(schema_version=3, source_prose_ids=list(prose_ids), events=[])
     memory = repo.save_version(scene.story_id, scene.id, 'memory', journal.model_dump_json(), [prose.id])
     repo.set_head(scene.id, 'memory', memory.id, repo.get_scene(scene.id).revision)
+    approve_links(repo, scene.story_id)
 
 
 @pytest.mark.req('MODEL-003')

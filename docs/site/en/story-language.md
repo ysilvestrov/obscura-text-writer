@@ -16,7 +16,7 @@ Until the story contains any model-generated text, you can change the language i
 
 ## Prose language of a single scene
 
-The **Prose language** field in the scene card lets you write one scene in another language. **As the story** means the story language. The model instructions stay in the story language, and the model receives a note on which language to write this scene's prose in. Changing the prose language marks the scene draft and prose as outdated; the brief and memory are not affected.
+The **Prose language** field in the scene card lets you write one scene in another language. **As the story** means the story language. The model instructions stay in the story language, and the model receives a note on which language to write this scene's prose in. Changing the prose language marks the scene draft as outdated; the brief, prose and memory are not affected.
 
 ## What differs for English prose
 

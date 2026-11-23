@@ -4,6 +4,7 @@ from storygen.storage.repository import Repository
 from storygen.memory.models import MemorySnapshot, MemoryEntry
 from storygen.generation.context import build_context
 from storygen.providers.models import RoleSettings, ProviderSettings
+from tests.link_helpers import approve_links
 
 
 def chain(tmp_path):
@@ -17,6 +18,7 @@ def chain(tmp_path):
         ids.append(prose.id);facts.append(MemoryEntry(text=f'Відомий факт {i}',source_version_id=prose.id,quote=text))
         memory=repo.save_version(story.id,scene.id,'memory',MemorySnapshot(facts=facts.copy(),source_prose_ids=ids.copy()).model_dump_json(),ids.copy())
         repo.set_head(scene.id,'memory',memory.id,repo.get_scene(scene.id).revision)
+    approve_links(repo,story.id)
     return repo,scenes,ids
 
 

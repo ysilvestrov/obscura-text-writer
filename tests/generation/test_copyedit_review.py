@@ -193,3 +193,29 @@ def test_cancelled_review_requires_explicit_repeat_authorization(tmp_path):
     repeated=worker.resume(run.id,repeat_interrupted=True)
     assert repeated.state=='queued' and repeated.cursor==0
     assert len(repo.list_attempts(scene.story_id))==1
+
+
+@pytest.mark.req('VALID-LINKS')
+def test_chat_patch_selection_keeps_the_external_origin(tmp_path):
+    # Final review 2a: a chat edit (save_stage_result, no run) whose patches the author partly applies is still the
+    # model's text, so the selected edited version carries the attempt's external origin.
+    from storygen.domain import ExternalOrigin
+    from storygen.storage.links import model_made
+    repo = Repository(tmp_path)
+    story = repo.create_story(StoryCreate(title='Редактура'))
+    scene = repo.create_scene(story.id, SceneCreate(title='Ранок'))
+    draft = repo.save_version(story.id, scene.id, 'draft', TEXT, [])
+    repo.set_head(scene.id, 'draft', draft.id, scene.revision)
+    settings = RoleSettings(provider=ProviderSettings(model='fake'), edit_mode='patches', edit_review='review')
+    context = build_context(repo, scene.id, 'edit', settings)
+    raw = json.dumps(PROPOSAL, ensure_ascii=False)
+    class Gateway:
+        def stream(self, *_):
+            yield GenerationEvent(type='delta', text=raw)
+            yield GenerationEvent(type='terminal', finish_reason='stop')
+    origin = ExternalOrigin(client='claude', model='chat')
+    attempt = execute_stage(repo, scene.id, 'edit', context, Gateway(), threading.Event(), lambda _: None, None,
+                            external_origin=origin)
+    result = choose(repo, scene, attempt, [1])
+    version = repo.get_version(result['version'].id)
+    assert version.external_origin == origin and model_made(version)

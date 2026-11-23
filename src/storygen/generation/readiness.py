@@ -49,6 +49,13 @@ def preview(repo, request, view=None):
     if request.mode=='impact':
         from ..run_models import IMPACT_REMOVED
         return dict(ready=False,reason=IMPACT_REMOVED,roles={},calls=0,evaluator=None)
+    if request.mode=='memory_carry':
+        return dict(ready=True,reason=None,roles={},calls=0,evaluator=None,warnings=[])
+    if request.mode in {'rewrite','edit_loop'} and request.scene_id:
+        from ..memory.carry import carry_blocks, carry_refusal
+        carry_view=view if view is not None else repo.context_view(request.story_id)
+        if carry_blocks(carry_view,request.scene_id):
+            return dict(ready=False,reason=carry_refusal(carry_view,request.scene_id),roles={},calls=0,evaluator=None)
     if request.mode=='rewrite':
         from .assisted_writing import readiness
         return readiness(repo,request)
@@ -80,6 +87,12 @@ def preview(repo, request, view=None):
         if request.mode!='prepare' and scene is None:
             raise ValueError('Оберіть сцену')
         targets=[s for s in scenes if s.position>=scene.position] if request.mode in {'remaining','rebuild_memory'} else [scene]
+        if view is not None:
+            # MEMORY-CARRY: model stages wait while the memory of the scene, or the one it extends, is still to be carried.
+            from ..memory.carry import carry_blocks, carry_refusal
+            waiting=next((target for target in targets if target is not None and carry_blocks(view,target.id)),None)
+            if waiting is not None:
+                raise ValueError(carry_refusal(view,waiting.id))
         result['calls']=len(stages)*len(targets)
         if request.mode in {'scene','remaining'} and request.edit_workflow=='loop':
             result.update(edit_loop_scenes=len(targets),edit_pass_limit=request.edit_pass_limit)
@@ -187,6 +200,8 @@ def pending_preview(repo,run):
     if run.request.mode=='impact':
         from ..run_models import IMPACT_REMOVED
         return dict(ready=False,reason=IMPACT_REMOVED,roles={},calls=0,evaluator=None)
+    if run.request.mode=='memory_carry':
+        return dict(ready=True,reason=None,roles={},calls=0,evaluator=None)
     if run.request.mode=='rewrite':
         if any(a.stage=='rewrite' and a.context.get('rewrite_proposal') for a in repo.list_attempts(run.story_id,run.id)):
             return dict(ready=False,reason='Спершу перегляньте пропозицію письменника; новий виклик запускається окремо',roles={},calls=0,evaluator=None)

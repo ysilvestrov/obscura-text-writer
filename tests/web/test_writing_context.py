@@ -9,6 +9,7 @@ from storygen.generation.dependencies import writing_fingerprint
 from storygen.memory.journal import MemoryJournal, _add_event
 from storygen.providers.models import ProviderSettings, RoleSettings
 from storygen.web.app import create_app
+from tests.link_helpers import approve_links
 
 BRIEF = '{"objective":"Анна йде до маяка","beats":["Анна йде до маяка"],"constraints":[],"proposed_changes":[]}'
 
@@ -28,6 +29,7 @@ def story_with_memory(tmp_path):
     repo.set_head(first.id, 'memory', memory.id, repo.get_scene(first.id).revision)
     brief = repo.save_version(story.id, second.id, 'brief', BRIEF, [])
     repo.set_head(second.id, 'brief', brief.id, repo.get_scene(second.id).revision)
+    approve_links(repo, story.id)
     return app, repo, story, repo.get_scene(second.id)
 
 

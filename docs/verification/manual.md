@@ -134,7 +134,7 @@ R-22 прокрутка: Playwright `long draft scrolls internally while formatt
 <a id="r20-brief-review"></a>
 ## R-20: pending завдання в основному workflow
 
-`pnpm --dir frontend exec playwright test brief-proposal.spec.mjs` на синтетичному сервері: stale old head + new proposed brief. Перевірити новий JSON у вкладці й явний список змін/accept; Save не приймає його, accept вибирає exact displayed version й розблоковує draft за придатного контексту. Dirty edit блокує accept до Save, після Save приймається саме нова авторська версія. Конкурентна зміна scene дає помилку без втрати тексту. Story refresh відкритого чистого brief підхоплює нову пропозицію без head change; dirty ввод лишається. Сценарій `acceptance follows refreshed run state without switching tabs` перевіряє блокування під час роботи та доступність після оновлення стану без переходу між вкладками. Desktop/mobile, без реальних моделей; наявність процедури не є звітом про виконання.
+`pnpm --dir frontend exec playwright test brief-proposal.spec.mjs` на синтетичному сервері: old head + new proposed brief (після R-44 старе завдання фікстури збережене без запуску моделі, тож воно авторське й не позначається stale, VALID-LINKS). Перевірити новий JSON у вкладці й явний список змін/accept; Save не приймає його, accept вибирає exact displayed version й розблоковує draft за придатного контексту. Dirty edit блокує accept до Save, після Save приймається саме нова авторська версія. Конкурентна зміна scene дає помилку без втрати тексту. Story refresh відкритого чистого brief підхоплює нову пропозицію без head change; dirty ввод лишається. Сценарій `acceptance follows refreshed run state without switching tabs` перевіряє блокування під час роботи та доступність після оновлення стану без переходу між вкладками. Desktop/mobile, без реальних моделей; наявність процедури не є звітом про виконання.
 
 Сценарії `editing an accepted brief keeps acceptance when starting a draft` і `manual save of an accepted brief keeps acceptance`: прийняти пропозицію, змінити її, перевірити ручний Save та основну дію; нова версія лишається прийнятою, а основна дія після збереження надсилає запит на запуск; тест перехоплює цей запит без виклику моделі. Окремо перевірити, що правка неприйнятої пропозиції все ще потребує явного прийняття.
 
@@ -432,7 +432,7 @@ IMPORT-NUMBER-S03. Автоматична частина — Playwright `tests/w
 <a id="prose-accept-browser"></a>
 ## Прийняття всієї прози з меню твору
 
-DATA-010-S02. Автоматична частина — Playwright `tests/web/browser/prose-acceptance.spec.mjs` (один case на desktop і mobile: дві сцени з прозою, перестановка робить прозу застарілою; у меню твору пункт «Прийняти всю прозу як авторську» видимий, підтвердження називає «Вечір», «Ранок», після прийняття `GET /prose-acceptance` повертає порожній перелік, а пункт зникає; відкрита проза сцени «Ранок» після прийняття редагується й зберігається без 409). Запуск: `cd frontend; ./node_modules/.bin/playwright test -c playwright.config.mjs ../tests/web/browser/prose-acceptance.spec.mjs`. Цей зв’язок не є доказом виконання; фактичний запуск фіксується окремо.
+DATA-010-S02. Автоматична частина — Playwright `tests/web/browser/prose-acceptance.spec.mjs` (один case на desktop і mobile: дві сцени з ручною прозою під завданням автора, тож зв'язок завдання → проза неперевірений і проза чекає (VALID-LINKS); у меню твору пункт «Прийняти всю прозу як авторську» видимий, підтвердження називає «Ранок», «Вечір», після прийняття `GET /prose-acceptance` повертає порожній перелік, а пункт зникає; відкрита проза сцени «Ранок» після прийняття редагується й зберігається без 409). Запуск: `cd frontend; ./node_modules/.bin/playwright test -c playwright.config.mjs ../tests/web/browser/prose-acceptance.spec.mjs`. Цей зв’язок не є доказом виконання; фактичний запуск фіксується окремо.
 
 <a id="claude-skills"></a>
 ## Скіли Obscura для Claude: сценарії поведінки
@@ -535,3 +535,21 @@ PLAN-PREAMBLE-S02, PLAN-PREAMBLE-S04. Запустіть Obscura з порожн
 4. Відкрийте збережений файл як zip: `word/document.xml` містить ті самі імена закладок, `w:ins`/`w:del` і `word/comments.xml`; `docProps/custom.xml` — `ObscuraStoryId` і `ObscuraExportId`.
 5. Відкрийте RTF: кирилиця, лапки, курсив і жирний на місці, частини й сцени з нової сторінки.
 Цей зв’язок не є доказом виконання; фактичний запуск фіксується окремо.
+
+<a id="link-decision-browser"></a>
+## Рішення автора для зв'язків сцени
+
+VALID-LINKS-S08, VALID-MEMORY-S08. Автоматична частина — Playwright `tests/web/browser/link-decision.spec.mjs` (desktop і mobile), три випадки на synthetic server `tests/web/browser/server.py`:
+1. Сцена з завданням і прозою автора: панель `#link-attention` показує «Затвердити завдання» й «Затвердити відповідність»; після натискань обидва зв'язки валідні з джерелом `author`, а лишається один рядок «У сцени ще немає пам’яті…» з кнопкою «Створити пам’ять».
+2. Фікстура `/test-memory-decision`: проза першої сцени змінена після пам'яті, readiness чернетки другої сцени відмовляє через пам'ять попередньої сцени. На вкладці пам'яті першої сцени панель показує «Пам’ять не підтверджена: прозу змінено після неї.» з «Залишити попередню пам’ять» і «Створити нову пам’ять»; після «Залишити попередню пам’ять» рядок зникає, З3 валідний з джерелом `author`, а чернетка другої сцени готова до запуску.
+3. Фікстура без пам'яті першої сцени: на другій сцені панель називає «Попередня сцена «Ранок» не має пам’яті»; «Створити пам’ять» відкриває першу сцену й показує діалог запуску, а «Скасувати» не створює запуску.
+Запуск: `cd frontend; ./node_modules/.bin/playwright test -c playwright.config.mjs ../tests/web/browser/link-decision.spec.mjs` з абсолютним `PYTHONPATH=<робоча копія>/src` (відносний `../src` може підхопити `storygen` іншої копії). Цей зв’язок не є доказом виконання; фактичний запуск фіксується окремо.
+
+<a id="card-invalidation-browser"></a>
+## Діалог після зміни карток і локацій
+
+VALID-CARDS-S04, VALID-CARDS-S05. Автоматична частина — Playwright `tests/web/browser/card-invalidation.spec.mjs` (desktop і mobile) на фікстурі `/test-card-invalidation` (валідна сцена з персонажем «Олена» й локацією «Пагорб»):
+1. На сторінці персонажів змінити відомість Олени й зберегти: діалог «Змінено картки: Олена. Позначити залежні сцени як неперевірені? Сцен: 1.»; «Так» показує «Залежні сцени позначено як неперевірені.», а після повернення сцена «Не перевірено» і З1 `unchecked`.
+2. Те саме з «Ні»: діалог зникає, сцена лишається «Валідна».
+3. На вкладці пам'яті в розділі «Локації» зберегти новий опис «Пагорб»: діалог «Змінено локації: Пагорб. … Сцен: 1.»; «Так» робить сцену «Не перевірено».
+Запуск: `cd frontend; ./node_modules/.bin/playwright test -c playwright.config.mjs ../tests/web/browser/card-invalidation.spec.mjs` з абсолютним `PYTHONPATH=<робоча копія>/src`. Цей зв’язок не є доказом виконання; фактичний запуск фіксується окремо.

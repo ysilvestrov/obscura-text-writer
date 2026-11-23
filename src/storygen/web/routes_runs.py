@@ -2,7 +2,7 @@ import asyncio
 import json
 from typing import Literal
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
 from ..domain import DomainModel
@@ -25,8 +25,19 @@ class Prepare(DomainModel):
     request_id: str
 
 
+CARRY_INTERNAL='Перенос пам’яті запускається сам після нової пам’яті сцени; його не можна поставити в чергу вручну'
+
+
+def _refuse_carry(run_request: RunRequest):
+    # MEMORY-CARRY: only storage/carry_queue.py creates carry runs; a forged one (even cancelled) would change which
+    # scenes count as pending, so the public API refuses it before the request_id replay.
+    if run_request.mode=='memory_carry':
+        raise HTTPException(422,CARRY_INTERNAL)
+
+
 @router.post('/api/runs')
 def enqueue(body: Enqueue,request: Request):
+    _refuse_carry(body.request)
     from .bridge_marker import from_bridge, guard_bridge_run
     guard_bridge_run(request,body.request)
     return request.app.state.coordinator.enqueue(body.request,body.request_id,origin='mcp' if from_bridge(request) else None)
@@ -34,6 +45,7 @@ def enqueue(body: Enqueue,request: Request):
 
 @router.post('/api/runs/cancel-request')
 def cancel_request(body: Enqueue,request: Request):
+    _refuse_carry(body.request)
     return request.app.state.coordinator.cancel_request(body.request,body.request_id)
 
 

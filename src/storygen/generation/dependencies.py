@@ -132,4 +132,6 @@ def _manual_snapshot(repo,scene,head,*,day_selectors=False):
         same_day_selectors(view,story,scene,view.list_scenes(scene.story_id),select,selectors)
         # SCENE-NARRATOR: writing-context showed the narrator section; the author's own text does not depend on it.
         narrator_selector(view,story,scene,select)
+        # VALID-LINKS: writing-context gave the brief; the chat draft is the writer's draft of the prose link (Z2).
+        select('head',scene.id,'brief',scene.heads.get('brief'));source(scene.heads.get('brief'))
     return DependencySnapshot(scope='author_text',selectors=selectors,refs=refs,ref_baselines=baselines,scene_order=[s.id for s in previous]+[scene.id])

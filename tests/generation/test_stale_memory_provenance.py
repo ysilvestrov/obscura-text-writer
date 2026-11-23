@@ -4,12 +4,20 @@ import pytest
 
 from storygen.domain import SceneCreate, StoryCreate
 from storygen.generation.context import build_context
-from storygen.generation.dependencies import invalidate_dependents
 from storygen.generation.stages import execute_stage
 from storygen.memory.models import MemorySnapshot
 from storygen.providers.models import ProviderSettings, RoleSettings
 from storygen.providers.streaming import GenerationEvent
 from storygen.storage.repository import Repository
+from tests.link_helpers import approve_links
+
+
+def make_prose_stale(repo, scene_id):
+    # VALID-LINKS: a prose head becomes stale through its brief→prose link (a hand-made brief leaves it unchecked); the
+    # legacy flag of invalidate_dependents no longer marks heads.
+    scene = repo.get_scene(scene_id)
+    brief = repo.save_version(scene.story_id, scene.id, 'brief', '{"objective":"Перша","beats":[],"constraints":[],"proposed_changes":[]}', [])
+    repo.set_head(scene.id, 'brief', brief.id, scene.revision)
 
 
 def workspace(tmp_path, already_stale):
@@ -20,13 +28,14 @@ def workspace(tmp_path, already_stale):
     root = repo.save_version(story.id, first.id, 'draft', 'Чернетка першої.', [])
     prose = repo.save_version(story.id, first.id, 'edited', 'Події першої сцени.', [root.id])
     first = repo.set_head(first.id, 'prose', prose.id, first.revision)
-    if already_stale:
-        invalidate_dependents(repo, [root.id])
     snapshot = MemorySnapshot(source_prose_ids=[prose.id])
     memory = repo.save_version(story.id, first.id, 'memory', snapshot.model_dump_json(), [prose.id])
     repo.set_head(first.id, 'memory', memory.id, first.revision)
     brief = repo.save_version(story.id, current.id, 'brief', '{"objective":"День","beats":[],"constraints":[],"proposed_changes":[]}', [])
     repo.set_head(current.id, 'brief', brief.id, current.revision)
+    approve_links(repo, story.id)
+    if already_stale:
+        make_prose_stale(repo, first.id)
     role = RoleSettings(provider=ProviderSettings(model='fake'))
     return repo, current, root, prose, memory, role
 
@@ -48,11 +57,12 @@ def test_existing_stale_prose_with_current_verified_memory_does_not_cause_false_
 
 def test_source_becoming_stale_during_generation_still_causes_conflict(tmp_path):
     repo, scene, root, prose, memory, role = workspace(tmp_path, already_stale=False)
+    first_id = prose.scene_id
     context = build_context(repo, scene.id, 'draft', role)
     class Gateway:
         def stream(self, context, cancel):
             yield GenerationEvent(type='delta', text='Альтернативна чернетка.')
-            invalidate_dependents(repo, [root.id])
+            make_prose_stale(repo, first_id)
             yield GenerationEvent(type='terminal', finish_reason='stop')
     attempt = execute_stage(repo, scene.id, 'draft', context, Gateway(), threading.Event(), lambda _: None)
     assert attempt.state == 'alternative'

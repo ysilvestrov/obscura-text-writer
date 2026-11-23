@@ -119,13 +119,14 @@ def test_refresh_names_cards_changed_in_the_source_and_keeps_the_book_copy(tmp_p
     assert [c.model_dump() for c in cards_of(repo, story)] == before
 
 
-def test_refresh_stales_scene_1_memory(tmp_path):
+def test_refresh_keeps_the_scene_1_memory_head_fresh(tmp_path):
     repo, item, first, scenes, second, scene = setup(tmp_path)
     memory_id = write_scene_memory(repo, scene)
     rewrite_last_memory(repo, first, scenes)
     story, _ = store.refresh_snapshot(repo, second.id, repo.get_story(second.id).revision)
     assert story.series_start_version_id != second.series_start_version_id
-    assert repo.get_version(memory_id).stale
+    # VALID-LINKS: a new series start (the previous memory P0) marks the brief/prose links of scene 1, not its memory head (Z3 is prose only)
+    assert not repo.get_version(memory_id).stale
     assert series_status(repo, story).state == 'fresh'
 
 

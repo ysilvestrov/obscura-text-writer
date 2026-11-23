@@ -3,6 +3,7 @@ import {live,t,msg,labelEntries,getLocale,uiText,uiAttr,uiHTML,diagnostic} from 
 import {api,json,notice} from './api.js';
 import {returnLink} from './workspace-links.js';
 import {CharacterBuffer,cardMatches,findTarget} from './characters-state.js';
+import {offerInvalidation} from './link-invalidation.js';
 
 const host=document.querySelector('#characters-page');
 if(host){
@@ -115,11 +116,15 @@ if(host){
   }
   form.onsubmit=async event=>{
     event.preventDefault();if(!validate()||buffer.saving)return;
-    const snapshot=buffer.beginSave();update();
+    const snapshot=buffer.beginSave(),previous=metadata?.cards||[];update();
     try{
       const data=await api(url(),json('PUT',{cards:snapshot.cards,expected_revision:snapshot.expected_revision}));
       if(buffer.saved(data,snapshot)){metadata=data;source.hidden=!data.source;uiText(sourceText,"textContent",()=>(data.source?.text||''));uiText(status,"textContent",()=>(t("m_962885cd6c4c")));render();notice(msg("m_e83504ed5d8a"))}
       else{uiText(status,"textContent",()=>(t("m_8542f3691e5d")));notice(status.textContent,'warning')}
+      // VALID-LINKS rule (г): a removed card keeps the name it had before the save.
+      const changedIds=data.changed_character_ids||[];
+      const names=changedIds.map(id=>(data.cards.find(card=>card.id===id)||previous.find(card=>card.id===id))?.name||id);
+      void offerInvalidation(storyId,'character',changedIds,names,data.dependent_scene_ids);
 
     }catch(error){buffer.failed();uiText(status,"textContent",()=>(diagnostic(error.message)));notice(error.message,'error')}
     finally{update()}

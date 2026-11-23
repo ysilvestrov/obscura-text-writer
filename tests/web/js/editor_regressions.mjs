@@ -55,7 +55,7 @@ if(mode.startsWith('auto-')){
   assert.equal(state.scene.revision,replace?1:0,'text and CAS revision must move together');
   if(replace)assert.equal(state.scene.heads[kind],'m-new');
 }else if(mode==='status'){
-  for(const [heads,needs_review,label] of [[{plan:'p'},true,'Не почато'],[{plan:'p',brief:'b'},true,'Немає тексту'],[{draft:'d'},false,'Є чернетка'],[{draft:'d'},true,'Потребує перегляду'],[{prose:'p'},true,'Потребує перегляду'],[{prose:'p'},false,'Текст створено']]){
+  for(const [heads,needs_review,label] of [[{plan:'p'},true,'Не почато'],[{plan:'p',brief:'b'},true,'Немає тексту'],[{draft:'d'},false,'Є чернетка'],[{draft:'d'},true,'Не перевірено'],[{prose:'p'},true,'Не перевірено'],[{prose:'p'},false,'Текст створено']]){
     server={...server,heads,needs_review};await refresh();
     assert.equal(element('#scene-list').children[0].children[0].textContent,label);
   }

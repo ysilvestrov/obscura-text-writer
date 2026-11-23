@@ -74,7 +74,8 @@ def test_a_changed_location_line_stales_legacy_versions_like_a_changed_cast(tmp_
     repo.db.bump_generation()
     current=repo.get_scene(scene.id)
     repo.update_scene_plan(scene.id,'Локація: Ліс',current.revision)
-    assert repo.get_version(brief.id).stale
+    # VALID-LINKS: a brief the author wrote is never stale (owner, 23.11.2026).
+    assert not repo.get_version(brief.id).stale
 
 
 @pytest.mark.req('MEMORY-LOCATIONS')

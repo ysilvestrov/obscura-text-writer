@@ -12,6 +12,7 @@ from storygen.providers.streaming import GenerationEvent
 from storygen.storage.repository import Repository
 from tests.generation.test_editor_output import run_output
 from tests.memory.wire_helpers import v4_answer
+from tests.link_helpers import approve_links
 
 R = '�'
 
@@ -93,6 +94,7 @@ def draft_case(tmp_path, previous=''):
         scene = repo.set_head(scene.id, 'draft', ref.id, scene.revision)
     brief = repo.save_version(scene.story_id, scene.id, 'brief', '{"objective":"Чекання","beats":["Зателефонувати"]}', [])
     scene = repo.set_head(scene.id, 'brief', brief.id, scene.revision)
+    approve_links(repo, scene.story_id)
     return repo, scene, build_context(repo, scene.id, 'draft', RoleSettings(provider=ProviderSettings(model='fake')))
 
 

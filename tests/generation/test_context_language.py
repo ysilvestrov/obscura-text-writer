@@ -13,6 +13,7 @@ from storygen.memory.journal import MemoryJournal, _add_event
 from storygen.memory.story_time import day_label
 from storygen.providers.models import ProviderSettings, RoleSettings
 from storygen.storage.repository import Repository
+from tests.link_helpers import approve_links
 
 CYRILLIC = re.compile('[Ѐ-ӿ]')
 
@@ -42,6 +43,7 @@ def world(tmp_path, language='en', prose_language=None, cards=None):
     repo.set_head(second.id, 'draft', draft.id, repo.get_scene(second.id).revision)
     prose2 = repo.save_version(story.id, second.id, 'manual', 'Anna waited at the pier until dusk.', [draft.id])
     repo.set_head(second.id, 'prose', prose2.id, repo.get_scene(second.id).revision)
+    approve_links(repo, story.id)
     return repo, story, repo.get_scene(second.id), draft
 
 

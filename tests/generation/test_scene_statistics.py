@@ -5,6 +5,7 @@ from storygen.generation.context import build_context,ContextOverflow
 from storygen.providers.models import RoleSettings,ProviderSettings
 from storygen.token_budget.core import canonical
 from tests.memory.test_forwarding import seeded
+from tests.link_helpers import approve_links
 
 
 def test_unicode_word_counts():
@@ -63,6 +64,7 @@ def test_editor_preview_uses_actual_working_source_and_schema(tmp_path,mode):
         scene=repo.get_scene(scenes[0].id)
         brief=repo.save_version(story.id,scene.id,'brief','{"objective":"Мета","beats":["Дія"],"constraints":[],"proposed_changes":[]}',[])
         repo.set_head(scene.id,'brief',brief.id,scene.revision)
+        approve_links(repo,story.id)
     scene=repo.get_scene(scenes[0].id)
     actual=edit_context(repo,scene.id,role,scene.heads['prose'])
     result=scene_statistics(repo,scene.id,'edit')['context']

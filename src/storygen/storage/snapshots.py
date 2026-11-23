@@ -466,6 +466,10 @@ def compare_snapshot(view, snapshot: DependencySnapshot | dict) -> list[Dependen
                 changed=is_lower(from_wire(current),from_wire(selector.expected))
             else:
                 changed=current != selector.expected
+            if changed and selector.kind=='head' and selector.field=='memory':
+                # MEMORY-CARRY: a carried memory is the same component (same own events and digest).
+                from ..memory.carry import carried_to
+                changed=not carried_to(view, selector.expected, current)
             if (changed and selector.field=='style_version_id' and snapshot.scope in SAMPLE_BLIND_SCOPES
                     and sample_only_change(view.read_text, selector.expected, current)):
                 changed=False
@@ -498,6 +502,12 @@ def compare_snapshot(view, snapshot: DependencySnapshot | dict) -> list[Dependen
                     and ref.story_id==view.story.id and any(s.kind=='scene' and s.owner_id==ref.scene_id and s.field=='title' for s in snapshot.selectors))
             if snapshot.scope=='author_rewrite' and id==snapshot.frozen_author_source_id and not frozen:
                 raise ValueError('Невідповідне історичне джерело')
+            if stale and ref.kind=='memory':
+                # MEMORY-CARRY: a memory carried since is read through its carried head (Z3 of the scene).
+                from ..memory.carry import carry_successor
+                successor=carry_successor(view, id)
+                if successor is not None:
+                    stale=view.is_stale(successor)
             if stale and language_only(view.freshness_cache.get(id) or freshness(view,id)):
                 # STORY-LANGUAGE-S03: the source's facts are unchanged; only its own scene must be rewritten.
                 stale=False
@@ -576,6 +586,19 @@ def _met_cycle(view):
     view.cycle_hits = getattr(view, 'cycle_hits', 0) + 1
 
 
+HEAD_LINK={'brief':'brief','edited':'prose','manual':'prose','memory':'memory'}
+
+
+def _head_link(view, ref):
+    """The link whose validity marks this version, when it is the current head of an active scene of the view's story."""
+    link=HEAD_LINK.get(ref.kind)
+    scenes=getattr(view,'scenes',None)
+    scene=scenes.get(ref.scene_id) if link and ref.scene_id and isinstance(scenes,dict) else None
+    if scene is None or scene.trashed_at or scene.heads.get(link)!=ref.id:
+        return None
+    return link
+
+
 def _compute_freshness(view, version_id: str) -> FreshnessResult:
     if version_id in view.freshness_cache:
         return view.freshness_cache[version_id]
@@ -597,7 +620,20 @@ def _compute_freshness(view, version_id: str) -> FreshnessResult:
             reasons.append(DependencyChange(version_id=version_id, reason='integrity_error'))
         acceptance=view.acceptances.get(version_id)
         baseline=acceptance.baseline if acceptance else ref.dependency_snapshot
-        if baseline is None:
+        link=_head_link(view, ref)
+        if link is not None:
+            # VALID-LINKS: the current brief, prose or memory of an active scene is stale exactly when its incoming link
+            # does not hold. Prose the author accepted as their own and a brief the author wrote are never stale (owner,
+            # 23.11.2026): they do not block model runs, the scene stays unchecked and validation checks them.
+            from .links import model_made
+            authored=(link=='prose' and acceptance is not None and acceptance.action=='accept_prose') or (link=='brief' and not model_made(ref))
+            if not authored:
+                from .links import link_state
+                status=link_state(view, ref.scene_id, link).status
+                # A missing link (a scene without a brief) keeps the scene out of validation, not stale (spec 1, 3).
+                if status not in {'valid','missing'}:
+                    reasons.append(DependencyChange(version_id=version_id, reason='link_'+status))
+        elif baseline is None:
             if ref.stale:
                 reasons.append(DependencyChange(version_id=version_id, reason='legacy_stale'))
             if ref.scene_id and ref.kind in {'brief','draft','edited','manual'}:

@@ -9,6 +9,8 @@ from storygen.series_models import SeriesStart
 from storygen.storage import series as store
 from storygen.storage.integrity import check_integrity
 from storygen.storage.repository import Repository
+from storygen.memory.journal import MemoryJournal
+from tests.link_helpers import approve_links
 from tests.series.helpers import book, card, finished_book, into_series, memory, prose, publish_cards
 
 
@@ -40,7 +42,15 @@ def write_prequel(repo, item, number, start, cloth, *, fact='Біля порту
                   _add_event('facts', fact, p.id, f'{fact}.', 0)]
         if extra:
             events += extra(base, p.id)[1]
-        memory(repo, scene, base, events)
+        if cards:
+            # The card change marks the start snapshot stale (dependency edge), so a memory snapshot over it could not
+            # become the head; as before, the memory is hand-made over the start journal and the author confirms it.
+            journal = MemoryJournal(schema_version=3, source_prose_ids=base.source_prose_ids + [p.id], events=base.events + events)
+            saved = repo.save_version(story.id, scene.id, 'memory', journal.model_dump_json(), journal.source_prose_ids)
+            repo.set_head(scene.id, 'memory', saved.id, repo.get_scene(scene.id).revision)
+            approve_links(repo, story.id)
+        else:
+            memory(repo, scene, base, events)
     return repo.get_story(story.id)
 
 

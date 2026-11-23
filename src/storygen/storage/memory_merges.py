@@ -238,4 +238,9 @@ def publish_merge(repo, story_id: str, key: str, version_id: str, heads, memory_
         repo._save_story(db, story)
         if previous and previous != version_id:
             invalidate_in_transaction(repo, db, [previous], exclude={version_id})
+        # MEMORY-CARRY: the scenes that start from the merge point extend the new merge (a stopped carry continues).
+        from .carry_queue import enqueue_merge_carry
+        point = point_by_key(story, [s for s in by_id.values() if not s.trashed_at], key)
+        if point is not None:
+            enqueue_merge_carry(db, story_id, point.target_scene_ids, version_id)
         return story

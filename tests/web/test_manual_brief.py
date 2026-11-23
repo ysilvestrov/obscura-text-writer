@@ -7,6 +7,7 @@ from storygen.generation.context import build_context
 from storygen.providers.models import RoleSettings,ProviderSettings
 from tests.memory.test_forwarding import seeded,apply
 from storygen.memory.forwarding import memory_view
+from tests.link_helpers import approve_links
 
 
 @pytest.mark.parametrize('proposals',[False,True])
@@ -20,7 +21,9 @@ def test_edit_generated_brief_after_forwarding_can_save_with_cas_and_review(tmp_
     target=repo.set_head(target.id,'brief',old.id,target.revision)
     claim=memory_view(repo,scenes[1].id)['rows'][0]['claim_id']
     apply(repo,scenes[1],{claim:False})
-    assert repo.get_version(old.id).stale
+    # VALID-LINKS: as the head, a brief saved without a run is the author's (never stale); a forwarding choice is
+    # not a link component either.
+    assert not repo.get_version(old.id).stale
     original['objective']='Авторська правка'
     original['proposed_changes']=['Змінити план'] if proposals else []
     body={'text':json.dumps(original),'expected_revision':target.revision}
@@ -28,19 +31,26 @@ def test_edit_generated_brief_after_forwarding_can_save_with_cas_and_review(tmp_
         result=client.post(f'/api/scenes/{target.id}/brief',json=body)
         assert result.status_code==200,result.text
         data=result.json();ref=repo.get_version(data['version']['id'])
-        assert ref.id!=old.id and not ref.stale and ref.manual_projection_policy==[claim]
+        assert ref.id!=old.id and ref.manual_projection_policy==[claim]
+        # VALID-LINKS: a brief the author saved is never stale (owner, 23.11.2026); its link stays unchecked
+        assert not ref.stale
         assert json.loads(repo.read_text(ref.id))['objective']=='Авторська правка'
-        assert repo.get_version(old.id).stale
+        # VALID-LINKS: a replaced brief compares its snapshot (the forwarding choice changed); a pending proposal
+        # keeps the old brief as the author's head, which is never stale.
+        assert repo.get_version(old.id).stale is (not proposals)
         if proposals:
             assert data['needs_review'] and repo.get_scene(target.id).heads['brief']==old.id
             accepted=client.post(f'/api/scenes/{target.id}/accept-brief',json={'version_id':ref.id,'expected_revision':target.revision})
             assert accepted.status_code==200,accepted.text
         assert repo.get_scene(target.id).heads['brief']==ref.id
+        approve_links(repo,story.id,{target.id})
+        assert not repo.get_version(ref.id).stale
         conflict=client.post(f'/api/scenes/{target.id}/brief',json=body)
         assert conflict.status_code==409
         assert repo.get_scene(target.id).heads['brief']==ref.id
         apply(repo,repo.get_scene(scenes[1].id),{claim:True})
-        assert repo.get_version(ref.id).stale
+        # VALID-LINKS: a forwarding choice is not a component of the plan+P0→brief link; the approved brief head stays fresh
+        assert not repo.get_version(ref.id).stale
 
 @pytest.mark.parametrize('source_kind,needs_review,head_is_saved',[('accepted',False,True),('candidate',True,False),('legacy',True,False),('wrong',True,False)])
 def test_edit_brief_preserves_only_selected_head_acceptance(tmp_path,source_kind,needs_review,head_is_saved):

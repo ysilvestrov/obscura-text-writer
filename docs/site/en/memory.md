@@ -36,9 +36,11 @@ The memory model marks records with the scene's places. When memory does not fit
 
 The cards are in the **Locations** section at the bottom of the **Memory** tab of any scene:
 
-- **Location description** is optional text of up to 2000 characters. The planner and the writer see it (also through MCP); the memory model does not. Changing it makes the briefs and drafts of scenes in that place and the places inside it outdated.
+- **Location description** is optional text of up to 2000 characters. The planner and the writer see it (also through MCP); the memory model does not. Changing it makes the drafts of scenes in that place and the places inside it outdated.
 - **Similar names** suggests possible duplicates, such as the typo "Pier" / "Peir". **Merge** makes the later card part of the first one; **Not alike** hides the suggestion for good.
-- **Merge into…** merges a card with any other. Plan texts stay as they are; versions of the scenes the merge affects become outdated. **Split** undoes the merge.
+- **Merge into…** merges a card with any other. Plan texts stay as they are; drafts of the scenes the merge affects become outdated. **Split** undoes the merge.
+
+After you save a description, merge or split, Obscura asks: “Locations changed: … Mark the dependent scenes as unchecked? Scenes: N.” Dependent scenes are the scenes with a brief whose shown places or memory of nearby places changed. **Yes** makes the brief and prose of these scenes “Unchecked” until you approve or regenerate them; **No** changes nothing.
 
 Nothing is merged without your decision. If the story was changed in another tab, saving is refused and the typed description stays in the field. The memory table shows each record's places as "Locations: …", and search finds a record by a place name too.
 
@@ -71,6 +73,20 @@ A scene of a book with arcs also sees **The past of other arcs**: facts from fla
 ## Confirming earlier memory
 
 If updating a scene's memory relies on an old journal of the previous scene, the application asks for confirmation. The dialog shows the memory scene, the number of new versions and of changed texts; **Cancel** does not start the model. Confirmation keeps the old sources and quotations; it does not verify the facts. If the sources change again, confirm again.
+
+## Carrying memory to later scenes
+
+The memory of each scene continues the memory of the previous one. When a scene gets a new memory — from the memory stage, a manual edit, a chat stage result or picking another version in the history — Obscura carries the records of later scenes over to the new memory on its own. The carry goes through the scenes in reading order, with no model and no cost; in the run summary it shows as **Memory carry**. The facts of later scenes do not change, so their briefs, prose and status stay as they were.
+
+Until the carry reaches a scene, model runs for it are refused with the explanation “Memory is being carried”; you can still read and edit the text by hand. If the application was closed during a carry, it continues on its own after the next launch.
+
+The carry stops when a scene's records refer to a fact the new memory of the previous scene does not have. This happens almost every time the memory of an early scene is generated again: the new records get new labels, and the carry usually stops at the very next scene. The run summary then shows a warning naming the scene, and its panel shows **The memory was not carried over** with **Create a new memory** and **Rebuild memory**. The new memory of that scene is built on the new memory of the previous one, and the carry continues, but it may stop again at the next scene. **Rebuild memory** has a model create the memory of this scene and of all later scenes in one run; like other model runs, it shows the number of calls and asks for your consent. The carry also stops before a scene that needs a memory merge: confirm the merge, and the carry continues from the scene after it.
+
+If the carry was paused, ended with an error, or the application was closed while it was being cancelled, the panel of a scene it has not reached shows **The memory carry stopped** with **Resume carry** and **Cancel carry**. Resuming costs nothing. After a cancel, model runs for these scenes are available again, but their memory stays built on the old memory of the previous scene.
+
+The scenes after the one where the carry failed wait too: their memory still relies on the old one. Their panel names the scene where the carry stopped and offers **Create a new memory** or **Rebuild memory** for it.
+
+If you changed the prose but the facts stayed the same, press **Keep the earlier memory** in the panel below the text ([scene status](workspace.md#scene-status-valid-or-unchecked)). The next scene then does not ask for confirmation because of this prose change.
 
 ## Advanced editing
 

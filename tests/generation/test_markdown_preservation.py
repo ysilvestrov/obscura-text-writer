@@ -8,6 +8,7 @@ from storygen.generation.dependencies import save_manual_draft
 from storygen.generation.copyedit_review import copyedit_preview, select_copyedits
 from storygen.providers.models import RoleSettings,ProviderSettings
 from storygen.providers.streaming import GenerationEvent
+from tests.link_helpers import approve_links
 
 
 def test_markdown_instructions_are_in_real_request_and_result_metadata(tmp_path):
@@ -38,6 +39,7 @@ def test_new_writer_result_is_markdown_with_declared_contract(tmp_path):
     repo,scene=seeded(tmp_path)
     brief=repo.save_version(scene.story_id,scene.id,'brief','{"objective":"Зорі","beats":["Поглянути вгору"]}',[])
     scene=repo.set_head(scene.id,'brief',brief.id,scene.revision)
+    approve_links(repo,scene.story_id)
     context=build_context(repo,scene.id,'draft',RoleSettings(provider=ProviderSettings(model='fake')))
     assert context.fragments['output_content_format']=='markdown'
     assert 'MARKDOWN' in context.api_request['messages'][0]['content']

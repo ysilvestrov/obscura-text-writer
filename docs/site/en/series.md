@@ -62,7 +62,7 @@ Finishing or editing the previous book **does not change** the next one by itsel
 
 Next to it is the **Update from the previous book** button. Before acting, Obscura warns you:
 
-- the memory, briefs and drafts of this book’s first scenes will become stale;
+- the briefs and drafts of this book’s first scenes will become stale and their prose unchecked, because the memory the book starts from has changed;
 - new cards of the previous book are added;
 - cards changed in the previous book are not overwritten: Obscura lists them, and you carry the edits over.
 

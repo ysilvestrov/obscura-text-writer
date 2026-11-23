@@ -11,6 +11,7 @@ from storygen.memory.journal import MemoryJournal, _add_event
 from storygen.providers.models import ProviderSettings, RoleSettings
 from storygen.storage.repository import Repository
 from storygen.storage.snapshots import resolve_freshness
+from tests.link_helpers import approve_links
 
 BRIEF = '{"objective":"Анна йде на роботу","beats":["Анна йде на роботу"],"constraints":[],"proposed_changes":[],"introduced":[]}'
 NOTE = 'ЗМІНИВСЯ ДЕНЬ: день 1 → день 2 ('
@@ -32,12 +33,14 @@ def two_scenes(tmp_path, first='Початок: день 1, 20:00', second='По
     journal = MemoryJournal(schema_version=3, source_prose_ids=[prose.id], events=events)
     memory = repo.save_version(story.id, s1.id, 'memory', journal.model_dump_json(), [prose.id])
     repo.set_head(s1.id, 'memory', memory.id, repo.get_scene(s1.id).revision)
+    approve_links(repo, story.id)
     return repo, story, repo.get_scene(s1.id), repo.get_scene(s2.id)
 
 
 def with_brief(repo, story, scene):
     brief = repo.save_version(story.id, scene.id, 'brief', BRIEF, [])
     repo.set_head(scene.id, 'brief', brief.id, repo.get_scene(scene.id).revision)
+    approve_links(repo, story.id)
     return repo.get_scene(scene.id)
 
 

@@ -1,13 +1,26 @@
 """Per-scene state of brief, prose and memory heads, from freshness alone (R-44 PR 1 replaces R-28 scene_status)."""
 
 
+from .links import scene_links, scene_validity
+
+
 def material_status(view):
-    """{scene_id: {brief, prose: pending|current|missing, memory: needs_update|current|missing}}.
+    """{scene_id: {brief, prose: pending|current|missing, memory: needs_update|current|missing, links, validity}}.
+
+    links: {brief|prose|memory: {status, source, reason, fingerprint}} and validity of the scene (VALID-LINKS).
+    previous_scene_id: only when brief or prose is unavailable for want of a previous memory and the scene continues a
+    plain earlier scene (no merge, no series start) — the panel offers to create that scene's memory.
+    carry_run: {id, state} of the stalled latest carry run while the scene's memory waits for it — the panel offers to
+    resume or cancel it (MEMORY-CARRY).
+    carry_failed_scene_id: the failed scene a waiting scene's memory depends on, when the carry stopped there before
+    reaching it — the panel offers a new memory or a rebuild of that scene.
 
     Read-only: shared view models (peek_*) and the recomputed stale flag; get_version would deep-copy each head."""
     def stale(id):
         view.peek_version(id)
         return view.is_stale(id)
+    from ..memory.carry import carry_blocker, stalled_carry
+    stalled=stalled_carry(view)
     rows={}
     for scene in view.peek_scenes(view.story.id):
         values={}
@@ -17,5 +30,24 @@ def material_status(view):
             values[material]='missing' if not id else 'pending' if waiting else 'current'
         id=scene.heads.get('memory')
         values['memory']='missing' if not id else 'needs_update' if stale(id) else 'current'
+        states=scene_links(view,scene.id)
+        values['links']={link:state.as_dict() for link,state in states.items()}
+        values['validity']=scene_validity(view,scene.id)
+        if any(state.reason=='no_previous_memory' for state in states.values()):
+            previous=_plain_previous(view,scene)
+            if previous:values['previous_scene_id']=previous
+        blocker=carry_blocker(view,scene.id) if states['memory'].reason=='carry_pending' else None
+        if blocker:
+            values['carry_failed_scene_id']=blocker
+        elif stalled and states['memory'].reason=='carry_pending':
+            values['carry_run']={'id':stalled.id,'state':stalled.state}
         rows[scene.id]=values
     return rows
+
+
+def _plain_previous(view,scene):
+    from ..memory.previous import previous_memory
+    before=previous_memory(view,scene,peek=True,require=False)
+    if before.merge_key or before.series_start or not before.ancestors:
+        return None
+    return before.ancestors[-1].id

@@ -59,6 +59,8 @@ def core_review_fixture(repo,story):
         _add_event('character_states','Ключ',p1.id,'У кишені ключ.',0,['A'],slot='carried'),thread])
     memory=repo.save_version(story.id,s1.id,'memory',journal.model_dump_json(),[p1.id])
     repo.set_head(s1.id,'memory',memory.id,repo.get_scene(s1.id).revision)
+    from tests.link_helpers import approve_links
+    approve_links(repo,story.id)  # VALID-LINKS: hand-made memory stands for confirmed
     p2=repo.save_version(story.id,s2.id,'manual',CORE_PROSE2,[])
     repo.set_head(s2.id,'prose',p2.id,repo.get_scene(s2.id).revision)
     core=core_unchanged('A')
@@ -259,6 +261,8 @@ def main():
             from storygen.memory.summary_blocks import summary_blocks
             from storygen.storage.timeline_summaries import publish_summary, save_summary_version
             story = seed_long_story(repo, 22, 21, title='Довга дорога')
+            from tests.link_helpers import approve_links
+            approve_links(repo, story.id)  # VALID-LINKS: hand-made memory stands for confirmed
             scenes = repo.list_scenes(story.id)
             block = summary_blocks(story, scenes)[0]
             ref = save_summary_version(repo, story.id, block, [s.heads['memory'] for s in scenes[:10]], 'Анна приїхала до міста.', 'model', 'uk')
@@ -387,6 +391,73 @@ def main():
             prose=save_manual_prose(repo,second.id,'Марія згадала лист.',0)
             save_manual_prose(repo,first.id,'Марія не знає про лист.',repo.get_scene(first.id).revision)
             return dict(story_id=story.id,scene_id=second.id,prose_id=prose.id)
+
+        @app.post('/test-card-invalidation')
+        def card_invalidation_fixture():
+            """A finished scene the author approved (brief, prose, own memory): «Валідна»; Олена is in its cast."""
+            import json
+            from storygen.characters.service import save_character_material
+            from storygen.generation.dependencies import save_manual_prose
+            from storygen.memory.journal import MemoryJournal, _add_event
+            from storygen.memory.service import save_scene_memory
+            from storygen.storage.link_decisions import decide_link
+            from storygen.storage.links import scene_links
+            story=rated_story('Маяк на пагорбі')
+            scene=repo.create_scene(story.id,SceneCreate(title='Ранок',beats='Маяк\nЛокація: Пагорб'))
+            entry={'id':None,'text':'Доглядачка маяка.','availability':'timeless','available_from_scene_id':None,'origin':'author','sources':[]}
+            cards=save_character_material(repo,story.id,[{'id':None,'schema_version':2,'name':'Олена','entries':[entry]}],repo.get_story(story.id).revision)
+            repo.update_scene_metadata(scene.id,{'character_ids':[cards['cards'][0]['id']]},repo.get_scene(scene.id).revision)
+            brief=json.dumps({'objective':'Світло на воді','beats':['Маяк'],'constraints':[],'proposed_changes':[]},ensure_ascii=False)
+            ref=repo.save_version(story.id,scene.id,'brief',brief,[])
+            repo.set_head(scene.id,'brief',ref.id,repo.get_scene(scene.id).revision)
+            prose=save_manual_prose(repo,scene.id,'Олена запалила маяк.',repo.get_scene(scene.id).revision)
+            journal=MemoryJournal(source_prose_ids=[prose.id],events=[_add_event('facts','Олена запалила маяк',prose.id,'Олена запалила маяк',0)])
+            save_scene_memory(repo,scene.id,journal.model_dump_json(),repo.get_scene(scene.id).revision)
+            for link in ('brief','prose'):
+                decide_link(repo,scene.id,link,'approve',scene_links(repo.context_view(story.id),scene.id)[link].fingerprint)
+            return dict(story_id=story.id,scene_id=scene.id)
+
+        @app.post('/test-memory-decision')
+        def memory_decision_fixture(previous_memory: bool = True):
+            """Two approved scenes with memory; the first scene's prose changed after its memory (Z3 unchecked), so the
+            second scene's stages wait for the author. previous_memory=false: the first scene has no memory at all."""
+            import json
+            from storygen.authoring.blueprints import save_role_settings
+            from storygen.generation.dependencies import save_manual_prose
+            from storygen.memory.journal import MemoryJournal, _add_event
+            from storygen.memory.service import save_scene_memory
+            from storygen.providers.models import RoleSettings,ProviderSettings
+            from storygen.storage.link_decisions import decide_link
+            from storygen.storage.links import scene_links
+            story=rated_story('Маяк і човен')
+            for role in ('planner','writer','editor','memory'):
+                save_role_settings(repo,story.id,role,RoleSettings(provider=ProviderSettings(model='synthetic-'+role)),repo.get_story(story.id).revision)
+            def scene_with(title,text,previous,memory=True):
+                scene=repo.create_scene(story.id,SceneCreate(title=title,beats=title))
+                brief=json.dumps({'objective':title,'beats':[title],'constraints':[],'proposed_changes':[]},ensure_ascii=False)
+                ref=repo.save_version(story.id,scene.id,'brief',brief,[])
+                repo.set_head(scene.id,'brief',ref.id,repo.get_scene(scene.id).revision)
+                prose=save_manual_prose(repo,scene.id,text,repo.get_scene(scene.id).revision)
+                journal=None
+                if memory:
+                    base=previous or MemoryJournal()
+                    event=_add_event('facts',text.rstrip('.'),prose.id,text.rstrip('.'),len(base.events))
+                    journal=MemoryJournal(source_prose_ids=base.source_prose_ids+[prose.id],events=base.events+[event])
+                    save_scene_memory(repo,scene.id,journal.model_dump_json(),repo.get_scene(scene.id).revision)
+                for link in ('brief','prose'):
+                    state=scene_links(repo.context_view(story.id),scene.id)[link]
+                    if state.status=='unchecked':decide_link(repo,scene.id,link,'approve',state.fingerprint)
+                return scene,journal
+            first,journal=scene_with('Ранок','Олена запалила маяк.',None,previous_memory)
+            if not previous_memory:
+                second=repo.create_scene(story.id,SceneCreate(title='Вечір',beats='Вечір'))
+                brief=json.dumps({'objective':'Вечір','beats':['Вечір'],'constraints':[],'proposed_changes':[]},ensure_ascii=False)
+                ref=repo.save_version(story.id,second.id,'brief',brief,[])
+                repo.set_head(second.id,'brief',ref.id,repo.get_scene(second.id).revision)
+                return dict(story_id=story.id,first_id=first.id,second_id=second.id)
+            second,_=scene_with('Вечір','Олена погасила маяк.',journal)
+            save_manual_prose(repo,first.id,'Олена запалила старий маяк.',repo.get_scene(first.id).revision)
+            return dict(story_id=story.id,first_id=first.id,second_id=second.id)
 
         uvicorn.run(app, host='127.0.0.1', port=port, log_level='warning')
 

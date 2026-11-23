@@ -69,9 +69,28 @@ def save_character_material(repo,story_id,cards,expected_revision):
     view=repo.context_view(story_id);story=view.get_story(story_id)
     if story.revision!=expected_revision:raise RevisionConflict('Твір змінено. Перезавантажте картки після збереження власних правок окремо.')
     normalized,refs=_normalize(view,story,cards)
+    changed=changed_character_ids(_cards(view,story),normalized)
+    dependent=dependent_scene_ids(view.list_scenes(story_id),changed)  # casts before the save: a removed card still counts
     version=repo.save_version(story_id,None,'character_cards',json.dumps([c.model_dump() for c in normalized],ensure_ascii=False),refs)
     repo.publish_story_material(story_id,'characters_version_id',version.id,expected_revision)
-    return read_character_material(repo,story_id)
+    # VALID-LINKS rule (г): the editor asks the author whether to uncheck these scenes; saving alone changes no link.
+    return {**read_character_material(repo,story_id),'changed_character_ids':changed,'dependent_scene_ids':dependent}
+
+
+def changed_character_ids(previous,current) -> list[str]:
+    """Cards compared by ID: any field changed, added (new cards first, in their order), removed."""
+    before={card.id:card.model_dump() for card in previous}
+    after={card.id:card.model_dump() for card in current}
+    return [id for id in after if before.get(id)!=after[id]]+[id for id in before if id not in after]
+
+
+def dependent_scene_ids(scenes,character_ids) -> list[str]:
+    """Active scenes, in book order, with one of these characters in the cast or as the narrator. Only scenes with a
+    brief: without one Z1 and Z2 are missing and the invalidation would write nothing (the dialog counts real marks)."""
+    ids=set(character_ids)
+    if not ids:return []
+    return [scene.id for scene in sorted(scenes,key=lambda s:s.position) if scene.heads.get('brief') and (
+            ids.intersection(scene.character_ids) or (scene.narrator is not None and scene.narrator.character_id in ids))]
 
 
 def prepare_character_material(view,story,cards):

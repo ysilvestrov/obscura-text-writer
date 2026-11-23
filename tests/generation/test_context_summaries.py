@@ -8,6 +8,7 @@ from storygen.providers.models import ProviderSettings, RoleSettings
 from storygen.storage.snapshots import compare_snapshot
 from storygen.storage.timeline_summaries import publish_summary, save_summary_version
 from tests.memory.summary_helpers import long_story
+from tests.link_helpers import approve_links
 
 SUMMARY = 'Анна приїхала до міста й оселилася біля річки.'
 
@@ -22,6 +23,7 @@ def entry(n):
 
 def story(tmp_path, publish=True, text=SUMMARY, block_change=None):
     repo, current = long_story(tmp_path, 25, memory_until=22, timeline_text=entry)
+    approve_links(repo, current.id)
     scenes = repo.list_scenes(current.id)
     block = summary_blocks(current, scenes)[0]
     if block_change:

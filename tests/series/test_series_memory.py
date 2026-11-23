@@ -1,6 +1,8 @@
 """SERIES-S03: the start snapshot is scene 0 of a series book's memory (neutral examples)."""
 import json
 import threading
+from storygen.domain import new_id
+from storygen.run_models import Run, RunRequest
 
 from storygen.domain import SceneCreate
 from storygen.generation.context import build_context, memory_projection
@@ -16,6 +18,7 @@ from storygen.storage.repository import Repository
 from tests.memory.test_core_review import role, run_memory
 from tests.memory.wire_helpers import v4_answer
 from tests.series.helpers import book, finished_book, into_series, prose
+from tests.link_helpers import approve_links
 
 
 class BriefGateway:
@@ -42,7 +45,11 @@ def write_scene_memory(repo, scene):
 
 def write_brief(repo, scene):
     context = build_context(repo, scene.id, 'brief', role())
-    attempt = execute_stage(repo, scene.id, 'brief', context, BriefGateway(), threading.Event(), lambda _: None)
+    # VALID-LINKS: a real Run row, so the brief is model-made and its link holds by construction.
+    run = Run(id=new_id(), story_id=scene.story_id, request_id='brief-' + new_id(),
+              request=RunRequest(story_id=scene.story_id, scene_id=scene.id, mode='stage', stage='brief'), state='completed', tasks=[])
+    repo.enqueue_run(run)
+    attempt = execute_stage(repo, scene.id, 'brief', context, BriefGateway(), threading.Event(), lambda _: None, run.id)
     assert attempt.state == 'completed', attempt.error
     return attempt.result_version_id
 
@@ -96,12 +103,13 @@ def test_hero_state_of_book_1_is_recent_in_the_first_scenes():
     assert 'c' in select_memory(inp, 10000).selected_claim_ids
 
 
-def test_retake_or_leaving_stales_brief_and_memory_of_scene_1(tmp_path):
+def test_retake_or_leaving_stales_the_scene_1_brief_not_its_memory(tmp_path):
     repo, item, second, scene, cloth = second_book(tmp_path)
     brief, memory = write_brief(repo, scene), write_scene_memory(repo, scene)
     assert not repo.get_version(brief).stale and not repo.get_version(memory).stale
     store.take_snapshot(repo, second.id, repo.get_story(second.id).revision)
-    assert repo.get_version(brief).stale and repo.get_version(memory).stale
+    # VALID-LINKS: a new series start (the previous memory P0) marks the brief/prose links of scene 1, not its memory head (Z3 is prose only)
+    assert repo.get_version(brief).stale and not repo.get_version(memory).stale
     repo2, item2, third, scene3, _ = second_book(tmp_path / 'other')
     brief3 = write_brief(repo2, scene3)
     store.set_story_series(repo2, third.id, None, None, None, repo2.get_story(third.id).revision)

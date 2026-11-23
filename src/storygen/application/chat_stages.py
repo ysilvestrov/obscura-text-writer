@@ -87,6 +87,8 @@ def stage_result(repo,scene_id: str,stage: str,expected_fingerprint: str,text: s
     import threading
     from ..domain import RevisionConflict
     from ..generation.stages import execute_stage
+    from ..memory.carry import require_not_carrying
+    require_not_carrying(repo,scene_id)  # MEMORY-CARRY: a chat stage result waits like a model stage
     context=_context(repo,scene_id,stage)
     if task_fingerprint(context)!=expected_fingerprint:
         raise RevisionConflict(STALE_TASK)

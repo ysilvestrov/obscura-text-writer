@@ -11,6 +11,7 @@ from storygen.providers.models import ProviderSettings, RoleSettings
 from storygen.storage import locations as store
 from storygen.storage.repository import Repository
 from storygen.storage.snapshots import build_dependency_snapshot, resolve_freshness
+from tests.link_helpers import approve_links
 
 
 BRIEF = '{"objective":"Юлія чекає","beats":["Юлія чекає"],"constraints":[],"proposed_changes":[],"introduced":[]}'
@@ -51,6 +52,7 @@ def section(text):
 def with_brief(repo, story, scene):
     brief = repo.save_version(story.id, scene.id, 'brief', BRIEF, [])
     repo.set_head(scene.id, 'brief', brief.id, repo.get_scene(scene.id).revision)
+    approve_links(repo, story.id)
     return repo.get_scene(scene.id)
 
 
@@ -170,6 +172,7 @@ def test_writing_memory_keeps_a_state_of_an_absent_character_in_the_same_place(t
     memory = repo.save_version(story.id, first.id, 'memory',
                                MemoryJournal(schema_version=3, source_prose_ids=[prose.id], events=events).model_dump_json(), [prose.id])
     repo.set_head(first.id, 'memory', memory.id, repo.get_scene(first.id).revision)
+    approve_links(repo, story.id)
     assert 'Олег чекає біля плити' in build_context(repo, second.id, 'brief', role()).user_text
     repo.update_scene_plan(second.id, 'Хто бере участь: Юлія\nЛокація: Ліс', repo.get_scene(second.id).revision)
     assert 'Олег чекає біля плити' not in build_context(repo, second.id, 'brief', role()).user_text

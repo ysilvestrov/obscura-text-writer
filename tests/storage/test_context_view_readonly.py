@@ -10,6 +10,7 @@ from storygen.storage.context_view import ContextView
 from storygen.storage.snapshots import compare_snapshot, resolve_freshness
 from tests.memory.test_forwarding import seeded
 from tests.storage.test_freshness import setup
+from tests.link_helpers import approve_links
 
 
 def _dumps(view):
@@ -110,7 +111,8 @@ def test_readiness_and_status_do_not_mutate_view_models(tmp_path):
 
 
 def test_shared_freshness_cache_survives_public_copy_mutation_and_cycle_stays_stale(tmp_path):
-    repo, story, scene, draft, prose = setup(tmp_path)
+    # VALID-LINKS: draft changes and snapshot cycles mark non-head versions only; the prose is not a head here
+    repo, story, scene, draft, prose = setup(tmp_path, head=False)
     other = repo.save_version(story.id, scene.id, 'draft', 'B', [])
     repo.set_head(scene.id, 'draft', other.id, repo.get_scene(scene.id).revision)
     view = repo.context_view(story.id)
@@ -159,6 +161,9 @@ def _accepted_stale_prose(repo, story, scene, prose):
     """Make `prose` stale, accept it, then add a second prose whose snapshot refs form a cycle."""
     other = repo.save_version(story.id, scene.id, 'draft', 'B', [])
     repo.set_head(scene.id, 'draft', other.id, repo.get_scene(scene.id).revision)
+    # VALID-LINKS: a draft change no longer marks the prose head; a hand-made brief leaves brief→prose unchecked
+    brief = repo.save_version(story.id, scene.id, 'brief', 'Завдання', [])
+    repo.set_head(scene.id, 'brief', brief.id, repo.get_scene(scene.id).revision)
     assert repo.get_version(prose.id).stale
     preview = repo.preview_acceptance(scene.id, prose.id)
     repo.accept_version(scene.id, prose.id, preview.expected_revision, preview.preview_fingerprint)
@@ -236,15 +241,18 @@ def test_second_request_sees_change_made_between_requests(tmp_path):
     assert first == request()
     # memory and rebuild_memory pass the role check and build_context; brief waits for a scene plan.
     assert ready(first) == {'memory', 'rebuild_memory'}
-    other = repo.save_version(story.id, scene.id, 'draft', 'B', [])
-    repo.set_head(scene.id, 'draft', other.id, repo.get_scene(scene.id).revision)
+    # VALID-LINKS: a draft change no longer marks the prose head; a hand-made brief (brief→prose unchecked) does,
+    # and the author's approval of the links makes it fresh again
+    brief = repo.save_version(story.id, scene.id, 'brief', 'Завдання', [])
+    repo.set_head(scene.id, 'brief', brief.id, repo.get_scene(scene.id).revision)
     second = request()
     assert first[0] is False and second[0] is True
     assert second[1] != first[1]
     # The stale prose is seen by the second readiness request too (edit_loop reason changes).
     assert second[2] != first[2]
-    repo.set_head(scene.id, 'draft', draft.id, repo.get_scene(scene.id).revision)
-    assert request() == first
+    approve_links(repo, story.id)
+    third = request()
+    assert third[0] is False and third != second
     # A plan saved between requests makes brief ready: build_context runs on a fresh view.
     current = repo.get_scene(scene.id)
     repo.update_scene_plan(scene.id, 'План', current.revision)
@@ -306,6 +314,10 @@ def test_scene_reads_on_a_view_equal_fresh_reads_and_leave_the_view_unchanged(tm
     apply(repo, scenes[1], {claim: False})
     trashed = repo.create_scene(story.id, SceneCreate(title='Кошик'))
     repo.set_scene_trashed(story.id, trashed.id, trashed.revision, restore=False)
+    # VALID-LINKS: hiding a memory record no longer stales later heads; a hand-made brief gives a stale chain
+    brief = repo.save_version(story.id, scenes[0].id, 'brief', 'Завдання', [])
+    repo.set_head(scenes[0].id, 'brief', brief.id, repo.get_scene(scenes[0].id).revision)
+    scenes[0] = repo.get_scene(scenes[0].id)
     view = repo.scene_view(scenes[0].id)
     before = _dumps(view)
     assert any(v.stale for v in repo.list_versions(story.id))

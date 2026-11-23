@@ -60,3 +60,26 @@ assert.equal(diagnostic('Некоректні дані: Модель «a/b» у�
   'Invalid data: Model “a/b” already refused the “Memory” role on content for a request rated 1/0/0. Calls rated 2/0/0 are blocked: clear the mark in the role settings or choose another model.');
 setLocale('uk');
 console.log('Model policy block diagnostics passed');
+
+// VALID-LINKS: a context refused for an unchecked link names the scene in English too.
+setLocale('en');
+assert.equal(diagnostic('Некоректні дані: Сцена «Ранок»: прозу не перевірено — затвердьте відповідність завданню або прийміть прозу як авторську'),
+  'Invalid data: Scene “Ранок”: the prose has not been checked — approve its match with the brief or accept the prose as your own');
+setLocale('uk');
+console.log('Stale link diagnostics passed');
+
+// MEMORY-CARRY: a context refused because the previous memory could not be carried names the scene in English too.
+setLocale('en');
+assert.equal(diagnostic('Некоректні дані: Сцена «Ранок»: пам’ять не вдалося перенести на нову пам’ять попередньої сцени — створіть нову пам’ять цієї сцени'),
+  'Invalid data: Scene “Ранок”: its memory could not be carried onto the new memory of the previous scene — create a new memory for this scene');
+setLocale('uk');
+console.log('Memory carry diagnostics passed');
+
+// MEMORY-CARRY: the carry stop warning keeps its specific translation; another reason is carried into the general one.
+setLocale('en');
+assert.equal(diagnostic('Перенос пам’яті зупинено на сцені «Ранок»: її записи посилаються на твердження, яких немає в новій пам’яті попередньої сцени — створіть нову пам’ять цієї сцени'),
+  'The memory carry stopped at scene “Ранок”: its records refer to claims the new memory of the previous scene does not have — create a new memory for this scene');
+assert.equal(diagnostic('Перенос пам’яті зупинено на сцені «Ранок»: Пам’ять сцени не має власного джерела — створіть нову пам’ять цієї сцени'),
+  'The memory carry stopped at scene “Ранок”: Пам’ять сцени не має власного джерела — create a new memory for this scene');
+setLocale('uk');
+console.log('Memory carry warnings passed');

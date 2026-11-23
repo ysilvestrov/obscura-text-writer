@@ -59,13 +59,16 @@ def test_idempotent_replay_returns_existing_run_after_inputs_change(tmp_path):
 
 def test_stale_selected_input_is_rejected_before_queue(tmp_path):
     repo,story,scene,worker=setup_story(tmp_path)
+    # VALID-LINKS: a brief the author wrote is never stale; a stale draft (legacy flag, not a link head) still is.
     brief=repo.save_version(story.id,scene.id,'brief','Завдання',[])
-    repo.set_head(scene.id,'brief',brief.id,scene.revision)
+    scene=repo.set_head(scene.id,'brief',brief.id,scene.revision)
+    draft=repo.save_version(story.id,scene.id,'draft','Чернетка',[brief.id])
+    repo.set_head(scene.id,'draft',draft.id,scene.revision)
     with repo.db.connection() as db:
-        brief.stale=True
-        db.execute('UPDATE versions SET payload=? WHERE id=?',(brief.model_dump_json(),brief.id))
+        draft.stale=True
+        db.execute('UPDATE versions SET payload=? WHERE id=?',(draft.model_dump_json(),draft.id))
     with pytest.raises(ValueError,match='застарілий'):
-        worker.enqueue(RunRequest(story_id=story.id,scene_id=scene.id,mode='stage',stage='draft'),'stale')
+        worker.enqueue(RunRequest(story_id=story.id,scene_id=scene.id,mode='stage',stage='edit'),'stale')
     assert worker.list_runs()==[]
 
 

@@ -8,6 +8,7 @@ from storygen.providers.models import ProviderSettings, RoleSettings
 from storygen.storage.book_structure import clear_structure, put_structure
 from storygen.storage.repository import Repository
 from storygen.storage.snapshots import compare_snapshot
+from tests.link_helpers import approve_links
 
 SETTINGS = RoleSettings(provider=ProviderSettings(model='test'))
 
@@ -21,6 +22,7 @@ def book(tmp_path):
     memory = MemorySnapshot(facts=[MemoryEntry(text='Минуле', source_version_id=prose.id, quote='Минуле')], source_prose_ids=[prose.id])
     ref = repo.save_version(story.id, scenes[0].id, 'memory', memory.model_dump_json(), [prose.id])
     repo.set_head(scenes[0].id, 'memory', ref.id, 1)
+    approve_links(repo, story.id)
     return repo, story.id, scenes
 
 

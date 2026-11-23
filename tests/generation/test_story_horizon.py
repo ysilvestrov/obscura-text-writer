@@ -10,6 +10,7 @@ from storygen.generation.models import StyleProfile
 from storygen.storage.repository import Repository
 from storygen.storage.snapshots import compare_snapshot
 from storygen.story_horizon import selected_plan_scenes
+from tests.link_helpers import approve_links
 
 
 def role(mode='all',count=2,**kwargs):
@@ -97,10 +98,12 @@ def test_transitive_wide_brief_dependency_is_not_hidden_by_writer_horizon(tmp_pa
     wide=build_context(repo,scenes[0].id,'brief',role())
     brief=repo.save_version(story.id,scenes[0].id,'brief',json.dumps({'objective':'Лише початок','beats':['Початок']}),wide.input_refs,dependency_snapshot=wide.dependency_snapshot)
     repo.set_head(scenes[0].id,'brief',brief.id,scenes[0].revision)
+    approve_links(repo,story.id)
     ctx=build_context(repo,scenes[0].id,'draft',role('current'))
     assert any('бриф' in w.lower() for w in ctx.context_warnings)
     repo.update_scene_plan(scenes[6].id,'Інший фінал',scenes[6].revision)
-    assert compare_snapshot(repo.context_view(story.id),ctx.dependency_snapshot)
+    # VALID-LINKS: the brief head is marked only by its plan+memory→brief link; a far plan no longer stales it transitively
+    assert not compare_snapshot(repo.context_view(story.id),ctx.dependency_snapshot)
 
 
 def test_old_settings_stay_all_and_invalid_horizons_are_rejected():
@@ -121,6 +124,7 @@ def test_third_scene_window_uses_only_prefix_memory_and_three_plans(tmp_path):
         memory=MemorySnapshot(source_prose_ids=list(sources))
         ref=repo.save_version(story.id,scene.id,'memory',memory.model_dump_json(),list(sources))
         repo.set_head(scene.id,'memory',ref.id,repo.get_scene(scene.id).revision)
+    approve_links(repo,story.id)
     ctx=build_context(repo,scenes[2].id,'brief',role('next_n',2))
     assert set(sources)<=set(ctx.input_refs)
     for number in [3,4,5]:assert f'УНІКАЛЬНИЙ_ПЛАН_{number}' in ctx.user_text
@@ -193,6 +197,7 @@ def with_heads(repo,story,scene):
     repo.set_head(scene.id,'draft',draft.id,repo.get_scene(scene.id).revision)
     prose=repo.save_version(story.id,scene.id,'manual','Поточна проза.',[])
     repo.set_head(scene.id,'prose',prose.id,repo.get_scene(scene.id).revision)
+    approve_links(repo,story.id)
     return draft
 
 

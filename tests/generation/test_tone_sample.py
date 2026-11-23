@@ -10,6 +10,7 @@ from storygen.generation.dependencies import save_manual_prose
 from storygen.generation.models import StyleProfile
 from storygen.providers.models import ProviderSettings, RoleSettings
 from storygen.storage.repository import Repository
+from tests.link_helpers import approve_links
 
 SAMPLE = 'Вітер ішов низько. Ліхтар гойднувся раз, другий — і завмер.'
 LABEL = 'ЗРАЗОК ЗВУЧАННЯ — НЕ СЮЖЕТ: ПЕРЕЙМИ РИТМ, ЛЕКСИКУ Й БУДОВУ РЕЧЕНЬ; НЕ БЕРИ ПОДІЙ, ІМЕН ЧИ СВІТУ'
@@ -29,6 +30,7 @@ def world(tmp_path, sample=SAMPLE, language='uk'):
     repo.set_head(scene.id, 'brief', brief.id, repo.get_scene(scene.id).revision)
     draft = repo.save_version(story.id, scene.id, 'draft', 'Чернетка сцени.', [])
     repo.set_head(scene.id, 'draft', draft.id, repo.get_scene(scene.id).revision)
+    approve_links(repo, story.id)
     return repo, repo.get_story(story.id), repo.get_scene(scene.id), draft
 
 
@@ -78,6 +80,7 @@ def test_story_without_sample_keeps_the_same_request(tmp_path):
     repo.publish_writing_settings(story.id, repo.get_story(story.id).revision, None, style.id)
     brief = repo.save_version(story.id, scene.id, 'brief', 'Завдання сцени.', [])
     repo.set_head(scene.id, 'brief', brief.id, repo.get_scene(scene.id).revision)
+    approve_links(repo, story.id)
     ctx = build_context(repo, scene.id, 'draft', role())
     assert old in ctx.user_text and LABEL not in ctx.user_text
 

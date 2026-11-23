@@ -74,7 +74,8 @@ def test_saving_past_moves_the_record_chain_into_memory(tmp_path):
     assert data.text == 'Анна в халаті.\nСусід пішов додому.'
     assert [f['text'] for f in data.future] == ['Сусід пішов']
     assert (data.source['sources'], data.source['resolved']) == (before['sources'], before['resolved'])
-    assert repo.get_version(memory_id).stale and repo.get_version(brief_id).stale
+    # VALID-LINKS: a new series start (the previous memory P0) marks the brief/prose links of scene 1, not its memory head (Z3 is prose only)
+    assert not repo.get_version(memory_id).stale and repo.get_version(brief_id).stale
 
 
 def test_decisions_need_confirmation_and_known_keys(tmp_path):
