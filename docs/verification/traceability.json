@@ -8140,7 +8140,7 @@
     {
       "id": "VALID-UI-S01",
       "requirement": "VALID-UI",
-      "scope": "invalidSceneCount і bookMenuState (невідомо, 0, N); пункт у меню й неактивний у розмітці. Неактивність під час запуску — у ручній процедурі.",
+      "scope": "invalidSceneCount і bookMenuState (невідомо, 0, N), лічильник лише unchecked/discrepancy; пункт у меню й неактивний у розмітці.",
       "tests": [
         "tests/web/test_book_validation_ui.py::test_book_validation_helpers",
         "tests/web/test_workspace_layout_ui.py::test_story_toolbar_has_three_icon_actions_and_a_disclosure_menu"
