@@ -6,8 +6,8 @@ import {pendingLinks} from './link-actions.js';
 // VALID-LINKS-S08/S11: the pending links of the open scene with the author's actions (link-actions.js). The panel
 // reads the story view's material_status; the server checks the fingerprint, so a stale panel gets 409 and refreshes.
 const host=document.querySelector('#link-attention');
-const CARRY_POLL_MS=3000;
-let busy=false,carryTimer=null;
+const CARRY_POLL_MS=3000,CARRY_POLLS=40;
+let busy=false,carryTimer=null,carryPolls=0;
 function render(){
   if(!host)return;
   host.replaceChildren();
@@ -26,10 +26,13 @@ function render(){
     host.append(row);
   }
   // MEMORY-CARRY: the carry runs in the background without a followed run; the view is read again until it reaches
-  // this scene, so «Пам’ять переноситься…» clears by itself.
+  // this scene, so «Пам’ять переноситься…» clears by itself. A paused or failed carry keeps the scene pending, so the
+  // polling stops after about two minutes per opened scene (the next refresh or scene switch shows the state again).
   clearTimeout(carryTimer);carryTimer=null;
-  if(items.some(item=>item.text==='link.carry_pending'))carryTimer=setTimeout(()=>{
-    carryTimer=null;
+  const pending=items.some(item=>item.text==='link.carry_pending');
+  if(!pending)carryPolls=0;
+  else if(carryPolls<CARRY_POLLS)carryTimer=setTimeout(()=>{
+    carryTimer=null;carryPolls++;
     if(!busy&&!state.dirty&&!state.saving)refresh({fresh:true}).catch(()=>{}).finally(render);else render();
   },CARRY_POLL_MS);
 }
@@ -57,5 +60,5 @@ async function createMemory(sceneId){
   }catch(error){if(error.name!=='AbortError')notice(error.message,'error')}
 }
 document.addEventListener('story-refreshed',render);
-document.addEventListener('scene-selected',render);
+document.addEventListener('scene-selected',()=>{carryPolls=0;render()});
 render();
