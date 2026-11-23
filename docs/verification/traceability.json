@@ -5567,9 +5567,10 @@
     {
       "id": "DOCS-SITE-S03",
       "requirement": "DOCS-SITE",
-      "scope": "Відносні шляхи, перемикач мови й детермінованість збірки. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "scope": "Відносні шляхи, іконка сайту, перемикач мови й детермінованість збірки. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
       "tests": [
-        "tests/test_docs_site.py::test_build_is_relative_and_deterministic"
+        "tests/test_docs_site.py::test_build_is_relative_and_deterministic",
+        "tests/test_docs_site.py::test_site_icons_match_the_application_icon"
       ]
     },
     {
