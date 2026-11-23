@@ -576,6 +576,19 @@ def _met_cycle(view):
     view.cycle_hits = getattr(view, 'cycle_hits', 0) + 1
 
 
+HEAD_LINK={'brief':'brief','edited':'prose','manual':'prose','memory':'memory'}
+
+
+def _head_link(view, ref):
+    """The link whose validity marks this version, when it is the current head of an active scene of the view's story."""
+    link=HEAD_LINK.get(ref.kind)
+    scenes=getattr(view,'scenes',None)
+    scene=scenes.get(ref.scene_id) if link and ref.scene_id and isinstance(scenes,dict) else None
+    if scene is None or scene.trashed_at or scene.heads.get(link)!=ref.id:
+        return None
+    return link
+
+
 def _compute_freshness(view, version_id: str) -> FreshnessResult:
     if version_id in view.freshness_cache:
         return view.freshness_cache[version_id]
@@ -597,7 +610,17 @@ def _compute_freshness(view, version_id: str) -> FreshnessResult:
             reasons.append(DependencyChange(version_id=version_id, reason='integrity_error'))
         acceptance=view.acceptances.get(version_id)
         baseline=acceptance.baseline if acceptance else ref.dependency_snapshot
-        if baseline is None:
+        link=_head_link(view, ref)
+        if link is not None:
+            # VALID-LINKS: the current brief, prose or memory of an active scene is stale exactly when its incoming link
+            # does not hold; prose the author accepted as their own is never stale (the scene stays unchecked).
+            if not (link=='prose' and acceptance is not None and acceptance.action=='accept_prose'):
+                from .links import link_state
+                status=link_state(view, ref.scene_id, link).status
+                # A missing link (a scene without a brief) keeps the scene out of validation, not stale (spec 1, 3).
+                if status not in {'valid','missing'}:
+                    reasons.append(DependencyChange(version_id=version_id, reason='link_'+status))
+        elif baseline is None:
             if ref.stale:
                 reasons.append(DependencyChange(version_id=version_id, reason='legacy_stale'))
             if ref.scene_id and ref.kind in {'brief','draft','edited','manual'}:

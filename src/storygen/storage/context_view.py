@@ -196,7 +196,8 @@ class ContextView:
         """Як Repository.get_version: версія без знімка й запису прийняття лишається зі збереженим stale."""
         ref=self.peek_version(id)
         self.peek_story(ref.story_id)
-        legacy=ref.dependency_snapshot is None and ref.manual_projection_policy is None and ref.id not in self.acceptances
+        from .snapshots import HEAD_LINK
+        legacy=ref.dependency_snapshot is None and ref.manual_projection_policy is None and ref.id not in self.acceptances and ref.kind not in HEAD_LINK
         return ref.model_copy(deep=True) if legacy else self.get_version(id)
 
     def read_stored_text(self, id):
@@ -205,11 +206,10 @@ class ContextView:
 
     def effective_scene(self, id):
         scene=self.get_scene(id)
+        # VALID-LINKS: the prose needs review exactly when its head is stale (Z2 does not hold and the author has not
+        # accepted it); the stored flag is no longer read.
         prose=self.versions.get(scene.heads.get('prose'))
-        if prose and (prose.dependency_snapshot is not None or prose.id in self.acceptances):
-            scene.needs_review=self.is_stale(prose.id)
-        elif prose and prose.manual_projection_policy is not None:
-            scene.needs_review=scene.needs_review or self.is_stale(prose.id)
+        scene.needs_review=bool(prose) and self.is_stale(prose.id)
         return scene
 
     def active_source(self, story_id, kind):

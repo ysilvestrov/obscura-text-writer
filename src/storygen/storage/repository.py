@@ -7,6 +7,9 @@ from .database import Database
 from .files import FileStore
 
 
+from .snapshots import HEAD_LINK
+
+
 class Repository:
     def get_comment_state(self,scene_id):
         from .comment_store import get_comment_state
@@ -331,7 +334,8 @@ class Repository:
             ref=self._get(db,'versions',id,VersionRef)
             self._active_story(db,ref.story_id)
             if ref.scene_id:self._active_scene(db,ref.scene_id)
-            if ref.dependency_snapshot is None and ref.manual_projection_policy is None:
+            # VALID-LINKS: a brief, prose or memory may be a head whose mark comes from its link, never the stored flag.
+            if ref.dependency_snapshot is None and ref.manual_projection_policy is None and ref.kind not in HEAD_LINK:
                 author_accepted=any(json.loads(r[0]).get('version_id')==ref.id for r in db.execute('SELECT payload FROM app_settings WHERE key LIKE ?',('acceptance:'+ref.story_id+':%',)))
                 if not author_accepted:return ref
             from .shared_snapshot import read_view
