@@ -4,8 +4,9 @@ On every step the worker reads the material again and checks the first link that
 (the scenes of the book by position without the trash, in a scene brief → prose → memory): the author's decisions and
 edits change the set between calls, so a book run may go back to an earlier scene. `valid` goes on; `discrepancy` and
 `unavailable` stop in `needs_review` with a checkpoint (phase `awaiting_author`, `scene_id` the scene of the stop); a
-link that already holds an auditor verdict the author decides (`discrepancy`, or `unavailable` that is not an overflow)
-stops there with that verdict and no new call, on start and on resume; a stale verdict reads the link again (at most
+link that already holds an auditor `discrepancy` stops there with that verdict and no new call, on start and on resume;
+an auditor `unavailable` that is not an overflow is measured again without a call and stops the same way while its
+cause holds, or is checked like an `unchecked` link once it has cleared; a stale verdict reads the link again (at most
 STALE_STEPS times in a row for one scene and link). Pause and cancel act between calls. It is a model run: a restart
 leaves it `interrupted`, and a failed call is repeated only on the author's explicit decision (RunCoordinator.resume)."""
 import hashlib
@@ -48,15 +49,29 @@ def _overflow(reason) -> bool:
 
 def _called(state) -> bool:
     """An `unchecked` link is called; an auditor's overflow verdict is measured again first and may be called. A
-    `discrepancy` and an auditor's other `unavailable` keep their verdict until the author decides, and link_state's own
-    `unavailable` gets no call."""
+    `discrepancy` keeps its verdict until the author decides, and link_state's own `unavailable` gets no call."""
     return state.status == 'unchecked' or (
         state.status == 'unavailable' and state.source == 'auditor' and _overflow(state.reason))
 
 
-def _held(state) -> bool:
-    """An auditor verdict for the current fingerprint that the author decides: the run stops on it without a call."""
-    return state.status == 'discrepancy' or (state.status == 'unavailable' and state.source is not None and not _called(state))
+def _measured_again(state) -> bool:
+    """An auditor's `unavailable` that is not an overflow (unreadable material, a foreign previous memory): its cause may
+    have cleared for the same fingerprint, so it is measured again without a call (_available)."""
+    return state.status == 'unavailable' and state.source == 'auditor' and not _overflow(state.reason)
+
+
+def _available(repo, view, scene_id, link) -> bool:
+    """The audit context builds now: the link is checked like an `unchecked` one. A refusal (role, rating) is left to
+    the readiness checks and to the call itself, which report it."""
+    from .audit_context import AuditUnavailable, build_audit_context
+    try:
+        return not isinstance(build_audit_context(repo, scene_id, link, view=view), AuditUnavailable)
+    except ValueError:
+        return True
+
+
+def _will_call(repo, view, scene_id, link, state) -> bool:
+    return _called(state) or (_measured_again(state) and _available(repo, view, scene_id, link))
 
 
 def plan_fingerprint(scope, scene_id, entries, settings) -> str:
@@ -111,7 +126,8 @@ def readiness(repo, request, view=None, resume=False) -> dict:
         if settings is None or not settings.provider.model.strip():
             raise ValueError(NOT_CONFIGURED)
         result['roles'] = {'auditor': settings.provider.model_dump(include={'provider', 'model'})}
-        called = [(scene_id, link) for scene_id, link in pending if _called(states[scene_id][link])]
+        called = [(scene_id, link) for scene_id, link in pending
+                  if _will_call(repo, view, scene_id, link, states[scene_id][link])]
         # An upper bound: an earlier discrepancy or unavailable link stops the run before the later links are called.
         result['calls'] = len(called)
         if called:
@@ -185,7 +201,9 @@ def execute(coordinator, run_id: str) -> None:
             stale = 0
             last = (scene_id, link)
         state = scene_links(view, scene_id)[link]
-        if _held(state):  # the author decides the auditor's verdict; checking it again is not free
+        measured = _measured_again(state)
+        # The author decides the auditor's verdict while it still holds; checking it again is not free.
+        if state.status == 'discrepancy' or (measured and not _available(repo, view, scene_id, link)):
             verdict = view.link_verdicts.get((scene_id, link, state.fingerprint))
             with coordinator.condition:
                 current = coordinator.get_run(run_id)
@@ -199,7 +217,7 @@ def execute(coordinator, run_id: str) -> None:
                 current = coordinator.get_run(run_id)
                 current.checkpoint = _checkpoint(scene_id, link, 'failed', reason=NOT_CONFIGURED)
                 return _finish(coordinator, current, 'failed', NOT_CONFIGURED)
-        if _called(state):  # a call may follow
+        if _called(state) or measured:  # a call may follow
             coordinator.event(run_id, 'stage_started', {'stage': LINK_STAGE[link], 'scene_id': scene_id, 'link': link,
                                                         'model': settings.provider.model,
                                                         'provider': settings.provider.provider, 'streaming': False})

@@ -504,8 +504,12 @@ def test_resume_reads_the_reading_order_again(tmp_path):
     assert [scene_validity(view, s.id) for s in (s1, s2, s3)] == ['valid', 'valid', 'valid']
 
 
-def test_new_book_validation_supersedes_a_stopped_audit_of_the_story(tmp_path):
+@pytest.mark.parametrize('stopped_state', ['needs_review', 'paused', 'failed', 'interrupted'])
+def test_new_book_validation_supersedes_a_resumable_audit_of_the_story(tmp_path, stopped_state):
     repo, story, scenes, stopped = four_scenes(tmp_path)
+    old = repo.get_run(stopped)
+    old.state = stopped_state
+    repo.save_run(old)
     worker, run = start_book(repo, story, Answers(answer(95)))
     assert repo.get_run(stopped).state == 'cancelled'
     assert [e.data for e in worker.list_events(stopped) if e.type == 'superseded'] == [{'run_id': run.id}]
@@ -544,20 +548,65 @@ def auditor_unavailable(repo, story, scene, link, reason):
     return record.id
 
 
-def test_structural_auditor_unavailable_takes_no_call(tmp_path):
-    from storygen.generation.audit_context import FOREIGN_SOURCE, OVERFLOW_CHARS
+def test_auditor_unavailable_whose_cause_cleared_is_measured_again_and_called(tmp_path):
+    from storygen.generation.audit_context import UNREADABLE
+    repo, story, (scene,) = unchecked_scene(tmp_path)
+    auditor_unavailable(repo, story, scene, 'prose', UNREADABLE)  # the material reads now
+    assert preview(repo, request(story, scene))['calls'] == 2
+    assert preview(repo, book_request(story.id))['calls'] == 2
+    gateway = Answers(answer(95))
+    worker, run = start_book(repo, story, gateway)
+    run = drive(worker, run.id)
+    assert run.state == 'completed', (run.state, run.error, run.checkpoint)
+    assert [c.stage for c in gateway.contexts] == ['audit_brief', 'audit_prose']
+    assert scene_validity(repo.context_view(story.id), scene.id) == 'valid'
+
+
+def test_auditor_unavailable_that_still_holds_stops_without_a_call(tmp_path, monkeypatch):
+    from storygen.generation import audit_context
+    from storygen.generation.audit_context import FOREIGN_SOURCE
     repo, story, (scene,) = unchecked_scene(tmp_path)
     verdict_id = auditor_unavailable(repo, story, scene, 'prose', FOREIGN_SOURCE)
+    inputs = audit_context._inputs
+
+    def broken(view, story_, scene_, link, refs):
+        if link == 'prose':
+            raise audit_context._Unavailable(FOREIGN_SOURCE)
+        return inputs(view, story_, scene_, link, refs)
+    monkeypatch.setattr(audit_context, '_inputs', broken)
     assert preview(repo, request(story, scene))['calls'] == 1
     assert preview(repo, book_request(story.id))['calls'] == 1
     gateway = Answers(answer(95))
-    worker, run = start(repo, story, scene, gateway)
+    worker, run = start(repo, story, scene, gateway, 'scene')
     run = drive(worker, run.id)
-    assert run.state == 'needs_review' and [c.stage for c in gateway.contexts] == ['audit_brief']
-    assert run.checkpoint == {'scene_id': scene.id, 'link': 'prose', 'outcome': 'unavailable', 'verdict_id': verdict_id,
-                              'reason': FOREIGN_SOURCE, 'phase': 'awaiting_author'}
+    assert run.state == 'needs_review'
+    expected = {'scene_id': scene.id, 'link': 'prose', 'outcome': 'unavailable', 'verdict_id': verdict_id,
+                'reason': FOREIGN_SOURCE, 'phase': 'awaiting_author'}
+    assert run.checkpoint == expected
+    worker, run = start_book(repo, story, gateway, 'book')
+    run = drive(worker, run.id)
+    assert run.state == 'needs_review' and run.checkpoint == expected
+    assert [c.stage for c in gateway.contexts] == ['audit_brief']  # the scene run validated the brief; no prose call
+
+
+def test_link_state_unavailable_takes_no_call_and_no_measure(tmp_path, monkeypatch):
+    from storygen.generation import audit_context
+    repo, story, scenes = book(tmp_path, 2)
+    auditor(repo, story)
+    remove_memory(repo, scenes[0])
+    gateway = Answers(answer(95))
+    worker, run = start_book(repo, story, gateway)
+    monkeypatch.setattr(audit_context, '_inputs', lambda *a: pytest.fail('a structural unavailable is not measured'))
+    assert preview(repo, book_request(story.id))['calls'] == 0
+    run = drive(worker, run.id)
+    assert run.state == 'needs_review' and run.checkpoint['reason'] == 'no_memory' and gateway.contexts == []
+
+
+def test_overflow_verdict_is_counted(tmp_path):
+    from storygen.generation.audit_context import OVERFLOW_CHARS
+    repo, story, (scene,) = unchecked_scene(tmp_path)
     auditor_unavailable(repo, story, scene, 'prose', OVERFLOW_CHARS.format(chars=500000, limit=400000))
-    assert preview(repo, request(story, scene))['calls'] == 1  # the brief is valid now; an overflow is measured again
+    assert preview(repo, request(story, scene))['calls'] == 2
 
 
 def test_failed_book_call_needs_an_explicit_repeat(tmp_path):
@@ -579,3 +628,59 @@ def test_coordinator_readiness_offers_the_book_audit_operation(tmp_path):
     assert list(operations) == ['audit_story'] and operations['audit_story']['ready'] is True
     assert operations['audit_story']['calls'] == 2 and operations['audit_story']['invalid_scenes'] == 1
     assert 'audit_story' not in RunCoordinator(repo).readiness(story.id, scene.id)['operations']
+
+
+def test_book_with_one_invalid_scene_in_the_middle_calls_only_for_it(tmp_path):
+    """Review Focus 1."""
+    repo, story, (s1, s2, s3) = book(tmp_path, 3)
+    auditor(repo, story)
+    save_manual_brief(repo, repo.get_scene(s2.id))
+    plan = book_plan(repo, story)
+    assert plan['invalid_scenes'] == 1 and {link['scene_id'] for link in plan['links']} == {s2.id}
+    gateway = Answers(answer(95))
+    worker, run = start_book(repo, story, gateway)
+    run = drive(worker, run.id)
+    assert run.state == 'completed', (run.state, run.error, run.checkpoint)
+    assert [(c.scene_id, c.stage) for c in gateway.contexts] == [(s2.id, 'audit_brief'), (s2.id, 'audit_prose')]
+    view = repo.context_view(story.id)
+    assert [scene_validity(view, s.id) for s in (s1, s2, s3)] == ['valid', 'valid', 'valid']
+
+
+def test_book_order_follows_position_and_skips_the_trash(tmp_path):
+    from storygen.generation.audit_run import book_pending
+    repo, story, (s1, s2, s3) = book(tmp_path, 3)
+    auditor(repo, story)
+    for scene in (s1, s2, s3):
+        save_manual_brief(repo, repo.get_scene(scene.id))
+    repo.reorder_scenes(story.id, [s3.id, s1.id, s2.id], repo.get_story(story.id).revision)
+    repo.set_scene_trashed(story.id, s2.id, repo.get_scene(s2.id).revision, False)
+    scenes = list(dict.fromkeys(scene_id for scene_id, _ in book_pending(repo.context_view(story.id))))
+    assert scenes == [s3.id, s1.id]
+
+
+@pytest.mark.parametrize('change', ['approve', 'prose'])
+def test_book_run_after_a_link_change_is_refused(tmp_path, change):
+    """Review Focus 3: the author decides a link or edits prose after the preview."""
+    from storygen.domain import RevisionConflict
+    from storygen.generation.dependencies import save_manual_prose
+    repo, story, (s1, s2, s3, s4), _ = four_scenes(tmp_path)
+    fingerprint = book_plan(repo, story)['plan_fingerprint']
+    if change == 'approve':
+        decide_link(repo, s3.id, 'brief', 'approve', link_state(repo.context_view(story.id), s3.id, 'brief').fingerprint)
+    else:
+        save_manual_prose(repo, s1.id, 'Олена увійшла до старої бібліотеки.', repo.get_scene(s1.id).revision)
+    gateway = Answers(answer(95))
+    worker = RunCoordinator(repo, gateway_factory=lambda _: gateway)
+    with pytest.raises(RevisionConflict, match='План перевірки змінився. Перегляньте його ще раз'):
+        worker.enqueue(book_request(story.id, fingerprint), 'changed-link')
+    assert repo.find_run_by_request_id('changed-link') is None and gateway.contexts == []
+
+
+def test_cloud_book_validation_needs_a_story_budget_limit(tmp_path):
+    from storygen.providers.policy import endpoint
+    repo, story, (scene,) = unchecked_scene(tmp_path)
+    provider = ProviderSettings(provider='openrouter', model='venice/free')
+    auditor(repo, story, provider=provider)
+    repo.model_policy('set_consent', role='auditor', provider='openrouter', base_url=endpoint(provider), model='venice/free')
+    result = preview(repo, book_request(story.id))
+    assert result['ready'] is False and result['reason'] == 'Спершу задайте явний ліміт бюджету в налаштуваннях'

@@ -182,11 +182,18 @@ class RunCoordinator:
 
     def _supersede(self,new: Run) -> None:
         """RUN-SUPERSEDE: a new run of one stage of a scene cancels stopped runs waiting at that same stage of that scene;
-        a new book validation cancels the audit runs of that story waiting for the author (VALID-RUN)."""
+        a new book validation cancels every resumable audit run of that story, so no older plan is paid on resume
+        (VALID-RUN)."""
         if new.request.mode=='audit' and new.request.audit_scope=='story':
             for run in self.list_runs(new.story_id):
-                if run.id!=new.id and run.request.mode=='audit' and run.state=='needs_review':
-                    self.event(run.id,'superseded',{'run_id':new.id})
+                if run.id==new.id or run.request.mode!='audit' or run.state not in {'needs_review','paused','failed','interrupted'}:
+                    continue
+                self.event(run.id,'superseded',{'run_id':new.id})
+                if run.state=='failed':  # cancel() keeps a failed run as is; a superseded one is closed all the same
+                    run.state='cancelled'
+                    self._save(run)
+                    self.event(run.id,'state',{'state':run.state})
+                else:
                     self.cancel(run.id)
             return
         if new.request.mode not in {'stage','edit_loop'} or not new.request.scene_id:
