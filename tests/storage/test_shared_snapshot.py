@@ -5,10 +5,11 @@ import threading
 
 import pytest
 
-from storygen.impact.presentation import scene_status
+from storygen.storage.material_status import material_status
 from storygen.storage import snapshots
 from storygen.storage.context_view import ContextView
 from tests.storage.test_freshness import setup
+
 
 
 def private_view(repo, story_id):
@@ -103,40 +104,6 @@ def test_write_transaction_view_is_private(tmp_path):
     assert repo.context_view(story.id).peek_scene(scene.id).title == 'Сцена'
 
 
-def test_impact_and_review_current_caches_are_private(tmp_path):
-    repo, story, scene, draft, prose = setup(tmp_path)
-    a = repo.context_view(story.id)
-    b = repo.context_view(story.id)
-    assert a.impact_current_cache is not b.impact_current_cache
-    assert a.review_current_cache is not b.review_current_cache
-
-
-def test_impact_record_checked_in_parallel_with_freshness(tmp_path):
-    """A no_impact overlay checked by /impact while another request computes freshness gives the serial result."""
-    from tests.impact.test_storage import assessed
-    from storygen.storage.impact_validity import current_record
-    repo, story, _, _, ref, record = assessed(tmp_path)
-    repo.impact('save_report', record=record)
-    expected = dumped(snapshots.freshness(private_view(repo, story.id), ref.id))
-    repo.db.bump_generation()
-    views = [repo.context_view(story.id) for _ in range(2)]
-    barrier = threading.Barrier(2)
-
-    def check():
-        barrier.wait()
-        current_record(views[0], ref.id)
-
-    def fresh():
-        barrier.wait()
-        snapshots.freshness(views[1], ref.id)
-    threads = [threading.Thread(target=check), threading.Thread(target=fresh)]
-    for t in threads:
-        t.start()
-    for t in threads:
-        t.join(10)
-    assert dumped(snapshots.freshness(repo.context_view(story.id), ref.id)) == expected
-
-
 def _cycle(repo, story, scene, prose):
     """X -> A -> B -> C -> A: versions whose dependency snapshots refer to each other."""
     with repo.db.connection() as db:
@@ -193,7 +160,7 @@ def _outputs(repo, story_id, view):
     from storygen.generation.readiness import preview
     scenes = view.peek_scenes(story_id)
     return json.dumps({
-        'status': scene_status(view),
+        'status': material_status(view),
         'fresh': {v: dumped(snapshots.freshness(view, v)) for v in sorted(view.versions)},
         'ready': {name: preview(repo, _request(story_id, scenes[-1].id, name), view) for name in OPERATIONS},
     }, default=_default, sort_keys=True)
@@ -280,37 +247,35 @@ def test_cards_and_journals_parsed_once_across_a_write(tmp_path, monkeypatch):
     import storygen.characters.models as character_models
     import storygen.memory.journal as journal
     from storygen.application.workspace_bench import build_story
-    from storygen.review.capture import plan_review
     from storygen.storage.repository import Repository
     repo = Repository(tmp_path)
     story_id = build_story(repo, 3, cast=True)
-    plan_review(repo.context_view(story_id))
+    material_status(repo.context_view(story_id))
     calls = []
     for module, name in [(character_models, 'load_characters'), (journal, 'load_memory')]:
         original = getattr(module, name)
         monkeypatch.setattr(module, name, lambda *a, _o=original, _n=name, **k: (calls.append(_n), _o(*a, **k))[1])
     repo.db.bump_generation()
     view = repo.context_view(story_id)
-    plan_review(view)
+    material_status(view)
     assert calls == []
 
 
 def test_scene_values_start_again_in_a_new_generation(tmp_path):
     from storygen.application.workspace_bench import build_story
-    from storygen.review.capture import plan_review
     from storygen.storage.repository import Repository
     repo = Repository(tmp_path)
     story_id = build_story(repo, 3, cast=True)
     view = repo.context_view(story_id)
-    plan_review(view)
-    assert any(key[0] == 'names' for key in view.memo_cache)
+    material_status(view)
+    assert any(key[0] == 'tracked' for key in view.memo_cache)
     repo.db.bump_generation()
     fresh = repo.context_view(story_id)
     assert fresh.memo_cache is not view.memo_cache
     # Only parses of one version's file carry over (ImmutableStore); scene values are computed again.
     assert not any(key[0][0] in {'names', 'policy', 'tracked'} for key in repo.immutable.parses)
-    plan_review(fresh)
-    assert any(key[0] == 'names' for key in fresh.memo_cache)
+    material_status(fresh)
+    assert any(key[0] == 'tracked' for key in fresh.memo_cache)
 
 
 def test_second_capture_of_a_generation_adopts_the_published_state(tmp_path, monkeypatch):

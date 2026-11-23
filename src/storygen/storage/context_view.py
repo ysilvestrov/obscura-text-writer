@@ -66,9 +66,7 @@ class SharedState:
 
 
 # Captured models and caches of values that depend only on the snapshot; never the walk state or sentinel caches.
-SHARED_FIELDS = ('files', 'story', 'scenes', 'versions', 'impact_records', 'impact_applications', 'impact_proofs',
-                 'review_reports', 'review_acceptances', 'review_operations', 'review_proofs', 'review_authority',
-                 'review_authority_operations', 'sources', 'source_files', 'acceptances', 'acceptance_records',
+SHARED_FIELDS = ('files', 'story', 'scenes', 'versions', 'sources', 'source_files', 'acceptances', 'acceptance_records',
                  'blob_cache', 'preamble_cache', 'journal_cache', 'memo_cache', 'immutable', 'locations')
 
 
@@ -91,14 +89,6 @@ class ContextView:
             'SELECT payload FROM scenes WHERE story_id=? ORDER BY position,id', (story_id,))]}
         self.versions = {v.id: v for v in [VersionRef.model_validate_json(r[0]) for r in db.execute(
             'SELECT payload FROM versions WHERE story_id=? ORDER BY rowid', (story_id,))]}
-        from .impact_validity import load
-        self.impact_records,self.impact_applications,self.impact_proofs=load(db,story_id)
-        self.impact_current_cache={}
-        from ..review.store import load as load_review
-        self.review_reports,self.review_acceptances,self.review_operations,self.review_proofs=load_review(db,story_id)
-        self.review_current_cache={}
-        from .review_authority import load as load_authority
-        self.review_authority,self.review_authority_operations=load_authority(db,story_id)
         self.token_profiles = token_profiles(db)
         self.sources = {row[0]:row[1] for row in db.execute('SELECT kind,version_id FROM active_sources WHERE story_id=?',(story_id,))}
         from .import_store import source_files
@@ -130,16 +120,13 @@ class ContextView:
 
     @classmethod
     def from_state(cls, state, db):
-        """A request view over a published state: shared models and results, its own walk state, sentinel caches
-        (impact_current_cache, review_current_cache) and token profiles."""
+        """A request view over a published state: shared models and results, its own walk state and token profiles."""
         view = cls.__new__(cls)
         view.__dict__.update(state.fields)
         view.resolving = set()
         view.cycle_hits = 0
         view.freshness_cache = LayeredCache(state.fresh)
         view.shared_lock = state.lock
-        view.impact_current_cache = {}
-        view.review_current_cache = {}
         view.token_profiles = token_profiles(db)
         return view
 
@@ -204,12 +191,10 @@ class ContextView:
         return ref,self.is_stale(id)
 
     def get_stored_version(self, id):
-        """Як Repository.get_version: версія без записів прийняття, рецензії чи пріоритетів лишається зі збереженим stale."""
+        """Як Repository.get_version: версія без знімка й запису прийняття лишається зі збереженим stale."""
         ref=self.peek_version(id)
         self.peek_story(ref.story_id)
-        legacy=(ref.dependency_snapshot is None and ref.manual_projection_policy is None and ref.id not in self.acceptances
-                and not any(r.target.version_id==ref.id for r in self.review_acceptances)
-                and not any(scope[0]==ref.scene_id for scope in self.review_authority))
+        legacy=ref.dependency_snapshot is None and ref.manual_projection_policy is None and ref.id not in self.acceptances
         return ref.model_copy(deep=True) if legacy else self.get_version(id)
 
     def read_stored_text(self, id):
@@ -219,7 +204,7 @@ class ContextView:
     def effective_scene(self, id):
         scene=self.get_scene(id)
         prose=self.versions.get(scene.heads.get('prose'))
-        if prose and (prose.dependency_snapshot is not None or prose.id in self.acceptances or any(scope[0]==id for scope in self.review_authority) or any(r.target.version_id==prose.id for r in self.impact_records.values()) or any(r.target.version_id==prose.id for r in self.review_acceptances)):
+        if prose and (prose.dependency_snapshot is not None or prose.id in self.acceptances):
             scene.needs_review=self.is_stale(prose.id)
         elif prose and prose.manual_projection_policy is not None:
             scene.needs_review=scene.needs_review or self.is_stale(prose.id)

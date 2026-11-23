@@ -344,9 +344,7 @@ class Repository:
             if ref.scene_id:self._active_scene(db,ref.scene_id)
             if ref.dependency_snapshot is None and ref.manual_projection_policy is None:
                 author_accepted=any(json.loads(r[0]).get('version_id')==ref.id for r in db.execute('SELECT payload FROM app_settings WHERE key LIKE ?',('acceptance:'+ref.story_id+':%',)))
-                reviewed=any(json.loads(r[0]).get('target',{}).get('version_id')==ref.id for r in db.execute('SELECT payload FROM app_settings WHERE key LIKE ? OR key LIKE ?',('review3:'+ref.story_id+':acceptance:%','review4:'+ref.story_id+':acceptance:%')))
-                policies,_=review_authority.load(db,ref.story_id)
-                if not author_accepted and not reviewed and not any(scope[0]==ref.scene_id for scope in policies):return ref
+                if not author_accepted:return ref
             from .shared_snapshot import read_view
             return read_view(self,db,ref.story_id).get_version(id)
 

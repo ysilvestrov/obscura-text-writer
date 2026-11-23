@@ -614,24 +614,6 @@ def _compute_freshness(view, version_id: str) -> FreshnessResult:
                 if hidden!=expected:reasons.append(DependencyChange(selector=DependencySelector(kind='scene',owner_id=ref.scene_id,field='memory_projection_policy',expected=expected),expected=expected,current=hidden,reason='selector_changed'))
         else:
             reasons.extend(compare_snapshot(view, baseline))
-        # A review adds live dependencies even when the original version was fresh.
-        # A later explicit author rebase supersedes that review, retaining its own contract.
-        from ..review.store import latest as latest_review,current_acceptance
-        reviewed=latest_review(view,version_id)
-        review_applies=reviewed and (not acceptance or reviewed.target.baseline_ids.get(version_id)==acceptance.id)
-        if not any(r.reason in {'incomplete','integrity_error'} for r in reasons):
-            if review_applies:
-                if current_acceptance(view,version_id):reasons=[]
-                else:reasons.append(DependencyChange(version_id=version_id,reason='review_basis_changed'))
-            elif reasons:
-                from .impact_validity import valid_overlay
-                if valid_overlay(view,version_id):reasons=[]
-        from .review_authority import revision
-        material='brief' if ref.kind=='brief' else 'prose' if ref.kind in {'edited','manual'} else None
-        if material and ref.scene_id and revision(view,ref.scene_id,material):
-            current=current_acceptance(view,version_id)
-            if not current or getattr(current,'authority_revision',0)!=revision(view,ref.scene_id,material):
-                reasons.append(DependencyChange(version_id=version_id,reason='review_basis_changed'))
         result = FreshnessResult(
             stale=bool(reasons),
             reasons=reasons,

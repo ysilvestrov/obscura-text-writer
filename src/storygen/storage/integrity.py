@@ -242,10 +242,6 @@ def check_integrity(root: Path) -> IntegrityReport:
             if schema>=3:
                 from .publication_checks import check_publications
                 check_publications(db,report,stories,verify_file,root)
-            from .impact_checks import check_impact
-            check_impact(db,report,stories,scenes,versions,root)
-            from .review_checks import check_reviews
-            check_reviews(db,report,stories,scenes,versions,root)
             if schema>=4:
                 from .comment_checks import check_comments
                 check_comments(db,report,stories,scenes,versions,verify_file,root)
