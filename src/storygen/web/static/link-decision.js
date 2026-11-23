@@ -1,37 +1,60 @@
 import {t,uiText} from './i18n.js';
 import {api,json,notice} from './api.js';
-import {state,refresh} from './editor.js';
-// VALID-LINKS-S08: an unchecked brief or prose link of the open scene offers the author's approval. The panel reads
-// the story view's material_status; the server checks the fingerprint, so a stale panel gets 409 and refreshes.
+import {state,refresh,selectScene} from './editor.js';
+import {invokeWorkspaceCommand} from './workspace-commands.js';
+import {pendingLinks} from './link-actions.js';
+// VALID-LINKS-S08/S11: the pending links of the open scene with the author's actions (link-actions.js). The panel
+// reads the story view's material_status; the server checks the fingerprint, so a stale panel gets 409 and refreshes.
 const host=document.querySelector('#link-attention');
-const LINKS={brief:{text:'link.brief_unchecked',action:'link.approve_brief'},prose:{text:'link.prose_unchecked',action:'link.approve_prose'}};
-let busy=false;
-export function pendingLinks(materialStatus,sceneId){
-  const links=(materialStatus||{})[sceneId]?.links||{};
-  return Object.keys(LINKS).filter(link=>links[link]?.status==='unchecked').map(link=>({link,fingerprint:links[link].fingerprint}));
-}
+const CARRY_POLL_MS=3000;
+let busy=false,carryTimer=null;
 function render(){
   if(!host)return;
   host.replaceChildren();
-  const items=state.scene?pendingLinks(state.view?.material_status,state.scene.id):[];
+  const items=state.scene?pendingLinks(state.view?.material_status,state.scene.id,state.view?.scenes||[]):[];
   host.hidden=!items.length;
   for(const item of items){
-    const row=document.createElement('p');row.className='link-attention-row';row.dataset.link=item.link;
-    const text=document.createElement('span');uiText(text,'textContent',()=>t(LINKS[item.link].text));
-    const button=document.createElement('button');button.type='button';button.className='secondary';button.disabled=busy;
-    uiText(button,'textContent',()=>t(LINKS[item.link].action));
-    button.onclick=()=>void decide(item);
-    row.append(text,' ',button);host.append(row);
+    const row=document.createElement('p');row.className='link-attention-row';row.dataset.link=item.key;
+    const text=document.createElement('span');uiText(text,'textContent',()=>t(item.text,item.params));
+    row.append(text);
+    for(const action of item.actions){
+      const button=document.createElement('button');button.type='button';button.className='secondary';button.disabled=busy;
+      uiText(button,'textContent',()=>t(action.label));
+      button.onclick=()=>void(action.type==='approve'?decide(action):createMemory(action.sceneId));
+      row.append(' ',button);
+    }
+    host.append(row);
   }
+  // MEMORY-CARRY: the carry runs in the background without a followed run; the view is read again until it reaches
+  // this scene, so «Пам’ять переноситься…» clears by itself.
+  clearTimeout(carryTimer);carryTimer=null;
+  if(items.some(item=>item.text==='link.carry_pending'))carryTimer=setTimeout(()=>{
+    carryTimer=null;
+    if(!busy&&!state.dirty&&!state.saving)refresh({fresh:true}).catch(()=>{}).finally(render);else render();
+  },CARRY_POLL_MS);
 }
-async function decide(item){
+async function decide(action){
   if(busy)return;
   busy=true;render();
   try{
-    await api(`/api/scenes/${state.scene.id}/links/${item.link}/decision`,json('POST',{action:'approve',fingerprint:item.fingerprint}));
+    await api(`/api/scenes/${state.scene.id}/links/${action.link}/decision`,json('POST',{action:'approve',fingerprint:action.fingerprint}));
     notice(t('link.approved'),'success');
   }catch(error){notice(error.message,'error')}
   finally{busy=false;await refresh();render()}
+}
+// The memory stage of the named scene through the usual run preview and consent. The run command works on the open
+// scene, so another scene (the previous one) is opened first; a cancelled switch (unsaved text) launches nothing.
+async function createMemory(sceneId){
+  if(busy)return;
+  try{
+    if(state.scene?.id!==sceneId){
+      const target=state.view?.scenes?.find(scene=>scene.id===sceneId);
+      if(!target)return;
+      await selectScene(target);
+      if(state.scene?.id!==sceneId)return;
+    }
+    await invokeWorkspaceCommand('run',{mode:'stage',stage:'memory'});
+  }catch(error){if(error.name!=='AbortError')notice(error.message,'error')}
 }
 document.addEventListener('story-refreshed',render);
 document.addEventListener('scene-selected',render);

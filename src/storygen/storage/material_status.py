@@ -8,6 +8,8 @@ def material_status(view):
     """{scene_id: {brief, prose: pending|current|missing, memory: needs_update|current|missing, links, validity}}.
 
     links: {brief|prose|memory: {status, source, reason, fingerprint}} and validity of the scene (VALID-LINKS).
+    previous_scene_id: only when brief or prose is unavailable for want of a previous memory and the scene continues a
+    plain earlier scene (no merge, no series start) — the panel offers to create that scene's memory.
 
     Read-only: shared view models (peek_*) and the recomputed stale flag; get_version would deep-copy each head."""
     def stale(id):
@@ -25,5 +27,16 @@ def material_status(view):
         states=scene_links(view,scene.id)
         values['links']={link:state.as_dict() for link,state in states.items()}
         values['validity']=scene_validity(view,scene.id)
+        if any(state.reason=='no_previous_memory' for state in states.values()):
+            previous=_plain_previous(view,scene)
+            if previous:values['previous_scene_id']=previous
         rows[scene.id]=values
     return rows
+
+
+def _plain_previous(view,scene):
+    from ..memory.previous import previous_memory
+    before=previous_memory(view,scene,peek=True,require=False)
+    if before.merge_key or before.series_start or not before.ancestors:
+        return None
+    return before.ancestors[-1].id

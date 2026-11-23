@@ -350,3 +350,16 @@ def test_chat_stage_result_refused_while_carrying(tmp_path):
     response = client.post(f'/api/scenes/{scenes[1].id}/chat-result/memory', json={
         'task_fingerprint': '0' * 64, 'text': '{}', 'external_origin': {'client': 'Claude', 'model': 'm'}})
     assert response.status_code == 409 and CARRYING in response.json()['detail']
+
+
+def test_stop_warning_names_the_real_reason():
+    from storygen.generation.memory_carry import FAILED, stop_warning
+    from storygen.memory.carry import CARRY_MISSING
+    assert stop_warning('Ранок', CARRY_MISSING) == FAILED.replace('{p0}', 'Ранок')
+    assert stop_warning('Ранок', None) == FAILED.replace('{p0}', 'Ранок')
+    # Not author text (a KeyError or a pydantic message): the general sentence.
+    assert stop_warning('Ранок', "'claim-1'") == FAILED.replace('{p0}', 'Ранок')
+    assert stop_warning('Ранок', '1 validation error for MemoryJournal') == FAILED.replace('{p0}', 'Ранок')
+    text = stop_warning('Ранок', 'Пам’ять сцени не має власного джерела.\nДругий рядок')
+    assert text == 'Перенос пам’яті зупинено на сцені «Ранок»: Пам’ять сцени не має власного джерела. Другий рядок — створіть нову пам’ять цієї сцени'
+    assert '\n' not in text

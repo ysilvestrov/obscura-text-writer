@@ -14,7 +14,7 @@ async function saveChangedCard(page,request){
   await card.locator('textarea').fill('Доглядачка маяка на пагорбі.');
   await page.locator('#characters-save').click();
   const dialog=page.locator('.app-dialog');
-  await expect(dialog).toContainText('Змінено картки: Олена. Позначити 1 залежних сцен як неперевірені?');
+  await expect(dialog).toContainText('Змінено картки: Олена. Позначити залежні сцени як неперевірені? Сцен: 1.');
   return {fixture,dialog};
 }
 
@@ -47,7 +47,7 @@ test('a location description asks too, and «Так» unchecks the scene',async(
   await hill.locator('textarea').fill('Вітряний пагорб над морем.');
   await hill.getByRole('button',{name:'Зберегти опис'}).click();
   const dialog=page.locator('.app-dialog');
-  await expect(dialog).toContainText('Змінено локації: Пагорб. Позначити 1 залежних сцен як неперевірені?');
+  await expect(dialog).toContainText('Змінено локації: Пагорб. Позначити залежні сцени як неперевірені? Сцен: 1.');
   await dialog.getByRole('button',{name:'Так'}).click();
   await expect(page.locator('#workspace-scene-status')).toContainText('Не перевірено');
 });

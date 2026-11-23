@@ -110,3 +110,20 @@ def test_approving_a_valid_link_writes_nothing(tmp_path):
         response = decide(client, scene.id, 'brief', state['fingerprint'])
         assert response.status_code == 200 and response.json()['link']['source'] == 'construction'
     assert repo.context_view(story.id).link_verdicts == {}
+
+
+@pytest.mark.req('VALID-LINKS')
+def test_story_view_names_the_previous_scene_without_memory(tmp_path):
+    from storygen.domain import StoryCreate, SceneCreate
+    from storygen.storage.repository import Repository
+    repo = Repository(tmp_path)
+    story = repo.create_story(StoryCreate(title='Твір'))
+    first = repo.create_scene(story.id, SceneCreate(title='Ранок', beats='Студія'))
+    second = repo.create_scene(story.id, SceneCreate(title='Вечір', beats='Студія'))
+    save_manual_prose(repo, first.id, 'Ранок у студії.', 0)
+    save_manual_brief(repo, repo.get_scene(second.id))
+    with client_for(tmp_path) as client:
+        rows = client.get(f'/api/stories/{story.id}').json()['material_status']
+    assert rows[second.id]['links']['brief']['reason'] == 'no_previous_memory'
+    assert rows[second.id]['previous_scene_id'] == first.id
+    assert 'previous_scene_id' not in rows[first.id]

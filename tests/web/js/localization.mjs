@@ -74,3 +74,12 @@ assert.equal(diagnostic('Некоректні дані: Сцена «Ранок�
   'Invalid data: Scene “Ранок”: its memory could not be carried onto the new memory of the previous scene — create a new memory for this scene');
 setLocale('uk');
 console.log('Memory carry diagnostics passed');
+
+// MEMORY-CARRY: the carry stop warning keeps its specific translation; another reason is carried into the general one.
+setLocale('en');
+assert.equal(diagnostic('Перенос пам’яті зупинено на сцені «Ранок»: її записи посилаються на твердження, яких немає в новій пам’яті попередньої сцени — створіть нову пам’ять цієї сцени'),
+  'The memory carry stopped at scene “Ранок”: its records refer to claims the new memory of the previous scene does not have — create a new memory for this scene');
+assert.equal(diagnostic('Перенос пам’яті зупинено на сцені «Ранок»: Пам’ять сцени не має власного джерела — створіть нову пам’ять цієї сцени'),
+  'The memory carry stopped at scene “Ранок”: Пам’ять сцени не має власного джерела — create a new memory for this scene');
+setLocale('uk');
+console.log('Memory carry warnings passed');

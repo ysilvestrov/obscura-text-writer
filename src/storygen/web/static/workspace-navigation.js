@@ -1,6 +1,6 @@
 import {t,msg,labelEntries,getLocale,uiText,uiAttr,uiHTML} from './i18n.js';
 import {settingsLink,returnLink} from './workspace-links.js';
-import {ROLES,STAGE_ROLE} from './roles.js';
+import {ROLES,STAGE_ROLE,runSettingsRole} from './roles.js';
 
 const settings=document.querySelector('.settings-page');
 if(settings){
@@ -41,8 +41,8 @@ if(workspace){
     else if(state.workspaceRun?.state!=='failed')link.hidden=true;
   });
   document.addEventListener('workspace-run-state',event=>{
-    const run=event.detail,task=run.tasks?.[run.cursor];
-    if(run.state==='failed'||run.warning)show(run.request.mode==='edit_loop'?'editor':STAGE_ROLE[task?.stage||run.request.stage||run.request.mode]);
+    const run=event.detail,role=runSettingsRole(run);
+    if((run.state==='failed'||run.warning)&&role)show(role);
     else link.hidden=true;
   });
   document.addEventListener('scene-selected',()=>{link.hidden=true});

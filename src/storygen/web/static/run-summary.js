@@ -2,10 +2,16 @@
 // Pure rules; runs.js only renders them.
 
 // State and planned models when known. The ⚠ mark is separate (runNoticeMark) so truncating a long model list never hides it.
-export function runSummaryText(run,stateLabel){
+// modeLabel names a run that is not a model stage the author started (MEMORY-CARRY: the model-free carry).
+export function runSummaryText(run,stateLabel,modeLabel=''){
   const plan=run?.planned_telemetry;
   const models=plan?[...new Set([...Object.values(plan.roles||{}),...(plan.evaluator?[plan.evaluator]:[])].map(v=>`${v.provider} / ${v.model}`))].join(', '):'';
-  return [stateLabel,models].filter(Boolean).join(' · ');
+  return [modeLabel,stateLabel,models].filter(Boolean).join(' · ');
+}
+
+// The catalog key of a run's own label, or null for the usual model runs.
+export function runModeKey(run){
+  return run?.request?.mode==='memory_carry'?'run.mode_memory_carry':null;
 }
 
 // A failed run shows its error expanded; any other run marks a hidden warning or error.

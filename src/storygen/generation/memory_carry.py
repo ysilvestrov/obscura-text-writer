@@ -1,12 +1,24 @@
 """MEMORY-CARRY: the queue run `memory_carry` — no model and no budget. It walks the later scenes in reading order;
 each step is its own transaction with CAS on the scene revision (storage commit_memory_carry)."""
 from ..domain import RevisionConflict
-from ..memory.carry import ACTIVE, CarryFailed, carry_journal, same_inheritance
+import re
+
+from ..memory.carry import ACTIVE, CARRY_MISSING, CarryFailed, carry_journal, same_inheritance
 from ..run_models import merge_warnings
 
 STEP_RETRIES = 3
 FAILED = 'Перенос пам’яті зупинено на сцені «{p0}»: її записи посилаються на твердження, яких немає в новій пам’яті попередньої сцени — створіть нову пам’ять цієї сцени'
+FAILED_REASON = 'Перенос пам’яті зупинено на сцені «{p0}»: {p1} — створіть нову пам’ять цієї сцени'
 MERGE_STOP = 'Перенос пам’яті зупинено на сцені «{p0}»: потрібне злиття пам’яті перед цією сценою — підтвердьте злиття'
+
+
+def stop_warning(title: str, detail: str | None) -> str:
+    """The warning of a failed carry step: the general sentence for missing claims or a reason that is not app text
+    (a KeyError or a validation message without Ukrainian words), else the real reason on one line."""
+    reason = ' '.join((detail or '').split()).rstrip('.')
+    if not reason or reason == CARRY_MISSING or not re.search('[А-Яа-яІіЇїЄєҐґ]', reason):
+        return FAILED.replace('{p0}', title)
+    return FAILED_REASON.replace('{p0}', title).replace('{p1}', reason)
 
 
 def _carried_snapshot(view, snapshot, before, carried):
@@ -112,8 +124,9 @@ def execute(coordinator, run_id: str) -> None:
                 key = 'failed_scene_id' if outcome['result'] == 'failed' else 'stopped_scene_id'
                 current.checkpoint = {key: scene_id, **{k: v for k, v in outcome.items() if k != 'result'}}
                 scene = repo.get_scene(scene_id)
-                text = FAILED if outcome['result'] == 'failed' else MERGE_STOP
-                current.warning = merge_warnings(current.warning, [text.replace('{p0}', scene.title)])
+                text = (stop_warning(scene.title, outcome.get('detail')) if outcome['result'] == 'failed'
+                        else MERGE_STOP.replace('{p0}', scene.title))
+                current.warning = merge_warnings(current.warning, [text])
                 return _finish(coordinator, current, 'completed')
             current.cursor += 1
             coordinator._save(current)

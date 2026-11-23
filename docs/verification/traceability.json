@@ -7544,7 +7544,8 @@
         "tests/web/test_link_decisions.py::test_author_keeps_memory_through_the_api",
         "tests/web/test_link_decisions.py::test_missing_link_cannot_be_approved",
         "tests/web/test_link_decisions.py::test_unknown_action_or_link_is_422",
-        "tests/web/test_link_decisions.py::test_approving_a_valid_link_writes_nothing"
+        "tests/web/test_link_decisions.py::test_approving_a_valid_link_writes_nothing",
+        "tests/web/test_link_decision_ui.py::test_link_panel_actions"
       ],
       "manual": {
         "procedure": "docs/verification/manual.md#link-decision-browser",
@@ -7578,6 +7579,7 @@
       "scope": "Стан у перегляді твору, MCP і бейджі сцени.",
       "tests": [
         "tests/web/test_link_decisions.py::test_story_view_reports_links_and_validity",
+        "tests/web/test_link_decisions.py::test_story_view_names_the_previous_scene_without_memory",
         "tests/mcp/test_scene_state_validity.py::test_scene_state_keeps_client_words_for_validity",
         "tests/mcp/test_scene_state_validity.py::test_get_story_reports_validity_and_links",
         "tests/web/test_workspace_status_ui.py::test_scene_status_vocabulary"
