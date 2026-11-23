@@ -394,3 +394,18 @@ def link_decision(scene_id: str,link: Literal['brief','prose','memory'],body: Li
         return decide_link(request.app.state.repo,scene_id,link,body.action,body.fingerprint)
     except LinkDecisionRefused as error:
         raise HTTPException(422,str(error)) from error
+
+
+from ..storage.link_records import InvalidationReason
+
+
+class LinkInvalidationBody(DomainModel):
+    scene_ids: list[str] = Field(min_length=1,max_length=5000)
+    reason: InvalidationReason
+
+
+@router.post('/api/stories/{story_id}/links/invalidate')
+def link_invalidation(story_id: str,body: LinkInvalidationBody,request: Request):
+    """VALID-LINKS rule (г): the author's «Так» after a card or location change unchecks Z1 and Z2 of these scenes."""
+    from ..storage.link_decisions import invalidate_links
+    return {'scene_ids':invalidate_links(request.app.state.repo,story_id,body.scene_ids,body.reason.model_dump())}

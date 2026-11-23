@@ -7594,7 +7594,9 @@
         "tests/storage/test_link_records.py::test_verdict_rejects_bad_values",
         "tests/storage/test_link_records.py::test_fsck_reports_foreign_scene_verdict",
         "tests/storage/test_link_records.py::test_view_refuses_verdict_under_a_foreign_key",
-        "tests/storage/test_link_records.py::test_fsck_reports_foreign_equivalence"
+        "tests/storage/test_link_records.py::test_fsck_reports_foreign_equivalence",
+        "tests/storage/test_link_records.py::test_fsck_reports_foreign_invalidation",
+        "tests/storage/test_link_records.py::test_invalidation_rejects_links_without_fingerprints"
       ]
     }
   ]

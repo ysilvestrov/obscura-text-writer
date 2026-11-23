@@ -118,3 +118,38 @@ def test_fsck_reports_foreign_equivalence(tmp_path):
     assert any(i.code == 'invalid_prose_equivalence' for i in check_integrity(repo.root).issues)
     with pytest.raises(ValueError):
         repo.context_view(story.id)
+
+
+@pytest.mark.req('VALID-LINKS')
+def test_fsck_reports_foreign_invalidation(tmp_path):
+    from storygen.storage.link_records import LinkInvalidation, write_invalidation
+    repo, story, scene = one_scene(tmp_path)
+    other = repo.create_story(StoryCreate(title='Інший'))
+    foreign = repo.create_scene(other.id, SceneCreate(title='Чужа', beats='x'))
+    record = LinkInvalidation(id=new_verdict_id(), story_id=story.id, scene_id=scene.id, links=['brief', 'prose'],
+                              fingerprints={'brief': 'a' * 64, 'prose': 'b' * 64},
+                              reason={'kind': 'location', 'ids': ['l1']}, created_at='2026-11-23T00:00:00+00:00')
+    with repo.db.connection() as db:
+        db.execute('BEGIN IMMEDIATE')
+        write_invalidation(db, record)
+    assert repo.context_view(story.id).link_invalidations == [record]
+    assert not any(i.code == 'invalid_link_invalidation' for i in check_integrity(repo.root).issues)
+    raw = record.model_dump(); raw['scene_id'] = foreign.id
+    with repo.db.connection() as db:
+        db.execute('UPDATE app_settings SET payload=? WHERE key=?',
+                   (json.dumps(raw), 'link_invalidation:' + story.id + ':' + record.id))
+    assert any(i.code == 'invalid_link_invalidation' for i in check_integrity(repo.root).issues)
+    with pytest.raises(ValueError):
+        repo.context_view(story.id)
+
+
+@pytest.mark.req('VALID-LINKS')
+def test_invalidation_rejects_links_without_fingerprints():
+    from storygen.storage.link_records import LinkInvalidation
+    base = dict(id='i', story_id='s', scene_id='c', reason={'kind': 'character', 'ids': ['x']}, created_at='t')
+    with pytest.raises(ValueError):
+        LinkInvalidation(**base, links=['brief'], fingerprints={'prose': 'a' * 64})
+    with pytest.raises(ValueError):
+        LinkInvalidation(**base, links=['memory'], fingerprints={'memory': 'a' * 64})
+    with pytest.raises(ValueError):
+        LinkInvalidation(**{**base, 'reason': {'kind': 'style', 'ids': ['x']}}, links=['brief'], fingerprints={'brief': 'a' * 64})

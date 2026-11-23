@@ -169,6 +169,20 @@ def change_locations(repo, story_id: str, expected_revision: int, action) -> dic
         story=repo._active_story(db,story_id)
         if story.revision!=expected_revision:
             raise RevisionConflict('Твір уже змінено. Оновіть локації; зміну не збережено.')
+        before=_shown_by_scene(db,story_id)
         action(db)
+        after=_shown_by_scene(db,story_id)
         repo._save_story(db,story.model_copy(update={'revision':story.revision+1}))
-    return locations_view(repo,story_id)
+    # VALID-LINKS rule (г): the panel asks the author whether to uncheck these scenes; the change alone moves no link.
+    return {**locations_view(repo,story_id),'dependent_scene_ids':[id for id in after if after[id]!=before.get(id)]}
+
+
+def _shown_by_scene(db, story_id: str) -> dict[str,list]:
+    """{scene id: «ЛОКАЦІЇ СЦЕНИ» rows} of the active scenes in book order: a scene depends on a location change
+    when what its context shows changes (its own card, a merge target or an ancestor's description). Only scenes with a
+    brief: without one Z1 and Z2 are missing and the invalidation would write nothing."""
+    from ..domain import Scene
+    cards=load_locations(db,story_id)
+    scenes=[Scene.model_validate_json(r[0]) for r in db.execute(
+        'SELECT payload FROM scenes WHERE story_id=? ORDER BY position,id',(story_id,))]
+    return {scene.id:shown_locations(cards,scene.location_ids) for scene in scenes if not scene.trashed_at and scene.heads.get('brief')}

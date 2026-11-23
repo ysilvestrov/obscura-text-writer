@@ -6,6 +6,7 @@ import {t,msg,uiText,uiAttr,diagnostic} from './i18n.js';
 import {api,json,notice} from './api.js';
 import {state,refresh} from './editor.js';
 import {confirmDialog} from './dialogs.js';
+import {offerInvalidation} from './link-invalidation.js';
 import {locationRows,mergeTargets,suggestionRows} from './locations.js';
 
 let data=null,storyId=null,choosing=null,busy=false;
@@ -73,7 +74,7 @@ function draw(){
     else{
       const actions=node('div',null,'actions');
       if(row.canMerge&&mergeTargets(data,row.id).length)actions.append(button(()=>t('locations.merge'),()=>{choosing=row.id;draw()}));
-      if(row.canSplit)actions.append(button(()=>t('locations.split'),()=>change(`/${row.id}/split`,'POST',{},'locations.split_notice')));
+      if(row.canSplit)actions.append(button(()=>t('locations.split'),()=>change(`/${row.id}/split`,'POST',{},'locations.split_notice',{ids:[row.id],names:[row.path]})));
       if(actions.children.length)item.append(actions);
     }
     section.append(item);
@@ -87,27 +88,31 @@ async function load(){
   draw();
 }
 
-async function change(path,method,body,done){
+// subject {ids, names}: the cards a description, merge or split changes; the author then decides on the dependent scenes.
+async function change(path,method,body,done,subject=null){
   if(busy||!data)return false;
-  const before=data.story_revision;busy=true;draw();
+  const before=data.story_revision,story=state.storyId;busy=true;draw();
+  let dependent=[];
   try{
-    data=await api(`/api/stories/${state.storyId}/locations${path}`,json(method,{...body,expected_revision:before}));
+    data=await api(`/api/stories/${story}/locations${path}`,json(method,{...body,expected_revision:before}));
+    dependent=data.dependent_scene_ids||[];
     notice(msg(done));
     // The story revision moved and versions may be outdated: the page state, scene statuses and the memory table reload.
     void refresh();
-    return true;
   }catch(e){notice(diagnostic(e.message),'error');await load();return false}  // drafts survive the reload
   finally{busy=false;draw()}
+  if(subject&&await offerInvalidation(story,'location',subject.ids,subject.names,dependent))void refresh();
+  return true;
 }
 
 async function merge(id,path,into,intoPath){
   if(!into||!await confirmDialog(t('locations.merge_confirm',{p0:path,p1:intoPath||''}),{accept:t('locations.merge_do')}))return;
   choosing=null;
-  await change(`/${id}/merge`,'POST',{into},'locations.merged_notice');
+  await change(`/${id}/merge`,'POST',{into},'locations.merged_notice',{ids:[id,into],names:[path,intoPath||'']});
 }
 
 async function save(row,text){
-  if(await change(`/${row.id}`,'PUT',{description:text},'locations.saved'))drafts.delete(row.id);
+  if(await change(`/${row.id}`,'PUT',{description:text},'locations.saved',{ids:[row.id],names:[row.path]}))drafts.delete(row.id);
   draw();
 }
 

@@ -2,7 +2,7 @@
 
 Z1 «previous memory + plan → brief», Z2 «brief + previous memory → prose», Z3 «prose → memory». A link holds by
 construction (the lower component was made by a model from the current upper ones), by a verdict of the auditor or by
-the author's decision for the current fingerprint. Pure reads of the view: no freshness, no stale flags, so the
+the author's decision for the current fingerprint, unless the author invalidated it after a card change (rule (г)). Pure reads of the view: no freshness, no stale flags, so the
 freshness of a head may be computed from here without recursion."""
 import hashlib
 import json
@@ -202,9 +202,29 @@ def _memory_by_construction(view, scene):
     return prose is not None and prose.expected == scene.heads['prose']
 
 
-def _from_verdicts(view, scene_id, link, fingerprint, inputs):
+def _latest_invalidations(view) -> dict:
+    """{(scene_id, link, fingerprint): rowid of the latest invalidation}; insertion order, not created_at."""
+    def build():
+        latest = {}
+        for record in getattr(view, 'link_invalidations', ()):
+            for link in record.links:
+                latest[(record.scene_id, link, record.fingerprints[link])] = view.link_order[record.id]
+        return latest
+    return memo(view, ('link_invalidations', 'story'), build)
+
+
+def _invalidated(view, scene_id, link, fingerprint) -> bool:
+    """Rule (г): an invalidation with the current fingerprint newer than the last valid verdict for it."""
+    invalidated = _latest_invalidations(view).get((scene_id, link, fingerprint))
+    if invalidated is None:
+        return False
     verdict = view.link_verdicts.get((scene_id, link, fingerprint))
-    if verdict is None:
+    return not (verdict is not None and verdict.outcome == 'valid' and view.link_order[verdict.id] > invalidated)
+
+
+def _from_verdicts(view, scene_id, link, fingerprint, inputs, invalidated=False):
+    verdict = view.link_verdicts.get((scene_id, link, fingerprint))
+    if verdict is None or (verdict.outcome == 'valid' and invalidated):
         return LinkState(link, 'unchecked', inputs=inputs, fingerprint=fingerprint)
     if verdict.outcome == 'valid':
         return LinkState(link, 'valid', verdict.source, inputs=inputs, fingerprint=fingerprint)
@@ -235,9 +255,10 @@ def _compute(view, scene_id):
             carry = carry_states(view).get(scene_id)  # only scenes of carry runs: no journal compare otherwise
             if carry in {'pending', 'failed'}:
                 return LinkState(link, 'unavailable', None, 'carry_' + carry, inputs, fingerprint)
-        if construction():
+        invalidated = _invalidated(view, scene_id, link, fingerprint)  # rule (г): a card change the author confirmed
+        if not invalidated and construction():
             return LinkState(link, 'valid', 'construction', inputs=inputs, fingerprint=fingerprint)
-        return _from_verdicts(view, scene_id, link, fingerprint, inputs)
+        return _from_verdicts(view, scene_id, link, fingerprint, inputs, invalidated)
 
     states['brief'] = build('brief', bool(heads.get('brief')),
                             {'plan': plan_identity(view, scene), 'p0': p0, 'brief': heads.get('brief')},

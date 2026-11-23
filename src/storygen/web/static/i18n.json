@@ -2505,7 +2505,12 @@
     "link.approved": "Зв’язок затверджено.",
     "scene_status.valid": "Валідна",
     "scene_status.unchecked": "Не перевірено",
-    "scene_status.discrepancy": "Розбіжність"
+    "scene_status.discrepancy": "Розбіжність",
+    "link.cards_invalidate": "Змінено картки: {p0}. Позначити {p1} залежних сцен як неперевірені?",
+    "link.locations_invalidate": "Змінено локації: {p0}. Позначити {p1} залежних сцен як неперевірені?",
+    "link.invalidate_yes": "Так",
+    "link.invalidate_no": "Ні",
+    "link.invalidated": "Залежні сцени позначено як неперевірені."
   },
   "en": {
     "ui.save": "Save",
@@ -5013,6 +5018,11 @@
     "link.approved": "Link approved.",
     "scene_status.valid": "Valid",
     "scene_status.unchecked": "Unchecked",
-    "scene_status.discrepancy": "Discrepancy"
+    "scene_status.discrepancy": "Discrepancy",
+    "link.cards_invalidate": "Cards changed: {p0}. Mark {p1} dependent scenes as unchecked?",
+    "link.locations_invalidate": "Locations changed: {p0}. Mark {p1} dependent scenes as unchecked?",
+    "link.invalidate_yes": "Yes",
+    "link.invalidate_no": "No",
+    "link.invalidated": "Dependent scenes are marked as unchecked."
   }
 }

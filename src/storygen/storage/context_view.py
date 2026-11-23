@@ -66,7 +66,7 @@ class SharedState:
 
 
 # Captured models and caches of values that depend only on the snapshot; never the walk state or sentinel caches.
-SHARED_FIELDS = ('files', 'story', 'scenes', 'versions', 'sources', 'source_files', 'acceptances', 'acceptance_records', 'link_verdicts', 'prose_equivalences', 'memory_carries',
+SHARED_FIELDS = ('files', 'story', 'scenes', 'versions', 'sources', 'source_files', 'acceptances', 'acceptance_records', 'link_verdicts', 'link_invalidations', 'link_order', 'prose_equivalences', 'memory_carries',
                  'blob_cache', 'preamble_cache', 'journal_cache', 'memo_cache', 'immutable', 'locations')
 
 
@@ -108,8 +108,10 @@ class ContextView:
                 raise ValueError('Невідповідна версія журналу прийняття')
             self.acceptances[record.version_id]=record
             self.acceptance_records.append(record)
-        from .link_records import load_verdicts, load_equivalences
-        self.link_verdicts=load_verdicts(db,story_id,self.scenes)  # VALID-LINKS: author and auditor verdicts
+        from .link_records import load_verdicts, load_equivalences, load_invalidations
+        self.link_order={}  # record id -> rowid: insertion order of verdicts and invalidations (rule (г))
+        self.link_verdicts=load_verdicts(db,story_id,self.scenes,self.link_order)  # VALID-LINKS: author and auditor verdicts
+        self.link_invalidations=load_invalidations(db,story_id,self.scenes,self.link_order)  # the author's «Так» after a card change
         self.prose_equivalences=load_equivalences(db,story_id,self.scenes,self.versions)  # Z3 kept over a prose change
         from .carry_queue import load_carry_runs
         self.memory_carries=load_carry_runs(db,story_id)  # MEMORY-CARRY: run state is part of a scene's carry state

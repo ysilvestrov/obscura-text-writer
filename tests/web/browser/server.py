@@ -392,6 +392,31 @@ def main():
             save_manual_prose(repo,first.id,'Марія не знає про лист.',repo.get_scene(first.id).revision)
             return dict(story_id=story.id,scene_id=second.id,prose_id=prose.id)
 
+        @app.post('/test-card-invalidation')
+        def card_invalidation_fixture():
+            """A finished scene the author approved (brief, prose, own memory): «Валідна»; Олена is in its cast."""
+            import json
+            from storygen.characters.service import save_character_material
+            from storygen.generation.dependencies import save_manual_prose
+            from storygen.memory.journal import MemoryJournal, _add_event
+            from storygen.memory.service import save_scene_memory
+            from storygen.storage.link_decisions import decide_link
+            from storygen.storage.links import scene_links
+            story=rated_story('Маяк на пагорбі')
+            scene=repo.create_scene(story.id,SceneCreate(title='Ранок',beats='Маяк'))
+            entry={'id':None,'text':'Доглядачка маяка.','availability':'timeless','available_from_scene_id':None,'origin':'author','sources':[]}
+            cards=save_character_material(repo,story.id,[{'id':None,'schema_version':2,'name':'Олена','entries':[entry]}],repo.get_story(story.id).revision)
+            repo.update_scene_metadata(scene.id,{'character_ids':[cards['cards'][0]['id']]},repo.get_scene(scene.id).revision)
+            brief=json.dumps({'objective':'Світло на воді','beats':['Маяк'],'constraints':[],'proposed_changes':[]},ensure_ascii=False)
+            ref=repo.save_version(story.id,scene.id,'brief',brief,[])
+            repo.set_head(scene.id,'brief',ref.id,repo.get_scene(scene.id).revision)
+            prose=save_manual_prose(repo,scene.id,'Олена запалила маяк.',repo.get_scene(scene.id).revision)
+            journal=MemoryJournal(source_prose_ids=[prose.id],events=[_add_event('facts','Олена запалила маяк',prose.id,'Олена запалила маяк',0)])
+            save_scene_memory(repo,scene.id,journal.model_dump_json(),repo.get_scene(scene.id).revision)
+            for link in ('brief','prose'):
+                decide_link(repo,scene.id,link,'approve',scene_links(repo.context_view(story.id),scene.id)[link].fingerprint)
+            return dict(story_id=story.id,scene_id=scene.id)
+
         uvicorn.run(app, host='127.0.0.1', port=port, log_level='warning')
 
 

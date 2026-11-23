@@ -1,9 +1,9 @@
 """VALID-LINKS: append-only verdicts on the three links of a scene, kept in app_settings without a migration.
 
 A verdict holds for the link's fingerprint at the time it was written; a changed component changes the fingerprint and
-the verdict stops applying. The last record for (scene, link, fingerprint) wins."""
+the verdict stops applying. The last record for (scene, link, fingerprint) wins. "Last" is insertion order (rowid)."""
 from typing import Literal
-from pydantic import Field
+from pydantic import Field, model_validator
 from ..dependency_models import DependencyModel
 from ..domain import new_id
 
@@ -47,16 +47,19 @@ def write_verdict(db, verdict: LinkVerdict) -> None:
     db.execute('INSERT INTO app_settings VALUES(?,?)', (verdict_key(verdict.story_id, verdict.id), verdict.model_dump_json()))
 
 
-def load_verdicts(db, story_id: str, scenes) -> dict[tuple[str, str, str], LinkVerdict]:
-    """{(scene_id, link, fingerprint): last verdict}; a record under a foreign key or for a foreign scene is damage."""
+def load_verdicts(db, story_id: str, scenes, order: dict | None = None) -> dict[tuple[str, str, str], LinkVerdict]:
+    """{(scene_id, link, fingerprint): last verdict}; `order` receives {verdict id: rowid}, the insertion order rule (г)
+    compares with invalidations (created_at may tie). A record under a foreign key or for a foreign scene is damage."""
     verdicts = {}
-    for key, payload in db.execute('SELECT key,payload FROM app_settings WHERE key LIKE ? ORDER BY rowid',
-                                   (PREFIX + story_id + ':%',)):
+    for rowid, key, payload in db.execute('SELECT rowid,key,payload FROM app_settings WHERE key LIKE ? ORDER BY rowid',
+                                          (PREFIX + story_id + ':%',)):
         record = LinkVerdict.model_validate_json(payload)
         scene = scenes.get(record.scene_id)
         if record.story_id != story_id or key != verdict_key(story_id, record.id) or scene is None or scene.story_id != story_id:
             raise ValueError('Пошкоджений журнал висновків про зв’язки')
         verdicts[(record.scene_id, record.link, record.fingerprint)] = record
+        if order is not None:
+            order[record.id] = rowid
     return verdicts
 
 
@@ -146,3 +149,70 @@ def check_equivalences(db, scenes, versions, report) -> None:
                 raise ValueError('Invalid record')
         except (ValueError, TypeError):
             report.add('invalid_prose_equivalence', key, 'Invalid format or ownership of a prose equivalence')
+
+
+INVALIDATION_PREFIX = 'link_invalidation:'
+CARD_LINKS = ('brief', 'prose')
+
+
+class InvalidationReason(DependencyModel):
+    kind: Literal['character', 'location']
+    ids: list[str] = Field(min_length=1, max_length=1000)
+
+
+class LinkInvalidation(DependencyModel):
+    """The author's «Так» after a card or location change: Z1/Z2 of the scene with these fingerprints lose construction,
+    auditor and author validity until a later valid verdict (rule (г)); a changed fingerprint makes it inert."""
+    id: str = Field(min_length=1, max_length=64)
+    story_id: str
+    scene_id: str
+    links: list[Literal['brief', 'prose']] = Field(min_length=1, max_length=2)
+    fingerprints: dict[str, str]
+    reason: InvalidationReason
+    created_at: str
+
+    @model_validator(mode='after')
+    def fingerprints_match_links(self):
+        if len(set(self.links)) != len(self.links) or set(self.fingerprints) != set(self.links) or not all(
+                isinstance(value, str) and len(value) == 64 and all(c in '0123456789abcdef' for c in value)
+                for value in self.fingerprints.values()):
+            raise ValueError('Відбитки інвалідації не відповідають зв’язкам')
+        return self
+
+
+def invalidation_key(story_id: str, record_id: str) -> str:
+    return INVALIDATION_PREFIX + story_id + ':' + record_id
+
+
+def write_invalidation(db, record: LinkInvalidation) -> None:
+    """Inside the caller's transaction."""
+    db.execute('INSERT INTO app_settings VALUES(?,?)', (invalidation_key(record.story_id, record.id), record.model_dump_json()))
+
+
+def _invalidation_ok(key, record, scenes) -> bool:
+    scene = scenes.get(record.scene_id)
+    return key == invalidation_key(record.story_id, record.id) and scene is not None and scene.story_id == record.story_id
+
+
+def load_invalidations(db, story_id: str, scenes, order: dict | None = None) -> list[LinkInvalidation]:
+    """Records of the story in insertion order; `order` receives {record id: rowid}. A foreign key or scene is damage."""
+    records = []
+    for rowid, key, payload in db.execute('SELECT rowid,key,payload FROM app_settings WHERE key LIKE ? ORDER BY rowid',
+                                          (INVALIDATION_PREFIX + story_id + ':%',)):
+        record = LinkInvalidation.model_validate_json(payload)
+        if record.story_id != story_id or not _invalidation_ok(key, record, scenes):
+            raise ValueError('Пошкоджений журнал інвалідації зв’язків')
+        records.append(record)
+        if order is not None:
+            order[record.id] = rowid
+    return records
+
+
+def check_invalidations(db, scenes, report) -> None:
+    """fsck: key shape, model and scene ownership of every invalidation."""
+    for key, payload in db.execute("SELECT key,payload FROM app_settings WHERE key LIKE 'link_invalidation:%' ORDER BY rowid"):
+        try:
+            if not _invalidation_ok(key, LinkInvalidation.model_validate_json(payload), scenes):
+                raise ValueError('Invalid record')
+        except (ValueError, TypeError):
+            report.add('invalid_link_invalidation', key, 'Invalid format or ownership of a link invalidation')
