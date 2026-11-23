@@ -83,6 +83,52 @@ def test_preview_counts_one_call_per_pending_link(tmp_path):
     assert result['ready'] is True and result['reason'] is None
     assert result['calls'] == len(pending_links(repo.context_view(story.id), scene.id)) == 2
     assert result['roles'] == {'auditor': {'provider': 'local', 'model': 'auditor'}}
+    assert result['links'] == [{'link': 'brief', 'status': 'unchecked', 'reason': None},
+                               {'link': 'prose', 'status': 'unchecked', 'reason': None}]
+
+
+def test_preview_lists_links_that_need_no_call(tmp_path):
+    repo, story, scenes = book(tmp_path, 2)
+    auditor(repo, story)
+    remove_memory(repo, scenes[0])
+    result = preview(repo, request(story, scenes[1]))
+    assert result['ready'] is True and result['calls'] == 0
+    assert result['links'] == [{'link': 'brief', 'status': 'unavailable', 'reason': 'no_previous_memory'},
+                               {'link': 'prose', 'status': 'unavailable', 'reason': 'no_previous_memory'}]
+
+
+def test_preview_does_not_count_a_call_for_an_existing_discrepancy(tmp_path):
+    repo, story, (scene,) = unchecked_scene(tmp_path)
+    worker, run = start(repo, story, scene, Answers(DISCREPANCY))
+    drive(worker, run.id)
+    result = preview(repo, request(story, scene))
+    assert result['links'] == [{'link': 'brief', 'status': 'discrepancy', 'reason': 'Місце не збігається'},
+                               {'link': 'prose', 'status': 'unchecked', 'reason': None}]
+    assert result['calls'] == 1  # an upper bound: the later unchecked link
+
+
+def test_resume_without_a_decision_stops_again_without_a_call(tmp_path):
+    repo, story, (scene,) = unchecked_scene(tmp_path)
+    worker, run = start(repo, story, scene, Answers(DISCREPANCY))
+    first = drive(worker, run.id)
+    gateway = Answers(answer(95))
+    worker.gateway_factory = lambda _: gateway
+    worker.resume(run.id)
+    run = drive(worker, run.id)
+    assert run.state == 'needs_review' and gateway.contexts == []
+    assert run.checkpoint == first.checkpoint
+
+
+def test_start_on_an_existing_discrepancy_stops_without_a_call(tmp_path):
+    repo, story, (scene,) = unchecked_scene(tmp_path)
+    worker, run = start(repo, story, scene, Answers(DISCREPANCY), 'first')
+    verdict_id = drive(worker, run.id).checkpoint['verdict_id']
+    gateway = Answers(answer(95))
+    worker, run = start(repo, story, scene, gateway, 'second')
+    run = drive(worker, run.id)
+    assert run.state == 'needs_review' and gateway.contexts == []
+    assert run.checkpoint == {'scene_id': scene.id, 'link': 'brief', 'outcome': 'discrepancy', 'verdict_id': verdict_id,
+                              'reason': 'Місце не збігається', 'phase': 'awaiting_author'}
 
 
 def test_preview_uses_derived_settings_without_an_auditor_row(tmp_path):
@@ -150,7 +196,8 @@ def test_discrepancy_stops_for_review_then_approval_and_resume_check_the_next_li
     assert len(gateway.contexts) == 1
     verdict_id = run.checkpoint['verdict_id']
     assert run.checkpoint == {'scene_id': scene.id, 'link': 'brief', 'outcome': 'discrepancy',
-                              'verdict_id': verdict_id, 'reason': 'Місце не збігається'} and verdict_id
+                              'verdict_id': verdict_id, 'reason': 'Місце не збігається', 'phase': 'awaiting_author'}
+    assert verdict_id
     brief = link_state(repo.context_view(story.id), scene.id, 'brief')
     decide_link(repo, scene.id, 'brief', 'approve', brief.fingerprint)
     worker.resume(run.id)
@@ -187,7 +234,7 @@ def test_unavailable_link_stops_for_review_without_a_call(tmp_path):
     run = drive(worker, run.id)
     assert run.state == 'needs_review' and run.error is None
     assert run.checkpoint == {'scene_id': scenes[1].id, 'link': 'brief', 'outcome': 'unavailable', 'verdict_id': None,
-                              'reason': 'no_previous_memory'}
+                              'reason': 'no_previous_memory', 'phase': 'awaiting_author'}
     assert gateway.contexts == []
 
 

@@ -2,7 +2,8 @@
 
 On every step the worker reads the scene again and checks its first link that still needs a check, in reading order:
 the author's decisions and edits change the set between calls. `valid` goes on; `discrepancy` and `unavailable` stop in
-`needs_review` with a checkpoint; a stale verdict reads the link again (at most STALE_STEPS times in a row). Pause and
+`needs_review` with a checkpoint (phase `awaiting_author`); a link already in `discrepancy` (an auditor verdict for its
+current fingerprint) stops there with that verdict and no new call, on start and on resume; a stale verdict reads the link again (at most STALE_STEPS times in a row). Pause and
 cancel act between calls. It is a model run: a restart leaves it `interrupted`, and a failed call is repeated only on the
 author's explicit decision (RunCoordinator.resume)."""
 from pydantic import ValidationError
@@ -20,10 +21,15 @@ def pending_links(view, scene_id: str) -> list[str]:
     return [link for link, state in scene_links(view, scene_id).items() if state.status in PENDING]
 
 
+def _called(state) -> bool:
+    """An `unchecked` link is called; an auditor's overflow verdict is measured again first and may be called. A
+    `discrepancy` keeps its verdict until the author decides, and link_state's own `unavailable` gets no call."""
+    return state.status == 'unchecked' or (state.status == 'unavailable' and state.source is not None)
+
+
 def _calls(states, links) -> int:
-    """A link link_state reports unavailable gets no call; an auditor's overflow verdict is measured again first, so
-    it is counted as a possible call (an upper bound)."""
-    return sum(1 for link in links if states[link].status != 'unavailable' or states[link].source is not None)
+    """An upper bound: an earlier discrepancy or unavailable link stops the run before the later links are called."""
+    return sum(1 for link in links if _called(states[link]))
 
 
 def readiness(repo, request, view=None, resume=False) -> dict:
@@ -35,7 +41,7 @@ def readiness(repo, request, view=None, resume=False) -> dict:
     from .audit_context import MISSING_LINK, NOT_CONFIGURED
     from .auditor_settings import resolve_auditor
     from .readiness import _check_model_policy
-    result = {'ready': False, 'reason': None, 'roles': {}, 'calls': 0, 'evaluator': None, 'warnings': []}
+    result = {'ready': False, 'reason': None, 'roles': {}, 'calls': 0, 'evaluator': None, 'warnings': [], 'links': []}
     try:
         story = repo.get_story(request.story_id)
         if view is None:
@@ -44,13 +50,16 @@ def readiness(repo, request, view=None, resume=False) -> dict:
         if scene is None or getattr(scene, 'trashed_at', None) or scene.story_id != story.id:
             raise ValueError('Оберіть сцену')
         links = pending_links(view, scene.id)
+        states = scene_links(view, scene.id)
+        # Design §9: the links the run visits, in reading order Z1 → Z2 → Z3, including those that take no call.
+        result['links'] = [{'link': link, 'status': states[link].status, 'reason': states[link].reason} for link in links]
         if not links and not resume:
             raise ValueError(ALREADY_VALID if scene_validity(view, scene.id) == 'valid' else MISSING_LINK)
         settings = resolve_auditor(get_role_settings(repo, story.id))
         if settings is None or not settings.provider.model.strip():
             raise ValueError(NOT_CONFIGURED)
         result['roles'] = {'auditor': settings.provider.model_dump(include={'provider', 'model'})}
-        result['calls'] = _calls(scene_links(view, scene.id), links)
+        result['calls'] = _calls(states, links)
         if result['calls']:
             rated = view.get_story(story.id)
             enforce_edition_limit(rated, view.get_scene(scene.id))
@@ -73,6 +82,11 @@ def _finish(coordinator, run, state, error=None):
 
 def _checkpoint(scene_id, link, outcome, verdict_id=None, reason=None) -> dict:
     return {'scene_id': scene_id, 'link': link, 'outcome': outcome, 'verdict_id': verdict_id, 'reason': reason}
+
+
+def _awaiting_author(scene_id, link, outcome, verdict_id, reason) -> dict:
+    """Design §9: `needs_review`, phase `awaiting_author`, with the link to decide."""
+    return {**_checkpoint(scene_id, link, outcome, verdict_id, reason), 'phase': 'awaiting_author'}
 
 
 def _cancelling(coordinator, run) -> bool:
@@ -104,14 +118,22 @@ def execute(coordinator, run_id: str) -> None:
                 current.checkpoint = None
                 return _finish(coordinator, current, 'completed')
         link = links[0]
+        state = scene_links(view, scene_id)[link]
+        if state.status == 'discrepancy':  # the author decides the auditor's verdict; checking it again is not free
+            verdict = view.link_verdicts.get((scene_id, link, state.fingerprint))
+            with coordinator.condition:
+                current = coordinator.get_run(run_id)
+                coordinator.event(run_id, 'audit_step', {'scene_id': scene_id, 'link': link, 'outcome': 'discrepancy',
+                                                         'verdict_id': verdict and verdict.id, 'attempt_id': None})
+                current.checkpoint = _awaiting_author(scene_id, link, 'discrepancy', verdict and verdict.id, state.reason)
+                return _finish(coordinator, current, 'needs_review')
         settings = resolve_auditor(get_role_settings(repo, run.story_id))
         if settings is None or not settings.provider.model.strip():
             with coordinator.condition:
                 current = coordinator.get_run(run_id)
                 current.checkpoint = _checkpoint(scene_id, link, 'failed', reason=NOT_CONFIGURED)
                 return _finish(coordinator, current, 'failed', NOT_CONFIGURED)
-        state = scene_links(view, scene_id)[link]
-        if state.status != 'unavailable' or state.source is not None:  # a call may follow
+        if _called(state):  # a call may follow
             coordinator.event(run_id, 'stage_started', {'stage': LINK_STAGE[link], 'scene_id': scene_id, 'link': link,
                                                         'model': settings.provider.model,
                                                         'provider': settings.provider.provider, 'streaming': False})
@@ -151,7 +173,8 @@ def execute(coordinator, run_id: str) -> None:
                 current.checkpoint = _checkpoint(scene_id, link, 'failed', reason=result.reason)
                 return _finish(coordinator, current, 'failed', result.reason)
             # discrepancy / unavailable: the author decides the link, then resumes the run
-            current.checkpoint = _checkpoint(scene_id, link, result.outcome, result.verdict_id, result.reason)
-            if _cancelling(coordinator, current):
+            if _cancelling(coordinator, current):  # the verdict is written; the author's cancel still wins
+                current.checkpoint = _checkpoint(scene_id, link, result.outcome, result.verdict_id, result.reason)
                 return _finish(coordinator, current, 'cancelled')
+            current.checkpoint = _awaiting_author(scene_id, link, result.outcome, result.verdict_id, result.reason)
             return _finish(coordinator, current, 'needs_review')
