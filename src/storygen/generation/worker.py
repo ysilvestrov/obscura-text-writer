@@ -339,7 +339,14 @@ class RunCoordinator:
         recovered=[]
         with self.condition:
             for run in self.list_runs():
-                if run.state in {'running','cancellation_requested','pause_requested','queued'}:
+                if run.request.mode=='impact' and run.state not in {'completed','failed','cancelled'}:
+                    # R28-REMOVED: nothing can continue an old impact run, and the workspace no longer shows it.
+                    run.state='cancelled'
+                    run.error=IMPACT_REMOVED
+                    self._save(run)
+                    self.event(run.id,'state',{'state':run.state})
+                    recovered.append(run)
+                elif run.state in {'running','cancellation_requested','pause_requested','queued'}:
                     run.state='interrupted'
                     run.error='Попередню сесію перервано. Автоматичного повтору запитів немає.'
                     self._save(run)

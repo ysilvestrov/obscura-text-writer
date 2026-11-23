@@ -41,8 +41,8 @@ def test_saved_impact_run_and_attempts_stay_readable(tmp_path):
     repo = app.state.repo
     story = repo.create_story(StoryCreate(title='Книга'))
     scene = repo.create_scene(story.id, SceneCreate(title='Сцена'))
-    run = saved_impact_run(repo, story, scene)
     with TestClient(app, base_url='http://127.0.0.1:8765') as client:
+        run = saved_impact_run(repo, story, scene)  # after start-up recovery, so the run stays needs_review
         listed = client.get(f'/api/stories/{story.id}/runs')
         assert listed.status_code == 200
         assert [(r['id'], r['request']['mode'], r['impact']) for r in listed.json()['runs']] == [
@@ -59,7 +59,7 @@ def test_saved_impact_run_and_attempts_stay_readable(tmp_path):
 
 
 @pytest.mark.req('R28-REMOVED')
-def test_queued_impact_run_from_an_old_session_is_interrupted_not_executed(tmp_path):
+def test_queued_impact_run_from_an_old_session_is_cancelled_not_executed(tmp_path):
     app = create_app(AppSettings(data_dir=tmp_path))
     repo = app.state.repo
     story = repo.create_story(StoryCreate(title='Книга'))
@@ -67,6 +67,21 @@ def test_queued_impact_run_from_an_old_session_is_interrupted_not_executed(tmp_p
     run = saved_impact_run(repo, story, scene, state='queued')
     with TestClient(app, base_url='http://127.0.0.1:8765'):
         saved = repo.get_run(run.id)
-    assert saved.state == 'interrupted'
+    assert (saved.state, saved.error) == ('cancelled', IMPACT_REMOVED)
     with pytest.raises(ValueError, match='Перевірку впливу вилучено'):
         app.state.coordinator._execute(run.id)
+
+
+@pytest.mark.req('R28-REMOVED')
+@pytest.mark.parametrize('state', ['paused', 'needs_review', 'alternative', 'interrupted'])
+def test_stopped_impact_run_is_cancelled_on_start_and_blocks_nothing(tmp_path, state):
+    app = create_app(AppSettings(data_dir=tmp_path))
+    repo = app.state.repo
+    story = repo.create_story(StoryCreate(title='Книга'))
+    scene = repo.create_scene(story.id, SceneCreate(title='Сцена'))
+    run = saved_impact_run(repo, story, scene, state=state)
+    with TestClient(app, base_url='http://127.0.0.1:8765'):
+        saved = repo.get_run(run.id)
+        assert (saved.state, saved.error) == ('cancelled', IMPACT_REMOVED)
+        assert repo.update_story_language(story.id, 'en', repo.get_story(story.id).revision).language == 'en'
+    assert [a.stage for a in repo.list_attempts(story.id, run.id)] == ['impact_part', 'review_part']

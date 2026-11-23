@@ -119,7 +119,8 @@
         "tests/storage/test_impact_removed.py::test_get_version_without_snapshot_ignores_old_review_acceptance",
         "tests/web/test_impact_runs_removed.py::test_new_impact_run_is_refused",
         "tests/web/test_impact_runs_removed.py::test_saved_impact_run_and_attempts_stay_readable",
-        "tests/web/test_impact_runs_removed.py::test_queued_impact_run_from_an_old_session_is_interrupted_not_executed"
+        "tests/web/test_impact_runs_removed.py::test_queued_impact_run_from_an_old_session_is_cancelled_not_executed",
+        "tests/web/test_impact_runs_removed.py::test_stopped_impact_run_is_cancelled_on_start_and_blocks_nothing"
       ]
     },
     {
