@@ -1,7 +1,8 @@
 import json
 import threading
 import pytest
-from storygen.domain import StoryCreate, SceneCreate
+from storygen.domain import StoryCreate, SceneCreate, new_id
+from storygen.run_models import Run, RunRequest
 from storygen.storage.repository import Repository
 from storygen.providers.models import RoleSettings, ProviderSettings
 from storygen.providers.streaming import GenerationEvent
@@ -22,6 +23,15 @@ class FakeGateway:
         yield GenerationEvent(type='terminal',finish_reason='stop')
 
 
+def pipeline_run(repo, scene):
+    """VALID-LINKS: a real Run row, so the stages of generate_scene carry source_run_id like the worker's (model-made
+    briefs and prose hold their links by construction)."""
+    run = Run(id=new_id(), story_id=scene.story_id, request_id='pipeline-' + scene.id,
+              request=RunRequest(story_id=scene.story_id, scene_id=scene.id, mode='remaining'), state='completed', tasks=[])
+    repo.enqueue_run(run)
+    return run.id
+
+
 def prepare(tmp_path):
     repo=Repository(tmp_path);story=repo.create_story(StoryCreate(title='Твір'))
     scene=repo.create_scene(story.id,SceneCreate(title='Ранок',beats='Студія'))
@@ -32,7 +42,7 @@ def prepare(tmp_path):
 
 def test_scene_pipeline_uses_edited_text_for_memory(tmp_path):
     repo,scene,gateway,roles=prepare(tmp_path)
-    attempts=generate_scene(repo,scene.id,roles,lambda _:gateway,threading.Event(),lambda *_:None)
+    attempts=generate_scene(repo,scene.id,roles,lambda _:gateway,threading.Event(),lambda *_:None,pipeline_run(repo,scene))
     assert [c.stage for c in gateway.contexts]==['brief','draft','edit','memory']
     assert all(a.state=='completed' for a in attempts)
     assert 'Олена увійшла' in gateway.contexts[-1].user_text
@@ -44,7 +54,7 @@ def test_scene_pipeline_uses_edited_text_for_memory(tmp_path):
 @pytest.mark.parametrize('invalid,expected', [('brief',1),('memory',4)])
 def test_invalid_brief_or_memory_stops_pipeline(tmp_path,invalid,expected):
     repo,scene,gateway,roles=prepare(tmp_path);gateway.invalid=invalid
-    attempts=generate_scene(repo,scene.id,roles,lambda _:gateway,threading.Event(),lambda *_:None)
+    attempts=generate_scene(repo,scene.id,roles,lambda _:gateway,threading.Event(),lambda *_:None,pipeline_run(repo,scene))
     assert len(gateway.contexts)==expected and attempts[-1].state=='failed'
     assert repo.files.resolve(attempts[-1].partial_path).read_text(encoding="utf-8")=='not JSON'
     assert invalid not in repo.get_scene(scene.id).heads
@@ -60,7 +70,7 @@ def test_manual_edit_during_generation_keeps_alternative_result(tmp_path):
             manual=repo.save_version(scene.story_id,scene.id,'manual','Авторська правка',[])
             repo.set_head(scene.id,'prose',manual.id,current.revision)
     gateway.stream=changing
-    attempts=generate_scene(repo,scene.id,roles,lambda _:gateway,threading.Event(),lambda *_:None)
+    attempts=generate_scene(repo,scene.id,roles,lambda _:gateway,threading.Event(),lambda *_:None,pipeline_run(repo,scene))
     assert attempts[-1].state=='alternative'
     assert repo.read_text(repo.get_scene(scene.id).heads['prose'])=='Авторська правка'
     assert repo.read_text(attempts[-1].result_version_id)=='Олена увійшла до нової бібліотеки.'
@@ -71,7 +81,7 @@ def test_crash_after_completed_blob_does_not_advance_head_without_commit(tmp_pat
     repo,scene,gateway,roles=prepare(tmp_path)
     def crash(*args): raise RuntimeError('simulated crash before transaction')
     monkeypatch.setattr(repo,'commit_stage_result',crash)
-    with pytest.raises(RuntimeError): generate_scene(repo,scene.id,roles,lambda _:gateway,threading.Event(),lambda *_:None)
+    with pytest.raises(RuntimeError): generate_scene(repo,scene.id,roles,lambda _:gateway,threading.Event(),lambda *_:None,pipeline_run(repo,scene))
     reopened=Repository(tmp_path)
     assert 'brief' not in reopened.get_scene(scene.id).heads
     assert reopened.list_versions(scene.story_id,scene.id,'brief')

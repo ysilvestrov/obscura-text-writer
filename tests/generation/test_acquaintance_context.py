@@ -7,6 +7,7 @@ from storygen.generation.context import build_context
 from storygen.generation.models import WritersBrief
 from storygen.memory.models import MemorySnapshot
 from storygen.characters.acquaintance import acquaintance_material,unexpected_introduced
+from tests.link_helpers import approve_links
 
 NAMES=[('A','Анна'),('B','Богдан'),('C','Віра')]
 
@@ -34,6 +35,7 @@ def context(repo,story,scene,stage):
     head(repo,scene,'brief',brief);head(repo,scene,'draft',draft)
     if stage=='memory':
         head(repo,scene,'prose',repo.save_version(story.id,scene.id,'manual','Проза.',[]))
+    approve_links(repo,story.id)
     return build_context(repo,scene.id,stage,settings(stage),editor_source_id=draft.id if stage=='rewrite' else None)
 
 
@@ -59,6 +61,7 @@ def test_edit_stage_main_path_has_no_block(tmp_path):
     brief=repo.save_version(story.id,scene.id,'brief','{"objective":"Подія","beats":["Подія"]}',[])
     draft=repo.save_version(story.id,scene.id,'draft','Чернетка',[brief.id])
     head(repo,scene,'brief',brief);head(repo,scene,'draft',draft)
+    approve_links(repo,story.id)
     full=RoleSettings(provider=ProviderSettings(model='fake'),context_tokens=32768)
     assert 'ЗНАЙОМСТВА ГОЛОВНОГО ГЕРОЯ' not in build_context(repo,scene.id,'edit',full).user_text
 
@@ -98,6 +101,7 @@ def test_stale_lineage_brief_does_not_block_next_scene(tmp_path):
     head(repo,s1,'memory',m)
     repo.invalidate_dependents([seed.id])
     assert repo.get_version(b.id).stale
+    approve_links(repo,story.id)
     bundle=build_context(repo,s2.id,'brief',settings('brief'))
     assert b.id not in bundle.input_refs
     assert 'Знайомі: Богдан (зі сцени 1)' in bundle.user_text

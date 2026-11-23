@@ -5,6 +5,7 @@ from storygen.providers.models import RoleSettings, ProviderSettings
 from storygen.generation.context import build_context, ContextOverflow
 from storygen.memory.models import MemorySnapshot, MemoryEntry
 from storygen.memory.service import memory_before
+from tests.link_helpers import approve_links
 
 
 def setup(repo):
@@ -21,6 +22,7 @@ def test_scene_two_sees_only_committed_past(tmp_path):
     memory=MemorySnapshot(facts=[MemoryEntry(text='Минуле',source_version_id=prose.id,quote='Минуле')],source_prose_ids=[prose.id])
     ref=repo.save_version(story.id,scenes[0].id,'memory',memory.model_dump_json(),[prose.id])
     repo.set_head(scenes[0].id,'memory',ref.id,1)
+    approve_links(repo,story.id)
     context=build_context(repo,scenes[1].id,'brief',RoleSettings(provider=ProviderSettings(model='test')))
     assert 'Відкинута' not in context.user_text
     assert prose.id in context.input_refs and rejected.id not in context.input_refs
@@ -64,6 +66,7 @@ def test_writer_context_shows_protagonist_core_first(tmp_path):
         _add_event('facts','Анна вдома',prose.id,'Анна вдома',0)])
     memory=repo.save_version(story.id,first.id,'memory',journal.model_dump_json(),[prose.id])
     repo.set_head(first.id,'memory',memory.id,repo.get_scene(first.id).revision)
+    approve_links(repo,story.id)
     context=build_context(repo,second.id,'brief',RoleSettings(provider=ProviderSettings(model='test')))
     section=context.user_text.split('ЗДІЙСНЕНІ ПОДІЇ — ПЕРЕВІРЕНА ПАМ’ЯТЬ\n')[1]
     # No character cards: the fallback protagonist has no name, so the header never shows the raw ID.

@@ -12,6 +12,7 @@ from storygen.providers.policy import MULTI_SCENE_STAGES, STAGE_POLICY_ROLE
 from storygen.providers.streaming import GenerationEvent
 from storygen.run_models import RunRequest
 from tests.memory.summary_helpers import long_story
+from tests.link_helpers import approve_links
 
 GOOD = 'Анна приїхала до міста, знайшла кімнату біля річки й почала шукати роботу.'
 
@@ -31,6 +32,7 @@ def seeded(tmp_path, count=12, memory_until=None):
     repo, story = long_story(tmp_path, count, memory_until)
     role = RoleSettings(provider=ProviderSettings(model='memory-test'), context_tokens=128000, max_input_chars=1000000, max_output_tokens=2048)
     save_role_settings(repo, story.id, 'memory', role, story.revision)
+    approve_links(repo, story.id)
     return repo, repo.get_story(story.id)
 
 

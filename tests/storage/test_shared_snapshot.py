@@ -47,7 +47,8 @@ def test_repository_reads_share_the_snapshot(tmp_path):
 
 
 def test_write_starts_a_new_generation(tmp_path):
-    repo, story, scene, draft, prose = setup(tmp_path)
+    # VALID-LINKS: a draft change no longer marks the prose head; the generation is observed on a non-head version
+    repo, story, scene, draft, prose = setup(tmp_path, head=False)
     before = repo.context_view(story.id)
     assert before.is_stale(prose.id) is False
     other = repo.save_version(story.id, scene.id, 'draft', 'B', [])
@@ -268,14 +269,16 @@ def test_scene_values_start_again_in_a_new_generation(tmp_path):
     story_id = build_story(repo, 3, cast=True)
     view = repo.context_view(story_id)
     material_status(view)
-    assert any(key[0] == 'tracked' for key in view.memo_cache)
+    # VALID-LINKS: heads are marked by their links, so material_status computes the scene's links ('links' memo), not
+    # the snapshot comparison that memoised 'tracked'
+    assert any(key[0] == 'links' for key in view.memo_cache)
     repo.db.bump_generation()
     fresh = repo.context_view(story_id)
     assert fresh.memo_cache is not view.memo_cache
     # Only parses of one version's file carry over (ImmutableStore); scene values are computed again.
-    assert not any(key[0][0] in {'names', 'policy', 'tracked'} for key in repo.immutable.parses)
+    assert not any(key[0][0] in {'names', 'policy', 'tracked', 'links'} for key in repo.immutable.parses)
     material_status(fresh)
-    assert any(key[0] == 'tracked' for key in fresh.memo_cache)
+    assert any(key[0] == 'links' for key in fresh.memo_cache)
 
 
 def test_second_capture_of_a_generation_adopts_the_published_state(tmp_path, monkeypatch):

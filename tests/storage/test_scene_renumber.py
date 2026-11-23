@@ -172,8 +172,8 @@ def test_insert_already_makes_other_briefs_stale(tmp_path):
     first = repo.create_scene(story.id, SceneCreate(title='Перша'))
     repo.create_scene(story.id, SceneCreate(title='Друга'))
     context = build_context(repo, first.id, 'brief', RoleSettings(provider=ProviderSettings(model='fake')))
+    # VALID-LINKS: a brief head is marked by its link only; the order selector is compared for non-head versions
     draft = repo.save_version(story.id, first.id, 'brief', '{}', [], dependency_snapshot=context.dependency_snapshot)
-    repo.set_head(first.id, 'brief', draft.id, repo.get_scene(first.id).revision)
     assert not repo.get_version(draft.id).stale
     repo.create_scene(story.id, SceneCreate(title='Вставка', position=1))
     assert repo.get_version(draft.id).stale

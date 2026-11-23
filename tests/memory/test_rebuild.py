@@ -9,6 +9,7 @@ from storygen.memory.models import MemorySnapshot, MemoryEntry
 from storygen.memory.service import rebuild_memory
 from storygen.memory.journal import load_memory
 from tests.memory.wire_helpers import v4_answer
+from tests.link_helpers import approve_links
 
 
 def test_rebuild_memory_uses_current_texts_in_order(tmp_path):
@@ -19,6 +20,7 @@ def test_rebuild_memory_uses_current_texts_in_order(tmp_path):
         prose=save_manual_prose(repo,scene.id,f'Сцена {scene.position}',0);sources.append(prose.id)
     first=MemorySnapshot(facts=[MemoryEntry(text='Початок',source_version_id=sources[0],quote='Сцена 0')],source_prose_ids=[sources[0]])
     mem=repo.save_version(story.id,scenes[0].id,'memory',first.model_dump_json(),[sources[0]]);repo.set_head(scenes[0].id,'memory',mem.id,1)
+    approve_links(repo,story.id)
     calls=[]
     class Gateway:
         def stream(self,context,cancel):

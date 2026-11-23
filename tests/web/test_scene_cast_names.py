@@ -3,6 +3,7 @@ from fastapi.testclient import TestClient
 from storygen.application.settings import AppSettings
 from storygen.web.app import create_app
 from storygen.domain import StoryCreate,SceneCreate
+from tests.link_helpers import approve_links
 
 
 def test_story_view_returns_name_registry_without_character_descriptions(tmp_path):
@@ -35,10 +36,14 @@ def test_story_view_preserves_effective_review_status_after_dependency_return(tm
     context=build_context(repo,scene.id,'edit',RoleSettings(provider=ProviderSettings(model='fake'),edit_mode='patches'))
     prose=repo.save_version(story.id,scene.id,'edited','Результат',[draft.id],dependency_snapshot=context.dependency_snapshot)
     scene=repo.set_head(scene.id,'prose',prose.id,scene.revision)
+    # VALID-LINKS: needs_review follows the brief→prose link, not the draft: an unchecked link marks the scene, the
+    # author's approval returns it, and the stored flag must not leak into the story view
+    brief=repo.save_version(story.id,scene.id,'brief','Завдання',[])
+    scene=repo.set_head(scene.id,'brief',brief.id,scene.revision)
     other=repo.save_version(story.id,scene.id,'draft','B',[])
     scene=repo.set_head(scene.id,'draft',other.id,scene.revision)
     assert repo.get_scene(scene.id).needs_review
-    repo.set_head(scene.id,'draft',draft.id,scene.revision)
+    approve_links(repo,story.id)
     assert not repo.get_scene(scene.id).needs_review
     with TestClient(app,base_url='http://127.0.0.1:8765') as client:
         assert client.get('/api/stories/'+story.id).json()['scenes'][0]['needs_review'] is False

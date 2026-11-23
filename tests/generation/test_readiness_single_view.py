@@ -110,6 +110,7 @@ import pytest
 
 from storygen.generation.worker import RunCoordinator
 from storygen.generation.dependencies import save_manual_prose
+from tests.link_helpers import approve_links
 
 OPERATIONS = ('prepare', 'brief', 'draft', 'edit', 'memory', 'scene', 'remaining', 'rebuild_memory', 'edit_loop')
 
@@ -281,6 +282,7 @@ def test_edit_loop_ready_legacy_draft_matches_repository_path(tmp_path):
     repo.set_head(scenes[0].id, 'brief', brief.id, repo.get_scene(scenes[0].id).revision)
     draft = repo.save_version(story.id, scenes[0].id, 'draft', 'Легасі чернетка.', [])
     repo.set_head(scenes[0].id, 'draft', draft.id, repo.get_scene(scenes[0].id).revision)
+    approve_links(repo, story.id)
     old = _assert_edit_loop_matches_repository_path(repo, story.id, _edit_loop_request(story.id, scenes[0].id, draft.id))
     assert old['ready'] is True and old['reason'] is None
     assert old['editor_source_version_id'] == draft.id

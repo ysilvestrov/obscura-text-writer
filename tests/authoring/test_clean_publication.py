@@ -12,7 +12,9 @@ from tests.authoring.test_ebook_exports import seeded
 def test_author_approved_stale_book_has_no_internal_warning_in_content_or_metadata(tmp_path,format):
     repo,story=seeded(tmp_path,count=1,cover=False)
     scene=repo.list_scenes(story.id)[0]
-    repo.update_scene_plan(scene.id,'Уточнений план для перевірки.',scene.revision)
+    # VALID-LINKS: a brief the author typed leaves the prose link unchecked, so the book is incomplete.
+    brief=repo.save_version(story.id,scene.id,'brief','{"objective":"Ґанок","beats":["Ґанок"],"constraints":[],"proposed_changes":[]}',[])
+    repo.set_head(scene.id,'brief',brief.id,repo.get_scene(scene.id).revision)
     with pytest.raises(ValueError,match='неповний'):export_story(repo,story.id,format)
     path=export_story(repo,story.id,format,True)
     if format=='pdf':text='\n'.join(p.extract_text() for p in PdfReader(path).pages)

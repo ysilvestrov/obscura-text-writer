@@ -68,4 +68,6 @@ def test_changed_text_still_invalidates_dependents(tmp_path):
     saved=save_manual_prose(repo,scene.id,repo.read_text(previous)+' ',scene.revision)
     assert saved.id!=previous
     assert repo.get_version(dependent.id).stale
-    assert repo.get_scene(later.id).needs_review
+    # VALID-LINKS: needs_review follows the later scene's own brief→prose link; the changed prose marks this scene's memory
+    assert not repo.get_scene(later.id).needs_review
+    assert repo.get_version(repo.get_scene(scene.id).heads['memory']).stale

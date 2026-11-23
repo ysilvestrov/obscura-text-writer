@@ -16,6 +16,7 @@ from storygen.storage.repository import Repository
 from tests.memory.test_core_review import role, run_memory
 from tests.memory.wire_helpers import v4_answer
 from tests.series.helpers import book, finished_book, into_series, prose
+from tests.link_helpers import approve_links
 
 
 class BriefGateway:
@@ -44,6 +45,8 @@ def write_brief(repo, scene):
     context = build_context(repo, scene.id, 'brief', role())
     attempt = execute_stage(repo, scene.id, 'brief', context, BriefGateway(), threading.Event(), lambda _: None)
     assert attempt.state == 'completed', attempt.error
+    # The stage runs without a Run row, so the brief stands in for a generated one: the author confirms its link.
+    approve_links(repo, scene.story_id)
     return attempt.result_version_id
 
 
@@ -101,7 +104,8 @@ def test_retake_or_leaving_stales_brief_and_memory_of_scene_1(tmp_path):
     brief, memory = write_brief(repo, scene), write_scene_memory(repo, scene)
     assert not repo.get_version(brief).stale and not repo.get_version(memory).stale
     store.take_snapshot(repo, second.id, repo.get_story(second.id).revision)
-    assert repo.get_version(brief).stale and repo.get_version(memory).stale
+    # VALID-LINKS: a new series start (the previous memory P0) marks the brief/prose links of scene 1, not its memory head (Z3 is prose only)
+    assert repo.get_version(brief).stale and not repo.get_version(memory).stale
     repo2, item2, third, scene3, _ = second_book(tmp_path / 'other')
     brief3 = write_brief(repo2, scene3)
     store.set_story_series(repo2, third.id, None, None, None, repo2.get_story(third.id).revision)

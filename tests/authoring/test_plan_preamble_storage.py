@@ -64,7 +64,7 @@ def test_unchanged_preamble_creates_no_version(tmp_path):
     assert not result['changed'] and repo.active_source(story.id, 'source_plan').id == before
 
 
-def test_prose_and_prepared_canon_become_stale_cards_do_not(tmp_path):
+def test_prepared_canon_becomes_stale_prose_and_cards_do_not(tmp_path):
     """Owner decision 19.11.2026: canon prepared from the plan goes stale, as after an additive import."""
     from storygen.storage.snapshots import build_dependency_snapshot
     repo, story = imported(tmp_path)
@@ -83,7 +83,8 @@ def test_prose_and_prepared_canon_become_stale_cards_do_not(tmp_path):
     assert not repo.context_view(story.id).is_stale(canon.id)
     replace_plan_preamble(repo, story.id, plan.id, 'Тон: похмурий.')
     view = repo.context_view(story.id)
-    assert repo.get_version(prose.id).stale and repo.get_scene(scene.id).needs_review
+    # VALID-LINKS: a preamble change no longer marks prose heads; the prepared canon still goes stale.
+    assert not repo.get_version(prose.id).stale and not repo.get_scene(scene.id).needs_review
     assert view.is_stale(canon.id)
     assert cards and not view.is_stale(cards)
     with pytest.raises(ValueError, match='застарілий'):

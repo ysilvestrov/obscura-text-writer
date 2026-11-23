@@ -61,8 +61,10 @@ def test_save_publishes_version_and_head(tmp_path):
 
 def test_stale_head_memory_blocks_save(tmp_path):
     repo, story, scenes = meeting_book(tmp_path)
-    prose = repo.save_version(story.id, scenes[0].id, 'manual', 'Сцена 1. Анна йде містом. Інший текст.', [])
-    repo.set_head(scenes[0].id, 'prose', prose.id, repo.get_scene(scenes[0].id).revision)
+    # VALID-LINKS: a changed earlier prose no longer stales later memory heads; new prose of a merge head (scene 2)
+    # leaves that head's prose→memory link unchecked, so its memory is stale
+    prose = repo.save_version(story.id, scenes[1].id, 'manual', 'Сцена 2. Анна йде містом. Інший текст.', [])
+    repo.set_head(scenes[1].id, 'prose', prose.id, repo.get_scene(scenes[1].id).revision)
     story = repo.get_story(story.id)
     state = merge_state(repo.context_view(story.id), story, repo.list_scenes(story.id), point(repo, story, 4))
     assert state['state'] == 'blocked' and 'застаріла' in state['reason']

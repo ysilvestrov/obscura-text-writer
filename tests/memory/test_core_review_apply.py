@@ -190,7 +190,7 @@ def test_post_conflict_when_head_changed(tmp_path):
     assert all(repo.get_version(v).memory_confirmation is None for v in before)
 
 
-def test_edits_make_next_scene_memory_stale(tmp_path):
+def test_edits_keep_next_scene_memory_fresh(tmp_path):
     repo, story, scene, claims, attempt = v4_scene(tmp_path)
     s3 = third_scene(repo, story)
     previous = load_memory(repo.read_text(scene.heads['memory']))
@@ -199,7 +199,8 @@ def test_edits_make_next_scene_memory_stale(tmp_path):
     m3 = repo.get_scene(s3.id).heads['memory']
     assert resolve_freshness(repo.context_view(story.id), m3).stale is False
     apply_core_review(repo, scene.id, body(scene, slot_edit('carried', 'keep')))
-    assert resolve_freshness(repo.context_view(story.id), m3).stale is True
+    # VALID-LINKS: a changed previous memory marks the next brief/prose links, not the next memory head (Z3 is prose only)
+    assert resolve_freshness(repo.context_view(story.id), m3).stale is False
 
 
 def test_manual_save_unchanged(tmp_path):

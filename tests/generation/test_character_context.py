@@ -4,6 +4,7 @@ from storygen.domain import StoryCreate,SceneCreate
 from storygen.storage.repository import Repository
 from storygen.providers.models import RoleSettings,ProviderSettings
 from storygen.generation.context import build_context
+from tests.link_helpers import approve_links
 
 
 def prepared(tmp_path):
@@ -17,6 +18,7 @@ def prepared(tmp_path):
     for head,kind,text in [('brief','brief','{"objective":"Подія","beats":["Подія"]}'),('draft','draft','Чернетка')]:
         ref=repo.save_version(story.id,scenes[0].id,kind,text,[])
         repo.set_head(scenes[0].id,head,ref.id,repo.get_scene(scenes[0].id).revision)
+    approve_links(repo,story.id)
     return repo,story,scenes
 
 

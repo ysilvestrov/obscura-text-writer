@@ -7,9 +7,10 @@ from storygen.generation.context import build_context
 from storygen.storage.snapshots import resolve_freshness, compare_snapshot
 from storygen.storage.integrity import check_integrity
 from storygen.application.exports import export_story
+from tests.link_helpers import approve_links
 
 
-def setup(tmp_path):
+def setup(tmp_path, head=True):
     repo = Repository(tmp_path)
     story = repo.create_story(StoryCreate(title='Актуальність'))
     scene = repo.create_scene(story.id, SceneCreate(title='Сцена'))
@@ -17,12 +18,14 @@ def setup(tmp_path):
     scene = repo.set_head(scene.id, 'draft', draft.id, 0)
     context = build_context(repo, scene.id, 'edit', RoleSettings(provider=ProviderSettings(model='fake'), edit_mode='patches'))
     prose = repo.save_version(story.id, scene.id, 'edited', 'Результат', [draft.id], dependency_snapshot=context.dependency_snapshot)
-    scene = repo.set_head(scene.id, 'prose', prose.id, scene.revision)
+    if head:
+        scene = repo.set_head(scene.id, 'prose', prose.id, scene.revision)
     return repo, story, scene, draft, prose
 
 
 def test_new_version_recovers_after_dependency_a_b_a(tmp_path):
-    repo, story, scene, draft, prose = setup(tmp_path)
+    # VALID-LINKS: a prose head is marked by its brief→prose link only; the snapshot comparison stays for non-head versions
+    repo, story, scene, draft, prose = setup(tmp_path, head=False)
     other = repo.save_version(story.id, scene.id, 'draft', 'B', [])
     scene = repo.set_head(scene.id, 'draft', other.id, scene.revision)
     assert repo.get_version(prose.id).stale
@@ -56,17 +59,20 @@ def test_adding_or_trashing_scene_changes_relevant_order(tmp_path):
 
 def test_export_and_context_agree_on_freshness(tmp_path):
     repo, story, scene, draft, prose = setup(tmp_path)
-    other = repo.save_version(story.id, scene.id, 'draft', 'B', [])
-    scene = repo.set_head(scene.id, 'draft', other.id, scene.revision)
+    # VALID-LINKS: a draft change no longer marks the prose head; an unchecked brief→prose link does
+    brief = repo.save_version(story.id, scene.id, 'brief', 'Завдання', [])
+    repo.set_head(scene.id, 'brief', brief.id, scene.revision)
     with pytest.raises(ValueError):export_story(repo, story.id, 'txt')
-    repo.set_head(scene.id, 'draft', draft.id, scene.revision)
+    assert repo.context_view(story.id).get_version(prose.id).stale
+    approve_links(repo, story.id)
     assert not repo.context_view(story.id).get_version(prose.id).stale
     assert not repo.export_snapshot(story.id)[1][0][1].stale
     assert export_story(repo, story.id, 'txt').is_file()
 
 
 def test_snapshot_refs_corruption_is_reported_by_fsck(tmp_path):
-    repo, story, scene, draft, prose = setup(tmp_path)
+    # VALID-LINKS: the snapshot of a non-head version is still compared; a prose head is marked by its link
+    repo, story, scene, draft, prose = setup(tmp_path, head=False)
     with repo.db.connection() as db:
         raw = json.loads(db.execute('SELECT payload FROM versions WHERE id=?', (prose.id,)).fetchone()[0])
         raw['dependency_snapshot']['refs'][draft.id] = '0' * 64
@@ -97,7 +103,8 @@ def test_backup_restore_preserves_heads_hashes_and_freshness(tmp_path, legacy):
 
 
 def test_cycle_never_counts_as_fresh(tmp_path):
-    repo, story, scene, draft, prose = setup(tmp_path)
+    # VALID-LINKS: snapshot cycles concern non-head versions; a prose head is marked by its link
+    repo, story, scene, draft, prose = setup(tmp_path, head=False)
     with repo.db.connection() as db:
         raw=json.loads(db.execute('SELECT payload FROM versions WHERE id=?',(prose.id,)).fetchone()[0])
         raw['dependency_snapshot']['refs']={prose.id:prose.sha256}

@@ -12,7 +12,7 @@ def setup(tmp_path):
     return repo,story,scenes
 
 
-def test_scene_trash_restore_preserves_text_and_invalidates_later(tmp_path):
+def test_scene_trash_restore_preserves_text_and_keeps_later_prose_fresh(tmp_path):
     from storygen.authoring.trash import trash_scene, restore_scene
     repo,story,scenes=setup(tmp_path)
     refs=[repo.save_version(story.id,s.id,'manual','Текст '+s.title,[]) for s in scenes]
@@ -22,8 +22,9 @@ def test_scene_trash_restore_preserves_text_and_invalidates_later(tmp_path):
     assert [s.id for s in repo.list_scenes(story.id)]==[scenes[0].id,scenes[2].id]
     with pytest.raises(KeyError):repo.get_scene(scene.id)
     with pytest.raises(KeyError):repo.read_text(refs[1].id)
-    assert repo.get_scene(scenes[2].id).needs_review
-    assert repo.get_version(refs[2].id).stale
+    # VALID-LINKS: prose without a brief has no prose link to uncheck; it stays fresh after a neighbour is trashed.
+    assert not repo.get_scene(scenes[2].id).needs_review
+    assert not repo.get_version(refs[2].id).stale
     assert (repo.root/refs[1].relative_path).read_text(encoding='utf-8')=='Текст 1'
     with pytest.raises(RevisionConflict):restore_scene(repo,story.id,scene.id,scene.revision)
     restored=restore_scene(repo,story.id,scene.id,removed.revision)

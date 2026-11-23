@@ -7,6 +7,7 @@ from storygen.memory.journal import MemoryJournal, _add_event
 from storygen.memory.projection import project_memory
 from storygen.providers.models import ProviderSettings, RoleSettings
 from storygen.storage.repository import Repository
+from tests.link_helpers import approve_links
 
 HEADER='ЗДІЙСНЕНІ ПОДІЇ — ПЕРЕВІРЕНА ПАМ’ЯТЬ\n'
 
@@ -25,6 +26,7 @@ def story_with_memory(tmp_path):
     journal=MemoryJournal(schema_version=3,source_prose_ids=[prose.id],events=events)
     memory=repo.save_version(story.id,first.id,'memory',journal.model_dump_json(),[prose.id])
     repo.set_head(first.id,'memory',memory.id,repo.get_scene(first.id).revision)
+    approve_links(repo,story.id)
     return repo,second,journal,prose
 
 

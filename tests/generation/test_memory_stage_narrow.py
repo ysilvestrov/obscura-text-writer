@@ -8,6 +8,7 @@ from storygen.generation.context import ContextOverflow, build_context
 from storygen.memory.journal import MemoryJournal, _add_event
 from storygen.providers.models import ProviderSettings, RoleSettings
 from storygen.storage.repository import Repository
+from tests.link_helpers import approve_links
 
 
 def role(**update):
@@ -26,6 +27,7 @@ def story(tmp_path):
     repo.set_head(first.id,'memory',memory.id,repo.get_scene(first.id).revision)
     p2=repo.save_version(item.id,second.id,'manual','Анна дивиться на дощ.',[])
     repo.set_head(second.id,'prose',p2.id,repo.get_scene(second.id).revision)
+    approve_links(repo,item.id)
     return repo,repo.get_scene(second.id)
 
 

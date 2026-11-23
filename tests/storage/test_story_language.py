@@ -8,6 +8,7 @@ from storygen.application.settings import AppSettings
 from storygen.domain import RevisionConflict, SceneCreate, StoryCreate
 from storygen.language import prose_language
 from storygen.web.app import create_app
+from tests.link_helpers import approve_links
 
 
 def setup(tmp_path):
@@ -74,6 +75,7 @@ def test_scene_prose_language_patch(tmp_path):
     client, repo, story, scene = setup(tmp_path)
     brief = repo.save_version(story.id, scene.id, 'brief', 'Brief', [], source_run_id='run-1')
     repo.set_head(scene.id, 'brief', brief.id, repo.get_scene(scene.id).revision)
+    approve_links(repo, story.id)
 
     def patch(**fields):
         current = repo.get_scene(scene.id)

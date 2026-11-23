@@ -9,6 +9,7 @@ from storygen.generation.models import StyleProfile
 from storygen.providers.models import ProviderSettings, RoleSettings
 from storygen.storage.repository import Repository
 from storygen.storage.snapshots import build_dependency_snapshot, resolve_freshness
+from tests.link_helpers import approve_links
 
 BRIEF = '{"objective":"Юлія чекає","beats":["Юлія чекає"],"constraints":[],"proposed_changes":[],"introduced":[]}'
 HEAD = 'ОПОВІДАЧ СЦЕНИ — ДЛЯ ЦІЄЇ СЦЕНИ ЗАМІНЯЄ point_of_view ЗІ СТИЛЮ'
@@ -38,6 +39,7 @@ def narrate(repo, scene, narrator):
 def with_brief(repo, story, scene):
     brief = repo.save_version(story.id, scene.id, 'brief', BRIEF, [])
     repo.set_head(scene.id, 'brief', brief.id, repo.get_scene(scene.id).revision)
+    approve_links(repo, story.id)
     return repo.get_scene(scene.id)
 
 
@@ -113,6 +115,7 @@ def test_narrator_change_stales_brief_draft_and_prose_of_the_scene_only(tmp_path
     first = repo.get_scene(first.id)
     brief = saved(repo, story, first, 'brief', build_context(repo, first.id, 'brief', role()))
     repo.set_head(first.id, 'brief', brief.id, repo.get_scene(first.id).revision)
+    approve_links(repo, story.id)
     draft = saved(repo, story, first, 'draft', build_context(repo, first.id, 'draft', role()))
     repo.set_head(first.id, 'draft', draft.id, repo.get_scene(first.id).revision)
     prose = saved(repo, story, first, 'edited', build_context(repo, first.id, 'edit', role()))
@@ -120,12 +123,15 @@ def test_narrator_change_stales_brief_draft_and_prose_of_the_scene_only(tmp_path
     journal = MemoryJournal(schema_version=3, source_prose_ids=[prose.id], events=[])
     memory = repo.save_version(story.id, first.id, 'memory', journal.model_dump_json(), [prose.id])
     repo.set_head(first.id, 'memory', memory.id, repo.get_scene(first.id).revision)
+    approve_links(repo, story.id)
     # The next scene's brief is built on the first scene's prose.
     following = saved(repo, story, scene, 'brief', build_context(repo, scene.id, 'brief', role()))
     assert all(stale_fields(repo, story, ref) == [] for ref in (brief, draft, prose, following))
     narrate(repo, first, SceneNarrator(person='third_omniscient'))
-    for ref in (brief, draft, prose):
-        assert ('selector_changed', 'narrator') in stale_fields(repo, story, ref)
+    assert ('selector_changed', 'narrator') in stale_fields(repo, story, draft)
+    # VALID-LINKS: the brief and prose heads are marked only by their links; a narrator change does not touch them
+    for ref in (brief, prose):
+        assert stale_fields(repo, story, ref) == []
     assert stale_fields(repo, story, following) == []
 
 

@@ -4,6 +4,7 @@ from storygen.domain import StoryCreate,SceneCreate,RevisionConflict
 from storygen.storage.repository import Repository
 from storygen.memory.models import MemorySnapshot,MemoryEntry
 from storygen.memory.journal import load_memory
+from tests.link_helpers import approve_links
 
 
 def workspace(tmp_path):
@@ -16,6 +17,7 @@ def workspace(tmp_path):
     old=MemorySnapshot(facts=[MemoryEntry(text='Перший факт',source_version_id=ids[0],quote='Доказ 0.')],source_prose_ids=ids[:1])
     ref=repo.save_version(story.id,scenes[0].id,'memory',old.model_dump_json(),ids[:1])
     repo.set_head(scenes[0].id,'memory',ref.id,1)
+    approve_links(repo,story.id)
     return repo,story,scenes,ids,old
 
 

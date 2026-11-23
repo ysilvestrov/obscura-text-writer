@@ -10,6 +10,7 @@ from storygen.domain import ContentRating, SceneCreate, StoryCreate
 from storygen.generation.context import build_context
 from storygen.providers.models import ProviderSettings, RoleSettings
 from storygen.web.app import create_app
+from tests.link_helpers import approve_links
 
 ORIGIN = {'client': 'claude-ai', 'model': 'test-model'}
 PROSE = ('Марта піднялася на маяк о шостій вечора, коли туман уже ліг на затоку. На ній був вовняний светр, у руці — ліхтар.\n\n'
@@ -41,6 +42,7 @@ def app_with_scene(tmp_path, prose=True, draft=False):
     if prose:
         version = repo.save_version(story.id, scene.id, 'manual', PROSE, [])
         repo.set_head(scene.id, 'prose', version.id, repo.get_scene(scene.id).revision)
+    approve_links(repo, story.id)
     return app, repo, story, repo.get_scene(scene.id), TestClient(app, base_url='http://127.0.0.1:8765')
 
 

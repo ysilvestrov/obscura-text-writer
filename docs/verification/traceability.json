@@ -76,7 +76,7 @@
       "requirement": "DATA-005",
       "scope": "Заміна прози. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
       "tests": [
-        "tests/generation/test_dependencies.py::test_edit_scene_two_invalidates_downstream_not_other_story"
+        "tests/generation/test_dependencies.py::test_edit_scene_two_unchecks_its_memory_not_downstream_or_other_story"
       ]
     },
     {
@@ -205,7 +205,7 @@
       "requirement": "DATA-006",
       "scope": "Відновлення сцени. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
       "tests": [
-        "tests/storage/test_trash.py::test_scene_trash_restore_preserves_text_and_invalidates_later"
+        "tests/storage/test_trash.py::test_scene_trash_restore_preserves_text_and_keeps_later_prose_fresh"
       ]
     },
     {
@@ -7322,7 +7322,7 @@
       "requirement": "PLAN-PREAMBLE",
       "scope": "Проза й підготовлений канон з попереднім вступом застарівають, картки ні; контекст етапу бачить новий вступ.",
       "tests": [
-        "tests/authoring/test_plan_preamble_storage.py::test_prose_and_prepared_canon_become_stale_cards_do_not",
+        "tests/authoring/test_plan_preamble_storage.py::test_prepared_canon_becomes_stale_prose_and_cards_do_not",
         "tests/authoring/test_plan_preamble_storage.py::test_saving_publishes_a_fresh_plan_with_the_same_scenes"
       ]
     },

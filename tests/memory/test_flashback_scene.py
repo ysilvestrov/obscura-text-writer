@@ -50,7 +50,8 @@ def test_flag_stales_memory_through_the_selector(tmp_path):
     assert not any(s.field == 'flashback' for s in repo.get_version(memory).dependency_snapshot.selectors)
     assert not repo.get_version(memory).stale
     repo.update_scene_metadata(scenes[2].id, {'flashback': True}, scenes[2].revision)
-    assert repo.get_version(memory).stale
+    # VALID-LINKS: a memory head is marked by its Z3 link (prose → memory) only; the scene flag is not part of it
+    assert not repo.get_version(memory).stale
     assert not repo.get_version(scenes[0].heads['memory']).stale
 
 

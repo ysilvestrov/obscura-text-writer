@@ -2,6 +2,7 @@ from types import SimpleNamespace
 from storygen.memory.journal import MemoryEvent,MemoryJournal
 from storygen.memory.projection import project_memory
 from storygen.memory.forwarding import effective_hidden,memory_view_from_view
+from tests.link_helpers import approve_links
 
 SUFFIX=' (читачеві невідомо: якщо знадобиться, введи в тексті як нове)'
 
@@ -152,6 +153,7 @@ def closed_thread_story(root):
     j=MemoryJournal(schema_version=3,source_prose_ids=[prose.id],events=events)
     memory=repo.save_version(story.id,first.id,'memory',j.model_dump_json(),[prose.id])
     repo.set_head(first.id,'memory',memory.id,repo.get_scene(first.id).revision)
+    approve_links(repo,story.id)
     return repo,story,repo.get_scene(first.id),repo.get_scene(second.id),thread.claim_id,events[2].claim_id
 
 
@@ -235,6 +237,7 @@ def test_policy_includes_atmosphere_of_hidden_slot(tmp_path):
         built=events(prose.id);sources=sources+[prose.id]
         memory=repo.save_version(story.id,scene.id,'memory',MemoryJournal(schema_version=3,source_prose_ids=sources,events=built).model_dump_json(),sources)
         repo.set_head(scene.id,'memory',memory.id,repo.get_scene(scene.id).revision)
+        approve_links(repo,story.id)
         return built,sources
     (cloth,),sources=publish(scenes[0],lambda p:[_add_event('character_states','Закривавлена сорочка',p,text,0,['A'],slot='clothing')],[])
     # The author hides the slot value at the first boundary; on the next day the model answers unknown.

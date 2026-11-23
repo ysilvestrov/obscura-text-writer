@@ -15,11 +15,13 @@ from storygen.storage.snapshots import resolve_freshness
 def stale_book(tmp_path):
     repo=Repository(tmp_path/'data')
     story=repo.create_story(StoryCreate(title='Історія'))
+    # VALID-LINKS: accepted prose is never stale, so the stale prose is a manual text under a hand-made brief
+    # (brief→prose link unchecked) instead of accepted prose made stale by the reorder
     for n in range(2):
         scene=repo.create_scene(story.id,SceneCreate(title=f'Сцена {n+1}',beats=f'План {n+1}'))
+        brief=repo.save_version(story.id,scene.id,'brief',f'Завдання {n+1}',[])
+        scene=repo.set_head(scene.id,'brief',brief.id,scene.revision)
         save_manual_prose(repo,scene.id,f'Проза {n+1}.',scene.revision)
-    accepted=repo.preview_prose_acceptance(story.id)
-    repo.accept_all_prose(story.id,accepted['fingerprint'])
     ids=[s.id for s in repo.list_scenes(story.id)]
     repo.reorder_scenes(story.id,[ids[1],ids[0]],repo.get_story(story.id).revision)
     return repo,story

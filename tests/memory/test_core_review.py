@@ -12,6 +12,7 @@ from storygen.providers.models import ProviderSettings, RoleSettings
 from storygen.storage.repository import Repository
 from tests.memory.wire_helpers import core_unchanged, threads_open, v4_response
 from tests.storage.test_memory_core_selectors import cards
+from tests.link_helpers import approve_links
 
 PROSE1 = 'Анна в халаті.\nУ кишені ключ.\nХто стукав у двері?'
 PROSE2 = 'Анна вдягла пальто.\nСтукав сусід.'
@@ -37,6 +38,7 @@ def two_scenes(tmp_path):
     repo.set_head(s1.id, 'memory', memory.id, repo.get_scene(s1.id).revision)
     p2 = repo.save_version(story.id, s2.id, 'manual', PROSE2, [])
     repo.set_head(s2.id, 'prose', p2.id, repo.get_scene(s2.id).revision)
+    approve_links(repo, story.id)
     return repo, story, repo.get_scene(s1.id), repo.get_scene(s2.id), journal, {'cloth': cloth, 'key': key, 'thread': thread}
 
 

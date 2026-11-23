@@ -11,6 +11,7 @@ from storygen.run_models import Run, RunRequest
 from storygen.web.app import create_app
 from tests.generation.test_copyedit_review import choose, generate
 from tests.generation.test_worker import ready
+from tests.link_helpers import approve_links
 
 BRIEF = json.dumps({'objective': 'Мета', 'beats': ['Подія'], 'constraints': [], 'proposed_changes': ['Змінити план']}, ensure_ascii=False)
 
@@ -125,6 +126,7 @@ def test_a_new_edit_run_cancels_an_editor_loop_waiting_for_its_summary(tmp_path,
     repo.set_head(scene.id, 'brief', brief.id, repo.get_scene(scene.id).revision)
     draft = repo.save_version(story.id, scene.id, 'draft', 'Ранок у бібліотеці. ' * 20, [brief.id])
     repo.set_head(scene.id, 'draft', draft.id, repo.get_scene(scene.id).revision)
+    approve_links(repo, story.id)
     tasks = [{'scene_id': scene.id, 'stage': 'edit'}] * 2
     loop = stopped(repo, story.id, scene.id, tasks, cursor=len(tasks), mode='edit_loop')  # summary waits past the last pass
     request = RunRequest(story_id=story.id, scene_id=scene.id, mode=mode, stage='edit' if mode == 'stage' else None)

@@ -127,7 +127,8 @@ def test_later_scenes_stay_fresh_after_switch(tmp_path):
     brief = repo.save_version(story_id, second.id, 'brief', 'Brief', [prose.id], dependency_snapshot=snapshot)
     assert not stale(repo, story_id, brief.id)
     switch(repo, scene_id, 'en')
-    assert stale(repo, story_id, prose.id)
+    # VALID-LINKS: the prose head is marked only by its brief→prose link; a language switch stales non-head versions only
+    assert not stale(repo, story_id, prose.id)
     assert not stale(repo, story_id, brief.id)
 
 

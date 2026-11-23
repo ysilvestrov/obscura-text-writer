@@ -8,6 +8,7 @@ from storygen.generation.context import build_context
 from storygen.generation.models import StyleProfile
 from storygen.providers.models import ProviderSettings, RoleSettings
 from storygen.storage.repository import Repository
+from tests.link_helpers import approve_links
 
 
 def role():
@@ -51,6 +52,7 @@ def remember(repo, scenes, upto, events=lambda prose: []):
     journal = MemoryJournal(schema_version=3, source_prose_ids=prose, events=events(prose))
     memory = repo.save_version(story_id, scenes[upto].id, 'memory', journal.model_dump_json(), prose)
     repo.set_head(scenes[upto].id, 'memory', memory.id, repo.get_scene(scenes[upto].id).revision)
+    approve_links(repo, story_id)
     return [repo.get_scene(scene.id) for scene in scenes]
 
 

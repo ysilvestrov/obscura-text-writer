@@ -94,6 +94,22 @@ class Bench:
 RATINGS = {'N': (0, 0, 0), 'V': (0, 2, 0), 'T': (0, 0, 2), 'S': (2, 0, 0)}
 
 
+def _confirm_links(repo, story_id, scene_id):
+    """VALID-LINKS: the bench text stands for accepted prose on a confirmed brief; the author's verdicts say so."""
+    from storygen.domain import now
+    from storygen.storage.link_records import LinkVerdict, new_verdict_id, write_verdict
+    from storygen.storage.links import scene_links
+    states = scene_links(repo.context_view(story_id), scene_id)
+    with repo.db.connection() as db:
+        db.execute('BEGIN IMMEDIATE')
+        for link in ('brief', 'prose'):
+            state = states[link]
+            if state.status == 'unchecked':
+                write_verdict(db, LinkVerdict(id=new_verdict_id(), story_id=story_id, scene_id=scene_id, link=link,
+                                              inputs=state.inputs, fingerprint=state.fingerprint, source='author',
+                                              outcome='valid', created_at=now()))
+
+
 def open_bench(data_dir, texts: dict, limit_usd: str, casts: dict | None = None) -> Bench:
     """One story per text: its broken version as accepted prose, a neutral brief and the whole-test budget. A later
     call on the same folder reuses the stories it made (bench.json), so the cap covers every part of the test."""
@@ -130,6 +146,7 @@ def open_bench(data_dir, texts: dict, limit_usd: str, casts: dict | None = None)
         repo.set_head(scene.id, 'brief', brief.id, repo.get_scene(scene.id).revision)
         ref = repo.save_version(story.id, scene.id, 'manual', text, [])
         repo.set_head(scene.id, 'prose', ref.id, repo.get_scene(scene.id).revision)
+        _confirm_links(repo, story.id, scene.id)
         repo.billing('limit', scope='story:' + story.id, limit_nanos=money(limit_usd), expected_revision=0)
         bench.stories[text_id] = (story.id, scene.id)
     index.write_text(json.dumps(bench.stories), encoding='utf-8')

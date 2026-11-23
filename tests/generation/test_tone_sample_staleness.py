@@ -8,6 +8,7 @@ from storygen.generation.models import StyleProfile
 from storygen.providers.models import ProviderSettings, RoleSettings
 from storygen.storage.repository import Repository
 from storygen.storage.snapshots import compare_snapshot
+from tests.link_helpers import approve_links
 
 
 def role():
@@ -18,6 +19,7 @@ def generated(repo, scene_id, stage, text):
     ctx = build_context(repo, scene_id, stage, role())
     ref = repo.save_version(ctx.story_id, scene_id, stage, text, ctx.input_refs, dependency_snapshot=ctx.dependency_snapshot)
     repo.set_head(scene_id, stage, ref.id, repo.get_scene(scene_id).revision)
+    approve_links(repo, ctx.story_id)
     return ref
 
 
@@ -66,6 +68,7 @@ def test_sample_change_keeps_an_evaluation_fresh(tmp_path):
     # hears the sample, goes stale itself and takes its evaluation with it.
     prose = repo.save_version(story.id, scene.id, 'manual', 'Проза сцени.', [])
     repo.set_head(scene.id, 'prose', prose.id, repo.get_scene(scene.id).revision)
+    approve_links(repo, story.id)
     case = build_evaluation_case(repo, story.id, scene.id, 'scene')
     snapshot = build_evaluation_snapshot(repo.context_view(story.id), scene.id, case, 'scene')
     evaluation = repo.save_version(story.id, scene.id, 'evaluation', '{}', [d.version for d in case.documents],
@@ -82,7 +85,8 @@ def test_sample_change_stales_the_draft(tmp_path):
     repo, story, scene, brief, draft = world(tmp_path)
     change(repo, story, tone_sample='Другий зразок.')
     assert repo.get_version(draft.id).stale is True
-    assert repo.get_scene(scene.id).needs_review is True
+    # VALID-LINKS: needs_review follows the prose head's brief→prose link; a scene without prose is not marked
+    assert repo.get_scene(scene.id).needs_review is False
     assert compare_snapshot(repo.context_view(story.id), draft.dependency_snapshot)
 
 
@@ -90,7 +94,8 @@ def test_sample_change_stales_the_draft(tmp_path):
 def test_other_style_change_still_stales_brief(tmp_path):
     repo, story, scene, brief, draft = world(tmp_path)
     change(repo, story, tone='гостро', tone_sample='Другий зразок.')
-    assert repo.get_version(brief.id).stale is True
+    # VALID-LINKS: the change still shows in the brief's snapshot, but a brief head is marked only by its link
+    assert repo.get_version(brief.id).stale is False
     assert compare_snapshot(repo.context_view(story.id), brief.dependency_snapshot)
 
 

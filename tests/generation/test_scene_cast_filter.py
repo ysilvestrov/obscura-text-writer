@@ -4,6 +4,7 @@ from storygen.domain import StoryCreate,SceneCreate
 from storygen.storage.repository import Repository
 from storygen.providers.models import RoleSettings,ProviderSettings
 from storygen.generation.context import build_context
+from tests.link_helpers import approve_links
 
 
 def prepared(tmp_path,cast):
@@ -66,6 +67,7 @@ def test_literary_requests_exclude_nonparticipants(tmp_path,stage):
     for head,kind,text in [('brief','brief','{"objective":"Подія","beats":["Подія"]}'),('draft','draft','Чернетка')]:
         ref=repo.save_version(story.id,scene.id,kind,text,[])
         repo.set_head(scene.id,head,ref.id,repo.get_scene(scene.id).revision)
+    approve_links(repo,story.id)
     ctx=build_context(repo,scene.id,stage,RoleSettings(provider=ProviderSettings(model='fake'),context_tokens=32768))
     assert 'ОПИС УЧАСНИЦІ' in ctx.user_text and 'СТОРОННІЙ ОПИС' not in ctx.user_text
 
