@@ -106,3 +106,40 @@ def test_editor_loop_pass_emits_progress(tmp_path):
     events = worker.list_events(run.id)
     steps = sum(e.type in {'stage_started', 'stage_finished'} for e in events)
     assert sum(e.type == 'progress' for e in events) == steps >= 2
+
+
+def test_a_failing_progress_computation_does_not_fail_the_run(tmp_path, monkeypatch):
+    import storygen.generation.run_progress as module
+    monkeypatch.setattr(module, 'run_progress', lambda *_: (_ for _ in ()).throw(RuntimeError('boom')))
+    repo, story, scene = ready(tmp_path)
+    gateway = BlockingGateway(); gateway.release.set()
+    worker = RunCoordinator(repo, lambda _: gateway)
+    run = worker.enqueue(RunRequest(story_id=story.id, scene_id=scene.id, mode='stage', stage='brief'), 'brief')
+    run = drive(worker, run.id)
+    events = worker.list_events(run.id)
+    assert run.state != 'failed' and any(e.type == 'stage_finished' for e in events)
+    assert not any(e.type == 'progress' for e in events) and events[-1].type == 'state'
+
+
+def test_list_run_events_filters_by_type(tmp_path):
+    repo, worker, run, _ = _setup(tmp_path)
+    worker.event(run.id, 'note', {})
+    worker.event(run.id, 'stage_finished', {'attempt_id': 'a1', 'usage': {}})
+    kinds = lambda **kw: {e.type for e in repo.list_run_events(run.id, **kw)}
+    assert kinds(types=('stage_finished',)) == {'stage_finished'}
+    assert kinds(types=()) == kinds() and 'note' in kinds()
+
+
+def test_spent_rounds_half_up_at_the_boundary(tmp_path):
+    repo, worker, run, _ = _setup(tmp_path)
+    for key in ('a1', 'a2'):
+        worker.event(run.id, 'stage_finished', {'attempt_id': key, 'usage': {'cost': 0.000025}})
+    assert run_progress(repo, repo.get_run(run.id))['spent_usd'] == '0.0001'
+
+
+def test_single_scene_audit_progress_is_one_of_one(tmp_path):
+    from tests.generation.test_audit_run import request as audit_request
+    repo, story, (s1, s2, s3, s4), _ = four_scenes(tmp_path)
+    run = Run(id='r', story_id=story.id, request_id='q', tasks=[], request=audit_request(story, s3))
+    progress = progress_from_events(run, [])
+    assert progress['scene'] == {'id': s3.id, 'index': 1, 'total': 1}

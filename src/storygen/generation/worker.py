@@ -1,3 +1,4 @@
+import logging
 import threading
 
 
@@ -50,7 +51,9 @@ class RunCoordinator:
 
     def event(self,id,type,data):
         event=self.repo.append_run_event(id,type,data)
-        if type in PROGRESS_EVENTS:emit_progress(self,id)
+        if type in PROGRESS_EVENTS:
+            try:emit_progress(self,id)
+            except Exception:logging.getLogger(__name__).exception('Не вдалося обчислити прогрес запуску %s',id)  # progress is advisory: it never fails a run
         return event
 
     def list_events(self,id,after_seq=0):

@@ -33,6 +33,7 @@ def _calls(events):
     by_attempt = {}
     for event in events:
         if event.type == 'stage_finished':
+            # an event without attempt_id gets a positional key: a replay of it is not deduplicated
             key = event.data.get('attempt_id') or f'call-{len(by_attempt)}'
             by_attempt.setdefault(key, usage_usd(event.data.get('usage')))
     return by_attempt
@@ -47,7 +48,7 @@ def _stopped(run):
 
 def _audit_position(run, events):
     request = run.request
-    if request.audit_scope == 'scene' or request.mode != 'audit':
+    if request.audit_scope == 'scene':
         return {'id': request.scene_id, 'index': 1, 'total': 1}
     visited = visited_scene_ids(events)
     return {'id': visited[-1] if visited else None, 'index': len(visited), 'total': (run.planned_telemetry or {}).get('scenes')}
