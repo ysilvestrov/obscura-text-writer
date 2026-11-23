@@ -21,4 +21,4 @@ If you know that all the current prose of the book is your final text, open the 
 - Every scene gets an entry in the history of author decisions, as after accepting a single version.
 - All scenes are accepted together or none: if a scene changes after the confirmation is shown, nothing is accepted and you press the menu item again.
 
-The earlier impact check and sequential book review have been removed. Unfinished old runs are cancelled the next time Obscura starts; they cannot be continued or started again. Their saved data stays in the database. Saved links to the Book check page open the story.
+The earlier impact check and sequential book review have been removed. [Book validation](workspace.md#validating-the-book) replaces them: the auditor checks that each scene’s brief, prose and memory match each other and stops at discrepancies for your decision. Unfinished old runs are cancelled the next time Obscura starts; they cannot be continued or started again. Their saved data stays in the database. Saved links to the Book check page open the story.

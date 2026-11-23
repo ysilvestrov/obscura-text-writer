@@ -20,7 +20,7 @@ When the Venice or OpenRouter model list reports the chosen model's maximum cont
 
 ## Auditor
 
-The auditor checks the links of a scene when you press **Check scene** ([checking a scene](workspace.md#checking-a-scene-with-the-auditor)). It does not change any text. Until you save its form, it uses the **Editor**’s provider and model, the **Planner**’s limits and temperature 0.2; the auditor form reminds you with the note “Until the auditor is saved, it uses the editor’s model.” Once saved, the settings are its own, and changing the editor’s model no longer affects the auditor.
+The auditor checks the links of a scene when you press **Check scene** ([checking a scene](workspace.md#checking-a-scene-with-the-auditor)) or start [book validation](workspace.md#validating-the-book) from the story menu. It does not change any text. Until you save its form, it uses the **Editor**’s provider and model, the **Planner**’s limits and temperature 0.2; the auditor form reminds you with the note “Until the auditor is saved, it uses the editor’s model.” Once saved, the settings are its own, and changing the editor’s model no longer affects the auditor.
 
 The auditor has three prompts. The role prompt checks the prose against the brief, and the prompts block also holds the **Brief check prompt** (the brief against the plan and the previous scene’s memory) and the **Memory check prompt** (the scene memory against its prose). An empty text brings back the standard prompt.
 

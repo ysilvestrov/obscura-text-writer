@@ -20,7 +20,7 @@ If there are many scenes, click the **Scenes** heading with their count: the lis
 - **Characters** opens the character cards on a separate page.
 - **Settings** opens the models, writing, evaluator and budget for this story.
 - **Add scene** creates a scene right after the open one (at the end of the list if no scene is open) and fills its outline from a template right away. Location, characters, key realisation and emotional focus are carried over from the previous scene's outline; its "End" becomes the "Start" of the new scene, and its "What happens" becomes "Previously". "End", "What happens" and the three "Beats" items stay empty. The number in the heading is the new scene's place in the list; the numbers in the outlines of the following scenes move on. A scene added at the end gets the number after the previous scene's number. In a Ukrainian story the outline labels are Ukrainian. Whatever the previous outline lacks stays empty; you can correct everything in the outline straight away.
-- The **☰ Story actions** menu holds everything that concerns the whole story: **Accept all prose as the author's** (when the prose of at least one scene is unchecked), **Card and publication**, **Export…**, story evaluation and reports (when an evaluator is configured), the budget line and **Rename story**. The menu works from the keyboard; `Escape` closes it.
+- The **☰ Story actions** menu holds everything that concerns the whole story: **Book validation** with the number of invalid scenes ([book validation](#validating-the-book)), **Accept all prose as the author's** (when the prose of at least one scene is unchecked), **Card and publication**, **Export…**, story evaluation and reports (when an evaluator is configured), the budget line and **Rename story**. The menu works from the keyboard; `Escape` closes it.
 
 ![Story actions menu](../../images/site/en/story-menu-desktop.png)
 
@@ -77,7 +77,7 @@ In full-screen mode the panel is hidden.
 
 ## Checking a scene with the auditor
 
-When a scene is “Unchecked” or has a “Discrepancy”, a **Check scene** button appears next to its status. It runs the [auditor](models.md#auditor): the model reads the scene links one by one (brief, prose, memory) and changes no text. First you see which links will be checked, the model and the maximum number of calls; the check starts only after **Confirm**. The number of calls is an upper bound while the scene stays unchanged. This preview does not show a dollar amount yet; the budget limit applies as for other runs.
+When a scene is “Unchecked” or has a “Discrepancy”, a **Check scene** button appears next to its status. It runs the [auditor](models.md#auditor): the model reads the scene links one by one (brief, prose, memory) and changes no text. First you see which links will be checked, the model, the maximum number of calls and, for a cloud model, the maximum amount in dollars; the check starts only after **Confirm**. The number of calls and the amount are an upper bound while the scene stays unchanged. If the scene changed while the dialog was open, the check does not start and Obscura says “The check plan has changed. Review it again”: press **Check scene** again. The budget limit applies as for other runs.
 
 - If the auditor is at least 90% confident and found no discrepancies, the link holds and the check moves on to the next one.
 - Otherwise the check stops, and the panel below the text shows a row “The auditor thinks … may differ …” with the confidence, a list of discrepancies and quotes. The model’s explanations can be inaccurate: it may notice that something is off but name the wrong thing. Reread the scene yourself.
@@ -86,6 +86,17 @@ When a scene is “Unchecked” or has a “Discrepancy”, a **Check scene** bu
 - A link that cannot be checked without memory (the previous scene has no memory, the memory is being carried over) stops the check without a model call; its actions are described above.
 
 Pause and cancel take effect between calls. If you change the scene during a call, the verdict is not applied and the link is checked again; after three such times in a row the check stops with the error “The scene was changed during the check several times in a row”. A wrong answer from the model stops the check without a verdict; you can repeat it only explicitly. While a link waits for your decision, the **Check scene** button stays visible, but a new check only stops at the same discrepancy: use **Continue**.
+
+## Validating the book
+
+To check the whole book, open the **☰ Story actions → Book validation (N)** menu item, where N is the number of “Unchecked” scenes and scenes with a “Discrepancy”. When there are no such scenes, the item shows “The book is valid” and is inactive; it is also inactive while another run is going on.
+
+- First you see how many scenes will be checked, the maximum number of auditor calls, its model and the upper bound on the cost: “Cost: up to $X (upper bound)”. The number of scenes in the dialog may differ from the number in the menu: the dialog counts the scenes the run will check, including unfinished ones. A local model has no amount. If the model has no price or the price is out of date, the dialog says “No cost estimate: …”: update the prices in the settings ([call budget](models.md#call-budget)). The check starts only after **Start validation**; **Cancel** starts nothing.
+- The auditor goes through the scenes in list order (without the trash), in each one the brief, prose and memory, and calls the model only for unchecked links. It skips valid scenes.
+- At the first discrepancy or unavailable link the check stops, and a **Go to scene N** button appears in the status row. It opens the scene, where the panel below the text shows the discrepancy. Make your decision as for [checking a scene](#checking-a-scene-with-the-auditor) and press **Continue**. The check reads the book from the start again, so if you changed an earlier scene in the meantime, it checks that scene first.
+- The scenes, calls and cost are an upper bound only while the book stays unchanged: edits during the check may add work. If the book changed while the dialog was open, Obscura does not start the check and shows “The check plan has changed. Review it again” with a **Review again** button. It shows the new plan, and the check starts only after your new consent.
+- A new book validation cancels the stopped checks of this story (of a scene or of the book), so an old plan is not continued. The dialog does not warn about this.
+- Pause, cancel, failure and repeat work the same as for a scene check.
 
 ## Editor
 
