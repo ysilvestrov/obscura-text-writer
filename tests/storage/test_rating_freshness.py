@@ -1,7 +1,6 @@
 import pytest
 from storygen.domain import ContentRating, SceneCreate, StoryCreate
 from storygen.generation.dependencies import save_manual_prose
-from storygen.impact.planning import capture_target
 from storygen.providers.models import ProviderSettings, RoleSettings
 from storygen.storage.repository import Repository
 from storygen.storage.snapshots import build_dependency_snapshot, resolve_freshness
@@ -179,48 +178,3 @@ def test_story_lowering_below_scene_override_keeps_scene_fresh(tmp_path):
     assert not fresh(repo, story_id, version.id).stale
 
 
-def test_impact_capture_ignores_rating_raise(tmp_path):
-    repo, story_id, scene_id, draft = setup(tmp_path)
-    set_story(repo, story_id, R(1, 1, 1))
-    version = save(repo, story_id, scene_id, 'prose_edit', draft.id)
-    repo.set_head(scene_id, 'prose', version.id, repo.get_scene(scene_id).revision)
-    before = capture_target(repo.context_view(story_id), version.id)
-    set_story(repo, story_id, R(2, 2, 2))
-    after = capture_target(repo.context_view(story_id), version.id)
-    assert after.fingerprint == before.fingerprint
-    change = next(c for c in after.changes if c.input_field == 'content_rating')
-    assert not change.changed
-    assert next(s for s in after.selectors if s['field'] == 'content_rating')['expected'] == ['1', '1', '1']
-
-
-def test_impact_preview_tolerates_rating_selector(tmp_path):
-    repo, story_id, scene_id, draft = setup(tmp_path)
-    set_story(repo, story_id, R(2, 2, 2))
-    version = save(repo, story_id, scene_id, 'prose_edit', draft.id)
-    repo.set_head(scene_id, 'prose', version.id, repo.get_scene(scene_id).revision)
-    set_story(repo, story_id, R(1, 2, 2))
-    target = capture_target(repo.context_view(story_id), version.id)
-    assert target.blockers == []
-    change = next(c for c in target.changes if c.input_field == 'content_rating')
-    assert change.changed and change.owner_id == scene_id
-    live = next(s for s in target.selectors if s['field'] == 'content_rating')
-    assert live['expected'] == ['1', '2', '2']
-
-
-@pytest.mark.parametrize('strip_rating', [True, False])
-def test_impact_capture_uses_initial_rating_for_unrated_snapshots(tmp_path, strip_rating):
-    repo, story_id, scene_id, draft = setup(tmp_path)
-    version = save(repo, story_id, scene_id, 'prose_edit', draft.id, strip_rating=strip_rating)
-    repo.set_head(scene_id, 'prose', version.id, repo.get_scene(scene_id).revision)
-    set_story(repo, story_id, R(2, 2, 2))
-    rated = capture_target(repo.context_view(story_id), version.id)
-    assert not any(c.changed for c in rated.changes if c.input_field == 'content_rating')
-    set_story(repo, story_id, R(2, 2, 2))
-    raised = capture_target(repo.context_view(story_id), version.id)
-    assert raised.fingerprint == rated.fingerprint
-    set_story(repo, story_id, R(2, 1, 2))
-    lowered = capture_target(repo.context_view(story_id), version.id)
-    assert lowered.fingerprint != rated.fingerprint
-    change = next(c for c in lowered.changes if c.input_field == 'content_rating')
-    assert change.changed and change.owner_id == scene_id
-    assert next(s for s in lowered.selectors if s['field'] == 'content_rating')['expected'] == ['2', '1', '2']

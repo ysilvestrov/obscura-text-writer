@@ -21,12 +21,6 @@ PROMPTS: dict[str, tuple[str, str, frozenset]] = {
     # Unreachable since memory_mode is always evidence_delta; kept for default_prompt('memory') compatibility.
     'memory_v1': ('storygen.generation', 'memory', UK_ONLY),
     'assisted_writer_v1': ('storygen.generation', 'assisted_writer', BOTH),
-    'impact_check_v1': ('storygen.generation', 'impact_check', BOTH),
-    'impact_delta_v1': ('storygen.generation', 'impact_delta', BOTH),
-    'impact_part_v1': ('storygen.generation', 'impact_part', BOTH),
-    'impact_part_v2': ('storygen.generation', 'impact_part', BOTH),
-    'review_part_v3': ('storygen.generation', 'review_part', BOTH),
-    'review_part_v4': ('storygen.generation', 'review_part', BOTH),
     'publication_metadata_v1': ('storygen.generation', 'publication_metadata', BOTH),
     'timeline_summary_v1': ('storygen.generation', 'timeline_summary', BOTH),
     # Calibrated on Ukrainian only (EVAL-002): English prose is not evaluated.

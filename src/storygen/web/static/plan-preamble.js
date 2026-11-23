@@ -7,7 +7,6 @@ import {registerSettingsForm,settingsChanged,settingsSaved,withSettingsSave} fro
 const root=document.querySelector('[data-story-id]'),form=document.querySelector('#plan-preamble-form');
 if(root&&form){
   const id=root.dataset.storyId,area=form.elements.text,button=form.querySelector('button'),status=form.querySelector('[data-plan-preamble-status]');
-  const review=form.querySelector('[data-plan-preamble-review]');
   let state=null;
   function sync(){button.disabled=!state||!state.editable||area.disabled||area.value.trim()===state.text.trim()}
   async function load(){
@@ -25,7 +24,6 @@ if(root&&form){
     try{
       await withSettingsSave('plan-preamble',async()=>{
         const result=await api(`/api/stories/${id}/plan-preamble`,json('PUT',{text:area.value,expected_plan_version_id:state.plan_version_id}));
-        if(result.changed){review.href=`/stories/${id}/revision`;review.hidden=false}
         await load();
         notice(msg(result.changed?'plan_preamble.saved':'plan_preamble.unchanged'));
       });

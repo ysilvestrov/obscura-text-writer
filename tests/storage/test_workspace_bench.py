@@ -5,7 +5,7 @@ import pytest
 from pydantic import BaseModel
 
 from storygen.application.workspace_bench import OPERATIONS, _shallow_model_copy, build_story, measure
-from storygen.impact.presentation import scene_status
+from storygen.storage.material_status import material_status
 from storygen.storage.repository import Repository
 
 # The bench must rate its own synthetic story; the conftest default rating would hide a missing rating.
@@ -34,7 +34,7 @@ def _structure(repo, story_id):
             'scenes': [s.model_dump(mode='json') for s in scenes],
             'versions': [v.model_dump(mode='json') for v in repo.list_versions(story_id)],
             'texts': [[repo.read_text(s.heads[h]) for h in ('plan', 'prose', 'memory')] for s in scenes],
-            'status': [scene_status(view)[s.id] for s in scenes]}
+            'status': [material_status(view)[s.id] for s in scenes]}
     text = json.dumps(data, ensure_ascii=False, default=str)
     text = re.sub(r'\d{4}-\d\d-\d\dT[\d:.]+(?:\+00:00|Z)?', 'TS', text)
     text = re.sub(r'\b[0-9a-f]{64}\b', 'SHA', text)  # content hashes include the random memory event ids
@@ -175,10 +175,10 @@ def test_failing_scene_select_endpoint_is_a_clear_error_with_exit_code_2(tmp_pat
 
 
 def test_story_open_requests_are_timed_through_the_app_and_stay_out_of_digest_core(tmp_path):
-    """PERF-001-S03 (#39): opening a story (story view, impact, trash) is measured through the app with its lineage scope."""
+    """PERF-001-S03 (#39): opening a story (story view, trash) is measured through the app with its lineage scope."""
     repo = Repository(tmp_path)
     story_id = build_story(repo, 3, shallow_copies=True)
     result = measure(repo, story_id)
-    assert set(result['story_open_requests']) == {'story', 'impact', 'trash'}
+    assert set(result['story_open_requests']) == {'story', 'trash'}
     assert result['timings']['story_open'] == pytest.approx(sum(result['story_open_requests'].values()), abs=1e-5)
     assert measure(repo, story_id)['digest_core'] == result['digest_core']

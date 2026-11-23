@@ -131,7 +131,7 @@ def test_http_read_and_save(tmp_path):
         saved = client.put(f'/api/stories/{story.id}/plan-preamble',
                            json={'text': 'Тон: похмурий.', 'expected_plan_version_id': data['plan_version_id']})
         assert saved.status_code == 200 and saved.json()['changed']
-        assert 'impact_status' in saved.json()
+        assert 'material_status' in saved.json() and 'impact_status' not in saved.json()
         assert client.get(f'/api/stories/{story.id}/plan-preamble').json()['text'] == 'Тон: похмурий.'
         stale = client.put(f'/api/stories/{story.id}/plan-preamble',
                            json={'text': 'Інше', 'expected_plan_version_id': data['plan_version_id']})

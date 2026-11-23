@@ -41,12 +41,6 @@ def execute_stage(
         context=context.model_dump(),
         partial_path=f'stories/{context.story_id}/runs/{id}/partial.txt'
     )
-    if stage=='review_part':
-        attempt.context['review_spec']=json.loads(context.fragments['review_spec'])
-        attempt.context['review_plan_id']=json.loads(context.fragments['review_plan'])['id']
-    if stage=='impact_part':
-        attempt.context['impact_chunk_manifest']=context.fragments['impact_chunk_manifest']
-        attempt.context['impact_chunk_task']=json.loads(context.fragments['impact_chunk_task'])
     if stage=='classify':
         from .edit_classification import identity
         attempt.context.update({key:context.fragments[key] for key in ['classification_proposal_id','classification_fingerprint']})
@@ -143,7 +137,7 @@ def execute_stage(
             attempt.context['model_policy_warning']='Не вдалося зберегти відмову моделі; наступні виклики не заблоковано.'
     if cancel.is_set() or (terminal and terminal.type=='cancelled'):
         attempt.state='cancelled'
-    elif terminal is None or terminal.type!='terminal' or terminal.finish_reason!='stop' or not text.strip() or (stage in {'rewrite','impact_delta','impact_check','impact_part','review_part'} and terminal.refusal):
+    elif terminal is None or terminal.type!='terminal' or terminal.finish_reason!='stop' or not text.strip() or (stage=='rewrite' and terminal.refusal):
         attempt.state='failed'
         if (stage=='edit' and terminal and terminal.finish_reason=='stop' and not text.strip()
                 and (terminal.type=='terminal' or terminal.failure.get('category')=='empty_output')):
@@ -161,14 +155,6 @@ def execute_stage(
     elif guard==3 and stage not in {'brief','prepare'} and broken_text.new_broken_words(text,known):
         attempt.context['broken_text_warnings']=[broken_text.kept_warning(len(broken_text.new_broken_words(text,known)))]
     if attempt.state!='running':
-        if stage in {'impact_delta','impact_check','impact_part','review_part'}:
-            category=('cancelled' if attempt.state=='cancelled' else 'refusal_content' if attempt.finish_reason=='content_filter' else 'refusal_unknown' if terminal and terminal.refusal else 'output_limit' if attempt.finish_reason=='length' else 'empty_output' if attempt.finish_reason=='stop' and not text.strip() else (terminal.failure.get('category','technical') if terminal else 'incomplete'))
-            if category=='empty_output':
-                from ..providers.streaming import empty_output_message
-                attempt.error=empty_output_message(context,attempt.usage)
-            attempt.error=attempt.error or 'Перевірка впливу не отримала повної відповіді; автоматичного повтору немає'
-            attempt.context['impact_failure']={**(terminal.failure if terminal else {}),'category':category,'message':attempt.error}
-
         if stage=='rewrite':
             category=('cancelled' if attempt.state=='cancelled' else
                 'refusal_content' if attempt.finish_reason=='content_filter' else
@@ -201,33 +187,6 @@ def execute_stage(
             attempt.context['classification_failure']={'category':'output_limit' if attempt.finish_reason=='length' else 'incomplete','message':attempt.error}
         return repo.save_attempt(attempt)
     try:
-        if stage=='review_part':
-            from ..review.wire import validate_part
-            from ..impact.validation import decode_response
-            attempt.context['review_result']=validate_part(decode_response(text),json.loads(context.fragments['review_plan']),attempt.context['review_spec'],json.loads(context.fragments['review_results']))
-            attempt.state='completed'
-            return repo.save_attempt(attempt)
-        if stage=='impact_part':
-            from ..impact.chunk_models import ChunkManifest
-            from ..impact.chunk_validation import validate_part
-            from ..impact.validation import decode_response
-            run=repo.get_run(run_id);manifest=ChunkManifest.model_validate(run.impact['manifest'])
-            task=attempt.context['impact_chunk_task']
-            results={key:repo.get_attempt(value).context['impact_result'] for key,value in run.impact['proofs'].items()}
-            parsed=validate_part(decode_response(text),manifest,task,results)
-            attempt.context['impact_result']=parsed.model_dump();attempt.state='completed'
-            return repo.save_attempt(attempt)
-        if stage in {'impact_delta','impact_check'}:
-            from ..impact.models import ImpactTarget
-            from ..impact.validation import validate_delta,validate_check,decode_response
-            target=ImpactTarget.model_validate_json(context.fragments['impact_target'])
-            attempt.context['impact_target']=target.model_dump()
-            result=(validate_delta if stage=='impact_delta' else validate_check)(decode_response(text),target)
-            if stage=='impact_check' and result.memory_semantic_impact!='unchecked' and context.fragments.get('impact_memory_included')!='true':
-                raise ValueError('Пам’ять не була передана для перевірки')
-            attempt.context['impact_result']=result.model_dump()
-            attempt.state='completed'
-            return repo.save_attempt(attempt)
         if stage=='rewrite':
             from .assisted_writing import save_rewrite_result
             return save_rewrite_result(repo,attempt,context,text,known)
@@ -412,13 +371,7 @@ def execute_stage(
         return repo.commit_stage_result(attempt.id,ref,context.scene_revision)
     except ValueError as exc:
         attempt.state='failed'
-        if stage in {'impact_delta','impact_check','impact_part','review_part'}:
-            from ..impact.validation import refusal_body
-            from pydantic import ValidationError
-            detail=str(exc) if stage in {'impact_part','review_part'} and not isinstance(exc,ValidationError) else 'Результат перевірки впливу не відповідає схемі, покриттю або дослівним цитатам'
-            failure=refusal_body(text) or {'category':'protocol','message':detail}
-            attempt.error=failure['message'];attempt.context['impact_failure']=failure
-        elif stage=='rewrite':
+        if stage=='rewrite':
             attempt.error=str(exc)
             attempt.context['rewrite_failure']={'category':'protocol','message':str(exc)}
         elif stage=='publication_suggest':

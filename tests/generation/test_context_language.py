@@ -7,7 +7,7 @@ from storygen.domain import SceneCreate, StoryCreate
 from storygen.generation.context import build_context
 from types import SimpleNamespace
 
-from storygen.generation.context_labels import LABELS, label
+from storygen.generation.context_labels import LABELS
 from storygen.story_horizon import horizon_instructions
 from storygen.memory.journal import MemoryJournal, _add_event
 from storygen.memory.story_time import day_label
@@ -132,32 +132,12 @@ def test_acquaintance_block_follows_story_language(tmp_path):
 
 
 @pytest.mark.req('STORY-LANGUAGE')
-def test_impact_and_publication_requests_english(tmp_path):
+def test_publication_request_is_english(tmp_path):
     from storygen.authoring.blueprints import save_role_settings
-    from storygen.dependency_models import DependencySelector
     from storygen.generation.dependencies import save_manual_prose
-    from storygen.generation.impact_context import build_impact_context
     from storygen.generation.publication_metadata import build_publication_context
-    from storygen.impact.planning import plan_impact
-    from storygen.storage.snapshots import build_author_baseline
-    repo = Repository(tmp_path)
-    story = repo.create_story(StoryCreate(title='Tide', language='en'))
-    first = repo.create_scene(story.id, SceneCreate(title='Morning', beats='Morning'))
-    second = repo.create_scene(story.id, SceneCreate(title='Evening', beats='Evening'))
-    a = save_manual_prose(repo, first.id, 'Mary knows about the letter.', 0)
-    snapshot = build_author_baseline(repo.context_view(story.id), second.id)
-    snapshot.selectors.append(DependencySelector(kind='head', owner_id=first.id, field='prose', expected=a.id))
-    snapshot.refs[a.id] = a.sha256
-    ref = repo.save_version(story.id, second.id, 'edited', 'Mary remembered the letter.', list(snapshot.refs), dependency_snapshot=snapshot)
-    repo.set_head(second.id, 'prose', ref.id, repo.get_scene(second.id).revision)
-    save_manual_prose(repo, first.id, 'Mary does not know about the letter.', repo.get_scene(first.id).revision)
     planner = RoleSettings(provider=ProviderSettings(model='planner-test', response_mode='json_schema'), context_tokens=128000,
                            max_input_chars=1000000, max_output_tokens=2048)
-    save_role_settings(repo, story.id, 'planner', planner, repo.get_story(story.id).revision)
-    target = next(t for t in plan_impact(repo.context_view(story.id)).targets if t.version_id == ref.id)
-    for stage in ['impact_delta', 'impact_check']:
-        context = build_impact_context(repo, target.model_dump(), stage)
-        assert not CYRILLIC.search(texts(context)), stage
     other = Repository(tmp_path / 'publication')
     fresh = other.create_story(StoryCreate(title='Tide', language='en'))
     save_role_settings(other, fresh.id, 'writer', planner, fresh.revision)
@@ -169,8 +149,6 @@ def test_impact_and_publication_requests_english(tmp_path):
 
 @pytest.mark.req('STORY-LANGUAGE')
 def test_field_labels_follow_story_language():
-    assert label('field_canon_version_id', 'uk') == 'Канон'
-    assert label('field_canon_version_id', 'en') == 'Canon'
     assert horizon_instructions(SimpleNamespace(position=0), 2, 'en').startswith('LIMITS OF THE CURRENT SCENE')
 
 
@@ -193,21 +171,6 @@ def test_edit_loop_patches_request_english(tmp_path):
     context = editor_loop.context(repo, scene.id, role(edit_mode='patches'), draft.id)
     assert 'DRAFT [version_id=' in context.user_text
     assert not CYRILLIC.search(texts(context))
-
-
-@pytest.mark.req('STORY-LANGUAGE')
-@pytest.mark.parametrize('language', ['uk', 'en'])
-def test_review_basis_note_follows_plan_language(language):
-    from storygen.review.wire import request_for
-    plan = {'registry': {'t1': {'kind': 'target', 'text': 'Text.', 'material': 'prose', 'version_id': 'v1'}},
-            'basis_modes': {'v1': 'current_consistency'}, 'result_cap': 2000}
-    if language == 'en':
-        plan['language'] = 'en'
-    spec = {'phase': 'check', 'source_refs': [], 'target_refs': ['t1'], 'rule_ids': [], 'dependencies': [],
-            'settings': role().model_dump(), 'system': 'System.'}
-    payload, body, aliases = request_for(plan, spec, {})
-    assert payload['basis_note'] == label('review_basis_note', language)
-    assert bool(CYRILLIC.search(payload['basis_note'])) == (language == 'uk')
 
 
 @pytest.mark.req('STORY-LANGUAGE')

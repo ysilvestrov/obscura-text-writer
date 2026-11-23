@@ -176,12 +176,10 @@ def test_series_book_with_arcs_merges_memory_over_the_snapshot(tmp_path):
     assert merged['source_prose_ids'][0] == arcs.series_start_version_id
 
 
-def test_impact_capture_and_statistics_accept_the_snapshot(tmp_path):
+def test_statistics_accept_the_snapshot(tmp_path):
     from storygen.application.statistics import memory_statistics
-    from storygen.impact.memory_review import capture_memory
     repo, item, second, scene, cloth = second_book(tmp_path)
     write_scene_memory(repo, scene)
     view = repo.context_view(second.id)
     scene = view.get_scene(scene.id)
-    assert capture_memory(view, scene)['memory_evidence_status'] == 'current'
     assert memory_statistics(view, scene, scene.heads['memory'])['available']

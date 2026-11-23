@@ -102,6 +102,6 @@ def test_scene_stage_rates_its_scene_and_multi_scene_stage_rates_input_refs(repo
     for stage in ('brief', 'draft', 'rewrite', 'edit', 'classify', 'memory', 'prepare'):
         ctx = SimpleNamespace(story_id=story.id, scene_id=b.id, stage=stage, input_refs=[prose.id])
         assert context_rating(repo, ctx) == (0, 0, 0), stage
-    for stage in ('impact_delta', 'impact_check', 'impact_part', 'review_part', 'publication_suggest'):
+    for stage in ('publication_suggest', 'timeline_summary'):
         ctx = SimpleNamespace(story_id=story.id, scene_id=None, stage=stage, input_refs=[prose.id])
         assert context_rating(repo, ctx) == (2, 0, 0), stage

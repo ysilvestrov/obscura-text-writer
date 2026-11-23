@@ -99,17 +99,14 @@ def client_label(name: str | None) -> str:
     return cleaned or FALLBACK_CLIENT
 
 
-def scene_state(scene: dict, impact: str | None) -> str:
-    """Port of sceneStatusKey in web/static/workspace-status.js: the same words the scene list shows."""
+def scene_state(scene: dict, prose: str | None) -> str:
+    """Port of sceneStatusKey in web/static/workspace-status.js: the same words the scene list shows.
+    `prose` is the scene's prose entry in the story view's material_status."""
     heads = scene.get('heads') or {}
     if not heads.get('prose') and not heads.get('draft'):
         return 'no_text' if heads.get('brief') else 'not_started'
-    if impact == 'changes_required':
-        return 'impact_changes'
-    if impact == 'no_impact':
-        return 'impact_current'
-    if scene.get('needs_review'):
-        return 'impact_pending' if impact == 'pending' else 'needs_review'
+    if scene.get('needs_review') or prose == 'pending':
+        return 'needs_review'
     return 'prose' if heads.get('prose') else 'draft'
 
 
@@ -347,7 +344,7 @@ def build_server(http: httpx.Client | None, client_name: str | None = None, *, c
     def get_story(story_id: str) -> dict[str, Any]:
         """Сцени історії по порядку: id, позиція, назва, revision і стан (тими самими словами, що в списку сцен)."""
         data = request('GET', f'/api/stories/{identifier(story_id)}')
-        impact = data.get('impact_status') or {}
+        materials = data.get('material_status') or {}
         story = data['story']
         # BOOK-STRUCTURE: part and arc of each scene (one implicit part and arc for a flat book).
         arcs = {a['id']: (p, a) for p in (data.get('book_structure') or {}).get('parts', []) for a in p['arcs']}
@@ -358,7 +355,7 @@ def build_server(http: httpx.Client | None, client_name: str | None = None, *, c
             return {'part_id': part['id'], 'part_title': part['title'], 'arc_id': arc['id'], 'arc_title': arc['title'],
                     'arc_ids': scene.get('arc_ids') or ([arc['id']] if arc['id'] else [])}
         scenes = [{'id': s['id'], 'position': s['position'], 'title': s['title'], 'revision': s['revision'],
-                   'state': scene_state(s, (impact.get(s['id']) or {}).get('prose')), **place(s)} for s in data['scenes']]
+                   'state': scene_state(s, (materials.get(s['id']) or {}).get('prose')), **place(s)} for s in data['scenes']]
         names = data.get('character_names') or {}
         return {'id': story['id'], 'title': story['title'], 'language': story.get('language'),
                 'language_locked': data.get('language_locked'), 'revision': story.get('revision'),

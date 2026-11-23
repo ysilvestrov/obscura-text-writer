@@ -95,7 +95,6 @@
         "tests/storage/test_prose_acceptance_bulk.py::test_all_waiting_prose_is_accepted_and_consecutive_scenes_stay_current",
         "tests/storage/test_prose_acceptance_bulk.py::test_only_prose_is_accepted_and_fresh_prose_gets_no_record",
         "tests/storage/test_prose_acceptance_bulk.py::test_change_after_preview_rejects_everything",
-        "tests/storage/test_prose_acceptance_bulk.py::test_open_book_review_blocks_bulk_acceptance",
         "tests/storage/test_prose_acceptance_bulk.py::test_nothing_waiting_gives_an_empty_preview",
         "tests/storage/test_prose_acceptance_bulk.py::test_one_click_also_accepts_later_scenes_the_acceptance_makes_wait",
         "tests/storage/test_prose_acceptance_bulk.py::test_model_prose_with_dependency_edges_stays_accepted",
@@ -103,12 +102,38 @@
         "tests/storage/test_prose_acceptance_bulk.py::test_second_pass_after_an_upstream_change_accepts_everything_again",
         "tests/storage/test_prose_acceptance_bulk.py::test_preview_writes_nothing_and_an_unlisted_scene_changed_after_it_rejects_everything",
         "tests/storage/test_prose_acceptance_bulk.py::test_scene_still_waiting_after_its_own_acceptance_stops_without_changes",
-        "tests/storage/test_prose_acceptance_bulk.py::test_http_preview_accept_and_stale_fingerprint"
+        "tests/storage/test_prose_acceptance_bulk.py::test_http_preview_accept_and_stale_fingerprint",
+        "tests/storage/test_prose_acceptance_bulk.py::test_saved_impact_run_does_not_block_bulk_acceptance"
       ],
       "manual": {
         "procedure": "docs/verification/manual.md#prose-accept-browser",
         "reason": "check_docs.py індексує лише pytest; Playwright case tests/web/browser/prose-acceptance.spec.mjs (кнопка, підтвердження, перелік прози порожній після прийняття) виконується окремим runner, цей зв’язок не є доказом виконання."
       }
+    },
+    {
+      "id": "R28-REMOVED-S01",
+      "requirement": "R28-REMOVED",
+      "scope": "Старі записи перевірки впливу інертні: актуальність, fsck, резервна копія, відмова нового запуску, читання старого.",
+      "tests": [
+        "tests/storage/test_impact_removed.py::test_old_impact_and_review_records_do_not_clear_or_break_staleness",
+        "tests/storage/test_impact_removed.py::test_get_version_without_snapshot_ignores_old_review_acceptance",
+        "tests/web/test_impact_runs_removed.py::test_new_impact_run_is_refused",
+        "tests/web/test_impact_runs_removed.py::test_saved_impact_run_and_attempts_stay_readable",
+        "tests/web/test_impact_runs_removed.py::test_queued_impact_run_from_an_old_session_is_cancelled_not_executed",
+        "tests/web/test_impact_runs_removed.py::test_stopped_impact_run_is_cancelled_on_start_and_blocks_nothing",
+        "tests/web/test_impact_runs_removed.py::test_removal_reason_is_translated_for_the_english_interface"
+      ]
+    },
+    {
+      "id": "R28-REMOVED-S02",
+      "requirement": "R28-REMOVED",
+      "scope": "Пакети, модулі, ресурси й ключі перекладу R-28 відсутні; старе посилання на сторінку перевірки веде до твору.",
+      "tests": [
+        "tests/test_r28_removed.py::test_no_r28_package_or_module_is_left",
+        "tests/test_r28_removed.py::test_no_import_or_reference_to_removed_code",
+        "tests/test_r28_removed.py::test_catalog_has_no_r28_keys",
+        "tests/web/test_workspace_layout_ui.py::test_old_book_check_link_leads_to_the_story"
+      ]
     },
     {
       "id": "RUN-ACCEPTED-S01",
@@ -362,14 +387,6 @@
       "tests": [
         "tests/providers/test_model_policy.py::test_refusal_vectors_block_per_axis",
         "tests/providers/test_model_policy.py::test_new_refusal_keeps_the_set_minimal"
-      ]
-    },
-    {
-      "id": "MODEL-004-S03",
-      "requirement": "MODEL-004",
-      "scope": "Відмова на шляху impact записує позначку для planner з максимальним рейтингом. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
-      "tests": [
-        "tests/generation/test_model_policy_stages.py::test_impact_refusal_records_planner_with_max_scene_rating"
       ]
     },
     {
@@ -1248,12 +1265,6 @@
         "tests/storage/test_attempt_filters.py::test_sql_filters_match_python_filters",
         "tests/storage/test_attempt_filters.py::test_falsy_proposals_are_removed_by_route_filters_as_before",
         "tests/storage/test_workspace_bench.py::test_synthetic_story_reaches_full_readiness_path",
-        "tests/impact/test_planning_readonly.py::test_plan_matches_frozen_copying_path",
-        "tests/impact/test_planning_readonly.py::test_overview_matches_frozen_copying_path",
-        "tests/impact/test_planning_readonly.py::test_overview_report_rows_match_frozen_copying_path",
-        "tests/impact/test_planning_readonly.py::test_repeated_selector_keeps_last_write_of_live_selector",
-        "tests/impact/test_planning_readonly.py::test_repeated_selector_across_snapshots_keeps_last_write",
-        "tests/impact/test_planning_readonly.py::test_planning_deep_copies_do_not_grow_with_reads",
         "tests/generation/test_classification_state_sql.py::test_preview_and_readiness_match_unfiltered_scan",
         "tests/generation/test_classification_state_sql.py::test_classification_reads_attempts_through_sql_filter",
         "tests/generation/test_classification_state_sql.py::test_classification_keys_filter_like_python",
@@ -1262,8 +1273,7 @@
         "tests/book/test_lineage_speed.py::test_structured_map_is_built_once_per_scope",
         "tests/book/test_lineage_speed.py::test_story_request_builds_the_structured_map_at_most_once",
         "tests/storage/test_context_view_readonly.py::test_hot_readiness_readers_take_no_deep_version_copy",
-        "tests/storage/test_context_view_readonly.py::test_read_text_keeps_freshness_order",
-        "tests/impact/test_planning_speed.py::test_memo_gives_the_same_plan"
+        "tests/storage/test_context_view_readonly.py::test_read_text_keeps_freshness_order"
       ]
     },
     {
@@ -1273,12 +1283,9 @@
       "tests": [
         "tests/storage/test_context_view_readonly.py::test_readiness_and_status_do_not_mutate_view_models",
         "tests/storage/test_context_view_readonly.py::test_second_request_sees_change_made_between_requests",
-        "tests/impact/test_planning_readonly.py::test_planning_does_not_mutate_view",
         "tests/storage/test_context_view_readonly.py::test_readiness_all_operations_does_not_mutate_view_models",
         "tests/book/test_lineage_speed.py::test_scope_sees_a_structure_change_and_does_not_leak_mutation",
-        "tests/book/test_lineage_speed.py::test_lineage_memo_does_not_outlive_a_request",
-        "tests/impact/test_planning_speed.py::test_memo_does_not_survive_a_write",
-        "tests/impact/test_planning_speed.py::test_plan_leaves_memoized_models_as_parsed"
+        "tests/book/test_lineage_speed.py::test_lineage_memo_does_not_outlive_a_request"
       ]
     },
     {
@@ -1304,23 +1311,8 @@
         "tests/web/test_resumed_events.py::test_short_run_open_story_keeps_controls_and_draws_only_the_full_run",
         "tests/web/test_resumed_events.py::test_short_run_recovered_primary_keeps_controls_and_draws_only_the_full_run",
         "tests/web/test_resumed_events.py::test_short_run_latest_and_proposal_buttons_target_the_right_runs",
-        "tests/web/test_resumed_events.py::test_short_run_keeps_state_when_the_detail_fetch_fails",
-        "tests/web/test_resumed_events.py::test_review_session_picks_the_protocol_3_run_from_the_short_list"
+        "tests/web/test_resumed_events.py::test_short_run_keeps_state_when_the_detail_fetch_fails"
       ]
-    },
-    {
-      "id": "PERF-001-S05",
-      "requirement": "PERF-001",
-      "scope": "Межа часу огляду впливу. Автоматично перевіряється складність (розбори й похідні значення за один план) і еквівалентність із планом без запам’ятовування на синтетичному творі з картками; час на копії 68 сцен виміряно 21.11.2026: 8,45–8,56 с при цілі ≤ 10 с, відбиток плану збігся з базовим.",
-      "tests": [
-        "tests/impact/test_planning_speed.py::test_cast_fixture_makes_every_head_stale_with_hidden_memory",
-        "tests/impact/test_planning_speed.py::test_plan_parses_versions_once_and_derives_once_per_scene",
-        "tests/impact/test_planning_speed.py::test_memo_gives_the_same_plan"
-      ],
-      "manual": {
-        "procedure": "docs/verification/manual.md#impact-speed",
-        "reason": "Час відповіді залежить від машини й даних; межа 10 с перевіряється виміром на копії робочих даних. Виконано 21.11.2026: 8,45–8,56 с."
-      }
     },
     {
       "id": "PERF-001-S06",
@@ -1340,8 +1332,6 @@
         "tests/storage/test_shared_snapshot.py::test_older_generation_never_replaces_newer",
         "tests/storage/test_shared_snapshot.py::test_store_keeps_a_bounded_number_of_stories",
         "tests/storage/test_shared_snapshot.py::test_write_transaction_view_is_private",
-        "tests/storage/test_shared_snapshot.py::test_impact_and_review_current_caches_are_private",
-        "tests/storage/test_shared_snapshot.py::test_impact_record_checked_in_parallel_with_freshness",
         "tests/storage/test_shared_snapshot.py::test_cycle_results_match_a_private_view_in_every_order",
         "tests/storage/test_shared_snapshot.py::test_parallel_requests_compute_top_level_once",
         "tests/storage/test_shared_snapshot.py::test_shared_equals_private_after_writes",
@@ -2263,9 +2253,7 @@
         "tests/generation/test_edit_pass_settings.py::test_scene_readiness_uses_the_setting",
         "tests/web/test_runs.py::test_cancel_request_fences_a_late_enqueue",
         "tests/generation/test_edit_pass_settings.py::test_repeated_request_id_keeps_its_stored_limit_after_a_settings_change",
-        "tests/generation/test_edit_pass_settings.py::test_context_fingerprint_does_not_depend_on_the_pass_limit",
-        "tests/generation/test_edit_pass_settings.py::test_impact_manifest_stamp_ignores_the_pass_limit",
-        "tests/impact/test_reference_wire.py::test_legacy_fixture_replay"
+        "tests/generation/test_edit_pass_settings.py::test_context_fingerprint_does_not_depend_on_the_pass_limit"
       ]
     },
     {
@@ -2530,8 +2518,7 @@
         "tests/generation/test_tone_sample_staleness.py::test_sample_change_keeps_an_evaluation_fresh",
         "tests/generation/test_tone_sample_staleness.py::test_sample_change_stales_the_draft",
         "tests/generation/test_tone_sample_staleness.py::test_other_style_change_still_stales_brief",
-        "tests/generation/test_tone_sample_staleness.py::test_brief_without_snapshot_goes_stale",
-        "tests/generation/test_tone_sample_staleness.py::test_impact_capture_of_brief_ignores_a_sample_change"
+        "tests/generation/test_tone_sample_staleness.py::test_brief_without_snapshot_goes_stale"
       ]
     },
     {
@@ -3596,268 +3583,6 @@
       ]
     },
     {
-      "id": "IMPACT-INPUTS-S01",
-      "requirement": "IMPACT-INPUTS",
-      "scope": "Перевірка конкретного контракту R-28, не доказ літературної якості.",
-      "tests": [
-        "tests/impact/test_planning.py::test_changed_predecessor_captures_old_and_new_without_future_prose",
-        "tests/impact/test_planning.py::test_distinct_historical_bases",
-        "tests/impact/test_planning.py::test_manual_prose_records_prefix_for_later_revision_checks",
-        "tests/impact/test_validation.py::test_coverage_and_exact_evidence",
-        "tests/impact/test_planning.py::test_temporal_character_projection_excludes_future_entries",
-        "tests/impact/test_planning.py::test_explicit_author_acceptance_can_establish_legacy_prefix_basis"
-      ]
-    },
-    {
-      "id": "IMPACT-VALIDITY-S01",
-      "requirement": "IMPACT-VALIDITY",
-      "scope": "Перевірка конкретного контракту R-28, не доказ літературної якості.",
-      "tests": [
-        "tests/impact/test_storage.py::test_overlay_invalidated_and_rejected",
-        "tests/impact/test_storage.py::test_new_input_and_corruption_never_hidden_by_overlay",
-        "tests/impact/test_storage.py::test_only_completed_owned_proof_can_apply",
-        "tests/impact/test_backup.py::test_impact_report_survives_verified_backup_and_restore",
-        "tests/impact/test_storage.py::test_missing_model_proof_revokes_effective_freshness",
-        "tests/impact/test_storage.py::test_review_of_source_invalidates_downstream_assessment"
-      ]
-    },
-    {
-      "id": "IMPACT-QUEUE-S01",
-      "requirement": "IMPACT-QUEUE",
-      "scope": "Перевірка конкретного контракту R-28, не доказ літературної якості.",
-      "tests": [
-        "tests/impact/test_runner.py::test_two_phase_analysis_publishes_no_impact_without_rewriting",
-        "tests/impact/test_runner.py::test_saved_attempt_recovery_never_repeats_model",
-        "tests/impact/test_runner.py::test_hard_cloud_run_limit_prevents_provider_dispatch",
-        "tests/impact/test_runner.py::test_shared_delta_and_topological_review_basis",
-        "tests/impact/test_runner.py::test_failure_stops_series_without_clearing_or_retry",
-        "tests/impact/test_runner.py::test_changed_sources_during_check_preserve_attempt_but_do_not_apply",
-        "tests/impact/test_runner.py::test_pause_before_provider_call_does_not_dispatch"
-      ]
-    },
-    {
-      "id": "IMPACT-UI-S01",
-      "requirement": "IMPACT-UI",
-      "scope": "API guards; desktop/mobile Playwright procedure in test file.",
-      "tests": [
-        "tests/web/test_impact_api.py::test_impact_preview_never_dispatches_and_stale_plan_is_rejected",
-        "tests/web/test_impact_api.py::test_impact_api_queues_one_run_and_returns_public_findings"
-      ],
-      "manual": {
-        "procedure": "docs/verification/manual.md#r28-impact",
-        "reason": "Точні браузерні процедури tests/web/browser/impact.spec.mjs виконуються окремим Playwright runner; фактичне виконання записано в журналі, цей зв’язок сам його не підтверджує."
-      }
-    },
-    {
-      "id": "IMPACT-UI-S03",
-      "requirement": "IMPACT-UI",
-      "scope": "Позначка кількості, сторінка й сесія в робочому просторі.",
-      "tests": [],
-      "manual": {
-        "procedure": "docs/verification/manual.md#workspace-layout",
-        "reason": "Playwright workspace-layout/impact/sequential-review/review-evidence запускаються вручну; check_docs.py індексує лише pytest IDs."
-      }
-    },
-    {
-      "id": "IMPACT-UI-S04",
-      "requirement": "IMPACT-UI",
-      "scope": "Сторінка «Перевірка книги» без нового API.",
-      "tests": [
-        "tests/web/test_workspace_layout_ui.py::test_book_revision_page_hosts_impact_review"
-      ]
-    },
-    {
-      "id": "IMPACT-MEMORY-S01",
-      "requirement": "IMPACT-MEMORY",
-      "scope": "Історичні цитати, незалежність journal та bounded optional context.",
-      "tests": [
-        "tests/impact/test_integration.py::test_memory_semantic_review_preserves_historical_journal_and_forwarding",
-        "tests/impact/test_planning.py::test_oversized_optional_memory_does_not_block_prose_context",
-        "tests/impact/test_planning.py::test_memory_review_input_preserves_historical_evidence_and_is_optional"
-      ]
-    },
-    {
-      "id": "IMPACT-INPUTS-S02",
-      "requirement": "IMPACT-INPUTS",
-      "scope": "Репродукції незалежного рев’ю: ненульові version selectors та старі/поточні memory proofs.",
-      "tests": [
-        "tests/impact/test_review_regressions.py::test_missing_or_wrong_kind_version_selector_blocks_analysis",
-        "tests/impact/test_review_regressions.py::test_dependency_memory_requires_exact_historical_quotes"
-      ]
-    },
-    {
-      "id": "IMPACT-VALIDITY-S02",
-      "requirement": "IMPACT-VALIDITY",
-      "scope": "Додавання майбутнього не змінює вузьку префіксну оцінку.",
-      "tests": [
-        "tests/impact/test_review_regressions.py::test_future_append_does_not_revoke_prefix_only_assessment"
-      ]
-    },
-    {
-      "id": "IMPACT-INPUTS-S03",
-      "requirement": "IMPACT-INPUTS",
-      "scope": "Діагностика незалежних лімітів без реальних API.",
-      "tests": [
-        "tests/generation/test_context.py::test_overflow_names_the_actual_limit",
-        "tests/impact/test_runner.py::test_impact_character_limit_is_not_reported_as_token_overflow"
-      ]
-    },
-    {
-      "id": "IMPACT-CHUNKS-S01",
-      "requirement": "IMPACT-CHUNKS",
-      "scope": "Protocol2 synthetic coverage; не доказ літературної якості чи реальних моделей.",
-      "tests": [
-        "tests/impact/test_chunking.py::test_unicode_and_large_source",
-        "tests/impact/test_chunking.py::test_dedup_preserves_identity",
-        "tests/impact/test_chunking.py::test_manifest_changes_with_limits",
-        "tests/impact/test_chunking.py::test_native_schema_is_part_result"
-      ]
-    },
-    {
-      "id": "IMPACT-CHUNKS-S02",
-      "requirement": "IMPACT-CHUNKS",
-      "scope": "Protocol2 synthetic coverage; не доказ літературної якості чи реальних моделей.",
-      "tests": [
-        "tests/impact/test_chunk_proofs.py::test_missing_or_uncertain_proof",
-        "tests/impact/test_chunk_proofs.py::test_quotes_outside_delivered_span_rejected",
-        "tests/impact/test_chunk_proofs.py::test_manifest_integrity_and_complete_intervals",
-        "tests/impact/test_chunk_runner.py::test_actual_api_body_is_part_of_chunk_proof",
-        "tests/impact/test_chunk_proofs.py::test_synthesis_can_find_cross_part_issue_from_exact_child_quotes",
-        "tests/impact/test_chunk_proofs.py::test_synthesized_memory_quote_must_exist_in_original_journal",
-        "tests/impact/test_chunk_runner.py::test_native_schema_and_findings_survive_synthesis"
-      ]
-    },
-    {
-      "id": "IMPACT-CHUNKS-S03",
-      "requirement": "IMPACT-CHUNKS",
-      "scope": "Protocol2 synthetic coverage; не доказ літературної якості чи реальних моделей.",
-      "tests": [
-        "tests/impact/test_chunk_runner.py::test_recovery_and_settings_change",
-        "tests/impact/test_chunk_runner.py::test_refusal_stops_chunk_series",
-        "tests/impact/test_chunk_runner.py::test_settings_change_stops_before_next_dispatch",
-        "tests/impact/test_chunk_runner.py::test_changed_target_does_not_publish_chunk_report",
-        "tests/impact/test_chunk_runner.py::test_pause_and_cancel_preserve_completed_parts",
-        "tests/impact/test_chunk_runner.py::test_chunk_hard_run_budget_prevents_paid_dispatch"
-      ]
-    },
-    {
-      "id": "IMPACT-CHUNKS-S04",
-      "requirement": "IMPACT-CHUNKS",
-      "scope": "Protocol2 synthetic coverage; не доказ літературної якості чи реальних моделей.",
-      "tests": [
-        "tests/web/test_impact_api.py::test_chunk_preview_exposes_manifest_stamp_without_manuscript",
-        "tests/impact/test_runner.py::test_two_phase_analysis_publishes_no_impact_without_rewriting"
-      ]
-    },
-    {
-      "id": "IMPACT-CHUNKS-S05",
-      "requirement": "IMPACT-CHUNKS",
-      "scope": "Protocol2 synthetic coverage; не доказ літературної якості чи реальних моделей.",
-      "tests": [
-        "tests/impact/test_chunk_runner.py::test_memory_parts_preserve_historical_journal",
-        "tests/impact/test_chunk_runner.py::test_chunk_report_backup_and_missing_proof"
-      ]
-    },
-    {
-      "id": "IMPACT-UI-S02",
-      "requirement": "IMPACT-UI",
-      "scope": "Контрольована затримка/abort/timeout/HTTP retry у Playwright; без моделей.",
-      "manual": {
-        "procedure": "docs/verification/manual.md#r28-preview-wait",
-        "reason": "Конкретні автоматизовані desktop/mobile процедури у tests/web/browser/impact.spec.mjs виконуються окремим Playwright runner; фактичний результат у журналі, цей зв’язок не є доказом виконання."
-      },
-      "tests": []
-    },
-    {
-      "id": "IMPACT-LOCAL-S01",
-      "requirement": "IMPACT-LOCAL",
-      "scope": "Явний локальний параметр, збереження в UI та відсутність впливу на інших провайдерів.",
-      "tests": [
-        "tests/providers/test_local_reasoning.py::test_local_thinking_is_opt_in_and_local_only",
-        "tests/providers/test_local_reasoning.py::test_evaluator_local_thinking"
-      ]
-    },
-    {
-      "id": "IMPACT-LOCAL-S02",
-      "requirement": "IMPACT-LOCAL",
-      "scope": "Exact refs, child findings/uncertainty, measured reserve та повний synthetic proof replay.",
-      "tests": [
-        "tests/impact/test_reference_wire.py::test_refs_are_exact_and_scoped",
-        "tests/impact/test_reference_wire.py::test_unknown_reference_rejected",
-        "tests/impact/test_reference_wire.py::test_reducer_preserves_findings_and_uncertainty",
-        "tests/impact/test_reference_wire.py::test_native_local_run_and_proof_replay",
-        "tests/impact/test_reference_wire.py::test_child_quote_registry_is_within_preview_reserve",
-        "tests/impact/test_reference_wire.py::test_literal_machine_addresses_are_never_aliased",
-        "tests/impact/test_reference_wire.py::test_uncertain_child_can_coexist_with_new_confirmed_findings"
-      ]
-    },
-    {
-      "id": "IMPACT-LOCAL-S03",
-      "requirement": "IMPACT-LOCAL",
-      "scope": "Нейтральний legacy fixture зафіксований до нового поля.",
-      "tests": [
-        "tests/impact/test_reference_wire.py::test_legacy_fixture_replay",
-        "tests/impact/test_reference_wire.py::test_legacy_raw_attempt_is_still_a_valid_proof",
-        "tests/providers/test_local_reasoning.py::test_false_flag_preserves_calibrated_evaluator_identity"
-      ]
-    },
-    {
-      "id": "IMPACT-TOKENS-S01",
-      "requirement": "IMPACT-TOKENS",
-      "scope": "Offline qualification, safe exact counting або versioned proof compatibility; не літературна атестація.",
-      "tests": [
-        "tests/token_budget/test_local_counter.py::test_registration_is_inactive_and_counts_exact",
-        "tests/token_budget/test_local_counter_cli.py::test_cli_qualification_and_explicit_activation",
-        "tests/token_budget/test_local_counter_cli.py::test_bad_evidence_does_not_activate_or_echo_text"
-      ]
-    },
-    {
-      "id": "IMPACT-TOKENS-S02",
-      "requirement": "IMPACT-TOKENS",
-      "scope": "Offline qualification, safe exact counting або versioned proof compatibility; не літературна атестація.",
-      "tests": [
-        "tests/token_budget/test_local_counter.py::test_unknown_child_uses_worst_case_not_repeated_emoji",
-        "tests/token_budget/test_local_counter.py::test_serialized_truncation_cannot_hide_a_long_prompt",
-        "tests/token_budget/test_local_counter.py::test_serialized_padding_is_not_part_of_chat_input_count",
-        "tests/token_budget/test_local_counter.py::test_actual_known_body_is_not_reserialized",
-        "tests/token_budget/test_local_counter.py::test_runtime_version_mismatch_is_rejected",
-        "tests/token_budget/test_local_counter.py::test_dispatch_rechecks_bytes_even_if_mtime_is_restored",
-        "tests/impact/test_local_token_counting.py::test_planning_handle_is_reused_but_dispatch_reloads",
-        "tests/impact/test_local_token_counting.py::test_qualified_packing_does_not_query_empirical_profiles"
-      ]
-    },
-    {
-      "id": "IMPACT-TOKENS-S03",
-      "requirement": "IMPACT-TOKENS",
-      "scope": "Offline qualification, safe exact counting або versioned proof compatibility; не літературна атестація.",
-      "tests": [
-        "tests/impact/test_local_token_counting.py::test_legacy_wire2_raw_proof_without_counter",
-        "tests/impact/test_local_token_counting.py::test_qualified_manifest_has_full_coverage_and_fewer_parts",
-        "tests/impact/test_reference_wire.py::test_native_local_run_and_proof_replay",
-        "tests/token_budget/test_local_counter.py::test_profile_survives_verified_backup"
-      ]
-    },
-    {
-      "id": "IMPACT-BUDGET-S01",
-      "requirement": "IMPACT-BUDGET",
-      "scope": "Розмір моделі окремо від службового покриття, без послаблення raw cap.",
-      "tests": [
-        "tests/impact/test_derived_budget.py::test_derived_coverage_is_not_model_output",
-        "tests/impact/test_derived_budget.py::test_wire2_evidence_and_text_still_count",
-        "tests/impact/test_derived_budget.py::test_wire2_raw_cap_is_unchanged",
-        "tests/impact/test_derived_budget.py::test_wire2_expanded_evidence_still_rejects_overflow"
-      ]
-    },
-    {
-      "id": "IMPACT-BUDGET-S02",
-      "requirement": "IMPACT-BUDGET",
-      "scope": "Відновлення лише за явним запитом, exact body та історія без нового inference.",
-      "tests": [
-        "tests/impact/test_derived_budget.py::test_saved_failed_check_is_reused_without_model_call",
-        "tests/impact/test_derived_budget.py::test_only_known_completed_budget_failure_is_recoverable"
-      ]
-    },
-    {
       "id": "RUN-RECOVERY-UI-S01",
       "requirement": "RUN-RECOVERY-UI",
       "scope": "Видимість стану очікування й конфігураційних перешкод після навігації; без inference.",
@@ -3865,260 +3590,6 @@
       "manual": {
         "procedure": "docs/verification/manual.md#run-recovery-visible",
         "reason": "Browser desktop/mobile регресія з контрольованими затримками та навігацією; не Python unit test."
-      }
-    },
-    {
-      "id": "REVIEW-SESSION-S01",
-      "requirement": "REVIEW-SESSION",
-      "scope": "Новий author overlay, не model quality.",
-      "tests": [
-        "tests/review/test_store.py::test_author_acceptance_is_bound_to_exact_sources",
-        "tests/review/test_store.py::test_author_acceptance_does_not_rewrite_model_report"
-      ]
-    },
-    {
-      "id": "REVIEW-SESSION-S02",
-      "requirement": "REVIEW-SESSION",
-      "scope": "Операція, live CAS, захист model authority.",
-      "tests": [
-        "tests/review/test_store.py::test_operation_id_is_idempotent_and_rejects_payload_collision",
-        "tests/review/test_store.py::test_foreign_or_changed_head_cannot_accept",
-        "tests/review/test_store.py::test_automatic_acceptance_requires_real_proof",
-        "tests/review/test_store.py::test_acceptance_payload_tampering_is_not_authority"
-      ]
-    },
-    {
-      "id": "REVIEW-PARTS-S01",
-      "requirement": "REVIEW-PARTS",
-      "scope": "Wire3: структурна цілісність і повнота; не доказ літературної точності.",
-      "tests": [
-        "tests/review/test_parts.py::test_parts_cover_all_source_and_target_intervals",
-        "tests/review/test_parts.py::test_current_only_check_and_scoped_refs",
-        "tests/review/test_parts.py::test_incomplete_is_not_a_clean_result"
-      ]
-    },
-    {
-      "id": "REVIEW-PARTS-S02",
-      "requirement": "REVIEW-PARTS",
-      "scope": "Wire3: структурна цілісність і повнота; не доказ літературної точності.",
-      "tests": [
-        "tests/review/test_parts.py::test_replay_requires_exact_api_body",
-        "tests/review/test_parts.py::test_full_proof_and_registry_tampering"
-      ]
-    },
-    {
-      "id": "REVIEW-SEQUENCE-S01",
-      "requirement": "REVIEW-SEQUENCE",
-      "scope": "Синтетичний workflow, без тверджень щодо літературної точності.",
-      "tests": [
-        "tests/review/test_runner.py::test_clean_advances_and_findings_pause",
-        "tests/review/test_runner.py::test_findings_wait_for_author_without_memory_of_current_scene"
-      ]
-    },
-    {
-      "id": "REVIEW-SEQUENCE-S02",
-      "requirement": "REVIEW-SEQUENCE",
-      "scope": "Синтетичний workflow, без тверджень щодо літературної точності.",
-      "tests": [
-        "tests/review/test_runner.py::test_memory_failure_and_explicit_retry",
-        "tests/review/test_runner.py::test_order_change_pauses",
-        "tests/review/test_runner.py::test_crash_reuses_completed_search_attempt"
-      ]
-    },
-    {
-      "id": "REVIEW-DECISIONS-S01",
-      "requirement": "REVIEW-DECISIONS",
-      "scope": "Авторські команди та ізоляція протоколу.",
-      "tests": [
-        "tests/review/test_decisions.py::test_reject_all_accepts_and_idempotent",
-        "tests/review/test_decisions.py::test_selected_fixes_wait_then_finish_without_search"
-      ]
-    },
-    {
-      "id": "REVIEW-DECISIONS-S02",
-      "requirement": "REVIEW-DECISIONS",
-      "scope": "Авторські команди та ізоляція протоколу.",
-      "tests": [
-        "tests/review/test_decisions.py::test_stale_or_foreign_decision_rejected",
-        "tests/web/test_review_api.py::test_review_commands_are_owned_cas_and_idempotent",
-        "tests/web/test_review_api.py::test_review_preview_is_versioned_and_read_only"
-      ]
-    },
-    {
-      "id": "REVIEW-WORKSPACE-S01",
-      "requirement": "REVIEW-WORKSPACE",
-      "scope": "Desktop/mobile та UA/EN на нейтральних даних.",
-      "tests": [],
-      "manual": {
-        "procedure": "docs/verification/manual.md#sequential-review",
-        "reason": "Браузерні сценарії й візуальна перевірка."
-      }
-    },
-    {
-      "id": "REVIEW-WORKSPACE-S02",
-      "requirement": "REVIEW-WORKSPACE",
-      "scope": "Параметри й frozen proof.",
-      "tests": [
-        "tests/review/test_runner.py::test_settings_change_applies_to_next_part"
-      ]
-    },
-    {
-      "id": "REVIEW-INTEGRITY-S01",
-      "requirement": "REVIEW-INTEGRITY",
-      "scope": "Cold backup/restore й tampered proof.",
-      "tests": [
-        "tests/review/test_integrity.py::test_review_proofs_are_checked_offline",
-        "tests/review/test_integrity.py::test_review_survives_cold_backup_and_restore"
-      ]
-    },
-    {
-      "id": "REVIEW-INTEGRITY-S02",
-      "requirement": "REVIEW-INTEGRITY",
-      "scope": "CAS перед пам’яттю.",
-      "tests": [
-        "tests/review/test_runner.py::test_external_edit_after_author_acceptance_stops_before_memory"
-      ]
-    },
-    {
-      "id": "REVIEW-INTEGRITY-S03",
-      "requirement": "REVIEW-INTEGRITY",
-      "scope": "Author memory/forwarding, exceptional recovery and operation suffix.",
-      "tests": [
-        "tests/review/test_runner.py::test_manual_memory_is_not_discarded_on_automatic_rebuild",
-        "tests/review/test_runner.py::test_raised_transport_requires_explicit_repeat",
-        "tests/review/test_runner.py::test_saved_answer_settings_change_does_not_repeat",
-        "tests/review/test_store.py::test_operation_id_with_namespace_words_is_not_truncated"
-      ]
-    },
-    {
-      "id": "REVIEW-WORKSPACE-S03",
-      "requirement": "REVIEW-WORKSPACE",
-      "scope": "Capability gate, stale author view, source labels, memory retry and progress.",
-      "tests": [
-        "tests/review/test_decisions.py::test_refreshed_preview_does_not_hide_external_edit_while_waiting",
-        "tests/review/test_runner.py::test_clean_advances_and_findings_pause"
-      ],
-      "manual": {
-        "procedure": "docs/verification/manual.md#sequential-review",
-        "reason": "Browser impact/sequential-review desktop/mobile для capabilities, назв та memory retry."
-      }
-    },
-    {
-      "id": "REVIEW-BASIS-S01",
-      "requirement": "REVIEW-BASIS",
-      "scope": "Поточні передумови без вигаданої історичної бази.",
-      "tests": [
-        "tests/review/test_current_basis.py::test_legacy_preview_is_current_consistency_without_backfill",
-        "tests/review/test_current_basis.py::test_current_capture_includes_prior_prose_without_future_prose",
-        "tests/review/test_current_basis.py::test_legacy_clean_acceptance_and_later_source_change",
-        "tests/review/test_current_basis.py::test_clean_native_legacy_record_is_reinvalidated_after_review",
-        "tests/review/test_current_basis.py::test_author_revised_prose_tracks_review_only_brief_then_explicit_acceptance"
-      ]
-    },
-    {
-      "id": "REVIEW-BASIS-S02",
-      "requirement": "REVIEW-BASIS",
-      "scope": "Поточні передумови без вигаданої історичної бази.",
-      "tests": [
-        "tests/review/test_current_basis.py::test_current_consistency_findings_use_existing_author_checkpoint",
-        "tests/review/test_current_basis.py::test_legacy_author_revision_keeps_report_basis_and_future_invalidation",
-        "tests/review/test_current_basis.py::test_current_consistency_cannot_hide_corrupt_source",
-        "tests/review/test_current_basis.py::test_current_basis_survives_backup_and_rechecks_sources",
-        "tests/review/test_current_basis.py::test_mode_map_rejects_invented_delta_and_invalid_targets",
-        "tests/review/test_current_basis.py::test_frozen_old_plan_has_exact_pre_mode_payload",
-        "tests/review/test_current_basis.py::test_prose_current_basis_tracks_own_brief_and_mixed_modes"
-      ]
-    },
-    {
-      "id": "REVIEW-BASIS-S03",
-      "requirement": "REVIEW-BASIS",
-      "scope": "Поточні передумови без вигаданої історичної бази.",
-      "tests": [
-        "tests/review/test_current_basis.py::test_legacy_preview_is_current_consistency_without_backfill"
-      ],
-      "manual": {
-        "procedure": "docs/verification/manual.md#sequential-review",
-        "reason": "Browser sequential-review legacy current-consistency UA/EN desktop/mobile, reload та author reject."
-      }
-    },
-    {
-      "id": "REVIEW-NEXT-S01",
-      "requirement": "REVIEW-NEXT",
-      "scope": "Синтетична програмна перевірка контракту4; не semantic benchmark і не допуск моделі.",
-      "tests": [
-        "tests/review/test_authority4.py::test_priority_is_append_only_idempotent_and_invalidates_legacy",
-        "tests/review/test_authority4.py::test_priority_replacement_is_atomic",
-        "tests/review/test_evidence_contract.py::test_priority_rejects_chains_cycles_and_foreign_statements"
-      ]
-    },
-    {
-      "id": "REVIEW-NEXT-S02",
-      "requirement": "REVIEW-NEXT",
-      "scope": "Синтетична програмна перевірка контракту4; не semantic benchmark і не допуск моделі.",
-      "tests": [
-        "tests/review/test_evidence_contract.py::test_offsets_preserve_crlf_and_unicode",
-        "tests/review/test_evidence_contract.py::test_known_ref_is_not_permission_to_quote_outside_delivered_span"
-      ]
-    },
-    {
-      "id": "REVIEW-NEXT-S03",
-      "requirement": "REVIEW-NEXT",
-      "scope": "Синтетична програмна перевірка контракту4; не semantic benchmark і не допуск моделі.",
-      "tests": [
-        "tests/review/test_evidence_contract.py::test_pair_classification_and_gap",
-        "tests/review/test_evidence_contract.py::test_priority_suppresses_only_exact_statement",
-        "tests/review/test_contract4_planning.py::test_check_receives_machine_owned_unresolved_premises"
-      ]
-    },
-    {
-      "id": "REVIEW-NEXT-S04",
-      "requirement": "REVIEW-NEXT",
-      "scope": "Синтетична програмна перевірка контракту4; не semantic benchmark і не допуск моделі.",
-      "tests": [
-        "tests/review/test_contract4_planning.py::test_premises_include_diagonal_and_complete_pairs",
-        "tests/review/test_contract4_runner.py::test_preview_counts_include_forced_premise_synthesis",
-        "tests/review/test_counter4.py::test_new_local_prompt_requires_its_own_qualified_counter"
-      ]
-    },
-    {
-      "id": "REVIEW-NEXT-S05",
-      "requirement": "REVIEW-NEXT",
-      "scope": "Синтетична програмна перевірка контракту4; не semantic benchmark і не допуск моделі.",
-      "tests": [
-        "tests/review/test_contract4_runner.py::test_contract4_preserves_findings_and_never_accepts_partial",
-        "tests/review/test_contract4_runner.py::test_partial_retry_requires_consent_and_reuses_only_complete_tasks"
-      ]
-    },
-    {
-      "id": "REVIEW-NEXT-S06",
-      "requirement": "REVIEW-NEXT",
-      "scope": "Синтетична програмна перевірка контракту4; не semantic benchmark і не допуск моделі.",
-      "tests": [
-        "tests/review/test_contract4_runner.py::test_report4_replay_and_backup_are_exact",
-        "tests/review/test_contract4_runner.py::test_author_acceptance4_rechecks_original_raw",
-        "tests/review/test_authority4.py::test_priority_history_detects_derived_state_tampering",
-        "tests/review/test_authority4.py::test_priority_invalidates_fresh_native_baseline"
-      ]
-    },
-    {
-      "id": "REVIEW-NEXT-S07",
-      "requirement": "REVIEW-NEXT",
-      "scope": "Синтетична програмна перевірка контракту4; не semantic benchmark і не допуск моделі.",
-      "tests": [
-        "tests/web/test_review4_api.py::test_capability_preview_and_scoped_priority_round_trip",
-        "tests/review/test_contract4_planning.py::test_legacy_plan_and_request_remain_unversioned"
-      ]
-    },
-    {
-      "id": "REVIEW-NEXT-S08",
-      "requirement": "REVIEW-NEXT",
-      "scope": "Синтетична програмна перевірка контракту4; не semantic benchmark і не допуск моделі.",
-      "tests": [
-        "tests/review/test_contract4_runner.py::test_contract4_preserves_findings_and_never_accepts_partial"
-      ],
-      "manual": {
-        "procedure": "docs/superpowers/specs/2026-11-03-review-evidence-contract-design.md#design-review",
-        "reason": "Підготовка незалежного semantic набору й окрема активація бюджету/викликів потребують авторського рішення; автоматичні тести перевіряють лише блокування автоматичного прийняття."
       }
     },
     {
@@ -4509,16 +3980,6 @@
       }
     },
     {
-      "id": "IMPACT-UI-HISTORY",
-      "requirement": "IMPACT-UI",
-      "scope": "tests/web/browser/collapsible-scenes.spec.mjs: latest scene reports collapse and retain state across language and refresh — current/history reports, blockers, порожня історія, keyboard, locale/refresh; не перевірка dirty буфера.",
-      "tests": [],
-      "manual": {
-        "procedure": "docs/verification/manual.md#collapsible-scenes",
-        "reason": "check_docs.py tests IDs індексує pytest; реальні автоматизовані Playwright cases перелічено в процедурі з точними файлами/назвами."
-      }
-    },
-    {
       "id": "MODEL-METADATA-S01",
       "requirement": "MODEL-METADATA",
       "scope": "Точні synthetic/MockTransport server contracts; жодного production inference.",
@@ -4606,16 +4067,7 @@
       "scope": "Модельна обгортка JSON; строгість, збереження оригіналу та повторна валідація.",
       "tests": [
         "tests/generation/test_model_json_boundaries.py::test_all_model_json_boundaries_accept_one_wrapper_without_changing_strings",
-        "tests/generation/test_model_json_boundaries.py::test_review_json_keeps_ambiguous_or_invalid_payloads_closed",
         "tests/generation/test_model_json_boundaries.py::test_manual_json_remains_strict"
-      ]
-    },
-    {
-      "id": "MODEL-JSON-S02",
-      "requirement": "MODEL-JSON",
-      "scope": "Модельна обгортка JSON; строгість, збереження оригіналу та повторна валідація.",
-      "tests": [
-        "tests/review/test_contract4_runner.py::test_report4_replay_and_backup_are_exact"
       ]
     },
     {
@@ -4823,7 +4275,6 @@
       "requirement": "RATING-001",
       "scope": "Пониження → застаріле, підвищення → свіже, старі знімки проти initial_content_rating, author_text і прийнятий автором модельний текст не застарівають, інвалідація залежних матеріалів.",
       "tests": [
-        "tests/storage/test_rating_freshness.py::test_impact_capture_uses_initial_rating_for_unrated_snapshots",
         "tests/storage/test_rating_freshness.py::test_rating_selector_recorded_for_generation_scopes",
         "tests/storage/test_rating_freshness.py::test_rating_selector_records_story_rating_without_override",
         "tests/storage/test_rating_freshness.py::test_lowering_makes_stale_raising_keeps_fresh",
@@ -4833,8 +4284,6 @@
         "tests/storage/test_rating_freshness.py::test_author_text_never_stale_from_rating",
         "tests/storage/test_rating_freshness.py::test_unrated_snapshot_uses_initial_rating",
         "tests/storage/test_rating_freshness.py::test_story_lowering_below_scene_override_keeps_scene_fresh",
-        "tests/storage/test_rating_freshness.py::test_impact_capture_ignores_rating_raise",
-        "tests/storage/test_rating_freshness.py::test_impact_preview_tolerates_rating_selector",
         "tests/storage/test_content_rating.py::test_story_lowering_invalidates_only_inheriting_scenes",
         "tests/storage/test_content_rating.py::test_raising_and_first_set_invalidate_nothing",
         "tests/storage/test_content_rating.py::test_scene_override_and_reset"
@@ -5991,15 +5440,14 @@
         "tests/generation/test_context_language.py::test_english_request_has_no_cyrillic",
         "tests/generation/test_context_language.py::test_english_rewrite_request_has_no_cyrillic",
         "tests/generation/test_context_language.py::test_english_request_with_character_cards_has_no_cyrillic",
-        "tests/generation/test_context_language.py::test_impact_and_publication_requests_english",
         "tests/generation/test_context_language.py::test_label_tables_have_same_keys",
         "tests/generation/test_context_language.py::test_acquaintance_block_follows_story_language",
         "tests/generation/test_context_language.py::test_field_labels_follow_story_language",
         "tests/generation/test_context_language.py::test_prepare_request_english",
         "tests/generation/test_context_language.py::test_edit_loop_patches_request_english",
-        "tests/generation/test_context_language.py::test_review_basis_note_follows_plan_language",
         "tests/generation/test_context_language.py::test_classifier_prompt_english_has_no_cyrillic",
-        "tests/generation/test_prompt_language.py::test_ukrainian_composed_system_messages_unchanged"
+        "tests/generation/test_prompt_language.py::test_ukrainian_composed_system_messages_unchanged",
+        "tests/generation/test_context_language.py::test_publication_request_is_english"
       ]
     },
     {
@@ -6015,9 +5463,7 @@
         "tests/storage/test_prose_language_staleness.py::test_author_text_without_snapshot_not_checked",
         "tests/storage/test_prose_language_staleness.py::test_selector_recorded_for_prose_scopes",
         "tests/storage/test_prose_language_staleness.py::test_selector_not_recorded_for_brief_and_memory",
-        "tests/storage/test_prose_language_staleness.py::test_impact_cannot_approve_prose_of_another_language",
-        "tests/storage/test_prose_language_staleness.py::test_later_scenes_stay_fresh_after_switch",
-        "tests/storage/test_prose_language_staleness.py::test_language_change_of_premise_scene_does_not_block_review_of_later_scene"
+        "tests/storage/test_prose_language_staleness.py::test_later_scenes_stay_fresh_after_switch"
       ]
     },
     {
@@ -7336,7 +6782,7 @@
         "tests/series/test_series_snapshot.py::test_unfinished_book_has_no_summary",
         "tests/series/test_series_snapshot.py::test_book_with_arcs_ending_in_two_arcs_needs_the_book_end_merge",
         "tests/series/test_series_memory.py::test_series_book_with_arcs_merges_memory_over_the_snapshot",
-        "tests/series/test_series_memory.py::test_impact_capture_and_statistics_accept_the_snapshot"
+        "tests/series/test_series_memory.py::test_statistics_accept_the_snapshot"
       ]
     },
     {
@@ -7921,10 +7367,7 @@
         "tests/generation/test_model_retirement_warnings.py::test_edit_loop_warns_about_the_editor_model",
         "tests/generation/test_model_retirement_warnings.py::test_scene_pipeline_keeps_the_writer_warning_after_the_editor_finishes",
         "tests/generation/test_model_retirement_warnings.py::test_the_next_scene_replaces_the_stop_line_and_keeps_the_retirement_warning",
-        "tests/generation/test_model_retirement_warnings.py::test_a_model_without_a_notice_adds_no_warning",
-        "tests/generation/test_model_retirement_warnings.py::test_impact_review_warns_about_the_planner_model",
-        "tests/generation/test_model_retirement_warnings.py::test_impact_review_in_parts_warns_about_the_planner_model",
-        "tests/generation/test_model_retirement_warnings.py::test_book_review_call_carries_the_warning"
+        "tests/generation/test_model_retirement_warnings.py::test_a_model_without_a_notice_adds_no_warning"
       ]
     },
     {
@@ -7973,8 +7416,7 @@
       "tests": [
         "tests/providers/test_openrouter_reasoning.py::test_empty_field_leaves_request_and_dump_unchanged",
         "tests/providers/test_openrouter_reasoning.py::test_set_field_is_in_dump_so_fingerprints_follow_it",
-        "tests/providers/test_openrouter_reasoning.py::test_stored_role_without_field_reads_as_empty",
-        "tests/impact/test_local_token_counting.py::test_legacy_wire2_raw_proof_without_counter"
+        "tests/providers/test_openrouter_reasoning.py::test_stored_role_without_field_reads_as_empty"
       ]
     },
     {

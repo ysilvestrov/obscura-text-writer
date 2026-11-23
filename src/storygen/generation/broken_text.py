@@ -10,7 +10,7 @@ import re
 from ..model_json import unwrap_model_json
 
 REPLACEMENT = '�'
-REJECT = frozenset({'memory', 'classify', 'impact_delta', 'impact_check', 'impact_part', 'review_part'})
+REJECT = frozenset({'memory', 'classify'})
 DROP = frozenset({'rewrite', 'publication_suggest'})
 WARN = frozenset({'draft', 'brief', 'prepare', 'timeline_summary'})
 

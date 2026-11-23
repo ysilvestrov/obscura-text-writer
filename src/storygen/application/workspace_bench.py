@@ -1,6 +1,6 @@
 """Workspace response benchmark: synthetic story, timings and a content digest.
 
-Only the public Repository API, readiness.preview and impact.presentation.scene_status
+Only the public Repository API, readiness.preview and storage.material_status
 are used; scene selection goes through the web app (fastapi TestClient) on the URLs the
 editor requests. The digest covers outputs only (never timings), so a before/after
 comparison proves that a speed change did not change results.
@@ -17,7 +17,7 @@ from ..authoring.blueprints import get_role_settings, save_role_settings
 from ..domain import ContentRating, SceneCreate, StoryCreate
 from ..generation.dependencies import save_manual_prose
 from ..generation.pipeline import STAGES
-from ..impact.presentation import scene_status
+from ..storage.material_status import material_status
 from ..memory.service import save_scene_memory
 from ..providers.models import RoleSettings
 from ..run_models import RunRequest
@@ -157,7 +157,7 @@ def _story_view(repo, story_id):
     # Same repository calls as routes_stories.story_view.
     view = repo.context_view(story_id)
     story = view.get_story(story_id)
-    return {'impact_status': scene_status(view), 'story': story,
+    return {'material_status': material_status(view), 'story': story,
             'scenes': [view.effective_scene(s.id) for s in view.list_scenes(story_id)]}
 
 
@@ -227,10 +227,9 @@ def _digest(outputs):
 
 
 def _story_open(repo, story_id):
-    """The heavy GET requests of opening a story in the editor: the story view, the impact overview and the trash.
+    """The heavy GET requests of opening a story in the editor: the story view and the trash.
     Returns {label: ((status, json), seconds)}; labels carry no ids."""
     return _app_requests(repo, 'story_open_failed', [('story', f'/api/stories/{story_id}'),
-                                                     ('impact', f'/api/stories/{story_id}/impact'),
                                                      ('trash', f'/api/stories/{story_id}/trash')])
 
 
@@ -262,8 +261,7 @@ def _scene_select(repo, story_id, scene_id):
     """The GET requests the editor sends after a scene is selected (scene-selected listeners), through the app.
 
     readiness?operation=brief and /runs (runs.js, plan mode), versions (versions.js), statistics (scene-statistics.js),
-    comments (author-comments.js), copyedit and rewrite lists (change-review.js), evaluator (evaluation.js), and the
-    review session reads (review-session.js) when the story has one. The TestClient is not entered as a context
+    comments (author-comments.js), copyedit and rewrite lists (change-review.js) and evaluator (evaluation.js). The TestClient is not entered as a context
     manager, so the app lifespan (worker start) never runs and nothing is enqueued.
     Returns {label: ((status, json), seconds)}; labels carry no ids.
     """
@@ -290,21 +288,13 @@ def _scene_select(repo, story_id, scene_id):
         return body if response.status_code == 200 else None
     try:
         get('readiness', f'/api/stories/{story_id}/readiness?scene_id={scene_id}&operation=brief')
-        runs = get('runs', f'/api/stories/{story_id}/runs')
+        get('runs', f'/api/stories/{story_id}/runs')
         get('versions', f'/api/scenes/{scene_id}/versions')
         get('statistics', f'/api/scenes/{scene_id}/statistics?stage=draft')
         get('comments', f'/api/scenes/{scene_id}/comments')
         get('copyedits', f'/api/scenes/{scene_id}/copyedits')
         get('rewrites', f'/api/scenes/{scene_id}/rewrites')
         get('evaluator', f'/api/stories/{story_id}/evaluator')
-        sessions = [r for r in (runs or {}).get('runs', []) if (r.get('impact') or {}).get('protocol') == 3]
-        active = {'queued', 'running', 'paused', 'needs_review', 'pause_requested', 'cancellation_requested'}
-        listed = next((r for r in reversed(sessions) if r['state'] in active), sessions[-1] if sessions else None)
-        if listed:
-            get('review:run', f'/api/runs/{listed["id"]}')
-            report = get('review:session', f'/api/stories/{story_id}/review/{listed["id"]}')
-            if report and (report.get('report') or {}).get('schema_version') == 4:
-                get('review:priorities', f'/api/stories/{story_id}/review/priorities/{report["scene_id"]}')
     finally:
         client.close()
     return result

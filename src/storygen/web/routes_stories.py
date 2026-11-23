@@ -1,6 +1,7 @@
 from typing import Literal
 
 from fastapi import APIRouter, Request
+from fastapi.responses import RedirectResponse
 from pydantic import Field
 from fastapi.responses import JSONResponse
 
@@ -76,8 +77,9 @@ def story_page(id: str,request: Request):
 
 @router.get("/stories/{id}/revision")
 def revision_page(id: str,request: Request):
-    """#89: book check (impact review) lives on its own page; no new API."""
-    return request.app.state.templates.TemplateResponse(request=request,name="revision.html",context={"story":request.app.state.repo.get_story(id)})
+    """The book check page of R-28 is removed (R-44 PR 1); old links and bookmarks open the story."""
+    request.app.state.repo.get_story(id)
+    return RedirectResponse(f"/stories/{id}",status_code=303)
 
 
 @router.get("/stories/{id}/characters")
@@ -104,7 +106,7 @@ def story_view(id: str,request: Request):
     from ..characters.models import load_characters
     cards=load_characters(view.read_text(story.characters_version_id)) if story.characters_version_id else []
     names={card.id:card.name for card in cards}
-    from ..impact.presentation import scene_status
+    from ..storage.material_status import material_status
     from ..rating.levels import effective_rating
     listed=view.list_scenes(id)
     ratings={scene.id:{"effective":effective_rating(story,scene),"source":"scene" if scene.content_rating else "story" if story.content_rating else None} for scene in listed}
@@ -130,7 +132,7 @@ def story_view(id: str,request: Request):
     # SERIES: the block is present only for a book in a series.
     series=series_block(request.app.state.repo,story)
     extra={"series":series} if series else {}
-    return {**extra,"impact_status":scene_status(view),"language_locked":request.app.state.repo.story_language_locked(id),"story":story,"book_structure":book,"scenes":scenes,"scene_ratings":ratings,"sources":[view.get_version(v.id) for v in view.versions.values() if v.kind in {"source_plan","source_characters"}],"character_names":names,"source_files":view.source_files,"active_sources":view.sources}
+    return {**extra,"material_status":material_status(view),"language_locked":request.app.state.repo.story_language_locked(id),"story":story,"book_structure":book,"scenes":scenes,"scene_ratings":ratings,"sources":[view.get_version(v.id) for v in view.versions.values() if v.kind in {"source_plan","source_characters"}],"character_names":names,"source_files":view.source_files,"active_sources":view.sources}
 
 
 @router.get("/api/stories/{id}/scene-revisions")
@@ -158,10 +160,10 @@ def plan_preamble(id: str,request: Request):
 def change_plan_preamble(id: str,body: PlanPreambleChange,request: Request):
     """PLAN-PREAMBLE: a new plan version with the same scenes; scenes written with the old preamble need review."""
     from ..storage.plan_preamble import replace_plan_preamble
-    from ..impact.presentation import scene_status
+    from ..storage.material_status import material_status
     repo=request.app.state.repo
     result=replace_plan_preamble(repo,id,body.expected_plan_version_id,body.text)
-    return {**result,'impact_status':scene_status(repo.context_view(id))}
+    return {**result,'material_status':material_status(repo.context_view(id))}
 
 
 @router.post("/api/stories/{id}/sources")

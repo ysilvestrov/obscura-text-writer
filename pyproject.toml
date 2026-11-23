@@ -23,7 +23,6 @@ desktop = ["Pillow>=11,<13", "keyring>=25,<26"]
 build = ["pyinstaller==6.22.3", "pyinstaller-hooks-contrib==2026.10", "packaging>=24"]
 
 [project.scripts]
-storygen-local-tokens = "storygen.token_budget.local_cli:main"
 storygen-eval = "storygen.evaluation.cli:main"
 storygen = "storygen.server:main"
 storygen-tokens = "storygen.token_budget.cli:main"

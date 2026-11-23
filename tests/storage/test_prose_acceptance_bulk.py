@@ -1,9 +1,7 @@
-"""DATA-010-S02: the book check accepts all waiting prose as the author's in one transaction."""
+"""DATA-010-S02: the story menu accepts all waiting prose as the author's in one transaction."""
 import pytest
 from storygen.domain import StoryCreate, SceneCreate, RevisionConflict
 from storygen.generation.dependencies import save_manual_prose
-from storygen.review.capture import plan_review
-from storygen.impact.presentation import scene_status
 from storygen.storage.repository import Repository
 
 
@@ -23,7 +21,13 @@ def swap(repo,story):
 
 
 def waiting(repo,story):
-    return [t.material for t in plan_review(repo.context_view(story.id)).targets]
+    """Stale brief and prose heads (prose also when the scene needs review), in reading order."""
+    view=repo.context_view(story.id);out=[]
+    for scene in view.list_scenes(story.id):
+        for material in ('brief','prose'):
+            id=scene.heads.get(material)
+            if id and (view.is_stale(id) or (material=='prose' and view.effective_scene(scene.id).needs_review)):out.append(material)
+    return out
 
 
 def accept_all(repo,story):
@@ -42,8 +46,6 @@ def test_all_waiting_prose_is_accepted_and_consecutive_scenes_stay_current(tmp_p
     assert [a['title'] for a in result['accepted']]==['Сцена 2','Сцена 1','Сцена 3']
     # The author baseline of scene 2 and 3 holds the acceptance of the scenes before: nothing is stale afterwards.
     assert waiting(repo,story)==[]
-    view=repo.context_view(story.id)
-    assert all(v['prose']=='current' for v in scene_status(view).values())
     for scene in repo.list_scenes(story.id):
         assert not repo.get_version(scene.heads['prose']).stale and not scene.needs_review
         assert repo.read_text(scene.heads['prose'])==texts[scene.id]
@@ -83,18 +85,14 @@ def test_change_after_preview_rejects_everything(tmp_path):
 
 
 @pytest.mark.req('DATA-010')
-def test_open_book_review_blocks_bulk_acceptance(tmp_path):
+def test_saved_impact_run_does_not_block_bulk_acceptance(tmp_path):
+    """R-28 is removed (R-44 PR 1): an impact run left open in an old database is history and blocks nothing."""
     from storygen.run_models import Run, RunRequest
     repo,story=book(tmp_path,2)
     swap(repo,story)
     preview=repo.preview_prose_acceptance(story.id)
     assert len(preview['scenes'])==2
     repo.enqueue_run(Run(id='review',story_id=story.id,request_id='review',request=RunRequest(story_id=story.id,mode='impact'),state='needs_review',tasks=[]))
-    with pytest.raises(ValueError,match='перевірку книги'):
-        repo.accept_all_prose(story.id,preview['fingerprint'])
-    assert repo.list_acceptances(story.id)==[]
-    # A finished review does not block.
-    run=repo.get_run('review');run.state='completed';repo.save_run(run)
     assert len(repo.accept_all_prose(story.id,preview['fingerprint'])['accepted'])==2
 
 
@@ -121,10 +119,9 @@ def test_http_preview_accept_and_stale_fingerprint(tmp_path):
     url=f'/api/stories/{story.id}/prose-acceptance'
     data=client.get(url).json()
     assert [s['title'] for s in data['scenes']]==['S1','S0']
-    assert [t['material'] for t in client.get(f'/api/stories/{story.id}/impact').json()['pending']]==['prose','prose']
     accepted=client.post(url,json={'fingerprint':data['fingerprint']})
     assert accepted.status_code==200 and len(accepted.json()['accepted'])==2
-    assert client.get(f'/api/stories/{story.id}/impact').json()['pending']==[]
+    assert client.get(url).json()['scenes']==[]
     assert client.post(url,json={'fingerprint':data['fingerprint']}).status_code==409
 
 
@@ -151,7 +148,6 @@ def accept_once_and_check(repo,story):
     assert waiting(repo,story)==[]
     assert repo.preview_prose_acceptance(story.id)['scenes']==[]
     view=repo.context_view(story.id)
-    assert all(v['prose']=='current' for v in scene_status(view).values())
     for scene in repo.list_scenes(story.id):
         assert not view.is_stale(scene.heads['prose']) and not view.effective_scene(scene.id).needs_review
         assert repo.read_text(scene.heads['prose'])==texts[scene.id]

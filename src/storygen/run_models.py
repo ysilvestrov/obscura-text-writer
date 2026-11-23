@@ -24,10 +24,14 @@ def loop_status(warning: str | None,status: str) -> str | None:
     return merge_warnings('\n'.join(kept),[status])
 
 
+IMPACT_REMOVED = 'Перевірку впливу вилучено; скористайтеся валідацією книги'
+
+
 class RunRequest(DomainModel):
     story_id: str
     scene_id: str | None = None
     mode: Literal['stage','scene','remaining','prepare','rebuild_memory','evaluate','classify','edit_loop','publication_suggest','rewrite','impact','timeline_summary'] = 'scene'
+    # 'impact' (R-28) stays readable for saved runs; Worker.enqueue refuses it (IMPACT_REMOVED, R-44 PR 1).
     impact_plan_fingerprint: str | None = Field(default=None,pattern=r'^[a-f0-9]{64}$')
     impact_protocol: Literal[3] | None = None
     review_contract_version: Literal[3,4] | None = None

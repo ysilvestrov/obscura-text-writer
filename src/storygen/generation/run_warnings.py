@@ -15,14 +15,3 @@ def stage_retirement(attempt,gateway,model):
 
 def retirement_warnings(attempt):
     return list(attempt.context.get(RETIREMENT_KEY,[]))
-
-
-def carry(worker,run_id,attempt,stage,scene_id):
-    """For runners that call execute_stage directly (impact, review): merge the warning and announce it."""
-    warnings=retirement_warnings(attempt)
-    if not warnings:return
-    with worker.condition:
-        current=worker.get_run(run_id)
-        current.warning=merge_warnings(current.warning,warnings)
-        worker._save(current)
-    worker.event(run_id,'context_warning',{'warnings':warnings,'stage':stage,'scene_id':scene_id})

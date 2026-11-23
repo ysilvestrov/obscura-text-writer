@@ -139,30 +139,10 @@ R-22 прокрутка: Playwright `long draft scrolls internally while formatt
 Сценарії `editing an accepted brief keeps acceptance when starting a draft` і `manual save of an accepted brief keeps acceptance`: прийняти пропозицію, змінити її, перевірити ручний Save та основну дію; нова версія лишається прийнятою, а основна дія після збереження надсилає запит на запуск; тест перехоплює цей запит без виклику моделі. Окремо перевірити, що правка неприйнятої пропозиції все ще потребує явного прийняття.
 
 
-<a id="r28-impact"></a>
-## R-28 — Браузерний сценарій перевірки впливу
-
-Виконати `pnpm --dir frontend exec playwright test impact.spec.mjs` на синтетичному сервері tests/web/browser/server.py, без .env/production data/реальних gateway. Обидва проєкти desktop/mobile мають пройти: preview показує synthetic planner/calls; protocol3 clean не змінює prose ID; concerns мають точні цитати; legacy reject перевіряється API-тестами; введений незбережений текст і UA/EN switch не губляться. Нейтральні screenshot у artifacts/r28-impact; проглянути desktop/mobile разом та скопіювати підтверджені зображення до docs/images. Сам цей опис не підтверджує виконання; свідчення — журнал і результат runner.
-
-
-<a id="r28-preview-wait"></a>
-### R-28: очікування попереднього перегляду
-
-На синтетичному сервері виконати `pnpm --dir frontend exec playwright test --config playwright.config.mjs impact.spec.mjs`. Сценарії `slow impact preview is visible immediately and can be cancelled without dispatch`, `impact preview timeout unlocks controls and reports a specific cause`, `failed impact preview unlocks retry and does not retain stale start action`: route hold робить затримку контрольованою; loading/elapsed/cancel видимі, start прихований; cancel і virtual clock121с повертають кнопку без run. HTTP503 дає пояснення, наступний preview успішний. Виконати desktop/mobile; production API й модельні витрати відсутні.
-
-
 <a id="run-recovery-visible"></a>
 ## Видимість відновлення після налаштувань
 
-На синтетичному стенді виконати `pnpm --dir frontend exec playwright test --config playwright.config.mjs --grep "restored failed run"`. Сценарій у tests/web/browser/impact.spec.mjs перевіряє desktop/mobile: останній failed run, затриману readiness, конфігураційну відмову, перехід у налаштування та повернення. Repeat має бути видимим і disabled із причиною; жодного resume POST. Для фактично ready run додатково перевірити доступну кнопку без натискання; completed run не має repeat. Сам опис не є підтвердженням виконання.
-
-
-<a id="sequential-review"></a>
-## Послідовний перегляд книги
-
-У frontend виконати `pnpm exec playwright test --config playwright.config.mjs impact.spec.mjs sequential-review.spec.mjs` на синтетичному сервері. Desktop/mobile: повний clean результат автоматично завершується; concerns мають source/target уривки; reject-all приймає без зайвого confirm, fix choices зберігаються через reload/settings return. Dirty проза блокує finish; після Save finish оновлює пам’ять без нового search. UA/EN labels змінюються, авторський текст — ні. Контрольовані preview wait/cancel/timeout/error не запускають модель. Старі protocol1/2 API/replay перевіряються Python-тестами tests/web/test_impact_api.py та tests/impact. Знімки нейтральної панелі: artifacts/sequential-review. Наявність процедури не підтверджує її виконання.
-
-Додатковий R-28k сценарій `legacy current-consistency mode is explicit in preview and restored author report`: `/test-impact?legacy=true` показує Поточні передумови/Current premises; report явно без історичного порівняння після reload і UA/EN; reject-all завершує сесію. Тільки synthetic data.
+На синтетичному стенді (`tests/web/browser/server.py`) вручну в desktop і mobile (375 px): створити твір зі збереженим failed запуском етапу сцени, затримати readiness (DevTools → Network throttling) і зробити налаштування ролі несумісними, перейти в налаштування та повернутися. Автоматичний сценарій `restored failed run` був у вилученому `impact.spec.mjs` (R-44, PR 1); окремого браузерного тесту для запуску етапу поки немає. Repeat має бути видимим і disabled із причиною; жодного resume POST. Для фактично ready run додатково перевірити доступну кнопку без натискання; completed run не має repeat. Сам опис не є підтвердженням виконання.
 
 
 <a id="characters-page"></a>
@@ -200,9 +180,9 @@ R-22 прокрутка: Playwright `long draft scrolls internally while formatt
 
 
 <a id="workspace-layout"></a>
-## Робочий простір: рядок стану, меню, розділи сцени й «Перевірка книги»
+## Робочий простір: рядок стану, меню й розділи сцени
 
-З `PYTHONPATH=<робоча копія>/src` у `frontend` запустити `npx playwright test workspace-layout impact sequential-review review-evidence --project=desktop --project=mobile` на synthetic server без provider calls. `workspace-layout.spec.mjs`: `status row holds run controls and the next-run limit`; `waiting run shows a decision link and the pinned area stays small` (R20-WORKSPACE-S03); `full screen mode spreads the editor and exits on Escape` (R20-WORKSPACE-S05); `story menu opens from the keyboard and returns focus on Escape`; `book revision page opens from the menu with a pending count`; `scene sections reopen after reload and leave unsaved text alone` (зокрема оцінювання приховане без оцінювача); `sections work when storage throws`. `sequential-review.spec.mjs` і `impact.spec.mjs` перевіряють запуск на `/stories/{id}/revision` і картку сесії поруч з редактором. Переглянути знімки `docs/images/workspace-*-{desktop,mobile}.png` на нейтральність і відсутність горизонтального прокручування на 375 px. Наявність процедури не є фактичним PASS; результат запуску записується в журналі виконання.
+З `PYTHONPATH=<робоча копія>/src` у `frontend` запустити `npx playwright test workspace-layout --project=desktop --project=mobile` на synthetic server без provider calls. `workspace-layout.spec.mjs`: `status row holds run controls and the next-run limit`; `waiting run shows a decision link and the pinned area stays small` (R20-WORKSPACE-S03); `full screen mode spreads the editor and exits on Escape` (R20-WORKSPACE-S05); `story menu opens from the keyboard and returns focus on Escape` (пункту «Перевірка книги» немає); `scene sections reopen after reload and leave unsaved text alone` (зокрема оцінювання приховане без оцінювача); `sections work when storage throws`. Переглянути знімки `docs/images/workspace-*-{desktop,mobile}.png` на нейтральність і відсутність горизонтального прокручування на 375 px. Наявність процедури не є фактичним PASS; результат запуску записується в журналі виконання.
 
 
 <a id="run-status-collapse"></a>
@@ -269,11 +249,6 @@ WORKSPACE-TELEMETRY-S01: у `workspace-telemetry.spec.mjs` сценарії `pla
 ## Швидкість відповіді робочого простору
 
 Запустити `python scripts/workspace_bench.py --data <копія data> --story <id-префікс> --json` на копії робочих даних (не на робочій базі) і `python scripts/workspace_bench.py --synthetic 300 --workdir <нова тека> --json`. Синтетичний твір отримує локальні ролі зі стандартними промптами, тому readiness `brief`/`scene` має доходити до побудови контексту (`ready=true`) без викликів моделей; теку можна повторно використати лише для того самого числа сцен і завершеної побудови, інакше скрипт завершується з кодом 2 (`synthetic_mismatch`/`synthetic_incomplete`/`synthetic_ambiguous`). Для базового прогону скопіюйте теку до запуску старого коду. Порівняти `digest` із базовим прогоном до змін: він має збігатися. Потім у браузері виміряти від кліку до завершення останнього API-запиту: запустити `python -m storygen.server --data-dir <копія data або C:/tt/bench300r> --env-file <порожній файл>` (порожній env-файл не дає завантажити `.env` проєкту й ключі), відкрити сторінку у вбудованому браузері, обгорнути `window.fetch` лічильником запитів у польоті й міткою часу останнього завершеного запиту, а для відкриття твору використати `performance.getEntriesByType('resource')` після перезавантаження. Дії: «вибір сцени» (кілька різних сцен, у т.ч. пізніша), «перевірка готовності первинної дії» (запит `readiness?operation=…`, входить у вибір сцени), «розгорнути додаткові команди» (readiness усіх 9 операцій, на 300 сценах — на пізній сцені), «відкриття твору»; не менше 3 повторів, медіана й діапазон, перший холодний клік записати окремо. Цілі: 68 сцен — не більше 1 с, 300 синтетичних — не більше 3 с. Збереження вимірювати лише на окремій копії, яка не порівнюється з digest бенчмарку. Тексти не друкувати: лише ID, коди й час. Результат залежить від машини, тому процедура ручна; наявність процедури не означає її виконання. Виконано 08.11.2026 (код `08218e7`): цілі не досягнуто (відкриття твору 3,2–3,5 с на 68 і 5,4–5,9 с на 300; вибір сцени до 1,08 с на 68; розгортання всіх операцій 5,3–5,6 с на пізній сцені 300), збереження не вимірювалося. Виконано 21.11.2026 (гілка `claude/workspace-speed`, #39) на синтетичних 300 сценах, старий і новий код на окремих свіжих копіях: відкриття твору 9,7–10,2 → 5,4–5,5 с, вибір сцени 5,5–9,1 → 2,3–3,0 с, усі операції на сцені 290 11,5–11,9 → 1,3–1,7 с, збереження плану 16,1–16,6 → 7,3–8,0 с; цілі відкриття й збереження не досягнуто. Копія 68 сцен (старий → новий код): відкриття 2,94–3,14 → 2,75–3,01 с, вибір сцени 1,05–2,12 → 0,91–1,93 с, усі операції 1,87–1,95 → 1,43–1,55 с, збереження 3,30–3,45 → 2,95–3,09 с; ціль 1 с не досягнуто. Виконано 21.11.2026 після спільного знімка (PERF-001-S06, гілка `claude/workspace-speed-2`): 68 сцен — відкриття 2,65–2,99 → 1,24–1,32 с одразу після запису плану (запис робиться перед кожним відкриттям, щоб виміряти нове покоління) і 0,43–0,56 с без змін, запис 0,55 → 0,02 с; 300 сцен — 4,84–5,00 → 1,95–2,03 с після запису й 0,45–0,49 с без змін; на 68 сценах ціль 1 с для першого відкриття після запису не досягнуто. Відкриття вимірюйте окремо після запису й без змін між відкриттями: спільний знімок живе до наступного запису. Якщо `backup` відмовляє через перевірку цілісності, копію закритої теки робіть лише читанням (SQLite backup з read-only з'єднання й копіювання `stories` без `.env`), не змінюючи оригіналу. Для збереження фіксуйте окремо тривалість самого запису (resource timing) і всіх запитів оновлення. Виміри й причини — у SPEC.MD (PERF-001) і журналі виконання.
-
-<a id="impact-speed"></a>
-## Швидкість огляду впливу
-
-PERF-001-S05. На копії робочих даних (не на робочій базі; копію закритої теки робити лише читанням) виміряти `GET /api/stories/{id}/impact` через `fastapi.testclient.TestClient` застосунку з порожнім env-файлом: три повтори після першого запиту, лише код відповіді й секунди. Окремо на свіжому `ContextView` порахувати `plan_review(view)`: кількість цілей, час і `fingerprint`; відбиток має збігатися з базовим прогоном старого коду на окремій копії тих самих даних. Тексти не друкувати: лише ID, числа й хеші. Ціль: не більше 10 с на копії 68 сцен. Для синтетики: `python scripts/workspace_bench.py --synthetic N --cast --workdir <нова тека> --json` (картки з позначками, прихований запис пам'яті, правка карток після написання — усі голови застарілі); звичайний `--synthetic` і його еталонні digest цей режим не змінює. Виконано 21.11.2026 (гілка `claude/impact-speed-spec`) на копії 68 сцен: до зміни `plan_review` 25,19–25,24 с, після — 8,34–8,46 с, HTTP-огляд 8,45–8,56 с, 100 цілей, відбиток `052fed8b4edfea60…` той самий; ціль досягнуто.
 
 <a id="mcp-real-client"></a>
 ## Приймання MCP-клієнта з реальним чат-клієнтом
@@ -455,9 +430,9 @@ STORE-MCP-S08–S10. Автоматична частина — Playwright `tests
 IMPORT-NUMBER-S03. Автоматична частина — Playwright `tests/web/browser/scene-insert.spec.mjs` (один case: у творі з двома нумерованими сценами відкрито першу, «Додати сцену» вставляє нову другою з заголовком «## Сцена 2: …», план наступної сцени отримує «Сцена 3», список на desktop показує «2. Полудень»). Запуск: `cd frontend; ./node_modules/.bin/playwright test ../tests/web/browser/scene-insert.spec.mjs`. Цей зв’язок не є доказом виконання; фактичний запуск фіксується окремо.
 
 <a id="prose-accept-browser"></a>
-## Прийняття всієї прози на сторінці «Перевірка книги»
+## Прийняття всієї прози з меню твору
 
-DATA-010-S02. Автоматична частина — Playwright `tests/web/browser/prose-acceptance.spec.mjs` (один case на desktop і mobile: дві сцени з прозою, перестановка робить прозу застарілою; сторінка має заголовок «Перевірка книги», кнопка «Прийняти всю прозу як авторську» видима, підтвердження називає «Вечір», «Ранок», після прийняття кнопка зникає, `GET /impact` не має pending, проза обох сцен `current`). Запуск: `cd frontend; ./node_modules/.bin/playwright test -c playwright.config.mjs ../tests/web/browser/prose-acceptance.spec.mjs`. Цей зв’язок не є доказом виконання; фактичний запуск фіксується окремо.
+DATA-010-S02. Автоматична частина — Playwright `tests/web/browser/prose-acceptance.spec.mjs` (один case на desktop і mobile: дві сцени з прозою, перестановка робить прозу застарілою; у меню твору пункт «Прийняти всю прозу як авторську» видимий, підтвердження називає «Вечір», «Ранок», після прийняття `GET /prose-acceptance` повертає порожній перелік, а пункт зникає; відкрита проза сцени «Ранок» після прийняття редагується й зберігається без 409). Запуск: `cd frontend; ./node_modules/.bin/playwright test -c playwright.config.mjs ../tests/web/browser/prose-acceptance.spec.mjs`. Цей зв’язок не є доказом виконання; фактичний запуск фіксується окремо.
 
 <a id="claude-skills"></a>
 ## Скіли Obscura для Claude: сценарії поведінки
@@ -545,7 +520,7 @@ R20-WORKSPACE-S07, STORE-FOOTER-S01, STORE-FOOTER-S02. Автоматична ч
 
 PLAN-PREAMBLE-S02, PLAN-PREAMBLE-S04. Запустіть Obscura з порожньою текою даних, створіть твір і імпортуйте нейтральний план із назвою, рядком вказівок і двома сценами `## Сцена N: …`.
 1. Налаштування → «Письмо»: панель показує назву й вказівки; кнопка «Зберегти» неактивна, доки текст не змінено; загальна кнопка збереження розділу лишається «Без змін».
-2. Додайте рядок до вказівок і збережіть: з’являється повідомлення про збереження й кнопка «Перевірка книги»; після перезавантаження сторінки поле показує новий текст.
+2. Додайте рядок до вказівок і збережіть: з’являється повідомлення про збереження (сцени з попереднім вступом потребують перевірки); після перезавантаження сторінки поле показує новий текст.
 3. Додайте рядок `## Тон` і збережіть: повідомлення пояснює, що вступ змінив би поділ на сцени (англійською в англійському інтерфейсі), а введений текст лишається в полі.
 4. У творі без плану панель неактивна з поясненням «Імпортуйте план із заголовками сцен».
 Цей зв’язок не є доказом виконання; фактичний запуск фіксується окремо.

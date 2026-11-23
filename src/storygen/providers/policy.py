@@ -11,11 +11,10 @@ from ..roles import ROLES, ROLE_LABELS, STAGE_ROLE
 POLICY_ROLES = ROLES
 
 # Scene stages from the registry plus stages outside the scene pipeline.
-STAGE_POLICY_ROLE = {**STAGE_ROLE, 'impact_delta': 'planner', 'impact_check': 'planner',
-    'impact_part': 'planner', 'review_part': 'planner', 'publication_suggest': 'writer', 'timeline_summary': 'memory',
+STAGE_POLICY_ROLE = {**STAGE_ROLE, 'publication_suggest': 'writer', 'timeline_summary': 'memory',
     'rewrite': 'writer', 'classify': 'editor'}
 # Stages whose material spans several scenes: the request rating also counts the scenes behind `input_refs`.
-MULTI_SCENE_STAGES = frozenset({'impact_delta', 'impact_check', 'impact_part', 'review_part', 'publication_suggest', 'timeline_summary'})
+MULTI_SCENE_STAGES = frozenset({'publication_suggest', 'timeline_summary'})
 
 CONSENT_REQUIRED = ('Модель «{model}» не має позначки Uncensored, а рейтинг цього запиту {rating}. '
     'Підтвердьте в налаштуваннях ролі «{role}», що погоджуєтеся на виклики цієї моделі для дорослого змісту, або виберіть іншу модель.')

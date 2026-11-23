@@ -5,7 +5,6 @@ from dataclasses import dataclass
 
 from ..dependency_models import AcceptancePreview, AcceptanceRecord
 from ..domain import RevisionConflict, Scene, VersionRef, new_id, now
-from ..run_models import Run
 from .context_view import ContextView
 from .snapshots import build_author_baseline, resolve_freshness
 from .invalidation import invalidate_in_transaction
@@ -59,8 +58,7 @@ def accept_version(repo, scene_id, version_id, expected_revision, preview_finger
         return _accept_in_transaction(repo,db,view,scene,preview,note)
 
 
-# Book check (DATA-010-S02): the prose the book check counts as waiting, in reading order.
-ACTIVE_RUN_STATES={'queued','running','paused','needs_review','pause_requested','cancellation_requested'}
+# Mass acceptance from the story menu (DATA-010-S02): the prose counted as waiting, in reading order.
 
 
 def _waiting_prose(view):
@@ -117,10 +115,6 @@ def accept_all_prose(repo, story_id, fingerprint):
     with repo.db.connection() as db:
         db.execute('BEGIN IMMEDIATE')
         repo._active_story(db,story_id)
-        for (raw,) in db.execute('SELECT payload FROM runs WHERE story_id=?',(story_id,)).fetchall():
-            run=Run.model_validate_json(raw)
-            if run.request.mode=='impact' and run.state in ACTIVE_RUN_STATES:
-                raise ValueError('Спершу завершіть перевірку книги, що вже триває')
         _,current=_bulk_preview(ContextView(repo,db,story_id))
         if current!=fingerprint:
             raise RevisionConflict('Прозу книги змінено після перегляду. Перегляньте прийняття заново')

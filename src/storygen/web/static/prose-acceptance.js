@@ -3,11 +3,9 @@ import {t} from './i18n.js';
 import {api,json,notice} from './api.js';
 import {state,refresh} from './editor.js';
 
-// DATA-010-S02: the book check accepts all waiting prose as the author's in one server transaction.
-// The server list is the only criterion for showing the button; an open impact check or book review disables it.
-const button=document.querySelector('#prose-accept-all');
-const open=new Set(['queued','running','paused','needs_review','pause_requested','cancellation_requested']);
-const reviewOpen=()=>(state.workspaceRuns||[]).some(run=>run.request?.mode==='impact'&&open.has(run.state));
+// DATA-010-S02: the story menu accepts all waiting prose as the author's in one server transaction.
+// The server list is the only criterion for showing the menu item.
+const button=document.querySelector('#story-menu-accept-prose');
 let busy=false,epoch=0;
 const preview=()=>api(`/api/stories/${state.storyId}/prose-acceptance`);
 async function load(){
@@ -16,9 +14,9 @@ async function load(){
   catch(error){if(mine===epoch)button.hidden=true}
   controls();
 }
-function controls(){button.disabled=busy||reviewOpen()}
+function controls(){button.disabled=busy}
 button.onclick=async()=>{
-  if(busy||reviewOpen())return;
+  if(busy)return;
   busy=true;controls();
   try{
     const data=await preview();
@@ -27,10 +25,15 @@ button.onclick=async()=>{
     if(!await confirmDialog(t('prose_accept.confirm',{p0:data.scenes.length,p1:titles}),{accept:t('prose_accept.accept')}))return;
     const result=await api(`/api/stories/${state.storyId}/prose-acceptance`,json('POST',{fingerprint:data.fingerprint}));
     notice(t('prose_accept.done',{p0:result.accepted.length}),'success');
+    const open=state.scene?.id;
     await refresh();
+    // Acceptance bumps the scene revision without changing any text: the open buffer, saved or not, takes the new
+    // revision so its next save does not conflict.
+    const latest=state.view?.scenes?.find(scene=>scene.id===open);
+    if(latest&&state.scene?.id===open&&result.accepted.some(a=>a.scene_id===open))
+      state.scene={...state.scene,revision:latest.revision,needs_review:latest.needs_review};
   }catch(error){notice(error.message,'error')}
   finally{busy=false;await load()}
 };
 document.addEventListener('story-refreshed',()=>void load());
-document.addEventListener('workspace-run-state',controls);
 void load();

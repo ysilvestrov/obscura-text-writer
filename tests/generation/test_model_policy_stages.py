@@ -193,22 +193,6 @@ def test_refusal_record_failure_does_not_break_the_attempt(tmp_path, monkeypatch
     assert attempt.state == 'failed' and attempt.context['model_policy_warning']
 
 
-@pytest.mark.req('MODEL-004')
-def test_impact_refusal_records_planner_with_max_scene_rating(tmp_path):  # MODEL-004-S03
-    repo, [first, second] = setup(tmp_path, R(0, 0, 0), (None, R(0, 2, 0)))
-    planner = RoleSettings(provider=ProviderSettings(provider='openrouter', model='x/y'))
-    consent(repo, 'planner')
-    refs = [first.heads['brief'], second.heads['brief']]
-    context = build_context(repo, first.id, 'brief', planner).model_copy(
-        update={'stage': 'impact_delta', 'scene_id': None, 'input_refs': refs})
-    attempt = execute_stage(repo, None, 'impact_delta', context,
-        FakeGateway(text='', type='error', finish_reason='content_filter'), threading.Event(), noop)
-    assert attempt.state == 'failed'
-    [entry] = refusal(repo, 'planner')['refusals']
-    assert entry['rating'] == [0, 2, 0] and entry['category'] == 'refusal_content'
-    assert refusal(repo, 'writer') is None
-
-
 @pytest.mark.req('MODEL-003')
 def test_chat_answer_is_never_checked_or_recorded(tmp_path):
     repo, [scene] = setup(tmp_path, R(2, 0, 0))

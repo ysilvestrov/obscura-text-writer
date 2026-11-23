@@ -47,8 +47,8 @@ def preview(repo, request, view=None):
         from .edit_pass import resolve_edit_pass_limit
         request=resolve_edit_pass_limit(repo,request)
     if request.mode=='impact':
-        from .impact_context import readiness
-        return readiness(repo,request)
+        from ..run_models import IMPACT_REMOVED
+        return dict(ready=False,reason=IMPACT_REMOVED,roles={},calls=0,evaluator=None)
     if request.mode=='rewrite':
         from .assisted_writing import readiness
         return readiness(repo,request)
@@ -185,8 +185,8 @@ def preview(repo, request, view=None):
 
 def pending_preview(repo,run):
     if run.request.mode=='impact':
-        from .impact_context import readiness
-        return readiness(repo,run.request,run)
+        from ..run_models import IMPACT_REMOVED
+        return dict(ready=False,reason=IMPACT_REMOVED,roles={},calls=0,evaluator=None)
     if run.request.mode=='rewrite':
         if any(a.stage=='rewrite' and a.context.get('rewrite_proposal') for a in repo.list_attempts(run.story_id,run.id)):
             return dict(ready=False,reason='Спершу перегляньте пропозицію письменника; новий виклик запускається окремо',roles={},calls=0,evaluator=None)

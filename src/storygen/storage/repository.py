@@ -5,14 +5,9 @@ from pathlib import Path
 from ..domain import MemoryConfirmation, RevisionConflict, now, Scene, SceneCreate, Story, StoryCreate, VersionRef, StageAttempt, new_id
 from .database import Database
 from .files import FileStore
-from . import review_authority
 
 
 class Repository:
-    def impact(self,action,**data):
-        from .impact_store import operation
-        return operation(self,action,**data)
-
     def get_comment_state(self,scene_id):
         from .comment_store import get_comment_state
         return get_comment_state(self,scene_id)
@@ -236,12 +231,6 @@ class Repository:
             db.execute('BEGIN')
             return read_view(self, db, story_id)
 
-    def review(self,action,**kwargs):
-        from . import review_store
-        commands={'priority_decide':review_authority.priority_decide,'priorities':review_authority.snapshot,'operation':review_store.operation,'publish_scene':review_store.publish_scene,
-            'save_report':review_store.save_report,'save_dispositions':review_store.save_dispositions}
-        return commands[action](self,**kwargs)
-
     def preview_acceptance(self, scene_id, version_id):
         from .acceptance import preview_acceptance
         return preview_acceptance(self, scene_id, version_id)
@@ -344,9 +333,7 @@ class Repository:
             if ref.scene_id:self._active_scene(db,ref.scene_id)
             if ref.dependency_snapshot is None and ref.manual_projection_policy is None:
                 author_accepted=any(json.loads(r[0]).get('version_id')==ref.id for r in db.execute('SELECT payload FROM app_settings WHERE key LIKE ?',('acceptance:'+ref.story_id+':%',)))
-                reviewed=any(json.loads(r[0]).get('target',{}).get('version_id')==ref.id for r in db.execute('SELECT payload FROM app_settings WHERE key LIKE ? OR key LIKE ?',('review3:'+ref.story_id+':acceptance:%','review4:'+ref.story_id+':acceptance:%')))
-                policies,_=review_authority.load(db,ref.story_id)
-                if not author_accepted and not reviewed and not any(scope[0]==ref.scene_id for scope in policies):return ref
+                if not author_accepted:return ref
             from .shared_snapshot import read_view
             return read_view(self,db,ref.story_id).get_version(id)
 

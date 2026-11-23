@@ -4,7 +4,7 @@ import json
 import pytest
 
 from storygen.domain import SceneCreate
-from storygen.impact.presentation import scene_status
+from storygen.storage.material_status import material_status
 from storygen.storage import snapshots
 from storygen.storage.context_view import ContextView
 from storygen.storage.snapshots import compare_snapshot, resolve_freshness
@@ -84,7 +84,7 @@ def test_readiness_and_status_do_not_mutate_view_models(tmp_path):
     for s in view.list_scenes(story.id):
         character_material(view, view.get_story(story.id), view.get_scene(s.id))
     assert _dumps(view) == before
-    scene_status(view)
+    material_status(view)
     [view.effective_scene(s.id) for s in view.list_scenes(story.id)]
     changes = [c for snapshot in _prose_snapshots(view) for c in compare_snapshot(view, snapshot)]
     for version_id in view.versions:
@@ -146,7 +146,7 @@ def _outputs(repo, story_id):
         for stage, built in _contexts(repo, story_id, scene.id, view).items():
             outputs[f'{scene.id}:context:{stage}'] = built
     view = repo.context_view(story_id)
-    outputs['status'] = scene_status(view)
+    outputs['status'] = material_status(view)
     outputs['effective'] = [view.effective_scene(s.id) for s in view.list_scenes(story_id)]
     view = repo.context_view(story_id)
     outputs['freshness'] = {id: snapshots.freshness(view, id) for id in view.versions}
@@ -179,10 +179,9 @@ def test_peek_path_matches_copying_path(tmp_path, monkeypatch):
     deep copies of every peek_* result and of snapshots.freshness. Equal outputs prove the result does not
     depend on object sharing. It does not by itself prove equivalence with the pre-change code or with
     correct data: that comes from the workspace_bench digest and the existing freshness, forwarding,
-    acceptance and impact suites. The fixtures cover a trashed scene, stale prose, an accepted version,
-    a snapshot cycle, a saved forwarding choice and a no_impact review overlay.
+    acceptance suites. The fixtures cover a trashed scene, stale prose, an accepted version,
+    a snapshot cycle and a saved forwarding choice.
     """
-    from tests.impact.test_storage import assessed
     from tests.memory.test_forwarding import apply
     from storygen.memory.forwarding import memory_view
     repo, story, scenes = seeded(tmp_path / 'a')
@@ -190,10 +189,7 @@ def test_peek_path_matches_copying_path(tmp_path, monkeypatch):
     apply(repo, scenes[1], {claim: False})
     repo2, story2, scene2, _, _ = setup(tmp_path / 'b')
     _accepted_stale_prose(repo2, story2, scene2, next(v for v in repo2.list_versions(story2.id) if v.kind == 'edited'))
-    repo3, story3, _, _, ref3, record3 = assessed(tmp_path / 'c')
-    repo3.impact('save_report', record=record3)
-    assert not repo3.get_version(ref3.id).stale
-    stories = [(repo, story), (repo2, story2), (repo3, story3)]
+    stories = [(repo, story), (repo2, story2)]
     for r, s in stories:
         _configure(r, s.id)
     hidden = repo.get_scene(repo.context_view(story.id).list_scenes(story.id)[0].id)
@@ -231,7 +227,7 @@ def test_second_request_sees_change_made_between_requests(tmp_path):
     def request():
         view = repo.context_view(story.id)
         return (resolve_freshness(view, prose.id).stale,
-                json.dumps(scene_status(view), default=_default, sort_keys=True),
+                json.dumps(material_status(view), default=_default, sort_keys=True),
                 [json.dumps(preview(repo, _request(story.id, scene.id, name)), default=_default, sort_keys=True)
                  for name in OPERATIONS])
     def ready(result):

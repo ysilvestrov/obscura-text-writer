@@ -9,11 +9,11 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
-CHECKS = ('billing', 'book', 'character', 'comment', 'impact', 'memory', 'merge', 'publication', 'review', 'series',
+CHECKS = ('billing', 'book', 'character', 'comment', 'memory', 'merge', 'publication', 'series',
           'summary')
 SERVICE_MODULES = [
     'src/storygen/server.py', 'src/storygen/maintenance.py', 'src/storygen/evaluation/cli.py',
-    'src/storygen/billing/cli.py', 'src/storygen/token_budget/cli.py', 'src/storygen/token_budget/local_cli.py',
+    'src/storygen/billing/cli.py', 'src/storygen/token_budget/cli.py',
     'src/storygen/desktop.py', 'src/storygen/desktop_tray.py', 'src/storygen/app_window.py', 'src/storygen/win_tray.py',
     'src/storygen/storage/integrity.py', *[f'src/storygen/storage/{name}_checks.py' for name in CHECKS],
     'src/storygen/storage/backup.py', 'src/storygen/storage/pre_migration.py', 'src/storygen/build_edition.py',
