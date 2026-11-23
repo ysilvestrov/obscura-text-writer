@@ -39,7 +39,7 @@ def test_patch_sets_flag_and_bumps_revision(tmp_path):
     assert saved.flashback and saved.revision == scenes[0].revision + 1
 
 
-def test_flag_stales_memory_through_the_selector(tmp_path):
+def test_flag_does_not_stale_the_memory_head(tmp_path):
     from storygen.memory.journal import load_memory
     from storygen.memory.service import save_memory_journal
     repo, _, scenes = arc_book(tmp_path, 'A B A', [['A', 'B']])

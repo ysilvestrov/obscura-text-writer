@@ -91,7 +91,7 @@ def test_sample_change_stales_the_draft(tmp_path):
 
 
 @pytest.mark.req('STYLE-SAMPLE-001')
-def test_other_style_change_still_stales_brief(tmp_path):
+def test_other_style_change_shows_in_the_brief_snapshot_but_keeps_the_head_fresh(tmp_path):
     repo, story, scene, brief, draft = world(tmp_path)
     change(repo, story, tone='гостро', tone_sample='Другий зразок.')
     # VALID-LINKS: the change still shows in the brief's snapshot, but a brief head is marked only by its link

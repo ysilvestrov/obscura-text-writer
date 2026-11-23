@@ -30,7 +30,7 @@ If a character goes by several names, list the other names in a card entry with 
 - To have the character called differently from some scene on, set the entry with the line `Other name: John` to **Starting from a scene**. From that scene the models call the character John and see the earlier names: "John (also: Boss)". Obscura does not insert the name John into earlier scenes; your own text in plans or other entries goes as written.
 - An entry without a first scene only adds a name; it does not change what the character is called.
 - If two cards share a name, the page shows a warning, and a plan using that name asks you to clarify the cast.
-- The interface calls the character by the card name. A name change makes stale the texts whose requests it changed.
+- The interface calls the character by the card name. A name change makes stale the drafts whose requests it changed.
 
 ## Protagonist and acquaintances
 

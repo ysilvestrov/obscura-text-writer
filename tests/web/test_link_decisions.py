@@ -5,7 +5,6 @@ from storygen.application.settings import AppSettings
 from tests.storage.test_links import book, save_manual_brief
 from storygen.generation.dependencies import save_manual_prose
 
-pytestmark = pytest.mark.req('VALID-LINKS')
 
 
 def client_for(tmp_path):
@@ -26,6 +25,7 @@ def decide(client, scene_id, link, fingerprint, action='approve'):
     return client.post(f'/api/scenes/{scene_id}/links/{link}/decision', json={'action': action, 'fingerprint': fingerprint})
 
 
+@pytest.mark.req('VALID-LINKS')
 def test_story_view_reports_links_and_validity(tmp_path):
     repo, story, scene = setup(tmp_path)
     with client_for(tmp_path) as client:
@@ -35,6 +35,7 @@ def test_story_view_reports_links_and_validity(tmp_path):
     assert status['links']['brief']['source'] == 'construction'
 
 
+@pytest.mark.req('VALID-LINKS')
 def test_author_approves_manual_brief(tmp_path):
     repo, story, scene = setup(tmp_path)
     save_manual_brief(repo, scene)
@@ -47,6 +48,7 @@ def test_author_approves_manual_brief(tmp_path):
         assert links(client, story.id, scene.id)['links']['brief']['source'] == 'author'
 
 
+@pytest.mark.req('VALID-LINKS')
 def test_author_approves_prose_without_accepting_it(tmp_path):
     repo, story, scene = setup(tmp_path)
     save_manual_prose(repo, scene.id, 'Олена увійшла до старої бібліотеки.', repo.get_scene(scene.id).revision)
@@ -57,6 +59,7 @@ def test_author_approves_prose_without_accepting_it(tmp_path):
     assert repo.list_acceptances(story.id) == []  # DATA-010 is not called
 
 
+@pytest.mark.req('VALID-LINKS')
 def test_stale_fingerprint_is_409_and_writes_nothing(tmp_path):
     repo, story, scene = setup(tmp_path)
     save_manual_brief(repo, scene)
@@ -67,6 +70,7 @@ def test_stale_fingerprint_is_409_and_writes_nothing(tmp_path):
         assert repo.context_view(story.id).link_verdicts == {}
 
 
+@pytest.mark.req('VALID-LINKS')
 def test_memory_link_decision_is_refused_for_now(tmp_path):
     repo, story, scene = setup(tmp_path)
     save_manual_prose(repo, scene.id, 'Інша проза.', repo.get_scene(scene.id).revision)
@@ -75,6 +79,7 @@ def test_memory_link_decision_is_refused_for_now(tmp_path):
         assert decide(client, scene.id, 'memory', state['fingerprint']).status_code == 422
 
 
+@pytest.mark.req('VALID-LINKS')
 def test_missing_link_cannot_be_approved(tmp_path):
     from storygen.domain import StoryCreate, SceneCreate
     from storygen.storage.repository import Repository
@@ -85,6 +90,7 @@ def test_missing_link_cannot_be_approved(tmp_path):
         assert decide(client, scene.id, 'brief', '0' * 64).status_code == 409
 
 
+@pytest.mark.req('VALID-LINKS')
 def test_unknown_action_or_link_is_422(tmp_path):
     repo, story, scene = setup(tmp_path)
     with client_for(tmp_path) as client:
@@ -92,6 +98,7 @@ def test_unknown_action_or_link_is_422(tmp_path):
         assert decide(client, scene.id, 'brief', '0' * 64, action='reject').status_code == 422
 
 
+@pytest.mark.req('VALID-LINKS')
 def test_approving_a_valid_link_writes_nothing(tmp_path):
     repo, story, scene = setup(tmp_path)
     with client_for(tmp_path) as client:

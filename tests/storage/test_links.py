@@ -14,7 +14,6 @@ from storygen.memory.service import save_scene_memory
 from tests.generation.test_scene_pipeline import FakeGateway
 from tests.storage.test_link_records import verdict
 
-pytestmark = pytest.mark.req('VALID-LINKS')
 
 
 def roles(**changes):
@@ -48,17 +47,20 @@ def statuses(repo, story, scene):
 ALL_VALID = {link: ('valid', 'construction', None) for link in ('brief', 'prose', 'memory')}
 
 
+@pytest.mark.req('VALID-LINKS')
 def test_generated_scene_is_valid_by_construction(tmp_path):
     repo, story, (scene,) = book(tmp_path)
     assert statuses(repo, story, scene) == ALL_VALID
     assert scene_validity(repo.context_view(story.id), scene.id) == 'valid'
 
 
+@pytest.mark.req('VALID-LINKS')
 def test_generated_second_scene_is_valid_by_construction(tmp_path):
     repo, story, scenes = book(tmp_path, 2)
     assert statuses(repo, story, scenes[1]) == ALL_VALID
 
 
+@pytest.mark.req('VALID-LINKS')
 def test_patches_edit_chain_is_construction(tmp_path):
     # A copyedit selection: an edited version from a patches context over the writer's draft, saved by the run.
     repo, story, (scene,) = book(tmp_path)
@@ -71,6 +73,7 @@ def test_patches_edit_chain_is_construction(tmp_path):
     assert statuses(repo, story, scene)['prose'] == ('valid', 'construction', None)
 
 
+@pytest.mark.req('VALID-LINKS')
 def test_manual_draft_in_the_chain_breaks_construction(tmp_path):
     repo, story, (scene,) = book(tmp_path)
     save_manual_draft(repo, scene.id, 'Ручна чернетка.', repo.get_scene(scene.id).revision)
@@ -88,6 +91,7 @@ def save_manual_brief(repo, scene):
     return repo.set_head(scene.id, 'brief', ref.id, repo.get_scene(scene.id).revision)
 
 
+@pytest.mark.req('VALID-LINKS')
 def test_manual_brief_unchecks_brief_and_prose_links(tmp_path):
     repo, story, (scene,) = book(tmp_path)
     save_manual_brief(repo, scene)
@@ -98,6 +102,7 @@ def test_manual_brief_unchecks_brief_and_prose_links(tmp_path):
     assert scene_validity(repo.context_view(story.id), scene.id) == 'unchecked'
 
 
+@pytest.mark.req('VALID-LINKS')
 def test_manual_prose_unchecks_prose_and_memory_links(tmp_path):
     repo, story, (scene,) = book(tmp_path)
     save_manual_prose(repo, scene.id, 'Олена увійшла до старої бібліотеки.', repo.get_scene(scene.id).revision)
@@ -111,6 +116,7 @@ def memory_text(repo, scene):
     return repo.read_text(repo.get_scene(scene.id).heads['memory'])
 
 
+@pytest.mark.req('VALID-LINKS')
 def test_manual_memory_keeps_scene_and_unchecks_next(tmp_path):
     repo, story, scenes = book(tmp_path, 2)
     journal = json.loads(memory_text(repo, scenes[0]))
@@ -122,6 +128,7 @@ def test_manual_memory_keeps_scene_and_unchecks_next(tmp_path):
     assert after['memory'] == ('valid', 'construction', None)
 
 
+@pytest.mark.req('VALID-LINKS')
 def test_same_own_events_keep_next_scene_valid(tmp_path):
     repo, story, scenes = book(tmp_path, 2)
     before = memory_digest(repo.context_view(story.id), repo.get_scene(scenes[0].id).heads['memory'])
@@ -131,12 +138,14 @@ def test_same_own_events_keep_next_scene_valid(tmp_path):
     assert statuses(repo, story, scenes[1]) == ALL_VALID
 
 
+@pytest.mark.req('VALID-LINKS')
 def test_draft_change_keeps_validity(tmp_path):
     repo, story, (scene,) = book(tmp_path)
     save_manual_draft(repo, scene.id, 'Ручна чернетка.', repo.get_scene(scene.id).revision)
     assert statuses(repo, story, scene) == ALL_VALID
 
 
+@pytest.mark.req('VALID-LINKS')
 def test_chat_texts_are_model_made_and_author_drafts_are_not(tmp_path):
     repo, story, (scene,) = book(tmp_path)
     view = repo.context_view(story.id)
@@ -148,6 +157,7 @@ def test_chat_texts_are_model_made_and_author_drafts_are_not(tmp_path):
     assert model_made(draft.model_copy(update={'external_origin': ExternalOrigin(client='Claude')}))
 
 
+@pytest.mark.req('VALID-LINKS')
 def test_missing_previous_memory_is_unavailable(tmp_path):
     repo, story, scenes = book(tmp_path, 2)
     first = repo.get_scene(scenes[0].id)
@@ -160,6 +170,7 @@ def test_missing_previous_memory_is_unavailable(tmp_path):
     assert statuses(repo, story, scenes[0])['memory'] == ('unavailable', None, 'no_memory')
 
 
+@pytest.mark.req('VALID-LINKS')
 def test_incomplete_scene_links_are_missing(tmp_path):
     repo = Repository(tmp_path)
     story = repo.create_story(StoryCreate(title='Твір'))
@@ -169,6 +180,7 @@ def test_incomplete_scene_links_are_missing(tmp_path):
     assert scene_validity(view, scene.id) == 'incomplete'
 
 
+@pytest.mark.req('VALID-LINKS')
 def test_legacy_memory_without_snapshot_is_unchecked(tmp_path):
     repo, story, (scene,) = book(tmp_path)
     current = repo.get_scene(scene.id)
@@ -177,6 +189,7 @@ def test_legacy_memory_without_snapshot_is_unchecked(tmp_path):
     assert statuses(repo, story, scene)['memory'] == ('unchecked', None, None)
 
 
+@pytest.mark.req('VALID-LINKS')
 def test_trashed_scene_links_are_missing(tmp_path):
     repo, story, (scene,) = book(tmp_path)
     repo.set_scene_trashed(story.id, scene.id, repo.get_scene(scene.id).revision, False)
@@ -184,6 +197,7 @@ def test_trashed_scene_links_are_missing(tmp_path):
     assert {s.status for s in scene_links(view, scene.id).values()} == {'missing'}
 
 
+@pytest.mark.req('VALID-LINKS')
 def test_author_verdict_with_current_fingerprint_validates(tmp_path):
     repo, story, (scene,) = book(tmp_path)
     save_manual_brief(repo, scene)
@@ -197,6 +211,7 @@ def test_author_verdict_with_current_fingerprint_validates(tmp_path):
     assert statuses(repo, story, scene)['brief'] == ('unchecked', None, None)
 
 
+@pytest.mark.req('VALID-LINKS')
 def test_chat_mode_scene_holds_the_prose_link_by_construction(tmp_path):
     # A chat writes the draft through MCP save_draft (bound to the writing context) and the edit as a chat stage result.
     from storygen.application.writing_context import context_fingerprint

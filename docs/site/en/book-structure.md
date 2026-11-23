@@ -69,7 +69,7 @@ The arc protagonist affects two things in the scenes of that arc:
 - **core state** — memory always shows the model the clothing, location and other state of the scene’s arc protagonist. The state of another arc’s protagonist is an ordinary entry here, and its type can be changed in the memory table;
 - **acquaintances** — the acquaintance block for the planner and the brief confirmation count whom the arc protagonist knows.
 
-If you set a protagonist for an arc whose scenes are already written, only the written scenes of that arc become stale; scenes of other arcs and earlier scenes stay fresh. Until the book has an explicit protagonist, everything works as without arcs.
+If you set a protagonist for an arc whose scenes are already written, only the drafts of the written scenes of that arc become stale; their briefs, prose and memory, scenes of other arcs and earlier scenes stay fresh. Until the book has an explicit protagonist, everything works as without arcs.
 
 ## The scene list
 
@@ -87,7 +87,7 @@ The titles and order of parts and arcs never go into model requests. Renaming or
 
 An arc starts at the moment of its first scene that is not a [flashback](memory.md), taken from the `Start:` line of its outline. When a flashback of one arc describes a time earlier than the start of another arc and stands above it in the text, the model writing the scenes of that arc gets its facts in a “The past of other arcs” section. Arc and part titles never go into that section. Up to 40 facts are shown; when there are more, the facts of later flashbacks stay first and the app warns about the cut.
 
-New memory of such a flashback, or a change of its time or checkbox, makes the briefs and drafts of the scenes that see it out of date. When the book has a flashback, the “Book structure” panel shows a hint next to arcs whose start is unknown: add a `Start:` line to the first scene of the arc that is not a flashback, otherwise its scenes see no flashbacks of other arcs.
+New memory of such a flashback, or a change of its time or checkbox, makes the drafts of the scenes that see it out of date. When the book has a flashback, the “Book structure” panel shows a hint next to arcs whose start is unknown: add a `Start:` line to the first scene of the arc that is not a flashback, otherwise its scenes see no flashbacks of other arcs.
 
 ## Export
 

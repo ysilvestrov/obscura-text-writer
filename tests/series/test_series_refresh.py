@@ -119,7 +119,7 @@ def test_refresh_names_cards_changed_in_the_source_and_keeps_the_book_copy(tmp_p
     assert [c.model_dump() for c in cards_of(repo, story)] == before
 
 
-def test_refresh_stales_scene_1_memory(tmp_path):
+def test_refresh_keeps_the_scene_1_memory_head_fresh(tmp_path):
     repo, item, first, scenes, second, scene = setup(tmp_path)
     memory_id = write_scene_memory(repo, scene)
     rewrite_last_memory(repo, first, scenes)

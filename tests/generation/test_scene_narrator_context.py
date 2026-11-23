@@ -108,7 +108,7 @@ def stale_fields(repo, story, ref):
 
 
 @pytest.mark.req('SCENE-NARRATOR')
-def test_narrator_change_stales_brief_draft_and_prose_of_the_scene_only(tmp_path):
+def test_narrator_change_stales_only_the_draft_not_heads_or_the_next_scene(tmp_path):
     from storygen.memory.journal import MemoryJournal
     repo, story, first, scene = setup(tmp_path)
     narrate(repo, first, SceneNarrator(person='first', character_id='j'))

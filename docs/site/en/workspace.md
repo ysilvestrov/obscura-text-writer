@@ -20,7 +20,7 @@ If there are many scenes, click the **Scenes** heading with their count: the lis
 - **Characters** opens the character cards on a separate page.
 - **Settings** opens the models, writing, evaluator and budget for this story.
 - **Add scene** creates a scene right after the open one (at the end of the list if no scene is open) and fills its outline from a template right away. Location, characters, key realisation and emotional focus are carried over from the previous scene's outline; its "End" becomes the "Start" of the new scene, and its "What happens" becomes "Previously". "End", "What happens" and the three "Beats" items stay empty. The number in the heading is the new scene's place in the list; the numbers in the outlines of the following scenes move on. A scene added at the end gets the number after the previous scene's number. In a Ukrainian story the outline labels are Ukrainian. Whatever the previous outline lacks stays empty; you can correct everything in the outline straight away.
-- The **☰ Story actions** menu holds everything that concerns the whole story: **Accept all prose as the author's** (when the prose of at least one scene is outdated), **Card and publication**, **Export…**, story evaluation and reports (when an evaluator is configured), the budget line and **Rename story**. The menu works from the keyboard; `Escape` closes it.
+- The **☰ Story actions** menu holds everything that concerns the whole story: **Accept all prose as the author's** (when the prose of at least one scene is unchecked), **Card and publication**, **Export…**, story evaluation and reports (when an evaluator is configured), the budget line and **Rename story**. The menu works from the keyboard; `Escape` closes it.
 
 ![Story actions menu](../../images/site/en/story-menu-desktop.png)
 
@@ -52,6 +52,18 @@ On the **Draft** tab the primary button starts editing: the first time it reads 
 
 Only the stage tabs and the row with **Save** and the primary action stay pinned at the top. The same place shows why the primary action is unavailable, the mark for text from an external client and the warning that the material changed elsewhere. Below the scene text you see the note about the primary action, the scene status, the run progress and the pause, cancel, continue and repeat buttons. When a run waits for your decision (review, choosing a variant, pause, failure), the pinned row shows a **Decision needed ↓** link that scrolls to the buttons. The run progress takes one line: the state, the models, the cost in dollars (total / last call) and a ⚠ mark when there is a warning. The provider's usage details are in the tooltip on the cost. Click that line to see the plan, warnings and stages, and click again to hide them. A failed run shows its error right away. The text the model is writing right now appears in the **Text the model is writing** block below the scene text: it opens while a stage runs and closes once the stage's text is in. **Run options** sets the limit for the next run. **Run remaining scenes** runs the remaining scenes one after another. The Microsoft Store edition has neither these buttons nor the **Additional actions and automatic mode** block: there, a chat over [MCP](mcp.md) automates several stages or scenes. Pause takes effect between stages; closing the tab does not cancel the work, and cancelling does not guarantee that the provider stops answering at once. Check one scene first, as described in [Your first story](first-story.md).
 
+## Scene status: valid or unchecked
+
+A scene has three links: the brief follows the plan and the memory of earlier scenes, the prose follows the brief, and the scene memory follows its prose. The scene status shows under the scene text and in the scene list:
+
+- **Valid** — all three links hold: Obscura models or a chat made the texts from the current materials, or you approved them.
+- **Unchecked** — something was written or changed by hand, or the memory of the previous scene changed, and nobody confirmed that the texts still match.
+- **Discrepancy** — a check found a mismatch.
+
+A brief, prose or memory becomes outdated only when what it was made from changes: the plan, the memory of the previous scene, the brief or the prose. Changing settings — the narrator, prose language, rating, style, flashbacks or names — marks only drafts as outdated. A brief you wrote or edited yourself does not block the draft, but the scene stays “Unchecked”.
+
+When a brief or prose is unchecked, a panel below the scene text offers **Approve brief** and **Approve match**. Press them once you are sure the brief follows the plan and the prose follows the brief. Approving prose does not make it the author’s text and does not change it. If the scene changed after the panel was shown, Obscura approves nothing, shows an error and refreshes the panel.
+
 ## Editor
 
 Draft and Prose have a formatting toolbar: **B** (`Ctrl+B`), *I* (`Ctrl+I`), undo (`Ctrl+Z`) and redo (`Ctrl+Y`). **Save** creates a new version and does not erase earlier ones. Pasting brings in plain text only. The browser warns you before you leave with unsaved edits.
@@ -80,4 +92,4 @@ Narrator: Lera, first person
 
 `Narrator: omniscient` and `Narrator: Marko, third person` work too. The outline line takes precedence: the fields in the settings are then unavailable and show its value. When the line is unclear (no person, no character, or the name does not match a card), an explanation appears under the field, and the choice in the settings applies.
 
-When the narrator is not among the scene participants, Obscura saves the choice and warns about it. Changing the narrator makes only this scene’s brief, draft and prose out of date.
+When the narrator is not among the scene participants, Obscura saves the choice and warns about it. Changing the narrator makes only this scene’s draft out of date; the brief and prose stay current (see [scene status](#scene-status-valid-or-unchecked)).
