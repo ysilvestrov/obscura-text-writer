@@ -3,12 +3,12 @@
 ## Requirements
 
 - Windows 10 or 11, the only officially supported system. On Linux and macOS the application can run from source, but unofficially and without guarantees: these systems are not tested, and some features (such as “Connect to Claude”) work only on Windows.
-- [Python](https://www.python.org/downloads/) 3.10 or newer.
+- [Python](https://www.python.org/downloads/) 3.10 or newer, only for installing from source.
 - A model API: a local OpenAI-compatible server (for example LM Studio) or an OpenRouter or Venice account.
 
 ## Microsoft Store
 
-Obscura is coming soon to the Microsoft Store: it will install from there without Python or a console, with the bridge for chat clients and the Claude skills included. The free Store version has limits (long prose, series, ratings above the edition limit), described in [Chat clients (MCP)](mcp.md#the-microsoft-store-version). Until then, install the application from source with the steps below.
+Obscura is available in the Microsoft Store: [Obscura Text Writer](https://apps.microsoft.com/detail/9NQBVZW2SW2X?hl=en-US). It installs from there without Python or a console, with the bridge for chat clients and the Claude skills included, and updates through the Store. The free Store version has limits (long prose, series, ratings above the edition limit), described in [Chat clients (MCP)](mcp.md#the-microsoft-store-version). For the full set of features, install the application from source with the steps below.
 
 Obscura connects to chat clients (Claude Desktop, Claude Code) with the “Connect to Claude” button in the library; see [Chat clients (MCP)](mcp.md).
 

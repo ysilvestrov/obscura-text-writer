@@ -6,7 +6,7 @@ The application runs on your computer. Stories are stored locally; a cloud provi
 
 ## Where to start
 
-1. [Installation and launch](install.md): what you need, how to install and where your data lives.
+1. [Installation and launch](install.md): what you need, how to install and where your data lives. The quickest way is [Obscura Text Writer in the Microsoft Store](https://apps.microsoft.com/detail/9NQBVZW2SW2X?hl=en-US).
 2. [Your first story](first-story.md): from an empty library to the first finished scene.
 
 ## Topics
