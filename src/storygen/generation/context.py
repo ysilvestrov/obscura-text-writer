@@ -246,9 +246,10 @@ def _finish_context(repo,story,scene,stage,settings,sections,refs,fragments,syst
     return ContextBundle(context_breakdown=breakdown,api_request=api_request,token_estimate=prediction,estimate_method=prediction['method'],dependency_snapshot=snapshot,target_cas=target,story_id=story.id,scene_id=scene.id if scene else None,stage=stage,scene_revision=scene.revision if scene else None,story_revision=story.revision,settings=settings,system_text=system,user_text=user,input_refs=list(dict.fromkeys(refs)),accepted_stale_prose_ids=accepted_stale,fingerprint=fingerprint,estimated_tokens=estimate,fragments=fragments or {},memory_metrics=memory_metrics,context_warnings=list(dict.fromkeys(warnings)))
 
 
-def memory_projection(repo,story,scene,scenes,language):
-    """Memory of the preceding scenes as the writing stages see it (shared by build_context and MCP-BRIDGE writing-context)."""
-    past=journal_before(repo,scene.id)
+def memory_projection(repo,story,scene,scenes,language,past=None):
+    """Memory of the preceding scenes as the writing stages see it (shared by build_context and MCP-BRIDGE writing-context).
+    `past` is an already read previous journal (the auditor reads it without the freshness checks of journal_before)."""
+    if past is None:past=journal_before(repo,scene.id)
     from ..memory.story_time import flashback_mode, is_flashback
     flashback=is_flashback(scene)
     if flashback and flashback_mode(story,scenes)=='simple':
