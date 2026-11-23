@@ -1,4 +1,4 @@
-import {t,msg,labelEntries,getLocale,uiText,uiAttr,uiHTML} from './i18n.js';
+import {t,msg,labelEntries,getLocale,uiText,uiAttr,uiHTML,diagnostic} from './i18n.js';
 export function operationReason(state,operation){
   if(state.assistedReview)return t("rewrite.resolve_first");
   if(state.saving)return t("m_cbac60d6d919");
@@ -11,7 +11,26 @@ export function operationReason(state,operation){
 export function editorLoopOperation(operation){
   return {...operation,warnings:[...(operation?.warnings||[]),msg("m_61c8ee57393c")]};
 }
+// VALID-LINKS §9, R-44: the consent text of an auditor run (scene check, book validation, resume). The sum is the server's
+// rounded-up `total_usd` shown as is; without it the server's reason; a local auditor has no USD line. The scene check
+// lists its links; the book names its scenes and says that edits during the run may change the work.
+export function auditConfirmationText(operation){
+  const book=Number.isInteger(operation.invalid_scenes)||!!operation.links?.some(item=>item.scene_id);
+  const auditor=operation.roles?.auditor,model=auditor?`${auditor.provider} / ${auditor.model}`:'—';
+  const warnings=[...new Set([...(operation.warnings||[]),operation.warning].filter(Boolean))];
+  const cost=operation.cost||{};
+  const lines=[
+    book?t('audit.confirm_scenes',{p0:operation.invalid_scenes??new Set(operation.links.map(item=>item.scene_id)).size})
+      :operation.links?.length?t('audit.confirm_links',{p0:operation.links.map(item=>t('audit.link_'+item.link)).join(', ')}):'',
+    t('audit.confirm_calls',{p0:operation.calls,p1:model}),
+    cost.total_usd!=null?t('audit.cost_total',{p0:cost.total_usd}):cost.reason?t('audit.cost_unknown',{p0:diagnostic(cost.reason)}):'',
+    book?t('audit.book_bound'):t('audit.confirm_bound'),
+    warnings.length?t('m_82ee1cb44ed7')+warnings.join('\n'):'',
+    t('audit.confirm_start')];
+  return lines.filter(Boolean).join('\n');
+}
 export function confirmationText(operation){
+  if('plan_fingerprint' in operation||operation.roles?.auditor)return auditConfirmationText(operation);
   const roles=Object.entries(operation.roles).map(([role,c])=>`${role}: ${c.provider} / ${c.model}`);
   if(operation.evaluator)roles.push(t("m_9336bc87f2cb",{p0:(operation.evaluator.provider),p1:(operation.evaluator.model||t("m_a83642f7025e"))}));
   const warnings=[...new Set([...(operation.warnings||[]),operation.warning].filter(Boolean))];
@@ -19,9 +38,7 @@ export function confirmationText(operation){
   const consent=review?t('memory.confirm',{p0:review.memory_scene_number,p1:review.changed_version_count,p2:review.changed_text_count})+'\n\n'+(review.risk?t('memory.confirm_risk'):t('memory.confirm_identical'))+'\n\n':'';
   // Information only (MEMORY-CONFIRM): the run never waits for the author's core confirmation.
   const unconfirmed=operation.unconfirmed_core_scenes?t('memory.unconfirmed_core',{p0:operation.unconfirmed_core_scenes})+'\n':'';
-  // VALID-LINKS §9: the scene check lists the links it visits; an author's change during the run may add calls.
-  const links=operation.links?.length?t('audit.confirm_links',{p0:operation.links.map(item=>t('audit.link_'+item.link)).join(', ')})+'\n'+t('audit.confirm_bound')+'\n':'';
-  return consent+t("m_03d8a244e7c2",{p0:(operation.calls),p1:(roles.join('\n')),p2:links+(warnings.length?t("m_82ee1cb44ed7")+warnings.join('\n')+'\n':'')+unconfirmed});
+  return consent+t("m_03d8a244e7c2",{p0:(operation.calls),p1:(roles.join('\n')),p2:(warnings.length?t("m_82ee1cb44ed7")+warnings.join('\n')+'\n':'')+unconfirmed});
 }
 export function runKind(state){return state==='completed'?'success':state==='failed'?'error':['interrupted','needs_review','alternative','cancelled','paused'].includes(state)?'warning':'info'}
 export function controlReason(action,run){

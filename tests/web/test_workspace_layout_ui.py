@@ -64,13 +64,16 @@ def test_story_toolbar_has_three_icon_actions_and_a_disclosure_menu(tmp_path):
     for id in ['workspace-characters','workspace-settings','add-scene']:
         assert tree.attrs[id].get('aria-label') and tree.attrs[id].get('title'),id
         assert '.storybar' in tree.ancestors[id],id
-    for id in ['story-menu-accept-prose','story-menu-publication','export-story','story-menu-evaluate','story-menu-reports','story-menu-budget','story-menu-rename']:
+    for id in ['story-menu-validate','story-menu-accept-prose','story-menu-publication','export-story','story-menu-evaluate','story-menu-reports','story-menu-budget','story-menu-rename']:
         assert '#story-menu' in tree.ancestors[id],id
     assert '#export-dialog' in tree.ancestors['export-form']
     assert tree.attrs['story-menu-budget']['href'].endswith('/settings?section=budget')  # settingsRoute reads ?section= only
     for id in ['impact-panel','impact-reports','impact-preview']:
         assert id not in tree.attrs,id
     assert 'hidden' in tree.attrs['story-menu-accept-prose']
+    # R-44 book validation: the counter fills from material_status, so the item starts inactive.
+    assert 'disabled' in tree.attrs['story-menu-validate']
+    assert '#workspace-status-row' in tree.ancestors['run-stop-scene'] and 'hidden' in tree.attrs['run-stop-scene']
     for id in ['story-menu-revision','review-attention','review-session']:
         assert id not in tree.attrs,id
     assert 'class="context-panel"' in html and 'publication-panel' not in html
