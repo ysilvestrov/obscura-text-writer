@@ -1537,6 +1537,16 @@
       ]
     },
     {
+      "id": "EXPORT-001-S08",
+      "requirement": "EXPORT-001",
+      "scope": "Повнота за позначкою «застаріле», не за валідністю: неприйнята проза з unchecked З2 блокує експорт і дає попередження в маніфесті; прийнята проза й проза без завдання — без попередження.",
+      "tests": [
+        "tests/authoring/test_exports.py::test_unaccepted_prose_with_unchecked_prose_link_blocks_export",
+        "tests/authoring/test_exports.py::test_accepted_prose_exports_without_warning",
+        "tests/authoring/test_exports.py::test_prose_without_brief_exports_without_warning"
+      ]
+    },
+    {
       "id": "EXPORT-DOCX-S01",
       "requirement": "EXPORT-DOCX",
       "scope": "Структура рукопису DOCX: титул, частини й сцени зі стилями Word і розривами сторінок, розмітка, мова, сцени з кошика.",
@@ -3961,7 +3971,7 @@
     {
       "id": "WORKSPACE-TOOLS-S01",
       "requirement": "WORKSPACE-TOOLS",
-      "scope": "Розмітка верхнього рядка й меню; клавіатура — у ручній процедурі.",
+      "scope": "Розмітка верхнього рядка й меню, зокрема пункт «Валідація книги»; клавіатура — у ручній процедурі.",
       "tests": [
         "tests/web/test_workspace_layout_ui.py::test_story_toolbar_has_three_icon_actions_and_a_disclosure_menu"
       ],
@@ -6193,10 +6203,12 @@
     {
       "id": "MCP-BRIDGE-S49",
       "requirement": "MCP-BRIDGE",
-      "scope": "Режим chat: відмова мосту 409 у сервері й інструменті, запуск автора проходить; невідома дія без запиту. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "scope": "Режим chat: відмова мосту 409 для етапу в сервері й інструменті, запуск автора проходить; audit від моста в творі chat приймається; невідома дія без запиту. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
       "tests": [
         "tests/web/test_bridge_run_routes.py::test_chat_mode_refuses_bridge_runs_but_not_the_author",
-        "tests/mcp/test_bridge_runs.py::test_chat_mode_and_unknown_action_are_refused"
+        "tests/mcp/test_bridge_runs.py::test_chat_mode_and_unknown_action_are_refused",
+        "tests/web/test_bridge_run_routes.py::test_bridge_audit_in_a_chat_story_is_accepted_and_other_modes_keep_their_guards",
+        "tests/mcp/test_bridge_audit.py::test_preview_without_confirm_starts_nothing_in_a_chat_story"
       ]
     },
     {
@@ -6212,11 +6224,12 @@
     {
       "id": "MCP-BRIDGE-S51",
       "requirement": "MCP-BRIDGE",
-      "scope": "Інші режими запуску й шляхи керування від моста — 403; переклад відмов. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "scope": "Інші режими запуску й шляхи керування від моста — 403, зокрема scene у творі chat; переклад відмов. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
       "tests": [
         "tests/web/test_bridge_run_routes.py::test_bridge_may_not_start_other_run_kinds",
         "tests/web/test_bridge_run_routes.py::test_bridge_cancels_only_its_own_run_and_never_pauses",
-        "tests/web/test_bridge_run_routes.py::test_run_refusals_are_translated"
+        "tests/web/test_bridge_run_routes.py::test_run_refusals_are_translated",
+        "tests/web/test_bridge_run_routes.py::test_bridge_audit_in_a_chat_story_is_accepted_and_other_modes_keep_their_guards"
       ]
     },
     {
@@ -6471,6 +6484,20 @@
         "tests/mcp/test_bridge_guide.py::test_get_guide_refuses_unknown",
         "tests/mcp/test_bridge_guide.py::test_get_guide_without_plugin",
         "tests/mcp/test_bridge_guide.py::test_instructions_name_get_guide"
+      ]
+    },
+    {
+      "id": "MCP-BRIDGE-S54",
+      "requirement": "MCP-BRIDGE",
+      "scope": "start_run(action=audit): перегляд без запуску в творі chat, згода з показаним відбитком (книга й сцена), відмова без відбитка чи з давнім, cost хмарного Ревізора, перелік дій; get_run зупиненої валідації з audit_scope і checkpoint. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/mcp/test_bridge_audit.py::test_preview_without_confirm_starts_nothing_in_a_chat_story",
+        "tests/mcp/test_bridge_audit.py::test_confirm_starts_book_validation_with_the_previewed_fingerprint",
+        "tests/mcp/test_bridge_audit.py::test_scene_id_selects_the_scene_scope",
+        "tests/mcp/test_bridge_audit.py::test_confirm_needs_the_fingerprint_of_the_shown_preview",
+        "tests/mcp/test_bridge_audit.py::test_cloud_preview_carries_the_upper_bound_of_cost",
+        "tests/mcp/test_bridge_audit.py::test_get_run_of_a_stopped_book_validation_names_the_scene",
+        "tests/mcp/test_bridge_settings.py::test_start_run_lists_the_audit_action"
       ]
     },
     {
@@ -7961,7 +7988,7 @@
     {
       "id": "VALID-RUN-S01",
       "requirement": "VALID-RUN",
-      "scope": "Запит audit, зв’язки в порядку читання, calls лише з викликом, похідний Ревізор, відмови валідної сцени й без Ревізора, промпти лише етапів із викликом за PROMPT-CONTRACT, carry_pending без виклику, текст згоди, роль audit → auditor для посилання налаштувань.",
+      "scope": "Запит audit, зв’язки в порядку читання, calls лише з викликом, похідний Ревізор, відмови валідної сцени й без Ревізора, промпти лише етапів із викликом за PROMPT-CONTRACT, carry_pending без виклику, текст згоди, роль audit → auditor для посилання налаштувань. Перегляд сцени через POST …/audit/preview з відбитком плану й cost; запуск несе audit_plan_fingerprint.",
       "tests": [
         "tests/generation/test_audit_run.py::test_request_needs_a_scene_and_scope",
         "tests/generation/test_audit_run.py::test_pending_links_in_reading_order_skip_valid_and_missing",
@@ -7976,11 +8003,12 @@
         "tests/generation/test_audit_run.py::test_preview_refuses_an_invalid_prompt_of_a_called_stage",
         "tests/generation/test_audit_run.py::test_preview_checks_only_the_prompts_of_called_stages",
         "tests/web/test_workspace_navigation.py::test_workspace_settings_links_and_usage_are_explicit",
-        "tests/web/test_editor_loop_ui.py::test_loop_limit_and_confirmation_only_name_editor"
+        "tests/web/test_editor_loop_ui.py::test_loop_limit_and_confirmation_only_name_editor",
+        "tests/web/test_audit_preview_api.py::test_scene_preview_lists_links_calls_fingerprint_and_cost"
       ],
       "manual": {
         "procedure": "docs/verification/manual.md#scene-audit-browser",
-        "reason": "check_docs.py індексує лише pytest; Playwright case tests/web/browser/scene-audit.spec.mjs (кнопка «Перевірити сцену», перегляд зі зв’язками й моделлю, «Скасувати», план запуску «План: … · до N викл.» без «невідомо») виконується окремим runner, цей зв’язок не є доказом виконання."
+        "reason": "check_docs.py індексує лише pytest; Playwright case tests/web/browser/scene-audit.spec.mjs (кнопка «Перевірити сцену», перегляд зі зв’язками й моделлю, «Скасувати», план запуску «План: … · до N викл.» без «невідомо», audit_plan_fingerprint у запуску) виконується окремим runner, цей зв’язок не є доказом виконання."
       }
     },
     {
@@ -8024,6 +8052,140 @@
         "tests/generation/test_audit_run.py::test_restart_interrupts_a_running_audit",
         "tests/generation/test_audit_run.py::test_invalid_prompt_fails_the_run_before_any_call"
       ]
+    },
+    {
+      "id": "VALID-RUN-S05",
+      "requirement": "VALID-RUN",
+      "scope": "Правила запиту story; book_pending за позицією без кошика; links зі scene_id, invalid_scenes, calls, сталий і змінний plan_fingerprint; «Книга вже валідна»; хмарний Ревізор без ліміту твору; операція audit_story; маршрут перегляду для обох областей, 422/404. Перевірка відсутності записів покриває лише локального Ревізора й таблиці app_settings і runs.",
+      "tests": [
+        "tests/generation/test_audit_run.py::test_story_scope_request_rules",
+        "tests/generation/test_audit_run.py::test_book_pending_in_reading_order_skips_valid_and_missing",
+        "tests/generation/test_audit_run.py::test_book_preview_counts_calls_scenes_and_fingerprints_the_plan",
+        "tests/generation/test_audit_run.py::test_valid_book_is_not_ready",
+        "tests/generation/test_audit_run.py::test_coordinator_readiness_offers_the_book_audit_operation",
+        "tests/generation/test_audit_run.py::test_book_order_follows_position_and_skips_the_trash",
+        "tests/generation/test_audit_run.py::test_cloud_book_validation_needs_a_story_budget_limit",
+        "tests/web/test_audit_preview_api.py::test_story_preview_covers_the_book",
+        "tests/web/test_audit_preview_api.py::test_preview_writes_nothing",
+        "tests/web/test_audit_preview_api.py::test_scope_and_scene_must_match"
+      ]
+    },
+    {
+      "id": "VALID-RUN-S06",
+      "requirement": "VALID-RUN",
+      "scope": "Застарілий відбиток книги після рішення автора чи правки прози — RevisionConflict/409 з точним текстом без запуску й виклику; книга без відбитка — 422; відбиток сцени звіряється, свіжий проходить.",
+      "tests": [
+        "tests/generation/test_audit_run.py::test_book_run_with_a_changed_plan_is_refused_without_a_call",
+        "tests/generation/test_audit_run.py::test_book_run_after_a_link_change_is_refused",
+        "tests/generation/test_audit_run.py::test_scene_run_checks_a_given_plan_fingerprint",
+        "tests/web/test_runs.py::test_book_audit_run_checks_the_plan_fingerprint"
+      ]
+    },
+    {
+      "id": "VALID-RUN-S07",
+      "requirement": "VALID-RUN",
+      "scope": "Формула верхньої межі й округлення вгору, тариф Venice за адресою налаштувань, прострочений/відсутній/пошкоджений тариф, локальний без USD, 0 викликів, cost у readiness і в маршруті, сума й за відмови через ліміт.",
+      "tests": [
+        "tests/generation/test_audit_cost.py::test_cloud_with_a_current_tariff_prices_each_call_at_its_limits",
+        "tests/generation/test_audit_cost.py::test_venice_tariff_is_looked_up_by_the_settings_endpoint",
+        "tests/generation/test_audit_cost.py::test_stale_tariff_gives_no_usd_and_asks_to_refresh_prices",
+        "tests/generation/test_audit_cost.py::test_missing_tariff_gives_no_usd_and_says_so",
+        "tests/generation/test_audit_cost.py::test_broken_stored_tariff_never_raises",
+        "tests/generation/test_audit_cost.py::test_local_provider_has_no_usd_and_no_price_warning",
+        "tests/generation/test_audit_cost.py::test_no_calls_cost_nothing_even_without_a_tariff",
+        "tests/generation/test_audit_cost.py::test_readiness_carries_the_cost_of_a_cloud_auditor",
+        "tests/generation/test_audit_cost.py::test_stale_tariff_does_not_make_the_preview_unready",
+        "tests/generation/test_audit_cost.py::test_readiness_of_a_local_auditor_has_no_usd",
+        "tests/generation/test_audit_cost.py::test_readiness_without_a_configured_auditor_has_an_empty_cost",
+        "tests/web/test_audit_preview_api.py::test_cloud_preview_carries_the_upper_bound"
+      ]
+    },
+    {
+      "id": "VALID-RUN-S08",
+      "requirement": "VALID-RUN",
+      "scope": "Книга: виклики лише для невалідних зв’язків, зупинка з checkpoint.scene_id, повторне читання порядку після рішення й правки ранішої сцени, completed; одна невалідна сцена посередині; збій виклику книги вимагає явного повтору.",
+      "tests": [
+        "tests/generation/test_audit_run.py::test_book_run_checks_the_next_invalid_scene_and_stops_on_its_discrepancy",
+        "tests/generation/test_audit_run.py::test_resume_reads_the_reading_order_again",
+        "tests/generation/test_audit_run.py::test_book_with_one_invalid_scene_in_the_middle_calls_only_for_it",
+        "tests/generation/test_audit_run.py::test_failed_book_call_needs_an_explicit_repeat"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#book-validation-browser",
+        "reason": "check_docs.py індексує лише pytest; Playwright case tests/web/browser/book-validation.spec.mjs (зупинка на розбіжності, «Продовжити», completed) виконується окремим runner, цей зв’язок не є доказом виконання."
+      }
+    },
+    {
+      "id": "VALID-RUN-S09",
+      "requirement": "VALID-RUN",
+      "scope": "Заміна зупинених audit (needs_review, paused, failed, interrupted) подією superseded і станом cancelled; правило походження: валідація автора замінює й запуски моста, валідація моста — лише запуски моста.",
+      "tests": [
+        "tests/generation/test_audit_run.py::test_new_book_validation_supersedes_a_resumable_audit_of_the_story",
+        "tests/generation/test_audit_run.py::test_mcp_book_validation_keeps_the_authors_stopped_audit",
+        "tests/generation/test_audit_run.py::test_later_mcp_book_validation_supersedes_an_earlier_mcp_one",
+        "tests/generation/test_audit_run.py::test_authors_book_validation_supersedes_an_mcp_audit"
+      ]
+    },
+    {
+      "id": "VALID-RUN-S10",
+      "requirement": "VALID-RUN",
+      "scope": "Висновок Ревізора unavailable: переповнення рахується; причина минула — виклик; причина діє — зупинка сцени й книги без виклику; unavailable link_state не вимірюється.",
+      "tests": [
+        "tests/generation/test_audit_run.py::test_overflow_verdict_is_counted",
+        "tests/generation/test_audit_run.py::test_auditor_unavailable_whose_cause_cleared_is_measured_again_and_called",
+        "tests/generation/test_audit_run.py::test_auditor_unavailable_that_still_holds_stops_without_a_call",
+        "tests/generation/test_audit_run.py::test_link_state_unavailable_takes_no_call_and_no_measure"
+      ]
+    },
+    {
+      "id": "VALID-UI-S01",
+      "requirement": "VALID-UI",
+      "scope": "invalidSceneCount і bookMenuState (невідомо, 0, N), лічильник — сцени з будь-яким зв'язком unchecked/discrepancy/unavailable, зокрема incomplete; пункт у меню й неактивний у розмітці.",
+      "tests": [
+        "tests/web/test_book_validation_ui.py::test_book_validation_helpers",
+        "tests/web/test_workspace_layout_ui.py::test_story_toolbar_has_three_icon_actions_and_a_disclosure_menu"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#book-validation-browser",
+        "reason": "check_docs.py індексує лише pytest; Playwright case tests/web/browser/book-validation.spec.mjs («Валідація книги (2)» і «Книга валідна» неактивний) виконується окремим runner, цей зв’язок не є доказом виконання."
+      }
+    },
+    {
+      "id": "VALID-UI-S02",
+      "requirement": "VALID-UI",
+      "scope": "Текст згоди: сцени, виклики, модель, total_usd як є, причина без суми, локальний без USD, застереження й попередження; ключі uk/en.",
+      "tests": [
+        "tests/web/test_book_validation_ui.py::test_book_validation_helpers",
+        "tests/web/test_book_validation_ui.py::test_book_validation_texts_exist_in_both_languages"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#book-validation-browser",
+        "reason": "check_docs.py індексує лише pytest; Playwright case tests/web/browser/book-validation.spec.mjs (перегляд, «Скасувати» без запуску, «Почати валідацію» з областю story) виконується окремим runner, цей зв’язок не є доказом виконання."
+      }
+    },
+    {
+      "id": "VALID-UI-S03",
+      "requirement": "VALID-UI",
+      "scope": "Серверна відмова 409 зі сталим текстом без запуску; діалог «Переглянути знову» — у ручній процедурі.",
+      "tests": [
+        "tests/web/test_runs.py::test_book_audit_run_checks_the_plan_fingerprint"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#book-validation-browser",
+        "reason": "check_docs.py індексує лише pytest; Playwright case tests/web/browser/book-validation.spec.mjs (зміна прози під відкритим діалогом → 409 → «Переглянути знову», запусків немає) виконується окремим runner, цей зв’язок не є доказом виконання."
+      }
+    },
+    {
+      "id": "VALID-UI-S04",
+      "requirement": "VALID-UI",
+      "scope": "stoppedAuditScene і мітка режиму «Валідація книги»; перехід, затвердження й продовження — у ручній процедурі.",
+      "tests": [
+        "tests/web/test_book_validation_ui.py::test_book_validation_helpers"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#book-validation-browser",
+        "reason": "check_docs.py індексує лише pytest; Playwright case tests/web/browser/book-validation.spec.mjs («Перейти до сцени 1», «Затвердити завдання», «Продовжити», completed і «Книга валідна») виконується окремим runner, цей зв’язок не є доказом виконання."
+      }
     }
   ]
 }

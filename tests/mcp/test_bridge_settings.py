@@ -285,3 +285,11 @@ def test_model_list_carries_the_provider_retirement_notice(tmp_path, monkeypatch
     data = ok(call(build_server(http), 'get_settings', {'story_id': created.id, 'models_for_role': 'writer'}))
     assert {item['id']: item['retirement'] for item in data['models']} == {
         'gemma-test': {'date': '2026-12-01', 'replacement': 'glm-test'}, 'glm-test': None}
+
+
+def test_start_run_lists_the_audit_action(tmp_path):
+    from storygen.mcp.bridge import RUN_ACTIONS
+    assert RUN_ACTIONS == ('brief', 'draft', 'edit', 'memory', 'publication_suggest', 'audit')
+    app, http = obscura(tmp_path)
+    unknown = call(build_server(http), 'start_run', {'story_id': story(app).id, 'action': 'scene'})
+    assert unknown.is_error and ', '.join(RUN_ACTIONS) in text(unknown)

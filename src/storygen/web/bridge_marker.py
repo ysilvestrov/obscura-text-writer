@@ -12,7 +12,7 @@ BRIDGE_HEADER='X-Obscura-Client'
 OBSCURA_WRITES='Твір у режимі «пише Obscura»: запустіть етап через start_run'
 CHAT_WRITES='Твір у режимі «пише чат»: напишіть текст самі (get_stage_task, save_draft)'
 RUN_OWNER_ONLY='Цю дію із запуском виконує лише автор в Obscura'
-BRIDGE_RUN_MODES=frozenset({'stage','publication_suggest'})
+BRIDGE_RUN_MODES=frozenset({'stage','publication_suggest','audit'})
 MODE_OWNER_ONLY='Режим твору змінює лише автор в Obscura'
 
 
@@ -29,9 +29,11 @@ def author_only_path(method: str,path: str) -> bool:
 
 
 def guard_bridge_run(request,run_request) -> None:
-    """MCP-BRIDGE-S49/S51: the bridge starts one stage or a card suggestion, only in a story Obscura writes."""
+    """MCP-BRIDGE-S49/S51: the bridge starts one stage or a card suggestion, only in a story Obscura writes, and (R-44 PR 4)
+    an audit of links in either mode: the auditor writes no story text."""
     if not from_bridge(request):return
     if run_request.mode not in BRIDGE_RUN_MODES:raise BridgeForbidden(RUN_OWNER_ONLY)
+    if run_request.mode=='audit':return
     if request.app.state.repo.get_story(run_request.story_id).writing_mode!='obscura':raise RevisionConflict(CHAT_WRITES)
 
 

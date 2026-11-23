@@ -31,7 +31,7 @@ The chat gets twenty-eight tools:
 - **role preset**: a preview and, with your consent in the chat, applying a saved preset;
 - **stage task**: the instructions and material for the scene brief, editing or memory — the same as an Obscura model would get;
 - **stage result**: the chat's answer to a stage task, which Obscura checks the same way as its own model's answer;
-- **run**: in an "Obscura writes" story, a preview and, with your consent in the chat, an Obscura model run of one scene stage or a publication card suggestion;
+- **run**: in an "Obscura writes" story, a preview and, with your consent in the chat, an Obscura model run of one scene stage or a publication card suggestion; in any story, an auditor check of a scene or of the whole book the same way;
 - **run status**: what is happening with a run now, its result, and cancelling a run the chat started;
 - **guide**: the steps of the Obscura skills for chat clients that do not have the skills installed (see [Obscura skills](#obscura-skills)).
 
@@ -244,7 +244,7 @@ Each story has a mode: **The chat writes** or **Obscura writes**. A story create
 
 - **The chat writes**: the chat writes drafts and goes through the scene stages itself, as described below.
 - **Obscura writes**: Obscura models write the texts. The chat still reads the story, imports the plan and characters, changes the settings and the publication, but Obscura refuses a draft or a stage result from it with the message: The story is in the "Obscura writes" mode: start the stage with start_run. Instead, the chat can start the stage with an Obscura model (see below).
-- In the **The chat writes** mode it is the other way round: the chat cannot start Obscura models, it writes itself.
+- In the **The chat writes** mode it is the other way round: the chat does not start stages with Obscura models, it writes itself. The exception is the auditor check (see below): it writes no text, so it is available in both modes.
 - Only you change the mode: in the story settings, **Writing** section, the **Who writes the texts** field. The chat cannot change it. Changing the mode does not touch texts already written or stages already started.
 
 ## Obscura runs from the chat
@@ -252,11 +252,17 @@ Each story has a mode: **The chat writes** or **Obscura writes**. A story create
 In a story with the **Obscura writes** mode the chat can ask Obscura to run one scene stage — the scene brief, the draft, editing or memory — or to suggest a publication card. This is an ordinary Obscura run: your role models, the story budget and the same readiness check as for the buttons.
 
 - First the chat shows a preview: which models will work, how many calls there will be, warnings and the remaining story budget. It starts the run only after your consent in the chat.
-- **A run costs money** at the rates of the role models. Cloud providers need a story budget limit, as for the buttons. The chat can pass a limit for one run. Obscura does not estimate the amount in advance: the preview shows the models and the budget.
+- **A run costs money** at the rates of the role models. Cloud providers need a story budget limit, as for the buttons. The chat can pass a limit for one run. For stages Obscura does not estimate the amount in advance: the preview shows the models and the budget.
 - The run goes in the background. The chat checks its status with a separate request; it reads the finished text like other scene texts, and card suggestions come with the run status.
 - The chat can cancel only a run it started itself. Pausing, resuming, your runs, a whole scene, the rest of the story, preparation and evaluation stay with you: Obscura refuses such requests from the chat.
 - If the previous memory needs your confirmation, the memory stage does not start: the chat advises you to confirm it in Obscura.
 - You accept changes that wait for your decision in Obscura, as after a run started with a button.
+
+In either mode the chat can also start an [auditor check](workspace.md#validating-the-book): of one scene or of the whole book.
+
+- The preview shows which scenes and links will be checked, the maximum number of calls and the upper bound on the cost (for a cloud model with a current price). The chat starts the check only after your consent in the chat and only with the plan you were shown. If the book changed in the meantime, Obscura refuses with “The check plan has changed. Review it again”, and the chat has to show you the new preview.
+- When the auditor stops at a discrepancy, the chat sees in which scene. You make the decision and continue the check in Obscura.
+- A new book check from the chat cancels only stopped checks the chat started; it does not touch yours.
 
 ## Scene stages from the chat
 

@@ -156,6 +156,13 @@ async function start(mode,stage,options={}){
   if(options.signal?.aborted)throw new DOMException('Cancelled','AbortError');
   assertReadyDispatch(state,captured);
   let operation=readiness?.operations[stage||mode];
+  // VALID-LINKS §9: the scene check is consented from the audit preview (calls, upper bound on cost); its plan
+  // fingerprint goes with the run, so a plan that changed after the dialog is refused instead of paid for.
+  if(mode==='audit'){
+    operation=await api(`/api/stories/${state.storyId}/audit/preview`,{...json('POST',{scope:'scene',scene_id:state.scene.id}),...(options.signal?{signal:options.signal}:{})});
+    if(options.signal?.aborted)throw new DOMException('Cancelled','AbortError');
+    assertReadyDispatch(state,captured);
+  }
   const usesEditorLoop=['edit_loop','scene','remaining'].includes(mode);
   if(usesEditorLoop)operation=editorLoopOperation(operation);
   const reason=operationReason(state,operation);
@@ -166,7 +173,7 @@ async function start(mode,stage,options={}){
   const request={story_id:state.storyId,scene_id:mode==='prepare'?null:state.scene.id,mode,stage:stage||null,pause_after:document.querySelector('#pause-each')?.checked?['brief','draft','edit','memory']:[]};
   if(mode==='stage'&&stage==='memory'&&operation.memory_review)request.memory_approval=operation.memory_review.fingerprint;
   // VALID-LINKS: the scene check names its scope; it has no stages to pause after.
-  if(mode==='audit'){request.audit_scope=options.audit_scope||'scene';request.pause_after=[]}
+  if(mode==='audit'){request.audit_scope=options.audit_scope||'scene';request.pause_after=[];if(operation.plan_fingerprint)request.audit_plan_fingerprint=operation.plan_fingerprint}
   // EDIT-LOOP-REVIEW: the run takes the limit the author confirmed, not a later settings value.
   if(usesEditorLoop){request.edit_workflow='loop';if(Number.isInteger(operation.edit_pass_limit))request.edit_pass_limit=operation.edit_pass_limit}
   if(mode==='edit_loop')Object.assign(request,selectedSource(options));

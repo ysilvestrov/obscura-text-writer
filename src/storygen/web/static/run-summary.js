@@ -12,7 +12,16 @@ export function runSummaryText(run,stateLabel,modeLabel=''){
 // The catalog key of a run's own label, or null for the usual model runs (VALID-LINKS: the auditor's scene check).
 const MODE_KEYS={memory_carry:'run.mode_memory_carry',audit:'run.mode_audit'};
 export function runModeKey(run){
+  if(run?.request?.mode==='audit'&&run.request.audit_scope==='story')return 'run.mode_audit_book';
   return MODE_KEYS[run?.request?.mode]||null;
+}
+
+// R-44 book validation: a book run stopped for the author's decision names the scene of its stop (checkpoint.scene_id);
+// the summary leads there. A scene no longer in the story view gives no link.
+export function stoppedAuditScene(run,scenes){
+  if(run?.state!=='needs_review'||run.request?.mode!=='audit'||run.request.audit_scope!=='story')return null;
+  const id=run.checkpoint?.scene_id;
+  return (id&&(scenes||[]).find(scene=>scene.id===id))||null;
 }
 
 // A failed run shows its error expanded; any other run marks a hidden warning or error.

@@ -90,3 +90,18 @@ def test_run_refusals_are_translated(tmp_path, ready):
     assert refused.json()['detail'] == 'The story is in the "The chat writes" mode: write the text yourself (get_stage_task, save_draft)'
     refused = client.post('/api/runs', json={'request_id': 'x', 'request': {'story_id': story.id, 'mode': 'prepare'}}, headers={**BRIDGE, 'Accept-Language': 'en'})
     assert refused.status_code == 403 and refused.json()['detail'] == 'Only the author takes this run action in Obscura'
+
+
+def test_bridge_audit_in_a_chat_story_is_accepted_and_other_modes_keep_their_guards(tmp_path, ready):
+    """R-44 PR 4: the auditor writes no story text, so the writing mode does not limit a bridge audit."""
+    app, repo, story, scene, client = scene_app(tmp_path, 'chat')
+    audit = {'story_id': story.id, 'scene_id': scene.id, 'mode': 'audit', 'audit_scope': 'scene'}
+    accepted = client.post('/api/runs', json={'request_id': 'mcp-audit', 'request': audit}, headers=BRIDGE)
+    assert accepted.status_code == 200, accepted.text
+    assert app.state.coordinator.get_run(accepted.json()['id']).origin == 'mcp'
+    refused = stage_run(client, story, scene, request_id='mcp-stage')
+    assert refused.status_code == 409 and CHAT_WRITES in refused.text
+    owner = client.post('/api/runs', json={'request_id': 'mcp-scene', 'request': {'story_id': story.id, 'scene_id': scene.id,
+                                                                                    'mode': 'scene'}}, headers=BRIDGE)
+    assert owner.status_code == 403 and RUN_OWNER_ONLY in owner.text
+    assert [run.id for run in app.state.coordinator.list_runs()] == [accepted.json()['id']]

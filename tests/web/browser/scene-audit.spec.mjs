@@ -44,6 +44,8 @@ test('the auditor checks the scene after consent and the author approves its dis
   const run=(await(await request.get(`/api/runs/${(await runs()).at(-1).id}`)).json()).run;
   expect(run.request.mode).toBe('audit');
   expect(run.checkpoint.link).toBe('brief');
+  // R-44: the run carries the plan the author consented to.
+  expect(run.request.audit_plan_fingerprint).toMatch(/^[a-f0-9]{64}$/);
   await row.getByRole('button',{name:'Затвердити завдання'}).click();
   await expect(panel.locator('[data-link="brief"]')).toHaveCount(0);
   const view=await(await request.get(`/api/stories/${fixture.story_id}`)).json();

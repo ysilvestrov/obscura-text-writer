@@ -35,8 +35,9 @@ TOOLS = ('list_stories', 'get_story', 'get_scene_context', 'get_scene_text', 'im
          'get_settings', 'update_settings', 'apply_role_preset', 'get_stage_task', 'save_stage_result', 'start_run', 'get_run', 'get_guide')
 MATERIALS = ('plan', 'brief', 'draft', 'prose', 'memory')
 STAGES = ('brief', 'edit', 'memory')
-RUN_ACTIONS = ('brief', 'draft', 'edit', 'memory', 'publication_suggest')
+RUN_ACTIONS = ('brief', 'draft', 'edit', 'memory', 'publication_suggest', 'audit')
 CHAT_WRITES = 'Твір у режимі «пише чат»: напишіть текст самі (get_stage_task, save_draft)'
+AUDIT_FINGERPRINT = 'Для запуску audit передайте plan_fingerprint із показаного авторові перегляду (start_run без confirm)'
 MEMORY_APPROVAL = 'Попередня пам’ять потребує вашого підтвердження в Obscura: відкрийте сцену й підтвердьте використання пам’яті'
 LANGUAGES = ('uk', 'en')
 PUBLICATION_FIELDS = tuple(PublicationData.model_fields)
@@ -70,7 +71,9 @@ INSTRUCTIONS = ('Obscura — локальний редактор історій.
                 'result_format → save_stage_result з task_fingerprint; інструкції чернетки — поле instructions у get_scene_context. '
                 'Режим твору (writing_mode у get_story): «chat» — тексти пише чат; «obscura» — тексти пишуть моделі Obscura, '
                 'і save_draft та етапи з чату відхиляються, а етап чи пропозицію картки запускає start_run (спершу перегляд без confirm, '
-                'запуск — лише після згоди автора; стан — get_run). Режим змінює лише автор у налаштуваннях твору. '
+                'запуск — лише після згоди автора; стан — get_run). Перевірку зв’язків Ревізором (start_run з action=audit: сцена зі '
+                'scene_id або вся книга без нього) можна запускати в обох режимах, бо Ревізор не пише тексту твору. '
+                'Режим змінює лише автор у налаштуваннях твору. '
                 'Після сцени чи твору дайте людині посилання з next_steps, щоб читати й правити твір у вікні Obscura. '
                 'Якщо скіл Obscura (start-story, draft-scene, publish, series-bible, setup-models) у вас не підключено, спершу '
                 'викличте get_guide з назвою задачі й дотримуйтеся отриманих кроків; якщо підключено — не викликайте.')
@@ -908,26 +911,35 @@ def build_server(http: httpx.Client | None, client_name: str | None = None, *, c
 
     @server.tool()
     def start_run(story_id: str, action: str, scene_id: str | None = None, confirm: bool = False,
-                  budget_limit_usd: str | None = None) -> dict[str, Any]:
-        """Запустити моделлю Obscura один етап сцени (brief, draft, edit, memory) або пропозицію картки публікації
-        (publication_suggest, без scene_id). Лише у творі з режимом «пише Obscura». КОШТУЄ ГРОШЕЙ за тарифами моделей ролей.
-        Без confirm нічого не запускає й повертає перегляд: готовність, моделі, кількість викликів, попередження й бюджет твору.
-        Покажіть перегляд авторові й дочекайтеся його згоди в чаті; лише тоді викличте з confirm=true. budget_limit_usd — ліміт
-        цього запуску в доларах (рядок, напр. "0.50"). Запуск іде у фоні: стан і результат — get_run(run_id); результат
-        етапу читайте get_scene_text, пропозиції картки — у get_run. Кожен виклик з confirm=true створює новий запуск."""
+                  budget_limit_usd: str | None = None, plan_fingerprint: str | None = None) -> dict[str, Any]:
+        """Запустити моделлю Obscura один етап сцени (brief, draft, edit, memory), пропозицію картки публікації
+        (publication_suggest, без scene_id) або перевірку зв'язків Ревізором (audit: зі scene_id — одна сцена, без нього —
+        валідація всієї книги). Етапи й пропозиція — лише у творі з режимом «пише Obscura»; audit — у будь-якому режимі, бо
+        Ревізор не пише тексту твору. КОШТУЄ ГРОШЕЙ за тарифами моделей ролей.
+        Без confirm нічого не запускає й повертає перегляд: готовність, моделі, кількість викликів, попередження й бюджет твору;
+        для audit ще зв'язки до перевірки (links), кількість невалідних сцен, plan_fingerprint і cost — верхню межу вартості
+        (total_usd; якщо суми немає — пояснення в cost.reason). Покажіть перегляд авторові й дочекайтеся його згоди в чаті; лише
+        тоді викличте з confirm=true, а для audit передайте plan_fingerprint із показаного перегляду: якщо план змінився,
+        Obscura відмовить, і перегляд треба показати знову. budget_limit_usd — ліміт цього запуску в доларах (рядок, напр.
+        "0.50"). Запуск іде у фоні: стан і результат — get_run(run_id); результат етапу читайте get_scene_text, пропозиції
+        картки — у get_run. Кожен виклик з confirm=true створює новий запуск."""
         if action not in RUN_ACTIONS:
             raise ToolError('Невідома дія; можливі: ' + ', '.join(RUN_ACTIONS))
         story = identifier(story_id)
         if action == 'publication_suggest':
             if scene_id is not None:
                 raise ToolError('publication_suggest стосується твору: не передавайте scene_id')
-        elif scene_id is None:
+        elif scene_id is None and action != 'audit':
             raise ToolError('Для етапу сцени потрібен scene_id')
         scene = identifier(scene_id) if scene_id is not None else None
-        if request('GET', f'/api/stories/{story}')['story'].get('writing_mode', 'chat') != 'obscura':
+        audit_scope = ('scene' if scene else 'story') if action == 'audit' else None
+        # R-44 PR 4: the auditor writes no story text, so the writing mode limits only the stages and the card suggestion.
+        if audit_scope is None and request('GET', f'/api/stories/{story}')['story'].get('writing_mode', 'chat') != 'obscura':
             raise ToolError(CHAT_WRITES)
         if action == 'publication_suggest':
             ready = request('GET', f'/api/stories/{story}/publication/suggestions/readiness')
+        elif audit_scope is not None:
+            ready = request('POST', f'/api/stories/{story}/audit/preview', json={'scope': audit_scope, 'scene_id': scene})
         else:
             ready = request('GET', f'/api/stories/{story}/readiness',
                             params={'scene_id': scene, 'operation': action})['operations'][action]
@@ -941,6 +953,11 @@ def build_server(http: httpx.Client | None, client_name: str | None = None, *, c
                    'budget': {'limit_usd': usd(budget.get('limit_nanos')), 'spent_usd': usd(budget.get('exposure_nanos')),
                               'available_usd': usd(budget.get('available_nanos')),
                               'default_run_limit_usd': usd(policy.get('default_run_limit_nanos'))}}
+        if audit_scope is not None:
+            cost = ready.get('cost') or {}
+            preview.update({'links': ready.get('links') or [], 'invalid_scenes': ready.get('invalid_scenes'),
+                            'plan_fingerprint': ready.get('plan_fingerprint'),
+                            'cost': {key: cost.get(key) for key in ('per_call_usd', 'total_usd', 'reason')}})
         if not confirm:
             return {'started': False, 'preview': preview,
                     'message': 'Покажіть перегляд авторові; запуск — лише після його згоди, викликом з confirm=true'}
@@ -950,6 +967,11 @@ def build_server(http: httpx.Client | None, client_name: str | None = None, *, c
             raise ToolError(MEMORY_APPROVAL if ready.get('can_confirm') else f"Запуск не готовий: {ready.get('reason')}")
         if action == 'publication_suggest':
             body: dict[str, Any] = {'story_id': story, 'mode': 'publication_suggest'}
+        elif audit_scope is not None:
+            if not plan_fingerprint:
+                raise ToolError(AUDIT_FINGERPRINT)
+            body = {'story_id': story, 'scene_id': scene, 'mode': 'audit', 'audit_scope': audit_scope,
+                    'audit_plan_fingerprint': plan_fingerprint}
         else:
             body = {'story_id': story, 'scene_id': scene, 'mode': 'stage', 'stage': action}
         if budget_limit_usd is not None:
@@ -960,8 +982,10 @@ def build_server(http: httpx.Client | None, client_name: str | None = None, *, c
     @server.tool()
     def get_run(run_id: str, cancel: bool = False) -> dict[str, Any]:
         """Стан запуску Obscura: state (queued, running, completed, failed, cancelled…), помилка, спроби (state, error,
-        result_version_id), для publication_suggest — актуальні пропозиції картки. Грошей не коштує. Довгий запуск не чекайте в
-        одному виклику: перевіряйте стан повторно. cancel=true спершу скасовує запуск — лише той, що почав чат."""
+        result_version_id), для publication_suggest — актуальні пропозиції картки, для audit — область (audit_scope) і
+        checkpoint зупинки: state=needs_review і checkpoint.scene_id — сцена, де Ревізор знайшов розбіжність чи не зміг
+        перевірити зв'язок; рішення ухвалює й перевірку продовжує автор у вікні Obscura. Грошей не коштує. Довгий запуск не
+        чекайте в одному виклику: перевіряйте стан повторно. cancel=true спершу скасовує запуск — лише той, що почав чат."""
         run_path = f'/api/runs/{identifier(run_id)}'
         if cancel:
             request('POST', f'{run_path}/cancel', json={})
@@ -974,6 +998,9 @@ def build_server(http: httpx.Client | None, client_name: str | None = None, *, c
             'scene_id': run['request'].get('scene_id'), 'origin': run.get('origin'),
             'attempts': [{'stage': a.get('stage'), 'state': a.get('state'), 'error': a.get('error'),
                           'result_version_id': a.get('result_version_id')} for a in data.get('attempts') or []]}
+        if mode == 'audit':
+            result['audit_scope'] = run['request'].get('audit_scope')
+            result['checkpoint'] = run.get('checkpoint')
         if mode == 'publication_suggest':
             suggestions = request('GET', f"/api/stories/{identifier(run['story_id'])}/publication/suggestions")
             result['suggestions'] = {'proposals': suggestions.get('proposals') or [], 'history': suggestions.get('history') or []}

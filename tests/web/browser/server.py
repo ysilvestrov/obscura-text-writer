@@ -36,6 +36,15 @@ def forbidden_gateway(*args, **kwargs):
                                      {'text':'Немає кроку про човен','quote':'Маяк'}]},ensure_ascii=False))
                 yield GenerationEvent(type='terminal',finish_reason='stop')
                 return
+            if context.stage.startswith('audit_') and context.settings.provider.model=='synthetic-book-auditor':
+                # R-44 book validation: only a brief that names «Світло на воді» disagrees; everything else is valid.
+                import json
+                wrong=context.stage=='audit_brief' and 'Світло на воді' in context.user_text
+                yield GenerationEvent(type='delta',text=json.dumps({'confidence':40,'summary':'Завдання може розходитися з планом',
+                    'discrepancies':[{'text':'Місце дії не збігається з планом','quote':'Світло на воді'}]} if wrong else
+                    {'confidence':95,'summary':'Узгоджено','discrepancies':[]},ensure_ascii=False))
+                yield GenerationEvent(type='terminal',finish_reason='stop')
+                return
             if context.stage!='rewrite' or context.settings.provider.model!='synthetic-rewrite':raise AssertionError('Only synthetic rewrite is allowed')
             yield GenerationEvent(type='delta',text='Лєра побачила **сузір’я**.\n\nВечір був _спокійним_.')
             yield GenerationEvent(type='terminal',finish_reason='stop')
@@ -483,6 +492,33 @@ def main():
             repo.set_head(scene.id,'brief',ref.id,repo.get_scene(scene.id).revision)
             save_manual_prose(repo,scene.id,'Ранок: світло на воді.',repo.get_scene(scene.id).revision)
             return dict(story_id=story.id,scene_id=scene.id)
+
+        @app.post('/test-book-validation')
+        def book_validation_fixture():
+            """Two scenes with a brief, prose and memory, all links unchecked; the first brief disagrees with the plan.
+            The auditor is synthetic and local (no budget)."""
+            import json
+            from storygen.authoring.blueprints import save_role_settings
+            from storygen.generation.dependencies import save_manual_prose
+            from storygen.memory.journal import MemoryJournal, _add_event
+            from storygen.memory.service import save_scene_memory
+            from storygen.providers.models import RoleSettings,ProviderSettings
+            story=rated_story('Маяк і човен')
+            save_role_settings(repo,story.id,'auditor',RoleSettings(provider=ProviderSettings(model='synthetic-book-auditor'),temperature=0.2,
+                context_tokens=200000,max_input_chars=400000,max_output_tokens=4096),repo.get_story(story.id).revision)
+            journal=MemoryJournal()
+            ids=[]
+            for title,objective,text in (('Ранок','Світло на воді','Олена запалила маяк.'),('Вечір','Човен біля берега','Олена погасила маяк.')):
+                scene=repo.create_scene(story.id,SceneCreate(title=title,beats=title))
+                brief=json.dumps({'objective':objective,'beats':[title],'constraints':[],'proposed_changes':[]},ensure_ascii=False)
+                ref=repo.save_version(story.id,scene.id,'brief',brief,[])
+                repo.set_head(scene.id,'brief',ref.id,repo.get_scene(scene.id).revision)
+                prose=save_manual_prose(repo,scene.id,text,repo.get_scene(scene.id).revision)
+                event=_add_event('facts',text.rstrip('.'),prose.id,text.rstrip('.'),len(journal.events))
+                journal=MemoryJournal(source_prose_ids=journal.source_prose_ids+[prose.id],events=journal.events+[event])
+                save_scene_memory(repo,scene.id,journal.model_dump_json(),repo.get_scene(scene.id).revision)
+                ids.append(scene.id)
+            return dict(story_id=story.id,first_id=ids[0],second_id=ids[1])
 
         uvicorn.run(app, host='127.0.0.1', port=port, log_level='warning')
 

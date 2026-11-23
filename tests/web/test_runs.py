@@ -155,3 +155,26 @@ def test_readiness_filters_operations_without_changing_existing_contract(tmp_pat
     seen.clear()
     invalid=client.get(url+'&operation=invalid')
     assert invalid.status_code==422 and seen==[]
+
+
+def test_book_audit_run_checks_the_plan_fingerprint(tmp_path):
+    from tests.generation.test_audit_context import auditor
+    from tests.generation.test_audit_verdict import unchecked_scene
+    repo,story,(scene,)=unchecked_scene(tmp_path)
+    calls=[]
+    class Gateway:
+        def stream(self,context,cancel):
+            calls.append(context)
+            yield GenerationEvent(type='cancelled')
+    app=create_app(AppSettings(data_dir=tmp_path),gateway_factory=lambda _:Gateway())
+    url=f'/api/stories/{story.id}/readiness?operation=audit_story'
+    with TestClient(app,base_url='http://127.0.0.1:8765') as client:
+        plan=client.get(url).json()['operations']['audit_story']
+        assert plan['ready'] is True and plan['calls']==2 and len(plan['plan_fingerprint'])==64
+        auditor(app.state.repo,story,provider=ProviderSettings(model='auditor-2'))
+        request={'story_id':story.id,'mode':'audit','audit_scope':'story','audit_plan_fingerprint':plan['plan_fingerprint']}
+        stale=client.post('/api/runs',json={'request_id':'stale-plan','request':request})
+        assert stale.status_code==409 and stale.json()['detail_original']=='План перевірки змінився. Перегляньте його ще раз'
+        missing=client.post('/api/runs',json={'request_id':'no-plan','request':{**request,'audit_plan_fingerprint':None}})
+        assert missing.status_code==422
+        assert [r for r in app.state.coordinator.list_runs() if r.request.mode=='audit']==[] and calls==[]
