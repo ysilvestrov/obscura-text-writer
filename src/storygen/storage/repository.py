@@ -163,9 +163,9 @@ class Repository:
         from .run_store import append_run_event
         return append_run_event(self, run_id, type, data)
 
-    def list_run_events(self, run_id, after_seq=0):
+    def list_run_events(self, run_id, after_seq=0, types=None):
         from .run_store import list_run_events
-        return list_run_events(self, run_id, after_seq)
+        return list_run_events(self, run_id, after_seq, types)
 
     def recover_running_attempts(self):
         from .run_store import recover_running_attempts

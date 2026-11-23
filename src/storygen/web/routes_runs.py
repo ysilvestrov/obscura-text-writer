@@ -103,7 +103,8 @@ def get_run(id: str,request: Request):
     # Exact manifests are server-side; only public metadata and output appear in the UI.
     public=[_public_attempt(a) for a in attempts]
     partial=worker.repo.files.read_partial(attempts[-1].partial_path) if attempts else ''
-    return {'run':run,'attempts':public,'partial':partial}
+    from ..generation.run_progress import run_progress
+    return {'run':run,'attempts':public,'partial':partial,'progress':run_progress(worker.repo,run)}
 
 
 @router.get('/api/runs/{id}/readiness')

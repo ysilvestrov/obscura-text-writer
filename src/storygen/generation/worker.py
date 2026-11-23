@@ -9,6 +9,7 @@ from ..providers.streaming import build_generation_gateway
 from .context import build_context, make_context, ContextOverflow
 from ..run_models import IMPACT_REMOVED, Run, RunRequest, RunEvent, merge_warnings
 from .pipeline import STAGES, STAGE_ROLES
+from .run_progress import PROGRESS_EVENTS, emit_progress
 from .stages import execute_stage
 from ..book.lineage import lineage_scope
 
@@ -48,7 +49,9 @@ class RunCoordinator:
         return self.repo.save_run(run)
 
     def event(self,id,type,data):
-        return self.repo.append_run_event(id,type,data)
+        event=self.repo.append_run_event(id,type,data)
+        if type in PROGRESS_EVENTS:emit_progress(self,id)
+        return event
 
     def list_events(self,id,after_seq=0):
         return self.repo.list_run_events(id,after_seq)
