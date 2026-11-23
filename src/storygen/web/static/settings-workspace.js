@@ -7,7 +7,7 @@ import {readSettingsContent,externalSettingsChange} from './settings-sync.js';
 export const settingsDrafts=new SettingsDrafts();
 const forms=new Map(),root=document.querySelector('.settings-page');
 const labels={get writing(){return t("m_88f778367baf")},get models(){return t("m_9d43f6fcda82")},get evaluator(){return t("m_04c7075b6943")},get budget(){return t("m_0773ed49428f")},get profiles(){return t("m_bd94099c1720")}};
-const roles={get planner(){return t("m_38c94c25c4af")},get writer(){return t("m_75515c07207a")},get editor(){return t("m_65d42cf1679c")},get memory(){return t("m_aa1cfb48cc30")}};
+const roles={get planner(){return t("m_38c94c25c4af")},get writer(){return t("m_75515c07207a")},get editor(){return t("m_65d42cf1679c")},get memory(){return t("m_aa1cfb48cc30")},get auditor(){return t("m_2a1a4e4b0a6f")}};
 let route=settingsRoute(globalThis.location?.search||''),navigationAllowed=false;
 const fields=form=>Object.fromEntries([...form.elements].filter(e=>e.name&&!['submit','button','file'].includes(e.type)&&!(e.dataset.derived==='true'&&form.dataset.rawPending!=='true')).map(e=>[e.name,e.type==='checkbox'?e.checked:e.value]));
 const selectedKey=()=>route.section==='models'?route.role:route.section;

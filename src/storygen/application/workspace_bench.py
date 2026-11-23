@@ -33,7 +33,8 @@ CAST_TITLE = 'Synthetic workspace bench (cast)'
 CAST_CARDS = 8
 CAST_ENTRIES = 6
 BENCH_RATING = ContentRating(sexual=0, violence=0, themes=0)
-BENCH_ROLES = ROLES
+# The auditor has no row of its own in the bench: it borrows the editor's provider (MODEL-001), so old bench workdirs stay valid.
+BENCH_ROLES = tuple(role for role in ROLES if role != 'auditor')
 # Local provider with builtin prompts: readiness stays offline and needs no budget limit. The window is
 # wide enough for a 300-scene memory and plan, so preview reaches build_context and returns ready=True.
 BENCH_ROLE = dict(provider=dict(provider='local', model='bench-local'), context_tokens=262144,
@@ -67,7 +68,7 @@ def build_story(repo: Repository, scenes: int, shallow_copies: bool = False, cas
 
 
 def configure_roles(repo: Repository, story_id: str) -> None:
-    """Save the bench roles (planner, writer, editor, memory) so readiness checks the full path."""
+    """Save the bench roles (planner, writer, editor, memory; the auditor stays derived) so readiness checks the full path."""
     role = RoleSettings.model_validate(BENCH_ROLE)
     for name in BENCH_ROLES:
         save_role_settings(repo, story_id, name, role, repo.get_story(story_id).revision)

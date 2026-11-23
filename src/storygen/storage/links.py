@@ -234,7 +234,15 @@ def _from_verdicts(view, scene_id, link, fingerprint, inputs, invalidated=False)
         return LinkState(link, 'unchecked', inputs=inputs, fingerprint=fingerprint)
     if verdict.outcome == 'valid':
         return LinkState(link, 'valid', verdict.source, inputs=inputs, fingerprint=fingerprint)
+    if verdict.source == 'auditor' and invalidated and _older_than_invalidation(view, scene_id, link, fingerprint, verdict):
+        # Rule (г): the author confirmed a card change after this auditor verdict, so the next check calls again.
+        return LinkState(link, 'unchecked', inputs=inputs, fingerprint=fingerprint)
     return LinkState(link, verdict.outcome, verdict.source, verdict.reason, inputs, fingerprint)
+
+
+def _older_than_invalidation(view, scene_id, link, fingerprint, verdict) -> bool:
+    invalidated = _latest_invalidations(view).get((scene_id, link, fingerprint))
+    return invalidated is not None and view.link_order[verdict.id] < invalidated
 
 
 def _compute(view, scene_id):

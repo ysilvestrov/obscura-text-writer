@@ -58,7 +58,7 @@ A scene has three links: the brief follows the plan and the memory of earlier sc
 
 - **Valid** — all three links hold: Obscura models or a chat made the texts from the current materials, or you approved them.
 - **Unchecked** — something was written or changed by hand, or the memory of the previous scene changed, and nobody confirmed that the texts still match.
-- **Discrepancy** — a check found a mismatch.
+- **Discrepancy** — the [auditor](#checking-a-scene-with-the-auditor) found a possible mismatch.
 
 A brief, prose or memory becomes outdated only when what it was made from changes: the plan, the memory of the previous scene, the brief or the prose. Changing settings — the narrator, prose language, rating, style, flashbacks or names — marks only drafts as outdated. A brief you wrote or edited yourself does not block the draft, but the scene stays “Unchecked”.
 
@@ -74,6 +74,18 @@ For memory and missing memory the panel offers other actions:
 - **The memory carry stopped before this scene** — the carry is paused, ended with an error or was interrupted. **Resume carry** (no cost) or **Cancel carry**: after a cancel, model runs are available, and the scene memory stays built on the old memory of the previous scene.
 
 In full-screen mode the panel is hidden.
+
+## Checking a scene with the auditor
+
+When a scene is “Unchecked” or has a “Discrepancy”, a **Check scene** button appears next to its status. It runs the [auditor](models.md#auditor): the model reads the scene links one by one (brief, prose, memory) and changes no text. First you see which links will be checked, the model and the maximum number of calls; the check starts only after **Confirm**. The number of calls is an upper bound while the scene stays unchanged. This preview does not show a dollar amount yet; the budget limit applies as for other runs.
+
+- If the auditor is at least 90% confident and found no discrepancies, the link holds and the check moves on to the next one.
+- Otherwise the check stops, and the panel below the text shows a row “The auditor thinks … may differ …” with the confidence, a list of discrepancies and quotes. The model’s explanations can be inaccurate: it may notice that something is off but name the wrong thing. Reread the scene yourself.
+- If everything is fine, press **Approve brief**, **Approve match** or **Keep the earlier memory**; if not, fix the text on the stage tab or press **Create a new memory**. Then press **Continue** to check the remaining links. Continuing without your decision stops at the same discrepancy again without calling the model.
+- If the auditor could not check a link, the row explains why. When the input exceeds the auditor’s limit, the **Open auditor settings** button takes you to its settings; raise the limit and run the check again. Such a link cannot be approved.
+- A link that cannot be checked without memory (the previous scene has no memory, the memory is being carried over) stops the check without a model call; its actions are described above.
+
+Pause and cancel take effect between calls. If you change the scene during a call, the verdict is not applied and the link is checked again; after three such times in a row the check stops with the error “The scene was changed during the check several times in a row”. A wrong answer from the model stops the check without a verdict; you can repeat it only explicitly. While a link waits for your decision, the **Check scene** button stays visible, but a new check only stops at the same discrepancy: use **Continue**.
 
 ## Editor
 

@@ -13,7 +13,7 @@ def role_prompt(stage, settings, language='uk') -> str:
 
 def default_prompt(stage: str, language='uk') -> str:
     name={'draft':'writer','edit':'editor'}.get(stage,stage)
-    if name not in {'prepare','brief','writer','editor','memory','memory_delta','copyeditor','rewrite_editor'}:
+    if name not in {'prepare','brief','writer','editor','memory','memory_delta','copyeditor','rewrite_editor','audit_brief','audit_prose','audit_memory'}:
         raise ValueError('Невідомий етап')
     version={'brief':'v3','writer':'v2','memory_delta':'v4'}.get(name,'v1')
     return load_prompt(f'{name}_{version}',language)

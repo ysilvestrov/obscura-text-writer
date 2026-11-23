@@ -12,7 +12,7 @@ const exportButton=panel.querySelector('#role-profile-export');
 const summary=panel.querySelector('#role-profile-summary');
 const form=panel.querySelector('form');
 const file=panel.querySelector('input[type=file]');
-const labels={get planner(){return t("m_38c94c25c4af")},get writer(){return t("m_75515c07207a")},get editor(){return t("m_65d42cf1679c")},get memory(){return t("m_aa1cfb48cc30")}};
+const labels={get planner(){return t("m_38c94c25c4af")},get writer(){return t("m_75515c07207a")},get editor(){return t("m_65d42cf1679c")},get memory(){return t("m_aa1cfb48cc30")},get auditor(){return t("m_2a1a4e4b0a6f")}};
 let items=[],preview=null,busy=false,dirty=false,selectionEpoch=0;
 
 function selected(){return items.find(item=>`${item.id}:${item.version}`===select.value)}
@@ -42,7 +42,7 @@ previewButton.onclick=()=>action(async()=>{
   const list=document.createElement('dl');
   for(const [role,config] of Object.entries(data.roles)){
     const name=document.createElement('dt');uiText(name,"textContent",()=>(labels[role]));
-    const value=document.createElement('dd');uiText(value,"textContent",()=>(t("m_689ffb844b38",{p0:(config.provider.provider),p1:(config.provider.model),p2:(config.context_tokens),p3:(config.max_output_tokens),p4:(data.prompts[role].prompt.text===null?t("m_fcedf84d6354"):t("m_8bfbbad3632b"))})));
+    const value=document.createElement('dd');uiText(value,"textContent",()=>(t("m_689ffb844b38",{p0:(config.provider.provider),p1:(config.provider.model),p2:(config.context_tokens),p3:(config.max_output_tokens),p4:(data.prompts[role].prompt?.text==null?t("m_fcedf84d6354"):t("m_8bfbbad3632b"))})));
     list.append(name,value);
   }
   summary.append(list);

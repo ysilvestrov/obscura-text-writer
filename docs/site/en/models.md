@@ -1,6 +1,6 @@
 # Models, roles and budget
 
-Four roles prepare a scene: the **Planner** writes the outline and brief, the **Writer** writes the draft and suggests the book synopsis, the **Editor** suggests changes, and **Memory** records what happened. Each role can have its own model. The [evaluator](evaluator.md) is configured separately.
+Four roles prepare a scene: the **Planner** writes the outline and brief, the **Writer** writes the draft and suggests the book synopsis, the **Editor** suggests changes, and **Memory** records what happened. A fifth role, the **Auditor**, writes nothing: on your request it checks that the scene’s brief, prose and memory match each other ([Auditor](#auditor)). Each role can have its own model. The [evaluator](evaluator.md) is configured separately.
 
 ![Model settings](../../images/site/en/settings-models-desktop.png)
 
@@ -17,6 +17,16 @@ Providers:
 The input limit in characters is a safeguard, not a token count. Before sending, the application estimates the tokens of the whole request and adds the response reserve; the sum must fit the context. Raising the numbers in the form does not increase the model's real context. Text is never silently cut: a request that does not fit is not sent.
 
 When the Venice or OpenRouter model list reports the chosen model's maximum context or maximum response, the form does not let you save larger values: an explanation appears under the model and the field shows the allowed maximum. The server checks the same on save, including for the separate writer model, the classifier and the shared provider. If the list is unavailable or the model reports no bounds, saving is not blocked.
+
+## Auditor
+
+The auditor checks the links of a scene when you press **Check scene** ([checking a scene](workspace.md#checking-a-scene-with-the-auditor)). It does not change any text. Until you save its form, it uses the **Editor**’s provider and model, the **Planner**’s limits and temperature 0.2; the auditor form reminds you with the note “Until the auditor is saved, it uses the editor’s model.” Once saved, the settings are its own, and changing the editor’s model no longer affects the auditor.
+
+The auditor has three prompts. The role prompt checks the prose against the brief, and the prompts block also holds the **Brief check prompt** (the brief against the plan and the previous scene’s memory) and the **Memory check prompt** (the scene memory against its prose). An empty text brings back the standard prompt.
+
+Consent for a model without Uncensored and the refusal mark are separate for the auditor: the editor’s consent for the same model does not carry over. The shared provider button changes the auditor’s model only once the auditor is saved; an unsaved auditor follows the editor’s model anyway. The auditor goes into a saved preset only when it is saved (such a preset has format version 3).
+
+The auditor’s input limit has to fit the plan or brief, the previous scene’s memory, the prose, the character cards and the canon. If the input does not fit, that link is not checked and nothing is charged ([troubleshooting](troubleshooting.md#while-working)).
 
 ## A separate writer model for scenes 0-1
 
@@ -94,7 +104,7 @@ The reserve before a call is conservative: it counts the whole request and the f
 
 ## Saved presets
 
-The **Saved model presets** block stores the settings of the four roles together with their prompts, so you can apply them to another story.
+The **Saved model presets** block stores the settings of the roles together with their prompts (the auditor’s only when it is saved), so you can apply them to another story.
 
 1. Save all roles with the usual forms.
 2. Expand **Save current settings or import a preset**, enter a name and press **Save preset**.

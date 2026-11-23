@@ -86,6 +86,8 @@ class RunCoordinator:
             tasks=[{'scene_id':request.scene_id,'stage':'edit'} for _ in range(request.edit_pass_limit)]
         elif request.mode=='classify':
             tasks=[{'scene_id':request.scene_id,'stage':'classify'}]
+        elif request.mode=='audit':
+            tasks=[{'scene_id':request.scene_id,'stage':'audit'}]  # audit_run picks the link on every step
         elif request.mode=='memory_carry':
             start=next(s for s in scenes if s.id==request.scene_id)
             tasks=[{'scene_id':s.id,'stage':'memory_carry'} for s in scenes if s.position>=start.position]
@@ -207,7 +209,8 @@ class RunCoordinator:
                 stage=name if name in STAGES else None,
                 edit_workflow='loop' if name in {'scene','remaining'} else 'single',
                 editor_source_head=editor_source_head if name=='edit_loop' else None,
-                editor_source_version_id=editor_source_version_id if name=='edit_loop' else None
+                editor_source_version_id=editor_source_version_id if name=='edit_loop' else None,
+                audit_scope='scene' if name=='audit' else None
             )
             # One captured view serves every operation of this request.
             if view is None:view=self.repo.context_view(story_id)
@@ -270,10 +273,11 @@ class RunCoordinator:
             attempts=self.repo.list_attempts(run.story_id,run.id)
             task=run.tasks[run.cursor] if run.cursor<len(run.tasks) else None
             latest={}
+            from .audit_output import AUDIT_STAGES
             for attempt in attempts:
                 if (
                     task
-                    and attempt.stage == task['stage']
+                    and (attempt.stage == task['stage'] or task['stage'] == 'audit' and attempt.stage in AUDIT_STAGES)
                     and attempt.scene_id == task.get('scene_id')
                     and attempt.context.get('run_cursor', run.cursor) == run.cursor
                 ):
@@ -488,6 +492,9 @@ class RunCoordinator:
             return execute(self,id)
         if self.get_run(id).request.mode=='memory_carry':
             from .memory_carry import execute
+            return execute(self,id)
+        if self.get_run(id).request.mode=='audit':
+            from .audit_run import execute
             return execute(self,id)
         while True:
             with self.condition:

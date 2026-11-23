@@ -53,7 +53,8 @@ def operation(repo,action,**data):
             if story.revision!=data['expected_revision']:raise RevisionConflict('Налаштування твору вже змінено')
             _read(db,f"role_profile:{data['profile_id']}:{data['version']}")
             roles={key:RoleSettings.model_validate(value) for key,value in data['roles'].items()}
-            if set(roles)!=ROLE_SET:raise ValueError('Потрібні чотири ролі')
+            # Presets of versions 1 and 2 carry four roles and leave the auditor row as it is; version 3 carries all five.
+            if set(roles) not in (ROLE_SET,ROLE_SET-{'auditor'}):raise ValueError('Потрібні чотири основні ролі або п’ять із Ревізором')
             write_roles_in_transaction(repo,db,story.id,roles)
             if data['evaluator'] is not None:
                 from ..evaluation.story_adapter import EvaluationSettings,validate_evaluation_settings

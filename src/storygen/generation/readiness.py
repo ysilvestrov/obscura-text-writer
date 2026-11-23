@@ -51,6 +51,9 @@ def preview(repo, request, view=None):
         return dict(ready=False,reason=IMPACT_REMOVED,roles={},calls=0,evaluator=None)
     if request.mode=='memory_carry':
         return dict(ready=True,reason=None,roles={},calls=0,evaluator=None,warnings=[])
+    if request.mode=='audit':  # VALID-LINKS: carry-pending links count (no call), never refuse the run
+        from .audit_run import readiness
+        return readiness(repo,request,view=view)
     if request.mode in {'rewrite','edit_loop'} and request.scene_id:
         from ..memory.carry import carry_blocks, carry_refusal
         carry_view=view if view is not None else repo.context_view(request.story_id)
@@ -202,6 +205,9 @@ def pending_preview(repo,run):
         return dict(ready=False,reason=IMPACT_REMOVED,roles={},calls=0,evaluator=None)
     if run.request.mode=='memory_carry':
         return dict(ready=True,reason=None,roles={},calls=0,evaluator=None)
+    if run.request.mode=='audit':
+        from .audit_run import readiness
+        return readiness(repo,run.request,resume=True)
     if run.request.mode=='rewrite':
         if any(a.stage=='rewrite' and a.context.get('rewrite_proposal') for a in repo.list_attempts(run.story_id,run.id)):
             return dict(ready=False,reason='Спершу перегляньте пропозицію письменника; новий виклик запускається окремо',roles={},calls=0,evaluator=None)

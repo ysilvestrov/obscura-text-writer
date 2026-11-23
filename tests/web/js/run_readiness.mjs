@@ -38,6 +38,12 @@ assert.doesNotMatch(confirmationText(loop),/writer|memory/);
 const remaining=editorLoopOperation({ready:true,calls:8,edit_loop_scenes:2,edit_pass_limit:3,roles:{editor:{provider:'local',model:'editor'}}});
 assert.equal(remaining.calls,8);
 assert.match(confirmationText(remaining),/для кожної сцени/);
+// VALID-LINKS §9: the scene check lists the links it visits in reading order and says the count is an upper bound.
+const audit=confirmationText({ready:true,calls:2,roles:{auditor:{provider:'local',model:'auditor-model'}},warnings:[],
+  links:[{link:'brief',status:'unchecked',reason:null},{link:'prose',status:'discrepancy',reason:'x'},{link:'memory',status:'unchecked',reason:null}]});
+assert.match(audit,/Зв’язки до перевірки: завдання, проза, пам’ять\./);
+assert.match(audit,/межа/);assert.match(audit,/auditor-model/);
+assert.doesNotMatch(confirmation,/Зв’язки до перевірки/);
 {
   const short=(mode,state)=>({id:mode+state,story_id:'s',request_id:'q',state,created_at:'2026-01-01T00:00:00+00:00',request:{story_id:'s',mode},impact:null});
   const history=[short('prepare','completed'),short('stage','completed')];

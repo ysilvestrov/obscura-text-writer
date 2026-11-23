@@ -1,6 +1,6 @@
 # Obscura Text Writer
 
-Obscura is a local application for writing prose from your own outline. You work through the story scene by scene, and four model roles (planner, writer, editor and memory) help you draft a brief, write a draft, edit it and remember what happened.
+Obscura is a local application for writing prose from your own outline. You work through the story scene by scene, and four model roles (planner, writer, editor and memory) help you draft a brief, write a draft, edit it and remember what happened, and a fifth, the auditor, checks on request that these texts still match.
 
 The application runs on your computer. Stories are stored locally; a cloud provider, if you choose one, receives only the context of the action you start.
 

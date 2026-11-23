@@ -202,7 +202,7 @@ def section_fingerprint(data: dict, section: str) -> str:
 
 
 def preset_fingerprint(data: dict, evaluator: dict | None) -> str:
-    """A preset replaces all four roles and, when it carries one, the evaluator: both are in the check."""
+    """A preset replaces its roles (four, or five with the auditor) and, when it carries one, the evaluator: both are in the check."""
     return fingerprint({'roles': {role: role_scope(data, role) for role in ROLES},
                         'evaluator': {key: value for key, value in evaluator.items() if key != 'block'} if evaluator else None})
 
@@ -690,7 +690,15 @@ def build_server(http: httpx.Client | None, client_name: str | None = None, *, c
                 'warnings': manifest['warnings'], 'word_count': manifest['word_count'], 'age_rating': manifest['age_rating']}
 
     def read_settings(story_id: str) -> dict:
-        return request('GET', f'/api/stories/{story_id}/settings')
+        data = request('GET', f'/api/stories/{story_id}/settings')
+        # MODEL-001: an auditor without a row of its own comes marked `derived` (the editor's model); for the tools it is
+        # not configured, so update_settings never copies the derived values and their marker into a saved row.
+        roles = data.get('roles') or {}
+        if (roles.get('auditor') or {}).get('derived'):
+            data['roles'] = {role: settings for role, settings in roles.items() if role != 'auditor'}
+            data['prompts'] = {role: text for role, text in (data.get('prompts') or {}).items() if role != 'auditor'}
+            data['prompt_contracts'] = {role: value for role, value in (data.get('prompt_contracts') or {}).items() if role != 'auditor'}
+        return data
 
     def read_evaluator(story_id: str) -> dict | None:
         response = send('GET', f'/api/stories/{story_id}/evaluator')
@@ -721,7 +729,7 @@ def build_server(http: httpx.Client | None, client_name: str | None = None, *, c
     @server.tool()
     def get_settings(story_id: str, include_prompts: bool = False, models_for_role: str | None = None,
                      models_query: str | None = None) -> dict[str, Any]:
-        """Налаштування твору: профіль письма й обсяг (writing), чотири ролі (planner, writer, editor, memory) з
+        """Налаштування твору: профіль письма й обсяг (writing), п’ять ролей (planner, writer, editor, memory, auditor; Ревізор без власних налаштувань бере модель редактора) з
         fingerprint кожного розділу для update_settings, стан ключа провайдера (без значення), пресети ролей і
         preset_fingerprint для apply_role_preset. include_prompts додає тексти промптів; models_for_role — список моделей
         провайдера цієї ролі (models_query фільтрує за підрядком). Нічого не змінює й моделі не викликає."""
@@ -763,7 +771,7 @@ def build_server(http: httpx.Client | None, client_name: str | None = None, *, c
     def update_settings(story_id: str, section: str, expected_fingerprint: str, fields: dict[str, Any]) -> dict[str, Any]:
         """Змінює лише передані поля одного розділу налаштувань поверх прочитаного (fingerprint розділу з get_settings).
         section: writing (target_words, ending_goal, genre, tone, point_of_view, tense, rules, previous_tail_chars, tone_sample) або
-        роль planner/writer/editor/memory (provider, model, base_url лише для local, timeout, response_mode, include_usage,
+        роль planner/writer/editor/memory/auditor (provider, model, base_url лише для local, timeout, response_mode, include_usage,
         local_disable_thinking, venice_include_system_prompt, venice_disable_thinking, venice_reasoning_effort,
         openrouter_reasoning_effort (лише OpenRouter: none вимикає reasoning, рівні minimal…max; дозволене моделлю — у полі reasoning
         списку моделей: mandatory=true забороняє none, efforts=[] — рівень вибрати не можна, null — будь-який),
@@ -825,7 +833,7 @@ def build_server(http: httpx.Client | None, client_name: str | None = None, *, c
     @server.tool()
     def apply_role_preset(story_id: str, profile_id: str, version: int, expected_fingerprint: str, confirm: bool = False) -> dict[str, Any]:
         """Застосовує збережений пресет ролей (id і version з get_settings.presets). Без confirm лише показує, що
-        зміниться; confirm=true застосовує всі чотири ролі й, якщо пресет його містить, оцінювача — як кнопка на сторінці.
+        зміниться; confirm=true застосовує ролі пресета й, якщо пресет його містить, оцінювача — як кнопка на сторінці.
         expected_fingerprint — preset_fingerprint з get_settings. Моделі не викликає."""
         identifier(story_id), identifier(profile_id)
         if not isinstance(version, int) or version < 1:

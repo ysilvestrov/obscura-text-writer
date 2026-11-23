@@ -428,6 +428,10 @@ pre { white-space: pre-wrap; overflow-wrap: anywhere; font: 14px/1.7 var(--font-
 #run-status.expanded .run-summary::before { content: '▾'; }
 .workspace-status-row #run-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .scene-status-badge { padding: 0.125rem 0.5rem; border-radius: 999px; background: var(--accent-soft); color: var(--text-primary); }
+/* VALID-LINKS: the auditor's discrepancies under their row: items with quotes, then the author's actions. */
+.link-discrepancies { margin: 0.25rem 0 0; padding-left: 1.25rem; }
+.link-discrepancy blockquote { margin: 0.25rem 0 0.5rem; padding-left: 0.75rem; border-left: 3px solid var(--border-color); color: var(--text-secondary); }
+.link-audit-summary, .link-attention-actions { margin: 0.25rem 0 0; }
 .external-change { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; color: var(--warning); font-weight: 600; }
 .run-options { flex-basis: 100%; }
 /* R20-WORKSPACE-S03: the status row and the consequence note scroll under the material. */

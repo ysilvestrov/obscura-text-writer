@@ -10,7 +10,7 @@ from ..roles import ROLES, ROLE_LABELS, STAGE_ROLE
 
 POLICY_ROLES = ROLES
 
-# Scene stages from the registry plus stages outside the scene pipeline.
+# Scene stages from the registry (including the per-scene audit_* stages of the auditor) plus stages outside the scene pipeline.
 STAGE_POLICY_ROLE = {**STAGE_ROLE, 'publication_suggest': 'writer', 'timeline_summary': 'memory',
     'rewrite': 'writer', 'classify': 'editor'}
 # Stages whose material spans several scenes: the request rating also counts the scenes behind `input_refs`.

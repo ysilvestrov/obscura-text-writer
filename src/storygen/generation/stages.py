@@ -5,6 +5,7 @@ from ..domain import StageAttempt, new_id
 from ..memory.journal import load_memory, parse_memory_result
 from ..memory.service import journal_before, validate_memory_journal
 from ..providers.policy import STAGE_POLICY_ROLE, check_consent, check_refusal, context_rating, record_refusal
+from .audit_output import AUDIT_STAGES
 from .stream_buffer import StreamBuffer
 
 
@@ -194,6 +195,14 @@ def execute_stage(
         if stage=='timeline_summary':
             from .timeline_summary import finish_summary
             return finish_summary(repo,attempt,context,text,run_id)
+        if stage in AUDIT_STAGES:
+            # VALID-LINKS: the auditor reads, it does not write a version; audit.commit_audit_verdict writes the verdict.
+            from .audit_output import outcome, parse_audit, verdict_discrepancies
+            response=parse_audit(text)
+            verdict_discrepancies(response)  # storage limits checked before the attempt counts as completed
+            attempt.context['audit_verdict']={**response.model_dump(mode='json'),'outcome':outcome(response)}
+            attempt.state='completed'
+            return repo.save_attempt(attempt)
         if stage=='publication_suggest':
             from ..publication_suggestions import parse_suggestions, fingerprint
             proposal={'source_stamp':json.loads(context.fragments['publication_sources']),
@@ -397,6 +406,9 @@ def execute_stage(
             if context.fragments.get('edit_loop_run_id') and failure['category']!='publication':
                 attempt.context['edit_loop_failure_origin']='model_response'
             attempt.error='Помилка редактора: '+failure['message']+'. Оригінальну відповідь збережено; автоматичного повтору немає.'
+        elif stage in AUDIT_STAGES:
+            attempt.error=str(exc)+'. Висновку немає; автоматичного повтору немає.'  # trusted parse_audit message
+            attempt.context['audit_failure']={'category':'protocol','message':attempt.error}
         elif stage in {'brief','prepare'}:
             from .planner_output import planner_failure
             failure=planner_failure(exc)

@@ -95,6 +95,8 @@ class RoleSettings(DomainModel):
     temperature: float | int = Field(default=0.7,ge=0,le=2)
     prompt_version_id: str | None = None
     prepare_prompt_version_id: str | None = None
+    # Auditor only (MODEL-001): custom prompts of the audit_brief / audit_memory stages; prompt_version_id is audit_prose.
+    stage_prompt_version_ids: dict[str,str] = Field(default_factory=dict)
     memory_mode: Literal['evidence_delta'] = 'evidence_delta'
     edit_mode: Literal['prose', 'patches', 'diff'] = 'prose'
     edit_review: Literal['auto', 'review'] = 'auto'
@@ -102,6 +104,13 @@ class RoleSettings(DomainModel):
     classification: ClassificationSettings | None = None
     stop_sequences: list[Annotated[str,Field(min_length=1,max_length=200)]] = Field(default_factory=list,max_length=4)
     low_rating_variant: RoleVariant | None = None
+
+    @field_validator('stage_prompt_version_ids')
+    @classmethod
+    def stage_prompt_keys(cls,value):
+        if set(value)-{'audit_brief','audit_memory'}:
+            raise ValueError('Окремі промпти етапів можливі лише для audit_brief і audit_memory')
+        return value
 
     @field_validator('memory_mode',mode='before')
     @classmethod

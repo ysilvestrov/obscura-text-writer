@@ -10,7 +10,7 @@ from storygen.providers.models import ModelOption  # noqa: E402
 
 from tests.mcp.test_bridge import call, obscura, text  # noqa: E402
 
-ROLES = ('planner', 'writer', 'editor', 'memory')
+ROLES = ('planner', 'writer', 'editor', 'memory', 'auditor')
 
 
 def ok(result):

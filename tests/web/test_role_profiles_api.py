@@ -29,7 +29,9 @@ def test_profile_http_roundtrip_and_conflict(tmp_path):
         page=client.get(f"/stories/{target['id']}/settings")
         assert 'role-profiles.js' in page.text
         settings=client.get(f"/api/stories/{target['id']}/settings").json()
-        assert set(settings['roles'])=={'planner','writer','editor','memory'}
+        # Presets before version 3 carry no auditor: it stays derived from the editor (MODEL-001), without a row of its own.
+        assert {role for role,config in settings['roles'].items() if not config.get('derived')}=={'planner','writer','editor','memory'}
+        assert settings['roles']['auditor']['derived'] is True
 
 
 def test_import_rejects_secret_without_echo_and_has_size_limit(tmp_path):

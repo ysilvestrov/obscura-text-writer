@@ -30,7 +30,9 @@ IMPACT_REMOVED = 'Перевірку впливу вилучено; скорис
 class RunRequest(DomainModel):
     story_id: str
     scene_id: str | None = None
-    mode: Literal['stage','scene','remaining','prepare','rebuild_memory','evaluate','classify','edit_loop','publication_suggest','rewrite','impact','timeline_summary','memory_carry'] = 'scene'
+    mode: Literal['stage','scene','remaining','prepare','rebuild_memory','evaluate','classify','edit_loop','publication_suggest','rewrite','impact','timeline_summary','memory_carry','audit'] = 'scene'
+    # 'audit' (VALID-LINKS, R-44 PR 3): the auditor checks the links of scene_id; 'story' comes with the book validation.
+    audit_scope: Literal['scene'] | None = None
     # 'memory_carry': the model-free carry of a new memory into later journals; scene_id is the first scene to carry.
     # 'impact' (R-28) stays readable for saved runs; Worker.enqueue refuses it (IMPACT_REMOVED, R-44 PR 1).
     impact_plan_fingerprint: str | None = Field(default=None,pattern=r'^[a-f0-9]{64}$')
@@ -75,10 +77,12 @@ class RunRequest(DomainModel):
             raise ValueError('Підсумок хронології належить блоку твору, не окремій сцені')
         if self.mode=='publication_suggest' and self.scene_id is not None:
             raise ValueError('Пропозиція публікації належить усьому твору, не окремій сцені')
+        if (self.mode=='audit')!=(self.audit_scope is not None):
+            raise ValueError('Обсяг перевірки задається лише для перевірки Ревізором, і там він обов’язковий')
         if self.budget_limit_usd is not None:
             from .billing.models import money
             money(self.budget_limit_usd)
-        if self.mode in {'stage','scene','remaining','rebuild_memory','classify','edit_loop','memory_carry'} and not self.scene_id:
+        if self.mode in {'stage','scene','remaining','rebuild_memory','classify','edit_loop','memory_carry','audit'} and not self.scene_id:
             raise ValueError('Оберіть початкову сцену')
         if self.mode=='stage' and not self.stage:
             raise ValueError('Оберіть етап')
@@ -104,6 +108,7 @@ class Run(DomainModel):
     cancelled_before_enqueue: bool = False
     # MCP-BRIDGE-S50: 'mcp' for a run the bridge started; the bridge may cancel only those.
     origin: Literal['mcp'] | None = None
+    # VALID-LINKS: where an audit run stopped — scene_id, link, outcome, verdict_id, reason.
     # MEMORY-CARRY: where a carry run stopped — failed_scene_id + memory_id (the memory head it could not carry), or
     # stopped_scene_id for a merge that must be confirmed; reason and detail for the author.
     checkpoint: dict | None = None

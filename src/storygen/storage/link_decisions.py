@@ -60,8 +60,9 @@ class InvalidationTargetMissing(KeyError):
 
 def invalidate_links(repo, story_id: str, scene_ids: list[str], reason: dict) -> list[str]:
     """VALID-LINKS rule (г): the author's «Так» after a card or location change. One transaction; for every scene one
-    LinkInvalidation of Z1 and Z2 with their current fingerprints (a missing or unavailable link is skipped, a scene with
-    neither writes nothing). Returns the scenes that got a record."""
+    LinkInvalidation of Z1 and Z2 with their current fingerprints (a missing link and link_state's own unavailable are
+    skipped, an auditor's unavailable verdict is covered; a scene with neither writes nothing). Returns the scenes that
+    got a record."""
     from .link_records import InvalidationReason, LinkInvalidation, write_invalidation, CARD_LINKS
     cause = InvalidationReason.model_validate(reason)
     written = []
@@ -75,7 +76,8 @@ def invalidate_links(repo, story_id: str, scene_ids: list[str], reason: dict) ->
         stamp = now()
         for scene_id in dict.fromkeys(scene_ids):
             states = scene_links(view, scene_id)
-            links = [link for link in CARD_LINKS if states[link].status not in {'missing', 'unavailable'}]
+            links = [link for link in CARD_LINKS if states[link].status != 'missing'
+                     and not (states[link].status == 'unavailable' and states[link].source is None)]
             if not links:
                 continue
             write_invalidation(db, LinkInvalidation(id=new_verdict_id(), story_id=story_id, scene_id=scene_id, links=links,
@@ -83,3 +85,34 @@ def invalidate_links(repo, story_id: str, scene_ids: list[str], reason: dict) ->
                                                     reason=cause, created_at=stamp))
             written.append(scene_id)
     return written
+
+
+def write_auditor_verdict(repo, story_id: str, scene_id: str, link: str, *, fingerprint: str | None, marker: int | None,
+                          outcome: str, confidence: int | None = None, discrepancies=(), reason: str | None = None,
+                          attempt_id: str | None = None, run_id: str | None = None) -> tuple[str, str | None]:
+    """VALID-LINKS: the auditor's verdict in one transaction with CAS. ('written', id); ('stale', None) when the link
+    fingerprint differs from `fingerprint` or, with a `marker`, an invalidation of this link of the scene has a rowid
+    above it (design §7: a card invalidation covers only CARD_LINKS, so it never makes a Z3 verdict stale);
+    ('structural', None) when link_state itself reports the link unavailable (no previous memory, carry, no memory):
+    such a state clears with its cause, while a record would outlive it under the same fingerprint."""
+    from .link_records import load_latest_invalidation_rowid
+    with repo.db.connection() as db:
+        db.execute('BEGIN IMMEDIATE')
+        view = ContextView(repo, db, story_id)
+        state = link_state(view, scene_id, link)
+        if state.status == 'unavailable' and state.source is None:
+            return 'structural', None
+        if fingerprint is None or state.status == 'missing' or state.fingerprint != fingerprint:
+            return 'stale', None
+        if marker is not None and load_latest_invalidation_rowid(db, story_id) > marker and any(
+                record.scene_id == scene_id and link in record.links and view.link_order[record.id] > marker
+                for record in view.link_invalidations):
+            return 'stale', None
+        verdict = LinkVerdict(id=new_verdict_id(), story_id=story_id, scene_id=scene_id, link=link, inputs=state.inputs,
+                              fingerprint=fingerprint, source='auditor', outcome=outcome, confidence=confidence,
+                              discrepancies=list(discrepancies), reason=reason, attempt_id=attempt_id, run_id=run_id,
+                              created_at=now())
+        write_verdict(db, verdict)
+        if link == 'memory' and outcome == 'valid':
+            _record_equivalence(db, view, scene_id, verdict)  # Z3 kept after a prose change (design §4)
+    return 'written', verdict.id

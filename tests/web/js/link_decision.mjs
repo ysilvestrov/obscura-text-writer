@@ -59,4 +59,31 @@ assert.deepEqual(pendingLinks(view({brief:link('missing'),prose:link('missing'),
 assert.deepEqual(pendingLinks(view({memory:link('unavailable','unknown_reason')}),'s2',scenes),[]);
 for(const item of pendingLinks(view({...noPrevious,memory:link('unavailable','carry_failed')},{previous_scene_id:'s1'}),'s2',scenes))
   assert.ok(item.actions.every(action=>action.type!=='approve'),JSON.stringify(item));
+// The auditor's discrepancy: a hint to reread, with its confidence, items and quotes, and the author's decisions of §8.
+const items=[{text:'Місце не збігається',quote:'У студії тихо.'},{text:'Немає кроку з планом',quote:null}];
+const discrepancy=(fingerprint,confidence=40)=>({status:'discrepancy',source:'auditor',reason:'Підсумок Ревізора',fingerprint,
+  confidence,discrepancies:items,summary:'Підсумок Ревізора'});
+const found=(key,text,fingerprint,actions,confidence=40)=>({key,text,params:{p0:confidence},discrepancies:items,
+  summary:'Підсумок Ревізора',actions});
+assert.deepEqual(pendingLinks(view({brief:discrepancy('fb')}),'s2',scenes),[
+  found('brief','link.brief_discrepancy','fb',[approve('brief','fb','link.approve_brief')])]);
+assert.deepEqual(pendingLinks(view({prose:discrepancy('fp',72)}),'s2',scenes),[
+  found('prose','link.prose_discrepancy','fp',[approve('prose','fp','link.approve_prose')],72)]);
+assert.deepEqual(pendingLinks(view({memory:discrepancy('fm')}),'s2',scenes),[
+  found('memory','link.memory_discrepancy','fm',[approve('memory','fm','link.keep_memory'),memory('s2','link.new_memory')])]);
+// A verdict without a stated confidence still shows its row.
+assert.deepEqual(pendingLinks(view({brief:{...discrepancy('fb'),confidence:null,discrepancies:[],summary:null}}),'s2',scenes),[
+  {key:'brief',text:'link.brief_discrepancy',params:{p0:'—'},discrepancies:[],summary:null,actions:[approve('brief','fb','link.approve_brief')]}]);
+
+// The auditor could not check a link: the reason, and for an input over its limits the auditor's settings.
+const overflow='Вхід перевірки перевищує ліміт Ревізора: 900000 символів із 400000';
+const unavailable=(reason)=>({status:'unavailable',source:'auditor',reason,fingerprint:'fu'});
+const settings={type:'settings',label:'link.open_auditor_settings'};
+for(const link of ['brief','prose','memory'])
+  assert.deepEqual(pendingLinks(view({[link]:unavailable(overflow)}),'s2',scenes),[
+    {key:link,text:'link.audit_unavailable',params:{},reason:overflow,actions:[settings]}]);
+assert.deepEqual(pendingLinks(view({prose:unavailable('Вхід перевірки перевищує ліміт Ревізора: приблизно 9000 токенів із 4000')}),'s2',scenes)[0].actions,[settings]);
+// Another reason of the auditor (unreadable material): the explanation without a settings button, never an approval.
+assert.deepEqual(pendingLinks(view({brief:unavailable('Матеріал перевірки не прочитано')}),'s2',scenes),[
+  {key:'brief',text:'link.audit_unavailable',params:{},reason:'Матеріал перевірки не прочитано',actions:[]}]);
 console.log('Link panel actions passed');

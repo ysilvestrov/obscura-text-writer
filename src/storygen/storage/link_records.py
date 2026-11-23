@@ -216,3 +216,9 @@ def check_invalidations(db, scenes, report) -> None:
                 raise ValueError('Invalid record')
         except (ValueError, TypeError):
             report.add('invalid_link_invalidation', key, 'Invalid format or ownership of a link invalidation')
+
+
+def load_latest_invalidation_rowid(db, story_id: str) -> int:
+    """Rowid of the story's latest invalidation, 0 without one: the auditor's `invalidation_marker` is compared with it."""
+    row = db.execute('SELECT MAX(rowid) FROM app_settings WHERE key LIKE ?', (INVALIDATION_PREFIX + story_id + ':%',)).fetchone()
+    return row[0] or 0
