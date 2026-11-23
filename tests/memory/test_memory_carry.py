@@ -309,3 +309,44 @@ def test_carry_reasons_name_the_scene_and_action(tmp_path):
     with pytest.raises(ValueError, match='створіть нову пам’ять цієї сцени') as error:
         build_context(repo, scenes[2].id, 'brief', settings)
     assert repo.get_scene(scenes[1].id).title in str(error.value)
+
+
+def test_selecting_a_memory_again_carries_again(tmp_path):
+    repo, story, scenes = book(tmp_path, 2)
+    old = repo.get_scene(scenes[0].id).heads['memory']
+    new_memory(repo, scenes[0])
+    new = repo.get_scene(scenes[0].id).heads['memory']
+    run_carries(repo, story.id)
+    for head in (old, new):
+        repo.set_head(scenes[0].id, 'memory', head, repo.get_scene(scenes[0].id).revision)
+        assert state(repo, story, scenes[1]) == 'pending'
+        run_carries(repo, story.id)
+        assert state(repo, story, scenes[1]) == 'current'
+    assert len(carry_runs(repo, story.id)) == 3
+
+
+def test_stalled_carry_keeps_its_scenes_pending(tmp_path):
+    repo, story, scenes = book(tmp_path, 2)
+    new_memory(repo, scenes[0])
+    (run,) = carry_runs(repo, story.id)
+    for stalled in ('paused', 'failed', 'interrupted'):
+        run.state = stalled
+        repo.save_run(run)
+        assert state(repo, story, scenes[1]) == 'pending'
+    # Resumed, it carries the scene.
+    run.state = 'queued'
+    repo.save_run(run)
+    run_carries(repo, story.id)
+    assert state(repo, story, scenes[1]) == 'current'
+
+
+def test_chat_stage_result_refused_while_carrying(tmp_path):
+    from fastapi.testclient import TestClient
+    from storygen.application.settings import AppSettings
+    from storygen.web.app import create_app
+    repo, story, scenes = book(tmp_path, 2)
+    new_memory(repo, scenes[0])
+    client = TestClient(create_app(AppSettings(data_dir=tmp_path)), base_url='http://127.0.0.1:8765')
+    response = client.post(f'/api/scenes/{scenes[1].id}/chat-result/memory', json={
+        'task_fingerprint': '0' * 64, 'text': '{}', 'external_origin': {'client': 'Claude', 'model': 'm'}})
+    assert response.status_code == 409 and CARRYING in response.json()['detail']

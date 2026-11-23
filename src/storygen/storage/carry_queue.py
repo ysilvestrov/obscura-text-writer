@@ -4,14 +4,19 @@ from ..domain import Scene, new_id
 from ..run_models import Run, RunEvent, RunRequest
 
 ACTIVE = ('queued', 'running', 'pause_requested', 'cancellation_requested')
+# A carry stopped before its end that can be resumed: its remaining scenes stay pending while it is the latest carry run.
+STALLED = ('paused', 'failed', 'interrupted')
 
 
 def load_carry_runs(db, story_id: str) -> list[Run]:
-    """Active carry runs of the story and finished ones that recorded a failed scene, in queue order."""
+    """Active and stalled carry runs of the story, finished ones that recorded a failed scene and the latest carry run,
+    in queue order."""
+    carry = "story_id=? AND json_extract(payload,'$.request.mode')='memory_carry'"
     rows = db.execute(
-        "SELECT payload FROM runs WHERE story_id=? AND json_extract(payload,'$.request.mode')='memory_carry' "
-        "AND (state IN (?,?,?,?) OR json_extract(payload,'$.checkpoint.failed_scene_id') IS NOT NULL) ORDER BY rowid",
-        (story_id, *ACTIVE))
+        f"SELECT payload FROM runs WHERE {carry} AND (state IN (?,?,?,?,?,?,?) "
+        f"OR json_extract(payload,'$.checkpoint.failed_scene_id') IS NOT NULL "
+        f"OR rowid=(SELECT MAX(rowid) FROM runs WHERE {carry})) ORDER BY rowid",
+        (story_id, *ACTIVE, *STALLED, story_id))
     return [Run.model_validate_json(row[0]) for row in rows]
 
 
@@ -25,7 +30,8 @@ def enqueue_carry(db, scene: Scene, memory_id: str) -> Run | None:
     later = [s for s in active if s.position > scene.position]
     if not any(s.heads.get('memory') for s in later):
         return None
-    request_id = 'carry:' + memory_id
+    # The head revision keeps a version selected again (A → B → A → B) from reusing the finished run of its first time.
+    request_id = f"carry:{memory_id}:{scene.head_revisions.get('memory', 0)}"
     if db.execute('SELECT 1 FROM runs WHERE request_id=?', (request_id,)).fetchone():
         return None
     start = later[0]

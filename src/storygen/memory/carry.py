@@ -11,6 +11,7 @@ from .journal import MemoryJournal, _extend, validate_memory_journal
 CARRY_PENDING = 'Пам’ять переноситься: модельні етапи цієї сцени стануть доступні, коли перенос пам’яті дійде до неї'
 CARRY_MISSING = 'Записи сцени посилаються на твердження, яких немає в новій пам’яті попередньої сцени'
 ACTIVE = frozenset({'queued', 'running', 'pause_requested', 'cancellation_requested'})
+STALLED = frozenset({'paused', 'failed', 'interrupted'})
 MAX_CHAIN = 200
 CarryState = Literal['current', 'pending', 'failed']
 
@@ -81,8 +82,9 @@ def _compute(view) -> dict:
     from .previous import _peek_view, previous_memory
     runs = getattr(view, 'memory_carries', None) or []
     remaining, failures = set(), set()
-    for run in runs:
-        if run.state in ACTIVE:
+    for index, run in enumerate(runs):
+        # A paused, failed or interrupted carry still covers its remaining scenes until a later carry run replaces it.
+        if run.state in ACTIVE or (run.state in STALLED and index == len(runs) - 1):
             remaining.update(task.get('scene_id') for task in run.tasks[run.cursor:])
         checkpoint = run.checkpoint or {}
         if checkpoint.get('failed_scene_id'):
