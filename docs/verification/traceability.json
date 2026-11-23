@@ -404,7 +404,8 @@
         "tests/generation/test_model_policy_stages.py::test_refusal_record_failure_does_not_break_the_attempt",
         "tests/generation/test_model_policy_stages.py::test_refusal_on_rated_scene_does_not_block_the_next_plain_scene",
         "tests/integration/test_prototype_flow.py::test_refusal_mid_run_blocks_next_scene_with_explanation",
-        "tests/web/test_model_policy_api.py::test_refusal_is_listed_and_cleared"
+        "tests/web/test_model_policy_api.py::test_refusal_is_listed_and_cleared",
+        "tests/generation/test_audit_verdict.py::test_refusal_mark_of_the_auditor_blocks_the_call"
       ],
       "manual": {
         "procedure": "docs/verification/manual.md#model-policy-browser",
@@ -1046,7 +1047,8 @@
       "requirement": "PROMPT-CONTRACT",
       "scope": "Несумісний або legacy-промпт. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
       "tests": [
-        "tests/generation/test_prompt_contracts.py::test_legacy_prompt_blocks_context_before_request"
+        "tests/generation/test_prompt_contracts.py::test_legacy_prompt_blocks_context_before_request",
+        "tests/generation/test_audit_prompts.py::test_auditor_prompt_with_another_stage_contract_is_rejected"
       ]
     },
     {
@@ -1216,7 +1218,8 @@
         "tests/providers/test_nonstream_venice.py::test_only_venice_reject_and_unit_stages_wait_for_the_whole_answer",
         "tests/providers/test_nonstream_venice.py::test_whole_answer_becomes_one_delta_and_a_terminal_with_cost",
         "tests/providers/test_nonstream_venice.py::test_the_whole_answer_gets_a_300_second_read_timeout_and_errors_stay_generation_errors",
-        "tests/providers/test_nonstream_venice.py::test_cancel_returns_at_once_and_the_late_answer_closes_the_budget_record"
+        "tests/providers/test_nonstream_venice.py::test_cancel_returns_at_once_and_the_late_answer_closes_the_budget_record",
+        "tests/generation/test_audit_prompts.py::test_venice_audit_request_does_not_stream"
       ]
     },
     {
@@ -7808,6 +7811,194 @@
       "tests": [
         "tests/storage/test_link_records.py::test_fsck_reports_foreign_invalidation",
         "tests/storage/test_link_records.py::test_invalidation_rejects_links_without_fingerprints"
+      ]
+    },
+    {
+      "id": "ROLE-PROFILES-S06",
+      "requirement": "ROLE-PROFILES",
+      "scope": "Схема 3 з Ревізором: capture/apply, старі схеми не чіпають рядок Ревізора, узгодженість схеми й набору ролей, промпти етапів і сирі UUID.",
+      "tests": [
+        "tests/test_role_profiles_auditor.py::test_capture_without_auditor_keeps_version_1_and_has_no_auditor",
+        "tests/test_role_profiles_auditor.py::test_capture_with_auditor_writes_version_3_and_apply_copies_its_settings",
+        "tests/test_role_profiles_auditor.py::test_capture_with_auditor_and_variant_writes_version_3",
+        "tests/test_role_profiles_auditor.py::test_older_presets_leave_the_existing_auditor_row_unchanged",
+        "tests/test_role_profiles_auditor.py::test_schema_version_and_auditor_must_agree",
+        "tests/test_role_profiles_auditor.py::test_auditor_prompt_uuids_are_not_portable",
+        "tests/test_role_profiles_auditor.py::test_apply_rejects_a_role_set_that_is_neither_five_nor_four",
+        "tests/test_role_profiles_auditor.py::test_preset_carries_auditor_prompts_and_stage_prompts_round_trip",
+        "tests/test_role_profiles_auditor.py::test_preset_with_builtin_auditor_prompts_carries_contracts_without_text",
+        "tests/test_role_profiles_auditor.py::test_preset_rejects_an_auditor_stage_prompt_with_a_wrong_contract_or_key"
+      ]
+    },
+    {
+      "id": "VALID-AUDITOR-S01",
+      "requirement": "VALID-AUDITOR",
+      "scope": "Похідний Ревізор (провайдер редактора, ліміти планувальника, t=0.2), derived у GET, власний рядок після PUT, 422 для audit_prose, промпти етапів лише Ревізора.",
+      "tests": [
+        "tests/generation/test_auditor_settings.py::test_auditor_without_row_takes_editor_provider_and_planner_limits",
+        "tests/generation/test_auditor_settings.py::test_derived_auditor_needs_the_editor_and_falls_back_to_defaults_without_planner",
+        "tests/generation/test_auditor_settings.py::test_stage_prompts_only_for_auditor_audit_brief_and_memory",
+        "tests/generation/test_auditor_settings.py::test_settings_api_reads_a_story_without_and_with_an_auditor_row",
+        "tests/generation/test_audit_context.py::test_derived_auditor_from_editor",
+        "tests/web/test_auditor_settings_api.py::test_auditor_without_its_own_row_is_derived_from_the_editor",
+        "tests/web/test_auditor_settings_api.py::test_without_an_editor_there_is_no_auditor",
+        "tests/web/test_auditor_settings_api.py::test_put_saves_the_auditor_row_of_its_own",
+        "tests/web/test_auditor_settings_api.py::test_audit_prose_is_not_a_stage_prompt",
+        "tests/web/test_auditor_settings_api.py::test_stage_prompts_are_saved_with_their_own_contract_and_reset_by_a_blank_text",
+        "tests/web/test_auditor_settings_api.py::test_stage_prompts_belong_only_to_the_auditor"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#scene-audit-browser",
+        "reason": "check_docs.py індексує лише pytest; Playwright case tests/web/browser/scene-audit.spec.mjs (форма похідного Ревізора, збереження, перечитування після збереження редактора) виконується окремим runner, цей зв’язок не є доказом виконання."
+      }
+    },
+    {
+      "id": "VALID-AUDITOR-S02",
+      "requirement": "VALID-AUDITOR",
+      "scope": "Входи З1–З3, застарілі завдання й П₀ читаються, перша сцена без П₀, власний і стандартний промпт за мовою й контрактом етапу.",
+      "tests": [
+        "tests/generation/test_audit_context.py::test_second_scene_inputs_by_link",
+        "tests/generation/test_audit_context.py::test_stale_brief_still_builds",
+        "tests/generation/test_audit_context.py::test_stale_previous_memory_still_builds",
+        "tests/generation/test_audit_context.py::test_first_scene_without_series_has_no_previous_memory",
+        "tests/generation/test_audit_context.py::test_custom_prompt_version_is_used",
+        "tests/generation/test_audit_context.py::test_english_story_uses_english_prompt",
+        "tests/generation/test_audit_prompts.py::test_default_prompt_reads_the_stage_file",
+        "tests/generation/test_audit_prompts.py::test_expected_contract_is_json_v1",
+        "tests/generation/test_audit_prompts.py::test_custom_auditor_prompts_validate_against_their_own_stage",
+        "tests/generation/test_auditor_settings.py::test_prompt_version_for_picks_the_stage_prompt",
+        "tests/generation/test_auditor_settings.py::test_stage_prompt_of_another_story_is_rejected",
+        "tests/generation/test_auditor_settings.py::test_settings_api_stores_a_custom_auditor_main_prompt_with_its_stage_contract"
+      ]
+    },
+    {
+      "id": "VALID-AUDITOR-S03",
+      "requirement": "VALID-AUDITOR",
+      "scope": "Поріг 90 без розбіжностей, неправильна відповідь — збій без висновку й повтору, strict-схема відповіді, без версії.",
+      "tests": [
+        "tests/generation/test_audit_output.py::test_threshold",
+        "tests/generation/test_audit_output.py::test_invalid_answer_raises",
+        "tests/generation/test_audit_output.py::test_limits_are_inclusive_and_error_is_ukrainian",
+        "tests/generation/test_audit_output.py::test_stage_constants",
+        "tests/generation/test_audit_prompts.py::test_json_schema_request_uses_the_answer_model",
+        "tests/generation/test_audit_verdict.py::test_confident_answer_without_discrepancies_is_a_valid_auditor_verdict",
+        "tests/generation/test_audit_verdict.py::test_audit_saves_no_version",
+        "tests/generation/test_audit_verdict.py::test_one_discrepancy_with_high_confidence_is_a_discrepancy",
+        "tests/generation/test_audit_verdict.py::test_low_confidence_without_discrepancies_is_a_discrepancy",
+        "tests/generation/test_audit_verdict.py::test_wrong_answer_fails_the_attempt_without_verdict_or_retry"
+      ]
+    },
+    {
+      "id": "VALID-AUDITOR-S04",
+      "requirement": "VALID-AUDITOR",
+      "scope": "Переповнення — висновок unavailable без виклику й повторне вимірювання; стан link_state unavailable — без виклику й запису; missing і не налаштовано — помилка.",
+      "tests": [
+        "tests/generation/test_audit_context.py::test_overflow_is_unavailable_without_truncation",
+        "tests/generation/test_audit_context.py::test_unavailable_link_returns_its_reason",
+        "tests/generation/test_audit_context.py::test_missing_link_is_an_error",
+        "tests/generation/test_audit_context.py::test_auditor_not_configured",
+        "tests/generation/test_audit_verdict.py::test_overflow_writes_an_unavailable_verdict_without_a_call",
+        "tests/generation/test_audit_verdict.py::test_unavailable_link_state_gives_no_call_and_no_verdict",
+        "tests/generation/test_audit_verdict.py::test_overflow_verdict_is_measured_again_after_the_limit_grows"
+      ]
+    },
+    {
+      "id": "VALID-AUDITOR-S05",
+      "requirement": "VALID-AUDITOR",
+      "scope": "CAS за відбитком і маркер інвалідації цього зв’язку сцени; stale лишає висновок у спробі.",
+      "tests": [
+        "tests/generation/test_audit_verdict.py::test_author_brief_edit_during_the_call_makes_the_verdict_stale",
+        "tests/generation/test_audit_verdict.py::test_invalidation_of_the_scene_during_the_call_makes_the_verdict_stale",
+        "tests/generation/test_audit_verdict.py::test_invalidation_of_another_scene_during_the_call_keeps_the_verdict",
+        "tests/generation/test_audit_verdict.py::test_invalidation_before_the_call_is_behind_the_marker",
+        "tests/generation/test_audit_verdict.py::test_card_invalidation_during_a_memory_audit_keeps_the_memory_verdict",
+        "tests/generation/test_audit_verdict.py::test_latest_invalidation_rowid_is_zero_without_records",
+        "tests/generation/test_audit_verdict.py::test_commit_is_a_no_op_for_an_attempt_without_a_verdict",
+        "tests/generation/test_audit_context.py::test_invalidation_marker_is_the_latest_story_invalidation"
+      ]
+    },
+    {
+      "id": "VALID-AUDITOR-S06",
+      "requirement": "VALID-AUDITOR",
+      "scope": "Валідний З3 Ревізора пише ProseEquivalence у тій самій транзакції.",
+      "tests": [
+        "tests/generation/test_audit_verdict.py::test_valid_memory_verdict_records_the_prose_equivalence"
+      ]
+    },
+    {
+      "id": "VALID-AUDITOR-S07",
+      "requirement": "VALID-AUDITOR",
+      "scope": "Рядки розбіжності З1–З3, переповнення з кнопкою налаштувань, інша причина без кнопки; поля висновку в material_status.",
+      "tests": [
+        "tests/web/test_link_decision_ui.py::test_link_panel_actions",
+        "tests/web/test_link_decision_ui.py::test_material_status_carries_the_auditor_verdict_of_the_current_link"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#scene-audit-browser",
+        "reason": "check_docs.py індексує лише pytest; Playwright case tests/web/browser/scene-audit.spec.mjs (панель із двома розбіжностями, цитатами, упевненістю й «Затвердити завдання») виконується окремим runner, цей зв’язок не є доказом виконання."
+      }
+    },
+    {
+      "id": "VALID-RUN-S01",
+      "requirement": "VALID-RUN",
+      "scope": "Запит audit, зв’язки в порядку читання, calls лише з викликом, похідний Ревізор, відмови валідної сцени й без Ревізора, carry_pending без виклику, текст згоди.",
+      "tests": [
+        "tests/generation/test_audit_run.py::test_request_needs_a_scene_and_scope",
+        "tests/generation/test_audit_run.py::test_pending_links_in_reading_order_skip_valid_and_missing",
+        "tests/generation/test_audit_run.py::test_preview_counts_one_call_per_pending_link",
+        "tests/generation/test_audit_run.py::test_preview_lists_links_that_need_no_call",
+        "tests/generation/test_audit_run.py::test_preview_does_not_count_a_call_for_an_existing_discrepancy",
+        "tests/generation/test_audit_run.py::test_preview_uses_derived_settings_without_an_auditor_row",
+        "tests/generation/test_audit_run.py::test_valid_scene_is_not_ready",
+        "tests/generation/test_audit_run.py::test_without_editor_and_auditor_the_role_is_not_configured",
+        "tests/generation/test_audit_run.py::test_carry_pending_link_counts_but_gets_no_call",
+        "tests/generation/test_audit_run.py::test_coordinator_readiness_offers_the_audit_operation",
+        "tests/web/test_editor_loop_ui.py::test_loop_limit_and_confirmation_only_name_editor"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#scene-audit-browser",
+        "reason": "check_docs.py індексує лише pytest; Playwright case tests/web/browser/scene-audit.spec.mjs (кнопка «Перевірити сцену», перегляд зі зв’язками й моделлю, «Скасувати») виконується окремим runner, цей зв’язок не є доказом виконання."
+      }
+    },
+    {
+      "id": "VALID-RUN-S02",
+      "requirement": "VALID-RUN",
+      "scope": "Два valid ведуть до валідної сцени; discrepancy й unavailable зупиняють у needs_review з phase awaiting_author; режим у підсумку й роль налаштувань.",
+      "tests": [
+        "tests/generation/test_audit_run.py::test_two_unchecked_links_take_two_calls_and_the_scene_becomes_valid",
+        "tests/generation/test_audit_run.py::test_discrepancy_stops_for_review_then_approval_and_resume_check_the_next_link",
+        "tests/generation/test_audit_run.py::test_unavailable_link_stops_for_review_without_a_call",
+        "tests/web/test_run_status_collapse_ui.py::test_run_summary_rules",
+        "tests/web/test_workspace_navigation.py::test_workspace_settings_links_and_usage_are_explicit"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#scene-audit-browser",
+        "reason": "check_docs.py індексує лише pytest; Playwright case tests/web/browser/scene-audit.spec.mjs («Підтвердити» → needs_review на завданні) виконується окремим runner, цей зв’язок не є доказом виконання."
+      }
+    },
+    {
+      "id": "VALID-RUN-S03",
+      "requirement": "VALID-RUN",
+      "scope": "Продовження після рішення, завершення без виклику, повторна зупинка на чинній розбіжності без виклику на старті й продовженні.",
+      "tests": [
+        "tests/generation/test_audit_run.py::test_discrepancy_stops_for_review_then_approval_and_resume_check_the_next_link",
+        "tests/generation/test_audit_run.py::test_approving_the_last_link_lets_the_run_complete_on_resume",
+        "tests/generation/test_audit_run.py::test_resume_without_a_decision_stops_again_without_a_call",
+        "tests/generation/test_audit_run.py::test_start_on_an_existing_discrepancy_stops_without_a_call"
+      ]
+    },
+    {
+      "id": "VALID-RUN-S04",
+      "requirement": "VALID-RUN",
+      "scope": "stale ≤ 3 поспіль, пауза й скасування між викликами, скасований виклик ≠ збій, явний повтор після збою, interrupted після рестарту.",
+      "tests": [
+        "tests/generation/test_audit_run.py::test_stale_verdict_rechecks_the_link",
+        "tests/generation/test_audit_run.py::test_three_stale_verdicts_in_a_row_fail_the_run",
+        "tests/generation/test_audit_run.py::test_pause_between_calls",
+        "tests/generation/test_audit_run.py::test_cancel_between_calls",
+        "tests/generation/test_audit_run.py::test_cancelled_call_is_not_a_model_failure",
+        "tests/generation/test_audit_run.py::test_model_failure_fails_the_run_and_needs_an_explicit_repeat",
+        "tests/generation/test_audit_run.py::test_restart_interrupts_a_running_audit"
       ]
     }
   ]
