@@ -1,7 +1,7 @@
 # Видимий прогрес запусків і панель узгодженості сцени
 
 Дата: 2026-11-24
-Статус: чекає на затвердження
+Статус: затверджено 2026-11-24
 Spec-review: agy/gemini-4-argon @ c8df26f (author: claude) — 8 findings: 8 fixed, 0 rejected (fallback: codex — usage limit)
 
 Продовження R-44 ([#269](https://github.com/ysilvestrov/obscura-text-writer/issues/269)) за відгуком власника 24.11.2026 після першого запуску «Валідація книги (16)». Макети погоджено в чаті: прогрес — варіант A, панель — варіант 1.
