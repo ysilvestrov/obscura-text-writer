@@ -1,7 +1,7 @@
 import {live,t,msg,labelEntries,getLocale,uiText,uiAttr,uiHTML,uiInsertHTML,diagnostic} from './i18n.js';
 import {api,json,notice} from './api.js';
 import {ROLES,ROLE_STAGE} from './roles.js';
-import {registerSettingsForm,settingsSaved,withSettingsSave,settingsChanged,settingsRebaseFields,confirmSettingsReplacement,settingsFormError} from './settings-workspace.js';
+import {registerSettingsForm,settingsSaved,settingsDrafts,hasUnsavedSettings,withSettingsSave,settingsChanged,settingsRebaseFields,confirmSettingsReplacement,settingsFormError} from './settings-workspace.js';
 import {settingsSignature,expectedPromptContract} from './settings-state.js';
 import {mountClassification} from './classification-settings.js';
 import {groupRoleFields} from './settings-role-layout.js';
@@ -129,6 +129,9 @@ async function load(onlyRole=null){
           // MODEL-RETIREMENT-S04: read before load() replaces the snapshot; a retiring model is named instead of the plain success.
           const retiring=snapshot.story.model_warnings;
           settingsSaved(role);await load(role);
+          // MODEL-001: a derived auditor follows the editor's provider and the planner's limits: its form is read again too,
+          // unless the author is editing it (then its save meets the usual conflict).
+          if(['editor','planner'].includes(role)&&snapshot.roles.auditor?.derived&&!hasUnsavedSettings([...settingsDrafts.records.keys()].filter(key=>key!=='auditor')))await load('auditor');
           if(shared)for(const other of others)other.serverBaseline=structuredClone(roleScope(snapshot,other.dataset.role));
           if(retiring?.length)notice(retiring.map(diagnostic).join(' '),'warning');else notice(shared?t("m_3806da0da0af"):t("m_3face1913579"));
         });

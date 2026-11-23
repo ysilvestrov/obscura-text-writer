@@ -71,3 +71,28 @@ test('the auditor settings borrow the editor until saved',async({page,request})=
   expect(data.stage_prompts.auditor.audit_brief).toBe('Перевір завдання сцени й відповідай JSON.');
   await expect(form.locator('[data-auditor-derived]')).toHaveCount(0);
 });
+
+// MODEL-001: the derived auditor follows the editor, so saving the editor refreshes the auditor form; saving the auditor
+// afterwards meets no conflict.
+test('the derived auditor form follows a saved editor',async({page,request})=>{
+  const fixture=await(await request.post('/test-memory-decision')).json();
+  const url=`/api/stories/${fixture.story_id}/settings`;
+  await page.goto(`/stories/${fixture.story_id}/settings`);
+  await page.locator('[data-settings-role="editor"]').click();
+  await page.locator('form[data-role="editor"] [name="model"]').fill('synthetic-editor-2');
+  let saved=page.waitForResponse(r=>r.url().endsWith(url)&&r.request().method()==='PUT');
+  await page.locator('#settings-save').click();
+  expect((await saved).ok()).toBe(true);
+  await page.locator('[data-settings-role="auditor"]').click();
+  const form=page.locator('form[data-role="auditor"]');
+  await expect(form.locator('[name="model"]')).toHaveValue('synthetic-editor-2');
+  await expect(form.locator('[data-auditor-derived]')).toHaveCount(1);
+  await form.locator('[name="temperature"]').fill('0.3');
+  saved=page.waitForResponse(r=>r.url().endsWith(url)&&r.request().method()==='PUT');
+  await page.locator('#settings-save').click();
+  expect((await saved).ok()).toBe(true);
+  const data=await(await request.get(url)).json();
+  expect(data.roles.auditor.derived).toBeUndefined();
+  expect(data.roles.auditor.provider.model).toBe('synthetic-editor-2');
+  expect(data.roles.auditor.temperature).toBe(0.3);
+});
