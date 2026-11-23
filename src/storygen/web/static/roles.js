@@ -7,6 +7,7 @@ export const STAGE_ROLE=Object.freeze({prepare:'planner',brief:'planner',draft:'
 export function runSettingsRole(run){
   if(!run?.request||run.request.mode==='memory_carry')return null;
   if(run.request.mode==='edit_loop')return 'editor';
+  if(run.request.mode==='audit')return 'auditor';
   const task=run.tasks?.[run.cursor];
   return STAGE_ROLE[task?.stage||run.request.stage||run.request.mode]||null;
 }

@@ -29,4 +29,6 @@ assert.equal(runSettingsRole({request:{mode:'scene'},tasks:[{stage:'draft'}],cur
 assert.equal(runSettingsRole({request:{mode:'stage',stage:'memory'}}),'memory');
 assert.equal(runSettingsRole({request:{mode:'publication_suggest'},tasks:[{stage:'publication_suggest'}],cursor:0}),null);
 assert.equal(runSettingsRole(null),null);
+assert.equal(runSettingsRole({request:{mode:'audit',audit_scope:'scene'},tasks:[{stage:'audit'}],cursor:0}),'auditor');
+assert.equal(runSettingsRole({request:{mode:'audit',audit_scope:'scene'},tasks:[{stage:'audit'}],cursor:1}),'auditor');
 console.log('Workspace links and missing usage regressions passed');

@@ -19,6 +19,8 @@ const carry={state:'running',request:{mode:'memory_carry'},planned_telemetry:{ro
 assert.equal(runModeKey(carry),'run.mode_memory_carry');
 assert.equal(runModeKey({state:'running',request:{mode:'stage',stage:'memory'}}),null);
 assert.equal(runModeKey({state:'running'}),null);
+// VALID-LINKS: the auditor's scene check names itself too; its planned models stay in the summary.
+assert.equal(runModeKey({state:'running',request:{mode:'audit',audit_scope:'scene'}}),'run.mode_audit');
 assert.equal(runSummaryText(carry,'Генерація','Перенос пам’яті'),'Перенос пам’яті · Генерація');
 
 // Expansion: collapsed by default, a failed run opens by itself even after it was collapsed while running.

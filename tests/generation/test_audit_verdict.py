@@ -230,7 +230,8 @@ def test_overflow_verdict_is_measured_again_after_the_limit_grows(tmp_path):
     assert (state(repo, story, scene, 'prose').status, state(repo, story, scene, 'prose').source) == ('valid', 'auditor')
 
 
-def test_invalidation_of_the_scene_during_a_memory_audit_makes_it_stale(tmp_path):
+def test_card_invalidation_during_a_memory_audit_keeps_the_memory_verdict(tmp_path):
+    """Design §7: only an invalidation of this link makes the verdict stale; a card change covers Z1 and Z2 only."""
     from storygen.generation.dependencies import save_manual_prose
     repo, story, (scene,) = book(tmp_path)
     auditor(repo, story)
@@ -238,8 +239,10 @@ def test_invalidation_of_the_scene_during_a_memory_audit_makes_it_stale(tmp_path
     cause = {'kind': 'character', 'ids': ['olena']}
     gateway = AuditGateway(answer(95), during=lambda: invalidate_links(repo, story.id, [scene.id], cause))
     result = audit_link(repo, scene.id, 'memory', gateway)
-    assert result.outcome == 'stale' and result.verdict_id is None
-    assert state(repo, story, scene, 'memory').status == 'unchecked'
+    assert result.outcome == 'valid' and result.verdict_id
+    assert 'memory' not in repo.context_view(story.id).link_invalidations[-1].links
+    current = state(repo, story, scene, 'memory')
+    assert (current.status, current.source) == ('valid', 'auditor')
 
 
 def test_valid_memory_verdict_records_the_prose_equivalence(tmp_path):

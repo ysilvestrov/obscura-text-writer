@@ -2,7 +2,7 @@
 
 The call goes through execute_stage (policy, budget, attempt); the result is not a version but a LinkVerdict written in
 one BEGIN IMMEDIATE transaction with two checks: the link fingerprint is the one the context was built for, and no
-LinkInvalidation of this scene appeared after the context's invalidation marker. Otherwise the verdict stays only in
+LinkInvalidation of this link of the scene appeared after the context's invalidation marker. Otherwise the verdict stays only in
 the attempt (`stale`): the auditor may have read an old card or an old component."""
 import threading
 from dataclasses import dataclass
@@ -35,8 +35,8 @@ def _write_unavailable(repo, story_id, scene_id, link, unavailable: AuditUnavail
 
 
 def commit_audit_verdict(repo, attempt) -> str | None:
-    """The verdict of a completed audit attempt, or None when the link fingerprint or the scene's invalidations changed
-    since the context was built (the verdict then stays only in `attempt.context['audit_verdict']`)."""
+    """The verdict of a completed audit attempt, or None when the link fingerprint or an invalidation of this link
+    appeared since the context was built (the verdict then stays only in `attempt.context['audit_verdict']`)."""
     payload = attempt.context.get('audit_verdict')
     if attempt.state != 'completed' or payload is None:
         return None

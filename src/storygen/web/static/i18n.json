@@ -2531,6 +2531,10 @@
     "link.carry_cancel": "Скасувати перенос",
     "link.carry_blocked": "Перенос пам’яті зупинився на сцені «{p0}», тож пам’ять цієї сцени ще спирається на стару. Створіть нову пам’ять тієї сцени або перебудуйте пам’ять від неї.",
     "run.mode_memory_carry": "Перенос пам’яті",
+    "run.mode_audit": "Перевірка сцени",
+    "d_c990721492f9": "Сцена вже валідна",
+    "d_7a4b02f4abd4": "Сцену змінювали під час перевірки кілька разів поспіль",
+    "d_c136a40d605b": "Зв’язок сцени ще не має обох компонентів",
     "run.memory_carry_plan": "Без моделі й витрат: пам’ять пізніших сцен оновлюється з нової пам’яті попередньої сцени.",
     "d_22a8bff5cc3b": "Перенос пам’яті зупинено на сцені «{p0}»: {p1} — створіть нову пам’ять цієї сцени"
   },
@@ -5066,6 +5070,10 @@
     "link.carry_cancel": "Cancel carry",
     "link.carry_blocked": "The memory carry stopped at scene “{p0}”, so this scene’s memory still relies on the old one. Create a new memory for that scene or rebuild memory from it.",
     "run.mode_memory_carry": "Memory carry",
+    "run.mode_audit": "Scene check",
+    "d_c990721492f9": "The scene is already valid",
+    "d_7a4b02f4abd4": "The scene was changed during the check several times in a row",
+    "d_c136a40d605b": "This link of the scene does not have both of its parts yet",
     "run.memory_carry_plan": "No model and no cost: the memory of later scenes is updated from the new memory of the previous scene.",
     "d_22a8bff5cc3b": "The memory carry stopped at scene “{p0}”: {p1} — create a new memory for this scene"
   }

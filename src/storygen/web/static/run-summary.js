@@ -9,9 +9,10 @@ export function runSummaryText(run,stateLabel,modeLabel=''){
   return [modeLabel,stateLabel,models].filter(Boolean).join(' · ');
 }
 
-// The catalog key of a run's own label, or null for the usual model runs.
+// The catalog key of a run's own label, or null for the usual model runs (VALID-LINKS: the auditor's scene check).
+const MODE_KEYS={memory_carry:'run.mode_memory_carry',audit:'run.mode_audit'};
 export function runModeKey(run){
-  return run?.request?.mode==='memory_carry'?'run.mode_memory_carry':null;
+  return MODE_KEYS[run?.request?.mode]||null;
 }
 
 // A failed run shows its error expanded; any other run marks a hidden warning or error.
