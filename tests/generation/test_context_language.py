@@ -132,32 +132,12 @@ def test_acquaintance_block_follows_story_language(tmp_path):
 
 
 @pytest.mark.req('STORY-LANGUAGE')
-def test_impact_and_publication_requests_english(tmp_path):
+def test_publication_request_is_english(tmp_path):
     from storygen.authoring.blueprints import save_role_settings
-    from storygen.dependency_models import DependencySelector
     from storygen.generation.dependencies import save_manual_prose
-    from storygen.generation.impact_context import build_impact_context
     from storygen.generation.publication_metadata import build_publication_context
-    from storygen.impact.planning import plan_impact
-    from storygen.storage.snapshots import build_author_baseline
-    repo = Repository(tmp_path)
-    story = repo.create_story(StoryCreate(title='Tide', language='en'))
-    first = repo.create_scene(story.id, SceneCreate(title='Morning', beats='Morning'))
-    second = repo.create_scene(story.id, SceneCreate(title='Evening', beats='Evening'))
-    a = save_manual_prose(repo, first.id, 'Mary knows about the letter.', 0)
-    snapshot = build_author_baseline(repo.context_view(story.id), second.id)
-    snapshot.selectors.append(DependencySelector(kind='head', owner_id=first.id, field='prose', expected=a.id))
-    snapshot.refs[a.id] = a.sha256
-    ref = repo.save_version(story.id, second.id, 'edited', 'Mary remembered the letter.', list(snapshot.refs), dependency_snapshot=snapshot)
-    repo.set_head(second.id, 'prose', ref.id, repo.get_scene(second.id).revision)
-    save_manual_prose(repo, first.id, 'Mary does not know about the letter.', repo.get_scene(first.id).revision)
     planner = RoleSettings(provider=ProviderSettings(model='planner-test', response_mode='json_schema'), context_tokens=128000,
                            max_input_chars=1000000, max_output_tokens=2048)
-    save_role_settings(repo, story.id, 'planner', planner, repo.get_story(story.id).revision)
-    target = next(t for t in plan_impact(repo.context_view(story.id)).targets if t.version_id == ref.id)
-    for stage in ['impact_delta', 'impact_check']:
-        context = build_impact_context(repo, target.model_dump(), stage)
-        assert not CYRILLIC.search(texts(context)), stage
     other = Repository(tmp_path / 'publication')
     fresh = other.create_story(StoryCreate(title='Tide', language='en'))
     save_role_settings(other, fresh.id, 'writer', planner, fresh.revision)

@@ -67,16 +67,10 @@ def generation_request(stage, settings, system, user, fragments):
         body.update(venice_reasoning(provider))
     if provider.provider == 'openrouter':
         body.update(openrouter_reasoning(provider))
-    structured = stage in {'prepare', 'brief', 'memory','classify','publication_suggest','impact_delta','impact_check','impact_part'} or (stage == 'edit' and settings.edit_mode == 'patches')
+    structured = stage in {'prepare', 'brief', 'memory','classify','publication_suggest'} or (stage == 'edit' and settings.edit_mode == 'patches')
     if provider.response_mode == 'json_schema' and structured:
         wire3_bounds = wire4_bounds = None
-        if stage=='impact_part':
-            from ..impact.chunk_models import PartResult
-            model=PartResult
-        elif stage in {'impact_delta','impact_check'}:
-            from ..impact.models import DeltaReport,CheckReport
-            model=DeltaReport if stage=='impact_delta' else CheckReport
-        elif stage=='publication_suggest':
+        if stage=='publication_suggest':
             from ..publication_suggestions import PublicationSuggestions
             model=PublicationSuggestions
         elif stage=='classify':
@@ -92,7 +86,7 @@ def generation_request(stage, settings, system, user, fragments):
             wire3_bounds = fragments.get('memory_schema_bounds')
         else:
             model = CopyEdits if stage == 'edit' else MemoryOperations if stage == 'memory' and settings.memory_mode == 'evidence_delta' else {'prepare': StoryBlueprint, 'brief': WritersBrief, 'memory': MemorySnapshot}[stage]
-        schema = fragments.get('impact_wire_schema') if stage=='impact_part' else None
+        schema = None
         if wire3_bounds:
             schema = memory_wire_v3_schema(json.loads(wire3_bounds))
         if wire4_bounds:

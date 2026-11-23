@@ -97,7 +97,6 @@ def test_drop_all_edits_returns_none():
 
 def test_stage_categories():
     assert stage_category('memory', 'prose') == 1
-    assert stage_category('review_part', 'prose') == 1
     assert stage_category('edit', 'diff') == 2
     assert stage_category('edit', 'patches') == 2
     assert stage_category('rewrite', 'prose') == 2

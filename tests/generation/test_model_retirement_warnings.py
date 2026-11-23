@@ -71,28 +71,6 @@ def test_a_model_without_a_notice_adds_no_warning(tmp_path):
 
 
 @pytest.mark.req('MODEL-RETIREMENT')
-def test_impact_review_warns_about_the_planner_model(tmp_path):
-    from tests.impact.test_runner import runner
-    repo, story, first, second, ref, worker, run, calls = runner(tmp_path)
-    retiring(worker, {'synthetic-impact'})
-    worker._execute(run.id)
-    current = worker.get_run(run.id)
-    assert current.state == 'completed', current.error
-    assert 'Провайдер прибирає модель «synthetic-impact» 01.12.2026; заміна: «glm-test». Змініть модель у налаштуваннях ролі.' in lines(current.warning)
-
-
-@pytest.mark.req('MODEL-RETIREMENT')
-def test_impact_review_in_parts_warns_about_the_planner_model(tmp_path):
-    from tests.impact.test_chunk_runner import chunk_runner
-    repo, story, second, worker, run, calls, preview = chunk_runner(tmp_path)
-    retiring(worker, {'synthetic-impact'})
-    worker._execute(run.id)
-    current = worker.get_run(run.id)
-    assert current.state == 'completed', current.error
-    assert sum(line.startswith('Провайдер прибирає модель «synthetic-impact»') for line in lines(current.warning)) == 1
-
-
-@pytest.mark.req('MODEL-RETIREMENT')
 def test_book_review_call_carries_the_warning(monkeypatch):
     import threading
     from types import SimpleNamespace

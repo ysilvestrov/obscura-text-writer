@@ -22,7 +22,6 @@ const scene={id:'c',story_id:'s',position:0,revision:0,title:'Сцена',beats:
 const mk=(id,reqMode,state,created_at)=>({id,story_id:'s',request_id:'q-'+id,state,created_at,request:{story_id:'s',mode:reqMode},impact:null});
 const shortRuns=[mk('prep','prepare','completed','2026-01-01T00:00:00+00:00'),mk('drf','stage','completed','2026-01-02T00:00:00+00:00'),mk('r','stage','running','2026-01-03T00:00:00+00:00')];
 const fullOf=short=>({...short,tasks:short.id==='imp'?[{},{}]:[],...(short.id==='imp'?{impact:{protocol:3,phase:'awaiting_author',scene_cursor:1,order:[]}}:{}),cursor:0,error:short.id==='r'?'Технічна причина':null,warning:null,planned_telemetry:{roles:{writer:{provider:'p',model:'m'}},calls:3},editor_loop:null,editor_loops:{},cancelled_before_enqueue:false});
-if(mode==='review')shortRuns.splice(2,0,{...mk('imp','impact','needs_review','2026-01-02T12:00:00+00:00'),impact:{protocol:3,phase:'awaiting_author'}});
 let release,fail=mode==='failure';const gate=new Promise(resolve=>{release=resolve});
 const stale={on:false,state:'running',calls:0,gates:[]};
 const log=[];
@@ -38,13 +37,6 @@ globalThis.fetch=async url=>{
  return response({story:{id:'s',revision:0},scenes:[scene],sources:[]});
 };
 globalThis.EventSource=class{constructor(){this.closed=false;globalThis.EventSource.last=this}close(){this.closed=true}};
-if(mode==='review'){release();const host=element('#review-session');await import(pathToFileURL(root+'/src/storygen/web/static/review-session.js'));for(let i=0;i<8;i++)await new Promise(setImmediate);assert.ok(log.includes('/api/stories/s/review/imp'),'protocol-3 session chosen from the short list');assert.ok(log.includes('/api/runs/imp'),'full session run fetched');const {t:tr}=await import(pathToFileURL(root+'/src/storygen/web/static/i18n.js'));
-const texts=host.children.map(c=>c.textContent);
-assert.equal(texts[0],tr('review.title'),'session heading rendered');
-assert.equal(texts[1],tr('review.scene_progress',{p0:2,p1:2}),'progress from session.tasks and impact.scene_cursor');
-const actions=host.children.find(c=>c.className==='actions');assert.ok(actions,'actions container rendered');
-assert.deepEqual(actions.children.map(c=>c.textContent),[tr('review.cancel')],'needs_review session offers exactly Cancel');
-assert.equal(host.hidden,false,'session host is visible');console.log('review session loads on the short list');process.exit(0)}
 const output={open:false};element('#live-text').closest=selector=>selector==='details'?output:null;
 if(mode==='recover'){store.set('storygen.tab','t1');store.set('storygen.primary.pending.s.t1',JSON.stringify({requestId:'q-r',request:{story_id:'s',mode:'stage'}}))}
 await import(pathToFileURL(root+'/src/storygen/web/static/runs.js'));

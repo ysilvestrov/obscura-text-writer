@@ -103,10 +103,3 @@ def test_brief_without_snapshot_goes_stale(tmp_path):
     assert repo.get_version(old.id).stale is True
 
 
-@pytest.mark.req('STYLE-SAMPLE-001')
-def test_impact_capture_of_brief_ignores_a_sample_change(tmp_path):
-    repo, story, scene, brief, draft = world(tmp_path)
-    change(repo, story, tone_sample='Другий зразок.')
-    target = capture_target(repo.context_view(story.id), brief.id)
-    style = [c for c in target.changes if c.input_field == 'style_version_id']
-    assert style and not any(c.changed for c in style)
