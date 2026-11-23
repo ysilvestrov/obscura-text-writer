@@ -25,7 +25,7 @@ def make_site(root,pages=None):
     manifest={'languages':['uk','en'],'pages':[{'slug':slug,'title':{'uk':slug,'en':slug}} for slug in pages]}
     (site/'site.json').write_text(json.dumps(manifest,ensure_ascii=False),encoding='utf-8')
     for name in ['template.html','site.css','site.js']:(site/name).write_text((ROOT/'docs/site'/name).read_text(encoding='utf-8'),encoding='utf-8')
-    for name in ['favicon.svg','apple-touch-icon.png']:shutil.copyfile(ROOT/'docs/site'/name,site/name)
+    for name in ['favicon.svg','apple-touch-icon.png','store-badge-uk.svg','store-badge-en.svg']:shutil.copyfile(ROOT/'docs/site'/name,site/name)
     (root/'docs/images/site').mkdir(parents=True,exist_ok=True)
     return site
 
@@ -364,3 +364,39 @@ def test_site_icons_match_the_application_icon():
     static=ROOT/'src/storygen/web/static'
     assert (ROOT/'docs/site/favicon.svg').read_bytes()==(static/'favicon.svg').read_bytes()
     assert (ROOT/'docs/site/apple-touch-icon.png').read_bytes()==(static/'app-icon.png').read_bytes()
+
+
+def with_store(root,value):
+    site=root/'docs/site';manifest=json.loads((site/'site.json').read_text(encoding='utf-8'))
+    manifest['store']=value;(site/'site.json').write_text(json.dumps(manifest,ensure_ascii=False),encoding='utf-8')
+
+
+@pytest.mark.req('DOCS-SITE')
+def test_store_badge_under_the_menu_of_every_page(tmp_path):
+    make_site(tmp_path);with_store(tmp_path,{'product_id':'9NQBVZW2SW2X'})
+    out=tmp_path/'out';build(tmp_path,out)
+    for lang,rel,img in [('uk','install.html','store-badge-uk.svg'),('uk','first-story.html','store-badge-uk.svg'),('en','en/install.html','../store-badge-en.svg')]:
+        page=(out/rel).read_text(encoding='utf-8')
+        nav=page.split('<nav class="site-nav"',1)[1].split('</nav>',1)[0]
+        hl={'uk':'uk-UA','en':'en-US'}[lang]
+        assert nav.index('</ul>')<nav.index('class="store-badge"'),rel
+        assert f'<a href="https://apps.microsoft.com/detail/9NQBVZW2SW2X?hl={hl}"><img src="{img}"' in nav,rel
+        assert ((out/rel).parent/img).resolve().is_file(),rel
+        assert 'get.microsoft.com' not in page and 'ms-store-badge' not in page
+    assert '>Завантажити з Microsoft Store<' not in (out/'install.html').read_text(encoding='utf-8')
+    assert 'alt="Завантажити з Microsoft Store"' in (out/'install.html').read_text(encoding='utf-8')
+    assert 'alt="Download from the Microsoft Store"' in (out/'en/install.html').read_text(encoding='utf-8')
+
+
+@pytest.mark.req('DOCS-SITE')
+def test_site_without_store_section_has_no_badge(tmp_path):
+    make_site(tmp_path);out=tmp_path/'out';build(tmp_path,out)
+    assert 'store-badge' not in (out/'install.html').read_text(encoding='utf-8')
+    assert not (out/'store-badge-uk.svg').exists()
+
+
+@pytest.mark.req('DOCS-SITE')
+@pytest.mark.parametrize('value',[{'product_id':'9nqbvzw2sw2x'},{'product_id':'9NQB"><x'},{},'9NQBVZW2SW2X'])
+def test_bad_store_section_stops_the_build(tmp_path,value):
+    make_site(tmp_path);with_store(tmp_path,value)
+    with pytest.raises(ValueError,match='store.product_id'):build(tmp_path,tmp_path/'out')

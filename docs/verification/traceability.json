@@ -5611,10 +5611,13 @@
     {
       "id": "DOCS-SITE-S03",
       "requirement": "DOCS-SITE",
-      "scope": "Відносні шляхи, іконка сайту, перемикач мови й детермінованість збірки. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "scope": "Відносні шляхи, іконка сайту, кнопка Microsoft Store, перемикач мови й детермінованість збірки. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
       "tests": [
         "tests/test_docs_site.py::test_build_is_relative_and_deterministic",
-        "tests/test_docs_site.py::test_site_icons_match_the_application_icon"
+        "tests/test_docs_site.py::test_site_icons_match_the_application_icon",
+        "tests/test_docs_site.py::test_store_badge_under_the_menu_of_every_page",
+        "tests/test_docs_site.py::test_site_without_store_section_has_no_badge",
+        "tests/test_docs_site.py::test_bad_store_section_stops_the_build"
       ]
     },
     {

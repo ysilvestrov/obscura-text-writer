@@ -30,5 +30,6 @@
     {"slug": "privacy", "title": {"uk": "Приватність", "en": "Privacy"}},
     {"slug": "report", "title": {"uk": "Поскаржитися на результат", "en": "Report a result"}}
   ],
+  "store": {"product_id": "9NQBVZW2SW2X"},
   "waitlist": {"action": "https://waitlist.obscurawriter.com/", "sitekey": "0x4AAAAAAGEKFrxOkOrqcixY"}
 }
