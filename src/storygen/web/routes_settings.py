@@ -1,9 +1,12 @@
+from typing import Literal
+
 from fastapi import APIRouter, Request
 from pydantic import Field
 
 from ..roles import ROLES, ROLE_STAGE
 from ..authoring.blueprints import apply_blueprint, get_role_settings, save_role_settings, update_story_profile, save_shared_provider, shared_roles
 from ..domain import DomainModel
+from ..generation.auditor_settings import STAGE_PROMPT_KEYS, is_derived, resolve_auditor
 from ..generation.models import StoryBlueprint, StyleProfile, default_style_profile
 from ..generation.prompts import default_prompt, role_prompt, expected_contract
 from ..providers.discovery import discover_models
@@ -24,6 +27,8 @@ class SettingsChange(DomainModel):
     confirm_prompt_contract: bool = False
     upgrade_memory_wire: bool = False
     confirm_prepare_prompt_contract: bool = False
+    # MODEL-001: the auditor's audit_brief / audit_memory prompts; a blank or standard text returns the stage to the standard one.
+    stage_prompt_texts: dict[Literal['audit_brief','audit_memory'],str] | None = None
 
 
 class BlueprintApply(DomainModel):
@@ -55,7 +60,7 @@ def shared_provider(story_id: str,change: SharedProviderChange,request: Request)
     if change.role:
         if settings is None:raise ValueError('Потрібні налаштування ролі')
         settings=configure_prompts(repo,story_id,change,settings)
-    elif settings is not None or change.prompt_text is not None or change.prepare_prompt_text is not None:
+    elif settings is not None or change.prompt_text is not None or change.prepare_prompt_text is not None or change.stage_prompt_texts is not None:
         raise ValueError('Оберіть роль для налаштувань промпту')
     return with_model_warnings(save_shared_provider(repo,story_id,change.provider,change.expected_revision,change.role,settings),warnings)
 
@@ -70,14 +75,25 @@ def page(story_id: str,request: Request):
 def read_settings(story_id: str,request: Request):
     repo=request.app.state.repo
     story=repo.get_story(story_id)
-    roles=get_role_settings(repo,story_id)
+    saved=get_role_settings(repo,story_id)
+    # MODEL-001: an auditor without a row of its own is shown as it runs (the editor's model), marked `derived`.
+    derived=resolve_auditor(saved) if is_derived(saved) else None
+    roles={**saved,**({'auditor':derived} if derived else {})}
     prompts={role: repo.read_text(config.prompt_version_id) if config.prompt_version_id else role_prompt(ROLE_STAGE[role],config,story.language) for role,config in roles.items()}
     profile=StyleProfile.model_validate_json(repo.read_text(story.style_version_id)) if story.style_version_id else default_style_profile(story.language)
     planner=roles.get('planner')
     preparation=repo.read_text(planner.prepare_prompt_version_id) if planner and planner.prepare_prompt_version_id else default_prompt('prepare',story.language)
     contracts={role:repo.get_version(config.prompt_version_id).prompt_contract if config.prompt_version_id else expected_contract(ROLE_STAGE[role],config) for role,config in roles.items()}
     prepare_contract=repo.get_version(planner.prepare_prompt_version_id).prompt_contract if planner and planner.prepare_prompt_version_id else expected_contract('prepare',planner) if planner else None
-    return {'story':story,'roles':roles,'profile':profile,'prompts':prompts,'prepare_prompt':preparation,'prompt_contracts':contracts,'prepare_prompt_contract':prepare_contract}
+    auditor=roles.get('auditor')
+    stage_prompts,stage_contracts={},{}
+    if auditor is not None:
+        ids=auditor.stage_prompt_version_ids
+        stage_prompts['auditor']={stage:repo.read_text(ids[stage]) if ids.get(stage) else default_prompt(stage,story.language) for stage in STAGE_PROMPT_KEYS}
+        stage_contracts['auditor']={stage:repo.get_version(ids[stage]).prompt_contract if ids.get(stage) else expected_contract(stage,auditor) for stage in STAGE_PROMPT_KEYS}
+    shown={role:config.model_dump(mode='json') for role,config in saved.items()}
+    if derived:shown['auditor']={**derived.model_dump(mode='json'),'derived':True}
+    return {'story':story,'roles':shown,'stage_prompts':stage_prompts,'stage_prompt_contracts':stage_contracts,'profile':profile,'prompts':prompts,'prepare_prompt':preparation,'prompt_contracts':contracts,'prepare_prompt_contract':prepare_contract}
 
 
 @router.put('/api/stories/{story_id}/settings')
@@ -104,6 +120,7 @@ def with_model_warnings(story,warnings):
 def configure_prompts(repo,story_id,change,settings):
     if change.role not in ROLES:raise ValueError('Невідома роль')
     stage=ROLE_STAGE[change.role]
+    if change.stage_prompt_texts is not None and change.role!='auditor':raise ValueError('Окремі промпти етапів належать лише Ревізору')
     if change.upgrade_memory_wire and (change.role!='memory' or settings.memory_mode!='evidence_delta'):
         raise ValueError('Перехід на v4 можливий лише для власного промпту пам’яті за доказами')
     if change.confirm_prompt_contract and change.prompt_text is None and settings.prompt_version_id:
@@ -127,6 +144,13 @@ def configure_prompts(repo,story_id,change,settings):
         if change.prepare_prompt_text.strip() and change.prepare_prompt_text!=default_prompt('prepare',repo.get_story(story_id).language):
             id=repo.save_version(story_id,None,'prompt',change.prepare_prompt_text,[],prompt_contract=expected_contract('prepare',settings)).id
         settings=settings.model_copy(update={'prepare_prompt_version_id':id})
+    if change.stage_prompt_texts:
+        language=repo.get_story(story_id).language
+        ids=dict(settings.stage_prompt_version_ids)
+        for name,text in change.stage_prompt_texts.items():
+            if not text.strip() or text==default_prompt(name,language):ids.pop(name,None)
+            else:ids[name]=repo.save_version(story_id,None,'prompt',text,[],prompt_contract=expected_contract(name,settings)).id
+        settings=settings.model_copy(update={'stage_prompt_version_ids':ids})
     return settings
 
 

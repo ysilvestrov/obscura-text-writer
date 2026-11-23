@@ -7,6 +7,11 @@ const UNCHECKED={
   prose:{text:'link.prose_unchecked',approve:'link.approve_prose'},
   memory:{text:'link.memory_unchecked',approve:'link.keep_memory',memory:'link.new_memory'},
 };
+// VALID-LINKS: the auditor's discrepancy is a hint to reread the scene (its stated reasons are often imprecise); the
+// author approves the link or, for Z3, creates a new memory, as for an unchecked link.
+const DISCREPANCY={brief:'link.brief_discrepancy',prose:'link.prose_discrepancy',memory:'link.memory_discrepancy'};
+// The auditor's own `unavailable` verdict: its reason (a server text); an input over its limits offers its settings.
+const OVERFLOW='Вхід перевірки перевищує ліміт Ревізора';
 const MEMORY_UNAVAILABLE={
   no_memory:{text:'link.no_memory',memory:'link.create_memory'},
   carry_pending:{text:'link.carry_pending'},
@@ -27,6 +32,19 @@ export function pendingLinks(materialStatus,sceneId,scenes=[]){
   }
   for(const link of ['brief','prose','memory']){
     const state=links[link];
+    if(state?.status==='discrepancy'){
+      const actions=[{type:'approve',link,fingerprint:state.fingerprint,label:UNCHECKED[link].approve}];
+      if(UNCHECKED[link].memory)actions.push({type:'memory',sceneId,label:UNCHECKED[link].memory});
+      items.push({key:link,text:DISCREPANCY[link],params:{p0:state.confidence??'—'},discrepancies:state.discrepancies||[],
+        summary:state.summary??null,actions});
+      continue;
+    }
+    if(state?.status==='unavailable'&&state.source==='auditor'){
+      const reason=state.reason||'';
+      items.push({key:link,text:'link.audit_unavailable',params:{},reason,
+        actions:reason.startsWith(OVERFLOW)?[{type:'settings',label:'link.open_auditor_settings'}]:[]});
+      continue;
+    }
     const rule=state?.status==='unchecked'?UNCHECKED[link]:link==='memory'&&state?.status==='unavailable'?MEMORY_UNAVAILABLE[state.reason]:null;
     if(!rule)continue;
     const actions=[];

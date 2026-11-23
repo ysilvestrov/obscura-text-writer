@@ -14,7 +14,9 @@ def test_shared_provider_is_atomic_preserves_role_prompts_and_modes(tmp_path):
   result=c.put(f'/api/stories/{sid}/settings/shared-provider',json=body)
   assert result.status_code==200
   after=c.get(f'/api/stories/{sid}/settings').json()
-  assert set(after['roles'])=={'planner','writer','editor','memory'}  # the auditor has no row until saved
+  # The auditor has no row until saved: it comes derived from the editor, so it follows the shared model too (MODEL-001).
+  assert {role for role,config in after['roles'].items() if not config.get('derived')}=={'planner','writer','editor','memory'}
+  assert after['roles']['auditor']['derived'] is True
   assert all(role['provider']['model']=='qwen-3-6-plus' for role in after['roles'].values())
   assert all(role['provider']['key_env']=='VENICE_API_KEY' for role in after['roles'].values())
   assert after['roles']['editor']['edit_mode']=='patches'

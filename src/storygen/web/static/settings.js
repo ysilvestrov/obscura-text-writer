@@ -18,7 +18,9 @@ const roleNames=Object.defineProperties({},Object.fromEntries(ROLES.map(role=>[r
 const defaults={provider:{provider:'local',base_url:'http://localhost:1235/v1',model:'',timeout:3600,key_env:'OPENROUTER_API_KEY',include_usage:false,response_mode:'prompt_json'},context_tokens:8192,max_output_tokens:2048,max_input_chars:80000,temperature:0.7,prompt_version_id:null,prepare_prompt_version_id:null};
 let snapshot,profileBaseline;
 const providerNames=['provider','base_url','model','timeout','key_env','response_mode','include_usage','local_disable_thinking','venice_include_system_prompt','venice_disable_thinking','venice_reasoning_effort','openrouter_reasoning_effort'];
-const roleScope=(data,role)=>({settings:data.roles[role]||null,prompt:data.prompts[role]||'',prepare:role==='planner'?data.prepare_prompt:null,contract:data.prompt_contracts?.[role]||null});
+const roleScope=(data,role)=>({settings:data.roles[role]||null,prompt:data.prompts[role]||'',prepare:role==='planner'?data.prepare_prompt:null,contract:data.prompt_contracts?.[role]||null,stages:data.stage_prompts?.[role]||null});
+// MODEL-001: the auditor's prompts of its other two stages (its main prompt, audit_prose, is the role prompt).
+const AUDIT_STAGES=[['audit_brief','auditor.prompt_brief'],['audit_memory','auditor.prompt_memory']];
 async function checkScope(role,baseline,shared=false){
  const latest=await api(`/api/stories/${id}/settings`);
  if(settingsSignature(role==='writing'?{profile:latest.profile,target_words:latest.story.target_words}:roleScope(latest,role))!==settingsSignature(baseline))throw new Error(t("m_01f8b6c01617"));
@@ -38,6 +40,11 @@ async function load(onlyRole=null){
     if(role==='editor')uiInsertHTML(form,'beforeend',"<label><span data-i18n=\"m_9306e22d8bfb\">Застосування точкових правок</span><select name=\"edit_review\"><option value=\"auto\" data-i18n=\"m_a45a12fa5f5a\">Автоматично після перевірки</option><option value=\"review\" data-i18n=\"m_fe373cb07534\">Спочатку перегляд автором</option></select></label><p><span data-i18n=\"m_6bbd41ee0dce\">Перегляд стосується точкових правок. Workflow чекатиме на вибір і явне продовження.</span></p>");
     if(role==='editor')uiInsertHTML(form,'beforeend',"<label><span data-i18n=\"m_6c1316f99476\">Максимум проходів редактури</span><input name=\"edit_pass_limit\" type=\"number\" min=\"1\" max=\"10\" step=\"1\" required><small class=\"settings-hint\"><span data-i18n=\"settings.edit_pass_limit_hint\">Скільки разів редактор може пройти чернетку за один запуск. Кожен прохід — окремий виклик моделі.</span></small></label>");
     if(role==='memory')uiInsertHTML(form,'beforeend',"<label><span data-i18n=\"m_839c80ab7eef\">Режим пам’яті</span><select name=\"memory_mode\"><option value=\"evidence_delta\" data-i18n=\"memory.mode.evidence_delta_v4\">Операції пам’яті v4 за доказами</option></select><small class=\"settings-hint\"><span data-i18n=\"memory.mode.schema_hint\">Для моделей, що підтримують схему, оберіть режим відповіді json_schema — він унеможливлює більшість помилок формату.</span></small></label>");
+    const originalStages={...(snapshot.stage_prompts?.[role]||{})};
+    if(role==='auditor'){
+      const proseHint=document.createElement('small');proseHint.className='settings-hint';uiText(proseHint,'textContent',()=>t('auditor.prompt_prose_hint'));form.elements.prompt_text.after(proseHint);
+      for(const [stage,label] of AUDIT_STAGES){const field=document.createElement('label'),textarea=document.createElement('textarea');field.dataset.promptMeta='true';textarea.name='stage_'+stage;textarea.rows=4;textarea.value=originalStages[stage]||'';field.append(caption(label),textarea);form.append(field)}
+    }
     if(role==='editor'||role==='memory'){const hint=document.createElement('p');uiText(hint,"textContent",()=>(t("m_2a38a1b3e96e")));form.append(hint);}
     const horizonControls=mountHorizonControls(form,role,config);
     uiInsertHTML(form,'beforeend',"<fieldset class=\"venice-options\"><legend>Venice</legend><label><input type=\"checkbox\" name=\"venice_include_system_prompt\"> <span data-i18n=\"m_4195bd21fe9b\">Додавати системний промпт Venice</span></label><label><input type=\"checkbox\" name=\"venice_disable_thinking\"> <span data-i18n=\"m_914397a43529\">Вимкнути thinking (якщо модель підтримує)</span></label><p><span data-i18n=\"m_5e1cfcc38605\">Лише моделі з uncensored=true. Вебпошук вимкнено.</span></p></fieldset>");
@@ -69,7 +76,7 @@ async function load(onlyRole=null){
     const reset=document.createElement('button');reset.type='button';reset.dataset.promptMeta='true';reset.className='secondary';uiText(reset,"textContent",()=>(t("m_630a80f8c628")));assignment.after(reset);const upgradeWrap=document.createElement('div');upgradeWrap.dataset.promptMeta='true';upgradeWrap.hidden=true;const upgradeLabel=document.createElement('label'),upgradeInput=document.createElement('input'),upgradeText=document.createElement('span'),upgradeHelp=document.createElement('p');upgradeInput.type='checkbox';upgradeInput.name='upgrade_memory_wire';uiText(upgradeText,'textContent',()=>t('memory.prompt.upgrade_v4'));upgradeLabel.append(upgradeInput,' ',upgradeText);upgradeHelp.className='muted';uiText(upgradeHelp,'textContent',()=>t('memory.prompt.upgrade_v4_help'));upgradeWrap.append(upgradeLabel,upgradeHelp);assignment.after(upgradeWrap);
     reset.onclick=()=>{form.elements.prompt_text.value='';assignInput.checked=false;upgradeInput.checked=false;updateContract();settingsChanged(role)};
     const stage=ROLE_STAGE[role];
-    function updateContract(){const mode=role==='editor'?form.elements.edit_mode.value:role==='memory'?form.elements.memory_mode.value:role==='planner'?'brief':'prose';const stored=snapshot.prompt_contracts?.[role];const storedOld=role==='memory'&&mode==='evidence_delta'&&!!config.prompt_version_id&&stored?.stage==='memory'&&stored?.mode==='evidence_delta'&&[2,3].includes(stored?.schema_version);upgradeWrap.hidden=!storedOld;if(!storedOld)upgradeInput.checked=false;const expected=expectedPromptContract(stage,mode,stored,config.prompt_version_id,form.elements.prompt_text.value,upgradeInput.checked);const saved=config.prompt_version_id?(stored?`${stored.stage}/${stored.mode}/${stored.schema_version}`:t("m_28a26271f7e7")):t("m_fcedf84d6354");uiText(contract,"textContent",()=>(t("m_6b2c1a90724c",{p0:(expected),p1:(saved)})))}
+    function updateContract(){const mode=role==='editor'?form.elements.edit_mode.value:role==='memory'?form.elements.memory_mode.value:role==='planner'?'brief':role==='auditor'?'json':'prose';const stored=snapshot.prompt_contracts?.[role];const storedOld=role==='memory'&&mode==='evidence_delta'&&!!config.prompt_version_id&&stored?.stage==='memory'&&stored?.mode==='evidence_delta'&&[2,3].includes(stored?.schema_version);upgradeWrap.hidden=!storedOld;if(!storedOld)upgradeInput.checked=false;const expected=expectedPromptContract(stage,mode,stored,config.prompt_version_id,form.elements.prompt_text.value,upgradeInput.checked);const saved=config.prompt_version_id?(stored?`${stored.stage}/${stored.mode}/${stored.schema_version}`:t("m_28a26271f7e7")):t("m_fcedf84d6354");uiText(contract,"textContent",()=>(t("m_6b2c1a90724c",{p0:(expected),p1:(saved)})))}
     for(const field of ['edit_mode','memory_mode'])if(form.elements[field])form.elements[field].onchange=()=>{if(!config.prompt_version_id&&form.elements.prompt_text.value===originalPrompt)form.elements.prompt_text.value='';assignInput.checked=false;upgradeInput.checked=false;updateContract()};
     upgradeInput.onchange=updateContract;
     form.elements.prompt_text.addEventListener('input',updateContract);updateContract();
@@ -97,7 +104,8 @@ async function load(onlyRole=null){
       event.preventDefault();
       try{
         const blocked=catalog.validate();if(blocked)throw new Error(pickerMessage(blocked));
-        const settings={...config,...horizonControls.read(),provider:provider(),stop_sequences:form.elements.stop_sequences.value.split(/\r?\n/).filter(value=>value.length>0)};for(const field of ['context_tokens','max_output_tokens','max_input_chars','temperature'])settings[field]=Number(form.elements[field].value);
+        const {derived,...saved}=config;
+        const settings={...saved,...horizonControls.read(),provider:provider(),stop_sequences:form.elements.stop_sequences.value.split(/\r?\n/).filter(value=>value.length>0)};for(const field of ['context_tokens','max_output_tokens','max_input_chars','temperature'])settings[field]=Number(form.elements[field].value);
         if(role==='editor')settings.edit_mode=form.elements.edit_mode.value;
         if(role==='editor')settings.edit_review=form.elements.edit_review.value;
         if(role==='editor')settings.edit_pass_limit=Number(form.elements.edit_pass_limit.value);
@@ -110,6 +118,7 @@ async function load(onlyRole=null){
         if(role==='planner')body.confirm_prepare_prompt_contract=form.elements.confirm_prepare_prompt_contract.checked;
         if(form.elements.prompt_text.value!==originalPrompt)body.prompt_text=form.elements.prompt_text.value;
         if(role==='planner'&&form.elements.prepare_prompt_text.value!==originalPrepare)body.prepare_prompt_text=form.elements.prepare_prompt_text.value;
+        if(role==='auditor'){const stages=Object.fromEntries(AUDIT_STAGES.map(([stage])=>[stage,form.elements['stage_'+stage].value]).filter(([stage,value])=>value!==(originalStages[stage]||'')));if(Object.keys(stages).length)body.stage_prompt_texts=stages}
         const shared=form.elements.shared_provider.checked;
         const others=[...target.querySelectorAll('form[data-role]')].filter(other=>other!==form);
         if(shared&&!await confirmSettingsReplacement(others.map(other=>other.dataset.role),providerNames))return;
@@ -133,6 +142,8 @@ async function load(onlyRole=null){
     form.providerKey=mountProviderKey(keyHost,{nameField:form.elements.key_env,providerField:form.elements.provider,i18n:{t,uiText,diagnostic},request:api});
     // MODEL-001: the optional model for scenes rated 0–1 sits under the main model; the main hint names who writes level 2.
     let variant=null;
+    // MODEL-001: until the author saves the auditor, it runs on the editor's model (the server marks it `derived`).
+    if(role==='auditor'&&config.derived){const note=document.createElement('p');note.className='settings-hint';note.dataset.auditorDerived='true';uiText(note,'textContent',()=>t('auditor.derived_note'));form.querySelector('h2').after(note)}
     if(role==='writer'){const mainHint=document.createElement('p');mainHint.className='settings-hint';uiText(mainHint,'textContent',()=>t('writer.variant.main_hint'));form.querySelector('h2').after(mainHint);variant=mountWriterVariant(form,config);reserve.after(variant.block)}
     form.providerKey.refresh();for(const type of ['settings-reset','settings-unlocked'])form.addEventListener(type,()=>form.providerKey.refresh());
     horizonControls.update();

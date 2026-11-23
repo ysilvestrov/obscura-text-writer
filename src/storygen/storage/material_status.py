@@ -7,7 +7,8 @@ from .links import scene_links, scene_validity
 def material_status(view):
     """{scene_id: {brief, prose: pending|current|missing, memory: needs_update|current|missing, links, validity}}.
 
-    links: {brief|prose|memory: {status, source, reason, fingerprint}} and validity of the scene (VALID-LINKS).
+    links: {brief|prose|memory: {status, source, reason, fingerprint}} and validity of the scene (VALID-LINKS); a link
+    whose current fingerprint has an auditor verdict also carries its confidence, discrepancies and summary (the panel).
     previous_scene_id: only when brief or prose is unavailable for want of a previous memory and the scene continues a
     plain earlier scene (no merge, no series start) — the panel offers to create that scene's memory.
     carry_run: {id, state} of the stalled latest carry run while the scene's memory waits for it — the panel offers to
@@ -31,7 +32,7 @@ def material_status(view):
         id=scene.heads.get('memory')
         values['memory']='missing' if not id else 'needs_update' if stale(id) else 'current'
         states=scene_links(view,scene.id)
-        values['links']={link:state.as_dict() for link,state in states.items()}
+        values['links']={link:_with_verdict(view,scene.id,state) for link,state in states.items()}
         values['validity']=scene_validity(view,scene.id)
         if any(state.reason=='no_previous_memory' for state in states.values()):
             previous=_plain_previous(view,scene)
@@ -51,3 +52,15 @@ def _plain_previous(view,scene):
     if before.merge_key or before.series_start or not before.ancestors:
         return None
     return before.ancestors[-1].id
+
+
+def _with_verdict(view,scene_id,state):
+    """The link state, plus the auditor's confidence, discrepancies and summary (stored as the verdict's reason) when the
+    verdict for the current fingerprint is the auditor's."""
+    values=state.as_dict()
+    verdict=view.link_verdicts.get((scene_id,state.link,state.fingerprint)) if state.fingerprint else None
+    if verdict is not None and verdict.source=='auditor' and state.source=='auditor':
+        values['confidence']=verdict.confidence
+        values['discrepancies']=[item.model_dump() for item in verdict.discrepancies]
+        values['summary']=verdict.reason
+    return values

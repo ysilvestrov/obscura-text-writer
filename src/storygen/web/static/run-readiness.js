@@ -19,7 +19,9 @@ export function confirmationText(operation){
   const consent=review?t('memory.confirm',{p0:review.memory_scene_number,p1:review.changed_version_count,p2:review.changed_text_count})+'\n\n'+(review.risk?t('memory.confirm_risk'):t('memory.confirm_identical'))+'\n\n':'';
   // Information only (MEMORY-CONFIRM): the run never waits for the author's core confirmation.
   const unconfirmed=operation.unconfirmed_core_scenes?t('memory.unconfirmed_core',{p0:operation.unconfirmed_core_scenes})+'\n':'';
-  return consent+t("m_03d8a244e7c2",{p0:(operation.calls),p1:(roles.join('\n')),p2:(warnings.length?t("m_82ee1cb44ed7")+warnings.join('\n')+'\n':'')+unconfirmed});
+  // VALID-LINKS §9: the scene check lists the links it visits; an author's change during the run may add calls.
+  const links=operation.links?.length?t('audit.confirm_links',{p0:operation.links.map(item=>t('audit.link_'+item.link)).join(', ')})+'\n'+t('audit.confirm_bound')+'\n':'';
+  return consent+t("m_03d8a244e7c2",{p0:(operation.calls),p1:(roles.join('\n')),p2:links+(warnings.length?t("m_82ee1cb44ed7")+warnings.join('\n')+'\n':'')+unconfirmed});
 }
 export function runKind(state){return state==='completed'?'success':state==='failed'?'error':['interrupted','needs_review','alternative','cancelled','paused'].includes(state)?'warning':'info'}
 export function controlReason(action,run){

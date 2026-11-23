@@ -28,6 +28,14 @@ def forbidden_gateway(*args, **kwargs):
                 yield GenerationEvent(type='delta',text='\n\n'.join(f'Абзац {n}: Лєра йшла парком і рахувала ліхтарі, поки вечір густішав над озером.' for n in range(1,61)))
                 yield GenerationEvent(type='terminal',finish_reason='stop')
                 return
+            if context.stage.startswith('audit_') and context.settings.provider.model=='synthetic-auditor':
+                # VALID-LINKS: the auditor sees two discrepancies with quotes (neutral text).
+                import json
+                yield GenerationEvent(type='delta',text=json.dumps({'confidence':35,'summary':'Завдання може розходитися з планом',
+                    'discrepancies':[{'text':'Місце дії не збігається з планом','quote':'Світло на воді'},
+                                     {'text':'Немає кроку про човен','quote':'Маяк'}]},ensure_ascii=False))
+                yield GenerationEvent(type='terminal',finish_reason='stop')
+                return
             if context.stage!='rewrite' or context.settings.provider.model!='synthetic-rewrite':raise AssertionError('Only synthetic rewrite is allowed')
             yield GenerationEvent(type='delta',text='Лєра побачила **сузір’я**.\n\nВечір був _спокійним_.')
             yield GenerationEvent(type='terminal',finish_reason='stop')
@@ -458,6 +466,23 @@ def main():
             second,_=scene_with('Вечір','Олена погасила маяк.',journal)
             save_manual_prose(repo,first.id,'Олена запалила старий маяк.',repo.get_scene(first.id).revision)
             return dict(story_id=story.id,first_id=first.id,second_id=second.id)
+
+        @app.post('/test-scene-audit')
+        def scene_audit_fixture():
+            """A scene with an unchecked brief and prose and an auditor of its own (synthetic, local: no budget)."""
+            import json
+            from storygen.authoring.blueprints import save_role_settings
+            from storygen.generation.dependencies import save_manual_prose
+            from storygen.providers.models import RoleSettings,ProviderSettings
+            story=rated_story('Маяк і човен')
+            save_role_settings(repo,story.id,'auditor',RoleSettings(provider=ProviderSettings(model='synthetic-auditor'),temperature=0.2,
+                context_tokens=200000,max_input_chars=400000,max_output_tokens=4096),repo.get_story(story.id).revision)
+            scene=repo.create_scene(story.id,SceneCreate(title='Ранок',beats='Маяк і човен'))
+            brief=json.dumps({'objective':'Світло на воді','beats':['Маяк'],'constraints':[],'proposed_changes':[]},ensure_ascii=False)
+            ref=repo.save_version(story.id,scene.id,'brief',brief,[])
+            repo.set_head(scene.id,'brief',ref.id,repo.get_scene(scene.id).revision)
+            save_manual_prose(repo,scene.id,'Ранок: світло на воді.',repo.get_scene(scene.id).revision)
+            return dict(story_id=story.id,scene_id=scene.id)
 
         uvicorn.run(app, host='127.0.0.1', port=port, log_level='warning')
 

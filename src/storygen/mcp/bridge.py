@@ -690,7 +690,15 @@ def build_server(http: httpx.Client | None, client_name: str | None = None, *, c
                 'warnings': manifest['warnings'], 'word_count': manifest['word_count'], 'age_rating': manifest['age_rating']}
 
     def read_settings(story_id: str) -> dict:
-        return request('GET', f'/api/stories/{story_id}/settings')
+        data = request('GET', f'/api/stories/{story_id}/settings')
+        # MODEL-001: an auditor without a row of its own comes marked `derived` (the editor's model); for the tools it is
+        # not configured, so update_settings never copies the derived values and their marker into a saved row.
+        roles = data.get('roles') or {}
+        if (roles.get('auditor') or {}).get('derived'):
+            data['roles'] = {role: settings for role, settings in roles.items() if role != 'auditor'}
+            data['prompts'] = {role: text for role, text in (data.get('prompts') or {}).items() if role != 'auditor'}
+            data['prompt_contracts'] = {role: value for role, value in (data.get('prompt_contracts') or {}).items() if role != 'auditor'}
+        return data
 
     def read_evaluator(story_id: str) -> dict | None:
         response = send('GET', f'/api/stories/{story_id}/evaluator')

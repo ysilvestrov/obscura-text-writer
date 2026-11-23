@@ -165,6 +165,8 @@ async function start(mode,stage,options={}){
   assertReadyDispatch(state,captured);
   const request={story_id:state.storyId,scene_id:mode==='prepare'?null:state.scene.id,mode,stage:stage||null,pause_after:document.querySelector('#pause-each')?.checked?['brief','draft','edit','memory']:[]};
   if(mode==='stage'&&stage==='memory'&&operation.memory_review)request.memory_approval=operation.memory_review.fingerprint;
+  // VALID-LINKS: the scene check names its scope; it has no stages to pause after.
+  if(mode==='audit'){request.audit_scope=options.audit_scope||'scene';request.pause_after=[]}
   // EDIT-LOOP-REVIEW: the run takes the limit the author confirmed, not a later settings value.
   if(usesEditorLoop){request.edit_workflow='loop';if(Number.isInteger(operation.edit_pass_limit))request.edit_pass_limit=operation.edit_pass_limit}
   if(mode==='edit_loop')Object.assign(request,selectedSource(options));
