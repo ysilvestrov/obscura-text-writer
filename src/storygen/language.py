@@ -20,6 +20,9 @@ PROMPTS: dict[str, tuple[str, str, frozenset]] = {
     'memory_delta_v4': ('storygen.generation', 'memory_delta', BOTH),
     # Unreachable since memory_mode is always evidence_delta; kept for default_prompt('memory') compatibility.
     'memory_v1': ('storygen.generation', 'memory', UK_ONLY),
+    'audit_brief_v1': ('storygen.generation', 'audit_brief', BOTH),
+    'audit_prose_v1': ('storygen.generation', 'audit_prose', BOTH),
+    'audit_memory_v1': ('storygen.generation', 'audit_memory', BOTH),
     'assisted_writer_v1': ('storygen.generation', 'assisted_writer', BOTH),
     'publication_metadata_v1': ('storygen.generation', 'publication_metadata', BOTH),
     'timeline_summary_v1': ('storygen.generation', 'timeline_summary', BOTH),

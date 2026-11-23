@@ -11,6 +11,7 @@ from .providers.models import RoleSettings
 from .prompt_contracts import compatible_contract, expected_contract, validate_role_prompt
 from .evaluation.story_adapter import EvaluationSettings, validate_evaluation_settings
 
+from .generation.auditor_settings import STAGE_PROMPT_KEYS
 from .roles import ROLES, ROLE_SET, ROLE_STAGE as STAGES
 MAX_BYTES=2*1024*1024
 # Presets of schema versions 1 and 2 carry the four base roles; version 3 adds the auditor (MODEL-001).
@@ -30,9 +31,10 @@ class PortablePrompt(DomainModel):
 
 class PortableRole(DomainModel):
     settings: RoleSettings
-    # None only for the auditor: its stage prompts do not travel in a preset yet and a preset leaves them at the built-in ones.
-    prompt: PortablePrompt | None = None
+    prompt: PortablePrompt
     prepare_prompt: PortablePrompt | None = None
+    # Custom prompts of the auditor's audit_brief and audit_memory stages (its main prompt is audit_prose); no other role has them.
+    stage_prompts: dict[str,PortablePrompt] = Field(default_factory=dict)
 
 
 class ProfileDocument(DomainModel):
@@ -59,10 +61,13 @@ class ProfileDocument(DomainModel):
                 providers.append(settings.low_rating_variant.provider.key_env)
             if settings.prompt_version_id is not None or settings.prepare_prompt_version_id is not None or settings.stage_prompt_version_ids:
                 raise ValueError('UUID промптів не переноситься між творами')
-            if role.prompt is None and name!='auditor':
-                raise ValueError('Потрібен промпт ролі')
-            if role.prompt is not None and not compatible_contract(expected_contract(STAGES[name],settings),role.prompt.contract):
+            if not compatible_contract(expected_contract(STAGES[name],settings),role.prompt.contract):
                 raise ValueError('Несумісний контракт промпту профілю')
+            if role.stage_prompts and (name!='auditor' or set(role.stage_prompts)-set(STAGE_PROMPT_KEYS)):
+                raise ValueError('Окремі промпти етапів належать лише Ревізору: audit_brief і audit_memory')
+            for stage,prompt in role.stage_prompts.items():
+                if prompt.text is None or not compatible_contract(expected_contract(stage,settings),prompt.contract):
+                    raise ValueError('Несумісний контракт промпту етапу профілю')
             if name=='planner':
                 if role.prepare_prompt is None or role.prepare_prompt.contract!=expected_contract('prepare',settings):
                     raise ValueError('Потрібен контракт підготовки планувальника')
@@ -113,16 +118,15 @@ def capture_profile(repo,story_id,name,expected_revision,include_evaluator=False
     # The auditor travels only when the story has saved settings of its own for it.
     for name_role in [name for name in ROLES if name in settings]:
         role=RoleSettings.model_validate(settings[name_role])
-        if name_role=='auditor':
-            roles[name_role]={'settings':{**role.model_dump(),'prompt_version_id':None,'prepare_prompt_version_id':None,'stage_prompt_version_ids':{}},'prompt':None,'prepare_prompt':None}
-            continue
         def portable(stage,id):
-            ref=validate_role_prompt(repo,story_id,stage,role)
+            ref=validate_role_prompt(repo,story_id,stage,role.model_copy(update={'prompt_version_id':id}) if stage in STAGE_PROMPT_KEYS else role)
             # A custom memory prompt keeps its stored v2/v3 wire contract when exported.
             return {'text':repo.read_text(id) if id else None,'contract':(ref.prompt_contract if ref else expected_contract(stage,role)).model_dump()}
         prompt=portable(STAGES[name_role],role.prompt_version_id)
         prepare=portable('prepare',role.prepare_prompt_version_id) if name_role=='planner' else None
-        roles[name_role]={'settings':{**role.model_dump(),'prompt_version_id':None,'prepare_prompt_version_id':None},'prompt':prompt,'prepare_prompt':prepare}
+        stage_prompts={stage:portable(stage,id) for stage,id in role.stage_prompt_version_ids.items()}
+        roles[name_role]={'settings':{**role.model_dump(),'prompt_version_id':None,'prepare_prompt_version_id':None,'stage_prompt_version_ids':{}},
+                          'prompt':prompt,'prepare_prompt':prepare,'stage_prompts':stage_prompts}
     evaluator=None
     if include_evaluator:
         evaluator=repo.read_evaluator_settings(story_id)
@@ -158,7 +162,8 @@ def preview_profile(repo,story_id,profile_id,version,expected_revision):
     return {'id':profile_id,'version':version,'name':doc.name,'expected_revision':expected_revision,
             'roles':{key:value.settings.model_dump() for key,value in doc.roles.items()},
             'evaluator':doc.evaluator.model_dump() if doc.evaluator else None,
-            'prompts':{key:{'prompt':value.prompt.model_dump() if value.prompt else None,'prepare_prompt':value.prepare_prompt.model_dump() if value.prepare_prompt else None} for key,value in doc.roles.items()},
+            'prompts':{key:{'prompt':value.prompt.model_dump(),'prepare_prompt':value.prepare_prompt.model_dump() if value.prepare_prompt else None,
+                            'stage_prompts':{stage:prompt.model_dump() for stage,prompt in value.stage_prompts.items()}} for key,value in doc.roles.items()},
             'warnings':warnings}
 
 
@@ -172,6 +177,8 @@ def apply_profile(repo,story_id,profile_id,version,expected_revision):
             if prompt and prompt.text is not None:
                 ref=repo.save_version(story_id,None,'prompt',prompt.text,[],prompt_contract=prompt.contract)
                 setattr(role,field,ref.id)
+        for stage,prompt in item.stage_prompts.items():
+            role.stage_prompt_version_ids[stage]=repo.save_version(story_id,None,'prompt',prompt.text,[],prompt_contract=prompt.contract).id
         updates[key]=role.model_dump()
     return repo.role_profiles('apply',story_id=story_id,profile_id=profile_id,version=version,
         expected_revision=expected_revision,roles=updates,evaluator=doc.evaluator.model_dump() if doc.evaluator else None)

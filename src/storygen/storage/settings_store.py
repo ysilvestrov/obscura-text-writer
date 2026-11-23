@@ -38,12 +38,10 @@ def write_roles_in_transaction(repo,db,story_id,settings):
         from ..prompt_contracts import validate_role_prompt
         from .context_view import ContextView
         view=ContextView(repo,db,story_id)
-        if role=='auditor':
-            # Built-in prompts need no check; a custom one is checked against the contract of its own stage.
-            if item.prompt_version_id:validate_role_prompt(view,story_id,ROLE_STAGE[role],item)
-            for stage,id in item.stage_prompt_version_ids.items():
-                validate_role_prompt(view,story_id,stage,item.model_copy(update={'prompt_version_id':id}))
-        else:validate_role_prompt(view,story_id,ROLE_STAGE[role],item)
+        validate_role_prompt(view,story_id,ROLE_STAGE[role],item)
+        # A stage prompt of the auditor is checked against the contract of its own stage.
+        for stage,id in item.stage_prompt_version_ids.items():
+            validate_role_prompt(view,story_id,stage,item.model_copy(update={'prompt_version_id':id}))
         if role=='planner':validate_role_prompt(view,story_id,'prepare',item)
         db.execute('INSERT OR REPLACE INTO role_settings VALUES(?,?,?)', (story_id, role, item.model_dump_json()))
 

@@ -143,8 +143,8 @@ VersionKind = Literal["source_plan","source_characters","character_cards","scene
 
 
 class PromptContract(DomainModel):
-    stage: Literal['prepare', 'brief', 'draft', 'edit', 'memory']
-    mode: Literal['blueprint', 'brief', 'prose', 'patches', 'diff', 'snapshot', 'evidence_delta']
+    stage: Literal['prepare', 'brief', 'draft', 'edit', 'memory', 'audit_brief', 'audit_prose', 'audit_memory']
+    mode: Literal['blueprint', 'brief', 'prose', 'patches', 'diff', 'snapshot', 'evidence_delta', 'json']
     schema_version: Literal[1, 2, 3, 4]
 
 

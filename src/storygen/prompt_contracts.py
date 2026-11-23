@@ -41,7 +41,9 @@ def brief_introduced_contract(language='uk') -> str:
 
 def expected_contract(stage, settings) -> PromptContract:
     mode = {'prepare': 'blueprint', 'brief': 'brief', 'draft': 'prose',
-            'edit': settings.edit_mode, 'memory': settings.memory_mode}.get(stage)
+            'edit': settings.edit_mode, 'memory': settings.memory_mode,
+            # The answers of the auditor's stages are one JSON object (MODEL-001).
+            'audit_brief': 'json', 'audit_prose': 'json', 'audit_memory': 'json'}.get(stage)
     if mode is None:
         raise ValueError('Невідомий етап промпту')
     return PromptContract(stage=stage, mode=mode, schema_version=4 if mode == 'evidence_delta' else 1)

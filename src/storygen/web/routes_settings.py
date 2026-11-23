@@ -71,13 +71,11 @@ def read_settings(story_id: str,request: Request):
     repo=request.app.state.repo
     story=repo.get_story(story_id)
     roles=get_role_settings(repo,story_id)
-    # The auditor's built-in prompts and contracts arrive with its audit stages; until then only a saved custom prompt is listed.
-    prompted={role:config for role,config in roles.items() if role!='auditor' or config.prompt_version_id}
-    prompts={role: repo.read_text(config.prompt_version_id) if config.prompt_version_id else role_prompt(ROLE_STAGE[role],config,story.language) for role,config in prompted.items()}
+    prompts={role: repo.read_text(config.prompt_version_id) if config.prompt_version_id else role_prompt(ROLE_STAGE[role],config,story.language) for role,config in roles.items()}
     profile=StyleProfile.model_validate_json(repo.read_text(story.style_version_id)) if story.style_version_id else default_style_profile(story.language)
     planner=roles.get('planner')
     preparation=repo.read_text(planner.prepare_prompt_version_id) if planner and planner.prepare_prompt_version_id else default_prompt('prepare',story.language)
-    contracts={role:repo.get_version(config.prompt_version_id).prompt_contract if config.prompt_version_id else expected_contract(ROLE_STAGE[role],config) for role,config in prompted.items()}
+    contracts={role:repo.get_version(config.prompt_version_id).prompt_contract if config.prompt_version_id else expected_contract(ROLE_STAGE[role],config) for role,config in roles.items()}
     prepare_contract=repo.get_version(planner.prepare_prompt_version_id).prompt_contract if planner and planner.prepare_prompt_version_id else expected_contract('prepare',planner) if planner else None
     return {'story':story,'roles':roles,'profile':profile,'prompts':prompts,'prepare_prompt':preparation,'prompt_contracts':contracts,'prepare_prompt_contract':prepare_contract}
 

@@ -303,7 +303,21 @@
         "tests/test_role_profiles_auditor.py::test_schema_version_and_auditor_must_agree",
         "tests/test_role_profiles_auditor.py::test_auditor_prompt_uuids_are_not_portable",
         "tests/test_role_profiles_auditor.py::test_apply_rejects_a_role_set_that_is_neither_five_nor_four",
-        "tests/generation/test_auditor_settings.py::test_settings_api_reads_a_story_without_and_with_an_auditor_row"
+        "tests/generation/test_auditor_settings.py::test_settings_api_reads_a_story_without_and_with_an_auditor_row",
+        "tests/generation/test_audit_output.py::test_invalid_answer_raises",
+        "tests/generation/test_audit_output.py::test_limits_are_inclusive_and_error_is_ukrainian",
+        "tests/generation/test_audit_output.py::test_stage_constants",
+        "tests/generation/test_audit_output.py::test_threshold",
+        "tests/generation/test_audit_prompts.py::test_auditor_prompt_with_another_stage_contract_is_rejected",
+        "tests/generation/test_audit_prompts.py::test_custom_auditor_prompts_validate_against_their_own_stage",
+        "tests/generation/test_audit_prompts.py::test_default_prompt_reads_the_stage_file",
+        "tests/generation/test_audit_prompts.py::test_expected_contract_is_json_v1",
+        "tests/generation/test_audit_prompts.py::test_json_schema_request_uses_the_answer_model",
+        "tests/generation/test_audit_prompts.py::test_venice_audit_request_does_not_stream",
+        "tests/generation/test_auditor_settings.py::test_settings_api_stores_a_custom_auditor_main_prompt_with_its_stage_contract",
+        "tests/test_role_profiles_auditor.py::test_preset_carries_auditor_prompts_and_stage_prompts_round_trip",
+        "tests/test_role_profiles_auditor.py::test_preset_rejects_an_auditor_stage_prompt_with_a_wrong_contract_or_key",
+        "tests/test_role_profiles_auditor.py::test_preset_with_builtin_auditor_prompts_carries_contracts_without_text"
       ]
     },
     {

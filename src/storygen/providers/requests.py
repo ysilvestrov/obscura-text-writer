@@ -67,10 +67,13 @@ def generation_request(stage, settings, system, user, fragments):
         body.update(venice_reasoning(provider))
     if provider.provider == 'openrouter':
         body.update(openrouter_reasoning(provider))
-    structured = stage in {'prepare', 'brief', 'memory','classify','publication_suggest'} or (stage == 'edit' and settings.edit_mode == 'patches')
+    structured = stage in {'prepare', 'brief', 'memory','classify','publication_suggest','audit_brief','audit_prose','audit_memory'} or (stage == 'edit' and settings.edit_mode == 'patches')
     if provider.response_mode == 'json_schema' and structured:
         wire3_bounds = wire4_bounds = None
-        if stage=='publication_suggest':
+        if stage.startswith('audit_'):
+            from ..generation.audit_output import AuditResponse
+            model=AuditResponse
+        elif stage=='publication_suggest':
             from ..publication_suggestions import PublicationSuggestions
             model=PublicationSuggestions
         elif stage=='classify':

@@ -128,4 +128,27 @@ def test_settings_api_reads_a_story_without_and_with_an_auditor_row(tmp_path):  
             'settings': {'provider': {'provider': 'local', 'model': 'm1'}}})
         assert saved.status_code == 200, saved.text
         after = client.get(f"/api/stories/{story['id']}/settings").json()
-        assert after['roles']['auditor']['provider']['model'] == 'm1' and 'auditor' not in after['prompts']
+        assert after['roles']['auditor']['provider']['model'] == 'm1' and 'auditor' in after['prompts']
+        assert after['prompt_contracts']['auditor'] == {'stage': 'audit_prose', 'mode': 'json', 'schema_version': 1}
+
+
+@pytest.mark.req('MODEL-001')
+def test_settings_api_stores_a_custom_auditor_main_prompt_with_its_stage_contract(tmp_path):  # MODEL-001-S03
+    from fastapi.testclient import TestClient
+    from storygen.application.settings import AppSettings
+    from storygen.generation.prompts import default_prompt
+    from storygen.web.app import create_app
+    with TestClient(create_app(AppSettings(data_dir=tmp_path)), base_url='http://127.0.0.1:8765') as client:
+        story = client.post('/api/stories', json={'title': 'Ревізор'}).json()
+        revision = client.get(f"/api/stories/{story['id']}/settings").json()['story']['revision']
+        body = {'expected_revision': revision, 'role': 'auditor', 'settings': {'provider': {'provider': 'local', 'model': 'm1'}}}
+        assert client.put(f"/api/stories/{story['id']}/settings", json={**body, 'prompt_text': 'Власна перевірка.'}).status_code == 200
+        after = client.get(f"/api/stories/{story['id']}/settings").json()
+        assert after['prompts']['auditor'] == 'Власна перевірка.'
+        assert after['prompt_contracts']['auditor'] == {'stage': 'audit_prose', 'mode': 'json', 'schema_version': 1}
+        # The standard text returns the built-in prompt.
+        reset = {**body, 'expected_revision': after['story']['revision'], 'settings': after['roles']['auditor'],
+                 'prompt_text': default_prompt('audit_prose', 'uk')}
+        assert client.put(f"/api/stories/{story['id']}/settings", json=reset).status_code == 200
+        assert client.get(f"/api/stories/{story['id']}/settings").json()['roles']['auditor']['prompt_version_id'] is None
+
