@@ -22,7 +22,9 @@ The card can also be filled in from a [chat client](mcp.md#publishing-from-the-c
 
 ## Synopsis and genre suggestions
 
-**Suggest** asks the writer model to fill in an empty synopsis, genres and keywords from all of the story's prose. Accepted prose for every scene is required, and a cloud model also needs a budget. Review the suggestion, press **Fill empty fields**, edit and **Save card**. Fields you have already filled in are not replaced. If the prose changed, an outdated suggestion is not saved, and the form stays.
+**Suggest** asks the writer model to fill in an empty synopsis, genres and keywords from the story idea (the plan preamble) and the prose. Accepted prose for every scene is required, and a cloud model also needs a budget. Review the suggestion, press **Fill empty fields**, edit and **Save card**. Fields you have already filled in are not replaced. If the prose or the plan preamble changed, an outdated suggestion is not saved, and the form stays.
+
+If a long book does not fit the model window whole, the model reads the idea and the beginning of the book in whole scenes. The line under the button shows which scenes: “the model will read the story idea and scenes 1–14 of 31”. The suggestion then shows “Read: …”, and the history shows “Selected: …”. If the writer's character limit is what stops it, you can raise it in the model settings (the “Input limit, characters” field), and the model will read more. Check a synopsis written from the beginning of the book before you save it.
 
 ## Export
 

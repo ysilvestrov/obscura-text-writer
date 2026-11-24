@@ -86,6 +86,25 @@ def test_publication_suggestion_run_and_result(tmp_path, monkeypatch):
     assert state['action'] == 'publication_suggest' and state['suggestions'] == {'proposals': [], 'history': []}
 
 
+@pytest.mark.req('R16-SUGGEST')
+def test_publication_suggestion_carries_the_selection_of_a_long_book(tmp_path, monkeypatch):
+    """R16-SUGGEST-S07: the preview names the selection; confirm passes the shown key (or the fresh one)."""
+    from storygen.generation import publication_metadata
+    selection = {'included': 3, 'total': 9, 'last_scene_id': 's3', 'last_scene_title': 'Три', 'idea': True,
+                 'bound_by': 'chars', 'key': 'b' * 64}
+    monkeypatch.setattr(publication_metadata, 'readiness',
+                        lambda *_a, **_k: dict(READY, selection=selection, warnings=['Книжка не вміщається']))
+    app, repo, story, scene, server = setup(tmp_path)
+    preview = ok(call(server, 'start_run', {'story_id': story.id, 'action': 'publication_suggest'}))['preview']
+    assert preview['selection'] == selection and preview['warnings'] == ['Книжка не вміщається']
+    data = ok(call(server, 'start_run', {'story_id': story.id, 'action': 'publication_suggest', 'confirm': True}))
+    assert app.state.coordinator.get_run(data['run_id']).request.expected_selection == 'b' * 64
+    app.state.coordinator.cancel(data['run_id'])
+    shown = ok(call(server, 'start_run', {'story_id': story.id, 'action': 'publication_suggest', 'confirm': True,
+                                          'selection_key': 'c' * 64}))
+    assert app.state.coordinator.get_run(shown['run_id']).request.expected_selection == 'c' * 64
+
+
 @pytest.mark.req('MCP-BRIDGE')
 def test_chat_mode_and_unknown_action_are_refused(tmp_path, ready):
     app, repo, story, scene, server = setup(tmp_path, mode='chat')

@@ -2867,7 +2867,8 @@
       "scope": "R-16b: протокол, повний контекст, явне прийняття; якість анотації не підтверджується.",
       "tests": [
         "tests/generation/test_publication_metadata.py::test_no_dispatch_or_run_on_context_overflow_or_full_card",
-        "tests/generation/test_publication_metadata.py::test_paid_preflight_requires_explicit_story_limit"
+        "tests/generation/test_publication_metadata.py::test_paid_preflight_requires_explicit_story_limit",
+        "tests/generation/test_publication_long_book.py::test_even_the_idea_and_the_first_scene_do_not_fit"
       ]
     },
     {
@@ -3151,6 +3152,38 @@
         "tests/generation/test_publication_metadata.py::test_suggestion_uses_the_writer_role_not_a_small_planner",
         "tests/generation/test_publication_metadata.py::test_suggestion_without_a_writer_model_explains_it",
         "tests/generation/test_publication_metadata.py::test_suggestion_consent_and_refusal_belong_to_the_writer"
+      ]
+    },
+    {
+      "id": "R16-SUGGEST-S07",
+      "requirement": "R16-SUGGEST",
+      "scope": "Довга книжка: ідея й найдовший початок цілими сценами, двоетапний пошук при немонотонній оцінці токенів, видимий відбір у готовності, UI (uk/en), пропозиції, історії й MCP; запуск лише з показаним ключем відбору, змінений відбір відхиляється до dispatch. Якість анотації за частиною книжки не підтверджується.",
+      "tests": [
+        "tests/generation/test_publication_long_book.py::test_whole_book_gets_the_idea_and_full_coverage",
+        "tests/generation/test_publication_long_book.py::test_long_book_reads_the_idea_and_the_longest_prefix_of_whole_scenes",
+        "tests/generation/test_publication_long_book.py::test_long_book_without_an_idea_says_so",
+        "tests/generation/test_publication_long_book.py::test_prefix_search_survives_a_token_estimate_that_jumps",
+        "tests/generation/test_publication_long_book.py::test_incomplete_reading_runs_only_with_the_selection_the_author_saw",
+        "tests/generation/test_publication_long_book.py::test_selection_changed_after_the_preview_is_refused_before_dispatch",
+        "tests/generation/test_publication_long_book.py::test_full_book_runs_without_a_selection_key",
+        "tests/generation/test_publication_long_book.py::test_selection_key_only_for_the_publication_suggestion",
+        "tests/web/test_publication_ui.py::test_publication_dirty_async_save_conflict_and_upload",
+        "tests/mcp/test_bridge_runs.py::test_publication_suggestion_carries_the_selection_of_a_long_book",
+        "tests/generation/test_publication_long_book.py::test_a_preamble_with_only_a_title_heading_is_no_idea",
+        "tests/generation/test_publication_long_book.py::test_token_limit_alone_bounds_the_prefix",
+        "tests/generation/test_publication_long_book.py::test_reordered_book_with_the_same_count_changes_the_key"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#publication-long-book-browser",
+        "reason": "check_docs.py індексує лише pytest; Playwright case tests/web/browser/publication-long-book.spec.mjs (рядок відбору, активна кнопка, «Прочитано…», ключ відбору в запуску) виконується окремим runner, цей зв’язок не є доказом виконання."
+      }
+    },
+    {
+      "id": "R16-SUGGEST-S08",
+      "requirement": "R16-SUGGEST",
+      "scope": "Ідея в штампі джерел: зміна вступу плану робить пропозицію застарілою й відхиляє Save; штамп твору без вступу зберігає колишню форму.",
+      "tests": [
+        "tests/generation/test_publication_long_book.py::test_changed_idea_makes_the_proposal_stale_and_no_idea_keeps_the_old_stamp"
       ]
     },
     {

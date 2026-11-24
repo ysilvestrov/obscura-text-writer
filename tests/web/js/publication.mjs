@@ -18,7 +18,7 @@ class Element{
   set innerHTML(value){throw Error('Untrusted publication data must not use innerHTML');}
 }
 const nodes={};
-for(const key of ['page','form','save','status','reload','cover-upload','cover-remove','author-choice','author-add','translator-choice','translator-add','authors','translators','cover','cover-empty','signatures','signature-create','cover-form','cover-palette','cover-generate','suggest','suggest-cancel','suggest-status','suggestions','suggestion-history'])nodes['#publication-'+key]=new Element();
+for(const key of ['page','form','save','status','reload','cover-upload','cover-remove','author-choice','author-add','translator-choice','translator-add','authors','translators','cover','cover-empty','signatures','signature-create','cover-form','cover-palette','cover-generate','suggest','suggest-cancel','suggest-status','suggestions','suggestion-history','suggestion-selection'])nodes['#publication-'+key]=new Element();
 nodes['#publication-page'].dataset.storyId='story';
 nodes['#publication-cover-palette'].value='ink';
 const form=nodes['#publication-form'];
@@ -36,7 +36,7 @@ globalThis.confirm=()=>false;
 installDialogFixture(globalThis.document);
 globalThis.FormData=class{append(){}};
 let revision=0,hold=false,release,uploadFailure=false,initialRelease;
-let proposals=[],suggestionBody=null,runCalls=0,lastSave;
+let proposals=[],suggestionBody=null,runCalls=0,lastSave,readinessSelection=null,historyItems=[],refuseRun=false;
 let putCalls=0,generateCalls=0,generateBody=null,generateFailure=false,holdGenerate=false,releaseGenerate;
 const initialReady=new Promise(resolve=>initialRelease=resolve);
 let card={title:'',language:'uk',annotation:'',cycle_title:'',publication_date:'',publisher:'',isbn:'',rights:'',source_language:'',cycle_number:null,keywords:[],genres:[],author_ids:[],translator_ids:[],cover_id:null,story_id:'story',revision};
@@ -46,9 +46,9 @@ globalThis.fetch=async(url,options={})=>{
   if(!options.method)await initialReady;
   let data,ok=true;
   if(url.includes('publication-signatures'))data={signatures:[person]};
-  else if(url.endsWith('/suggestions/readiness'))data={ready:true,roles:{writer:{model:'fake-writer'}}};
-  else if(url.endsWith('/suggestions'))data={proposals,history:[],active_runs:[]};
-  else if(url==='/api/runs'){runCalls++;suggestionBody=JSON.parse(options.body);data={id:'run'};}
+  else if(url.endsWith('/suggestions/readiness'))data={ready:true,roles:{writer:{model:'fake-writer'}},selection:readinessSelection};
+  else if(url.endsWith('/suggestions'))data={proposals,history:historyItems,active_runs:[]};
+  else if(url==='/api/runs'){runCalls++;suggestionBody=JSON.parse(options.body);if(refuseRun){ok=false;data={detail:'Відбір сцен змінився; перегляньте його знову'};}else data={id:'run'};}
   else if(url.endsWith('/cover/generate')){
     generateCalls++;generateBody=JSON.parse(options.body);
     if(holdGenerate)await new Promise(resolve=>releaseGenerate=resolve);
@@ -142,4 +142,36 @@ generateFailure=true;notice.dataset.kind='';
 await nodes['#publication-cover-generate'].onclick();
 assert.equal(nodes['#publication-cover'].src,generatedSrc);
 assert.equal(notice.dataset.kind,'error');assert.equal(fields.title.value,'Незбережена назва');
-console.log('publication dirty/async save/CAS/upload/text cover passed');
+// R16-SUGGEST-S07: a book that does not fit whole shows which scenes are read, and the run carries the shown selection.
+assert.equal(nodes['#publication-suggestion-selection'].hidden,true,'A whole book shows no selection line');
+assert.equal(suggestionBody.request.expected_selection,undefined,'A whole book sends no selection key');
+const key='a'.repeat(64);
+readinessSelection={included:14,total:31,last_scene_id:'s14',last_scene_title:'Шторм',idea:true,bound_by:'chars',key};
+historyItems=[{created_at:'t1',state:'failed',error:null,warnings:[],selection:readinessSelection}];
+proposals=[{...proposals[0],attempt_id:'long',selection:readinessSelection}];
+await nodes['#publication-suggest'].onclick();
+const selectionLine=nodes['#publication-suggestion-selection'];
+assert.equal(selectionLine.hidden,false);
+assert.equal(selectionLine.textContent,'Книжка не вміщається у вікно моделі повністю: модель прочитає ідею твору й сцени 1–14 із 31 (до «Шторм»). Межа — ліміт символів письменника; його можна підняти в налаштуваннях моделей.');
+assert.ok(nodes['#publication-suggestion-history'].children[0].textContent.includes('Відібрано: ідея й сцени 1–14 із 31'),'History says selected, not read');
+assert.ok(nodes['#publication-suggestions'].children[0].children.some(node=>node.textContent==='Прочитано: ідея й сцени 1–14 із 31'));
+await nodes['#publication-suggest'].onclick();
+assert.equal(suggestionBody.request.expected_selection,key,'The run carries the key of the selection shown');
+setLocale('en');
+assert.equal(selectionLine.textContent,'The book does not fit the model window whole: the model will read the story idea and scenes 1–14 of 31 (up to “Шторм”). The limit is the writer\'s character limit; you can raise it in the model settings.');
+assert.ok(nodes['#publication-suggestions'].children[0].children.some(node=>node.textContent==='Read: the idea and scenes 1–14 of 31'));
+setLocale('uk');
+readinessSelection={...readinessSelection,idea:false,bound_by:'tokens'};
+historyItems=[];proposals=[];
+await nodes['#publication-suggest'].onclick();
+assert.equal(selectionLine.textContent,'Книжка не вміщається у вікно моделі повністю: модель прочитає сцени 1–14 із 31 (до «Шторм»), без ідеї твору.');
+// A refused run (the selection changed meanwhile) re-reads readiness: the line and the next key follow the new selection.
+refuseRun=true;readinessSelection={...readinessSelection,included:12,last_scene_title:'Туман',key:'c'.repeat(64)};
+await nodes['#publication-suggest'].onclick();
+assert.equal(suggestionBody.request.expected_selection,key,'The refused click still sent the key it showed');
+assert.ok(selectionLine.textContent.includes('сцени 1–12 із 31 (до «Туман»)'),'The line shows the new selection after a refusal');
+assert.equal(nodes['#publication-suggest-status'].textContent,'Відбір сцен змінився; перегляньте його знову');
+refuseRun=false;
+await nodes['#publication-suggest'].onclick();
+assert.equal(suggestionBody.request.expected_selection,'c'.repeat(64),'The next click sends the key of the selection shown now');
+console.log('publication dirty/async save/CAS/upload/text cover/long book selection passed');

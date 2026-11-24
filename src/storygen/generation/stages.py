@@ -46,6 +46,9 @@ def execute_stage(
         from .edit_classification import identity
         attempt.context.update({key:context.fragments[key] for key in ['classification_proposal_id','classification_fingerprint']})
         attempt.context['classification_identity']=identity(context.settings.provider)
+    if stage=='publication_suggest' and 'publication_selection' in context.fragments:
+        # R16-SUGGEST-S07: what was selected is known before dispatch; it is not proof that a model read it.
+        attempt.context['publication_selection']=json.loads(context.fragments['publication_selection'])
     if task_cursor is not None:
         attempt.context['run_cursor']=task_cursor
     if external_origin is not None:

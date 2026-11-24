@@ -56,6 +56,8 @@ class RunRequest(DomainModel):
     budget_limit_usd: str | None = None
     memory_approval: str | None = Field(default=None,pattern=r'^[a-f0-9]{64}$')
     summary_block_key: str | None = Field(default=None,min_length=1,max_length=80)  # MEMORY-SUMMARY
+    # R16-SUGGEST-S07: the key of the scene selection the author saw; required when the book does not fit whole.
+    expected_selection: str | None = Field(default=None,pattern=r'^[a-f0-9]{64}$')
 
     @model_validator(mode='after')
     def valid(self):
@@ -78,6 +80,8 @@ class RunRequest(DomainModel):
             raise ValueError('Блок підсумку задається лише для підсумку хронології, і там він обов’язковий')
         if self.mode=='timeline_summary' and self.scene_id is not None:
             raise ValueError('Підсумок хронології належить блоку твору, не окремій сцені')
+        if self.expected_selection is not None and self.mode!='publication_suggest':
+            raise ValueError('Відбір сцен дозволений лише для пропозиції публікації')
         if self.mode=='publication_suggest' and self.scene_id is not None:
             raise ValueError('Пропозиція публікації належить усьому твору, не окремій сцені')
         if (self.mode=='audit')!=(self.audit_scope is not None):
