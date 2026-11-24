@@ -86,3 +86,32 @@ def test_confirm_writes_ids_only(env):
     assert 'каре' not in annotation.read_text(encoding='utf-8')
     assert confirm(env, {'C01': ['beacon']}, annotation) == 0
     assert json.loads(annotation.read_text(encoding='utf-8'))['stories'][story] == {'P01': ['hit'], 'C01': ['beacon']}
+
+
+def run_wrapper(args):
+    import subprocess
+    import sys as _sys
+    return subprocess.run([_sys.executable, str(ROOT / 'scripts' / 'rag_annotate_pairs.py'), *args],
+                          capture_output=True, text=True, encoding='utf-8', cwd=ROOT)
+
+
+def test_wrapper_help_runs():
+    out = run_wrapper(['--help'])
+    assert out.returncode == 0 and 'propose' in out.stdout and 'confirm' in out.stdout
+
+
+def test_wrapper_refuses_out_inside_repo():
+    target = ROOT / 'docs' / 'candidates-should-not-exist.json'
+    out = run_wrapper(['propose', '--data', str(ROOT / 'data'), '--story', 'x', '--pairs', 'p.json', '--out', str(target)])
+    assert out.returncode == 2 and out.stderr.strip() == 'inside_repo' and not target.exists()
+
+
+def test_propose_refuses_live_data(env, capsys):
+    _, story, pairs, _ = env
+    holder = tempfile.TemporaryDirectory(prefix='annot-')
+    try:
+        code = ap.main(['propose', '--data', str(ROOT / 'data'), '--story', story, '--pairs', str(pairs),
+                        '--out', str(Path(holder.name) / 'c.json')])
+        assert code == 2 and capsys.readouterr().err.strip() == 'live_data'
+    finally:
+        holder.cleanup()
