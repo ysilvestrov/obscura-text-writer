@@ -60,6 +60,7 @@ test('book validation stops on a discrepancy, leads to the scene and finishes th
   await expect(page.locator('#scene-title')).toContainText('Ранок');
   const row=page.locator('#link-attention [data-link="brief"]');
   await expect(row).toContainText('Місце дії не збігається з планом');
+  await expect(page.locator('#link-attention')).toBeFocused();  // Р7: the stop scene's link panel takes the focus
   await row.getByRole('button',{name:'Затвердити завдання'}).click();
   await expect(row).toHaveCount(0);
   await page.locator('#run-actions').getByRole('button',{name:'Продовжити'}).click();
@@ -71,6 +72,7 @@ test('book validation stops on a discrepancy, leads to the scene and finishes th
   // Review Focus 2: the resumed run counts against the extended plan.
   await expect(page.locator('#run-status .run-progress-title')).toHaveText('Валідація книги: сцена 2 з 2, «Вечір»');
   await expect(page.locator('#run-status .run-progress-counts')).toHaveText(/^Викликів: \d \/ 4/);
+  await expect(page.locator('#run-status .run-progress-title')).toBeFocused();  // Р2: a resume from this tab focuses its row
   const view=await(await request.get(`/api/stories/${fixture.story_id}`)).json();
   expect([fixture.first_id,fixture.second_id].map(id=>view.material_status[id].validity)).toEqual(['valid','valid']);
   await toggle.click();

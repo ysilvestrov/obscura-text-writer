@@ -143,12 +143,13 @@ const bookReview=run=>run?.state==='needs_review'&&run.request?.mode==='audit'&&
 let cancelItem=null;
 // A book validation stopped for review offers «Скасувати валідацію» as a link; other runs keep the usual button.
 function cancelLook(run){if(!cancelItem)return;const book=bookReview(run);uiText(cancelItem.button,'textContent',()=>book?t('book_validation.cancel'):t("m_8b4c2025378a"));cancelItem.button.className=book?'link-button':'secondary'}
-// A run started from this tab (Р2): open its row, bring it into view and focus its title.
-function revealRun(){
+// A run started from this tab (Р2): open its row, bring it into view and focus its title. A primary start keeps the page
+// where it is (WORKSPACE-PRIMARY-SCROLL: the new material opens from its top), so it expands and focuses without scrolling.
+function revealRun({scroll=true}={}){
   if(!active)return;
   runPrefs={...runPrefs,expandedRun:active.id};applyExpanded(active);
   const reduce=globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
-  document.querySelector('#workspace-status-row')?.scrollIntoView?.({block:'nearest',behavior:reduce?'auto':'smooth'});
+  if(scroll)document.querySelector('#workspace-status-row')?.scrollIntoView?.({block:'nearest',behavior:reduce?'auto':'smooth'});
   const title=progressNode?.isConnected?progressNode.querySelector('.run-progress-title'):null;
   (title||summaryNode)?.focus?.({preventScroll:true});
 }
@@ -166,12 +167,12 @@ async function showViolations(run){
   }catch{/* Діагностика необов’язкова: помилка запиту не заважає стану запуску. */}
 }
 setInterval(()=>{if(active&&!terminal.has(active.state))uiText(elapsed,"textContent",()=>(t("m_61cb5f9a3bb9",{p0:(Math.floor((Date.now()-started)/1000))})))},1000);
-async function follow(run,{reveal=false}={}){
+async function follow(run,{reveal=false,scroll=true}={}){
   const epoch=++followEpoch;let stateFetch=0,waitingWhole=false;
   if(reveal)runPrefs={...runPrefs,expandedRun:run.id};
   source?.close();last=0;started=Date.parse(run.created_at);live.hidden=false;
   if('planned_telemetry' in run)draw(run);else drawPending(run);
-  const saved=await api('/api/runs/'+run.id);if(epoch!==followEpoch)return;setProgress(run.id,saved.progress);draw(saved.run);if(reveal)revealRun();uiText(live,"textContent",()=>(saved.partial));
+  const saved=await api('/api/runs/'+run.id);if(epoch!==followEpoch)return;setProgress(run.id,saved.progress);draw(saved.run);if(reveal)revealRun({scroll});uiText(live,"textContent",()=>(saved.partial));
   const attempt=saved.attempts?.at(-1);if(attempt?.created_at)started=Date.parse(attempt.created_at);
   if(terminal.has(saved.run.state)){await refresh();return}
   // Replay from the beginning once; reconnects use the saved event cursor.
@@ -181,7 +182,7 @@ async function follow(run,{reveal=false}={}){
   source.onmessage=async message=>{try{if(epoch!==followEpoch)return;const event=JSON.parse(message.data);last=event.seq;
     if(event.type==='stage_started'){modelOutput(true);if(event.created_at)started=Date.parse(event.created_at);uiText(live,"textContent",()=>(''));if(!progressOf(run)){const p=document.createElement('p');p.className='run-detail';uiText(p,"textContent",()=>((event.data.edit_loop_pass?t("m_9a029cc4638c",{p0:(event.data.edit_loop_pass),p1:(event.data.edit_loop_limit)}):'')+`${event.data.stage} · ${event.data.model} · ${event.data.provider}`));status.append(p)}waitingWhole=event.data.streaming===false;if(waitingWhole)uiText(live,"textContent",()=>t('run.waiting_whole_answer'))}
     // Visible run progress: the block updates in place, so the focus on its title stays.
-    if(event.type==='progress'){setProgress(run.id,event.data);if(active?.id===run.id){if(progressNode?.isConnected)fillProgress(progressNode,active,event.data);else if('planned_telemetry' in active)draw(active)}}
+    if(event.type==='progress'){setProgress(run.id,event.data);if(active?.id===run.id){if(progressNode?.isConnected)fillProgress(progressNode,active,event.data);else if(active.planned_telemetry)draw(active)}}
     if(event.type==='delta'){if(waitingWhole){waitingWhole=false;uiText(live,"textContent",()=>'')}live.textContent+=event.data.text}
     if(event.type==='stage_finished'){modelOutput(false);if(Object.keys(event.data.usage||{}).length){runCosts=addRunCost(runCosts,run.id,event.data.attempt_id,event.data.usage);if(active?.id===run.id&&summaryNode?.isConnected){summaryNode.replaceWith(summaryButton(active));applyExpanded(active)}}else{const p=document.createElement('p');p.className='run-detail';uiText(p,"textContent",()=>(t("m_59303d743463")));status.append(p)}await refresh({fresh:true})}
     if(event.type==='evaluation_warning'||event.type==='evaluation_skipped'){notice(event.data.failure?.message||event.data.reason||event.data.reasons?.join('; ')||t("m_8c627045acd1"),'warning');document.dispatchEvent(new CustomEvent('evaluation-policy-changed'))}
@@ -233,7 +234,7 @@ async function start(mode,stage,options={}){
   try{primaryPosting=!!options.primary;run=await api('/api/runs',json('POST',{request_id:requestId,request}))}
   catch(error){if(options.primary){if(error.status>=400&&error.status<500&&error.status!==408){setPendingPrimary(null);storage.removeItem(key);throw error}const found=(state.workspaceRun?.request_id===requestId?state.workspaceRun:null)||await reconcilePrimary().catch(()=>null);if(found){storage.removeItem(key);return found}throw new Error(t('workspace.pending_unknown'))}throw error}
   finally{primaryPosting=false}
-  storage.removeItem(key);await options.onCreated?.(run);if(options.primary)setPendingPrimary(null);await follow(run,{reveal:true});return active;
+  storage.removeItem(key);await options.onCreated?.(run);if(options.primary)setPendingPrimary(null);await follow(run,{reveal:true,scroll:!options.primary});return active;
 }
 controls.hidden=false;
 function button(label,fn,operation=null,action=null){const wrapper=document.createElement('span');wrapper.className='run-action';const b=document.createElement('button'),hint=document.createElement('small');hint.id='run-reason-'+actions.length;b.className='secondary';uiText(b,"textContent",()=>(label));const item={button:b,hint,wrapper,operation,action,busy:false};actions.push(item);b.onclick=async()=>{const hadFocus=document.activeElement===b;item.busy=true;updateControls();if(hadFocus){wrapper.tabIndex=-1;wrapper.focus()}try{await fn()}catch(e){notice(e.message,'error')}finally{item.busy=false;updateControls();if(operation)scheduleReadiness()}};wrapper.append(b,hint);(document.querySelector('#run-actions')&&['pause','cancel','resume','repeat','accepted'].includes(action)?document.querySelector('#run-actions'):controls).append(wrapper);updateControls();return wrapper}
