@@ -124,7 +124,7 @@ def rebuild_memory(repo,from_scene_id: str,gateway_factory,cancel,on_event,setti
         context=build_context(repo,scene.id,'memory',role)
         attempt=execute_stage(repo,scene.id,'memory',context,gateway_factory(role.provider),cancel,lambda text:on_event('delta',{'text':text}),run_id)
         attempts.append(attempt)
-        on_event('stage_finished',{'attempt_id':attempt.id,'state':attempt.state})
+        on_event('stage_finished',{'attempt_id':attempt.id,'state':attempt.state,'usage':attempt.usage})
         if attempt.state!='completed':
             break
     return attempts

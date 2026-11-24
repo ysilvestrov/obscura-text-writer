@@ -73,3 +73,8 @@ export function runCostText(costs,runId){
   if(!known.length)return '$—';
   return `${dollars(known.reduce((sum,value)=>sum+value,0))} / ${last===null?'$—':dollars(last)}`;
 }
+
+// Г8: revealing a run moves the focus to its row, but never out of a field the author is typing in.
+export function revealTakesFocus(element){
+  return !element?.matches?.('textarea, input, select, [contenteditable]:not([contenteditable="false"])');
+}

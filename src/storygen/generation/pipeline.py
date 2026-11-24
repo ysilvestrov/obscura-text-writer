@@ -17,7 +17,7 @@ def generate_scene(repo,scene_id: str,role_settings: dict,gateway_factory,cancel
         on_event('stage_started',{'stage':stage,'scene_id':scene_id})
         attempt=execute_stage(repo,scene_id,stage,context,gateway_factory(context.settings.provider),cancel,lambda text:on_event('delta',{'stage':stage,'text':text}),run_id)
         attempts.append(attempt)
-        on_event('stage_finished',{'attempt_id':attempt.id,'state':attempt.state})
+        on_event('stage_finished',{'attempt_id':attempt.id,'state':attempt.state,'usage':attempt.usage})
         if attempt.state!='completed':
             break
     return attempts

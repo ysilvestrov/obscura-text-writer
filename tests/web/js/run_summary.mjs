@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {pathToFileURL} from 'node:url';
 const root=process.argv[2];
-const {runSummaryText,runModeKey,runNoticeMark,runExpanded,toggleRunExpansion,syncRunPrefs,usageUsd,addRunCost,runCostText}=await import(pathToFileURL(root+'/src/storygen/web/static/run-summary.js'));
+const {runSummaryText,runModeKey,runNoticeMark,runExpanded,toggleRunExpansion,syncRunPrefs,revealTakesFocus,usageUsd,addRunCost,runCostText}=await import(pathToFileURL(root+'/src/storygen/web/static/run-summary.js'));
 
 // The one-line summary: state, the planned models when known, a warning mark when the run has a warning.
 const plan={roles:{writer:{provider:'venice',model:'gemma'}},evaluator:{provider:'local',model:'judge'}};
@@ -71,3 +71,8 @@ console.log('ok');
   p=syncRunPrefs({id:'r5',state:'queued'},p);assert.equal(runExpanded({id:'r5',state:'running'},p),false);
   assert.equal(runExpanded({id:'r5',state:'needs_review'},p),true,'the next stop opens it again');
 }
+
+// Г8: a reveal never takes the focus from a field the author is typing in.
+assert.equal(revealTakesFocus({matches:s=>s.includes('textarea')}),false);
+assert.equal(revealTakesFocus({matches:()=>false}),true);
+assert.equal(revealTakesFocus(null),true);

@@ -194,3 +194,67 @@ test('a run that takes the run row blocks «Продовжити валідац�
   expect(resumes).toEqual([]);
   expect((await runs()).find(run=>run.id===book.id).state).toBe('needs_review');
 });
+
+test('the running validation is shown from the menu and starts nothing',async({page,request})=>{
+  const fixture=await(await request.post('/test-book-validation?slow_auditor=true')).json();
+  const runs=async()=>(await(await request.get(`/api/stories/${fixture.story_id}/runs`)).json()).runs;
+  const preview=await(await request.post(`/api/stories/${fixture.story_id}/audit/preview`,{data:{scope:'story'}})).json();
+  const book=await(await request.post('/api/runs',{data:{request_id:crypto.randomUUID(),request:{story_id:fixture.story_id,scene_id:null,mode:'audit',
+    stage:null,audit_scope:'story',audit_plan_fingerprint:preview.plan_fingerprint,pause_after:[]}}})).json();
+  try{
+    await expect.poll(async()=>(await runs()).find(run=>run.id===book.id)?.state).toBe('running');
+    await page.goto(`/stories/${fixture.story_id}?scene=${fixture.first_id}&material=prose`);
+    await page.locator('.rich-text-surface .ProseMirror').focus();
+    await expect(page.locator('.rich-text-surface .ProseMirror')).toBeFocused();
+    const item=page.locator('#story-menu-validate');
+    await page.locator('#story-menu-toggle').click();
+    await expect(item).toHaveText('Валідація триває: показати');
+    await expect(item).toBeEnabled();
+    await item.click();
+    await expect(page.locator('#run-status .run-progress-title')).toBeFocused();
+    expect((await runs()).length).toBe(1);
+  }finally{
+    await request.post(`/api/runs/${book.id}/cancel`,{data:{}});
+  }
+});
+
+test('a slow run GET does not take the focus from the editor',async({page,request})=>{
+  // Г8: the reveal waits for the saved run; typing in the editor meanwhile keeps the focus there.
+  const fixture=await(await request.post('/test-book-validation?slow_auditor=true')).json();
+  const runs=async()=>(await(await request.get(`/api/stories/${fixture.story_id}/runs`)).json()).runs;
+  let delayed=false,posted=false;
+  await page.route('**/api/runs/*',async route=>{
+    if(posted&&!delayed&&route.request().method()==='GET'){delayed=true;await new Promise(resolve=>setTimeout(resolve,1500))}
+    await route.continue();
+  });
+  page.on('response',response=>{if(response.request().method()==='POST'&&/\/api\/runs$/.test(response.url()))posted=true});
+  await page.goto(`/stories/${fixture.story_id}?scene=${fixture.first_id}&material=prose`);
+  try{
+    await page.locator('#story-menu-toggle').click();
+    await page.locator('#story-menu-validate').click();
+    await page.locator('dialog[open]').getByRole('button',{name:'Почати валідацію'}).click();
+    await page.locator('.rich-text-surface .ProseMirror').focus();
+    await expect(page.locator('#run-status .run-progress-title')).toBeVisible({timeout:10000});
+    await expect(page.locator('.rich-text-surface .ProseMirror')).toBeFocused();
+  }finally{
+    const run=(await runs()).at(-1);
+    if(run)await request.post(`/api/runs/${run.id}/cancel`,{data:{}});
+  }
+});
+
+test('the focus stays in the run row when the progress block goes away',async({page,request})=>{
+  const fixture=await(await request.post('/test-book-validation')).json();
+  await page.route('**/api/runs/*',async route=>{
+    if(route.request().method()!=='GET'){await route.continue();return}
+    const response=await route.fetch(),body=await response.json();
+    if(body.run?.state==='needs_review')body.progress=null;
+    await route.fulfill({response,json:body});
+  });
+  await page.goto(`/stories/${fixture.story_id}?scene=${fixture.first_id}&material=prose`);
+  await page.locator('#story-menu-toggle').click();
+  await page.locator('#story-menu-validate').click();
+  await page.locator('dialog[open]').getByRole('button',{name:'Почати валідацію'}).click();
+  await expect(page.locator('#run-stop-scene')).toBeVisible();
+  await expect(page.locator('#run-status .run-progress-title')).toHaveCount(0);
+  await expect(page.locator('#run-status .run-summary')).toBeFocused();
+});

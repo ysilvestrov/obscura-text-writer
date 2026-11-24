@@ -31,3 +31,22 @@ def test_rebuild_memory_uses_current_texts_in_order(tmp_path):
     assert calls==[s.id for s in scenes[1:]] and all(a.state=='completed' for a in attempts)
     snapshot=load_memory(repo.read_text(repo.get_scene(scenes[-1].id).heads['memory']))
     assert snapshot.source_prose_ids==sources
+
+
+def test_rebuild_stage_finished_carries_the_usage(tmp_path):
+    repo=Repository(tmp_path);story=repo.create_story(StoryCreate(title='Твір'))
+    scenes=[repo.create_scene(story.id,SceneCreate(title=str(i))) for i in range(2)]
+    sources=[save_manual_prose(repo,scene.id,f'Сцена {scene.position}',0).id for scene in scenes]
+    first=MemorySnapshot(facts=[MemoryEntry(text='Початок',source_version_id=sources[0],quote='Сцена 0')],source_prose_ids=[sources[0]])
+    mem=repo.save_version(story.id,scenes[0].id,'memory',first.model_dump_json(),[sources[0]]);repo.set_head(scenes[0].id,'memory',mem.id,1)
+    approve_links(repo,story.id)
+    class Gateway:
+        def stream(self,context,cancel):
+            yield GenerationEvent(type='delta',text=v4_answer(context))
+            yield GenerationEvent(type='terminal',finish_reason='stop')
+    events=[]
+    attempts=rebuild_memory(repo,scenes[1].id,lambda _:Gateway(),threading.Event(),lambda kind,data:events.append((kind,data)),settings=RoleSettings(provider=ProviderSettings(model='test'),memory_mode='snapshot'))
+    finished=[data for kind,data in events if kind=='stage_finished']
+    assert len(finished)==len(attempts)>0
+    for data,attempt in zip(finished,attempts):
+        assert 'usage' in data and data['usage']==attempt.usage

@@ -494,9 +494,9 @@ def main():
             return dict(story_id=story.id,scene_id=scene.id)
 
         @app.post('/test-book-validation')
-        def book_validation_fixture(slow_planner: bool = False):
+        def book_validation_fixture(slow_planner: bool = False, slow_auditor: bool = False):
             """Two scenes with a brief, prose and memory, all links unchecked; the first brief disagrees with the plan.
-            The auditor is synthetic and local (no budget). `slow_planner` adds a planner whose brief runs until cancelled."""
+            The auditor is synthetic and local (no budget). `slow_planner` adds a planner whose brief runs until cancelled; `slow_auditor` makes the auditor hold the run until cancelled."""
             import json
             from storygen.authoring.blueprints import save_role_settings
             from storygen.generation.dependencies import save_manual_prose
@@ -518,6 +518,9 @@ def main():
                 journal=MemoryJournal(source_prose_ids=journal.source_prose_ids+[prose.id],events=journal.events+[event])
                 save_scene_memory(repo,scene.id,journal.model_dump_json(),repo.get_scene(scene.id).revision)
                 ids.append(scene.id)
+            if slow_auditor:
+                save_role_settings(repo,story.id,'auditor',RoleSettings(provider=ProviderSettings(model='synthetic-slow'),temperature=0.2,
+                    context_tokens=200000,max_input_chars=400000,max_output_tokens=4096),repo.get_story(story.id).revision)
             if slow_planner:
                 save_role_settings(repo,story.id,'planner',RoleSettings(provider=ProviderSettings(model='synthetic-slow')),repo.get_story(story.id).revision)
             return dict(story_id=story.id,first_id=ids[0],second_id=ids[1])

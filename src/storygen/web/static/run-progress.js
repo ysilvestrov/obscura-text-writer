@@ -23,7 +23,7 @@ function titleOf(run,progress,scenes){
 
 function countsOf(progress){
   const {calls,spent_usd,spent_known,bound_usd}=progress;
-  const parts=[calls?.planned==null?t('run_progress.calls_open',{p0:calls?.done??0}):t('run_progress.calls',{p0:calls.done??0,p1:calls.planned})];
+  const parts=[!Number.isFinite(calls?.planned)?t('run_progress.calls_open',{p0:calls?.done??0}):t('run_progress.calls',{p0:calls.done??0,p1:calls.planned})];
   // A missing or malformed sum reads as an unknown price («$—»), never «$NaN».
   const spentValue=Number(spent_usd),boundValue=Number(bound_usd);
   const spent=spent_known===false||spent_usd==null||!Number.isFinite(spentValue)?'$—':dollars(spentValue);

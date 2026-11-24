@@ -43,3 +43,8 @@ assert.ok(!bare.counts.includes('NaN'),bare.counts);assert.equal(bare.fraction,n
 assert.ok(!progressText(book,{...base,spent_usd:undefined},scenes).counts.includes('NaN'));
 assert.ok(!progressText(book,{...base,spent_usd:'x',bound_usd:null},scenes).counts.includes('NaN'));
 assert.equal(progressText(book,{...base,calls:{done:undefined,planned:4}},scenes).fraction,null);
+
+// A planned count that is not a number reads as an open plan: no « / » and no fraction.
+const odd=progressText(book,{...base,calls:{done:2,planned:'x'}},scenes);
+assert.ok(odd.counts.startsWith('Викликів: 2')&&!odd.counts.includes(' / '),odd.counts);
+assert.equal(odd.fraction,null);
