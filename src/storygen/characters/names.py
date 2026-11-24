@@ -4,6 +4,7 @@ from ..scene_description import split_participants, name_key
 
 OTHER_NAMES = re.compile(r"(?i)^(?:інше\s+ім['’ʼ]я|інші\s+імена|також\s+відом(?:ий|а|і)\s+як|other\s+names?|also\s+known\s+as|aka)\s*:\s*(.*)$")
 AMBIGUOUS_NAME_WARNING = 'Ім’я «{name}» мають кілька карток: {cards}; у плані воно не розпізнається.'
+SHADOWED_NAME_WARNING = 'Ім’я «{name}» є основним ім’ям картки «{card}» та іншим ім’ям карток: {others}; у плані воно означає основну картку.'
 
 
 def plain_line(line):
@@ -35,12 +36,19 @@ def card_names(card):
     return _unique([card.name] + [name for entry in getattr(card, 'entries', ()) for name in _entry_names(entry)])
 
 
-def name_index(cards):
+def _candidates(cards):
+    """{name_key: ([ids with it as the card name], [ids with it only as an other name])}."""
     index = {}
     for card in cards:
-        for name in card_names(card):
-            index.setdefault(name_key(name), []).append(card.id)
+        for position, name in enumerate(card_names(card)):
+            index.setdefault(name_key(name), ([], []))[position > 0].append(card.id)
     return index
+
+
+def name_index(cards):
+    """{name_key: [card ids]}; one id means the name resolves. The card name wins over other names of other cards:
+    only two card names, or two other names without a card name, stay ambiguous."""
+    return {key: primary if primary else others for key, (primary, others) in _candidates(cards).items()}
 
 
 def scene_name(card, active, scene):
@@ -83,7 +91,11 @@ def name_warnings(cards):
     for card in cards:
         for name in card_names(card):
             shown.setdefault(name_key(name), name)
-    for key, ids in name_index(cards).items():
+    label = lambda ids: ', '.join(by_id[id][:120] for id in ids)
+    for key, (primary, others) in _candidates(cards).items():
+        ids = primary or others
         if len(ids) > 1:
-            warnings.append(AMBIGUOUS_NAME_WARNING.format(name=shown[key][:120], cards=', '.join(by_id[id][:120] for id in ids)))
+            warnings.append(AMBIGUOUS_NAME_WARNING.format(name=shown[key][:120], cards=label(ids)))
+        elif primary and others:
+            warnings.append(SHADOWED_NAME_WARNING.format(name=shown[key][:120], card=by_id[primary[0]][:120], others=label(others)))
     return warnings

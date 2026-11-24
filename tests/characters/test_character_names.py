@@ -44,13 +44,28 @@ def test_every_name_resolves_in_any_scene():
     assert resolve_participants(['Джон', 'хазяїн', 'Юлія'], cards) == (['H', 'J'], [])
 
 
+def boss():
+    return card('B', 'Бос', ("Інше ім'я: Джон", None))
+
+
 def test_name_shared_by_two_cards_is_ambiguous_and_warned():
-    cards = [card('A', 'Джон', ('x', None)), host()]
-    ids, problems = resolve_participants(['Джон'], cards)
-    assert ids == [] and problems == ['Неоднозначне ім’я: Джон']
+    # CHARACTER-NAMES-S03: two other names, or two card names, stay ambiguous.
+    cards = [host(), boss()]
+    assert resolve_participants(['Джон'], cards) == ([], ['Неоднозначне ім’я: Джон'])
     assert resolve_participants(['Хазяїн'], cards) == (['H'], [])
-    assert name_warnings(cards) == ['Ім’я «Джон» мають кілька карток: Джон, Хазяїн; у плані воно не розпізнається.']
+    assert name_warnings(cards) == ['Ім’я «Джон» мають кілька карток: Хазяїн, Бос; у плані воно не розпізнається.']
+    twins = [card('A', 'Джон', ('x', None)), card('C', 'джон', ('x', None)), host()]
+    assert resolve_participants(['Джон'], twins) == ([], ['Неоднозначне ім’я: Джон'])
+    assert name_warnings(twins) == ['Ім’я «Джон» мають кілька карток: Джон, джон; у плані воно не розпізнається.']
     assert name_warnings([host()]) == []
+
+
+def test_card_name_wins_over_an_other_name_of_another_card():
+    # CHARACTER-NAMES-S06: «Айя» and «Айя-бот» with «Інше ім'я: Айя».
+    cards = [card('A', 'Айя', ('Агентка', None)), card('R', 'Айя-бот', ("Інше ім'я: Айя", None))]
+    assert resolve_participants(['Айя', 'айя-бот'], cards) == (['A', 'R'], [])
+    assert name_warnings(cards) == ['Ім’я «Айя» є основним ім’ям картки «Айя» та іншим ім’ям карток: Айя-бот; у плані воно означає основну картку.']
+    assert name_warnings(cards + [card('Q', 'Квін', ("Інше ім'я: Айя", None))])[-1].endswith('іншим ім’ям карток: Айя-бот, Квін; у плані воно означає основну картку.')
 
 
 def test_current_name_follows_the_latest_available_marker():
@@ -85,7 +100,7 @@ def test_other_name_works_in_acquaintance_narrator_and_arc_protagonist_lines():
 def test_acquaintance_names_a_shared_other_name_ambiguous_and_arc_skips_it():
     from storygen.characters.acquaintance import pre_story_known
     from storygen.storage.book_structure import _apply_protagonists
-    cards = [card('A', 'Джон', ('x', None)), host(), card('J', 'Юлія', ('Знайома з: Джон', None))]
+    cards = [boss(), host(), card('J', 'Юлія', ('Знайома з: Джон', None))]
     known, warnings = pre_story_known(cards, SCENES, 's1', 'J')
     assert known == set() and warnings == ['У картці «Юлія» позначка «Знайомий з:» називає «Джон», але так названо кілька карток; перейменуйте одну з них, щоб ім’я було однозначним.']
     arc = SimpleNamespace(id='a1', protagonist_id=None)
@@ -93,7 +108,22 @@ def test_acquaintance_names_a_shared_other_name_ambiguous_and_arc_skips_it():
     assert arc.protagonist_id is None
 
 
-def test_new_scene_cast_line_writes_an_id_for_a_name_shared_through_another_name():
+def test_card_name_wins_in_acquaintance_protagonist_and_narrator_lines():
+    # CHARACTER-NAMES-S06
+    from storygen.characters.acquaintance import pre_story_known
+    from storygen.narration import parse_narrator
+    from storygen.storage.book_structure import _apply_protagonists
+    cards = [card('A', 'Джон', ('x', None)), host(), card('J', 'Юлія', ('Знайома з: Джон', None))]
+    assert pre_story_known(cards, SCENES, 's1', 'J') == ({'A'}, [])
+    assert parse_narrator('перша особа, Джон', cards)[0].character_id == 'A'
+    arc = SimpleNamespace(id='a1', protagonist_id=None)
+    assert _apply_protagonists(SimpleNamespace(parts=[SimpleNamespace(arcs=[arc])]), [('a1', 'Джон')], cards) == ([], [])
+    assert arc.protagonist_id == 'A'
+
+
+def test_new_scene_cast_line_writes_an_id_only_for_an_ambiguous_name():
     from storygen.storage.scene_metadata import cast_names
     assert cast_names(['H'], [host()]) == 'Хазяїн'
-    assert cast_names(['A', 'H'], [card('A', 'Джон', ('x', None)), host()]) == 'A, Хазяїн'
+    assert cast_names(['A', 'H'], [card('A', 'Джон', ('x', None)), host()]) == 'Джон, Хазяїн'
+    assert cast_names(['A', 'C'], [card('A', 'Джон', ('x', None)), card('C', 'Джон', ('x', None))]) == 'A, C'
+    assert cast_names(['H', 'B'], [host(), boss()]) == 'Хазяїн, Бос'

@@ -3880,12 +3880,24 @@
     {
       "id": "CHARACTER-NAMES-S03",
       "requirement": "CHARACTER-NAMES",
-      "scope": "Ім’я кількох карток: «Неоднозначне ім’я», попередження «Знайомий з:», «Протагоніст:» без вибору, ID у cast_names, попередження сторінки й preview.",
+      "scope": "Однакове інше чи основне ім’я кількох карток: «Неоднозначне ім’я», попередження «Знайомий з:», «Протагоніст:» без вибору, ID у cast_names, попередження сторінки й preview.",
       "tests": [
         "tests/characters/test_character_names.py::test_name_shared_by_two_cards_is_ambiguous_and_warned",
         "tests/characters/test_character_names.py::test_acquaintance_names_a_shared_other_name_ambiguous_and_arc_skips_it",
-        "tests/characters/test_character_names.py::test_new_scene_cast_line_writes_an_id_for_a_name_shared_through_another_name",
+        "tests/characters/test_character_names.py::test_new_scene_cast_line_writes_an_id_only_for_an_ambiguous_name",
         "tests/web/test_character_names_api.py::test_shared_name_is_warned_on_load_and_preview"
+      ]
+    },
+    {
+      "id": "CHARACTER-NAMES-S06",
+      "requirement": "CHARACTER-NAMES",
+      "scope": "Основне ім’я картки має перевагу над іншим ім’ям іншої картки в плані, «Знайомий з:», оповідачі, «Протагоніст:» і cast_names; підказка на сторінці, у preview і в результаті імпорту карток.",
+      "tests": [
+        "tests/characters/test_character_names.py::test_card_name_wins_over_an_other_name_of_another_card",
+        "tests/characters/test_character_names.py::test_card_name_wins_in_acquaintance_protagonist_and_narrator_lines",
+        "tests/characters/test_character_names.py::test_new_scene_cast_line_writes_an_id_only_for_an_ambiguous_name",
+        "tests/web/test_character_names_api.py::test_shared_name_is_warned_on_load_and_preview",
+        "tests/authoring/test_character_import.py::test_import_warns_about_shared_names_and_card_name_wins_in_plan"
       ]
     },
     {
