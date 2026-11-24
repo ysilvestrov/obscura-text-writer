@@ -113,3 +113,17 @@ console.log('Book validation helpers passed');
   assert.equal(bookResumeInRow({...bookRun('b','needs_review')},[]),true,'the stop scene is in the trash');
   assert.equal(bookResumeInRow(gen,stopScenes),true);
 }
+
+// Task 3: the full book run the panel resumes; a short current run keeps the cached full one.
+{
+  const {panelBookRun}=await import(pathToFileURL(root+'/src/storygen/web/static/book-validation-state.js'));
+  const bookRun=(id,state)=>({id,state,request:{mode:'audit',audit_scope:'story'},checkpoint:{scene_id:'s1'}});
+  const stopped={...bookRun('b','needs_review'),checkpoint:{scene_id:'s1',link:'brief',outcome:'discrepancy'}};
+  const memoryRun={id:'m',state:'running',request:{mode:'stage',stage:'memory'}};
+  assert.equal(panelBookRun(null,[],stopped),stopped);
+  assert.equal(panelBookRun(stopped,[{...bookRun('b','needs_review')}],{...bookRun('b','needs_review')}),stopped);  // a short current keeps the full cached run
+  assert.equal(panelBookRun(stopped,[{...bookRun('b','needs_review')},memoryRun],memoryRun),stopped);  // the row moved to a memory run
+  assert.equal(panelBookRun(stopped,[{...bookRun('b','completed')}],null),null);                       // resumed elsewhere
+  assert.equal(panelBookRun(stopped,[{...bookRun('b','needs_review')},{...bookRun('c','queued')}],null),null);  // a newer book run
+  assert.equal(panelBookRun(null,[{...bookRun('b','needs_review')}],memoryRun),null);                  // no full run: the menu reveals it
+}

@@ -4,6 +4,7 @@ import {state,refresh,selectScene} from './editor.js';
 import {invokeWorkspaceCommand} from './workspace-commands.js';
 import {sceneConsistency} from './link-actions.js';
 import {operationReason} from './run-readiness.js';
+import {panelBookRun,revealBlocked} from './book-validation-state.js';
 import {settingsLink} from './workspace-links.js';
 // VALID-LINKS-S15: the «Узгодженість сцени» panel of the open scene. The rows and the main action come from
 // link-actions.js::sceneConsistency; the panel reads the story view's material_status and, for «Перевірити Ревізором»,
@@ -15,6 +16,10 @@ const CARRY_POLL_MS=3000,CARRY_POLLS=40;
 let busy=false,carryTimer=null,carryPolls=0;
 // Г7: the preview is read once per scene and state of its links; a refresh that leaves the links as they were reuses it.
 let previewKeyValue=null,previewValue=null;
+// Task 3: the full book validation run (the run line may hold a short list entry of it) for «Продовжити валідацію».
+let bookRun=null;
+const isBook=run=>run?.request?.mode==='audit'&&run.request.audit_scope==='story';
+const currentRun=()=>panelBookRun(bookRun,state.workspaceRuns,state.workspaceRun);
 
 // Why the main action cannot run now: unsaved edits and the like, another active run, a request of this panel.
 export function blockedReason(){
@@ -107,7 +112,7 @@ function updatePrimary(wrap,primary){
   const button=wrap.querySelector('#scene-consistency-primary'),cost=wrap.querySelector('.consistency-cost'),reason=wrap.querySelector('#scene-consistency-reason');
   button.disabled=busy||primary.disabled;
   uiText(button,'textContent',()=>t(primary.label));
-  button.onclick=()=>{if(primary.action==='audit')void audit()};
+  button.onclick=()=>{if(primary.action==='audit')void audit();else if(primary.action==='resume'){const run=currentRun();if(run)void resume(run)}};
   label(cost,primary.detail);cost.hidden=!primary.detail;
   label(reason,primary.reason);reason.hidden=!primary.reason;
 }
@@ -115,9 +120,11 @@ let shown=null;
 function render(){
   if(!host)return;
   const key=previewKey();
-  const panel=state.scene?sceneConsistency(state.view?.material_status,state.scene.id,state.view?.scenes||[],null,previewFor(key),blockedReason()):null;
+  const run=currentRun();
+  const panel=state.scene?sceneConsistency(state.view?.material_status,state.scene.id,state.view?.scenes||[],run,previewFor(key),
+    run&&revealBlocked(state.workspaceRun,run)?t('book_validation.other_run_active'):blockedReason()):null;
   // Only the main action changed (an edit, a run, the preview): update it in place and keep the rows and the focus.
-  const signature=panel&&JSON.stringify([state.scene.id,busy,panel.view,panel.pendingCount,panel.total,panel.rows,panel.primary.action]);
+  const signature=panel&&JSON.stringify([state.scene.id,busy,panel.view,panel.pendingCount,panel.total,panel.rows,panel.primary.action,run?.id,run?.state]);
   const wrap=host.querySelector('.consistency-primary');
   if(signature&&signature===shown&&(panel.view!=='full'||wrap)){
     if(panel.view==='full'){
@@ -175,6 +182,11 @@ async function audit(){
   try{await invokeWorkspaceCommand('run',{mode:'audit',audit_scope:'scene'})}
   catch(error){if(error.name!=='AbortError')notice(error.message,'error')}
 }
+async function resume(run){
+  if(busy)return;
+  try{await invokeWorkspaceCommand('resume-run',run)}
+  catch(error){if(error.name!=='AbortError')notice(error.message,'error')}
+}
 async function decide(action){
   if(busy)return;
   busy=true;render();
@@ -216,6 +228,8 @@ async function createMemory(sceneId,options){
   }catch(error){if(error.name!=='AbortError')notice(error.message,'error')}
 }
 if(host)document.addEventListener('story-refreshed',()=>{if(previewValue?.failed){previewKeyValue=null;previewValue=null}render()});
+// Registered before the render listener so a render sees the run it was told about.
+document.addEventListener('workspace-run-state',event=>{if(isBook(event.detail))bookRun=event.detail});
 if(host)for(const event of ['workspace-run-state','workspace-run-pending','workspace-readiness','editor-state-changed'])document.addEventListener(event,render);
 document.addEventListener('scene-selected',()=>{carryPolls=0;previewKeyValue=null;previewValue=null;render()});
 render();

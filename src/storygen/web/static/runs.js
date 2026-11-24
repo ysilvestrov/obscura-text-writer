@@ -4,7 +4,7 @@ import {acceptedContinuation} from './acceptance.js';
 import {violationDetails} from './memory-violations.js';
 import {runSummaryText,runModeKey,runNoticeMark,runExpanded,toggleRunExpansion,syncRunPrefs,addRunCost,runCostText} from './run-summary.js';
 import {progressText} from './run-progress.js';
-import {revealBlocked} from './book-validation-state.js';
+import {revealBlocked,bookResumeInRow} from './book-validation-state.js';
 import {api,json,notice} from './api.js';
 import {state,refresh,loadBuffer,textEditor} from './editor.js';
 import {registerWorkspaceCommand} from './workspace-commands.js';
@@ -41,7 +41,7 @@ async function reconcilePrimaryOnce(){
   if(pending.storageKey)sessionStorage.removeItem(pending.storageKey);setPendingPrimary(null);document.dispatchEvent(new CustomEvent('workspace-primary-recovered',{detail:run}));await follow(run,{reveal:true});return run;
 }
 const actions=[];
-function updateControls(){for(const item of actions){let reason=item.operation?operationReason(state,readiness?.operations[item.operation]):['latest','proposal','apply'].includes(item.action)?materialReason(item.action,state,historyRuns):item.action==='accepted'?operationReason(state,{ready:!!continuation,reason:t("m_7795d03d9c33")}):item.action?controlReason(item.action,active):'';if(['resume','repeat'].includes(item.action))reason=reason||operationReason(state,pendingReadiness);if(item.busy)reason=t("m_08ee1e43995d");item.button.disabled=!!reason;uiText(item.button,"title",()=>(diagnostic(reason)));uiText(item.hint,"textContent",()=>(diagnostic(reason)));item.button.setAttribute('aria-describedby',item.hint.id);if(['pause','cancel','resume','repeat','accepted'].includes(item.action))item.wrapper.hidden=['resume','repeat'].includes(item.action)?!!controlReason(item.action,active):!!reason}}
+function updateControls(){for(const item of actions){let reason=item.operation?operationReason(state,readiness?.operations[item.operation]):['latest','proposal','apply'].includes(item.action)?materialReason(item.action,state,historyRuns):item.action==='accepted'?operationReason(state,{ready:!!continuation,reason:t("m_7795d03d9c33")}):item.action?controlReason(item.action,active):'';if(['resume','repeat'].includes(item.action))reason=reason||operationReason(state,pendingReadiness);if(item.busy)reason=t("m_08ee1e43995d");item.button.disabled=!!reason;uiText(item.button,"title",()=>(diagnostic(reason)));uiText(item.hint,"textContent",()=>(diagnostic(reason)));item.button.setAttribute('aria-describedby',item.hint.id);if(['pause','cancel','resume','repeat','accepted'].includes(item.action))item.wrapper.hidden=['resume','repeat'].includes(item.action)?!!controlReason(item.action,active):!!reason;if(item.action==='resume'&&!bookResumeInRow(active,state.view?.scenes))item.wrapper.hidden=true}}
 async function loadPending(){
   const epoch=++pendingEpoch;pendingReadiness=null;continuation=null;updateControls();if(!active)return;
   const runId=active.id;
@@ -273,5 +273,6 @@ if(pendingPrimary())void reconcilePrimary().catch(()=>{});
 
 registerWorkspaceCommand('run',async options=>{try{return await start(options.mode,options.stage,options)}catch(error){if(error.name!=='AbortError')document.dispatchEvent(new CustomEvent('workspace-operation-error',{detail:{stage:options.mode==='edit_loop'?'edit':options.stage||options.mode,message:error.message}}));throw error}finally{if(extraControls?.open)scheduleReadiness()}});
 registerWorkspaceCommand('refresh-readiness',loadReadiness);
+registerWorkspaceCommand('resume-run',async run=>{if(revealBlocked(active,run))throw new Error(t('book_validation.other_run_active'));if(active?.id!==run.id)await follow(run,{reveal:true});await resumeRun(false)});
 registerWorkspaceCommand('cancel-run',async id=>{const run=await api(`/api/runs/${id}/cancel`,json('POST',{}));if(active?.id===id)draw(run);return run});
 registerWorkspaceCommand('cancel-pending',async()=>{const pending=pendingPrimary();if(!pending)return;setPendingPrimary({...pending,cancelled:true});return reconcilePrimary()});

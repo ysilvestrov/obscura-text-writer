@@ -61,9 +61,16 @@ test('book validation stops on a discrepancy, leads to the scene and finishes th
   const row=page.locator('#scene-consistency li[data-link="brief"]');
   await expect(row).toContainText('Місце дії не збігається з планом');
   await expect(page.locator('#scene-consistency')).toBeFocused();  // Р7: the stop scene's «Узгодженість сцени» takes the focus
+  await expect(page.locator('#scene-consistency-primary')).toBeDisabled();
+  await expect(page.locator('#scene-consistency-reason')).toHaveText('Спершу вирішіть зв’язок');
   await row.getByRole('button',{name:'Розбіжності немає'}).click();
   await expect(row).toHaveAttribute('data-state','ok');
-  await page.locator('#run-actions').getByRole('button',{name:'Продовжити'}).click();
+  const primary=page.locator('#scene-consistency-primary');
+  await expect(page.locator('#run-actions').getByRole('button',{name:'Продовжити',exact:true})).toBeHidden();
+  await expect(primary).toHaveText('Продовжити валідацію');
+  await expect(page.getByRole('button',{name:'Перевірити Ревізором'})).toHaveCount(0);
+  await expect(primary).toBeEnabled();
+  await primary.click();
   dialog=page.locator('dialog[open]');
   await expect(dialog).toContainText('Сцен до перевірки: 2.');
   await dialog.getByRole('button',{name:'Підтвердити'}).click();
