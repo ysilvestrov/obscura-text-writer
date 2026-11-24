@@ -8310,6 +8310,18 @@
         "procedure": "docs/verification/manual.md#book-validation-browser",
         "reason": "Playwright запускається окремим runner; check_docs.py індексує лише pytest IDs."
       }
+    },
+    {
+      "id": "VALID-UI-S07",
+      "requirement": "VALID-UI",
+      "scope": "stopSceneJump: на сцені зупинки кнопка переходу видима, неактивна й secondary, на іншій сцені — активна й головна; ключ run.on_stop_scene в каталозі uk/en. Перемальовування на scene-selected і підказка в браузері — у ручній процедурі (Playwright book-validation.spec.mjs).",
+      "tests": [
+        "tests/web/test_book_validation_ui.py::test_book_validation_helpers"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#book-validation-browser",
+        "reason": "Playwright запускається окремим runner; check_docs.py індексує лише pytest IDs."
+      }
     }
   ]
 }

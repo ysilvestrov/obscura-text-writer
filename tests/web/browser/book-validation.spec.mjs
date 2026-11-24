@@ -61,6 +61,11 @@ test('book validation stops on a discrepancy, leads to the scene and finishes th
   const row=page.locator('#scene-consistency li[data-link="brief"]');
   await expect(row).toContainText('Місце дії не збігається з планом');
   await expect(page.locator('#scene-consistency')).toBeFocused();  // Р7: the stop scene's «Узгодженість сцени» takes the focus
+  // VALID-UI-S07: on the stop scene the jump stays named but inactive and secondary, with the reason in its title.
+  await expect(jump).toBeVisible();
+  await expect(jump).toBeDisabled();
+  await expect(jump).toHaveClass(/secondary/);
+  await expect(jump).toHaveAttribute('title','Ви вже на сцені зупинки');
   await expect(page.locator('#scene-consistency-primary')).toBeDisabled();
   await expect(page.locator('#scene-consistency-reason')).toHaveText('Спершу вирішіть зв’язок');
   await row.getByRole('button',{name:'Розбіжності немає'}).click();
