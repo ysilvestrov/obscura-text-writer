@@ -1,3 +1,4 @@
+import json
 import shutil
 import subprocess
 from pathlib import Path
@@ -36,3 +37,13 @@ def test_material_status_carries_the_auditor_verdict_of_the_current_link(tmp_pat
     assert links['brief']['summary'] == 'Можлива розбіжність'
     # A link without an auditor verdict keeps the plain shape.
     assert set(links['prose']) == {'status', 'source', 'reason', 'fingerprint'}
+
+
+CONSISTENCY_KEYS = ['consistency.approve_self', 'consistency.audit', 'consistency.audit_calls', 'consistency.audit_cost', 'consistency.discrepancy_hint', 'consistency.no_discrepancy', 'consistency.nothing_to_audit', 'consistency.pending_count', 'consistency.resolve_first', 'consistency.resume', 'consistency.row_brief', 'consistency.row_memory', 'consistency.row_prose', 'consistency.state_discrepancy', 'consistency.state_missing', 'consistency.state_needs_previous', 'consistency.state_ok', 'consistency.state_ok_auditor', 'consistency.state_ok_author', 'consistency.state_pending', 'consistency.title', 'consistency.valid']
+
+
+def test_scene_consistency_texts_exist_in_both_languages():
+    catalogs = json.loads((ROOT / 'src/storygen/web/static/i18n.json').read_text(encoding='utf-8'))
+    for language in ('uk', 'en'):
+        for key in CONSISTENCY_KEYS:
+            assert catalogs[language].get(key), (language, key)
