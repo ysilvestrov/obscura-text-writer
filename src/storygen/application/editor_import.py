@@ -21,7 +21,7 @@ from pydantic import Field
 from ..authoring.comments import InputAnchor, InputComment
 from ..domain import DomainModel, new_id
 from ..markdown_document import source_range_text
-from ..publication.docx_import import DocxManuscript, read_docx
+from ..publication.docx_import import DocxManuscript, Run, read_docx
 from ..publication.docx_text import SceneText, normalized, roundtrip_ok, serialize
 from ..publication.markup import chapter_paragraphs
 from ..rewrite_diff import RewriteDiff, build_rewrite_diff
@@ -177,27 +177,72 @@ def _anchor(norm, paragraph, start, end, char, content_format):
     return {'start': begin, 'end': finish, 'source_quote': source[begin:finish], 'display_quote': display}
 
 
-def _notes(doc, fragment, norm, prose_paragraphs, content_format, anchored_allowed):
+@dataclass(frozen=True)
+class _View:
+    """One view of a scene with paragraph-mark revisions applied: joined paragraphs and where doc paragraphs went."""
+    paragraphs: list[tuple[Run, ...]]
+    groups: list[list[int]]  # doc paragraph indices of each joined paragraph
+    where: dict[int, tuple[int, int]]  # doc paragraph index -> (joined paragraph, offset of its text in it)
+
+
+def _merged(runs):
+    out = []
+    for run in runs:
+        if out and (out[-1].bold, out[-1].italic) == (run.bold, run.italic):
+            out[-1] = Run(out[-1].text + run.text, run.bold, run.italic)
+        elif run.text:
+            out.append(run)
+    return tuple(out)
+
+
+def _view(doc, fragment, name: Literal['original', 'editor']) -> _View:
+    """Word semantics: an inserted mark joins a paragraph with the next one in the original view, a deleted mark
+    in the editor's view; a wholly inserted (deleted) paragraph so adds nothing to the original (editor's) view."""
+    flag = 'mark_inserted' if name == 'original' else 'mark_deleted'
+    paragraphs, groups, where = [], [], {}
+    runs, group, base = [], [], 0
+    for index in range(fragment.first, fragment.last):
+        paragraph = doc.paragraphs[index]
+        own = getattr(paragraph, name)
+        where[index] = (len(paragraphs), base)
+        runs += own
+        group.append(index)
+        base += len(_text(own))
+        if getattr(paragraph, flag):
+            if index + 1 < fragment.last:
+                continue
+            if not base:
+                break  # an empty last paragraph joins the next heading and adds nothing to the scene
+        paragraphs.append(_merged(runs))
+        groups.append(group)
+        runs, group, base = [], [], 0
+    return _View(paragraphs, groups, where)
+
+
+def _notes(doc, fragment, view, norm, prose_paragraphs, content_format, anchored_allowed):
     notes = []
     for comment in sorted((c for c in doc.comments if c.start and fragment.first - 1 <= c.start[0] < fragment.last),
                           key=lambda c: c.start):
         author = comment.author.strip()
         text = comment.text.strip() or '(порожня примітка)'
-        instruction = f'{author}: {text}' if author else text
         who = f'Редактор ({author})' if author else 'Редактор'
+        instruction = f'{who}: {text}'
         start, end = comment.start, comment.end
         quote, inserted, anchor = _original_quote(doc, start, end), False, None
-        if end is not None and start[0] == end[0] and start[0] >= fragment.first:
-            paragraph = doc.paragraphs[start[0]]
-            original, editor = _text(paragraph.original), _text(paragraph.editor)
-            prefix, suffix = _changed_span(original, editor) if paragraph.changed else (len(original), 0)
-            if start[1] == end[1] and paragraph.changed and prefix <= start[1] <= len(original) - suffix:
+        first, last = view.where.get(start[0]), view.where.get(end[0]) if end else None
+        if first and last and first[0] == last[0] < len(view.paragraphs):
+            index, begin, finish = first[0], first[1] + start[1], last[1] + end[1]
+            group = view.groups[index]
+            original = _text(view.paragraphs[index])
+            editor = ''.join(_text(doc.paragraphs[i].editor) for i in group)
+            changed = any(doc.paragraphs[i].changed for i in group)
+            prefix, suffix = _changed_span(original, editor) if changed else (len(original), 0)
+            if begin == finish and changed and prefix <= begin <= len(original) - suffix:
                 quote, inserted = editor[prefix:len(editor) - suffix], True
-            index = start[0] - fragment.first
-            clean = not paragraph.changed or end[1] <= prefix or start[1] >= len(original) - suffix
-            if (anchored_allowed and start[1] < end[1] and clean and index < len(prose_paragraphs)
+            clean = not changed or finish <= prefix or begin >= len(original) - suffix
+            if (anchored_allowed and begin < finish and clean and index < len(prose_paragraphs)
                     and _text(prose_paragraphs[index]) == original):
-                anchor = _anchor(norm, index, start[1], end[1], original[end[1] - 1], content_format)
+                anchor = _anchor(norm, index, begin, finish, original[finish - 1], content_format)
         mark = ' (вставлено редактором)' if inserted else ''
         line = f'{who} до «{_quote(quote)}»{mark}: {text}' if quote else f'{who}: {text}'
         notes.append(_Note(instruction, line, (anchor['start'], anchor['end']) if anchor else None, anchor or {}))
@@ -249,7 +294,8 @@ def plan_scene(repo, story_id, scene, fragment: Fragment, doc: DocxManuscript, m
         return _skip('pending_review', ['Спершу вирішіть пропозицію попереднього імпорту редакції.'])
     norm = normalized(prose, content_format)
     body = doc.paragraphs[fragment.first:fragment.last]
-    editor_text = serialize([p.editor for p in body], content_format).text
+    original_view = _view(doc, fragment, 'original')
+    editor_text = serialize(_view(doc, fragment, 'editor').paragraphs, content_format).text
     warnings = []
     if content_format == 'plain' and any(run.bold or run.italic for p in body for run in p.editor):
         warnings.append('Проза у простому тексті: курсив і жирний з DOCX не переносяться.')
@@ -261,7 +307,7 @@ def plan_scene(repo, story_id, scene, fragment: Fragment, doc: DocxManuscript, m
             if manifest_entry.get('version_id') != head:
                 status = 'changed_since_export'
                 warnings.append('Прозу сцени змінено після експорту.')
-        elif serialize([p.original for p in body], content_format).text != norm.text:
+        elif serialize(original_view.paragraphs, content_format).text != norm.text:
             status = 'unknown_base'
             warnings.append('Експорт не знайдено; редактор правив без режиму виправлень або прозу змінено.')
         if status:
@@ -281,7 +327,7 @@ def plan_scene(repo, story_id, scene, fragment: Fragment, doc: DocxManuscript, m
             else:
                 warnings.append('Лише чернетка: правки не вміщуються в перегляд.')
     prose_paragraphs = list(chapter_paragraphs(SimpleNamespace(text=prose, content_format=content_format)))
-    notes = _notes(doc, fragment, norm, prose_paragraphs, content_format, anchored_allowed=status != 'over_limit')
+    notes = _notes(doc, fragment, original_view, norm, prose_paragraphs, content_format, anchored_allowed=status != 'over_limit')
     general, comments, dropped, general_count = _limited(notes)
     if dropped:
         warnings.append(f'Примітки понад межі не імпортовано: {dropped}.')
@@ -369,7 +415,8 @@ def preview_import(repo, story_id: str, content: bytes, *, now: datetime | None 
             edits=counted.edits, comments=len(counted.comments), general_comments=counted.general_count,
             dropped_comments=counted.dropped, replace_status=replace_status, warnings=scene_warnings))
     digest = hashlib.sha256(content).hexdigest()
-    fingerprint = hashlib.sha256(json.dumps([digest, doc.export_id, identity], ensure_ascii=False).encode()).hexdigest()
+    fingerprint = hashlib.sha256(json.dumps({'file_sha256': digest, 'export_id': doc.export_id, 'scenes': identity},
+                                            sort_keys=True, ensure_ascii=False, separators=(',', ':')).encode()).hexdigest()
     import_id = new_id()
     repo.files.write(f'{TEMP_DIR}/{import_id}.docx', content)
     return ImportPreview(import_id=import_id, export_id=doc.export_id, fingerprint=fingerprint,

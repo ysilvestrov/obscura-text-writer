@@ -39,6 +39,10 @@ class DocxParagraph:
     editor: tuple[Run, ...]
     original: tuple[Run, ...]
     changed: bool
+    # Paragraph-mark revisions (w:pPr/w:rPr/w:ins|del): an inserted mark joins this paragraph with the next one in
+    # the original view, a deleted mark joins them in the editor's view.
+    mark_inserted: bool = False
+    mark_deleted: bool = False
 
 
 @dataclass(frozen=True)
@@ -174,8 +178,11 @@ class _Reader:
                            (('rPrChange', 'pPrChange'), 'зміну форматування проігноровано (імпортується лише текст)')):
             if any(next(element.iter(_q(tag)), None) is not None for tag in tags):
                 self.warn(index, text)
+        mark = element.find(f'{_q("pPr")}/{_q("rPr")}')
+        inserted = mark is not None and mark.find(_q('ins')) is not None
+        deleted = mark is not None and mark.find(_q('del')) is not None
         self.paragraphs.append(DocxParagraph(style.get(_q('val')) if style is not None else None, tuple(state['bookmarks']),
-            _merge(state['editor']), _merge(state['original']), state['changed']))
+            _merge(state['editor']), _merge(state['original']), state['changed'] or inserted or deleted, inserted, deleted))
         self.lengths.append(state['length'])
 
     def walk(self, parent, index, state, mode):

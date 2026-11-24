@@ -191,3 +191,14 @@ def test_deep_nesting_is_a_value_error():
         read_docx(package(body))
     with pytest.raises(ValueError):
         read_docx(package('<w:sdt>' * depth + '</w:sdt>' * depth))
+
+
+def test_paragraph_mark_revisions():
+    manuscript = read_docx(package(
+        '<w:p><w:pPr><w:rPr><w:ins w:id="1" w:author="Р"/></w:rPr></w:pPr><w:ins w:id="2" w:author="Р">'
+        '<w:r><w:t>нове</w:t></w:r></w:ins></w:p>'
+        '<w:p><w:pPr><w:rPr><w:del w:id="3" w:author="Р"/></w:rPr></w:pPr><w:r><w:t>злито</w:t></w:r></w:p>'
+        '<w:p><w:pPr><w:rPr><w:ins w:id="4" w:author="Р"/><w:del w:id="5" w:author="Р"/></w:rPr></w:pPr></w:p>'
+        '<w:p><w:r><w:t>звичайний</w:t></w:r></w:p>'))
+    flags = [(p.mark_inserted, p.mark_deleted, p.changed) for p in manuscript.paragraphs]
+    assert flags == [(True, False, True), (False, True, True), (True, True, True), (False, False, False)]

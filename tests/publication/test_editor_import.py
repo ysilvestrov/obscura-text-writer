@@ -123,7 +123,7 @@ def test_comments_only(tmp_path):
     plan = plan_of(repo, story, changed, scenes[1].id)
     checked(plan)
     anchor = plan.comments[0].anchor
-    assert anchor.display_quote == 'сказала вона' and plan.comments[0].instruction == 'Редакторка: Точніше'
+    assert anchor.display_quote == 'сказала вона' and plan.comments[0].instruction == 'Редактор (Редакторка): Точніше'
 
 
 def test_anchor_ends_after_italic_run_and_escape(tmp_path):
@@ -200,7 +200,7 @@ def test_overlapping_comments(tmp_path):
     assert (item.status, item.comments, item.general_comments) == ('comments_only', 1, 2)
     plan = plan_of(repo, story, changed, scenes[1].id)
     checked(plan)
-    assert plan.comments[0].instruction == 'А: Перша'
+    assert plan.comments[0].instruction == 'Редактор (А): Перша'
     assert 'Б' in plan.general and 'Друга' in plan.general and 'Вкладена' in plan.general and '«вона»' in plan.general
 
 
@@ -275,3 +275,67 @@ def test_fingerprint_changes_with_prose_head(tmp_path):
     assert first.fingerprint == again.fingerprint and first.import_id != again.import_id
     save_manual_prose(repo, scenes[0].id, 'Новий початок.', scenes[0].revision, content_format='markdown')
     assert preview_import(repo, story.id, content).fingerprint != first.fingerprint
+
+
+TWINS = (TEXTS[0], 'Початок.\n\n— Так.\n\n— Так.', TEXTS[2])
+INS_MARK = '<w:pPr><w:rPr><w:ins w:id="80" w:author="Р"/></w:rPr></w:pPr>'
+DEL_MARK = '<w:pPr><w:rPr><w:del w:id="81" w:author="Р"/></w:rPr></w:pPr>'
+TWIN = f'<w:p><w:r>{T}— Так.</w:t></w:r></w:p>'
+FIRST = f'<w:p><w:r>{T}Початок.</w:t></w:r></w:p>'
+EMPTY = '<w:p></w:p>'
+
+
+def inserted_paragraph(text):
+    return f'<w:p>{INS_MARK}<w:ins w:id="82" w:author="Р">{run(text)}</w:ins></w:p>'
+
+
+def deleted_paragraph(text):
+    inner = f'<w:del w:id="83" w:author="Р"><w:r><w:delText xml:space="preserve">{text}</w:delText></w:r></w:del>' if text else ''
+    return f'<w:p>{DEL_MARK}{inner}</w:p>'
+
+
+def with_comment_on_first_twin(xml):
+    return xml.replace(TWIN, f'<w:p>{ranged(6, run("— Так."))}</w:p>', 1)
+
+
+def drop_manifest(tmp_path, story, content):
+    (tmp_path / 'stories' / story.id / 'exports' / f'{read_docx(content).export_id}.manifest.json').unlink()
+
+
+@pytest.mark.parametrize('manifest', [True, False])
+def test_tracked_paragraph_insertion_keeps_anchor_on_its_paragraph(tmp_path, manifest):
+    repo, story, scenes, content = book(tmp_path, TWINS)
+    if not manifest:
+        drop_manifest(tmp_path, story, content)
+    changed = edit(content, lambda xml: with_comment_on_first_twin(
+        xml.replace(FIRST, FIRST + inserted_paragraph('Нове.') + inserted_paragraph(''), 1)), [(6, 'Р', 'Перше')])
+    item = preview_import(repo, story.id, changed).scenes[1]
+    assert (item.status, item.needs_choice, item.comments) == ('changed', False, 1)
+    plan = plan_of(repo, story, changed, scenes[1].id)
+    checked(plan)
+    assert [(c.anchor.start, c.anchor.end) for c in plan.comments] == [(10, 16)]
+    assert plan.editor_text == 'Початок.\nНове.\n\n\n— Так.\n\n— Так.'
+
+
+@pytest.mark.parametrize('manifest', [True, False])
+def test_tracked_paragraph_deletion_leaves_no_empty_line(tmp_path, manifest):
+    repo, story, scenes, content = book(tmp_path, TWINS)
+    if not manifest:
+        drop_manifest(tmp_path, story, content)
+    changed = edit(content, lambda xml: xml.replace(TWIN + EMPTY, deleted_paragraph('— Так.') + deleted_paragraph(''), 1))
+    assert preview_import(repo, story.id, changed).scenes[1].status == 'changed'
+    assert plan_of(repo, story, changed, scenes[1].id).editor_text == 'Початок.\n\n— Так.'
+
+
+def test_tracked_split_and_merge_of_paragraphs(tmp_path):
+    repo, story, scenes, content = book(tmp_path, TWINS)
+    drop_manifest(tmp_path, story, content)
+    split_first = f'<w:p>{INS_MARK}<w:r>{T}Поча</w:t></w:r></w:p><w:p><w:r>{T}ток.</w:t></w:r></w:p>'
+    merged = edit(content, lambda xml: xml.replace(FIRST + EMPTY, FIRST + f'<w:p>{DEL_MARK}</w:p>', 1))
+    plan = plan_of(repo, story, merged, scenes[1].id)
+    assert plan.status == 'changed' and plan.editor_text == 'Початок.\n— Так.\n\n— Так.'
+    split = edit(content, lambda xml: with_comment_on_first_twin(xml.replace(FIRST, split_first, 1)), [(6, 'Р', 'Перше')])
+    plan = plan_of(repo, story, split, scenes[1].id)
+    checked(plan)
+    assert plan.status == 'changed' and plan.editor_text == 'Поча\nток.\n\n— Так.\n\n— Так.'
+    assert [(c.anchor.start, c.anchor.end) for c in plan.comments] == [(10, 16)]
