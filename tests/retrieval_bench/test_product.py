@@ -58,3 +58,16 @@ def test_cli_reports_product_apart_from_existing_keys(synthetic_repo):
     assert 'product' not in data['real']['32768']['conservative']
     for secret in SECRETS+[story_id]:
         assert secret not in out.stdout
+
+
+def test_target_kinds_use_product_classify():
+    from memory_bench.metrics import aggregate, scene_metrics
+    s,items=product_scene(targets=('core','f1','t_far'))
+    inp=type(s.product)(**{**s.product.__dict__,'kinds':{'f1':'atmosphere'}})
+    s=type(s)(**{**s.__dict__,'product':inp})
+    sel=product(s,Params(10**9,'realistic','upper'))
+    row=scene_metrics(s,sel)
+    assert (row['targets_atmosphere'],row['targets_core'])==(1,2)
+    assert row['targets_core_hit']+row['targets_atmosphere_hit']==row['targets_hit']
+    agg=aggregate([row],[sel])
+    assert agg['target_recall_atmosphere']==round(row['targets_atmosphere_hit']/1,3)

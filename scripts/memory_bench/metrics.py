@@ -4,11 +4,21 @@ from typing import Mapping
 from .model import SceneInput, Selection
 
 
+def _atmosphere_ids(scene: SceneInput) -> set[str]:
+    if scene.product is None:
+        return set()
+    from storygen.memory.selection import classify
+    return {item.claim_id for item in classify(scene.product)['atmosphere']}
+
+
 def scene_metrics(scene: SceneInput, sel: Selection) -> dict:
     chosen = set(sel.record_ids)
+    atmosphere = scene.targets & _atmosphere_ids(scene)
+    core = scene.targets - atmosphere
     return {'chars': sel.chars, 'tokens_conservative': sel.tokens_conservative, 'tokens_realistic': sel.tokens_realistic,
             'overflow': sel.overflow, 'dropped_by_budget': sel.dropped_by_budget, 'targets': len(scene.targets),
-            'targets_hit': len(scene.targets & chosen), 'core_size': sel.layers.get('core', 0),
+            'targets_hit': len(scene.targets & chosen), 'targets_core': len(core), 'targets_core_hit': len(core & chosen),
+            'targets_atmosphere': len(atmosphere), 'targets_atmosphere_hit': len(atmosphere & chosen), 'core_size': sel.layers.get('core', 0),
             'atmosphere_count': sel.layers.get('atmosphere', 0), 'first_meetings': scene.first_meetings,
             'layers': dict(sel.layers)}
 
@@ -20,6 +30,11 @@ def _stats(values):
 def _jaccard(a, b):
     a, b = set(a), set(b)
     return 1.0 if not a and not b else len(a & b) / len(a | b)
+
+
+def _recall(rows, total_key, hit_key):
+    total = sum(r[total_key] for r in rows)
+    return round(sum(r[hit_key] for r in rows) / total, 3) if total else None
 
 
 def aggregate(rows: list[dict], selections: list[Selection]) -> dict:
@@ -39,6 +54,8 @@ def aggregate(rows: list[dict], selections: list[Selection]) -> dict:
         'dropped_by_budget': _stats([r['dropped_by_budget'] for r in rows]),
         'target_recall': round(sum(r['targets_hit'] for r in rows) / targets, 3) if targets else None,
         'targets_total': targets,
+        'target_recall_core': _recall(rows, 'targets_core', 'targets_core_hit'),
+        'target_recall_atmosphere': _recall(rows, 'targets_atmosphere', 'targets_atmosphere_hit'),
         'target_recall_fitting': round(sum(r['targets_hit'] for r in fitting) / fitting_targets, 3) if fitting_targets else None,
         'scenes_with_missed_target': sum(r['targets_hit'] < r['targets'] for r in rows),
         'core_size': _stats([r['core_size'] for r in rows]),

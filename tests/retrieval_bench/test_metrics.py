@@ -78,3 +78,12 @@ def test_recall_fitting_excludes_overflow_scenes():
     sels=[STRATEGIES['structural'](ok,P),STRATEGIES['structural'](bad,p)]
     agg=aggregate([scene_metrics(ok,sels[0]),scene_metrics(bad,sels[1])],sels)
     assert agg['target_recall']==0.5 and agg['target_recall_fitting']==1.0
+
+
+def test_aggregate_splits_core_and_atmosphere_recall():
+    s=scene(rich_records(),cast=('c2',),targets=('pres1','absent'))
+    sel=STRATEGIES['structural'](s,P)
+    row=scene_metrics(s,sel)
+    assert (row['targets_core'],row['targets_core_hit'],row['targets_atmosphere'],row['targets_atmosphere_hit'])==(2,1,0,0)
+    agg=aggregate([row],[sel])
+    assert agg['target_recall_core']==0.5 and agg['target_recall_atmosphere'] is None and agg['target_recall']==0.5
