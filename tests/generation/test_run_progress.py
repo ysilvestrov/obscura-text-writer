@@ -117,7 +117,7 @@ def test_a_failing_progress_computation_does_not_fail_the_run(tmp_path, monkeypa
     run = worker.enqueue(RunRequest(story_id=story.id, scene_id=scene.id, mode='stage', stage='brief'), 'brief')
     run = drive(worker, run.id)
     events = worker.list_events(run.id)
-    assert run.state != 'failed' and any(e.type == 'stage_finished' for e in events)
+    assert run.state == 'completed' and any(e.type == 'stage_finished' for e in events)
     assert not any(e.type == 'progress' for e in events) and events[-1].type == 'state'
 
 
@@ -192,31 +192,48 @@ def test_finishing_resume_keeps_the_plan(tmp_path):
     repo, story, (s1, s2, s3, s4), _ = four_scenes(tmp_path)
     worker, run = start_book(repo, story, Answers(answer(95)))
     drive(worker, run.id)
-    for link in ('brief', 'prose', 'memory'):
-        state = link_state(repo.context_view(story.id), s3.id, link)
-        if state.status != 'unavailable':
-            decide_link(repo, s3.id, link, 'approve', state.fingerprint)
+    status = lambda link: link_state(repo.context_view(story.id), s3.id, link).status
+    assert [status(link) for link in ('brief', 'prose', 'memory')] == ['discrepancy', 'unchecked', 'valid']
+    for link in ('brief', 'prose'):  # the author decides the two pending links; memory is already valid
+        decide_link(repo, s3.id, link, 'approve', link_state(repo.context_view(story.id), s3.id, link).fingerprint)
     before = repo.get_run(run.id).planned_telemetry
     assert worker.run_readiness(run.id)['calls'] == 0  # the resume preview has nothing left to call
     worker.resume(run.id)
     assert repo.get_run(run.id).planned_telemetry == before
+    assert drive(worker, run.id).state == 'completed'
 
 
-def test_a_failed_or_cancelled_call_with_empty_usage_costs_nothing(tmp_path):
-    """Final(core) ruling 1: a failed/cancelled attempt without a price was not billed; it counts as a call and adds $0."""
+def test_a_failed_call_costs_nothing_but_a_cancelled_one_is_unknown(tmp_path):
+    """A failed attempt without a price was not billed ($0). A cancelled non-streamed call is billed late by the provider
+    (`_settle_late` writes it to billing only), so a cancelled attempt without a price is unknown, not $0."""
     from storygen.generation.run_progress import extend_plan
     repo, worker, run, _ = _setup(tmp_path)
     worker.event(run.id, 'stage_finished', {'attempt_id': 'a1', 'state': 'failed', 'usage': {}})
     worker.event(run.id, 'stage_finished', {'attempt_id': 'a2', 'state': 'completed', 'usage': {'cost': 0.01}})
-    worker.event(run.id, 'stage_finished', {'attempt_id': 'a3', 'state': 'cancelled', 'usage': {}})
     progress = run_progress(repo, repo.get_run(run.id))
-    assert progress['calls']['done'] == 3
+    assert progress['calls']['done'] == 2
     assert (progress['spent_usd'], progress['spent_known']) == ('0.0100', True)
     plan = {'roles': {}, 'calls': 2, 'cost_bound_usd': '0.0618'}
     assert extend_plan(plan, progress, {'calls': 1, 'cost': {'total_usd': '0.0309'}}, [])['cost_bound_usd'] == '0.0409'
-    # a completed attempt without a usable price, or a legacy event without a state, still makes the spend unknown
-    worker.event(run.id, 'stage_finished', {'attempt_id': 'a4', 'usage': {}})
+    worker.event(run.id, 'stage_finished', {'attempt_id': 'a3', 'state': 'cancelled', 'usage': {}})
+    progress = run_progress(repo, repo.get_run(run.id))
+    assert progress['calls']['done'] == 3
+    assert (progress['spent_usd'], progress['spent_known']) == ('0.0100', False)
+    assert extend_plan(plan, progress, {'calls': 1, 'cost': {'total_usd': '0.0309'}}, [])['cost_bound_usd'] is None
+    # a cancelled attempt that carries a price adds it; a completed attempt or a legacy event without a price is unknown
+    worker.event(run.id, 'stage_finished', {'attempt_id': 'a4', 'state': 'cancelled', 'usage': {'cost': 0.002}})
+    assert run_progress(repo, repo.get_run(run.id))['spent_usd'] == '0.0120'
+    worker.event(run.id, 'stage_finished', {'attempt_id': 'a5', 'usage': {}})
     assert run_progress(repo, repo.get_run(run.id))['spent_known'] is False
+
+
+def test_audit_scene_after_a_revisit_is_the_latest_event_scene(tmp_path):
+    repo, worker, run, (s1, s2, s3, s4) = _setup(tmp_path)
+    worker.event(run.id, 'stage_started', {'stage': 'audit_prose', 'scene_id': s1.id, 'link': 'prose'})
+    worker.event(run.id, 'audit_step', {'scene_id': s2.id, 'link': 'brief'})
+    worker.event(run.id, 'audit_step', {'scene_id': s1.id, 'link': 'memory'})
+    progress = run_progress(repo, repo.get_run(run.id))
+    assert progress['scene'] == {'id': s1.id, 'index': 2, 'total': 2} and progress['step'] == {'link': 'memory'}
 
 
 class _Priced:
@@ -247,9 +264,9 @@ def test_priced_resume_extends_the_bound_after_a_failed_call(tmp_path, monkeypat
     decide_link(repo, s3.id, 'brief', 'approve', link_state(repo.context_view(story.id), s3.id, 'brief').fingerprint)
     readiness = worker.run_readiness(run.id)
     resumed = worker.resume(run.id)
-    expected = f"{0.01 + float(readiness['cost']['total_usd']):.4f}"
-    assert resumed.planned_telemetry['cost_bound_usd'] == expected
-    assert resumed.planned_telemetry['calls'] == 2 + readiness['calls']
+    assert readiness['calls'] == 1 and readiness['cost']['total_usd'] == '0.0309'  # s3 prose is the one remaining call
+    assert resumed.planned_telemetry['cost_bound_usd'] == '0.0409'  # 0.0100 spent + 0.0309
+    assert resumed.planned_telemetry['calls'] == 3  # 2 done-or-planned before + 1 remaining
     assert repo.get_run(run.id).planned_telemetry == resumed.planned_telemetry
 
 

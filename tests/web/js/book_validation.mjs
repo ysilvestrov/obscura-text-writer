@@ -122,6 +122,9 @@ console.log('Book validation helpers passed');
   const memoryRun={id:'m',state:'running',request:{mode:'stage',stage:'memory'}};
   assert.equal(panelBookRun(null,[],stopped),stopped);
   assert.equal(panelBookRun(stopped,[{...bookRun('b','needs_review')}],{...bookRun('b','needs_review')}),stopped);  // a short current keeps the full cached run
+  const fresher=bookRun('b','completed');
+  assert.equal(panelBookRun(stopped,[fresher],{...bookRun('b','needs_review')}).state,'needs_review');   // the list is fresher: not the cached run
+  assert.notEqual(panelBookRun(stopped,[fresher],{...bookRun('b','needs_review')}),stopped);
   assert.equal(panelBookRun(stopped,[{...bookRun('b','needs_review')},memoryRun],memoryRun),stopped);  // the row moved to a memory run
   assert.equal(panelBookRun(stopped,[{...bookRun('b','completed')}],null),null);                       // resumed elsewhere
   assert.equal(panelBookRun(stopped,[{...bookRun('b','needs_review')},{...bookRun('c','queued')}],null),null);  // a newer book run

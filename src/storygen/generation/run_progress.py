@@ -8,7 +8,7 @@ from decimal import Decimal, ROUND_CEILING, ROUND_HALF_UP
 
 PROGRESS_EVENTS = ('stage_started', 'stage_finished', 'audit_step')
 _CENT = Decimal('0.0001')
-UNBILLED_STATES = ('failed', 'cancelled')
+UNBILLED_STATES = ('failed',)
 
 
 def usage_usd(usage):
@@ -37,9 +37,9 @@ def _calls(events):
             # an event without attempt_id gets a positional key: a replay of it is not deduplicated
             key = event.data.get('attempt_id') or f'call-{len(by_attempt)}'
             price = usage_usd(event.data.get('usage'))
-            # Final(core) ruling 1: a failed or cancelled attempt without a price was not billed, so it adds $0 (it still
-            # counts as a call: it was attempted). Only a completed attempt (or a legacy event without a state) without a
-            # usable price makes the spend unknown.
+            # A failed attempt without a price was not billed, so it adds $0 (it still counts as a call). A cancelled
+            # non-streamed call is billed late by the provider (`_settle_late` writes only to billing), so a cancelled,
+            # completed or legacy (no state) attempt without a usable price makes the spend unknown.
             if price is None and event.data.get('state') in UNBILLED_STATES:
                 price = 0.0
             by_attempt.setdefault(key, price)
@@ -58,7 +58,8 @@ def _audit_position(run, events):
     if request.audit_scope == 'scene':
         return {'id': request.scene_id, 'index': 1, 'total': 1}
     visited = visited_scene_ids(events)
-    return {'id': visited[-1] if visited else None, 'index': len(visited), 'total': (run.planned_telemetry or {}).get('scenes')}
+    latest = [e.data['scene_id'] for e in events if e.type in ('stage_started', 'audit_step') and e.data.get('scene_id')]
+    return {'id': latest[-1] if latest else None, 'index': len(visited), 'total': (run.planned_telemetry or {}).get('scenes')}
 
 
 def _generation_position(run):

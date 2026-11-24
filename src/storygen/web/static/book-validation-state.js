@@ -27,10 +27,10 @@ export function bookResumeInRow(run,scenes){
 }
 
 // The full book run the scene panel resumes. `current` (the run line) may be the short list entry of the same run
-// (no checkpoint), so the cached full run is kept while the run is the same and in the same state. A cached run stays
+// (no checkpoint), so the cached full run is kept while the run is the same and in the same state and the refreshed list does not hold it in another state. A cached run stays
 // only while the story's list still holds it in that state as its latest book validation (not resumed or replaced elsewhere).
 export function panelBookRun(cached,runs,current){
-  if(cached&&current&&current.id===cached.id&&current.state===cached.state)return cached;
+  if(cached&&current&&current.id===cached.id&&current.state===cached.state&&!(runs||[]).some(run=>run.id===cached.id&&run.state!==cached.state))return cached;
   if(isBookRun(current))return current;
   if(isBookRun(cached)&&(runs||[]).some(run=>run.id===cached.id&&run.state===cached.state)&&latestBookRun(runs,null)?.id===cached.id)return cached;
   return null;

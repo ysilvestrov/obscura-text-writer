@@ -8183,7 +8183,7 @@
     {
       "id": "VALID-RUN-S12",
       "requirement": "VALID-RUN",
-      "scope": "Серверний прогрес: виклики за attempt_id, витрачено й невідома ціна (невдалий чи скасований виклик без ціни — $0), нуль без подій, зупинка книги, зв'язок під час виклику, сцена й етап курсора генерації, відсутність прогресу для переносу пам'яті, подія progress після кроків етапу й проходу редактора, поле progress у GET /api/runs/{id}. Помилка обчислення прогресу не провалює запуск, GET (progress=null) і продовження (план лишається); продовження читає лише події прогресу. stage_finished конвеєра сцени (generate_scene) і перебудови пам’яті (rebuild_memory) несе usage виклику (Г10).",
+      "scope": "Серверний прогрес: виклики за attempt_id, витрачено й невідома ціна (невдалий виклик без ціни — $0, скасований без ціни — невідомо), сцена валідації книги після повернення до попередньої сцени, нуль без подій, зупинка книги, зв'язок під час виклику, сцена й етап курсора генерації, відсутність прогресу для переносу пам'яті, подія progress після кроків етапу й проходу редактора, поле progress у GET /api/runs/{id}. Помилка обчислення прогресу не провалює запуск, GET (progress=null) і продовження (план лишається); продовження читає лише події прогресу. stage_finished конвеєра сцени (generate_scene) і перебудови пам’яті (rebuild_memory) несе usage виклику (Г10).",
       "tests": [
         "tests/generation/test_run_progress.py::test_progress_counts_calls_and_spent_once_per_attempt",
         "tests/generation/test_run_progress.py::test_a_call_without_a_price_makes_spent_unknown",
@@ -8195,7 +8195,8 @@
         "tests/generation/test_run_progress.py::test_stage_run_emits_progress_after_the_cursor_moves",
         "tests/generation/test_run_progress.py::test_editor_loop_pass_emits_progress",
         "tests/web/test_runs.py::test_get_run_includes_progress",
-        "tests/generation/test_run_progress.py::test_a_failed_or_cancelled_call_with_empty_usage_costs_nothing",
+        "tests/generation/test_run_progress.py::test_a_failed_call_costs_nothing_but_a_cancelled_one_is_unknown",
+        "tests/generation/test_run_progress.py::test_audit_scene_after_a_revisit_is_the_latest_event_scene",
         "tests/generation/test_run_progress.py::test_a_failing_progress_computation_does_not_fail_the_run",
         "tests/web/test_runs.py::test_get_run_survives_a_failing_progress",
         "tests/generation/test_run_progress.py::test_resume_survives_a_failing_progress_and_keeps_the_plan",
