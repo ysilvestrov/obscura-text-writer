@@ -3907,7 +3907,7 @@
     {
       "id": "R20-WORKSPACE-S04",
       "requirement": "R20-WORKSPACE",
-      "scope": "Правила підсумку й розгортання (run-summary.js) і структура згортання в runs.js/app.css; поведінку в браузері перевіряє ручна процедура.",
+      "scope": "Правила підсумку й розгортання (run-summary.js: failed і needs_review розгортаються один раз) і структура згортання в runs.js/app.css; поведінку в браузері перевіряє ручна процедура.",
       "tests": [
         "tests/web/test_run_status_collapse_ui.py::test_run_summary_rules",
         "tests/web/test_run_status_collapse_ui.py::test_run_status_details_collapse_behind_the_summary"
@@ -3967,6 +3967,21 @@
         "tests/web/test_copyedit_review_ui.py::test_copyedit_panel_selection_and_dirty_guards",
         "tests/web/test_workspace_route.py::test_workspace_route_save_and_source_regressions"
       ]
+    },
+    {
+      "id": "R20-WORKSPACE-S10",
+      "requirement": "R20-WORKSPACE",
+      "scope": "Чисті правила progressText (заголовок, крок, лічильники, смуга, Р5), тексти run_progress.* у uk і en, розмітка рядка прогресу й reveal лише для запусків з вкладки (Р2), розгортання needs_review; фокус і прокрутку в браузері перевіряє ручна процедура.",
+      "tests": [
+        "tests/web/test_run_progress_ui.py::test_run_progress_rules",
+        "tests/web/test_run_progress_ui.py::test_run_progress_texts_exist_in_both_languages",
+        "tests/web/test_run_progress_ui.py::test_runs_render_progress_and_reveal_only_runs_started_here",
+        "tests/web/test_run_status_collapse_ui.py::test_run_summary_rules"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#book-validation-browser",
+        "reason": "Playwright запускається окремим runner; check_docs.py індексує лише pytest IDs."
+      }
     },
     {
       "id": "WORKSPACE-TOOLS-S01",
@@ -8121,7 +8136,7 @@
     {
       "id": "VALID-RUN-S09",
       "requirement": "VALID-RUN",
-      "scope": "Заміна зупинених audit (needs_review, paused, failed, interrupted) подією superseded і станом cancelled; правило походження: валідація автора замінює й запуски моста, валідація моста — лише запуски моста.",
+      "scope": "Заміна зупинених audit (needs_review, paused, failed, interrupted) подією superseded і станом cancelled; правило походження: валідація автора замінює й запуски моста, валідація моста — лише запуски моста. Те, що меню твору не ставить валідацію поверх зупиненої paused/needs_review (VALID-UI-S05), — не цей тест.",
       "tests": [
         "tests/generation/test_audit_run.py::test_new_book_validation_supersedes_a_resumable_audit_of_the_story",
         "tests/generation/test_audit_run.py::test_mcp_book_validation_keeps_the_authors_stopped_audit",
@@ -8138,6 +8153,34 @@
         "tests/generation/test_audit_run.py::test_auditor_unavailable_whose_cause_cleared_is_measured_again_and_called",
         "tests/generation/test_audit_run.py::test_auditor_unavailable_that_still_holds_stops_without_a_call",
         "tests/generation/test_audit_run.py::test_link_state_unavailable_takes_no_call_and_no_measure"
+      ]
+    },
+    {
+      "id": "VALID-RUN-S11",
+      "requirement": "VALID-RUN",
+      "scope": "Правила extend_plan (Р3, Р4); enqueue зберігає cost_bound_usd і scenes перегляду; продовження доповнює план, не рахуючи відвідану сцену вдруге; завершальне продовження без викликів план лишає.",
+      "tests": [
+        "tests/generation/test_run_progress.py::test_extend_plan_rules",
+        "tests/generation/test_run_progress.py::test_enqueue_stores_the_cost_bound_and_scenes_of_the_preview",
+        "tests/generation/test_run_progress.py::test_resume_extends_the_plan_without_counting_a_visited_scene_twice",
+        "tests/generation/test_run_progress.py::test_finishing_resume_keeps_the_plan"
+      ]
+    },
+    {
+      "id": "VALID-RUN-S12",
+      "requirement": "VALID-RUN",
+      "scope": "Серверний прогрес: виклики за attempt_id, витрачено й невідома ціна, нуль без подій, зупинка книги, зв'язок під час виклику, сцена й етап курсора генерації, відсутність прогресу для переносу пам'яті, подія progress після кроків етапу й проходу редактора, поле progress у GET /api/runs/{id}.",
+      "tests": [
+        "tests/generation/test_run_progress.py::test_progress_counts_calls_and_spent_once_per_attempt",
+        "tests/generation/test_run_progress.py::test_a_call_without_a_price_makes_spent_unknown",
+        "tests/generation/test_run_progress.py::test_progress_without_events_is_zero",
+        "tests/generation/test_run_progress.py::test_book_stop_emits_progress_after_each_step_and_names_the_stop",
+        "tests/generation/test_run_progress.py::test_progress_after_stage_started_names_the_current_link",
+        "tests/generation/test_run_progress.py::test_generation_progress_names_the_scene_and_stage_of_the_cursor",
+        "tests/generation/test_run_progress.py::test_memory_carry_has_no_progress",
+        "tests/generation/test_run_progress.py::test_stage_run_emits_progress_after_the_cursor_moves",
+        "tests/generation/test_run_progress.py::test_editor_loop_pass_emits_progress",
+        "tests/web/test_runs.py::test_get_run_includes_progress"
       ]
     },
     {
@@ -8188,6 +8231,18 @@
       "manual": {
         "procedure": "docs/verification/manual.md#book-validation-browser",
         "reason": "check_docs.py індексує лише pytest; Playwright case tests/web/browser/book-validation.spec.mjs («Перейти до сцени 1», «Затвердити завдання», «Продовжити», completed і «Книга валідна») виконується окремим runner, цей зв’язок не є доказом виконання."
+      }
+    },
+    {
+      "id": "VALID-UI-S05",
+      "requirement": "VALID-UI",
+      "scope": "latestBookRun і bookMenuState (running, stopped), bookResumeInRow; клік зупиненого пункту веде до рядка без нового запуску — у ручній процедурі.",
+      "tests": [
+        "tests/web/test_book_validation_ui.py::test_book_validation_helpers"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#book-validation-browser",
+        "reason": "Playwright запускається окремим runner; check_docs.py індексує лише pytest IDs."
       }
     }
   ]
