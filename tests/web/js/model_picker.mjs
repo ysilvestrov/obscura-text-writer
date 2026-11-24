@@ -42,6 +42,7 @@ assert.equal(preferredMode(pri,'json_schema'),null);
 assert.equal(preferredMode(unk,'prompt_json'),null);
 assert.equal(preferredMode(tee,'prompt_json'),null);
 assert.equal(preferredMode(null,'prompt_json'),null);
+assert.equal(preferredMode({id:'m'},'prompt_json'),null);
 // The optional JSON Schema filter still shows only explicit support.
 assert.deepEqual(filterModels([unk,pri],{schemaOnly:true},'openrouter').map(m=>m.id),['p']);
 assert.deepEqual(selectable(null,{provider:'venice',responseMode:'json_schema'}),{ok:true,reason:null});
