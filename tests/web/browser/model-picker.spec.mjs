@@ -1,4 +1,4 @@
-// MODEL-005-S01/S02: catalog badges, filters and JSON Schema mode of the model picker.
+// MODEL-005-S01/S02/S04: catalog badges, filters and JSON Schema mode of the model picker.
 import {test,expect} from '../../../frontend/browser-test.mjs';
 
 test.use({locale:'uk-UA'});
@@ -54,8 +54,29 @@ test('json schema mode locks the filter and blocks a non-schema model',async({pa
   await setMode(form,'prompt_json');
   await expect(schema).toBeEnabled();await expect(schema).not.toBeChecked();
   await expect(row(picker,'syn-noschema')).not.toHaveAttribute('aria-disabled','true');
-  await row(picker,'syn-private').click();await expect(model).toHaveValue('syn-private');
   await row(picker,'syn-noschema').click();await expect(model).toHaveValue('syn-noschema');
+});
+
+test('choosing a model with JSON Schema support switches the mode, and the author can switch it back',async({page,request})=>{
+  const nofield={id:'syn-nofield',name:'Syn No Field',context_tokens:32768,max_output_tokens:4096,tariff:null,uncensored:true,privacy:'private',tee:false};
+  const {form,picker,model}=await openWriter(page,request,{catalog:[...models,nofield]});
+  const mode=form.locator('[name=response_mode]');
+  await setMode(form,'prompt_json');await form.locator('.discover').click();
+  // Explicitly missing support leaves the mode alone, and so does a catalog row without the field.
+  await row(picker,'syn-noschema').click();await expect(model).toHaveValue('syn-noschema');await expect(mode).toHaveValue('prompt_json');
+  await row(picker,'syn-nofield').click();await expect(model).toHaveValue('syn-nofield');await expect(mode).toHaveValue('prompt_json');
+  await row(picker,'syn-private').click();await expect(model).toHaveValue('syn-private');await expect(mode).toHaveValue('json_schema');
+  const schema=picker.getByLabel('JSON Schema',{exact:true});await expect(schema).toBeChecked();await expect(schema).toBeDisabled();
+  // A model ID typed by hand that the catalog knows counts as a model change too.
+  await setMode(form,'prompt_json');await model.fill('syn-anon');await model.blur();await expect(mode).toHaveValue('json_schema');
+  // The author's own choice afterwards is kept and saved.
+  await setMode(form,'prompt_json');
+  const put=page.waitForResponse(r=>r.request().method()==='PUT'&&/\/api\/stories\/[^/]+\/settings$/.test(r.url()));
+  await page.locator('#settings-save').click();const response=await put;expect(response.ok()).toBeTruthy();
+  expect(response.request().postDataJSON().settings.provider).toMatchObject({model:'syn-anon',response_mode:'prompt_json'});
+  const storyId=new URL(page.url()).pathname.split('/')[2];
+  const stored=await(await request.get(`/api/stories/${storyId}/settings`)).json();
+  expect(stored.roles.writer.provider).toMatchObject({model:'syn-anon',response_mode:'prompt_json'});
 });
 
 test('venice model without uncensored is selectable',async({page,request})=>{

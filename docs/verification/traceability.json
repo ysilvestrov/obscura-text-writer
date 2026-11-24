@@ -471,6 +471,18 @@
       }
     },
     {
+      "id": "MODEL-005-S04",
+      "requirement": "MODEL-005",
+      "scope": "Зміна моделі вмикає JSON Schema лише за явної підтримки в каталозі; вибір автора після цього зберігається; окрема модель письменника режим не змінює. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/web/test_model_picker.py::test_model_picker_badges_filters_and_selectability"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#model-schema-default-browser",
+        "reason": "check_docs.py індексує лише pytest; Playwright cases «choosing a model with JSON Schema support switches the mode, and the author can switch it back» у tests/web/browser/model-picker.spec.mjs і «picking a variant model with JSON Schema support does not change the main response mode» у tests/web/browser/writer-variant.spec.mjs виконуються окремим runner, цей зв’язок не є доказом виконання."
+      }
+    },
+    {
       "id": "BUDGET-001-S01",
       "requirement": "BUDGET-001",
       "scope": "Конкурентні резерви. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",

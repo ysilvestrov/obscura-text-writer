@@ -1,4 +1,4 @@
-// MODEL-001 S02 (UI): optional writer model for scenes rated 0–1, with its own consent block.
+// MODEL-001 S02 (UI), MODEL-005-S04 (variant): optional writer model for scenes rated 0–1, with its own consent block.
 import {test,expect} from '../../../frontend/browser-test.mjs';
 
 test.use({locale:'uk-UA'});
@@ -51,6 +51,18 @@ test('the variant is optional, saved with its limits, restored after reload and 
   const stored=await(await request.get(`/api/stories/${storyId}/settings`)).json();
   expect(stored.roles.writer.low_rating_variant).toBeNull();
   expect(stored.roles.writer.provider.model).toBe('synthetic-rewrite');
+});
+
+test('picking a variant model with JSON Schema support does not change the main response mode',async({page,request})=>{
+  const id=unique('var-schema'),storyId=await story(request);
+  const view=await openWriter(page,storyId,[{...option(id,true),supports_schema:true}]);
+  const mode=view.form.locator('[name=response_mode]');
+  await mode.evaluate(e=>{const d=e.closest('details');if(d)d.open=true});await mode.selectOption('prompt_json');
+  await view.toggle.check();await view.fields.locator('[name=variant_provider]').selectOption('venice');
+  await view.fields.getByRole('button',{name:'Отримати список моделей'}).click();
+  await view.picker.locator(`tbody tr[data-model-id="${id}"]`).click();
+  await expect(view.fields.locator('[name=variant_model]')).toHaveValue(id);
+  await expect(mode).toHaveValue('prompt_json');
 });
 
 test('the variant model without Uncensored gets its own consent block for role writer',async({page,request})=>{

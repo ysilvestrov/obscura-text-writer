@@ -290,6 +290,11 @@ WORKSPACE-TOOLS-S05. Автоматична частина — Playwright `tests
 
 MODEL-005-S03. Автоматична частина — Playwright case «limits above the chosen model caps block the save until fixed» у `tests/web/browser/model-picker.spec.mjs` (поле резерву відповіді отримує `max` з каталогу, значення понад межу показує пояснення й не надсилає PUT, допустиме значення зберігається): `node frontend/node_modules/@playwright/test/cli.js test tests/web/browser/model-picker.spec.mjs --config frontend/playwright.config.mjs`. Цей зв’язок не є доказом виконання; фактичний запуск фіксується окремо.
 
+<a id="model-schema-default-browser"></a>
+## Зміна моделі вмикає JSON Schema
+
+MODEL-005-S04. Автоматична частина — Playwright cases «choosing a model with JSON Schema support switches the mode, and the author can switch it back» у `tests/web/browser/model-picker.spec.mjs` (модель без підтримки лишає «JSON за промптом», модель із підтримкою зі списку чи введена вручну перемикає на JSON Schema, повторний вибір «JSON за промптом» зберігається PUT) і «picking a variant model with JSON Schema support does not change the main response mode» у `tests/web/browser/writer-variant.spec.mjs`: `node frontend/node_modules/@playwright/test/cli.js test tests/web/browser/model-picker.spec.mjs tests/web/browser/writer-variant.spec.mjs --config frontend/playwright.config.mjs`. Цей зв’язок не є доказом виконання; фактичний запуск фіксується окремо.
+
 <a id="edit-pass-limit-browser"></a>
 ## Максимум проходів редактури в налаштуваннях редактора
 
