@@ -1,9 +1,9 @@
 r"""IMPORT-DOCX: scene text serialization and normalization with a visible-character offset map.
 
 Markdown rule: one paragraph is one line, paragraphs are joined by '\n', an empty paragraph is an empty line.
-A run text may contain '\n' (a Word hard break). It is kept as is: the Markdown dialect reads a line break as a
-paragraph break, so such a scene does not round-trip and `roundtrip_ok` reports False (the visible text is never
-silently altered).
+A paragraph whose visible text contains '\n' is an opaque block (list, quote) that the Markdown parser keeps as one
+paragraph with raw source text; it is emitted verbatim (no escaping, no marks), offsets map 1:1. A Word hard break
+lands in the same path: kept as is, never silently altered; if it does not round-trip, `roundtrip_ok` is False.
 """
 import re
 from dataclasses import dataclass
@@ -51,7 +51,12 @@ def serialize(paragraphs: Sequence[Sequence], content_format: Literal['plain', '
     for runs in paragraphs:
         chars = ''.join(run.text for run in runs)
         row, line = [], ''
-        if content_format == 'markdown':
+        if content_format == 'markdown' and chr(10) in chars:
+            # An opaque block (list, quote) from the export: its single run is raw source, so it is emitted verbatim.
+            for char in chars:
+                row.append(base + len(line))
+                line += char
+        elif content_format == 'markdown':
             pieces = _escapes(chars)
             cursor = 0
             for run in runs:

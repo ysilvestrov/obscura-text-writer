@@ -49,3 +49,10 @@ def test_leading_markers_survive():
 def test_hard_break_is_kept_not_split():
     scene = serialize([[Run('a\nb')]], 'markdown')
     assert scene.text == 'a\nb' and scene.position(0, 3) == 3
+
+
+@pytest.mark.parametrize('prose', ['Текст\n\n- a *b*\n- c\n\n> цитата\n> два', '- a *b*\n- c', '> цитата\n> два'])
+def test_opaque_blocks_roundtrip(prose):
+    once = normalized(prose, 'markdown').text
+    assert roundtrip_ok(prose, 'markdown')
+    assert normalized(once, 'markdown').text == once
