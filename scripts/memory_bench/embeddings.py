@@ -13,11 +13,10 @@ import numpy as np
 
 ROOT = Path(__file__).resolve().parents[2]
 
-# Revisions of the local models are placeholders: Task 8 pins the Hugging Face commit hash on the first download.
 MODELS: dict[str, dict] = {
-    'e5-base': {'kind': 'local', 'model_id': 'intfloat/multilingual-e5-base', 'revision': 'main',
+    'e5-base': {'kind': 'local', 'model_id': 'intfloat/multilingual-e5-base', 'revision': 'd128750597153bb5987e10b1c3493a34e5a4502a',
                 'query_prefix': 'query: ', 'passage_prefix': 'passage: ', 'max_tokens': 512},
-    'bge-m3': {'kind': 'local', 'model_id': 'BAAI/bge-m3', 'revision': 'main',
+    'bge-m3': {'kind': 'local', 'model_id': 'BAAI/bge-m3', 'revision': '5617a9f61b028005a4858fdac845db406aefb181',
                'query_prefix': '', 'passage_prefix': '', 'max_tokens': 8192},  # dense only
     # Azure deployment name comes from the cloud config, not from here; the client is AzureEmbedder.
     'azure-3-large': {'kind': 'cloud', 'model_id': 'text-embedding-3-large', 'revision': 'azure'},

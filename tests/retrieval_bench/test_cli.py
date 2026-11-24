@@ -1,9 +1,10 @@
-import pytest
 import hashlib
 import json
 import subprocess
 import sys
 from pathlib import Path
+
+import pytest
 
 ROOT=Path(__file__).resolve().parents[2]
 SCRIPT=ROOT/'scripts'/'memory_retrieval_bench.py'
@@ -146,7 +147,7 @@ def test_ranking_section_has_bm25(synthetic_repo,tmp_path):
     assert info['fact'] not in out.stdout
 
 
-def test_pairs_without_annotated_story_is_empty(synthetic_repo,tmp_path,cache_dir):
+def test_pairs_without_annotated_story_is_empty(synthetic_repo,tmp_path):
     repo,story_id,info=synthetic_repo
     out=run_cli(['--data',str(repo.root),'--synthetic','',*_pair_files(tmp_path,story_id,info,annotate=False)])
     assert out.returncode==0,out.stderr
@@ -341,3 +342,46 @@ def test_report_contains_no_texts(synthetic_repo,tmp_path,monkeypatch,cache_dir)
     dumped=json.dumps(report,ensure_ascii=False)
     for text in secrets:
         assert text and text not in dumped
+
+
+def test_repro_does_not_change_main_vector_metrics(synthetic_repo,tmp_path,monkeypatch):
+    pytest.importorskip('numpy')
+    repo,story_id,info=synthetic_repo
+    _patch_factory(monkeypatch,[])
+    runs=[]
+    for flag in ([],['--repro']):
+        with __import__('tempfile').TemporaryDirectory(prefix='rb-cache-') as tmp:
+            report,error=_report(_vec_args(repo,Path(tmp),'--vector-models','e5-base','--context','32768',*flag))
+        assert error is None
+        runs.append(report['vector']['e5-base'])
+    plain,repro=runs
+    assert plain['repro_identical_share'] is None and repro['repro_identical_share']==1.0
+    ignore={'repro_identical_share','index_seconds','index_seconds_cold','load_seconds'}
+    assert {k:v for k,v in plain.items() if k not in ignore}=={k:v for k,v in repro.items() if k not in ignore}
+
+
+def test_vector_load_failure_maps_to_code(synthetic_repo,tmp_path,monkeypatch,capsys,cache_dir):
+    pytest.importorskip('numpy')
+    repo,_,_=synthetic_repo;closed=[]
+    from memory_bench.embeddings import FakeEmbedder
+    bench=_bench()
+
+    class Closable(FakeEmbedder):
+        def close(self):
+            closed.append(self.key)
+
+    def factory(key,spec,args):
+        if key=='bge-m3':
+            raise OSError('offline: model not in cache')
+        embedder=Closable();embedder.key=key
+        return embedder
+    monkeypatch.setattr(bench,'make_inner_embedder',factory)
+    assert bench.main(_vec_args(repo,cache_dir,'--vector-models','e5-base,bge-m3'))==2
+    out=capsys.readouterr()
+    assert out.err.strip()=='vector_load_failed' and out.out=='' and closed==['e5-base']
+
+
+def test_cloud_keys_match_models():
+    pytest.importorskip('numpy')
+    from memory_bench.embeddings import MODELS
+    assert set(_bench().CLOUD_KEYS)=={k for k,m in MODELS.items() if m['kind']=='cloud'}

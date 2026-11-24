@@ -282,6 +282,9 @@ def setup_vectors(args, story_id):
     except ImportError:
         close_vectors(models)
         return None, 'vector_deps_missing'
+    except Exception:  # e.g. OSError: model absent from the Hugging Face cache offline; never a traceback or details
+        close_vectors(models)
+        return None, 'vector_load_failed'
     return models, None
 
 
@@ -331,6 +334,8 @@ def _percentile(values, share):
 
 
 def vector_report(models, args, repro):
+    # load_seconds / index_seconds_cold / index_seconds cover model load plus the uncached inner embed calls of any
+    # kind (passages and queries, main run only); texts answered by the cache cost nothing. Cold = load + first call.
     libs = _lib_versions()
     out = {}
     for model in models:
@@ -455,9 +460,9 @@ def _build_report(args, repo, story, models):
                    'tokenizer': args.tokenizer, 'chars_per_token': round(realistic_ratio(), 3), 'synthetic': _ints(args.synthetic)},
     }
     if pair_data:
+        from memory_bench.ranking import rrf_rank, vec_rank
         rankers = {}
         for model in models or []:
-            from memory_bench.ranking import rrf_rank, vec_rank
             embedder, key = model['cached'], model['key']
             rankers[f'vec[{key}]'] = lambda pool, query, e=embedder: vec_rank(pool, query, e)
             rankers[f'hybrid[{key}]'] = lambda pool, query, e=embedder: rrf_rank(pool, query, e)
@@ -465,10 +470,12 @@ def _build_report(args, repo, story, models):
     if args.budget_steps:
         report['budget_steps'] = evaluate_budget_steps(scenes, args, pair_data, extra)
     if models:
-        repro = {}
+        # Snapshot first: the re-run goes through the main embedder again and must not change its counters.
+        report['vector'] = vector_report(models, args, {})
         if args.repro:
-            repro = {m['key']: repro_share(m, scenes, others, args, biggest) for m in models if m['spec']['kind'] == 'local'}
-        report['vector'] = vector_report(models, args, repro)
+            for m in models:
+                if m['spec']['kind'] == 'local':
+                    report['vector'][m['key']]['repro_identical_share'] = repro_share(m, scenes, others, args, biggest)
     return report
 
 
