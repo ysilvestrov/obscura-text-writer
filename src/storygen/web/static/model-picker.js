@@ -63,6 +63,10 @@ export function limitsProblem(model,values={}){
 // validate() yields a message key or {key,params}; callers show it through this.
 export const pickerMessage=problem=>!problem?'':typeof problem==='string'?t(problem):t(problem.key,problem.params);
 
+// MODEL-005-S04: a model change by the author switches the response mode to JSON Schema when the catalog positively
+// says the model supports it; unknown or missing support leaves the mode alone, and the author may switch back.
+export const preferredMode=(model,responseMode)=>model?.supports_schema===true&&responseMode!=='json_schema'?'json_schema':null;
+
 export const schemaUnknown=(model,{responseMode}={})=>Boolean(model)&&schemaLocked(responseMode)&&(model.supports_schema===null||model.supports_schema===undefined);
 
 export function formatPrice(usd){
@@ -87,7 +91,7 @@ const badgeList=model=>el('span',{className:'model-badges'},...modelBadges(model
 // MODEL-METADATA-S05: catalogs loaded on this page, by exact provider + address. Settings forms are rebuilt
 // after a save; the rebuilt picker reads the same catalog instead of forgetting the tariff it just showed.
 const loadedCatalogs=new Map();
-export function mountModelPicker({host,modelInput,providerInput,baseUrlInput,responseModeInput=null,limitInputs={}}){
+export function mountModelPicker({host,modelInput,providerInput,baseUrlInput,responseModeInput=null,limitInputs={},autoSchema=true}){
   const uid=`model-picker-${++pickerCount}`;host.classList.add('model-picker');
   const caption=modelInput.parentElement.firstChild;
   uiAttr(modelInput,'aria-label',()=>{getLocale();return caption?.textContent||t('m_f1f1eed62cda')});
@@ -173,6 +177,11 @@ export function mountModelPicker({host,modelInput,providerInput,baseUrlInput,res
   schema.addEventListener('change',()=>{if(!schemaLocked(responseModeInput?.value))userSchema=schema.checked;render()});
   for(const control of [query,uncensored,privacy])control.addEventListener('input',render);
   for(const type of ['input','change'])modelInput.addEventListener(type,()=>{message=null;render()});
+  // Only a model change dispatched by the author (typed or chosen from the list) reaches here; loads set values silently.
+  modelInput.addEventListener('change',()=>{
+    const mode=autoSchema&&responseModeInput&&!responseModeInput.disabled?preferredMode(current(),responseModeInput.value):null;
+    if(mode){responseModeInput.value=mode;responseModeInput.dispatchEvent(new Event('change',{bubbles:true}))}
+  });
   providerInput.addEventListener('change',clear);baseUrlInput.addEventListener('input',clear);baseUrlInput.addEventListener('change',clear);
   responseModeInput?.addEventListener('change',()=>{message=null;render()});
   modelInput.form?.addEventListener('settings-reset',()=>{message=null;render()});

@@ -47,7 +47,8 @@ export function mountWriterVariant(form,config){
   toggle.checked=Boolean(stored);provider.value=start.provider.provider;baseUrl.value=start.provider.base_url||providerEndpoints[start.provider.provider];model.value=start.provider.model||'';
   for(const name of NUMBERS)inputs[name].value=String(start[name]);
   inputs.timeout.value=String(start.timeout??start.provider.timeout??'');
-  const picker=mountModelPicker({host:pickerHost,modelInput:model,providerInput:provider,baseUrlInput:baseUrl,responseModeInput:form.elements.response_mode,limitInputs:{context_tokens:inputs.context_tokens,max_output_tokens:inputs.max_output_tokens}});
+  const picker=mountModelPicker({host:pickerHost,modelInput:model,providerInput:provider,baseUrlInput:baseUrl,responseModeInput:form.elements.response_mode,autoSchema:false,limitInputs:{context_tokens:inputs.context_tokens,max_output_tokens:inputs.max_output_tokens}});
+  // The variant answers in the main writer's response mode; picking the variant model never changes that mode.
   // Consent and the refusal mark are keyed by role writer + the variant's endpoint and model (MODEL-003, MODEL-004).
   pickerHost.append(policyHost);
   mountModelPolicy({host:policyHost,role:'writer',modelInput:model,providerInput:provider,baseUrlInput:baseUrl,picker});

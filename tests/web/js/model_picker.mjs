@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {pathToFileURL} from 'node:url';
 globalThis.document={querySelector:()=>null,addEventListener:()=>{}};
-const {modelBadges,filterModels,selectable,schemaUnknown,formatPrice,privacyLevel,providerReportsPrivacy,schemaLocked}=await import(pathToFileURL(process.argv[2]+'/src/storygen/web/static/model-picker.js'));
+const {modelBadges,filterModels,selectable,schemaUnknown,formatPrice,privacyLevel,providerReportsPrivacy,schemaLocked,preferredMode}=await import(pathToFileURL(process.argv[2]+'/src/storygen/web/static/model-picker.js'));
 const {t,setLocale}=await import(pathToFileURL(process.argv[2]+'/src/storygen/web/static/i18n.js'));
 const tee={id:'t',tee:true,privacy:'private',uncensored:false,supports_schema:false};
 const pri={id:'p',name:'Private One',privacy:'private',uncensored:true,supports_schema:true};
@@ -36,6 +36,12 @@ assert.equal(schemaUnknown(local,{responseMode:'prompt_json'}),false);
 assert.equal(schemaUnknown(pri,{responseMode:'json_schema'}),false);
 assert.equal(schemaUnknown({...pri,supports_schema:false},{responseMode:'json_schema'}),false);
 assert.equal(schemaUnknown(null,{responseMode:'json_schema'}),false);
+// MODEL-005-S04: only explicit support switches to JSON Schema; unknown, missing or no support leaves the mode alone.
+assert.equal(preferredMode(pri,'prompt_json'),'json_schema');
+assert.equal(preferredMode(pri,'json_schema'),null);
+assert.equal(preferredMode(unk,'prompt_json'),null);
+assert.equal(preferredMode(tee,'prompt_json'),null);
+assert.equal(preferredMode(null,'prompt_json'),null);
 // The optional JSON Schema filter still shows only explicit support.
 assert.deepEqual(filterModels([unk,pri],{schemaOnly:true},'openrouter').map(m=>m.id),['p']);
 assert.deepEqual(selectable(null,{provider:'venice',responseMode:'json_schema'}),{ok:true,reason:null});
