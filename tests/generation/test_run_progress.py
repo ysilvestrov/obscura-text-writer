@@ -362,3 +362,36 @@ def test_running_progress_has_no_decision_fields(tmp_path):
     run = Run(id='r', story_id=story.id, request_id='q', tasks=[], request=audit_request(story, s3))
     progress = progress_from_events(run, [])
     assert progress['awaiting'] is None and progress['finishable'] is False
+
+
+def test_an_overflow_that_still_holds_awaits_an_action(tmp_path):
+    # Cross-review finding 2: an overflow verdict is measured again on resume; while the input still does not fit, the
+    # run stops again without a call, so the preview names it. A raised limit clears the wait.
+    from storygen.generation.audit_context import OVERFLOW_CHARS
+    from tests.generation.test_audit_context import auditor
+    from tests.generation.test_audit_run import auditor_unavailable, start
+    from tests.generation.test_audit_verdict import unchecked_scene
+    repo, story, (scene,) = unchecked_scene(tmp_path)
+    auditor(repo, story, max_input_chars=1000)
+    auditor_unavailable(repo, story, scene, 'brief', OVERFLOW_CHARS.format(chars=5000, limit=1000))
+    worker, run = start(repo, story, scene, Answers(answer(95)))
+    run = drive(worker, run.id)
+    assert run.state == 'needs_review' and run.checkpoint['link'] == 'brief'
+    assert worker.run_readiness(run.id)['awaiting_decision'] == {'scene_id': scene.id, 'link': 'brief', 'status': 'unavailable'}
+    auditor(repo, story)  # the default limit fits the scene
+    assert worker.run_readiness(run.id)['awaiting_decision'] is None
+
+
+def test_finished_check_keeps_the_left_plan(tmp_path):
+    # Cross-review finding 1: after «Завершити перевірку» the completed run does not fall back to the stale plan.
+    from storygen.storage.links import link_state
+    from tests.generation.test_audit_run import decide_link
+    repo, story, scene, worker, run = _stopped_scene_check(tmp_path)
+    brief = link_state(repo.context_view(story.id), scene.id, 'brief')
+    decide_link(repo, scene.id, 'brief', 'approve', brief.fingerprint)
+    worker.resume(run.id)
+    run = drive(worker, run.id)
+    assert run.state == 'completed'
+    progress = run_progress(repo, run)
+    assert progress['calls'] == {'done': 1, 'planned': 1}
+    assert run.planned_telemetry['calls'] == 2

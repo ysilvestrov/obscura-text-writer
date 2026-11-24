@@ -8208,12 +8208,14 @@
     {
       "id": "VALID-RUN-S13",
       "requirement": "VALID-RUN",
-      "scope": "Перегляд продовження називає зв'язок, що чекає автора (awaiting_decision), а продовження без рішення сервер і далі приймає; прогрес needs_review рахує лише залишок (planned = done + виклики перегляду, межа = витрачено + сума) і має awaiting/finishable без зміни збереженого плану; рядок пише «Чекає вашого рішення»/«Чекає вашої дії»/«Усе вирішено…»; «Продовжити» неактивна з причиною, а «Завершити перевірку» завершує запуск без діалогу згоди.",
+      "scope": "Перегляд продовження називає зв'язок, що чекає автора (awaiting_decision), а продовження без рішення сервер і далі приймає; прогрес needs_review рахує лише залишок (planned = done + виклики перегляду, межа = витрачено + сума) і має awaiting/finishable без зміни збереженого плану, а завершений audit — planned = done; переповнення, що досі діє, теж чекає дії; рядок пише «Чекає вашого рішення»/«Чекає вашої дії»/«Усе вирішено…»; «Продовжити» неактивна з причиною, а «Завершити перевірку» завершує запуск без діалогу згоди.",
       "tests": [
         "tests/generation/test_run_progress.py::test_resume_preview_names_the_link_awaiting_the_author",
         "tests/generation/test_run_progress.py::test_resume_preview_of_a_called_link_awaits_nothing",
         "tests/generation/test_run_progress.py::test_stopped_progress_plans_only_what_is_left",
         "tests/generation/test_run_progress.py::test_running_progress_has_no_decision_fields",
+        "tests/generation/test_run_progress.py::test_an_overflow_that_still_holds_awaits_an_action",
+        "tests/generation/test_run_progress.py::test_finished_check_keeps_the_left_plan",
         "tests/generation/test_audit_run.py::test_resume_without_a_decision_stops_again_without_a_call",
         "tests/web/test_run_progress_ui.py::test_run_progress_rules",
         "tests/web/test_run_progress_ui.py::test_run_progress_texts_exist_in_both_languages",

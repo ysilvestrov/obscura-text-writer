@@ -74,6 +74,17 @@ def _will_call(repo, view, scene_id, link, state) -> bool:
     return _called(state) or (_measured_again(state) and _available(repo, view, scene_id, link))
 
 
+def _stops_without_call(repo, view, scene_id, link, state) -> bool:
+    """The run stops on this link again without a call: a `discrepancy`, link_state's own `unavailable`, or an auditor's
+    `unavailable` (an overflow too) whose context still does not build. An overflow is counted as a possible call in
+    `calls` (an upper bound), but `audit_link` measures it first and stops without a call while it holds."""
+    if state.status == 'unchecked':
+        return False
+    if state.status == 'unavailable' and state.source == 'auditor':
+        return not _available(repo, view, scene_id, link)
+    return True
+
+
 def plan_fingerprint(scope, scene_id, entries, settings) -> str:
     """sha256 of the canonical plan: `entries` are [scene_id, link, status, link fingerprint] in reading order, and the
     auditor fields that decide what a call costs and returns. A run started from an older preview is refused."""
@@ -89,7 +100,8 @@ def readiness(repo, request, view=None, resume=False) -> dict:
     """Read-only preflight of an audit run. `resume`: a stopped run whose last link the author has just decided may
     continue with nothing left to check — it then completes without a call. The resume preview also names
     `awaiting_decision` {scene_id, link, status}: the first link the run visits that stops it again without a call
-    (the same rule as `execute`), so resuming now changes nothing until the author decides it; `None` otherwise."""
+    (`_stops_without_call`: the rule of `execute` and of `audit_link` for an overflow), so resuming now changes nothing
+    until the author acts on it; `None` otherwise."""
     from ..authoring.blueprints import get_role_settings
     from ..providers.policy import request_rating
     from ..rating.guard import enforce_edition_limit
@@ -125,7 +137,7 @@ def readiness(repo, request, view=None, resume=False) -> dict:
             result['invalid_scenes'] = len(states)  # the scenes the run visits
         if resume:
             first = pending[0] if pending else None
-            result['awaiting_decision'] = None if first is None or _will_call(
+            result['awaiting_decision'] = None if first is None or not _stops_without_call(
                 repo, view, first[0], first[1], states[first[0]][first[1]]) else {
                 'scene_id': first[0], 'link': first[1], 'status': states[first[0]][first[1]].status}
         if not pending and not resume:

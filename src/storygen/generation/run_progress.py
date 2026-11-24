@@ -85,11 +85,18 @@ def progress_from_events(run, events):
         step = {'link': marks[-1].data['link']} if marks else None
     else:
         scene, step = _generation_position(run)
+    spent_known = all(v is not None for v in calls.values())
+    planned_calls, bound = planned.get('calls'), planned.get('cost_bound_usd')
+    if run.request.mode == 'audit' and run.state == 'completed':
+        # Nothing is left: a finishing resume without calls keeps the stored plan, so the plan is what was done.
+        planned_calls = len(calls)
+        if 'cost_bound_usd' in planned:
+            bound = str(spent.quantize(_CENT, rounding=ROUND_CEILING)) if spent_known else None
     return {
-        'calls': {'done': len(calls), 'planned': planned.get('calls')},
+        'calls': {'done': len(calls), 'planned': planned_calls},
         'spent_usd': str(spent.quantize(_CENT, rounding=ROUND_HALF_UP)),
-        'spent_known': all(v is not None for v in calls.values()),
-        'bound_usd': planned.get('cost_bound_usd'),
+        'spent_known': spent_known,
+        'bound_usd': bound,
         'scene': scene,
         'step': step,
         'stopped': _stopped(run),
