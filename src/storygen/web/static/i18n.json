@@ -2701,7 +2701,9 @@
     "editor_import.server.place.paragraph": "«{p0}», абзац {p1}",
     "editor_import.server.place.fragment_heading": "Фрагмент «{p0}», заголовок",
     "editor_import.server.place.fragment_paragraph": "Фрагмент «{p0}», абзац {p1}",
-    "editor_import.server.place.document_paragraph": "Абзац {p0} документа"
+    "editor_import.server.place.document_paragraph": "Абзац {p0} документа",
+    "editor_import.proposal_label": " · від редактора (DOCX)",
+    "editor_import.proposal_note": "Пропозиція з імпорту редакції (DOCX); модель не викликалася"
   },
   "en": {
     "ui.save": "Save",
@@ -5405,6 +5407,8 @@
     "editor_import.server.place.paragraph": "«{p0}», paragraph {p1}",
     "editor_import.server.place.fragment_heading": "Fragment «{p0}», heading",
     "editor_import.server.place.fragment_paragraph": "Fragment «{p0}», paragraph {p1}",
-    "editor_import.server.place.document_paragraph": "Paragraph {p0} of the document"
+    "editor_import.server.place.document_paragraph": "Paragraph {p0} of the document",
+    "editor_import.proposal_label": " · from editor (DOCX)",
+    "editor_import.proposal_note": "Proposal from the editor's revision import (DOCX); no model was called"
   }
 }
