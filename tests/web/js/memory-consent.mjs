@@ -28,7 +28,7 @@ let source=readFileSync(new URL('runs.js',base),'utf8')
  .replace("import {state,refresh,loadBuffer,textEditor} from './editor.js';","const {state,refresh,loadBuffer,textEditor}=globalThis.fixture;")
  .replace("import {api,json,notice} from './api.js';","const {api,json,notice}=globalThis.fixture;")
  .replace("import {acceptedContinuation} from './acceptance.js';","const acceptedContinuation=()=>null;")
- .replace('await follow(run);return active;','return run;');
+ .replace('await follow(run,{reveal:true});return active;','return run;');
 source=source.replace(/from '(\.\/[^']+)'/g,(_,path)=>'from '+JSON.stringify(new URL(path,base).href));
 await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
 const {invokeWorkspaceCommand}=await import(new URL('workspace-commands.js',base));

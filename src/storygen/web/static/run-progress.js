@@ -22,10 +22,12 @@ function titleOf(run,progress,scenes){
 
 function countsOf(progress){
   const {calls,spent_usd,spent_known,bound_usd}=progress;
-  const parts=[calls?.planned==null?t('run_progress.calls_open',{p0:calls?.done??0}):t('run_progress.calls',{p0:calls.done,p1:calls.planned})];
-  const spent=spent_known===false?'$—':dollars(Number(spent_usd));
-  if(bound_usd!=null)parts.push(t('run_progress.spent_bound',{p0:spent,p1:dollars(Number(bound_usd))}));
-  else if(spent_usd!=='0.0000')parts.push(t('run_progress.spent',{p0:spent}));
+  const parts=[calls?.planned==null?t('run_progress.calls_open',{p0:calls?.done??0}):t('run_progress.calls',{p0:calls.done??0,p1:calls.planned})];
+  // A missing or malformed sum reads as an unknown price («$—»), never «$NaN».
+  const spentValue=Number(spent_usd),boundValue=Number(bound_usd);
+  const spent=spent_known===false||spent_usd==null||!Number.isFinite(spentValue)?'$—':dollars(spentValue);
+  if(bound_usd!=null&&Number.isFinite(boundValue))parts.push(t('run_progress.spent_bound',{p0:spent,p1:dollars(boundValue)}));
+  else if(spent_usd!=null&&spent_usd!=='0.0000')parts.push(t('run_progress.spent',{p0:spent}));
   return parts.join(' · ');
 }
 
@@ -37,5 +39,5 @@ export function progressText(run,progress,scenes){
     title:titleOf(run,progress,scenes),
     step:run?.request?.mode==='audit'&&LINKS.has(link)?t(`run_progress.link_${link}`):'',
     counts:countsOf(progress),
-    fraction:planned>0?Math.min(1,Math.max(0,done/planned)):null};
+    fraction:Number.isFinite(done)&&Number.isFinite(planned)&&planned>0?Math.min(1,Math.max(0,done/planned)):null};
 }

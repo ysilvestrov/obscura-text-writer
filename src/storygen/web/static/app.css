@@ -426,6 +426,16 @@ pre { white-space: pre-wrap; overflow-wrap: anywhere; font: 14px/1.7 var(--font-
 #run-status .run-summary-mark, #run-status .run-summary-cost { flex: none; }
 #run-status .run-summary::before { content: '▸'; flex: none; }
 #run-status.expanded .run-summary::before { content: '▾'; }
+/* Visible run progress: title, the current link, the bar of calls, calls and dollars, the planned models in small print. */
+#run-status .run-progress { display: grid; gap: 0.25rem; margin-top: 0.25rem; }
+#run-status .run-progress > * { margin: 0; }
+#run-status .run-progress-title { font-weight: 600; color: var(--text-primary); }
+#run-status .run-progress-bar { width: 100%; height: 0.5rem; accent-color: var(--accent-primary); }
+#run-status .run-progress-model { font-size: 0.8125rem; }
+/* A quiet action shown as a link (e.g. «Скасувати валідацію» beside the stop scene). */
+.link-button { background: none; border: 0; padding: 0; color: var(--accent-text); text-decoration: underline; text-underline-offset: 0.2em; cursor: pointer; font: inherit; }
+.link-button:hover { background: none; color: var(--accent-text); }
+.link-button:disabled { color: var(--text-secondary); cursor: default; }
 .workspace-status-row #run-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .scene-status-badge { padding: 0.125rem 0.5rem; border-radius: 999px; background: var(--accent-soft); color: var(--text-primary); }
 /* VALID-LINKS: the auditor's discrepancies under their row: items with quotes, then the author's actions. */

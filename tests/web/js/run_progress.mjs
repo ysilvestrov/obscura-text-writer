@@ -33,3 +33,9 @@ view=progressText(gen,{...base,bound_usd:null,scene:{id:'s5',index:3,total:10},s
 assert.equal(view.title,'Сцена 3 з 10, етап: чернетка');assert.equal(view.step,'');
 assert.equal(progressText(gen,{...base,scene:null,step:{stage:'prepare'}},scenes).title,'Етап: prepare');
 assert.equal(progressText(gen,null,scenes),null);
+// A progress without spent_usd or calls gives no «$NaN» and no NaN fraction.
+const bare=progressText(book,{scene:{id:'s5',index:1,total:2},step:null,bound_usd:'1.0000'},scenes);
+assert.ok(!bare.counts.includes('NaN'),bare.counts);assert.equal(bare.fraction,null);
+assert.ok(!progressText(book,{...base,spent_usd:undefined},scenes).counts.includes('NaN'));
+assert.ok(!progressText(book,{...base,spent_usd:'x',bound_usd:null},scenes).counts.includes('NaN'));
+assert.equal(progressText(book,{...base,calls:{done:undefined,planned:4}},scenes).fraction,null);

@@ -34,6 +34,28 @@ test('book validation stops on a discrepancy, leads to the scene and finishes th
   // The stopped run leads to the first scene, where the link panel shows the discrepancy.
   const jump=page.locator('#run-stop-scene');
   await expect(jump).toHaveText('Перейти до сцени 1');
+  // Visible progress: the run started from this tab opens expanded, with the focus on its title.
+  const status=page.locator('#run-status'),title=status.locator('.run-progress-title');
+  await expect(status).toHaveClass(/expanded/);
+  await expect(title).toHaveText('Валідація книги: сцена 1 з 2, «Ранок»');
+  await expect(status.locator('.run-progress-step')).toHaveText('завдання ↔ план');
+  await expect(status.locator('.run-progress-counts')).toHaveText(/^Викликів: 1 \/ 4/);
+  await expect(status.locator('progress.run-progress-bar')).toHaveAttribute('value','0.25');
+  await expect(title).toBeFocused();  // Review Focus 1: survives the redraws of queued → running → needs_review
+  const cancel=page.locator('#run-actions').getByRole('button',{name:'Скасувати валідацію'});
+  await expect(cancel).toHaveClass(/link-button/);
+  await expect(jump).not.toHaveClass(/secondary/);
+  // The menu leads to the stopped run and starts nothing.
+  await page.locator('#editor').focus();
+  await toggle.click();
+  await expect(item).toHaveText('Валідацію зупинено: показати');
+  await item.click();
+  await expect(title).toBeFocused();
+  expect((await runs()).length).toBe(1);
+  // A page load opens the stopped run (needs_review) but does not move the focus.
+  await page.reload();
+  await expect(page.locator('#run-status')).toHaveClass(/expanded/);
+  await expect(page.locator('#run-status .run-progress-title')).not.toBeFocused();
   await jump.click();
   await expect(page.locator('#scene-title')).toContainText('Ранок');
   const row=page.locator('#link-attention [data-link="brief"]');
@@ -46,6 +68,9 @@ test('book validation stops on a discrepancy, leads to the scene and finishes th
   await dialog.getByRole('button',{name:'Підтвердити'}).click();
   await expect.poll(async()=>(await runs()).at(-1)?.state).toBe('completed');
   await expect(jump).toBeHidden();
+  // Review Focus 2: the resumed run counts against the extended plan.
+  await expect(page.locator('#run-status .run-progress-title')).toHaveText('Валідація книги: сцена 2 з 2, «Вечір»');
+  await expect(page.locator('#run-status .run-progress-counts')).toHaveText(/^Викликів: \d \/ 4/);
   const view=await(await request.get(`/api/stories/${fixture.story_id}`)).json();
   expect([fixture.first_id,fixture.second_id].map(id=>view.material_status[id].validity)).toEqual(['valid','valid']);
   await toggle.click();

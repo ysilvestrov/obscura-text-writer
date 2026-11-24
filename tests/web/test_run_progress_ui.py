@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
+STATIC = ROOT / 'src/storygen/web/static'
 
 
 def test_run_progress_rules():
@@ -32,3 +33,13 @@ def test_run_progress_texts_exist_in_both_languages():
     for key in keys:
         uk, en = (sorted(re.findall(r'{(p\d+)}', catalogs[locale][key])) for locale in ('uk', 'en'))
         assert en == uk, key
+
+
+def test_runs_render_progress_and_reveal_only_runs_started_here():
+    runs = (STATIC / 'runs.js').read_text(encoding='utf-8')
+    assert "from './run-progress.js'" in runs and "event.type==='progress'" in runs
+    assert "'run-reveal'" in runs and 'prefers-reduced-motion' in runs
+    page_load = runs.rsplit("api(`/api/stories/${state.storyId}/runs`).then(", 1)[1].split('\n', 1)[0]
+    assert 'reveal' not in page_load  # the page load follows without reveal
+    css = (STATIC / 'app.css').read_text(encoding='utf-8')
+    assert '.run-progress' in css and '.link-button' in css

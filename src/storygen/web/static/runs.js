@@ -3,6 +3,7 @@ import {live as liveLabel,t,msg,labelEntries,getLocale,uiText,uiAttr,uiHTML,diag
 import {acceptedContinuation} from './acceptance.js';
 import {violationDetails} from './memory-violations.js';
 import {runSummaryText,runModeKey,runNoticeMark,runExpanded,toggleRunExpansion,syncRunPrefs,addRunCost,runCostText} from './run-summary.js';
+import {progressText} from './run-progress.js';
 import {api,json,notice} from './api.js';
 import {state,refresh,loadBuffer,textEditor} from './editor.js';
 import {registerWorkspaceCommand} from './workspace-commands.js';
@@ -36,7 +37,7 @@ async function reconcilePrimaryOnce(){
   if(latest.cancelled){const run=await api('/api/runs/cancel-request',json('POST',{request_id:latest.requestId,request:latest.request}));if(latest.storageKey)sessionStorage.removeItem(latest.storageKey);setPendingPrimary(null);await follow(run);return run}
   const run=runs.find(item=>item.request_id===pending.requestId);
   if(!run)return null;
-  if(pending.storageKey)sessionStorage.removeItem(pending.storageKey);setPendingPrimary(null);document.dispatchEvent(new CustomEvent('workspace-primary-recovered',{detail:run}));await follow(run);return run;
+  if(pending.storageKey)sessionStorage.removeItem(pending.storageKey);setPendingPrimary(null);document.dispatchEvent(new CustomEvent('workspace-primary-recovered',{detail:run}));await follow(run,{reveal:true});return run;
 }
 const actions=[];
 function updateControls(){for(const item of actions){let reason=item.operation?operationReason(state,readiness?.operations[item.operation]):['latest','proposal','apply'].includes(item.action)?materialReason(item.action,state,historyRuns):item.action==='accepted'?operationReason(state,{ready:!!continuation,reason:t("m_7795d03d9c33")}):item.action?controlReason(item.action,active):'';if(['resume','repeat'].includes(item.action))reason=reason||operationReason(state,pendingReadiness);if(item.busy)reason=t("m_08ee1e43995d");item.button.disabled=!!reason;uiText(item.button,"title",()=>(diagnostic(reason)));uiText(item.hint,"textContent",()=>(diagnostic(reason)));item.button.setAttribute('aria-describedby',item.hint.id);if(['pause','cancel','resume','repeat','accepted'].includes(item.action))item.wrapper.hidden=['resume','repeat'].includes(item.action)?!!controlReason(item.action,active):!!reason}}
@@ -111,11 +112,51 @@ textEditor.onInput(updateControls);
 const elapsed=document.createElement('p');elapsed.className='run-elapsed';
 // R20-WORKSPACE: one summary line; the details open on click, and a failed run opens by itself.
 let runPrefs={expandedRun:null,collapsedFailure:null},summaryNode=null,runCosts=null;
+// Visible run progress: the server's run.progress of one run (GET /api/runs/{id}, the `progress` event). A bare Run from
+// pause/cancel keeps the progress of the same run.
+let runProgress={runId:null,data:null},progressNode=null;
+function setProgress(runId,data){runProgress={runId,data:data??null}}
+const progressOf=run=>run&&runProgress.runId===run.id?runProgress.data:null;
+const planModels=plan=>[...Object.values(plan?.roles||{}),...(plan?.evaluator?[plan.evaluator]:[])].map(value=>`${value.provider} / ${value.model}`).join(', ');
+// Fills the progress block in place: the title node stays, so its focus survives; the step and the bar exist only when known.
+function fillProgress(box,run,progress){
+  const view=()=>progressText(run,progress,state.view?.scenes)||{title:'',step:'',counts:'',fraction:null};
+  const title=box.querySelector('.run-progress-title'),counts=box.querySelector('.run-progress-counts'),model=box.querySelector('.run-progress-model');
+  uiText(title,'textContent',()=>view().title);
+  const now=view();
+  let step=box.querySelector('.run-progress-step');
+  if(now.step){if(!step){step=document.createElement('p');step.className='run-progress-step';title.after(step)}uiText(step,'textContent',()=>view().step)}else step?.remove();
+  let bar=box.querySelector('.run-progress-bar');
+  if(now.fraction==null)bar?.remove();
+  else{if(!bar){bar=document.createElement('progress');bar.className='run-progress-bar';bar.max=1;counts.before(bar)}bar.value=now.fraction}
+  uiText(counts,'textContent',()=>view().counts);
+  model.textContent=planModels(run.planned_telemetry);model.hidden=!model.textContent;
+}
+function progressBlock(run,progress){
+  const box=document.createElement('div');box.className='run-progress run-detail';
+  const title=document.createElement('p');title.className='run-progress-title';title.tabIndex=-1;
+  const counts=document.createElement('p');counts.className='run-progress-counts';
+  const model=document.createElement('p');model.className='run-progress-model muted';
+  box.append(title,counts,model);fillProgress(box,run,progress);return box;
+}
+const bookReview=run=>run?.state==='needs_review'&&run.request?.mode==='audit'&&run.request.audit_scope==='story';
+let cancelItem=null;
+// A book validation stopped for review offers «Скасувати валідацію» as a link; other runs keep the usual button.
+function cancelLook(run){if(!cancelItem)return;const book=bookReview(run);uiText(cancelItem.button,'textContent',()=>book?t('book_validation.cancel'):t("m_8b4c2025378a"));cancelItem.button.className=book?'link-button':'secondary'}
+// A run started from this tab (Р2): open its row, bring it into view and focus its title.
+function revealRun(){
+  if(!active)return;
+  runPrefs={...runPrefs,expandedRun:active.id};applyExpanded(active);
+  const reduce=globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+  document.querySelector('#workspace-status-row')?.scrollIntoView?.({block:'nearest',behavior:reduce?'auto':'smooth'});
+  const title=progressNode?.isConnected?progressNode.querySelector('.run-progress-title'):null;
+  (title||summaryNode)?.focus?.({preventScroll:true});
+}
 function applyExpanded(run){runPrefs=syncRunPrefs(run,runPrefs);const open=runExpanded(run,runPrefs);status.classList.toggle('expanded',open);summaryNode?.setAttribute('aria-expanded',String(open))}
 function summaryButton(run){const b=document.createElement('button');b.type='button';b.className='run-summary';const text=document.createElement('span');text.className='run-summary-text';uiText(text,'textContent',()=>runSummaryText(run,names[run.state]||run.state,runModeKey(run)?t(runModeKey(run)):''));b.append(text);const cost=runCostText(runCosts,run.id);if(cost){const c=document.createElement('span');c.className='run-summary-cost';c.textContent=cost;const usage=JSON.stringify(runCosts.lastUsage);uiAttr(c,'title',()=>t('workspace.run_cost_title',{p0:usage}));b.append(c)}const mark=runNoticeMark(run);if(mark){const m=document.createElement('span');m.className='run-summary-mark';m.textContent=mark;b.append(m)}uiAttr(b,'title',()=>t('workspace.run_details'));b.setAttribute('aria-controls','run-status');b.onclick=()=>{const current=active?.id===run.id?active:run;runPrefs=toggleRunExpansion(current,runPrefs);applyExpanded(current)};summaryNode=b;return b}
-function draw(run){active=run;state.workspaceRun=run;document.dispatchEvent(new CustomEvent('workspace-run-state',{detail:run}));status.dataset.kind=run.warning&&run.state!=='failed'?'warning':runKind(run.state);status.setAttribute('role',run.state==='failed'?'alert':'status');status.replaceChildren();status.append(summaryButton(run));const plan=run.planned_telemetry;if(run.request?.mode==='memory_carry'){const carry=document.createElement('p');carry.className='muted run-detail';uiText(carry,'textContent',()=>t('run.memory_carry_plan'));status.append(carry)}else if(!plan){const missing=document.createElement('p');missing.className='muted run-detail';uiText(missing,'textContent',()=>t('workspace.run_plan_unknown'));status.append(missing)}else{const summary=document.createElement('p');summary.className='muted run-detail';uiText(summary,'textContent',()=>{const models=[...Object.values(plan.roles||{}),...(plan.evaluator?[plan.evaluator]:[])].map(value=>`${value.provider} / ${value.model}`).join(', ')||t('workspace.unknown'),calls=plan.calls??'—';/* VALID-RUN: a scene check reads the links of the scene, not one input material */return run.request.mode==='audit'?t('workspace.run_plan_audit',{p0:models,p1:calls}):t('workspace.run_plan',{p0:models,p1:calls,p2:t(({draft:'m_e9d875d4120b',prose:'m_9c685577453c',plan:'m_3146141c9367',brief:'m_5a2ec5eaf0a1'})[run.request.editor_source_head||({brief:'plan',draft:'brief',memory:'prose'})[run.request.stage]]||'workspace.unknown')})});status.append(summary)}for(const message of [...new Set([run.error,run.warning].filter(Boolean))]){const e=document.createElement('p');e.className='run-detail';uiText(e,"textContent",()=>(message===run.warning?diagnosticLines(message):diagnostic(message)));status.append(e)}uiText(elapsed,"textContent",()=>(terminal.has(run.state)?'':elapsed.textContent));status.append(elapsed);applyExpanded(run);updateControls();if(run.state==='failed')showViolations(run);if(terminal.has(run.state))loadPending()}
+function draw(run){const focused=document.activeElement,refocus=!!focused?.classList?.contains?.('run-progress-title')&&!!status.contains?.(focused);active=run;state.workspaceRun=run;document.dispatchEvent(new CustomEvent('workspace-run-state',{detail:run}));status.dataset.kind=run.warning&&run.state!=='failed'?'warning':runKind(run.state);status.setAttribute('role',run.state==='failed'?'alert':'status');status.replaceChildren();progressNode=null;status.append(summaryButton(run));const plan=run.planned_telemetry,progress=progressOf(run);if(run.request?.mode==='memory_carry'){const carry=document.createElement('p');carry.className='muted run-detail';uiText(carry,'textContent',()=>t('run.memory_carry_plan'));status.append(carry)}else if(progress&&plan){progressNode=progressBlock(run,progress);status.append(progressNode)}else if(!plan){const missing=document.createElement('p');missing.className='muted run-detail';uiText(missing,'textContent',()=>t('workspace.run_plan_unknown'));status.append(missing)}else{const summary=document.createElement('p');summary.className='muted run-detail';uiText(summary,'textContent',()=>{const models=[...Object.values(plan.roles||{}),...(plan.evaluator?[plan.evaluator]:[])].map(value=>`${value.provider} / ${value.model}`).join(', ')||t('workspace.unknown'),calls=plan.calls??'—';/* VALID-RUN: a scene check reads the links of the scene, not one input material */return run.request.mode==='audit'?t('workspace.run_plan_audit',{p0:models,p1:calls}):t('workspace.run_plan',{p0:models,p1:calls,p2:t(({draft:'m_e9d875d4120b',prose:'m_9c685577453c',plan:'m_3146141c9367',brief:'m_5a2ec5eaf0a1'})[run.request.editor_source_head||({brief:'plan',draft:'brief',memory:'prose'})[run.request.stage]]||'workspace.unknown')})});status.append(summary)}for(const message of [...new Set([run.error,run.warning].filter(Boolean))]){const e=document.createElement('p');e.className='run-detail';uiText(e,"textContent",()=>(message===run.warning?diagnosticLines(message):diagnostic(message)));status.append(e)}uiText(elapsed,"textContent",()=>(terminal.has(run.state)?'':elapsed.textContent));status.append(elapsed);applyExpanded(run);cancelLook(run);updateControls();if(refocus)progressNode?.querySelector?.('.run-progress-title')?.focus?.({preventScroll:true});if(run.state==='failed')showViolations(run);if(terminal.has(run.state))loadPending()}
 // Короткий запуск зі списку: лише стан для кнопок зупинки/паузи; план, помилка й слухачі `workspace-run-state` чекають повного запуску.
-function drawPending(run){active=run;state.workspaceRun=run;status.dataset.kind=runKind(run.state);status.setAttribute('role','status');status.replaceChildren();status.append(summaryButton(run));applyExpanded(run);updateControls();document.dispatchEvent(new CustomEvent('workspace-run-pending',{detail:run}))}
+function drawPending(run){active=run;state.workspaceRun=run;status.dataset.kind=runKind(run.state);status.setAttribute('role','status');status.replaceChildren();progressNode=null;status.append(summaryButton(run));applyExpanded(run);cancelLook(run);updateControls();document.dispatchEvent(new CustomEvent('workspace-run-pending',{detail:run}))}
 async function showViolations(run){
   try{
     const details=await api('/api/runs/'+run.id),violations=details.attempts?.at(-1)?.memory_violations;
@@ -125,11 +166,12 @@ async function showViolations(run){
   }catch{/* Діагностика необов’язкова: помилка запиту не заважає стану запуску. */}
 }
 setInterval(()=>{if(active&&!terminal.has(active.state))uiText(elapsed,"textContent",()=>(t("m_61cb5f9a3bb9",{p0:(Math.floor((Date.now()-started)/1000))})))},1000);
-async function follow(run){
+async function follow(run,{reveal=false}={}){
   const epoch=++followEpoch;let stateFetch=0,waitingWhole=false;
+  if(reveal)runPrefs={...runPrefs,expandedRun:run.id};
   source?.close();last=0;started=Date.parse(run.created_at);live.hidden=false;
   if('planned_telemetry' in run)draw(run);else drawPending(run);
-  const saved=await api('/api/runs/'+run.id);if(epoch!==followEpoch)return;draw(saved.run);uiText(live,"textContent",()=>(saved.partial));
+  const saved=await api('/api/runs/'+run.id);if(epoch!==followEpoch)return;setProgress(run.id,saved.progress);draw(saved.run);if(reveal)revealRun();uiText(live,"textContent",()=>(saved.partial));
   const attempt=saved.attempts?.at(-1);if(attempt?.created_at)started=Date.parse(attempt.created_at);
   if(terminal.has(saved.run.state)){await refresh();return}
   // Replay from the beginning once; reconnects use the saved event cursor.
@@ -137,16 +179,21 @@ async function follow(run){
   source=new EventSource(`/api/runs/${run.id}/events`);
   const reader=source;
   source.onmessage=async message=>{try{if(epoch!==followEpoch)return;const event=JSON.parse(message.data);last=event.seq;
-    if(event.type==='stage_started'){modelOutput(true);if(event.created_at)started=Date.parse(event.created_at);uiText(live,"textContent",()=>(''));const p=document.createElement('p');p.className='run-detail';uiText(p,"textContent",()=>((event.data.edit_loop_pass?t("m_9a029cc4638c",{p0:(event.data.edit_loop_pass),p1:(event.data.edit_loop_limit)}):'')+`${event.data.stage} · ${event.data.model} · ${event.data.provider}`));status.append(p);waitingWhole=event.data.streaming===false;if(waitingWhole)uiText(live,"textContent",()=>t('run.waiting_whole_answer'))}
+    if(event.type==='stage_started'){modelOutput(true);if(event.created_at)started=Date.parse(event.created_at);uiText(live,"textContent",()=>(''));if(!progressOf(run)){const p=document.createElement('p');p.className='run-detail';uiText(p,"textContent",()=>((event.data.edit_loop_pass?t("m_9a029cc4638c",{p0:(event.data.edit_loop_pass),p1:(event.data.edit_loop_limit)}):'')+`${event.data.stage} · ${event.data.model} · ${event.data.provider}`));status.append(p)}waitingWhole=event.data.streaming===false;if(waitingWhole)uiText(live,"textContent",()=>t('run.waiting_whole_answer'))}
+    // Visible run progress: the block updates in place, so the focus on its title stays.
+    if(event.type==='progress'){setProgress(run.id,event.data);if(active?.id===run.id){if(progressNode?.isConnected)fillProgress(progressNode,active,event.data);else if('planned_telemetry' in active)draw(active)}}
     if(event.type==='delta'){if(waitingWhole){waitingWhole=false;uiText(live,"textContent",()=>'')}live.textContent+=event.data.text}
     if(event.type==='stage_finished'){modelOutput(false);if(Object.keys(event.data.usage||{}).length){runCosts=addRunCost(runCosts,run.id,event.data.attempt_id,event.data.usage);if(active?.id===run.id&&summaryNode?.isConnected){summaryNode.replaceWith(summaryButton(active));applyExpanded(active)}}else{const p=document.createElement('p');p.className='run-detail';uiText(p,"textContent",()=>(t("m_59303d743463")));status.append(p)}await refresh({fresh:true})}
     if(event.type==='evaluation_warning'||event.type==='evaluation_skipped'){notice(event.data.failure?.message||event.data.reason||event.data.reasons?.join('; ')||t("m_8c627045acd1"),'warning');document.dispatchEvent(new CustomEvent('evaluation-policy-changed'))}
-    if(event.type==='state'||event.type==='context_warning'){const stamp=++stateFetch,current=await api('/api/runs/'+run.id,{fresh:true});if(epoch!==followEpoch||stamp!==stateFetch)return;draw(current.run);if(terminal.has(current.run.state)){modelOutput(false);uiText(live,"textContent",()=>(current.partial));reader.close();followEpoch++;notice(names[current.run.state]+(current.run.error||current.run.warning?': '+(current.run.error?diagnostic(current.run.error):diagnosticLines(current.run.warning)):''),current.run.warning&&current.run.state!=='failed'?'warning':runKind(current.run.state));await refresh({fresh:true})}}
+    if(event.type==='state'||event.type==='context_warning'){const stamp=++stateFetch,current=await api('/api/runs/'+run.id,{fresh:true});if(epoch!==followEpoch||stamp!==stateFetch)return;setProgress(run.id,current.progress);draw(current.run);if(terminal.has(current.run.state)){modelOutput(false);uiText(live,"textContent",()=>(current.partial));reader.close();followEpoch++;notice(names[current.run.state]+(current.run.error||current.run.warning?': '+(current.run.error?diagnostic(current.run.error):diagnosticLines(current.run.warning)):''),current.run.warning&&current.run.state!=='failed'?'warning':runKind(current.run.state));await refresh({fresh:true})}}
     }catch(error){notice(error.message,'error')}
   };
   source.onerror=()=>{if(epoch===followEpoch&&active&&!terminal.has(active.state))notice(msg("m_0907c7c982d4"),'warning')};
 }
 document.addEventListener('run-enqueued',event=>follow(event.detail).catch(error=>notice(error.message,'error')));
+// A run the author started elsewhere on the page (book validation) or a stopped run the menu leads to: open, show and focus it.
+document.addEventListener('run-reveal',event=>{const run=event.detail;if(!run)return;if(active?.id===run.id)revealRun();else follow(run,{reveal:true}).catch(error=>notice(error.message,'error'))});
+document.addEventListener('story-refreshed',()=>{if(active&&progressNode?.isConnected)fillProgress(progressNode,active,progressOf(active))});
 async function start(mode,stage,options={}){
   const captured={sceneId:state.scene?.id,epoch:state.bufferEpoch,mode:state.mode};
   if(!state.scene&&mode!=='prepare')throw new Error(t("m_f0f1417db6de"));
@@ -186,7 +233,7 @@ async function start(mode,stage,options={}){
   try{primaryPosting=!!options.primary;run=await api('/api/runs',json('POST',{request_id:requestId,request}))}
   catch(error){if(options.primary){if(error.status>=400&&error.status<500&&error.status!==408){setPendingPrimary(null);storage.removeItem(key);throw error}const found=(state.workspaceRun?.request_id===requestId?state.workspaceRun:null)||await reconcilePrimary().catch(()=>null);if(found){storage.removeItem(key);return found}throw new Error(t('workspace.pending_unknown'))}throw error}
   finally{primaryPosting=false}
-  storage.removeItem(key);await options.onCreated?.(run);if(options.primary)setPendingPrimary(null);await follow(run);return active;
+  storage.removeItem(key);await options.onCreated?.(run);if(options.primary)setPendingPrimary(null);await follow(run,{reveal:true});return active;
 }
 controls.hidden=false;
 function button(label,fn,operation=null,action=null){const wrapper=document.createElement('span');wrapper.className='run-action';const b=document.createElement('button'),hint=document.createElement('small');hint.id='run-reason-'+actions.length;b.className='secondary';uiText(b,"textContent",()=>(label));const item={button:b,hint,wrapper,operation,action,busy:false};actions.push(item);b.onclick=async()=>{const hadFocus=document.activeElement===b;item.busy=true;updateControls();if(hadFocus){wrapper.tabIndex=-1;wrapper.focus()}try{await fn()}catch(e){notice(e.message,'error')}finally{item.busy=false;updateControls();if(operation)scheduleReadiness()}};wrapper.append(b,hint);(document.querySelector('#run-actions')&&['pause','cancel','resume','repeat','accepted'].includes(action)?document.querySelector('#run-actions'):controls).append(wrapper);updateControls();return wrapper}
@@ -198,15 +245,15 @@ for(const [stage,label] of labelEntries({get brief(){return t("m_27e8e3278f1a")}
 button(liveLabel(()=>(t("m_3f2da413a47a"))),()=>start('scene'),'scene');button(liveLabel(()=>(t("m_9d2918521914"))),()=>start('remaining'),'remaining');
 const pauseLabel=document.createElement('label');uiHTML(pauseLabel,"<input id=\"pause-each\" type=\"checkbox\"> <span data-i18n=\"m_991c0d0700bb\">Пауза після кожного етапу</span>",{});controls.append(pauseLabel);
 button(liveLabel(()=>(t("m_03498e395a43"))),async()=>{if(active)draw(await api(`/api/runs/${active.id}/pause`,json('POST',{})))},null,'pause');
-button(liveLabel(()=>(t("m_8b4c2025378a"))),async()=>{if(active)draw(await api(`/api/runs/${active.id}/cancel`,json('POST',{})))},null,'cancel');
-async function resumeRun(repeat){if(!active)return;const runId=active.id,captured={sceneId:state.scene?.id,epoch:state.bufferEpoch,mode:state.mode};await loadPending();const reason=operationReason(state,pendingReadiness);if(reason)throw new Error(reason);const shown=confirmationText(pendingReadiness);if(!await confirmDialog((repeat?t("m_f126caaa8d97"):'')+shown))return;if(active?.id!==runId||state.scene?.id!==captured.sceneId||state.bufferEpoch!==captured.epoch||state.mode!==captured.mode||state.dirty||state.saving)return;await loadPending();if(active?.id!==runId||operationReason(state,pendingReadiness)||confirmationText(pendingReadiness)!==shown)return;await follow(await api(`/api/runs/${runId}/resume`,json('POST',{repeat_interrupted:repeat})))}
+button(liveLabel(()=>(t("m_8b4c2025378a"))),async()=>{if(active)draw(await api(`/api/runs/${active.id}/cancel`,json('POST',{})))},null,'cancel');cancelItem=actions.at(-1);
+async function resumeRun(repeat){if(!active)return;const runId=active.id,captured={sceneId:state.scene?.id,epoch:state.bufferEpoch,mode:state.mode};await loadPending();const reason=operationReason(state,pendingReadiness);if(reason)throw new Error(reason);const shown=confirmationText(pendingReadiness);if(!await confirmDialog((repeat?t("m_f126caaa8d97"):'')+shown))return;if(active?.id!==runId||state.scene?.id!==captured.sceneId||state.bufferEpoch!==captured.epoch||state.mode!==captured.mode||state.dirty||state.saving)return;await loadPending();if(active?.id!==runId||operationReason(state,pendingReadiness)||confirmationText(pendingReadiness)!==shown)return;await follow(await api(`/api/runs/${runId}/resume`,json('POST',{repeat_interrupted:repeat})),{reveal:true})}
 button(liveLabel(()=>(t("m_387c0a3209b9"))),async()=>{
   await loadPending();
   const reason=operationReason(state,{ready:!!continuation,reason:t("m_46e01b57161e")});if(reason)throw new Error(reason);
   const runId=active.id,body=continuation,sceneId=state.scene?.id,epoch=state.bufferEpoch,mode=state.mode;
   if(!await confirmDialog(t("m_371741f40974")))return;
   if(active?.id!==runId||continuation!==body||state.scene?.id!==sceneId||state.bufferEpoch!==epoch||state.mode!==mode||state.dirty||state.saving)return;
-  await follow(await api(`/api/runs/${runId}/continue-after-acceptance`,json('POST',body)));
+  await follow(await api(`/api/runs/${runId}/continue-after-acceptance`,json('POST',body)),{reveal:true});
 },null,'accepted');
 button(liveLabel(()=>(t("m_a50d268827d2"))),()=>resumeRun(false),null,'resume');
 button(liveLabel(()=>(t("m_7a9c5a57576c"))),()=>resumeRun(true),null,'repeat');

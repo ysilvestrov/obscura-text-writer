@@ -39,8 +39,13 @@ test('the auditor checks the scene after consent and the author approves its dis
   await expect(row).toContainText('Місце дії не збігається з планом');
   await expect(row.locator('blockquote').first()).toHaveText('Світло на воді');
   await expect.poll(async()=>(await runs()).at(-1)?.state).toBe('needs_review');
-  // The plan of a scene check names the model and the calls; it has no input material, so no «Невідомо».
-  await expect(page.locator('#run-status .run-detail',{hasText:'План:'})).toHaveText(/^План: \S+ \/ synthetic-auditor · до \d+ викл\.$/);
+  // Visible run progress replaces the plan line: the scene check names its scene, the calls against the plan and the
+  // auditor's model; it has no input material, so no «Невідомо».
+  const progress=page.locator('#run-status .run-progress');
+  await expect(progress.locator('.run-progress-title')).toHaveText(/^Перевірка сцени «.+»$/);
+  await expect(progress.locator('.run-progress-counts')).toHaveText(/^Викликів: \d+ \/ \d+/);
+  await expect(progress.locator('.run-progress-model')).toHaveText(/^\S+ \/ synthetic-auditor$/);
+  await expect(progress).not.toContainText('Невідомо');
   const run=(await(await request.get(`/api/runs/${(await runs()).at(-1).id}`)).json()).run;
   expect(run.request.mode).toBe('audit');
   expect(run.checkpoint.link).toBe('brief');
