@@ -173,6 +173,13 @@ class ExternalOrigin(DomainModel):
     model: str | None = Field(default=None,max_length=128)
 
 
+class EditorImportOrigin(DomainModel):
+    """IMPORT-DOCX: the draft came from an editor's DOCX (spec §5.1). Metadata only: not in sha256, dependencies or the
+    link state of the version."""
+    import_id: str = Field(pattern=r'^[0-9a-f]{32}$')
+    export_id: str | None = Field(default=None,pattern=r'^[0-9a-f]{32}$')
+
+
 class GhostRewriteStats(DomainModel):
     """Ghost Mode rewrite of an AI draft (#55). Metadata only: not in sha256, dependencies or request hashes.
 
@@ -209,6 +216,7 @@ class VersionRef(DomainModel):
     author_lineage: AuthorLineage | None = None
     ghost_rewrite: GhostRewriteStats | None = None
     external_origin: ExternalOrigin | None = None
+    editor_import: EditorImportOrigin | None = None
     # MEMORY-CARRY: the memory version this one carries onto a new previous journal (same own events and digest).
     memory_carry_of: str | None = None
     created_at: str = Field(default_factory=now)

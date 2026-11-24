@@ -10,6 +10,12 @@ from .files import FileStore
 from .snapshots import HEAD_LINK
 
 
+def insert_attempt(db,attempt: StageAttempt) -> None:
+    """Insert or update a stage attempt on the caller's connection (and so inside its transaction)."""
+    db.execute('INSERT INTO stage_attempts VALUES(?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET state=excluded.state,payload=excluded.payload',
+        (attempt.id,attempt.run_id,attempt.story_id,attempt.scene_id,attempt.state,attempt.model_dump_json()))
+
+
 class Repository:
     def get_comment_state(self,scene_id):
         from .comment_store import get_comment_state
@@ -19,9 +25,10 @@ class Repository:
         from .comment_store import get_comment_set
         return get_comment_set(self,scene_id,id)
 
-    def save_draft_with_comments(self,scene_id,text,content_format,expected_revision,expected_comments_revision,payload,*,expected_source_version_id):
+    def save_draft_with_comments(self,scene_id,text,content_format,expected_revision,expected_comments_revision,payload,*,expected_source_version_id,editor_import=None,attempt_factory=None):
         from .comment_store import save_draft_with_comments
-        return save_draft_with_comments(self,scene_id,text,content_format,expected_revision,expected_comments_revision,payload,expected_source_version_id=expected_source_version_id)
+        return save_draft_with_comments(self,scene_id,text,content_format,expected_revision,expected_comments_revision,payload,expected_source_version_id=expected_source_version_id,
+                                        editor_import=editor_import,attempt_factory=attempt_factory)
 
     def rename_story(self,story_id,title,expected_revision):
         from .authoring import rename_story
@@ -588,15 +595,14 @@ class Repository:
 
     def save_attempt(self,attempt: StageAttempt) -> StageAttempt:
         with self.db.connection() as db:
-            db.execute('INSERT INTO stage_attempts VALUES(?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET state=excluded.state,payload=excluded.payload',
-                (attempt.id,attempt.run_id,attempt.story_id,attempt.scene_id,attempt.state,attempt.model_dump_json()))
+            insert_attempt(db,attempt)
         return attempt
 
     def get_attempt(self,id: str) -> StageAttempt:
         with self.db.connection() as db:
             return self._get(db,'stage_attempts',id,StageAttempt)
 
-    ATTEMPT_CONTEXT_KEYS=frozenset({'copyedit_proposal','rewrite_proposal','classification_proposal_id','classification_refusal'})
+    ATTEMPT_CONTEXT_KEYS=frozenset({'copyedit_proposal','rewrite_proposal','classification_proposal_id','classification_refusal','editor_import'})
 
     def list_attempts(self,story_id: str,run_id: str | None = None,*,scene_id: str | None = None,context_key: str | None = None) -> list[StageAttempt]:
         if context_key is not None and context_key not in self.ATTEMPT_CONTEXT_KEYS:

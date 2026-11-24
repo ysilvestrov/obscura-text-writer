@@ -6,6 +6,10 @@ from ..domain import RevisionConflict,VersionRef,new_id
 from ..markdown_document import source_range_text
 
 
+class PendingEditorImport(RevisionConflict):
+    """The scene already has an editor-import proposal awaiting review (IMPORT-DOCX: no duplicate proposals)."""
+
+
 def proof_path(story_id,scene_id,digest):
     # Short, deterministic scene+source key; full SHA is always verified on read.
     # The full scene/SHA path plus atomic-write suffix exceeds Windows MAX_PATH.
@@ -90,7 +94,13 @@ def _same_notes(left,right):
     return left is not None and left.model_dump(include=keys)==right.model_dump(include=keys)
 
 
-def save_draft_with_comments(repo,scene_id,text,content_format,expected_revision,expected_comments_revision,payload,*,expected_source_version_id):
+def save_draft_with_comments(repo,scene_id,text,content_format,expected_revision,expected_comments_revision,payload,*,expected_source_version_id,editor_import=None,attempt_factory=None):
+    """`editor_import` marks a new draft version (IMPORT-DOCX). `attempt_factory(draft_ref, view)` runs inside the
+    transaction after the draft is published, with a ContextView of that transaction; the attempt it returns is
+    inserted on the same connection, so draft, comments and attempt are written together or not at all.
+    With `editor_import` a new draft version is always created, even over identical text, so the previous version keeps
+    its comment set; the scene is refused (PendingEditorImport) while an earlier import's proposal awaits review.
+    A failed transaction deletes the draft blob written for it."""
     if not text.strip():raise ValueError('Чернетка не може бути порожньою')
     if content_format not in {'plain','markdown'}:raise ValueError('Невідомий формат авторського тексту')
     payload=CommentPayload.model_validate(payload.model_dump() if isinstance(payload,CommentPayload) else payload)
@@ -103,15 +113,35 @@ def save_draft_with_comments(repo,scene_id,text,content_format,expected_revision
         raise ValueError('Неприпустиме джерело коментарів')
     validate_comment_set(text,content_format,payload)
     comments=_resolve_comments(repo,scene,previous_ref,payload)
-    changed=not previous_ref or previous_ref.content_format!=content_format or repo.read_text(previous_ref.id)!=text
+    same_text=previous_ref is not None and previous_ref.content_format==content_format and repo.read_text(previous_ref.id)==text
+    changed=not same_text or editor_import is not None
     ref=previous_ref
     if changed:
         from ..memory.forwarding import projection_policy
         policy=projection_policy(repo.context_view(scene.story_id),scene_id)
         id=new_id();raw=text.encode('utf-8')
         ref=VersionRef(id=id,story_id=scene.story_id,scene_id=scene_id,kind='draft',content_format=content_format,
-            sha256=hashlib.sha256(raw).hexdigest(),relative_path=f'stories/{scene.story_id}/versions/{id}.txt',manual_projection_policy=policy)
+            sha256=hashlib.sha256(raw).hexdigest(),relative_path=f'stories/{scene.story_id}/versions/{id}.txt',manual_projection_policy=policy,
+            editor_import=editor_import)
         repo.files.write(ref.relative_path,raw)
+    try:
+        notes=_publish(repo,scene,scene_id,ref,previous_ref,changed,same_text,expected_revision,expected_source_version_id,
+                       expected_comments_revision,payload,comments,editor_import,attempt_factory)
+    except BaseException:
+        if changed:  # the version was never registered: an unlisted blob would fail fsck and every backup (orphan_blob)
+            try:repo.files.resolve(ref.relative_path).unlink(missing_ok=True)
+            except OSError:pass
+        raise
+    return {'scene':repo.get_scene(scene_id),'version':ref,'comment_set':notes}
+
+
+def _pending_editor_import(db,scene_id):
+    return db.execute("SELECT 1 FROM stage_attempts WHERE scene_id=? AND json_extract(payload,'$.state')='needs_review' "
+                      "AND json_extract(payload,'$.context.editor_import') IS NOT NULL LIMIT 1",(scene_id,)).fetchone() is not None
+
+
+def _publish(repo,scene,scene_id,ref,previous_ref,changed,same_text,expected_revision,expected_source_version_id,
+             expected_comments_revision,payload,comments,editor_import,attempt_factory):
     with repo.db.connection() as db:
         db.execute('BEGIN IMMEDIATE')
         current=repo._active_scene(db,scene_id);repo._active_story(db,current.story_id)
@@ -120,11 +150,13 @@ def save_draft_with_comments(repo,scene_id,text,content_format,expected_revision
             raise RevisionConflict('Чернетку вже змінено; збережіть робочий текст окремо')
         if (latest.revision if latest else 0)!=expected_comments_revision:
             raise RevisionConflict('Коментарі змінено в іншій вкладці; оновіть їх перед збереженням')
+        if editor_import is not None and _pending_editor_import(db,scene_id):
+            raise PendingEditorImport('Спершу вирішіть пропозицію попереднього імпорту редакції.')
         if changed:
             db.execute('INSERT INTO versions VALUES(?,?,?,?,?)',(ref.id,ref.story_id,ref.scene_id,ref.kind,ref.model_dump_json()))
             current.heads['draft']=ref.id;current.head_revisions['draft']=current.head_revisions.get('draft',0)+1;current.revision+=1
             repo._save_scene(db,current)
-            if previous_ref:
+            if previous_ref and not same_text:  # identical bytes leave every dependent valid
                 from .invalidation import invalidate_in_transaction
                 invalidate_in_transaction(repo,db,[previous_ref.id],exclude=[ref.id])
             repo._touch_story(db,current.story_id)
@@ -133,4 +165,9 @@ def save_draft_with_comments(repo,scene_id,text,content_format,expected_revision
         if _same_notes(latest,notes):notes=latest
         elif latest is None and not notes.general and not notes.comments:notes=None
         else:_insert_comment_set(db,notes)
-    return {'scene':repo.get_scene(scene_id),'version':ref,'comment_set':notes}
+        if attempt_factory is not None:
+            from .context_view import ContextView
+            from .repository import insert_attempt
+            attempt=attempt_factory(ref,ContextView(repo,db,current.story_id))
+            if attempt is not None:insert_attempt(db,attempt)
+    return notes

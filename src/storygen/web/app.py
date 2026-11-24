@@ -26,6 +26,13 @@ def create_app(settings: AppSettings, *, gateway_factory=None,evaluator_factory=
     build_edition.current()
     @asynccontextmanager
     async def lifespan(app):
+        # EDITOR-IMPORT-S10: kept import files older than 24 hours go at start; a failure only goes to the log.
+        from ..application import editor_import
+        try:
+            editor_import.sweep_temp(app.state.repo)
+        except Exception:
+            import logging
+            logging.getLogger(__name__).exception('Не вдалося прибрати застарілі файли editor-import')
         app.state.coordinator.start()
         try:
             yield
@@ -177,6 +184,8 @@ def create_app(settings: AppSettings, *, gateway_factory=None,evaluator_factory=
     app.include_router(exports_router)
     from .routes_publication import router as publication_router
     app.include_router(publication_router)
+    from .routes_editor_import import router as editor_import_router
+    app.include_router(editor_import_router)
     from .routes_budget import router as budget_router
     app.include_router(budget_router)
     from .routes_statistics import router as statistics_router

@@ -1156,6 +1156,168 @@
       ]
     },
     {
+      "id": "EDITOR-IMPORT-S01",
+      "requirement": "EDITOR-IMPORT",
+      "scope": "Читач DOCX: два погляди, знаки абзацу, переміщення, попередження, відмови й межі завантаження. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/authoring/test_docx_import.py::test_reads_exported_manuscript",
+        "tests/authoring/test_docx_import.py::test_break_and_tab_elements_read_as_controls",
+        "tests/authoring/test_docx_import.py::test_tracked_changes_two_views",
+        "tests/authoring/test_docx_import.py::test_runs_with_same_flags_merge",
+        "tests/authoring/test_docx_import.py::test_rejects_not_zip_ole_and_missing_document",
+        "tests/authoring/test_docx_import.py::test_rejects_doctype",
+        "tests/authoring/test_docx_import.py::test_rejects_oversized_file",
+        "tests/authoring/test_docx_import.py::test_rejects_unpacked_by_declared_size",
+        "tests/authoring/test_docx_import.py::test_rejects_unpacked_by_actual_reading",
+        "tests/authoring/test_docx_import.py::test_unsupported_content_warns",
+        "tests/authoring/test_docx_import.py::test_table_first_has_no_paragraph_index",
+        "tests/authoring/test_docx_import.py::test_nested_insert_then_delete_is_in_neither_view",
+        "tests/authoring/test_docx_import.py::test_deep_nesting_is_a_value_error",
+        "tests/authoring/test_docx_import.py::test_paragraph_mark_revisions",
+        "tests/authoring/test_docx_import.py::test_moves_are_revisions",
+        "tests/web/test_editor_import_api.py::test_preview_too_large_413",
+        "tests/web/test_editor_import_api.py::test_two_files_400"
+      ]
+    },
+    {
+      "id": "EDITOR-IMPORT-S02",
+      "requirement": "EDITOR-IMPORT",
+      "scope": "Серіалізація й нормалізація: канонічний Markdown і plain, екранування, кругообіг, непрозорі блоки, незмінений файл. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/authoring/test_docx_text.py::test_markdown_canonical",
+        "tests/authoring/test_docx_text.py::test_blank_lines_are_empty_paragraphs",
+        "tests/authoring/test_docx_text.py::test_escaping_and_offsets",
+        "tests/authoring/test_docx_text.py::test_offsets_with_marks_and_second_paragraph",
+        "tests/authoring/test_docx_text.py::test_plain_keeps_lines",
+        "tests/authoring/test_docx_text.py::test_emphasis_across_runs_roundtrips",
+        "tests/authoring/test_docx_text.py::test_adjacent_runs_with_shared_flags",
+        "tests/authoring/test_docx_text.py::test_formatted_edge_space_moves_outside_the_mark",
+        "tests/authoring/test_docx_text.py::test_single_line_blocks_do_not_roundtrip",
+        "tests/authoring/test_docx_text.py::test_scene_break_line_stays_a_scene_break",
+        "tests/authoring/test_docx_text.py::test_word_paragraphs_stay_paragraphs",
+        "tests/publication/test_editor_import.py::test_paragraph_split_in_word_stays_two_paragraphs",
+        "tests/publication/test_editor_import.py::test_formatting_markdown_cannot_carry_is_warned",
+        "tests/authoring/test_docx_text.py::test_roundtrip_idempotent",
+        "tests/authoring/test_docx_text.py::test_leading_markers_survive",
+        "tests/authoring/test_docx_text.py::test_hard_break_is_kept_not_split",
+        "tests/authoring/test_docx_text.py::test_opaque_blocks_roundtrip",
+        "tests/publication/test_editor_import.py::test_unchanged_file",
+        "tests/publication/test_editor_import.py::test_no_prose_and_unsupported_markup"
+      ]
+    },
+    {
+      "id": "EDITOR-IMPORT-S03",
+      "requirement": "EDITOR-IMPORT",
+      "scope": "Розпізнавання за закладками, назвою й місцем, неоднозначність і чужий твір; поведінка Word — ручна процедура. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/publication/test_editor_import_match.py::test_bookmarks",
+        "tests/publication/test_editor_import_match.py::test_title_fallback",
+        "tests/publication/test_editor_import_match.py::test_title_fallback_keeps_relative_order",
+        "tests/publication/test_editor_import_match.py::test_position_fallback",
+        "tests/publication/test_editor_import_match.py::test_position_at_edges",
+        "tests/publication/test_editor_import_match.py::test_position_ambiguous",
+        "tests/publication/test_editor_import_match.py::test_duplicate_bookmark_or_unknown_id",
+        "tests/publication/test_editor_import.py::test_foreign_story_rejected"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#editor-import-word",
+        "reason": "Файл, правлений у Word з режимом виправлень і без нього (повна заміна назви сцени): поведінку Word автотест не відтворює; доказ — проба специфікації зміни §2.5."
+      }
+    },
+    {
+      "id": "EDITOR-IMPORT-S04",
+      "requirement": "EDITOR-IMPORT",
+      "scope": "Статуси зведення, їхній порядок, лічильники й попередження сцен, правки знаків абзацу у зведенні. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/publication/test_editor_import.py::test_changed_scene_counts_edits",
+        "tests/publication/test_editor_import.py::test_plain_edit_without_tracking",
+        "tests/publication/test_editor_import.py::test_changed_since_export",
+        "tests/publication/test_editor_import.py::test_unknown_base",
+        "tests/publication/test_editor_import.py::test_no_prose_and_unsupported_markup",
+        "tests/publication/test_editor_import.py::test_pending_review",
+        "tests/publication/test_editor_import.py::test_second_import_is_pending_review",
+        "tests/publication/test_editor_import.py::test_reader_warnings_land_in_scene",
+        "tests/publication/test_editor_import.py::test_draft_comments_warning",
+        "tests/publication/test_editor_import.py::test_tracked_paragraph_insertion_keeps_anchor_on_its_paragraph",
+        "tests/publication/test_editor_import.py::test_tracked_paragraph_deletion_leaves_no_empty_line",
+        "tests/publication/test_editor_import.py::test_tracked_split_and_merge_of_paragraphs"
+      ]
+    },
+    {
+      "id": "EDITOR-IMPORT-S05",
+      "requirement": "EDITOR-IMPORT",
+      "scope": "Вибір автора skip/replace і 400 без вибору. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/publication/test_editor_import.py::test_choice_required"
+      ]
+    },
+    {
+      "id": "EDITOR-IMPORT-S06",
+      "requirement": "EDITOR-IMPORT",
+      "scope": "Транзакція сцени, позначка версії, прийняття через EDIT-REVIEW, пропуск невдалої сцени, твір без рейтингу, HTTP-кругообіг. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/publication/test_editor_import.py::test_imported_proposal_is_selectable",
+        "tests/publication/test_editor_import.py::test_accepting_one_imported_scene_keeps_the_next_selectable",
+        "tests/publication/test_editor_import.py::test_draft_version_marked",
+        "tests/publication/test_editor_import.py::test_failed_scene_is_skipped_and_others_imported",
+        "tests/publication/test_editor_import.py::test_scene_conflict_is_skipped_not_raised",
+        "tests/publication/test_editor_import.py::test_failed_scene_leaves_no_orphan_files",
+        "tests/publication/test_editor_import.py::test_concurrent_apply_creates_one_proposal",
+        "tests/publication/test_editor_import.py::test_import_works_in_unrated_story",
+        "tests/web/test_editor_import_api.py::test_preview_and_apply_roundtrip"
+      ]
+    },
+    {
+      "id": "EDITOR-IMPORT-S07",
+      "requirement": "EDITOR-IMPORT",
+      "scope": "Лише примітки: чернетка й коментарі без спроби. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/publication/test_editor_import.py::test_comments_only",
+        "tests/publication/test_editor_import.py::test_comments_only_saves_draft_and_comments_without_attempt",
+        "tests/publication/test_editor_import.py::test_import_over_equal_draft_keeps_previous_version"
+      ]
+    },
+    {
+      "id": "EDITOR-IMPORT-S08",
+      "requirement": "EDITOR-IMPORT",
+      "scope": "Правки понад ліміти перегляду як чернетка; вилучена цілком сцена пропускається. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/publication/test_editor_import.py::test_over_limit",
+        "tests/publication/test_editor_import.py::test_over_limit_saves_editor_text_as_draft",
+        "tests/publication/test_editor_import.py::test_whole_scene_deleted_is_skipped"
+      ]
+    },
+    {
+      "id": "EDITOR-IMPORT-S09",
+      "requirement": "EDITOR-IMPORT",
+      "scope": "Прив’язка приміток: точна, перетин, вставлений текст, кілька абзаців, межі R23-COMMENTS. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/publication/test_editor_import.py::test_overlapping_comments",
+        "tests/publication/test_editor_import.py::test_comment_on_inserted_text_is_general",
+        "tests/publication/test_editor_import.py::test_comment_limits",
+        "tests/publication/test_editor_import.py::test_anchor_ends_after_italic_run_and_escape",
+        "tests/publication/test_editor_import.py::test_tracked_paragraph_move_keeps_anchor",
+        "tests/authoring/test_docx_import.py::test_comment_ranges_in_original_view",
+        "tests/authoring/test_docx_import.py::test_comment_range_across_paragraphs_and_without_bounds"
+      ]
+    },
+    {
+      "id": "EDITOR-IMPORT-S10",
+      "requirement": "EDITOR-IMPORT",
+      "scope": "Тимчасове сховище, fingerprint, 409/404/204, прибирання під час зведення й старту сервера, тека поза резервною копією й fsck. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/publication/test_editor_import.py::test_sweep",
+        "tests/publication/test_editor_import.py::test_fingerprint_changes_with_prose_head",
+        "tests/publication/test_editor_import.py::test_fingerprint_conflict",
+        "tests/publication/test_editor_import.py::test_cancel_removes_temp",
+        "tests/web/test_editor_import_api.py::test_apply_conflict_409",
+        "tests/web/test_editor_import_api.py::test_bad_import_id_404",
+        "tests/web/test_editor_import_api.py::test_startup_sweeps_old_temp",
+        "tests/web/test_editor_import_api.py::test_startup_sweep_failure_is_logged_not_raised",
+        "tests/storage/test_backup.py::test_backup_skips_kept_editor_import_files"
+      ]
+    },
+    {
       "id": "LANGUAGE-WARNINGS-S01",
       "requirement": "LANGUAGE-WARNINGS",
       "scope": "Контекстний дефект і чистий приклад. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
