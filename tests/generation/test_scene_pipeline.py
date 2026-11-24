@@ -88,11 +88,19 @@ def test_crash_after_completed_blob_does_not_advance_head_without_commit(tmp_pat
     assert reopened.list_attempts(scene.story_id)[-1].state=='running'
 
 
+class PricedGateway(FakeGateway):
+    """The fake gateway whose terminal event reports a price, as a cloud provider does."""
+    def stream(self,context,cancel):
+        for event in super().stream(context,cancel):
+            yield event.model_copy(update={'usage':{'cost':{'usd':0.0012}}}) if event.type=='terminal' else event
+
+
 def test_stage_finished_carries_the_usage(tmp_path):
-    repo,scene,gateway,roles=prepare(tmp_path)
+    repo,scene,_,roles=prepare(tmp_path)
+    gateway=PricedGateway(repo,scene.id)
     events=[]
     attempts=generate_scene(repo,scene.id,roles,lambda _:gateway,threading.Event(),lambda kind,data:events.append((kind,data)),pipeline_run(repo,scene))
     finished=[data for kind,data in events if kind=='stage_finished']
     assert len(finished)==len(attempts)>0
     for data,attempt in zip(finished,attempts):
-        assert 'usage' in data and data['usage']==attempt.usage
+        assert data['usage']==attempt.usage=={'cost':{'usd':0.0012}}

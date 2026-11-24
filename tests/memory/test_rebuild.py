@@ -43,10 +43,10 @@ def test_rebuild_stage_finished_carries_the_usage(tmp_path):
     class Gateway:
         def stream(self,context,cancel):
             yield GenerationEvent(type='delta',text=v4_answer(context))
-            yield GenerationEvent(type='terminal',finish_reason='stop')
+            yield GenerationEvent(type='terminal',finish_reason='stop',usage={'cost':{'usd':0.0012}})
     events=[]
     attempts=rebuild_memory(repo,scenes[1].id,lambda _:Gateway(),threading.Event(),lambda kind,data:events.append((kind,data)),settings=RoleSettings(provider=ProviderSettings(model='test'),memory_mode='snapshot'))
     finished=[data for kind,data in events if kind=='stage_finished']
     assert len(finished)==len(attempts)>0
     for data,attempt in zip(finished,attempts):
-        assert 'usage' in data and data['usage']==attempt.usage
+        assert data['usage']==attempt.usage=={'cost':{'usd':0.0012}}

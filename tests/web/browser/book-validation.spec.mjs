@@ -46,7 +46,7 @@ test('book validation stops on a discrepancy, leads to the scene and finishes th
   await expect(cancel).toHaveClass(/link-button/);
   await expect(jump).not.toHaveClass(/secondary/);
   // The menu leads to the stopped run and starts nothing.
-  await page.locator('#editor').focus();
+  await page.locator('.rich-text-surface .ProseMirror').focus();
   await toggle.click();
   await expect(item).toHaveText('Валідацію зупинено: показати');
   await item.click();
