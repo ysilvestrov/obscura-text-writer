@@ -8,6 +8,7 @@ from decimal import Decimal, ROUND_CEILING, ROUND_HALF_UP
 
 PROGRESS_EVENTS = ('stage_started', 'stage_finished', 'audit_step')
 _CENT = Decimal('0.0001')
+UNBILLED_STATES = ('failed', 'cancelled')
 
 
 def usage_usd(usage):
@@ -35,7 +36,13 @@ def _calls(events):
         if event.type == 'stage_finished':
             # an event without attempt_id gets a positional key: a replay of it is not deduplicated
             key = event.data.get('attempt_id') or f'call-{len(by_attempt)}'
-            by_attempt.setdefault(key, usage_usd(event.data.get('usage')))
+            price = usage_usd(event.data.get('usage'))
+            # Final(core) ruling 1: a failed or cancelled attempt without a price was not billed, so it adds $0 (it still
+            # counts as a call: it was attempted). Only a completed attempt (or a legacy event without a state) without a
+            # usable price makes the spend unknown.
+            if price is None and event.data.get('state') in UNBILLED_STATES:
+                price = 0.0
+            by_attempt.setdefault(key, price)
     return by_attempt
 
 

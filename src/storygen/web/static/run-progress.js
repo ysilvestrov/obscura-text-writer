@@ -2,7 +2,8 @@
 import {t} from './i18n.js';
 import {dollars} from './run-summary.js';
 
-const STAGES=new Set(['brief','draft','edit','memory','evaluate']);
+// Every task stage of RunCoordinator.enqueue has a label; an unknown id keeps its raw name.
+const STAGES=new Set(['brief','draft','edit','memory','evaluate','prepare','rewrite','classify','publication_suggest','timeline_summary']);
 const LINKS=new Set(['brief','prose','memory']);
 const stageLabel=stage=>STAGES.has(stage)?t(`run_progress.stage_${stage}`):String(stage??'');
 

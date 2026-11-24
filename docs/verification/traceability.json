@@ -8136,7 +8136,7 @@
     {
       "id": "VALID-RUN-S09",
       "requirement": "VALID-RUN",
-      "scope": "Заміна зупинених audit (needs_review, paused, failed, interrupted) подією superseded і станом cancelled; правило походження: валідація автора замінює й запуски моста, валідація моста — лише запуски моста. Те, що меню твору не ставить валідацію поверх зупиненої paused/needs_review (VALID-UI-S05), — не цей тест.",
+      "scope": "Заміна зупинених audit (needs_review, paused, failed, interrupted) подією superseded і станом cancelled; правило походження: валідація автора замінює й запуски моста, валідація моста — лише запуски моста. Те, що меню твору не ставить валідацію поверх найновішої зупиненої paused/needs_review валідації книги (VALID-UI-S05), — не цей тест.",
       "tests": [
         "tests/generation/test_audit_run.py::test_new_book_validation_supersedes_a_resumable_audit_of_the_story",
         "tests/generation/test_audit_run.py::test_mcp_book_validation_keeps_the_authors_stopped_audit",
@@ -8158,18 +8158,19 @@
     {
       "id": "VALID-RUN-S11",
       "requirement": "VALID-RUN",
-      "scope": "Правила extend_plan (Р3, Р4); enqueue зберігає cost_bound_usd і scenes перегляду; продовження доповнює план, не рахуючи відвідану сцену вдруге; завершальне продовження без викликів план лишає.",
+      "scope": "Правила extend_plan (Р3, Р4); enqueue зберігає cost_bound_usd і scenes перегляду; продовження доповнює план, не рахуючи відвідану сцену вдруге; завершальне продовження без викликів план лишає. Оплачене продовження через RunCoordinator.resume: межа = витрачено + межа перегляду продовження, невдалий виклик без ціни її не обнуляє.",
       "tests": [
         "tests/generation/test_run_progress.py::test_extend_plan_rules",
         "tests/generation/test_run_progress.py::test_enqueue_stores_the_cost_bound_and_scenes_of_the_preview",
         "tests/generation/test_run_progress.py::test_resume_extends_the_plan_without_counting_a_visited_scene_twice",
-        "tests/generation/test_run_progress.py::test_finishing_resume_keeps_the_plan"
+        "tests/generation/test_run_progress.py::test_finishing_resume_keeps_the_plan",
+        "tests/generation/test_run_progress.py::test_priced_resume_extends_the_bound_after_a_failed_call"
       ]
     },
     {
       "id": "VALID-RUN-S12",
       "requirement": "VALID-RUN",
-      "scope": "Серверний прогрес: виклики за attempt_id, витрачено й невідома ціна, нуль без подій, зупинка книги, зв'язок під час виклику, сцена й етап курсора генерації, відсутність прогресу для переносу пам'яті, подія progress після кроків етапу й проходу редактора, поле progress у GET /api/runs/{id}.",
+      "scope": "Серверний прогрес: виклики за attempt_id, витрачено й невідома ціна (невдалий чи скасований виклик без ціни — $0), нуль без подій, зупинка книги, зв'язок під час виклику, сцена й етап курсора генерації, відсутність прогресу для переносу пам'яті, подія progress після кроків етапу й проходу редактора, поле progress у GET /api/runs/{id}. Помилка обчислення прогресу не провалює запуск, GET (progress=null) і продовження (план лишається); продовження читає лише події прогресу.",
       "tests": [
         "tests/generation/test_run_progress.py::test_progress_counts_calls_and_spent_once_per_attempt",
         "tests/generation/test_run_progress.py::test_a_call_without_a_price_makes_spent_unknown",
@@ -8180,7 +8181,12 @@
         "tests/generation/test_run_progress.py::test_memory_carry_has_no_progress",
         "tests/generation/test_run_progress.py::test_stage_run_emits_progress_after_the_cursor_moves",
         "tests/generation/test_run_progress.py::test_editor_loop_pass_emits_progress",
-        "tests/web/test_runs.py::test_get_run_includes_progress"
+        "tests/web/test_runs.py::test_get_run_includes_progress",
+        "tests/generation/test_run_progress.py::test_a_failed_or_cancelled_call_with_empty_usage_costs_nothing",
+        "tests/generation/test_run_progress.py::test_a_failing_progress_computation_does_not_fail_the_run",
+        "tests/web/test_runs.py::test_get_run_survives_a_failing_progress",
+        "tests/generation/test_run_progress.py::test_resume_survives_a_failing_progress_and_keeps_the_plan",
+        "tests/generation/test_run_progress.py::test_resume_reads_only_the_progress_events"
       ]
     },
     {
@@ -8236,7 +8242,7 @@
     {
       "id": "VALID-UI-S05",
       "requirement": "VALID-UI",
-      "scope": "latestBookRun і bookMenuState (running, stopped), bookResumeInRow; клік зупиненого пункту веде до рядка без нового запуску — у ручній процедурі.",
+      "scope": "latestBookRun, bookMenuState (running і stopped показують рядок; неактивні з причиною, поки рядок стежить за іншим активним запуском), revealBlocked, bookResumeInRow; клік пункту, що веде до рядка без нового запуску, і run-reveal, що не забирає рядка в іншого активного запуску, — у ручній процедурі (Playwright).",
       "tests": [
         "tests/web/test_book_validation_ui.py::test_book_validation_helpers"
       ],

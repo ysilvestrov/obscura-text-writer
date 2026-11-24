@@ -83,12 +83,26 @@ console.log('Book validation helpers passed');
 
 // Visible progress: the menu follows the latest book validation; a stopped one keeps the resume button in the row only if its scene is gone.
 {
-  const {latestBookRun,bookResumeInRow}=await import(pathToFileURL(root+'/src/storygen/web/static/book-validation-state.js'));
+  const {latestBookRun,bookResumeInRow,revealBlocked}=await import(pathToFileURL(root+'/src/storygen/web/static/book-validation-state.js'));
   const bookRun=(id,state)=>({id,state,request:{mode:'audit',audit_scope:'story'},checkpoint:{scene_id:'s1'}});
   const gen={id:'g',state:'paused',request:{mode:'scene'}};
-  assert.deepEqual(bookMenuState(2,bookRun('b','running')),{key:'book_validation.menu_running',params:{},disabled:true});
+  // Final(core) ruling 2/3: a running validation reveals its row like a stopped one; both never start a run.
+  assert.deepEqual(bookMenuState(2,bookRun('b','running')),{key:'book_validation.menu_running',params:{},disabled:false,show:true});
+  assert.deepEqual(bookMenuState(2,bookRun('b','running'),bookRun('b','running')),{key:'book_validation.menu_running',params:{},disabled:false,show:true});
   assert.deepEqual(bookMenuState(2,bookRun('b','needs_review')),{key:'book_validation.menu_stopped',params:{},disabled:false,show:true});
   assert.deepEqual(bookMenuState(2,bookRun('b','paused')),{key:'book_validation.menu_stopped',params:{},disabled:false,show:true});
+  // While a different run is active the reveal would close its stream: the item is disabled with a reason.
+  const busy={id:'g',state:'running',request:{mode:'stage'}};
+  for(const other of ['queued','running','pause_requested','cancellation_requested'])
+    assert.deepEqual(bookMenuState(2,bookRun('b','needs_review'),{...busy,state:other}),
+      {key:'book_validation.menu_stopped',params:{},disabled:true,show:true,reason:'book_validation.other_run_active'});
+  assert.deepEqual(bookMenuState(2,bookRun('b','queued'),busy),
+    {key:'book_validation.menu_running',params:{},disabled:true,show:true,reason:'book_validation.other_run_active'});
+  assert.deepEqual(bookMenuState(2,bookRun('b','needs_review'),{...busy,state:'completed'}),{key:'book_validation.menu_stopped',params:{},disabled:false,show:true});
+  assert.equal(revealBlocked({...busy},bookRun('b','needs_review')),true);
+  assert.equal(revealBlocked({...busy,state:'failed'},bookRun('b','needs_review')),false);
+  assert.equal(revealBlocked(bookRun('b','running'),bookRun('b','running')),false,'the same run reveals itself');
+  assert.equal(revealBlocked(null,bookRun('b','running')),false);
   assert.deepEqual(bookMenuState(2,bookRun('b','failed')),{key:'book_validation.menu_count',params:{p0:2},disabled:false});
   assert.equal(latestBookRun([bookRun('b','needs_review'),gen],gen).id,'b','a later generation run does not hide the stopped validation');
   assert.equal(latestBookRun([bookRun('b','running')],bookRun('b','needs_review')).state,'needs_review','the fuller current run wins');

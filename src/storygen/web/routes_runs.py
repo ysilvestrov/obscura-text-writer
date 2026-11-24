@@ -1,3 +1,4 @@
+import logging
 import asyncio
 import json
 from typing import Literal
@@ -103,8 +104,11 @@ def get_run(id: str,request: Request):
     # Exact manifests are server-side; only public metadata and output appear in the UI.
     public=[_public_attempt(a) for a in attempts]
     partial=worker.repo.files.read_partial(attempts[-1].partial_path) if attempts else ''
-    from ..generation.run_progress import run_progress
-    return {'run':run,'attempts':public,'partial':partial,'progress':run_progress(worker.repo,run)}
+    from ..generation import run_progress as progress_module
+    try:progress=progress_module.run_progress(worker.repo,run)
+    except Exception:  # progress is advisory: a broken computation never fails the run's GET
+        logging.getLogger(__name__).exception('Не вдалося обчислити прогрес запуску %s',run.id);progress=None
+    return {'run':run,'attempts':public,'partial':partial,'progress':progress}
 
 
 @router.get('/api/runs/{id}/readiness')

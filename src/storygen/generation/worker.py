@@ -341,10 +341,13 @@ class RunCoordinator:
             if not result['ready']:
                 raise ValueError(result['reason'])
             from .run_progress import extend_plan,progress_from_events,visited_scene_ids
-            events=self.repo.list_run_events(id)
-            progress=progress_from_events(run,events)
-            if progress is not None:
-                run.planned_telemetry=extend_plan(run.planned_telemetry,progress,result,visited_scene_ids(events))
+            try:
+                events=self.repo.list_run_events(id,types=PROGRESS_EVENTS)
+                progress=progress_from_events(run,events)
+                if progress is not None:
+                    run.planned_telemetry=extend_plan(run.planned_telemetry,progress,result,visited_scene_ids(events))
+            except Exception:  # progress is advisory: a broken computation keeps the plan and never strands the resume
+                logging.getLogger(__name__).exception('Не вдалося доповнити план запуску %s',id)
             run.state='queued'
             run.error=None
             self.repo.requeue_run(run)

@@ -22,6 +22,9 @@ test('legacy run with no saved plan is explicitly unknown',async({page,request})
   await page.route(`**/api/runs/${id}`,async route=>{const response=await route.fetch(),data=await response.json();data.run.planned_telemetry=null;await route.fulfill({response,json:data})});
   await page.goto(`/stories/${fixture.story_id}?scene=${fixture.scene_id}&material=draft`);
   await expect(page.locator('#run-status')).toContainText(/невідомо|unknown/i);
+  // Final(core): a run with progress but no plan (an evaluate run) keeps its progress line (stage and calls) next to the unknown plan.
+  await expect(page.locator('#run-status .run-progress-title')).toHaveText(/етап: редактура|stage: edit/i);
+  await expect(page.locator('#run-status .run-progress-counts')).toHaveText(/^(Викликів|Calls): \d+/);
   await page.unrouteAll({behavior:'ignoreErrors'});
 });
 

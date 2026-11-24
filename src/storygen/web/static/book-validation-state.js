@@ -26,11 +26,17 @@ export function bookResumeInRow(run,scenes){
   return !(isBookRun(run)&&run.state==='needs_review'&&stoppedAuditScene(run,scenes));
 }
 
-// The label key and state of the item: a running validation disables it, a stopped one shows its run; otherwise unknown before
-// the view loads, «Книга валідна» and inactive at 0.
-export function bookMenuState(count,bookRun=null){
-  if(BOOK_ACTIVE.has(bookRun?.state))return {key:'book_validation.menu_running',params:{},disabled:true};
-  if(BOOK_STOPPED.has(bookRun?.state))return {key:'book_validation.menu_stopped',params:{},disabled:false,show:true};
+// While a different run is active (the run line follows it), revealing the book run would close that run's stream:
+// the menu item is then disabled and `run-reveal` is a no-op (Final(core) ruling 2). The same run reveals itself.
+export function revealBlocked(current,run){
+  return !!current&&current.id!==run?.id&&BOOK_ACTIVE.has(current.state);
+}
+
+// The label key and state of the item: a running or stopped validation shows its run (`show`, never a new run) unless
+// a different run is active; otherwise unknown before the view loads, «Книга валідна» and inactive at 0.
+export function bookMenuState(count,bookRun=null,current=null){
+  const key=BOOK_ACTIVE.has(bookRun?.state)?'book_validation.menu_running':BOOK_STOPPED.has(bookRun?.state)?'book_validation.menu_stopped':null;
+  if(key)return revealBlocked(current,bookRun)?{key,params:{},disabled:true,show:true,reason:'book_validation.other_run_active'}:{key,params:{},disabled:false,show:true};
   if(!Number.isInteger(count))return {key:'book_validation.menu',params:{},disabled:true};
   if(count===0)return {key:'book_validation.valid',params:{},disabled:true};
   return {key:'book_validation.menu_count',params:{p0:count},disabled:false};

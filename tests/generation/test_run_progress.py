@@ -200,3 +200,83 @@ def test_finishing_resume_keeps_the_plan(tmp_path):
     assert worker.run_readiness(run.id)['calls'] == 0  # the resume preview has nothing left to call
     worker.resume(run.id)
     assert repo.get_run(run.id).planned_telemetry == before
+
+
+def test_a_failed_or_cancelled_call_with_empty_usage_costs_nothing(tmp_path):
+    """Final(core) ruling 1: a failed/cancelled attempt without a price was not billed; it counts as a call and adds $0."""
+    from storygen.generation.run_progress import extend_plan
+    repo, worker, run, _ = _setup(tmp_path)
+    worker.event(run.id, 'stage_finished', {'attempt_id': 'a1', 'state': 'failed', 'usage': {}})
+    worker.event(run.id, 'stage_finished', {'attempt_id': 'a2', 'state': 'completed', 'usage': {'cost': 0.01}})
+    worker.event(run.id, 'stage_finished', {'attempt_id': 'a3', 'state': 'cancelled', 'usage': {}})
+    progress = run_progress(repo, repo.get_run(run.id))
+    assert progress['calls']['done'] == 3
+    assert (progress['spent_usd'], progress['spent_known']) == ('0.0100', True)
+    plan = {'roles': {}, 'calls': 2, 'cost_bound_usd': '0.0618'}
+    assert extend_plan(plan, progress, {'calls': 1, 'cost': {'total_usd': '0.0309'}}, [])['cost_bound_usd'] == '0.0409'
+    # a completed attempt without a usable price, or a legacy event without a state, still makes the spend unknown
+    worker.event(run.id, 'stage_finished', {'attempt_id': 'a4', 'usage': {}})
+    assert run_progress(repo, repo.get_run(run.id))['spent_known'] is False
+
+
+class _Priced:
+    """Answers with a price: every completed call costs $0.01."""
+
+    def __init__(self, inner):
+        self.inner = inner
+
+    def stream(self, context, cancel):
+        from storygen.providers.streaming import GenerationEvent
+        for event in self.inner.stream(context, cancel):
+            yield event.model_copy(update={'usage': {'cost': 0.01}}) if event.type == 'terminal' else event
+
+
+def test_priced_resume_extends_the_bound_after_a_failed_call(tmp_path, monkeypatch):
+    """VALID-RUN-S11 end to end: resume adds the resume preview's bound to the accumulated spend; a failed call before it
+    (empty usage) does not blank the bound."""
+    from storygen.storage.links import link_state
+    from tests.generation.test_audit_run import decide_link
+    monkeypatch.setattr('storygen.generation.audit_cost.upper_bound',
+                        lambda repo, settings, calls: {'per_call_usd': '0.0309', 'total_usd': f'{0.0309 * calls:.4f}', 'reason': None})
+    repo, story, (s1, s2, s3, s4), _ = four_scenes(tmp_path)
+    worker, run = start_book(repo, story, _Priced(Answers(answer(95))))
+    assert run.planned_telemetry['cost_bound_usd'] == '0.0618'
+    assert drive(worker, run.id).checkpoint['scene_id'] == s3.id  # one priced call (s2 prose), stop on s3 brief
+    worker.event(run.id, 'stage_finished', {'attempt_id': 'failed-1', 'state': 'failed', 'usage': {}})
+    assert run_progress(repo, repo.get_run(run.id))['spent_usd'] == '0.0100'
+    decide_link(repo, s3.id, 'brief', 'approve', link_state(repo.context_view(story.id), s3.id, 'brief').fingerprint)
+    readiness = worker.run_readiness(run.id)
+    resumed = worker.resume(run.id)
+    expected = f"{0.01 + float(readiness['cost']['total_usd']):.4f}"
+    assert resumed.planned_telemetry['cost_bound_usd'] == expected
+    assert resumed.planned_telemetry['calls'] == 2 + readiness['calls']
+    assert repo.get_run(run.id).planned_telemetry == resumed.planned_telemetry
+
+
+def test_resume_survives_a_failing_progress_and_keeps_the_plan(tmp_path, monkeypatch):
+    import storygen.generation.run_progress as module
+    from storygen.storage.links import link_state
+    from tests.generation.test_audit_run import decide_link
+    repo, story, (s1, s2, s3, s4), _ = four_scenes(tmp_path)
+    worker, run = start_book(repo, story, Answers(answer(95)))
+    drive(worker, run.id)
+    decide_link(repo, s3.id, 'brief', 'approve', link_state(repo.context_view(story.id), s3.id, 'brief').fingerprint)
+    before = repo.get_run(run.id).planned_telemetry
+    monkeypatch.setattr(module, 'progress_from_events', lambda *_: (_ for _ in ()).throw(RuntimeError('boom')))
+    resumed = worker.resume(run.id)
+    assert resumed.state == 'queued' and repo.get_run(run.id).planned_telemetry == before
+
+
+def test_resume_reads_only_the_progress_events(tmp_path, monkeypatch):
+    from storygen.generation.run_progress import PROGRESS_EVENTS
+    from storygen.storage.links import link_state
+    from tests.generation.test_audit_run import decide_link
+    repo, story, (s1, s2, s3, s4), _ = four_scenes(tmp_path)
+    worker, run = start_book(repo, story, Answers(answer(95)))
+    drive(worker, run.id)
+    decide_link(repo, s3.id, 'brief', 'approve', link_state(repo.context_view(story.id), s3.id, 'brief').fingerprint)
+    seen = []
+    original = repo.list_run_events
+    monkeypatch.setattr(repo, 'list_run_events', lambda run_id, after_seq=0, types=None: seen.append(types) or original(run_id, after_seq, types))
+    worker.resume(run.id)
+    assert seen and all(types == PROGRESS_EVENTS for types in seen)

@@ -15,14 +15,16 @@ const ACTIVE_RUN=new Set(['queued','running','pause_requested','cancellation_req
 const item=document.querySelector('#story-menu-validate'),jump=document.querySelector('#run-stop-scene');
 let busy=false,lastRun=null;
 
-// Visible run progress: a running book validation disables the item, a stopped one leads to its run row.
+// Visible run progress: a running or stopped book validation leads to its run row (Final(core) ruling 3), unless the row
+// follows a different active run (ruling 2: the item is then disabled with its reason in the title).
 const bookRun=()=>latestBookRun(state.workspaceRuns,lastRun||state.workspaceRun);
-const menuState=()=>bookMenuState(state.view?invalidSceneCount(state.view.material_status):null,bookRun());
+const menuState=()=>bookMenuState(state.view?invalidSceneCount(state.view.material_status):null,bookRun(),state.workspaceRun);
 function renderMenu(){
   if(!item)return;
   const menu=menuState();
   uiText(item,'textContent',()=>t(menu.key,menu.params));
   item.disabled=menu.disabled||busy||(!menu.show&&ACTIVE_RUN.has(state.workspaceRun?.state));
+  uiText(item,'title',()=>menu.reason?t(menu.reason):'');
 }
 // The stop scene is the main action of a stopped book validation; after it opens, the focus goes to the scene's
 // link panel (Р7: #link-attention until the coherence panel exists), else back to the run row.
@@ -68,8 +70,8 @@ async function validate(){
 }
 
 if(item)item.onclick=()=>{
-  const run=bookRun();
-  if(bookMenuState(null,run).show){document.dispatchEvent(new CustomEvent('run-reveal',{detail:run}));return}
+  const run=bookRun(),menu=bookMenuState(null,run,state.workspaceRun);
+  if(menu.show){if(!menu.disabled)document.dispatchEvent(new CustomEvent('run-reveal',{detail:run}));return}
   void validate();
 };
 document.addEventListener('workspace-run-state',event=>{lastRun=event.detail;render()});

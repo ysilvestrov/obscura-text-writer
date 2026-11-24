@@ -37,7 +37,7 @@ test('book validation stops on a discrepancy, leads to the scene and finishes th
   // Visible progress: the run started from this tab opens expanded, with the focus on its title.
   const status=page.locator('#run-status'),title=status.locator('.run-progress-title');
   await expect(status).toHaveClass(/expanded/);
-  await expect(title).toHaveText('Валідація книги: сцена 1 з 2, «Ранок»');
+  await expect(title).toHaveText('Валідація книги: перевірено сцен 1 з 2 · «Ранок»');
   await expect(status.locator('.run-progress-step')).toHaveText('завдання ↔ план');
   await expect(status.locator('.run-progress-counts')).toHaveText(/^Викликів: 1 \/ 4/);
   await expect(status.locator('progress.run-progress-bar')).toHaveAttribute('value','0.25');
@@ -70,7 +70,7 @@ test('book validation stops on a discrepancy, leads to the scene and finishes th
   await expect.poll(async()=>(await runs()).at(-1)?.state).toBe('completed');
   await expect(jump).toBeHidden();
   // Review Focus 2: the resumed run counts against the extended plan.
-  await expect(page.locator('#run-status .run-progress-title')).toHaveText('Валідація книги: сцена 2 з 2, «Вечір»');
+  await expect(page.locator('#run-status .run-progress-title')).toHaveText('Валідація книги: перевірено сцен 2 з 2 · «Вечір»');
   await expect(page.locator('#run-status .run-progress-counts')).toHaveText(/^Викликів: \d \/ 4/);
   await expect(page.locator('#run-status .run-progress-title')).toBeFocused();  // Р2: a resume from this tab focuses its row
   const view=await(await request.get(`/api/stories/${fixture.story_id}`)).json();
@@ -103,4 +103,46 @@ test('a plan that changed after the preview starts nothing and offers the previe
   await dialog.getByRole('button',{name:'Скасувати'}).click();
   await expect(dialog).toBeHidden();
   expect(await runs()).toEqual([]);
+});
+
+test('the menu never takes the run line from another active run',async({page,request})=>{
+  // Final(core) ruling 2: while a stage run streams, «Валідацію зупинено: показати» is disabled with its reason and a
+  // `run-reveal` of the stopped validation leaves the active run in the line; once that run ends, the item shows the book run.
+  const fixture=await(await request.post('/test-book-validation?slow_planner=true')).json();
+  const runs=async()=>(await(await request.get(`/api/stories/${fixture.story_id}/runs`)).json()).runs;
+  const preview=await(await request.post(`/api/stories/${fixture.story_id}/audit/preview`,{data:{scope:'story'}})).json();
+  const book=await(await request.post('/api/runs',{data:{request_id:crypto.randomUUID(),request:{story_id:fixture.story_id,scene_id:null,mode:'audit',
+    stage:null,audit_scope:'story',audit_plan_fingerprint:preview.plan_fingerprint,pause_after:[]}}})).json();
+  await expect.poll(async()=>(await runs()).find(run=>run.id===book.id)?.state).toBe('needs_review');
+  const stage=await request.post('/api/runs',{data:{request_id:crypto.randomUUID(),request:{story_id:fixture.story_id,scene_id:fixture.second_id,
+    mode:'stage',stage:'brief',pause_after:[]}}});
+  expect(stage.ok(),await stage.text()).toBeTruthy();
+  const active=await stage.json();
+  try{
+    await expect.poll(async()=>(await runs()).find(run=>run.id===active.id)?.state).toBe('running');
+    await page.goto(`/stories/${fixture.story_id}?scene=${fixture.second_id}&material=prose`);
+    const title=page.locator('#run-status .run-progress-title'),item=page.locator('#story-menu-validate');
+    await expect(title).toHaveText('Сцена 1 з 1, етап: завдання');
+    await page.locator('#story-menu-toggle').click();
+    await expect(item).toHaveText('Валідацію зупинено: показати');
+    await expect(item).toBeDisabled();
+    await expect(item).toHaveAttribute('title','Рядок запуску зайнятий іншим запуском: дочекайтеся його завершення');
+    const stopped=(await runs()).find(run=>run.id===book.id);
+    await page.evaluate(run=>document.dispatchEvent(new CustomEvent('run-reveal',{detail:run})),stopped);
+    await page.waitForTimeout(500);
+    await expect(title).toHaveText('Сцена 1 з 1, етап: завдання');
+    await expect(page.locator('#run-stop-scene')).toBeHidden();
+  }finally{
+    await request.post(`/api/runs/${active.id}/cancel`,{data:{}});
+  }
+  await expect.poll(async()=>(await runs()).find(run=>run.id===active.id)?.state).toBe('cancelled');
+  // The active run is over: the item reveals the stopped validation and starts nothing.
+  const item=page.locator('#story-menu-validate');
+  if(!await item.isVisible())await page.locator('#story-menu-toggle').click();
+  await expect(item).toBeEnabled();
+  await expect(item).not.toHaveAttribute('title',/.+/);
+  await item.click();
+  await expect(page.locator('#run-status .run-progress-title')).toHaveText('Валідація книги: перевірено сцен 1 з 2 · «Ранок»');
+  await expect(page.locator('#run-status .run-progress-title')).toBeFocused();
+  expect((await runs()).length).toBe(2);
 });
