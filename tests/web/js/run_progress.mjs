@@ -51,3 +51,14 @@ assert.equal(odd.fraction,null);
 
 // The bound rounds up, the spent amount rounds as before.
 assert.equal(progressText(book,{...base,spent_usd:'0.0149',bound_usd:'0.0149'},scenes).counts,'Викликів: 5 / 23 · Витрачено: $0.01 з $0.02 (верхня межа)');
+
+// A run stopped for the author's decision names the link it waits for; with everything decided it can be finished.
+{
+  const stopped={...sceneCheck,state:'needs_review'};
+  const wait={...base,calls:{done:1,planned:1},scene:{id:'s5',index:1,total:1},step:{link:'brief'},awaiting:{scene_id:'s5',link:'brief',status:'discrepancy'},finishable:false};
+  assert.equal(progressText(stopped,wait,scenes).step,'Чекає вашого рішення: завдання ↔ план');
+  assert.equal(progressText(stopped,wait,scenes).fraction,1);
+  assert.equal(progressText(stopped,{...wait,awaiting:null,finishable:true},scenes).step,'Усе вирішено: перевірку можна завершити');
+  assert.equal(progressText(stopped,{...wait,awaiting:null},scenes).step,'завдання ↔ план');
+  assert.equal(progressText(stopped,{...wait,awaiting:{scene_id:'s5',link:'memory',status:'unavailable'}},scenes).step,"Чекає вашої дії: пам'ять ↔ проза");
+}

@@ -87,7 +87,9 @@ def plan_fingerprint(scope, scene_id, entries, settings) -> str:
 
 def readiness(repo, request, view=None, resume=False) -> dict:
     """Read-only preflight of an audit run. `resume`: a stopped run whose last link the author has just decided may
-    continue with nothing left to check — it then completes without a call."""
+    continue with nothing left to check — it then completes without a call. The resume preview also names
+    `awaiting_decision` {scene_id, link, status}: the first link the run visits that stops it again without a call
+    (the same rule as `execute`), so resuming now changes nothing until the author decides it; `None` otherwise."""
     from ..authoring.blueprints import get_role_settings
     from ..providers.policy import request_rating
     from ..rating.guard import enforce_edition_limit
@@ -101,6 +103,8 @@ def readiness(repo, request, view=None, resume=False) -> dict:
               'plan_fingerprint': None, 'cost': empty()}
     if book:
         result['invalid_scenes'] = 0
+    if resume:
+        result['awaiting_decision'] = None
     try:
         story = repo.get_story(request.story_id)
         if view is None:
@@ -119,6 +123,11 @@ def readiness(repo, request, view=None, resume=False) -> dict:
                            for scene_id, link in pending]
         if book:
             result['invalid_scenes'] = len(states)  # the scenes the run visits
+        if resume:
+            first = pending[0] if pending else None
+            result['awaiting_decision'] = None if first is None or _will_call(
+                repo, view, first[0], first[1], states[first[0]][first[1]]) else {
+                'scene_id': first[0], 'link': first[1], 'status': states[first[0]][first[1]].status}
         if not pending and not resume:
             if book:
                 raise ValueError(BOOK_VALID)

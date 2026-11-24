@@ -93,11 +93,38 @@ def progress_from_events(run, events):
         'scene': scene,
         'step': step,
         'stopped': _stopped(run),
+        'awaiting': None,
+        'finishable': False,
     }
 
 
+def _left(progress, plan, readiness):
+    """Calls and bound of a run stopped for the author: what was done plus what the resume preview still has to call."""
+    left = dict(progress)
+    left['calls'] = {'done': progress['calls']['done'], 'planned': progress['calls']['done'] + readiness['calls']}
+    if 'cost_bound_usd' in plan:
+        total = (readiness.get('cost') or {}).get('total_usd')
+        if progress['spent_known'] and total is not None:
+            bound = Decimal(progress['spent_usd']) + Decimal(str(total))
+            left['bound_usd'] = str(bound.quantize(_CENT, rounding=ROUND_CEILING))
+        else:
+            left['bound_usd'] = None
+    return left
+
+
 def run_progress(repo, run):
-    return progress_from_events(run, repo.list_run_events(run.id, types=PROGRESS_EVENTS))
+    progress = progress_from_events(run, repo.list_run_events(run.id, types=PROGRESS_EVENTS))
+    if progress is None or run.request.mode != 'audit' or run.state != 'needs_review':
+        return progress
+    # A run stopped for the author's decision shows what is left now: the author's decisions and edits since the stop
+    # change the set of links, and the stored plan is extended only on resume (extend_plan).
+    from .audit_run import readiness as audit_readiness
+    preview = audit_readiness(repo, run.request, resume=True)
+    progress['awaiting'] = preview.get('awaiting_decision')
+    if preview['ready']:
+        progress['finishable'] = not preview['links']
+        progress = _left(progress, run.planned_telemetry or {}, preview)
+    return progress
 
 
 def emit_progress(coordinator, run_id):

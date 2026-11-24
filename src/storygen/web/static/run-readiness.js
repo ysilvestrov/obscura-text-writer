@@ -29,6 +29,16 @@ export function auditConfirmationText(operation){
     t('audit.confirm_start')];
   return lines.filter(Boolean).join('\n');
 }
+// VALID-RUN-S16: a stopped audit run whose first link awaits the author stops again at once on resume, so resume is
+// blocked with that link; with nothing left to check the run is finished (no call, so no consent dialog).
+const isAudit=operation=>!!operation&&('plan_fingerprint' in operation||!!operation.roles?.auditor);
+export function auditResumeReason(operation){
+  const link=isAudit(operation)?operation.awaiting_decision?.link:null;
+  return link?t('audit.resume_decide_first',{p0:t('run_progress.link_'+link)}):'';
+}
+export function auditFinishable(operation){
+  return isAudit(operation)&&!!operation.ready&&Array.isArray(operation.links)&&operation.links.length===0;
+}
 export function confirmationText(operation){
   if('plan_fingerprint' in operation||operation.roles?.auditor)return auditConfirmationText(operation);
   const roles=Object.entries(operation.roles).map(([role,c])=>`${role}: ${c.provider} / ${c.model}`);

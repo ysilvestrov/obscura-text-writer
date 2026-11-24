@@ -8206,6 +8206,25 @@
       ]
     },
     {
+      "id": "VALID-RUN-S13",
+      "requirement": "VALID-RUN",
+      "scope": "Перегляд продовження називає зв'язок, що чекає автора (awaiting_decision), а продовження без рішення сервер і далі приймає; прогрес needs_review рахує лише залишок (planned = done + виклики перегляду, межа = витрачено + сума) і має awaiting/finishable без зміни збереженого плану; рядок пише «Чекає вашого рішення»/«Чекає вашої дії»/«Усе вирішено…»; «Продовжити» неактивна з причиною, а «Завершити перевірку» завершує запуск без діалогу згоди.",
+      "tests": [
+        "tests/generation/test_run_progress.py::test_resume_preview_names_the_link_awaiting_the_author",
+        "tests/generation/test_run_progress.py::test_resume_preview_of_a_called_link_awaits_nothing",
+        "tests/generation/test_run_progress.py::test_stopped_progress_plans_only_what_is_left",
+        "tests/generation/test_run_progress.py::test_running_progress_has_no_decision_fields",
+        "tests/generation/test_audit_run.py::test_resume_without_a_decision_stops_again_without_a_call",
+        "tests/web/test_run_progress_ui.py::test_run_progress_rules",
+        "tests/web/test_run_progress_ui.py::test_run_progress_texts_exist_in_both_languages",
+        "tests/web/test_editor_loop_ui.py::test_loop_limit_and_confirmation_only_name_editor"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#scene-audit-browser",
+        "reason": "check_docs.py індексує лише pytest; Playwright-кейси tests/web/browser/scene-audit.spec.mjs («a stopped check waits for the decision and then finishes without consent», «a stopped check on an unavailable memory waits for an action») виконуються окремим runner, цей зв’язок не є доказом виконання."
+      }
+    },
+    {
       "id": "VALID-UI-S01",
       "requirement": "VALID-UI",
       "scope": "invalidSceneCount і bookMenuState (невідомо, 0, N), лічильник — сцени з будь-яким зв'язком unchecked/discrepancy/unavailable, зокрема incomplete; пункт у меню й неактивний у розмітці.",

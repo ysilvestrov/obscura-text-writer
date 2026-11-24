@@ -477,8 +477,9 @@ def main():
             return dict(story_id=story.id,first_id=first.id,second_id=second.id)
 
         @app.post('/test-scene-audit')
-        def scene_audit_fixture():
-            """A scene with an unchecked brief and prose and an auditor of its own (synthetic, local: no budget)."""
+        def scene_audit_fixture(memory: bool = False):
+            """A scene with an unchecked brief and prose and an auditor of its own (synthetic, local: no budget).
+            `memory` adds the scene's memory, so its memory link is valid instead of unavailable."""
             import json
             from storygen.authoring.blueprints import save_role_settings
             from storygen.generation.dependencies import save_manual_prose
@@ -490,7 +491,13 @@ def main():
             brief=json.dumps({'objective':'Світло на воді','beats':['Маяк'],'constraints':[],'proposed_changes':[]},ensure_ascii=False)
             ref=repo.save_version(story.id,scene.id,'brief',brief,[])
             repo.set_head(scene.id,'brief',ref.id,repo.get_scene(scene.id).revision)
-            save_manual_prose(repo,scene.id,'Ранок: світло на воді.',repo.get_scene(scene.id).revision)
+            prose=save_manual_prose(repo,scene.id,'Ранок: світло на воді.',repo.get_scene(scene.id).revision)
+            if memory:
+                from storygen.memory.journal import MemoryJournal, _add_event
+                from storygen.memory.service import save_scene_memory
+                event=_add_event('facts','Світло на воді',prose.id,'світло на воді',0)
+                journal=MemoryJournal(source_prose_ids=[prose.id],events=[event])
+                save_scene_memory(repo,scene.id,journal.model_dump_json(),repo.get_scene(scene.id).revision)
             return dict(story_id=story.id,scene_id=scene.id)
 
         @app.post('/test-book-validation')
