@@ -56,6 +56,13 @@ def _diagnostic_catalog():
 
 # Catalog parameters that hold a "; "-joined list of other catalog diagnostics.
 _LIST_PARAMS={'rating.guard.participants':('p1',r'; (?=персонаж «|вік персонажа «|і ще \d+$)')}
+# Catalog parameters that hold another application diagnostic (a place in the editor DOCX, a scene's failure reason).
+def _nested_params(key):
+    if key.startswith('editor_import.server.reader.at.'):return ('p0',)
+    if key=='editor_import.server.scene.not_imported':return ('p1',)
+    return ()
+
+
 # Short list items below the generic pattern length threshold.
 _LIST_ITEMS={'rating.guard.more':re.compile(r'і ще (\d+)')}
 
@@ -87,6 +94,8 @@ def diagnostic(text,locale='uk'):
                     # Application-built list of diagnostics; character names inside stay untranslated.
                     param,separator=_LIST_PARAMS[key]
                     params[param]='; '.join(_list_item(item,locale) for item in re.split(separator,params[param]))
+                for name in _nested_params(key):
+                    params[name]=diagnostic(params[name],locale)
                 return translate(key,locale,**params)
     for prefix,translated in [('Некоректні дані: ','Invalid data: '),('Помилка редактора: ','Editor error: '),('Помилка планувальника: ','Planner error: ')]:
         if text.startswith(prefix):

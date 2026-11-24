@@ -17,8 +17,8 @@ from storygen.domain import SceneCreate, StageAttempt, new_id
 from storygen.generation.dependencies import save_manual_prose
 from storygen.publication.docx_import import read_docx
 from tests.authoring.test_ebook_exports import seeded
+from tests.publication.editor_import_helpers import T, edit, ranged, run, split, tracked
 
-T = '<w:t xml:space="preserve">'
 TEXTS = ('Перша сцена. Ранок був тихий.',
          'Він *швидко* пішов \\* додому.\n\n— Ідімо, — сказала вона.',
          'Третя сцена. Вечір.')
@@ -32,43 +32,6 @@ def book(tmp_path, texts=TEXTS, empty_scene=False):
         repo.create_scene(story.id, SceneCreate(title='Порожня'))
     content = export_story(repo, story.id, 'docx', allow_incomplete=empty_scene).read_bytes()
     return repo, story, repo.list_scenes(story.id), content
-
-
-def run(text):
-    return f'<w:r>{T}{text}</w:t></w:r>'
-
-
-def tracked(old, new):
-    return (f'<w:del w:id="90" w:author="Р"><w:r><w:delText xml:space="preserve">{old}</w:delText></w:r></w:del>'
-            f'<w:ins w:id="91" w:author="Р">{run(new)}</w:ins>')
-
-
-def ranged(cid, inner):
-    return f'<w:commentRangeStart w:id="{cid}"/>{inner}<w:commentRangeEnd w:id="{cid}"/>'
-
-
-def split(xml, phrase, middle):
-    """Put run-level XML in place of a phrase that sits inside one plain run."""
-    assert xml.count(phrase) == 1
-    return xml.replace(phrase, f'</w:t></w:r>{middle}<w:r>{T}')
-
-
-def edit(content, change=lambda xml: xml, comments=(), custom=None):
-    output = io.BytesIO()
-    with zipfile.ZipFile(io.BytesIO(content)) as source, zipfile.ZipFile(output, 'w') as target:
-        for name in source.namelist():
-            data = source.read(name)
-            if name == 'word/document.xml':
-                data = change(data.decode('utf-8')).encode('utf-8')
-            elif name == 'docProps/custom.xml' and custom:
-                data = custom(data.decode('utf-8')).encode('utf-8')
-            target.writestr(name, data)
-        if comments:
-            body = ''.join(f'<w:comment w:id="{cid}" w:author="{author}"><w:p><w:r><w:t>{text}</w:t></w:r></w:p></w:comment>'
-                           for cid, author, text in comments)
-            target.writestr('word/comments.xml',
-                '<w:comments xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">' + body + '</w:comments>')
-    return output.getvalue()
 
 
 def statuses(preview):

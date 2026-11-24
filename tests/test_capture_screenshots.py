@@ -65,3 +65,19 @@ def test_relative_work_dir_is_resolved_before_seeding(tmp_path,monkeypatch):
     from scripts.capture_screenshots import resolve_work_dir
     monkeypatch.chdir(tmp_path)
     assert resolve_work_dir('shots')==(tmp_path/'shots').resolve()
+
+
+@pytest.mark.req('EDITOR-IMPORT')
+def test_editor_import_docx_gives_a_changed_scene_and_a_comment(tmp_path):
+    from scripts.capture_screenshots import editor_import_docx
+    from storygen.application.editor_import import preview_import
+    ids=seed(tmp_path/'data')
+    repo=Repository(tmp_path/'data')
+    for lang in ('uk','en'):
+        story=ids[lang]['story_id']
+        preview=preview_import(repo,story,editor_import_docx(repo,story,lang))
+        by_id={scene.scene_id:scene for scene in preview.scenes}
+        first,second=by_id[ids[lang]['first_id']],by_id[ids[lang]['scene_id']]
+        assert (first.status,first.edits)==('changed',1)
+        assert second.status=='comments_only' and second.comments==1
+        assert not preview.choice_required and not preview.unmatched

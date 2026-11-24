@@ -35,7 +35,7 @@ def copyedit_preview(repo, scene_id, attempt_id):
     advice=classification_state(repo,attempt,fingerprint) if raw['protocol_version']==2 else dict(classification=None,classification_history=[],can_classify=False,classification_reason='Доступно для редактури з diff')
     if text==original:
         advice.update(can_classify=False,classification_reason='Немає змін для класифікації')
-    return dict(**advice,attempt_id=attempt.id, has_changes=text!=original,protocol_version=raw['protocol_version'],default_selected_indices=[] if raw['protocol_version']==2 else list(range(len(edits))),original=original, edits=edits,groups=sentence_groups(original,proposal,content_format),grouping_version=2 if content_format=='markdown' else 1,
+    return dict(**advice,attempt_id=attempt.id, source='editor_import' if attempt.context.get('editor_import') else None, has_changes=text!=original,protocol_version=raw['protocol_version'],default_selected_indices=[] if raw['protocol_version']==2 else list(range(len(edits))),original=original, edits=edits,groups=sentence_groups(original,proposal,content_format),grouping_version=2 if content_format=='markdown' else 1,
                 warnings=attempt.context.get('editor_warnings',[]),
                 preview=text, proposal_fingerprint=fingerprint, expected_revision=scene.revision,
                 decisions=attempt.context.get('copyedit_decisions', []), can_apply=reason is None, reason=reason)

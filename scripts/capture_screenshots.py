@@ -31,7 +31,9 @@ STORIES={
           'prose1':'Анна піднялася гвинтовими сходами до ліхтарної. Унизу, на пристані, Петро махав їй рукою.',
           'prose2':'Анна відчинила скриньку на пристані й побачила конверт без підпису. Вона сховала його в кишеню й пішла додому, не читаючи.',
           'verdict1':('Завдання може розходитися з планом.','План називає ранок у селищі, а завдання — огляд маяка перед світанком.','перед світанком'),
-          'verdict2':('Проза може розходитися із завданням: Анна не читає листа.','Завдання каже, що Анна вирішує прочитати лист, а в прозі вона його не читає.','пішла додому, не читаючи')},
+          'verdict2':('Проза може розходитися із завданням: Анна не читає листа.','Завдання каже, що Анна вирішує прочитати лист, а в прозі вона його не читає.','пішла додому, не читаючи'),
+          # EDITOR-IMPORT-S11: the editor's tracked change in the prose of scene 1 and a comment on the prose of scene 2.
+          'import_edit':('махав їй рукою','помахав їй рукою'),'import_note':('конверт без підпису','Редакторка','Чий це конверт? Варто натякнути раніше.')},
     'en':{'title':'Lighthouse pier','scenes':['Morning in the village','An unsigned letter','The storm','Coming back'],'hero':'Anna',
           'brief':'{"objective":"Anna finds the letter and decides to read it","beats":["Anna opens the box on the pier","Inside lies an envelope with no signature","The sea wind almost tears the paper away"],"constraints":["No flashbacks"],"proposed_changes":[]}',
           'draft':'Anna opened the box on the pier and found an envelope with no signature. The sea wind tugged at the paper.',
@@ -42,7 +44,8 @@ STORIES={
           'prose1':'Anna climbed the spiral stair to the lamp room. Down on the pier, Peter waved to her.',
           'prose2':'Anna opened the box on the pier and found an envelope with no signature. She put it in her pocket and went home without reading it.',
           'verdict1':('The brief may differ from the plan.','The plan names a morning in the village, but the brief has a lighthouse inspection before dawn.','before dawn'),
-          'verdict2':('The prose may differ from the brief: Anna does not read the letter.','The brief says Anna decides to read the letter, but in the prose she does not read it.','went home without reading it')},
+          'verdict2':('The prose may differ from the brief: Anna does not read the letter.','The brief says Anna decides to read the letter, but in the prose she does not read it.','went home without reading it'),
+          'import_edit':('waved to her','waved up at her'),'import_note':('an envelope with no signature','Editor','Whose envelope is it? Worth a hint earlier.')}
 }
 
 
@@ -148,6 +151,17 @@ def seed_stopped_validation(data_dir,ids):
                       ('stage_finished',{'attempt_id':'shot-1','state':'completed','usage':{'cost':{'usd':0.0052}}}),
                       ('audit_step',{'scene_id':first_id,'link':'brief','outcome':'discrepancy','verdict_id':verdict_id,'attempt_id':'shot-1'})):
         run_store.append_run_event(repo,run.id,kind,data)
+
+
+def editor_import_docx(repo,story_id,lang):
+    """EDITOR-IMPORT-S11: the DOCX an editor returns — the story's own manuscript export with a tracked change in scene 1
+    and a comment in scene 2. The export is recorded in the data folder, so it is made after the other shots."""
+    if str(ROOT) not in sys.path:sys.path.insert(0,str(ROOT))  # run as `python scripts/capture_screenshots.py`
+    from storygen.application.exports import export_story
+    from tests.publication.editor_import_helpers import edit,ranged,run,split,tracked
+    spec=STORIES[lang];(old,new),(phrase,author,note)=spec['import_edit'],spec['import_note']
+    content=export_story(repo,story_id,'docx',allow_incomplete=True).read_bytes()
+    return edit(content,lambda xml:split(split(xml,old,tracked(old,new)),phrase,ranged(7,run(phrase))),[(7,author,note)])
 
 
 def free_port():
@@ -259,6 +273,27 @@ def capture_validation(base,ids,lang):
     return shots
 
 
+def capture_editor_import(base,ids,lang,docx):
+    """EDITOR-IMPORT-S11: the import dialog with the summary of the editor's DOCX; nothing is imported."""
+    from playwright.sync_api import sync_playwright
+    folder=OUT/lang;folder.mkdir(parents=True,exist_ok=True);story,scene=ids['story_id'],ids['scene_id']
+    with sync_playwright() as p:
+        browser=p.chromium.launch()
+        try:
+            page=browser.new_page(viewport={'width':1280,'height':800},locale='uk-UA' if lang=='uk' else 'en-US')
+            page.goto(base+'/');page.locator(f'[data-ui-locale={lang}]').click();page.wait_for_load_state('networkidle')
+            page.goto(f'{base}/stories/{story}?scene={scene}&material=draft');page.wait_for_load_state('networkidle')
+            page.locator('#story-menu-toggle').click();page.locator('#import-edition').click()
+            dialog=page.locator('#editor-import-dialog');dialog.wait_for(state='visible')
+            dialog.locator('#editor-import-file').set_input_files({'name':'edition.docx','buffer':docx,
+                'mimeType':'application/vnd.openxmlformats-officedocument.wordprocessingml.document'})
+            dialog.locator('#editor-import-summary').wait_for(state='visible')
+            page.mouse.move(0,0);path=folder/'editor-import-desktop.png';shot(page,path,[])
+            page.close()
+        finally:browser.close()
+    return [path]
+
+
 def shot(page,path,shots):
     page.wait_for_timeout(300);page.screenshot(path=str(path));shots.append(path)
 
@@ -283,6 +318,8 @@ def main(argv=None):
             shots+=capture(base,ids,[lang])
             seed_stopped_validation(data,ids[lang])
             shots+=capture_validation(base,ids[lang],lang)
+            from storygen.storage.repository import Repository
+            shots+=capture_editor_import(base,ids[lang],lang,editor_import_docx(Repository(data),ids[lang]['story_id'],lang))
         finally:
             server.terminate()
             try:server.wait(timeout=10)

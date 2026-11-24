@@ -724,3 +724,10 @@ body.ghost-open #notice { z-index: 70; }
 /* Spec 2026-11-17-broken-letters-guard: count of U+FFFD in the edited text. */
 .broken-text-banner{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem;margin:0 0 .5rem;padding:.4rem .6rem;border:1px solid var(--warning);border-radius:6px;color:var(--warning)}
 .broken-text-banner[hidden]{display:none}
+/* EDITOR-IMPORT: the summary table scrolls inside the dialog on a narrow screen; the menu item names why it is unavailable. */
+.export-dialog.editor-import-dialog { max-width: min(46rem, calc(100vw - 32px)); }
+.editor-import-table { overflow-x: auto; max-width: 100%; }
+.editor-import-table table { border-collapse: collapse; width: 100%; }
+.editor-import-table th, .editor-import-table td { text-align: left; vertical-align: top; padding: 0.35rem 0.5rem; border-bottom: 1px solid var(--border-color); }
+.editor-import-table ul { margin: 0.25rem 0 0; padding-left: 1rem; font-weight: normal; }
+.story-menu-reason { display: block; font-size: 0.85em; color: var(--text-muted); }

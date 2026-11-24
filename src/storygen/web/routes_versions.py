@@ -98,7 +98,7 @@ def list_copyedit_proposals(scene_id: str,request: Request):
     repo=request.app.state.repo
     # Only the scene's story and its active state are needed: no context view for an attempt list.
     story_id=repo.active_scene_story_id(scene_id)
-    return {'attempts':[{'id':a.id,'created_at':a.created_at,'state':a.state} for a in repo.list_attempts(story_id,scene_id=scene_id,context_key='copyedit_proposal')
+    return {'attempts':[{'id':a.id,'created_at':a.created_at,'state':a.state,'source':'editor_import' if a.context.get('editor_import') else None} for a in repo.list_attempts(story_id,scene_id=scene_id,context_key='copyedit_proposal')
                         if a.context.get('copyedit_proposal') and a.state in {'completed','needs_review','alternative'}]}
 
 
