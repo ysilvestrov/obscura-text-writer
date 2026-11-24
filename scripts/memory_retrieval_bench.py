@@ -344,6 +344,7 @@ def vector_report(models, args, repro):
         entry = {'model_id': inner.model_id, 'revision': inner.revision, 'dim': int(cached.dim),
                  'max_tokens': inner.max_tokens, 'query_prefix': getattr(inner, 'query_prefix', ''),
                  'passage_prefix': getattr(inner, 'passage_prefix', ''), 'truncated': cached.truncated,
+                 'truncated_requests': cached.truncated_requests,
                  'threads': 1 if local else None, 'libs': libs,
                  'load_seconds': round(timed.load_seconds, 3),
                  'index_seconds_cold': None if timed.cold_seconds is None else round(timed.cold_seconds, 3),

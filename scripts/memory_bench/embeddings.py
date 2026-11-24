@@ -5,6 +5,7 @@ numpy is required here; memory_bench.strategies and memory_bench.ranking stay im
 import hashlib
 import math
 import os
+import sys
 import time
 from pathlib import Path
 from typing import Literal, Protocol, Sequence
@@ -108,8 +109,17 @@ class CachedEmbedder:
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.hits = 0
         self.misses = 0
-        self.truncated = 0  # own count: warm-cache reruns report the same value as cold ones
+        self._truncated_paths: set[Path] = set()  # unique cache entries seen truncated: warm and cold agree
+        self.truncated_requests = 0  # per occurrence, cache hits included
         self.last_truncated: list[bool] = []
+
+    @property
+    def truncated_texts(self) -> int:
+        return len(self._truncated_paths)
+
+    @property
+    def truncated(self) -> int:  # texts longer than max_tokens, each counted once
+        return len(self._truncated_paths)
 
     def __getattr__(self, name):
         if name in ('key', 'model_id', 'revision', 'dim', 'max_tokens'):
@@ -141,7 +151,8 @@ class CachedEmbedder:
                 os.replace(tmp, p)
                 found[p] = (vec, bool(flag))
         self.last_truncated = [found[p][1] for p in paths]
-        self.truncated += sum(self.last_truncated)
+        self.truncated_requests += sum(self.last_truncated)
+        self._truncated_paths.update(p for p in paths if found[p][1])
         if not paths:
             return np.zeros((0, self.inner.dim), dtype=np.float32)
         return np.stack([found[p][0] for p in paths]).astype(np.float32)
@@ -184,7 +195,10 @@ class AzureEmbedder:
         if not texts:
             return np.zeros((0, self.dim), dtype=np.float32)
         estimate = sum(math.ceil(len(t) / 2) for t in texts)
-        if self.usd + estimate * self.price_per_mtok / 1e6 > self.max_usd:
+        est_usd = estimate * self.price_per_mtok / 1e6
+        print(f'cloud_estimate tokens={estimate} usd={est_usd:.4f} spent_usd={self.usd:.4f} max_usd={self.max_usd}',
+              file=sys.stderr)
+        if self.usd + est_usd > self.max_usd:
             raise ValueError('cloud_budget')
         rows = []
         for start in range(0, len(texts), self.BATCH):

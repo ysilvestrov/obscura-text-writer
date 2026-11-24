@@ -99,3 +99,43 @@ def test_azure_client_has_timeout_and_close():
     assert emb._client.timeout.read == 60.0
     emb.close()
     assert emb._client.is_closed
+
+
+def _ok(request):
+    body = json.loads(request.content)
+    data = [{'index': i, 'embedding': [1.0, 0.0]} for i in range(len(body['input']))]
+    return httpx.Response(200, json={'data': data, 'usage': {'prompt_tokens': len(data)}})
+
+
+def test_azure_prints_estimate_before_request(capsys):
+    seen = []
+
+    def handler(request):
+        seen.append(capsys.readouterr().err)  # the estimate must already be printed
+        return _ok(request)
+
+    emb = make(handler, price_per_mtok=1000.0, max_usd=5.0)
+    emb.embed(['абвгд' * 100, 'x' * 4], 'passage')  # 250 + 2 tokens
+    assert seen[0].strip() == 'cloud_estimate tokens=252 usd=0.2520 spent_usd=0.0000 max_usd=5.0'
+
+
+def test_azure_estimate_line_leaks_nothing(capsys):
+    emb = make(_ok)
+    emb.embed(['секретний текст'], 'query')
+    err = capsys.readouterr().err
+    assert err.startswith('cloud_estimate tokens=') and err.count(chr(10)) == 1
+    assert 'SECRET-KEY' not in err and 'секретний' not in err and 'example.openai' not in err
+
+
+def test_azure_estimate_printed_on_budget_refusal(capsys):
+    calls = []
+    emb = make(lambda request: calls.append(request), price_per_mtok=1.0, max_usd=0.0001)
+    with pytest.raises(ValueError, match='cloud_budget'):
+        emb.embed(['а' * 1000, 'б' * 1000], 'passage')
+    assert calls == []
+    assert capsys.readouterr().err.strip() == 'cloud_estimate tokens=1000 usd=0.0010 spent_usd=0.0000 max_usd=0.0001'
+
+
+def test_azure_empty_input_prints_no_estimate(capsys):
+    make(_ok).embed([], 'query')
+    assert capsys.readouterr().err == ''

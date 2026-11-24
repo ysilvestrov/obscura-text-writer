@@ -99,5 +99,14 @@ def test_cached_truncated_count_survives_warm_cache():
         warm_inner = TruncatingEmbedder()
         warm = CachedEmbedder(warm_inner, Path(d))
         warm.embed(texts, 'passage')
-        assert cold.truncated == warm.truncated == 3
+        assert cold.truncated == warm.truncated == cold.truncated_texts == 2
+        assert cold.truncated_requests == warm.truncated_requests == 3
         assert warm_inner.calls == 0 and warm.misses == 0
+
+
+def test_cached_truncated_counts_unique_texts_across_calls():
+    with tempfile.TemporaryDirectory() as d:
+        emb = CachedEmbedder(TruncatingEmbedder(), Path(d))
+        emb.embed(['long plan', 'short'], 'passage')
+        emb.embed(['long plan'], 'passage')
+        assert emb.truncated == 1 and emb.truncated_requests == 2
