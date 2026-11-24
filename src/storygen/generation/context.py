@@ -127,14 +127,16 @@ def _select_memory_section(selector,sections,measured,measure,fits,settings):
     return best[0],best[1],steps,best[2]
 
 
-def make_context(repo,story,scene,stage,settings,sections,refs,fragments=None,accepted_prose_ids=(),memory_metrics=None,context_warnings=None,memory_provenance=(),accepted_memory_ids=(),memory_selector=None,memory_narrower=None):
+def make_context(repo,story,scene,stage,settings,sections,refs,fragments=None,accepted_prose_ids=(),memory_metrics=None,context_warnings=None,memory_provenance=(),accepted_memory_ids=(),memory_selector=None,memory_narrower=None,rating_guard=True):
+    """`rating_guard=False` skips only `enforce_rating`: for a context no model receives (IMPORT-DOCX proposal)."""
     if hasattr(repo, 'context_view'):
         repo=repo.context_view(story.id)
         story=repo.get_story(story.id)
         scene=repo.get_scene(scene.id) if scene else None
     if stage in WRITER_STAGES:settings=settings_for(settings,'writer',story,scene)  # MODEL-001; idempotent after build_context.
-    from ..rating.guard import enforce_rating
-    enforce_rating(repo,story,scene,stage)
+    if rating_guard:
+        from ..rating.guard import enforce_rating
+        enforce_rating(repo,story,scene,stage)
     prompt_id=settings.prepare_prompt_version_id if stage=='prepare' else settings.prompt_version_id
     fragments=dict(fragments or {})
     system=stage_system_text(repo,story,scene,stage,settings,fragments,refs)

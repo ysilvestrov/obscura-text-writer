@@ -463,6 +463,7 @@ class ImportResult(DomainModel):
 
 STALE_PREVIEW = 'Твір змінився після зведення; перегляньте його ще раз'
 WHOLE_SCENE_DELETED = 'редактор вилучив увесь текст сцени'
+SCENE_CHANGED = 'прозу сцени змінено після зведення'
 
 
 def _temp_path(import_id):
@@ -482,8 +483,9 @@ def _proposal_factory(repo, story_id, scene_id, plan, attempt_id, origin, scene_
     def factory(draft_ref, view):
         scene = view.get_scene(scene_id)
         draft_text = view.read_text(draft_ref.id)
+        # No model receives this context, so the generation rating guard does not apply (IMPORT-DOCX §5.2).
         ctx = make_context(view, view.story, scene, 'edit', settings, [draft_text], [draft_ref.id],
-                           {'copyedit_draft_id': draft_ref.id})
+                           {'copyedit_draft_id': draft_ref.id}, rating_guard=False)
         attempt = StageAttempt(id=attempt_id, story_id=story_id, scene_id=scene_id, stage='edit', state='needs_review',
                                context=ctx.model_dump(), partial_path=f'stories/{story_id}/runs/{attempt_id}/partial.txt')
         attempt.context.update(
@@ -500,7 +502,7 @@ def _save_scene(repo, story_id, item, plan, origin, scene_index):
     scene = repo.get_scene(item.scene.id)
     head = scene.heads.get('prose')
     if head != item.scene.heads.get('prose') or scene.head_revisions.get('prose') != item.scene.head_revisions.get('prose'):
-        raise RevisionConflict(STALE_PREVIEW)
+        raise RevisionConflict(SCENE_CHANGED)
     content_format = repo.get_version(head).content_format
     text = plan.editor_text if plan.status == 'over_limit' else plan.normalized.text
     factory = None
@@ -546,7 +548,12 @@ def apply_import(repo, story_id: str, import_id: str, fingerprint: str,
             skipped.append({'scene_id': item.scene.id, 'status': plan.status})
             warnings.append(f'«{item.scene.title}»: {WHOLE_SCENE_DELETED}; сцену не імпортовано.')
             continue
-        _save_scene(repo, story_id, item, plan, origin, index)
+        try:
+            _save_scene(repo, story_id, item, plan, origin, index)
+        except Exception as exc:  # the scene's transaction rolled back; the other scenes go on (§5)
+            skipped.append({'scene_id': item.scene.id, 'status': plan.status})
+            warnings.append(f'«{item.scene.title}»: сцену не імпортовано — {exc or type(exc).__name__}')
+            continue
         imported.append(item.scene.id)
         if plan.status == 'over_limit':
             draft_only.append(item.scene.id)

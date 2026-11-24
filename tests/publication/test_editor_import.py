@@ -503,17 +503,60 @@ def test_cancel_removes_temp(tmp_path):
         editor_import.cancel_import(repo, story.id, '../../secret')
 
 
-def test_failed_proposal_rolls_back_draft_and_comments(tmp_path, monkeypatch):
+def edit_all(content):
+    return edit(content, lambda xml: xml.replace('Ранок', 'Світанок').replace('пішов', 'побіг').replace('Вечір', 'Ніч'))
+
+
+def test_failed_scene_is_skipped_and_others_imported(tmp_path, monkeypatch):
     import storygen.generation.context as context
     repo, story, scenes, content = book(tmp_path)
-    changed = edit(comment_on_speech(content), lambda xml: xml.replace('пішов', 'побіг'))
-    preview = preview_import(repo, story.id, changed)
+    preview = preview_import(repo, story.id, edit_all(content))
+    assert statuses(preview) == ['changed'] * 3
+    original = context.make_context
 
-    def broken(*args, **kwargs):
-        raise RuntimeError('context failed')
+    def broken(repo_, story_, scene, *args, **kwargs):
+        if scene.id == scenes[1].id:
+            raise RuntimeError('context failed')
+        return original(repo_, story_, scene, *args, **kwargs)
     monkeypatch.setattr(context, 'make_context', broken)
-    with pytest.raises(RuntimeError):
-        editor_import.apply_import(repo, story.id, preview.import_id, preview.fingerprint, None)
-    scene = repo.get_scene(scenes[1].id)
+    result = editor_import.apply_import(repo, story.id, preview.import_id, preview.fingerprint, None)
+    assert result.imported == [scenes[0].id, scenes[2].id]
+    assert result.skipped == [{'scene_id': scenes[1].id, 'status': 'changed'}]
+    assert any(w.startswith(f'«{scenes[1].title}»: сцену не імпортовано') and 'context failed' in w for w in result.warnings)
+    scene = repo.get_scene(scenes[1].id)  # the failed scene rolled back: draft, comments and attempt alike
     assert scene.revision == scenes[1].revision and scene.heads.get('draft') == scenes[1].heads.get('draft')
-    assert repo.get_comment_state(scenes[1].id)['comment_set'] is None and repo.list_attempts(story.id) == []
+    assert repo.get_comment_state(scenes[1].id)['comment_set'] is None and import_attempts(repo, story, scenes[1].id) == []
+    assert [len(import_attempts(repo, story, s.id)) for s in (scenes[0], scenes[2])] == [1, 1]
+
+
+def test_scene_conflict_is_skipped_not_raised(tmp_path, monkeypatch):
+    repo, story, scenes, content = book(tmp_path)
+    preview = preview_import(repo, story.id, edit_all(content))
+    real = repo.save_draft_with_comments
+
+    def racing(scene_id, *args, **kwargs):
+        if scene_id == scenes[1].id:  # another tab saves the scene's draft just before the import writes it
+            real(scene_id, 'Чужа чернетка.', 'markdown', repo.get_scene(scene_id).revision, 0, CommentPayload(),
+                 expected_source_version_id=None)
+        return real(scene_id, *args, **kwargs)
+    monkeypatch.setattr(repo, 'save_draft_with_comments', racing)
+    result = editor_import.apply_import(repo, story.id, preview.import_id, preview.fingerprint, None)
+    assert result.imported == [scenes[0].id, scenes[2].id]
+    assert result.skipped == [{'scene_id': scenes[1].id, 'status': 'changed'}]
+    assert repo.read_text(repo.get_scene(scenes[1].id).heads['draft']) == 'Чужа чернетка.'
+    assert import_attempts(repo, story, scenes[1].id) == []
+
+
+@pytest.mark.unrated_stories
+def test_import_works_in_unrated_story(tmp_path):
+    from storygen.generation.copyedit_review import copyedit_preview, select_copyedits
+    repo, story, scenes, content = book(tmp_path)
+    assert repo.get_story(story.id).content_rating is None
+    _, result = imported(repo, story, edit(content, lambda xml: xml.replace('пішов', 'побіг')))
+    assert result.imported == [scenes[1].id] and result.skipped == []
+    [attempt] = import_attempts(repo, story, scenes[1].id)
+    view = copyedit_preview(repo, scenes[1].id, attempt.id)
+    assert view['can_apply'], view['reason']
+    select_copyedits(repo, scenes[1].id, attempt.id, list(range(len(view['edits']))), view['expected_revision'],
+                     view['proposal_fingerprint'])
+    assert repo.read_text(repo.get_scene(scenes[1].id).heads['prose']) == EDITED
