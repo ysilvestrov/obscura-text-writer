@@ -4,7 +4,7 @@ import {api,json,notice} from './api.js';
 import {state,selectScene} from './editor.js';
 import {auditConfirmationText,operationReason} from './run-readiness.js';
 import {invalidSceneCount,bookMenuState,latestBookRun} from './book-validation-state.js';
-import {stoppedAuditScene} from './run-summary.js';
+import {stopSceneJump} from './run-summary.js';
 
 // R-44 book validation, design §9/§12: the story menu item counts the invalid scenes of the story view; a press reads the
 // preview (scenes, calls, the upper bound on cost and the plan fingerprint), and only the author's consent starts the run
@@ -35,13 +35,16 @@ async function openStopScene(scene){
   if(!target.hasAttribute('tabindex'))target.tabIndex=-1;
   target.focus();
 }
+const finishableFor=run=>Boolean(run&&state.workspaceFinishable?.runId===run.id&&state.workspaceFinishable.value);
 function renderJump(){
   if(!jump)return;
-  const scene=stoppedAuditScene(lastRun,state.view?.scenes);
-  jump.hidden=!scene;
-  jump.classList.toggle('secondary',!scene);
-  jump.onclick=scene?()=>void openStopScene(scene).catch(error=>notice(error.message,'error')):null;
+  const {scene,hidden,disabled,secondary,here}=stopSceneJump(lastRun,state.view?.scenes,state.scene?.id,finishableFor(lastRun));
+  jump.hidden=hidden;
+  jump.disabled=disabled;
+  jump.classList.toggle('secondary',secondary);
+  jump.onclick=scene&&!here?()=>void openStopScene(scene).catch(error=>notice(error.message,'error')):null;
   if(scene)uiText(jump,'textContent',()=>t('run.go_to_scene',{p0:scene.position+1}));
+  uiText(jump,'title',()=>here?t('run.on_stop_scene'):'');
 }
 function render(){renderMenu();renderJump()}
 
@@ -80,5 +83,7 @@ document.addEventListener('workspace-run-pending',event=>{
   const run=event.detail;if(lastRun?.id!==run?.id||lastRun?.state!==run?.state)lastRun=null;render();
 });
 document.addEventListener('story-refreshed',render);
+document.addEventListener('scene-selected',renderJump);
+document.addEventListener('workspace-finishable',renderJump);
 document.addEventListener('workspace-readiness',renderMenu);
 render();

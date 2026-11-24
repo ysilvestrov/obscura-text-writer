@@ -61,6 +61,11 @@ test('book validation stops on a discrepancy, leads to the scene and finishes th
   const row=page.locator('#scene-consistency li[data-link="brief"]');
   await expect(row).toContainText('Місце дії не збігається з планом');
   await expect(page.locator('#scene-consistency')).toBeFocused();  // Р7: the stop scene's «Узгодженість сцени» takes the focus
+  // VALID-UI-S07: on the stop scene the jump stays named but inactive and secondary, with the reason in its title.
+  await expect(jump).toBeVisible();
+  await expect(jump).toBeDisabled();
+  await expect(jump).toHaveClass(/secondary/);
+  await expect(jump).toHaveAttribute('title','Ви вже на сцені зупинки');
   await expect(page.locator('#scene-consistency-primary')).toBeDisabled();
   await expect(page.locator('#scene-consistency-reason')).toHaveText('Спершу вирішіть зв’язок');
   await row.getByRole('button',{name:'Розбіжності немає'}).click();
@@ -265,4 +270,40 @@ test('the focus stays in the run row when the progress block goes away',async({p
   await expect(page.locator('#run-stop-scene')).toBeVisible();
   await expect(page.locator('#run-status .run-progress-title')).toHaveCount(0);
   await expect(page.locator('#run-status .run-summary')).toBeFocused();
+});
+
+test('a stopped validation with nothing left to check is finished from the row',async({page,request})=>{
+  // VALID-UI-S08: once every remaining link is decided, the jump gives way to «Завершити валідацію», which finishes the
+  // run without a consent dialog; the stop scene's panel names the same action.
+  const fixture=await(await request.post('/test-book-validation')).json();
+  const runs=async()=>(await(await request.get(`/api/stories/${fixture.story_id}/runs`)).json()).runs;
+  await page.goto(`/stories/${fixture.story_id}?scene=${fixture.second_id}&material=prose`);
+  await page.locator('#story-menu-toggle').click();
+  await page.locator('#story-menu-validate').click();
+  await page.locator('dialog[open]').getByRole('button',{name:'Почати валідацію'}).click();
+  await expect.poll(async()=>(await runs()).at(-1)?.state).toBe('needs_review');
+  await expect(page.locator('#run-stop-scene')).toHaveText('Перейти до сцени 1');
+  // The author approves every link still open in both scenes (a decision may change the next link's fingerprint).
+  for(let round=0;round<12;round++){
+    const view=await(await request.get(`/api/stories/${fixture.story_id}`)).json();
+    const open=[fixture.first_id,fixture.second_id].flatMap(id=>Object.entries(view.material_status[id].links)
+      .filter(([,link])=>['unchecked','discrepancy'].includes(link.status)).map(([name,link])=>({id,name,fingerprint:link.fingerprint})));
+    if(!open.length)break;
+    const decided=await request.post(`/api/scenes/${open[0].id}/links/${open[0].name}/decision`,{data:{action:'approve',fingerprint:open[0].fingerprint}});
+    expect(decided.ok(),await decided.text()).toBeTruthy();
+  }
+  await page.reload();
+  await expect(page.locator('#run-status .run-progress-step')).toHaveText('Усе вирішено: перевірку можна завершити');
+  const finish=page.locator('#run-actions').getByRole('button',{name:'Завершити валідацію'});
+  await expect(finish).toBeVisible();
+  await expect(finish).toBeEnabled();
+  await expect(page.locator('#run-stop-scene')).toBeHidden();
+  // The stop scene's panel names the same action.
+  await page.goto(`/stories/${fixture.story_id}?scene=${fixture.first_id}&material=prose`);
+  await expect(page.locator('#scene-consistency-primary')).toHaveText('Завершити валідацію');
+  await expect(page.locator('#run-stop-scene')).toBeHidden();
+  await expect(finish).toBeEnabled();
+  await finish.click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect.poll(async()=>(await runs()).at(-1)?.state).toBe('completed');
 });

@@ -3,7 +3,7 @@ import {pathToFileURL} from 'node:url';
 const root=process.argv[2];
 const {invalidSceneCount,bookMenuState}=await import(pathToFileURL(root+'/src/storygen/web/static/book-validation-state.js'));
 const {confirmationText,auditConfirmationText}=await import(pathToFileURL(root+'/src/storygen/web/static/run-readiness.js'));
-const {runModeKey,stoppedAuditScene}=await import(pathToFileURL(root+'/src/storygen/web/static/run-summary.js'));
+const {runModeKey,stoppedAuditScene,stopSceneJump}=await import(pathToFileURL(root+'/src/storygen/web/static/run-summary.js'));
 
 // R-44 book validation, design §12: the menu counts the scenes with a link in unchecked, discrepancy or unavailable
 // (the rule of the server's book_pending and of the preview's invalid_scenes), whatever the scene's validity.
@@ -79,11 +79,19 @@ assert.equal(stoppedAuditScene({...stopped,checkpoint:null},scenes),null);
 assert.equal(stoppedAuditScene({...stopped,checkpoint:{scene_id:'gone'}},scenes),null);
 assert.equal(stoppedAuditScene(stopped,undefined),null);
 assert.equal(stoppedAuditScene(null,scenes),null);
+// VALID-UI-S07: elsewhere the jump is the row's main action; on the stop scene it stays visible but inactive and secondary.
+assert.deepEqual(stopSceneJump(stopped,scenes,'s1'),{scene:scenes[1],hidden:false,disabled:false,secondary:false,here:false});
+assert.deepEqual(stopSceneJump(stopped,scenes,null),{scene:scenes[1],hidden:false,disabled:false,secondary:false,here:false});
+assert.deepEqual(stopSceneJump(stopped,scenes,'s2'),{scene:scenes[1],hidden:false,disabled:true,secondary:true,here:true});
+assert.deepEqual(stopSceneJump({...stopped,state:'completed'},scenes,'s2'),{scene:null,hidden:true,disabled:false,secondary:true,here:false});
+// VALID-UI-S08: nothing left to check — no scene to go to, on any scene.
+assert.deepEqual(stopSceneJump(stopped,scenes,'s1',true),{scene:null,hidden:true,disabled:false,secondary:true,here:false});
+assert.deepEqual(stopSceneJump(stopped,scenes,'s2',true),{scene:null,hidden:true,disabled:false,secondary:true,here:false});
 console.log('Book validation helpers passed');
 
 // Visible progress: the menu follows the latest book validation; a stopped one keeps the resume button in the row only if its scene is gone.
 {
-  const {latestBookRun,bookResumeInRow,revealBlocked}=await import(pathToFileURL(root+'/src/storygen/web/static/book-validation-state.js'));
+  const {latestBookRun,bookResumeInRow,revealBlocked,finishKey}=await import(pathToFileURL(root+'/src/storygen/web/static/book-validation-state.js'));
   const bookRun=(id,state)=>({id,state,request:{mode:'audit',audit_scope:'story'},checkpoint:{scene_id:'s1'}});
   const gen={id:'g',state:'paused',request:{mode:'scene'}};
   // Final(core) ruling 2/3: a running validation reveals its row like a stopped one; both never start a run.
@@ -112,6 +120,10 @@ console.log('Book validation helpers passed');
   assert.equal(bookResumeInRow({...bookRun('b','needs_review')},stopScenes),false);
   assert.equal(bookResumeInRow({...bookRun('b','needs_review')},[]),true,'the stop scene is in the trash');
   assert.equal(bookResumeInRow(gen,stopScenes),true);
+  // VALID-UI-S08: nothing left to check — the row shows the finishing action even while the stop scene is in the story.
+  assert.equal(bookResumeInRow({...bookRun('b','needs_review')},stopScenes,true),true);
+  assert.equal(finishKey(bookRun('b','needs_review')),'book_validation.finish');
+  assert.equal(finishKey({id:'a',state:'needs_review',request:{mode:'audit',audit_scope:'scene'}}),'audit.finish');
 }
 
 // Task 3: the full book run the panel resumes; a short current run keeps the cached full one.

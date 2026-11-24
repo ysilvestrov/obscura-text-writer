@@ -122,7 +122,7 @@ function render(){
   const key=previewKey();
   const run=currentRun();
   const panel=state.scene?sceneConsistency(state.view?.material_status,state.scene.id,state.view?.scenes||[],run,previewFor(key),
-    run&&revealBlocked(state.workspaceRun,run)?t('book_validation.other_run_active'):blockedReason()):null;
+    run&&revealBlocked(state.workspaceRun,run)?t('book_validation.other_run_active'):blockedReason(),Boolean(run&&state.workspaceFinishable?.runId===run.id&&state.workspaceFinishable.value)):null;
   // Only the main action changed (an edit, a run, the preview): update it in place and keep the rows and the focus.
   const signature=panel&&JSON.stringify([state.scene.id,busy,panel.view,panel.pendingCount,panel.total,panel.rows,panel.primary.action,run?.id,run?.state]);
   const wrap=host.querySelector('.consistency-primary');
@@ -232,6 +232,6 @@ async function createMemory(sceneId,options){
 if(host)document.addEventListener('story-refreshed',()=>{if(previewValue?.failed){previewKeyValue=null;previewValue=null}render()});
 // Registered before the render listener so a render sees the run it was told about.
 document.addEventListener('workspace-run-state',event=>{if(isBook(event.detail))bookRun=event.detail});
-if(host)for(const event of ['workspace-run-state','workspace-run-pending','workspace-readiness','editor-state-changed'])document.addEventListener(event,render);
+if(host)for(const event of ['workspace-run-state','workspace-run-pending','workspace-readiness','workspace-finishable','editor-state-changed'])document.addEventListener(event,render);
 document.addEventListener('scene-selected',()=>{carryPolls=0;previewKeyValue=null;previewValue=null;render()});
 render();

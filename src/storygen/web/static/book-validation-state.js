@@ -22,9 +22,11 @@ export function latestBookRun(runs,current){
 }
 
 // A stopped book validation keeps «Продовжити» in the run row unless the scene of its stop is missing (the summary then has no link to lead to).
-export function bookResumeInRow(run,scenes){
-  return !(isBookRun(run)&&run.state==='needs_review'&&stoppedAuditScene(run,scenes));
+export function bookResumeInRow(run,scenes,finishable=false){
+  return finishable||!(isBookRun(run)&&run.state==='needs_review'&&stoppedAuditScene(run,scenes));
 }
+// VALID-UI-S08: the finishing action of a book validation is named «Завершити валідацію», of a scene check «Завершити перевірку».
+export const finishKey=run=>isBookRun(run)?'book_validation.finish':'audit.finish';
 
 // The full book run the scene panel resumes. `current` (the run line) may be the short list entry of the same run
 // (no checkpoint), so the cached full run is kept while the run is the same and in the same state and the refreshed list does not hold it in another state. A cached run stays
