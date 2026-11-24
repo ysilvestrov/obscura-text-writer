@@ -98,13 +98,13 @@ assert.deepEqual(c.rows[0].actions,[{type:'approve',link:'brief',fingerprint:'fb
 assert.deepEqual(c.rows[1].actions,[{type:'approve',link:'prose',fingerprint:'fp',label:'consistency.no_discrepancy'}]);
 assert.deepEqual([c.rows[1].status,c.rows[1].summary,c.rows[1].discrepancies],[{key:'consistency.state_discrepancy',params:{p0:72}},'Можлива розбіжність',disc.discrepancies]);
 assert.deepEqual(c.rows[2].status,{key:'consistency.state_ok_auditor',params:{}});
-assert.deepEqual(c.primary,{action:'audit',label:'consistency.audit',detail:{key:'consistency.audit_cost',params:{p0:1,p1:'$0.01'}},disabled:false,reason:null});
+assert.deepEqual(c.primary,{action:'audit',label:'consistency.audit',detail:{key:'consistency.audit_cost',params:{p0:1,p1:'$0.02'}},disabled:false,reason:null});
 // preview: loading, not ready, nothing to call, no price, blocked
 assert.deepEqual([sceneConsistency(view({brief:link('unchecked')}),'s2',scenes).primary.disabled,sceneConsistency(view({brief:link('unchecked')}),'s2',scenes).primary.reason],[true,null]);
 assert.deepEqual(sceneConsistency(view({brief:link('unchecked')}),'s2',scenes,null,pv(0,null,false,'Роль не налаштовано: Ревізор')).primary.reason,{text:'Роль не налаштовано: Ревізор'});
 assert.deepEqual(sceneConsistency(view({prose:disc}),'s2',scenes,null,pv(0,'0.0000')).primary.reason,{key:'consistency.nothing_to_audit',params:{}});  // every {key} reason carries params, {} when none
 assert.deepEqual(sceneConsistency(view({brief:link('unchecked')}),'s2',scenes,null,pv(2,null)).primary.detail,{key:'consistency.audit_calls',params:{p0:2}});
-assert.deepEqual(sceneConsistency(view({brief:link('unchecked')}),'s2',scenes,null,pv(1),'Збережіть зміни').primary,{action:'audit',label:'consistency.audit',detail:{key:'consistency.audit_cost',params:{p0:1,p1:'$0.01'}},disabled:true,reason:{text:'Збережіть зміни'}});
+assert.deepEqual(sceneConsistency(view({brief:link('unchecked')}),'s2',scenes,null,pv(1),'Збережіть зміни').primary,{action:'audit',label:'consistency.audit',detail:{key:'consistency.audit_cost',params:{p0:1,p1:'$0.02'}},disabled:true,reason:{text:'Збережіть зміни'}});
 // visibility (Г2): valid line, nothing at all, brief-only scene with nothing to decide
 assert.equal(sceneConsistency(view({}),'s2',scenes,null,pv(0)).view,'valid');
 assert.equal(sceneConsistency({s2:{links:{brief:link('missing'),prose:link('missing'),memory:link('missing')},validity:'incomplete'}},'s2',scenes).view,'none');

@@ -2,7 +2,7 @@
 // (link-decision.js) renders them. An approval goes only to an unchecked link (the server refuses Z3 `unavailable`);
 // a memory action launches the memory stage of the named scene through the usual preview and consent; rebuild launches
 // «Перебудувати пам’ять» from the scene; a carry action resumes or cancels the stalled carry run (MEMORY-CARRY).
-import {dollars} from "./run-summary.js";
+import {dollarsUpper} from "./run-summary.js";
 
 const UNCHECKED={
   brief:{text:'link.brief_unchecked',approve:'link.approve_brief'},
@@ -147,7 +147,7 @@ export function sceneConsistency(materialStatus,sceneId,scenes=[],run=null,previ
     let detail=null;
     if(preview?.ready){
       const usd=preview.cost?.total_usd;
-      detail=usd==null?key('consistency.audit_calls',{p0:preview.calls}):key('consistency.audit_cost',{p0:preview.calls,p1:dollars(Number(usd))});
+      detail=usd==null?key('consistency.audit_calls',{p0:preview.calls}):key('consistency.audit_cost',{p0:preview.calls,p1:dollarsUpper(Number(usd))});
     }
     primary={action:'audit',label:'consistency.audit',detail,disabled:!preview||reason!==null,reason};
   }

@@ -1,6 +1,6 @@
 // Visible run progress: pure rules that turn the server's run.progress into the texts of the run line. runs.js only renders them.
 import {t} from './i18n.js';
-import {dollars} from './run-summary.js';
+import {dollars,dollarsUpper} from './run-summary.js';
 
 // Every task stage of RunCoordinator.enqueue has a label; an unknown id keeps its raw name.
 const STAGES=new Set(['brief','draft','edit','memory','evaluate','prepare','rewrite','classify','publication_suggest','timeline_summary']);
@@ -27,7 +27,7 @@ function countsOf(progress){
   // A missing or malformed sum reads as an unknown price («$—»), never «$NaN».
   const spentValue=Number(spent_usd),boundValue=Number(bound_usd);
   const spent=spent_known===false||spent_usd==null||!Number.isFinite(spentValue)?'$—':dollars(spentValue);
-  if(bound_usd!=null&&Number.isFinite(boundValue))parts.push(t('run_progress.spent_bound',{p0:spent,p1:dollars(boundValue)}));
+  if(bound_usd!=null&&Number.isFinite(boundValue))parts.push(t('run_progress.spent_bound',{p0:spent,p1:dollarsUpper(boundValue)}));
   else if(spent_usd!=null&&spent_usd!=='0.0000')parts.push(t('run_progress.spent',{p0:spent}));
   return parts.join(' · ');
 }

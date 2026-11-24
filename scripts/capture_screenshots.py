@@ -84,17 +84,28 @@ def link_states(repo,story_id,scene_id):
 
 
 def seed_consistency(repo,story_id,first_id,second_id,spec):
-    """VALID-LINKS-S15: the author's prose and memory of the first two scenes, a local Auditor (the scene preview is
-    ready without a key and without a price) and the Auditor's discrepancies on the brief of scene 1 and the prose of
-    scene 2, which then shows: brief not checked, prose with a quote, memory consistent, one call for the Auditor.
+    """VALID-LINKS-S15: the author's prose and memory of the first two scenes, a cloud Auditor with a stored tariff (the scene preview is
+    ready without a key and shows a price) and the Auditor's discrepancies on the brief of scene 1 and the prose of
+    scene 2, which then shows: brief not checked, prose with a quote, memory consistent, its calls with the price bound.
     Returns the id of the verdict on scene 1 (the stop of the book validation)."""
+    from datetime import timedelta
     from storygen.authoring.blueprints import save_role_settings
+    from storygen.billing.models import Tariff,utcnow
+    from storygen.billing.service import save_tariff,set_limit
     from storygen.generation.dependencies import save_manual_prose
     from storygen.memory.journal import MemoryJournal,_add_event
     from storygen.memory.service import save_scene_memory
     from storygen.providers.models import ProviderSettings,RoleSettings
     from storygen.storage.link_decisions import decide_link,write_auditor_verdict
-    save_role_settings(repo,story_id,'auditor',RoleSettings(provider=ProviderSettings(provider='local',base_url='http://127.0.0.1:11434/v1',model='neutral-auditor'),
+    # A cloud Auditor with a stored manual tariff: the preview prices from the tariff only, so it shows «N викл., до $X» with no key and no network.
+    auditor=ProviderSettings(provider='openrouter',model='neutral/auditor')
+    save_role_settings(repo,story_id,'auditor',RoleSettings(provider=auditor,temperature=0.2,context_tokens=32768,max_input_chars=60000,max_output_tokens=2048),
+        repo.get_story(story_id).revision)
+    save_tariff(repo,Tariff(provider='openrouter',model='neutral/auditor',base_url=auditor.base_url,input_per_million='1',output_per_million='2',
+        source='neutral screenshot tariff',kind='manual',expires_at=(utcnow()+timedelta(days=1)).isoformat()))
+    set_limit(repo,'story:'+story_id,'10',0)  # a cloud run needs an explicit budget limit before its preview is ready
+    # The editor role is set too, so the run row offers no «Налаштувати редактора».
+    save_role_settings(repo,story_id,'editor',RoleSettings(provider=ProviderSettings(provider='local',base_url='http://127.0.0.1:11434/v1',model='neutral-editor'),
         temperature=0.2,context_tokens=32768,max_input_chars=60000,max_output_tokens=2048),repo.get_story(story_id).revision)
     journal=MemoryJournal()
     for scene_id,text in ((first_id,spec['prose1']),(second_id,spec['prose2'])):
@@ -242,10 +253,7 @@ def capture_validation(base,ids,lang):
             page.locator('#run-stop-scene').wait_for(state='visible')
             page.mouse.move(0,0);page.wait_for_timeout(300)
             path=folder/'scene-consistency-desktop.png';panel.screenshot(path=str(path));shots.append(path)
-            # The row's last link («Скасувати валідацію») runs past the row's right edge: a margin keeps it whole.
-            box=page.locator('#workspace-status-row').bounding_box()
-            path=folder/'run-progress-desktop.png'
-            page.screenshot(path=str(path),clip={'x':box['x']-8,'y':box['y']-8,'width':box['width']+40,'height':box['height']+16});shots.append(path)
+            path=folder/'run-progress-desktop.png';page.locator('#workspace-status-row').screenshot(path=str(path));shots.append(path)
             page.close()
         finally:browser.close()
     return shots

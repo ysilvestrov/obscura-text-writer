@@ -184,8 +184,10 @@ async function audit(){
 }
 async function resume(run){
   if(busy)return;
+  busy=true;render();  // a second click while the confirmation is open must not open another one
   try{await invokeWorkspaceCommand('resume-run',run)}
   catch(error){if(error.name!=='AbortError')notice(error.message,'error')}
+  finally{busy=false;render()}
 }
 async function decide(action){
   if(busy)return;

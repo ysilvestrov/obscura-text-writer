@@ -67,6 +67,11 @@ export function addRunCost(costs,runId,attemptId,usage){
 }
 
 export const dollars=value=>`$${value<0.01?value.toFixed(4):value.toFixed(2)}`;
+// An upper bound is never printed below its computed value: it rounds up at the displayed precision (4 places under a cent, else cents).
+export const dollarsUpper=value=>{
+  const scale=value<0.01?1e4:100;
+  return dollars(Math.ceil(value*scale-1e-7)/scale);
+};
 export function runCostText(costs,runId){
   if(costs?.runId!==runId||!costs.lastUsage)return '';
   const known=Object.values(costs.byAttempt).filter(value=>value!==null),last=usageUsd(costs.lastUsage);

@@ -69,6 +69,12 @@ test('book validation stops on a discrepancy, leads to the scene and finishes th
   await expect(page.locator('#run-actions').getByRole('button',{name:'Продовжити',exact:true})).toBeHidden();
   await expect(primary).toHaveText('Продовжити валідацію');
   await expect(page.getByRole('button',{name:'Перевірити Ревізором'})).toHaveCount(0);
+  // The row's actions stay inside the status row (the last button may wrap below, never run past the edge).
+  const rowBox=await page.locator('#workspace-status-row').boundingBox();
+  for(const button of await page.locator('#workspace-status-row #run-actions button:visible').all()){
+    const box=await button.boundingBox();
+    expect(box.x+box.width).toBeLessThanOrEqual(rowBox.x+rowBox.width+0.5);
+  }
   await expect(primary).toBeEnabled();
   await primary.click();
   dialog=page.locator('dialog[open]');
@@ -189,8 +195,10 @@ test('a run that takes the run row blocks «Продовжити валідац�
   const dialog=page.locator('dialog[open]');
   await expect(dialog).toContainText('Сцен до перевірки: 2.');
   await expect(page.locator('#run-status .run-progress-title')).toHaveText(/^Валідація книги/);
+  await expect(primary).toBeDisabled();  // busy while the consent is open: no second dialog from a double click
   await dialog.getByRole('button',{name:'Скасувати'}).click();
   await expect(dialog).toBeHidden();
+  await expect(primary).toBeEnabled();
   expect(resumes).toEqual([]);
   expect((await runs()).find(run=>run.id===book.id).state).toBe('needs_review');
 });

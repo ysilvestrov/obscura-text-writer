@@ -37,7 +37,7 @@ test('the auditor checks the scene after consent and the author decides its disc
   await page.waitForTimeout(500);
   release();
   // A local auditor has no price: the calls only.
-  await expect(cost).toHaveText(`${before.calls} викл.`);
+  await expect(cost).toHaveText(`Викликів: ${before.calls}`);
   await expect(approve).toBeFocused();
   await page.unroute('**/audit/preview');
   await expect(button).toBeEnabled();
@@ -59,7 +59,7 @@ test('the auditor checks the scene after consent and the author decides its disc
   await approve.click();
   await expect(panel).toBeFocused();
   await expect(brief).toHaveAttribute('data-state','ok');
-  await expect(cost).toHaveText(`${before.calls-1} викл.`);
+  await expect(cost).toHaveText(`Викликів: ${before.calls-1}`);
   await button.click();
   dialog=page.getByRole('dialog');
   await expect(dialog).toContainText('Зв’язки до перевірки: проза');
@@ -138,7 +138,7 @@ test('a failed preview is read again on the next refresh',async({page,request})=
   await expect(button).toBeDisabled();
   fail=false;
   await page.evaluate(()=>document.dispatchEvent(new CustomEvent('story-refreshed')));
-  await expect(page.locator('#scene-consistency .consistency-cost')).toHaveText('2 викл.');
+  await expect(page.locator('#scene-consistency .consistency-cost')).toHaveText("Викликів: 2");
   await expect(button).toBeEnabled();
   await expect(reason).toBeHidden();
 });
@@ -165,7 +165,7 @@ test('a late preview of another scene is dropped',async({page,request})=>{
   else await page.locator('#scene-list .scene-item').nth(1).click();
   await expect(page.locator('#scene-title')).toContainText('Вечір');
   await page.waitForTimeout(2000);
-  await expect(page.locator('#scene-consistency .consistency-cost')).toHaveText(`${own.calls} викл.`);
+  await expect(page.locator('#scene-consistency .consistency-cost')).toHaveText(`Викликів: ${own.calls}`);
 });
 
 // MODEL-001: an auditor without saved settings runs on the editor's model; saving its form keeps a row of its own, with

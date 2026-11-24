@@ -48,3 +48,6 @@ assert.equal(progressText(book,{...base,calls:{done:undefined,planned:4}},scenes
 const odd=progressText(book,{...base,calls:{done:2,planned:'x'}},scenes);
 assert.ok(odd.counts.startsWith('Викликів: 2')&&!odd.counts.includes(' / '),odd.counts);
 assert.equal(odd.fraction,null);
+
+// The bound rounds up, the spent amount rounds as before.
+assert.equal(progressText(book,{...base,spent_usd:'0.0149',bound_usd:'0.0149'},scenes).counts,'Викликів: 5 / 23 · Витрачено: $0.01 з $0.02 (верхня межа)');
