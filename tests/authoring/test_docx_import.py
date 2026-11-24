@@ -159,7 +159,35 @@ def test_unsupported_content_warns():
         '<w:p><w:r><w:t>другий</w:t></w:r><w:r><w:footnoteReference w:id="2"/></w:r></w:p>'
         '<w:p><w:r><w:rPr><w:b/><w:rPrChange w:id="1" w:author="A"><w:rPr/></w:rPrChange></w:rPr><w:t>третій</w:t></w:r></w:p>'))
     assert [text(p.editor) for p in manuscript.paragraphs] == ['перший', 'другий', 'третій']
-    joined = '\n'.join(manuscript.warnings)
-    assert 'абзац 0:' in joined and 'абзац 1:' in joined and 'абзац 2:' in joined
     assert len(manuscript.warnings) == 4
-    assert any('таблицю' in w for w in manuscript.warnings)
+    assert all(w.paragraph in (0, 1, 2) for w in manuscript.warnings)
+    # The table sits after paragraph 0 and is reported against it.
+    assert sum('таблицю' in w.text for w in manuscript.warnings if w.paragraph == 0) == 1
+    assert any('виноску' in w.text for w in manuscript.warnings if w.paragraph == 1)
+    assert any('форматування' in w.text for w in manuscript.warnings if w.paragraph == 2)
+    assert not any('абзац' in w.text for w in manuscript.warnings)
+
+
+def test_table_first_has_no_paragraph_index():
+    manuscript = read_docx(package('<w:tbl><w:tr><w:tc><w:p/></w:tc></w:tr></w:tbl><w:p><w:r><w:t>а</w:t></w:r></w:p>'))
+    assert [w.paragraph for w in manuscript.warnings] == [None]
+
+
+def test_nested_insert_then_delete_is_in_neither_view():
+    comments = '<w:comment w:id="1" w:author="А"><w:p><w:r><w:t>x</w:t></w:r></w:p></w:comment>'
+    manuscript = read_docx(package(
+        '<w:p><w:r><w:t>а</w:t></w:r><w:ins><w:del><w:r><w:delText>ХХ</w:delText></w:r></w:del></w:ins>'
+        '<w:del><w:ins><w:r><w:t>УУ</w:t></w:r></w:ins></w:del><w:commentRangeStart w:id="1"/><w:r><w:t>б</w:t></w:r>'
+        '<w:commentRangeEnd w:id="1"/></w:p>', comments))
+    paragraph = only(manuscript)
+    assert text(paragraph.editor) == 'аб' and text(paragraph.original) == 'аб' and paragraph.changed is True
+    assert manuscript.comments[0].start == (0, 1) and manuscript.comments[0].end == (0, 2)
+
+
+def test_deep_nesting_is_a_value_error():
+    depth = 5000
+    body = '<w:p>' + '<w:ins>' * depth + '<w:r><w:t>а</w:t></w:r>' + '</w:ins>' * depth + '</w:p>'
+    with pytest.raises(ValueError):
+        read_docx(package(body))
+    with pytest.raises(ValueError):
+        read_docx(package('<w:sdt>' * depth + '</w:sdt>' * depth))

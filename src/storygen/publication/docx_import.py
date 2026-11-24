@@ -19,6 +19,9 @@ OLE_MAGIC = b'\xd0\xcf\x11\xe0'
 PARTS = ('[Content_Types].xml', 'word/document.xml', 'word/comments.xml', 'docProps/custom.xml')
 _DOCTYPE = re.compile(rb'<!doctype', re.I)
 _OFF = {'0', 'false', 'off', 'none'}
+# Nesting of tracked changes: text inserted and then deleted never was in the original and is not in the result.
+_COMBINE = {('both', 'ins'): 'ins', ('both', 'del'): 'del', ('ins', 'ins'): 'ins', ('del', 'del'): 'del',
+            ('ins', 'del'): 'none', ('del', 'ins'): 'none', ('none', 'ins'): 'none', ('none', 'del'): 'none'}
 _TRANSPARENT = ('hyperlink', 'smartTag', 'sdt', 'sdtContent', 'fldSimple', 'customXml')
 
 
@@ -48,12 +51,18 @@ class DocxComment:
 
 
 @dataclass(frozen=True)
+class DocxWarning:
+    paragraph: int | None  # 0-based index into DocxManuscript.paragraphs; None for the document as a whole
+    text: str
+
+
+@dataclass(frozen=True)
 class DocxManuscript:
     story_id: str | None
     export_id: str | None
     paragraphs: tuple[DocxParagraph, ...]
     comments: tuple[DocxComment, ...]
-    warnings: tuple[str, ...]
+    warnings: tuple[DocxWarning, ...]
 
 
 def _q(name):
@@ -137,7 +146,7 @@ class _Reader:
         self.warnings = []
 
     def warn(self, index, text):
-        message = f'абзац {index}: {text}'
+        message = DocxWarning(index, text)
         if message not in self.warnings:
             self.warnings.append(message)
 
@@ -146,7 +155,7 @@ class _Reader:
             if child.tag == _q('p'):
                 self.paragraph(child)
             elif child.tag == _q('tbl'):
-                self.warn(len(self.paragraphs), 'таблицю пропущено разом з текстом у ній (абзаци таблиці не імпортуються)')
+                self.warn(len(self.paragraphs) - 1 if self.paragraphs else None, 'таблицю пропущено разом з текстом у ній')
             elif child.tag == _q('commentRangeStart'):
                 self.starts.setdefault(child.get(_q('id')), (len(self.paragraphs), 0))
             elif child.tag == _q('commentRangeEnd'):
@@ -176,10 +185,10 @@ class _Reader:
                 self.run(child, state, mode)
             elif tag in (_q('ins'), _q('moveTo')):
                 state['changed'] = True
-                self.walk(child, index, state, 'ins')
+                self.walk(child, index, state, _COMBINE[mode, 'ins'])
             elif tag in (_q('del'), _q('moveFrom')):
                 state['changed'] = True
-                self.walk(child, index, state, 'del')
+                self.walk(child, index, state, _COMBINE[mode, 'del'])
             elif tag == _q('bookmarkStart'):
                 if child.get(_q('name')):
                     state['bookmarks'].append(child.get(_q('name')))
@@ -204,9 +213,9 @@ class _Reader:
         if not text:
             return
         run = Run(text, _flag(rpr, 'b'), _flag(rpr, 'i'))
-        if mode != 'del':
+        if mode in ('both', 'ins'):
             state['editor'].append(run)
-        if mode != 'ins':
+        if mode in ('both', 'del'):
             state['original'].append(run)
             state['length'] += len(text)
 
@@ -231,6 +240,13 @@ def _identity(data):
 
 def read_docx(content: bytes) -> DocxManuscript:
     """Read an editor's DOCX; raise ValueError with a Ukrainian reason when the file must not be imported."""
+    try:
+        return _read(content)
+    except RecursionError as exc:
+        raise ValueError('DOCX: структура документа занадто глибоко вкладена') from exc
+
+
+def _read(content):
     parts = _read_parts(content)
     if '[Content_Types].xml' in parts:
         _parse(parts['[Content_Types].xml'], '[Content_Types].xml')
