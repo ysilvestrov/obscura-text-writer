@@ -60,3 +60,16 @@ def test_mixed_alphabet_warning_does_not_guess_name():
     cards,warnings=cards_from_markdown('## Cлужанки:\nТочний опис.','source')
     assert cards[0]['name']=='Cлужанки'
     assert any('латин' in warning and 'кирил' in warning for warning in warnings)
+
+
+@pytest.mark.req('CHARACTER-NAMES')
+def test_import_warns_about_shared_names_and_card_name_wins_in_plan(tmp_path):
+    # CHARACTER-NAMES-S06: the import result carries the characters page warnings; the card name resolves the plan.
+    repo=Repository(tmp_path);story=repo.create_story(StoryCreate(title='Агенти'))
+    cards="## Айя\nАгентка.\n\n## Айя-бот\nІнше ім'я: Айя\nПомічник.\n"
+    result=import_sources(repo,story.id,[SourceFile(name='chars.md',raw=cards.encode(),kind='source_characters'),
+        SourceFile(name='plan.md',raw='Сцена 1: Зустріч\nХто бере участь: Айя, Айя-бот.'.encode())])
+    shadowed='Ім’я «Айя» є основним ім’ям картки «Айя» та іншим ім’ям карток: Айя-бот; у плані воно означає основну картку.'
+    assert shadowed in result.files[0].warnings and shadowed in result.warnings
+    saved=load_characters(repo.read_text(repo.get_story(story.id).characters_version_id))
+    assert repo.list_scenes(story.id)[0].character_ids==[c.id for c in saved]

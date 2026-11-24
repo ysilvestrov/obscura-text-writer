@@ -31,7 +31,8 @@ If a character goes by several names, list the other names in a card entry with 
 - Plans recognise the character by the card name and by every other name: in the scene cast, `Knows:`, the narrator line and `Protagonist:`.
 - To have the character called differently from some scene on, set the entry with the line `Other name: John` to **Starting from a scene**. From that scene the models call the character John and see the earlier names: "John (also: Boss)". Obscura does not insert the name John into earlier scenes; your own text in plans or other entries goes as written.
 - An entry without a first scene only adds a name; it does not change what the character is called.
-- If two cards share a name, the page shows a warning, and a plan using that name asks you to clarify the cast.
+- A card name wins over another card's other name: with the cards "Aya" and "Aya-bot" whose entry says `Other name: Aya`, "Aya" in a plan means the card "Aya". The Characters page and the import result point this out.
+- If two cards share a card name, or two cards share an other name, the page and the import result show a warning, and a plan using that name asks you to clarify the cast.
 - The interface calls the character by the card name. A name change makes stale the drafts whose requests it changed.
 
 ## Protagonist and acquaintances

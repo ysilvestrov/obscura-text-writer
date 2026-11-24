@@ -53,6 +53,7 @@ def _characters(repo,view,story,text,version,item,publication):
     from ..characters.importing import cards_from_markdown
     from ..characters.models import load_characters
     from ..characters.service import prepare_character_material
+    from ..characters.names import name_warnings
     existing=load_characters(view.read_text(story.characters_version_id)) if story.characters_version_id else []
     cards,warnings=cards_from_markdown(text,version.id)
     item.warnings.extend(warnings)
@@ -68,6 +69,7 @@ def _characters(repo,view,story,text,version,item,publication):
         publication.active_characters_version_id=version.id
         item.created_character_cards=len(new)
         item.warnings.append(f'Створено нових карток персонажів: {len(new)}. Часову доступність описів не перевірено; перегляньте картки.')
+        item.warnings.extend(name_warnings(load_characters(json.dumps(payload,ensure_ascii=False))))  # CHARACTER-NAMES-S06
     elif not cards:
         if not story.characters_version_id:publication.active_characters_version_id=version.id
         item.warnings.append('Картки не створено: потрібні заголовки імен з описом нижче. Файл збережено; картки можна додати вручну.')
