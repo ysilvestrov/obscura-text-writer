@@ -3,6 +3,8 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 import sys
 sys.path.insert(0,str(Path(__file__).resolve().parents[3]))
+# The checkout's own sources first: in a worktree the virtualenv's editable install points at another checkout.
+sys.path.insert(0,str(Path(__file__).resolve().parents[3]/'src'))
 
 import uvicorn
 
@@ -531,6 +533,34 @@ def main():
             if slow_planner:
                 save_role_settings(repo,story.id,'planner',RoleSettings(provider=ProviderSettings(model='synthetic-slow')),repo.get_story(story.id).revision)
             return dict(story_id=story.id,first_id=ids[0],second_id=ids[1])
+
+        @app.post('/test-editor-import')
+        def editor_import_fixture():
+            """EDITOR-IMPORT UI: three scenes exported to DOCX; the editor changed scene 1 (tracked), left a comment on
+            scene 2, and scene 3's prose changed after the export, so the summary needs the author's choice."""
+            import base64
+            from storygen.application.exports import export_story
+            from storygen.generation.dependencies import save_manual_prose
+            from tests.publication.editor_import_helpers import edit, ranged, run, split, tracked
+            story=rated_story('Маяк на пірсі')
+            ids=[]
+            for title,text in (('Ранок','Ранок на пірсі був тихий.'),('Хвилі','Хвилі билися об старі палі.'),('Вечір','Увечері маяк засвітився.')):
+                scene=repo.create_scene(story.id,SceneCreate(title=title,beats=title))
+                save_manual_prose(repo,scene.id,text,repo.get_scene(scene.id).revision,content_format='markdown')
+                ids.append(scene.id)
+            content=export_story(repo,story.id,'docx').read_bytes()
+            def change(xml):
+                xml=split(xml,'тихий',tracked('тихий','ясний'))
+                return split(xml,'старі палі',ranged(7,run('старі палі')))
+            docx=edit(content,change,[(7,'Редакторка','Які саме палі?')])
+            save_manual_prose(repo,ids[2],'Увечері маяк спалахнув.',repo.get_scene(ids[2]).revision,content_format='markdown')
+            return {'story_id':story.id,'docx_base64':base64.b64encode(docx).decode('ascii'),'scene_ids':ids}
+
+        @app.post('/test-editor-import-touch/{scene_id}')
+        def editor_import_touch(scene_id: str):
+            # Changes a scene's prose between the summary and the save: the save then answers 409.
+            from storygen.generation.dependencies import save_manual_prose
+            save_manual_prose(repo,scene_id,'Ранок на пірсі був зовсім інший.',repo.get_scene(scene_id).revision,content_format='markdown')
 
         uvicorn.run(app, host='127.0.0.1', port=port, log_level='warning')
 
