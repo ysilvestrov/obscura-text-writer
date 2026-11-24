@@ -2654,8 +2654,8 @@
     "editor_import.server.scene.unknown_base": "«{p0}»: Експорт не знайдено; редактор правив без режиму виправлень або прозу змінено.",
     "editor_import.server.scene.deleted_all_text": "«{p0}»: Редактор видалив увесь текст сцени.",
     "editor_import.server.scene.draft_only": "«{p0}»: Лише чернетка: правки не вміщуються в перегляд.",
-    "editor_import.server.scene.dropped_notes": "«{p0}»: Примітки понад межі не імпортовано: {p0}.",
-    "editor_import.server.scene.draft_comments": "«{p0}»: У чинній чернетці є коментарі ({p0}); вони лишаться в попередній версії чернетки.",
+    "editor_import.server.scene.dropped_notes": "«{p0}»: Примітки понад межі не імпортовано: {p1}.",
+    "editor_import.server.scene.draft_comments": "«{p0}»: У чинній чернетці є коментарі ({p1}); вони лишаться в попередній версії чернетки.",
     "editor_import.server.scene.pending_review": "«{p0}»: Спершу вирішіть пропозицію попереднього імпорту редакції.",
     "editor_import.server.unsupported_markup": "Розмітку прози не можна передати через DOCX без змін; сцену не імпортовано.",
     "editor_import.server.manifest_missing": "Експорт, з якого зроблено файл, не знайдено або його маніфест пошкоджено: сцени, правлені без режиму виправлень, потребують вашого вибору.",
@@ -2696,7 +2696,12 @@
     "editor_import.server.docx.doctype": "DOCX: файл містить DOCTYPE; такий XML не читається",
     "editor_import.server.docx.bad_xml": "DOCX: {p0} не є коректним XML",
     "editor_import.server.docx.too_deep": "DOCX: структура документа занадто глибоко вкладена",
-    "editor_import.server.docx.no_body": "DOCX: у word/document.xml немає тіла документа"
+    "editor_import.server.docx.no_body": "DOCX: у word/document.xml немає тіла документа",
+    "editor_import.server.place.heading": "«{p0}», заголовок",
+    "editor_import.server.place.paragraph": "«{p0}», абзац {p1}",
+    "editor_import.server.place.fragment_heading": "Фрагмент «{p0}», заголовок",
+    "editor_import.server.place.fragment_paragraph": "Фрагмент «{p0}», абзац {p1}",
+    "editor_import.server.place.document_paragraph": "Абзац {p0} документа"
   },
   "en": {
     "ui.save": "Save",
@@ -5353,8 +5358,8 @@
     "editor_import.server.scene.unknown_base": "«{p0}»: The export was not found; the editor worked without track changes, or the prose was changed.",
     "editor_import.server.scene.deleted_all_text": "«{p0}»: The editor deleted the whole text of the scene.",
     "editor_import.server.scene.draft_only": "«{p0}»: Draft only: the edits do not fit into the review.",
-    "editor_import.server.scene.dropped_notes": "«{p0}»: Comments over the limit were not imported: {p0}.",
-    "editor_import.server.scene.draft_comments": "«{p0}»: The current draft has comments ({p0}); they stay in the previous draft version.",
+    "editor_import.server.scene.dropped_notes": "«{p0}»: Comments over the limit were not imported: {p1}.",
+    "editor_import.server.scene.draft_comments": "«{p0}»: The current draft has comments ({p1}); they stay in the previous draft version.",
     "editor_import.server.scene.pending_review": "«{p0}»: First resolve the proposal from the previous editor import.",
     "editor_import.server.unsupported_markup": "The prose markup cannot be passed through DOCX unchanged; the scene was not imported.",
     "editor_import.server.manifest_missing": "The export this file was made from was not found or its manifest is damaged: scenes edited without track changes need your choice.",
@@ -5395,6 +5400,11 @@
     "editor_import.server.docx.doctype": "DOCX: the file contains a DOCTYPE; such XML is not read",
     "editor_import.server.docx.bad_xml": "DOCX: {p0} is not valid XML",
     "editor_import.server.docx.too_deep": "DOCX: the document structure is nested too deeply",
-    "editor_import.server.docx.no_body": "DOCX: word/document.xml has no document body"
+    "editor_import.server.docx.no_body": "DOCX: word/document.xml has no document body",
+    "editor_import.server.place.heading": "«{p0}», heading",
+    "editor_import.server.place.paragraph": "«{p0}», paragraph {p1}",
+    "editor_import.server.place.fragment_heading": "Fragment «{p0}», heading",
+    "editor_import.server.place.fragment_paragraph": "Fragment «{p0}», paragraph {p1}",
+    "editor_import.server.place.document_paragraph": "Paragraph {p0} of the document"
   }
 }

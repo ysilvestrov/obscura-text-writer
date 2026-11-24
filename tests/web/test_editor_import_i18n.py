@@ -1,5 +1,7 @@
 """EDITOR-IMPORT: the proposal source in the copyedit API and the English text of every import message."""
 import re
+import subprocess
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
@@ -14,7 +16,7 @@ from tests.publication.test_editor_import import book, edit, drop_manifest, impo
 
 CYRILLIC = re.compile('[А-Яа-яІіЇїЄєҐґ]')
 
-# (uk text as the server builds it, `{pN}` values to substitute are already filled in: Latin so the result is checkable)
+# The uk texts exactly as the server builds them, with Latin values for the variable parts so the result is checkable.
 MESSAGES = [
     editor_import.PENDING_REVIEW,
     editor_import.FORMATTING_LOST,
@@ -44,7 +46,6 @@ MESSAGES = [
     'вбудований об’єкт не імпортовано',
     'виноску не імпортовано',
     'зміну форматування проігноровано (імпортується лише текст)',
-    'Paragraph: таблицю пропущено разом з текстом у ній',
     # the apply result prefixes a scene warning with its title
     '«Dawn»: редактор вилучив увесь текст сцени; сцену не імпортовано.',
     '«Dawn»: ' + editor_import.PENDING_REVIEW,
@@ -94,16 +95,58 @@ def test_prefixed_http_error_has_english():
 
 def test_real_preview_warnings_have_english(tmp_path):
     repo, story, scenes, content = book(tmp_path)
-    drop_manifest(tmp_path, story, content)
     changed = edit(content, lambda xml: xml.replace('Вечір.', 'Вечір.</w:t></w:r><w:r><w:drawing/><w:t>'))
     preview = preview_import(repo, story.id, changed)
-    warnings = list(preview.warnings) + [w for item in preview.scenes for w in item.warnings]
-    assert warnings
-    for warning in warnings:
-        english = diagnostic(warning, 'en')
-        # the scene title and the paragraph place inside the reader warning are the author's and the place's words
-        assert english != warning, warning
-    assert not CYRILLIC.search(diagnostic(preview.warnings[0], 'en'))
+    [reader] = preview.scenes[2].warnings
+    title = scenes[2].title
+    assert reader == f'«{title}», абзац 1: малюнок або фігуру не імпортовано'
+    assert diagnostic(reader, 'en') == f'«{title}», paragraph 1: the picture or shape was not imported'
+    # the same warning after the apply prefixed it with the scene title
+    assert diagnostic(f'«{title}»: {reader}', 'en') == f'«{title}»: «{title}», paragraph 1: the picture or shape was not imported'
+    drop_manifest(tmp_path, story, content)
+    manifest = preview_import(repo, story.id, content)
+    assert not CYRILLIC.search(diagnostic(manifest.warnings[0], 'en'))
+
+
+@pytest.mark.parametrize('text,english', [
+    ('«Dawn», заголовок: таблицю пропущено разом з текстом у ній', '«Dawn», heading: the table was skipped together with the text in it'),
+    ('«Dawn», абзац 3: виноску не імпортовано', '«Dawn», paragraph 3: the footnote was not imported'),
+    ('Фрагмент «Dusk», заголовок: виноску не імпортовано', 'Fragment «Dusk», heading: the footnote was not imported'),
+    ('Фрагмент «Dusk», абзац 2: малюнок або фігуру не імпортовано', 'Fragment «Dusk», paragraph 2: the picture or shape was not imported'),
+    ('Абзац 7 документа: вбудований об’єкт не імпортовано', 'Paragraph 7 of the document: the embedded object was not imported'),
+    ('Примітки понад межі не імпортовано: 3.', 'Comments over the limit were not imported: 3.'),
+    ('«Dawn»: Примітки понад межі не імпортовано: 3.', '«Dawn»: Comments over the limit were not imported: 3.'),
+    ('«Dawn»: У чинній чернетці є коментарі (4); вони лишаться в попередній версії чернетки.',
+     '«Dawn»: The current draft has comments (4); they stay in the previous draft version.'),
+    ('Примітки поза розпізнаними сценами не імпортовано: 2.', 'Comments outside the recognized scenes were not imported: 2.'),
+    ('Заголовок «Dawn»: кілька закладок сцен, фрагмент не розпізнано.', 'Heading «Dawn»: several scene bookmarks, the fragment was not recognized.'),
+    ('Назву змінено редактором: заголовок «Dawn» прийнято за сцену «Dusk» за місцем у тексті.',
+     'The title was changed by the editor: heading «Dawn» was taken for the scene «Dusk» by its place in the text.'),
+    ('«Dawn»: сцену не імпортовано — ' + editor_import.SCENE_CHANGED,
+     '«Dawn»: the scene was not imported — the scene prose was changed after the summary'),
+    ('«Dawn»: сцену не імпортовано — disk error', '«Dawn»: the scene was not imported — disk error'),
+    ('«Dawn»: сцену не імпортовано — ' + 'Твір змінився після зведення; перегляньте його ще раз',
+     '«Dawn»: the scene was not imported — The story changed after the summary; review the file again'),
+    ('Файл має бути до 20 MiB', 'The file must be at most 20 MiB'),
+    ('DOCX: word/document.xml не є коректним XML', 'DOCX: word/document.xml is not valid XML'),
+])
+def test_parameters_land_in_place(text, english):
+    assert diagnostic(text, 'en') == english
+
+
+def test_no_repeated_placeholder_in_import_keys():
+    from storygen.web.localization import catalogs
+    for locale, messages in catalogs().items():
+        for key, value in messages.items():
+            if key.startswith('editor_import.server.'):
+                names = re.findall(r'{(p\d+)}', value)
+                assert len(names) == len(set(names)), (locale, key, value)
+
+
+def test_js_diagnostic_translates_the_same_import_strings():
+    result = subprocess.run(['node', str(Path(__file__).parent / 'js' / 'editor_import_diagnostic.mjs')],
+                            capture_output=True, encoding='utf8', timeout=20)
+    assert result.returncode == 0, result.stderr
 
 
 def client_for(tmp_path):
