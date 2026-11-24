@@ -12,10 +12,11 @@ sys.path.insert(0, str(ROOT / 'src'))
 sys.path.insert(0, str(ROOT / 'scripts'))
 
 from memory_bench.extract import extract_story  # noqa: E402
-from memory_bench.metrics import aggregate, control_hits, scene_metrics  # noqa: E402
+from memory_bench.metrics import aggregate, control_hits, pair_hits, pair_summary, scene_metrics  # noqa: E402
 from memory_bench.model import DEFAULT_TOKENIZER, FERTILITY, realistic_ratio, set_tokenizer  # noqa: E402
+from memory_bench.ranking import pair_ranks  # noqa: E402
 from memory_bench.strategies import (STRATEGIES, Params, catalog_full, catalog_full_v4, catalog_narrow,  # noqa: E402
-                                     catalog_narrow_v4, product)
+                                     catalog_narrow_v4, fts_rank, full, product, record_layers)
 from memory_bench.synthetic import fit_linear, generate, measure_rates  # noqa: E402
 
 MEASURES = ('conservative', 'realistic')
@@ -112,6 +113,76 @@ def growth(scenes, args):
     return out
 
 
+def _selections(scenes, name, mode, args, budget_of, measure):
+    return {s.number: STRATEGIES[name](s, Params(budget_of(s), measure, mode, core_recent_scenes=args.core_recent))
+            for s in scenes}
+
+
+def _load_pairs(args, story_id):
+    """(pairs, annotation of this story) when both files are given, else None."""
+    if not (args.pairs and args.pairs_annotation):
+        return None
+    pairs = json.loads(Path(args.pairs).read_text(encoding='utf-8'))
+    stories = json.loads(Path(args.pairs_annotation).read_text(encoding='utf-8')).get('stories', {})
+    return pairs, stories.get(story_id) or {}
+
+
+def evaluate_budget_steps(scenes, args, pair_data):
+    """Memory budget of a scene = step x the realistic tokens of its full memory; pairs only with pair data."""
+    unbounded = Params(10 ** 12, 'realistic', 'upper')
+    totals = {s.scene_id: full(s, unbounded).tokens_realistic for s in scenes}
+    by_number = {s.number: s for s in scenes}
+    result = {}
+    for text in args.budget_steps.split(','):
+        step, result[text.strip()] = float(text), {}
+        for key, name, mode in variants():
+            sels = _selections(scenes, name, mode, args, lambda s: int(step * totals[s.scene_id]), 'realistic')
+            ordered = [sels[s.number] for s in scenes]
+            entry = aggregate([scene_metrics(s, x) for s, x in zip(scenes, ordered)], ordered)
+            if pair_data:
+                entry['pairs'] = pair_summary(pair_hits(pair_data[1], pair_data[0], by_number, sels))
+            result[text.strip()][key] = entry
+    return result
+
+
+def layer_counts(annotation, entries, scenes_by_number, selections, params):
+    """Where annotated records present in memory came from: retrieval ('fts'), a structural layer or not selected."""
+    counts = {'not_selected': 0}
+    for entry in entries:
+        scene, sel = scenes_by_number.get(entry['repeat']), selections.get(entry['repeat'])
+        if scene is None or sel is None:
+            continue
+        by_layer, retrieved, chosen = record_layers(scene, params), set(sel.retrieval_ids), set(sel.record_ids)
+        categories = {r.claim_id: r.category for r in scene.records}
+        for claim in set(annotation.get(entry['id']) or ()) & set(categories):
+            if claim not in chosen:
+                layer = 'not_selected'
+            elif claim in retrieved:
+                layer = 'fts'
+            else:
+                layer = by_layer.get(claim) or ('timeline' if categories[claim] == 'timeline' else 'other')
+            counts[layer] = counts.get(layer, 0) + 1
+    return counts
+
+
+def evaluate_pairs(scenes, others, args, contexts, pair_data):
+    """pairs / ranking sections at the largest context (realistic measure); counts and codes only."""
+    pairs, annotation = pair_data
+    by_number = {s.number: s for s in scenes}
+    biggest = max(contexts)
+    budget_of = lambda s: budget(biggest, args, others.get(s.scene_id), 'realistic')
+    summary, layers, layers_control = {}, {}, {}
+    for key, name, mode in variants():
+        sels = _selections(scenes, name, mode, args, budget_of, 'realistic')
+        summary[key] = pair_summary(pair_hits(annotation, pairs, by_number, sels))
+        if name == 'structural_fts':
+            params = Params(0, 'realistic', mode, core_recent_scenes=args.core_recent)
+            layers[key] = layer_counts(annotation, pairs.get('pairs', []), by_number, sels, params)
+            layers_control[key] = layer_counts(annotation, pairs.get('controls', []), by_number, sels, params)
+    ranking = pair_ranks({'bm25': fts_rank}, annotation, pairs, by_number)
+    return summary, {**ranking, 'layers': layers, 'layers_control': layers_control}
+
+
 def run(args):
     from storygen.application.workspace_bench import _check_data_dir
     try:
@@ -155,6 +226,7 @@ def run(args):
                                                            'conservative', mode, core_recent_scenes=args.core_recent))
                     for s in scenes}
             cases[key] = control_hits(raw, by_id, sels)
+    pair_data = _load_pairs(args, story.id)
     report = {
         'story': {'scene_count': len(scenes),
                   'skipped': {k: v for k, v in skipped.items() if k.startswith('skipped_')},
@@ -174,6 +246,10 @@ def run(args):
                    'memory_share': args.memory_share, 'core_recent': args.core_recent, 'seed': args.seed,
                    'tokenizer': args.tokenizer, 'chars_per_token': round(realistic_ratio(), 3), 'synthetic': _ints(args.synthetic)},
     }
+    if pair_data:
+        report['pairs'], report['ranking'] = evaluate_pairs(scenes, others, args, contexts, pair_data)
+    if args.budget_steps:
+        report['budget_steps'] = evaluate_budget_steps(scenes, args, pair_data)
     return report, None
 
 
@@ -189,6 +265,9 @@ def main(argv=None):
     parser.add_argument('--core-recent', type=int, default=3)
     parser.add_argument('--synthetic', default='300,3000')
     parser.add_argument('--control-cases')
+    parser.add_argument('--pairs', help='planted pairs JSON {pairs, controls}; used together with --pairs-annotation')
+    parser.add_argument('--pairs-annotation', help='annotation JSON {stories: {story_id: {pair_id: [claim_id]}}}')
+    parser.add_argument('--budget-steps', help='comma-separated shares of the full memory as budget, e.g. 1.0,0.75,0.5,0.35,0.25')
     parser.add_argument('--seed', type=int, default=0)
     parser.add_argument('--tokenizer', choices=sorted(FERTILITY), default=DEFAULT_TOKENIZER,
                         help='realistic measure: Ukrainian fertility of this tokenizer family (ukrqualbench)')

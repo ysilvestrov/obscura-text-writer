@@ -94,3 +94,59 @@ def test_growth_is_not_budget_clipped(synthetic_repo):
     small=json.loads(run_cli(['--data',str(repo.root),'--synthetic','','--context','9000']).stdout)['growth']
     large=json.loads(run_cli(['--data',str(repo.root),'--synthetic','','--context','1000000']).stdout)['growth']
     assert small==large
+
+
+def _pair_files(tmp_path,story_id,info,annotate=True):
+    pairs=tmp_path/'pairs.json'
+    pairs.write_text(json.dumps({'pairs':[{'id':'p1','repeat':3},{'id':'p2','repeat':2}],'controls':[{'id':'k1','repeat':4}]}),encoding='utf-8')
+    ann=tmp_path/'ann.json'
+    stories={story_id:{'p1':[info['state']],'p2':[info['fact']],'k1':[info['fact']]}} if annotate else {}
+    ann.write_text(json.dumps({'stories':stories}),encoding='utf-8')
+    return ['--pairs',str(pairs),'--pairs-annotation',str(ann)]
+
+
+def test_budget_steps_section_present(synthetic_repo):
+    repo,_,_=synthetic_repo
+    out=run_cli(['--data',str(repo.root),'--synthetic','','--budget-steps','1.0,0.5'])
+    assert out.returncode==0,out.stderr
+    data=json.loads(out.stdout)
+    assert set(data['budget_steps'])=={'1.0','0.5'}
+    steps=data['budget_steps']['0.5']
+    assert {'full','structural_fts[core=lower]'}<=set(steps)
+    assert 'target_recall' in steps['full'] and 'pairs' not in steps['full']
+    assert 'pairs' not in data and 'ranking' not in data
+    base=json.loads(run_cli(['--data',str(repo.root),'--synthetic','']).stdout)
+    assert 'budget_steps' not in base and set(base)<=set(data)
+
+
+def test_pairs_section_counts_only(synthetic_repo,tmp_path):
+    repo,story_id,info=synthetic_repo
+    out=run_cli(['--data',str(repo.root),'--synthetic','','--budget-steps','0.75',*_pair_files(tmp_path,story_id,info)])
+    assert out.returncode==0,out.stderr
+    data=json.loads(out.stdout)
+    summary=data['pairs']['full']
+    assert summary['pair']['total']==2 and summary['pair']['hit']==2 and summary['control']['total']==1
+    assert data['budget_steps']['0.75']['full']['pairs']['pair']['total']==2
+    for secret in SECRETS+[info[k] for k in ('fact','state','thread','hidden')]+[story_id]:
+        assert secret not in out.stdout
+
+
+def test_ranking_section_has_bm25(synthetic_repo,tmp_path):
+    repo,story_id,info=synthetic_repo
+    out=run_cli(['--data',str(repo.root),'--synthetic','',*_pair_files(tmp_path,story_id,info)])
+    assert out.returncode==0,out.stderr
+    data=json.loads(out.stdout)
+    ranking=data['ranking']
+    assert set(ranking['bm25'])=={'pair','control'} and ranking['bm25']['pair']['total']==2
+    layers=ranking['layers']['structural_fts[core=upper]']
+    assert 'not_selected' in layers and sum(layers.values())==2
+    assert 'not_selected' in ranking['layers_control']['structural_fts[core=upper]']
+    assert set(ranking['layers'])=={'structural_fts[core=upper]','structural_fts[core=lower]'}
+    assert info['fact'] not in out.stdout
+
+
+def test_pairs_without_annotated_story_is_empty(synthetic_repo,tmp_path):
+    repo,story_id,info=synthetic_repo
+    out=run_cli(['--data',str(repo.root),'--synthetic','',*_pair_files(tmp_path,story_id,info,annotate=False)])
+    assert out.returncode==0,out.stderr
+    assert json.loads(out.stdout)['pairs']['full']['pair']['total']==0

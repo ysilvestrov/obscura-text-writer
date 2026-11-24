@@ -141,6 +141,12 @@ def _layers(scene: SceneInput, params: Params):
     return core, present, general, threads, facts, sorted(atmosphere, key=rotate)
 
 
+def record_layers(scene: SceneInput, params: Params) -> dict[str, str]:
+    """claim_id -> structural layer that holds the record (before the budget); records no layer holds are absent."""
+    names = ('core', 'present', 'general', 'threads', 'facts', 'atmosphere')
+    return {r.claim_id: name for name, items in zip(names, _layers(scene, params)) for r in items}
+
+
 def _structural(scene: SceneInput, params: Params, name: str):
     core, present, general, threads, facts, atmosphere = _layers(scene, params)
     budget, measure = _Budget(params), params.measure
