@@ -3169,7 +3169,9 @@
         "tests/generation/test_publication_long_book.py::test_selection_key_only_for_the_publication_suggestion",
         "tests/web/test_publication_ui.py::test_publication_dirty_async_save_conflict_and_upload",
         "tests/mcp/test_bridge_runs.py::test_publication_suggestion_carries_the_selection_of_a_long_book",
-        "tests/generation/test_publication_long_book.py::test_a_preamble_with_only_a_title_heading_is_no_idea"
+        "tests/generation/test_publication_long_book.py::test_a_preamble_with_only_a_title_heading_is_no_idea",
+        "tests/generation/test_publication_long_book.py::test_token_limit_alone_bounds_the_prefix",
+        "tests/generation/test_publication_long_book.py::test_reordered_book_with_the_same_count_changes_the_key"
       ],
       "manual": {
         "procedure": "docs/verification/manual.md#publication-long-book-browser",

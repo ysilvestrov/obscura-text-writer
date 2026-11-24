@@ -33,8 +33,9 @@ def largest_prefix(total,chars_fit,tokens_fit):
     return 0
 
 
-def selection_key(selection,idea):
-    return fingerprint({'included':selection['included'],'total':selection['total'],'last_scene_id':selection['last_scene_id'],
+def selection_key(selection,idea,scene_ids):
+    # The ordered IDs of the selected scenes: a reordered book with the same count and last scene is another selection.
+    return fingerprint({'included':selection['included'],'total':selection['total'],'scene_ids':list(scene_ids),
                         'idea_sha256':hashlib.sha256(idea.encode('utf-8')).hexdigest() if idea else None})
 
 
@@ -94,7 +95,7 @@ def build_publication_context(repo,story_id,expected_selection=None,enforce_sele
     last=captured.scenes[k-1][0]
     selection={'included':k,'total':total,'last_scene_id':last.id,'last_scene_title':last.title,
                'idea':bool(captured.idea),'bound_by':bound_by}
-    selection['key']=selection_key(selection,captured.idea)
+    selection['key']=selection_key(selection,captured.idea,[scene.id for scene,_ in captured.scenes[:k]])
     if enforce_selection and k<total and expected_selection!=selection['key']:
         # R16-SUGGEST-S07: an incomplete reading runs only as the author saw it in the preview.
         raise ValueError(SELECTION_CHANGED)

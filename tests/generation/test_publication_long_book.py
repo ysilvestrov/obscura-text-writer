@@ -152,6 +152,34 @@ def test_even_the_idea_and_the_first_scene_do_not_fit(tmp_path):
     assert not called and not repo.list_runs(story.id)
 
 
+@pytest.mark.req('R16-SUGGEST')
+def test_token_limit_alone_bounds_the_prefix(tmp_path):
+    """Cross-review: a token-bound partial request through build_publication_context, not only the search helper."""
+    repo, story = book(tmp_path, 5)
+    full = build_publication_context(repo, story.id)
+    scene_bytes = len(json.dumps(user(full)['scenes'][-1], ensure_ascii=False).encode('utf-8')) + 1
+    limit = full.estimated_tokens - scene_bytes // 2  # without a token profile: tokens = body bytes + 256
+    writer(repo, story.id, context_tokens=limit + 2048, max_output_tokens=2048)
+    context = build_publication_context(repo, story.id)
+    picked = selection(context)
+    assert picked['included'] == 4 and picked['bound_by'] == 'tokens'
+    assert context.estimated_tokens <= limit < full.estimated_tokens
+    writer(repo, story.id, context_tokens=context.estimated_tokens + 2048, max_output_tokens=2048)  # exactly at the limit
+    assert selection(build_publication_context(repo, story.id))['included'] == 4
+
+
+@pytest.mark.req('R16-SUGGEST')
+def test_reordered_book_with_the_same_count_changes_the_key(tmp_path):
+    repo, story = book(tmp_path, 3)
+    limited(repo, story, 1)
+    key = selection(build_publication_context(repo, story.id))['key']
+    scenes = repo.list_scenes(story.id)
+    from storygen.generation.publication_metadata import selection_key
+    picked = {'included': 2, 'total': 3}
+    assert selection_key(picked, IDEA, [scenes[0].id, scenes[1].id]) == key
+    assert selection_key(picked, IDEA, [scenes[2].id, scenes[1].id]) != key
+
+
 def test_prefix_search_survives_a_token_estimate_that_jumps():
     """Cross-review #1: the profile estimate is cheap inside its byte range and conservative outside it."""
     chars_fit = lambda k: k <= 9
