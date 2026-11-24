@@ -68,7 +68,7 @@ Scene statuses:
 - **resolve the previous proposal first** — the scene still has an unresolved proposal from an earlier import; importing again does not duplicate it.
 - **the scene has no prose** and **the prose markup cannot pass through DOCX** — the scene is not imported.
 
-If every scene can be imported without a choice, press **Import (N scenes)**. If some scenes changed after the export, the dialog names them, and the table shows for each what happens "if replaced". Instead of one button there are three:
+If every scene can be imported without a choice, press **Import scenes: N**. If some scenes changed after the export, the dialog names them, and the table shows for each what happens "if replaced". Instead of one button there are three:
 
 - **Cancel import** — change nothing and remove the uploaded file;
 - **Skip changed scenes** — import the rest and leave the changed scenes as they are;

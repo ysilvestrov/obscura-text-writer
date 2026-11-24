@@ -4,6 +4,7 @@ import {test,expect} from '../../../frontend/browser-test.mjs';
 // the choice for a scene changed after the export, the result with scene links and the proposal mark in the review panel.
 // Neutral example: three short scenes about a pier lighthouse.
 test.use({locale:'uk-UA'});
+const SCENE_TITLES=['Ранок','Хвилі','Вечір'];
 const DOCX='application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 
 async function seed(request){return (await request.post('/test-editor-import')).json()}
@@ -11,7 +12,8 @@ const file=fixture=>({name:'edition.docx',mimeType:DOCX,buffer:Buffer.from(fixtu
 
 async function openWorkspace(page,fixture,scene=fixture.scene_ids[0],material='plan'){
   await page.goto(`/stories/${fixture.story_id}?scene=${scene}&material=${material}`);
-  await expect(page.locator('#scene-title')).not.toBeEmpty();
+  // The template's placeholder is already non-empty: wait for the seeded scene title.
+  await expect(page.locator('#scene-title')).toHaveText(SCENE_TITLES[fixture.scene_ids.indexOf(scene)]);
 }
 async function openDialog(page){
   await page.locator('#story-menu-toggle').click();
@@ -67,7 +69,8 @@ test('the summary, the choice and the result lead to the proposal of scene 1',as
   await expect(dialog).toBeHidden();
   await expect(page.locator('#mode-tabs [data-mode="review"]')).toHaveAttribute('aria-selected','true');
   const panel=page.locator('.copyedit-review').filter({has:page.locator('summary',{hasText:'Правки редактора'})});
-  await panel.locator('summary').click();
+  // workspace-route.js already opens the panel in review mode; a click would close it.
+  if(!await panel.evaluate(node=>node.open))await panel.locator('summary').click();
   await expect(panel.locator('select option')).toHaveCount(1);
   await expect(panel.locator('select option').first()).toContainText(' · від редактора (DOCX)');
   await expect(panel.locator('[data-editor-import-note]')).toBeVisible();
@@ -123,6 +126,7 @@ test('a story changed after the summary shows the reason and offers the file cho
   await expect(dialog).toBeVisible();
   await expect(dialog.locator('#editor-import-summary')).toBeHidden();
   await expect(dialog.locator('#editor-import-file')).toBeVisible();
+  await expect(dialog.locator('#editor-import-file')).toBeFocused();
   // The file can be chosen again: a new summary of the current story.
   await dialog.locator('#editor-import-file').setInputFiles(file(fixture));
   await expect(dialog.locator('#editor-import-summary tbody tr')).toHaveCount(3);
@@ -141,6 +145,7 @@ test('the English interface shows English statuses and warnings',async({page,req
   expect((await dialog.innerText()).replace(/Ранок|Хвилі|Вечір/g,'')).not.toMatch(/[А-Яа-яІіЇїЄєҐґ]/);
   await dialog.locator('#editor-import-skip').click();
   await expect(dialog.locator('#editor-import-result')).toContainText('Imported scenes: 2 · skipped: 1');
+  await expect(dialog.locator('#editor-import-result')).toContainText("Edits are on the scene's Editing tab");
   // A link to another scene selects it and opens its draft (the comments-only scene has no proposal).
   await dialog.locator('#editor-import-result a',{hasText:'Хвилі'}).click();
   await expect(dialog).toBeHidden();

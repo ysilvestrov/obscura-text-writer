@@ -2728,7 +2728,7 @@
     "editor_import.skip": "Пропустити змінені сцени",
     "editor_import.replace": "Замінити все",
     "editor_import.replace_hint": "Ваші пізніші зміни з’являться як правки, які можна відхилити",
-    "editor_import.import": "Імпортувати ({p0} сцен)",
+    "editor_import.import": "Імпортувати сцени: {p0}",
     "editor_import.nothing": "У файлі немає змін для імпорту.",
     "editor_import.reading": "Читаємо файл…",
     "editor_import.saving": "Імпортуємо…",
@@ -5467,14 +5467,14 @@
     "editor_import.skip": "Skip changed scenes",
     "editor_import.replace": "Replace all",
     "editor_import.replace_hint": "Your later changes will appear as edits you can reject",
-    "editor_import.import": "Import ({p0} scenes)",
+    "editor_import.import": "Import scenes: {p0}",
     "editor_import.nothing": "The file has no changes to import.",
     "editor_import.reading": "Reading the file…",
     "editor_import.saving": "Importing…",
     "editor_import.choose_again": "{p0}. Choose the file again.",
     "editor_import.result": "Imported scenes: {p0} · skipped: {p1}",
     "editor_import.skipped_as": "skipped: {p0}",
-    "editor_import.where": "Edits are on the scene's review tab; comments are draft comments.",
+    "editor_import.where": "Edits are on the scene's Editing tab; comments are draft comments.",
     "editor_import.close": "Close"
   }
 }

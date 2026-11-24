@@ -17,6 +17,7 @@ export function mountChangeReview({host,state,api,json,notice,onApplied,onQueued
   const showSelection=document.createElement('button');showSelection.type='button';showSelection.className='secondary';uiText(showSelection,"textContent",()=>(t("m_2a4b06799113")));
   const selectedText=document.createElement('pre');selectedText.className='copyedit-selected-text';uiAttr(selectedText,'aria-label',()=>(t("m_a55579f6a944")));
   const warnings=document.createElement('p');warnings.className='muted';
+  const warningText=list=>(list||[]).map(diagnostic).join(' ');  // server warnings are Ukrainian catalog texts
   const proposalNote=document.createElement('p');proposalNote.className='muted';proposalNote.setAttribute('data-editor-import-note','');proposalNote.hidden=true;
   const classify=document.createElement('button');classify.type='button';classify.className='secondary';uiText(classify,"textContent",()=>(t("m_ea091064bccc")));
   const classificationInfo=document.createElement('p');classificationInfo.className='muted';
@@ -41,7 +42,7 @@ export function mountChangeReview({host,state,api,json,notice,onApplied,onQueued
     adapter.onReview?.(data);
     current=data;choices=[];edits.replaceChildren();
     const selected=preserved||new Set(data.decisions.length?data.decisions.at(-1).selected_indices:(data.default_selected_indices??data.edits.map((_,i)=>i)));
-    uiText(warnings,"textContent",()=>((data.warnings||[]).join(' ')));
+    uiText(warnings,"textContent",()=>warningText(data.warnings));
     proposalNote.hidden=data.source!=='editor_import';uiText(proposalNote,"textContent",()=>(data.source==='editor_import'?t('editor_import.proposal_note'):''));
     const history=data.classification_history||[],last=history.at(-1);
     const statuses={get completed(){return t("m_71fb1279f355")},get failed(){return t("m_5d7bd00d31cf")},get running(){return t("m_e36f5ec8b962")},get cancelled(){return t("m_7b52c9f5fa73")},get interrupted(){return t("m_df6c9d11fd91")}};
@@ -74,7 +75,7 @@ export function mountChangeReview({host,state,api,json,notice,onApplied,onQueued
     if(!hasChanges()){const empty=document.createElement('p');uiText(empty,"textContent",()=>(t("m_9dff3d6086f5")));edits.append(empty)}
     if(!indices().length){assembled={fingerprint:data.proposal_fingerprint,key:selectionKey(),text:data.original,warnings:[]};uiText(selectedText,"textContent",()=>(data.original))}
     else uiText(selectedText,"textContent",()=>(selectionReady()?assembled?.text||data.preview:t("m_3470cfbe73cc")));
-    if(selectionReady()&&assembled)uiText(warnings,"textContent",()=>((assembled.warnings||[]).join(' ')));
+    if(selectionReady()&&assembled)uiText(warnings,"textContent",()=>warningText(assembled.warnings));
     updateAvailability();
   }
   async function loadPreview(){
@@ -113,7 +114,7 @@ export function mountChangeReview({host,state,api,json,notice,onApplied,onQueued
     try{
       const result=await api(url(captured.sceneId,captured.attemptId,'/selection-preview'),json('POST',{expected_revision:current.expected_revision,proposal_fingerprint:captured.fingerprint,selected_indices:indices(),...extra()}));
       if(captured.epoch!==selectionEpoch||state.scene?.id!==captured.sceneId||current?.attempt_id!==captured.attemptId||selectionKey()!==captured.key)return;
-      assembled={fingerprint:captured.fingerprint,key:captured.key,text:result.text,warnings:result.warnings||[]};uiText(selectedText,"textContent",()=>(result.text));uiText(warnings,"textContent",()=>(assembled.warnings.join(' ')));
+      assembled={fingerprint:captured.fingerprint,key:captured.key,text:result.text,warnings:result.warnings||[]};uiText(selectedText,"textContent",()=>(result.text));uiText(warnings,"textContent",()=>warningText(assembled.warnings));
     }catch(error){notice(error.message,'error')}
     finally{selectionLoading=false;updateAvailability()}
   };

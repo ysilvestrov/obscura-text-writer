@@ -1324,6 +1324,7 @@
       "tests": [
         "tests/web/test_editor_import_ui.py::test_editor_import_dialog_markup",
         "tests/web/test_editor_import_ui.py::test_editor_import_strings_and_server_texts",
+        "tests/web/test_editor_import_ui.py::test_editor_import_final_review_fixes",
         "tests/web/test_copyedit_review_ui.py::test_change_review_marks_editor_import",
         "tests/web/test_editor_import_i18n.py::test_every_import_message_has_english",
         "tests/web/test_editor_import_i18n.py::test_real_preview_warnings_have_english",

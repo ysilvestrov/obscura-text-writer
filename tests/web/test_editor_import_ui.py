@@ -53,3 +53,24 @@ def test_editor_import_strings_and_server_texts():
     assert "method:'DELETE'" in script and '20*1024*1024' in script
     wiring = (STATIC/'editor-imports.js').read_text(encoding='utf-8')
     assert 'installEditorImport(' in wiring
+
+
+@pytest.mark.req('EDITOR-IMPORT')
+def test_editor_import_final_review_fixes():
+    catalog = json.loads((STATIC/'i18n.json').read_text(encoding='utf-8'))
+    # Plural-free wording: «1 сцен» / «1 scenes» cannot appear.
+    assert catalog['uk']['editor_import.import'] == 'Імпортувати сцени: {p0}'
+    assert catalog['en']['editor_import.import'] == 'Import scenes: {p0}'
+    # The result line names the tab by its real English label.
+    assert catalog['en']['m_c2320838b6df'] == 'Editing'
+    assert 'Editing tab' in catalog['en']['editor_import.where']
+    script = (STATIC/'editor-import.js').read_text(encoding='utf-8')
+    # A running save keeps its file: no DELETE while saving, and the list is refreshed even if the dialog was closed.
+    assert re.search(r'const discard=\(\)=>\{\s*if\(!pending\|\|saving\)return;', script)
+    assert re.search(r'if\(mine!==epoch\)\{try\{await refresh\?\.\(\)\}catch\{\}return\}', script)
+    # 409/404: the flags are cleared before the file input is focused, otherwise focus() hits a disabled input.
+    assert re.search(r'busy=saving=false;discard\(\);preview=null;[^\n]*show\(\'pick\'\);\s*setStatus[^\n]*input\.focus\(\)', script)
+    # Editor warnings in the review panel go through diagnostic() so the English panel shows English.
+    review = (STATIC/'change-review.js').read_text(encoding='utf-8')
+    assert '.map(diagnostic).join' in review
+    assert not re.search(r'warnings(\|\|\[\])?\)?\.join\(', review.replace('.map(diagnostic).join', ''))

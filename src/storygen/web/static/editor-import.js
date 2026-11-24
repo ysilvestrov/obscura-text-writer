@@ -26,7 +26,8 @@ export function installEditorImport({state,api,json,notice,document,refresh,sele
   let preview=null,pending=null,epoch=0,busy=false,saving=false,view='pick';
   const base=storyId=>`/api/stories/${storyId}/editor-import`;
   const discard=()=>{
-    if(!pending)return;const {storyId,importId}=pending;pending=null;
+    if(!pending||saving)return;  // a running save reads the file; the server deletes it after a successful apply
+    const {storyId,importId}=pending;pending=null;
     api(`${base(storyId)}/${importId}`,{method:'DELETE'}).catch(()=>{});  // the server also sweeps files older than 24 h
   };
   const setStatus=(render,kind='')=>{uiText(status,'textContent',render);status.className=kind};
@@ -127,14 +128,14 @@ export function installEditorImport({state,api,json,notice,document,refresh,sele
       const body={fingerprint:shown.fingerprint};if(changedScenes)body.changed_scenes=changedScenes;
       const result=await api(`${base(storyId)}/${shown.import_id}`,json('POST',body));
       if(pending?.importId===shown.import_id)pending=null;  // saved: the server already removed the file
-      if(mine!==epoch)return;
+      if(mine!==epoch){try{await refresh?.()}catch{}return}  // the dialog was closed meanwhile; the scene list still follows
       busy=false;renderResult(result,shown,changedScenes);setStatus(()=>'');show('result');
       try{await refresh?.()}catch{}  // the scene list and statuses follow the new drafts
     }catch(error){
       if(mine!==epoch)return;
       // 409: the story changed after the summary; 404: the kept file is gone. Either way the file is read again.
       if(error.status===409||error.status===404){
-        discard();preview=null;input.value='';tbody.replaceChildren();show('pick');
+        busy=saving=false;discard();preview=null;input.value='';tbody.replaceChildren();show('pick');
         setStatus(()=>t('editor_import.choose_again',{p0:diagnostic(error.message)}),'error');input.focus();
       }else setStatus(()=>diagnostic(error.message),'error');
     }finally{if(mine===epoch){busy=saving=false;sync()}}
