@@ -30,12 +30,22 @@ test('tariff stays under the chosen model after saving the role',async({page,req
   await page.route('**/api/providers/discover',route=>route.fulfill({json:{models:[{id:'synthetic-priced',context_tokens:200000,max_output_tokens:24000,uncensored:true,supports_schema:true,tariff}]}}));
   await page.goto(`/stories/${f.story_id}/settings`);await page.locator('[data-settings-role=writer]').click();
   const form=()=>page.locator('form[data-role=writer]'),info=()=>form().locator('[data-model-info]').first();
+  // A planner already showing the model, before any list is loaded.
+  const planner=page.locator('form[data-role=planner]'),plannerInfo=planner.locator('[data-model-info]').first();
+  await page.locator('[data-settings-role=planner]').click();await planner.locator('[name=provider]').selectOption('venice');await planner.locator('[name=model]').fill('synthetic-priced');
+  await expect(plannerInfo).toContainText(/Тариф невідомий|Tariff unknown/);
+  await page.locator('[data-settings-role=writer]').click();
   await form().locator('[name=provider]').selectOption('venice');
   await form().locator('.discover').click();await form().locator('[name=model]').fill('synthetic-priced');
   await expect(info()).toContainText('0.07');
-  await page.locator('#settings-save').click();await expect(page.locator('#settings-save')).toBeDisabled();
+  // The planner with the same provider and address picks up the loaded tariff without its own request.
+  await expect(plannerInfo).toContainText('0.07');
+  // Mark the original form: the assertions below must run against the form rebuilt after a successful save.
+  await form().evaluate(node=>node.dataset.beforeSave='1');
+  await page.locator('#settings-save').click();
+  await expect(page.locator('form[data-role=writer][data-before-save]')).toHaveCount(0);await expect(form()).toHaveCount(1);
   await expect(form().locator('[name=model]')).toHaveValue('synthetic-priced');
-  await expect(info()).toContainText('0.07');await expect(info()).not.toContainText('Тариф невідомий');
+  await expect(info()).toContainText('0.07');await expect(info()).not.toContainText(/Тариф невідомий|Tariff unknown/);
 });
 
 test('manual expired tariff is labelled and stale discovery cannot label another provider',async({page,request})=>{

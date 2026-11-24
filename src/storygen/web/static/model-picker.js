@@ -177,10 +177,12 @@ export function mountModelPicker({host,modelInput,providerInput,baseUrlInput,res
   responseModeInput?.addEventListener('change',()=>{message=null;render()});
   modelInput.form?.addEventListener('settings-reset',()=>{message=null;render()});
   // Forms are rebuilt on reload; a picker that was shown and then detached stops listening for locale changes.
+  // Another picker of the page may load the catalog of this identity: show it here too.
+  let watching=false;const onCatalog=event=>{if(!host.isConnected){if(watching)document.removeEventListener('model-catalog-loaded',onCatalog);return}watching=true;if(event.detail===identity()){message=null;render();catalogChanged()}};document.addEventListener('model-catalog-loaded',onCatalog);
   let attached=false;const onLocale=()=>{if(host.isConnected){attached=true;render()}else if(attached)document.removeEventListener('ui-locale-changed',onLocale)};document.addEventListener('ui-locale-changed',onLocale);
   render();bindLimits(limitInputs);
   return {capture:identity,bindLimits,clear,validate,update:render,selected:current,loaded:bound,open(){panel.hidden=false;render();toggle.focus()},setModels(models,captured){
     if(captured!==identity())return false;
-    loadedCatalogs.set(captured,new Map(models.map(model=>[model.id,model])));message=null;panel.hidden=false;render();catalogChanged();return true;
+    loadedCatalogs.set(captured,new Map(models.map(model=>[model.id,model])));panel.hidden=false;document.dispatchEvent(new CustomEvent('model-catalog-loaded',{detail:captured}));return true;
   }};
 }
