@@ -192,6 +192,24 @@ def test_workflow_publishes_only_from_main():
 
 
 @pytest.mark.req('DOCS-SITE')
+def test_deploy_retries_once_when_the_artifact_is_not_listed_yet():
+    import yaml
+    steps=yaml.safe_load((ROOT/'.github/workflows/site.yml').read_text(encoding='utf-8'))['jobs']['deploy']['steps']
+    deploys=[s for s in steps if str(s.get('uses','')).startswith('actions/deploy-pages@')]
+    assert [s.get('id') for s in deploys]==['deployment','deployment_retry']
+    first,retry=deploys
+    assert first.get('continue-on-error') is True and 'continue-on-error' not in retry
+    assert "steps.deployment.outcome == 'failure'" in retry['if']
+    ids=[s.get('id') or s.get('name') for s in steps]
+    wait=next(s for s in steps if s.get('name')=='Wait before the second publication attempt')
+    assert "steps.deployment.outcome == 'failure'" in wait['if'] and wait['run'].strip()=='sleep 30'
+    assert ids.index('deployment')<ids.index('Wait before the second publication attempt')<ids.index('deployment_retry')<ids.index('Check the published address')
+    check=next(s for s in steps if s.get('name')=='Check the published address')
+    assert check['env']['PAGE_URL']=='${{ steps.deployment.outputs.page_url || steps.deployment_retry.outputs.page_url }}'
+    assert '$PAGE_URL' in check['run'] and 'curl --fail' in check['run']
+
+
+@pytest.mark.req('DOCS-SITE')
 def test_heading_suffix_collision_gets_a_fresh_id():
     seen={}
     assert [heading_id(t,seen) for t in ['A','A-2','A']]==['a','a-2','a-3']

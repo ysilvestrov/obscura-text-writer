@@ -5665,6 +5665,18 @@
       }
     },
     {
+      "id": "DOCS-SITE-S12",
+      "requirement": "DOCS-SITE",
+      "scope": "Структура кроків публікації з однією повторною спробою; справжню затримку API артефактів GitHub локально не відтворити.",
+      "tests": [
+        "tests/test_docs_site.py::test_deploy_retries_once_when_the_artifact_is_not_listed_yet"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#docs-site-publish",
+        "reason": "Повтор спрацьовує лише на справжньому GitHub Actions, коли API артефактів запізнюється."
+      }
+    },
+    {
       "id": "DOCS-SITE-S06",
       "requirement": "DOCS-SITE",
       "scope": "Переписування посилань на розділи, id заголовків і помилка неіснуючого якоря. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
