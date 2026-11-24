@@ -1318,6 +1318,26 @@
       ]
     },
     {
+      "id": "EDITOR-IMPORT-S11",
+      "requirement": "EDITOR-IMPORT",
+      "scope": "Пункт меню після «Експорт…», розмітка діалогу, тексти uk/en і переклад повідомлень сервера, джерело пропозиції й мітка в панелі редактури. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/web/test_editor_import_ui.py::test_editor_import_dialog_markup",
+        "tests/web/test_editor_import_ui.py::test_editor_import_strings_and_server_texts",
+        "tests/web/test_copyedit_review_ui.py::test_change_review_marks_editor_import",
+        "tests/web/test_editor_import_i18n.py::test_every_import_message_has_english",
+        "tests/web/test_editor_import_i18n.py::test_real_preview_warnings_have_english",
+        "tests/web/test_editor_import_i18n.py::test_js_diagnostic_translates_the_same_import_strings",
+        "tests/web/test_editor_import_i18n.py::test_proposal_list_marks_editor_import",
+        "tests/web/test_editor_import_i18n.py::test_model_proposal_has_no_source",
+        "tests/test_capture_screenshots.py::test_editor_import_docx_gives_a_changed_scene_and_a_comment"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#editor-import-browser",
+        "reason": "check_docs.py індексує лише pytest; Playwright cases tests/web/browser/editor-import.spec.mjs (зведення, вибір, підсумок з посиланнями, мітка пропозиції, незбережені правки, скасування, 409, англійський інтерфейс) виконуються окремим runner, цей зв’язок не є доказом виконання."
+      }
+    },
+    {
       "id": "LANGUAGE-WARNINGS-S01",
       "requirement": "LANGUAGE-WARNINGS",
       "scope": "Контекстний дефект і чистий приклад. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",

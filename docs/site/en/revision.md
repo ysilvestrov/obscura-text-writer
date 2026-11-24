@@ -5,7 +5,7 @@
 The **Editing** stage follows the draft. The editor suggests changes, and you decide what to accept.
 
 - **Targeted language edits** (an editor role setting) fix spelling, punctuation and single sentences without rewriting the text. They are applied **Automatically after validation** or after **Author review first**.
-- In review, open **Editor changes**, tick the replacements you want and press **Accept edits**: this creates a new prose version.
+- In review, open **Editor changes**, tick the replacements you want and press **Accept edits**: this creates a new prose version. Edits from a manuscript an outside editor returned appear here too, marked “· from editor (DOCX)” — see [Importing the editor’s revision](publication.md#importing-the-editors-revision-docx).
 - If the stage stopped for your decision, after accepting press **Continue after accepted stage**: the editor is not called again.
 
 In the version history you can choose a draft or prose version and press **Check the selected version’s language**. The rules find letters from another alphabet, mixed alphabets within a word, repeated neighbouring words and a hyphen instead of a dash in dialogue. The saved version is checked, with no model call.

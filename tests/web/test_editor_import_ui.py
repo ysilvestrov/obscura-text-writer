@@ -3,11 +3,14 @@ import json
 import re
 from pathlib import Path
 
+import pytest
+
 from tests.web.test_workspace_layout_ui import page
 
 STATIC = Path(__file__).resolve().parents[2]/'src/storygen/web/static'
 
 
+@pytest.mark.req('EDITOR-IMPORT')
 def test_editor_import_dialog_markup(tmp_path):
     tree, html = page(tmp_path)
     menu = html[html.index('<nav id="story-menu"'):html.index('</nav>', html.index('<nav id="story-menu"'))]
@@ -32,6 +35,7 @@ def test_editor_import_dialog_markup(tmp_path):
     assert '<script type="module" src="/static/editor-imports.js"></script>' in html
 
 
+@pytest.mark.req('EDITOR-IMPORT')
 def test_editor_import_strings_and_server_texts():
     catalog = json.loads((STATIC/'i18n.json').read_text(encoding='utf-8'))
     assert catalog['uk']['editor_import.menu'] == 'Імпорт редакції (DOCX)…'
