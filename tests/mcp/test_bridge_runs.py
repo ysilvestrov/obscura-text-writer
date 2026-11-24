@@ -99,6 +99,10 @@ def test_publication_suggestion_carries_the_selection_of_a_long_book(tmp_path, m
     assert preview['selection'] == selection and preview['warnings'] == ['Книжка не вміщається']
     data = ok(call(server, 'start_run', {'story_id': story.id, 'action': 'publication_suggest', 'confirm': True}))
     assert app.state.coordinator.get_run(data['run_id']).request.expected_selection == 'b' * 64
+    app.state.coordinator.cancel(data['run_id'])
+    shown = ok(call(server, 'start_run', {'story_id': story.id, 'action': 'publication_suggest', 'confirm': True,
+                                          'selection_key': 'c' * 64}))
+    assert app.state.coordinator.get_run(shown['run_id']).request.expected_selection == 'c' * 64
 
 
 @pytest.mark.req('MCP-BRIDGE')

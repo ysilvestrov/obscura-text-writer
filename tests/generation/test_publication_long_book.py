@@ -130,6 +130,16 @@ def test_long_book_without_an_idea_says_so(tmp_path):
 
 
 @pytest.mark.req('R16-SUGGEST')
+def test_a_preamble_with_only_a_title_heading_is_no_idea(tmp_path):
+    repo, story = book(tmp_path, 3, idea='# Маяк')
+    context = build_publication_context(repo, story.id)
+    assert 'idea' not in user(context) and selection(context)['idea'] is False
+    assert 'idea_sha256' not in json.loads(context.fragments['publication_sources'])
+    repo2, story2 = book(tmp_path / 'titled', 3, idea=f'# Маяк\n\n{IDEA}')
+    assert user(build_publication_context(repo2, story2.id))['idea'] == f'# Маяк\n\n{IDEA}'
+
+
+@pytest.mark.req('R16-SUGGEST')
 def test_even_the_idea_and_the_first_scene_do_not_fit(tmp_path):
     repo, story = book(tmp_path, 3)
     writer(repo, story.id, max_input_chars=200)

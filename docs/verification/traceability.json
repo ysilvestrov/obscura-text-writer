@@ -3168,8 +3168,13 @@
         "tests/generation/test_publication_long_book.py::test_full_book_runs_without_a_selection_key",
         "tests/generation/test_publication_long_book.py::test_selection_key_only_for_the_publication_suggestion",
         "tests/web/test_publication_ui.py::test_publication_dirty_async_save_conflict_and_upload",
-        "tests/mcp/test_bridge_runs.py::test_publication_suggestion_carries_the_selection_of_a_long_book"
-      ]
+        "tests/mcp/test_bridge_runs.py::test_publication_suggestion_carries_the_selection_of_a_long_book",
+        "tests/generation/test_publication_long_book.py::test_a_preamble_with_only_a_title_heading_is_no_idea"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#publication-long-book-browser",
+        "reason": "check_docs.py індексує лише pytest; Playwright case tests/web/browser/publication-long-book.spec.mjs (рядок відбору, активна кнопка, «Прочитано…», ключ відбору в запуску) виконується окремим runner, цей зв’язок не є доказом виконання."
+      }
     },
     {
       "id": "R16-SUGGEST-S08",

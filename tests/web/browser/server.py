@@ -21,6 +21,13 @@ def forbidden_gateway(*args, **kwargs):
                 cancel.wait(15)
                 yield GenerationEvent(type='cancelled')
                 return
+            if context.stage=='publication_suggest' and context.settings.provider.model=='synthetic-card-writer':
+                # R16-SUGGEST-S07: a card proposal for the long book (neutral text).
+                import json
+                yield GenerationEvent(type='delta',text=json.dumps({'title':None,'annotation':'Доглядачка маяка шукає брата.',
+                    'genres':['short_story'],'keywords':['маяк']},ensure_ascii=False))
+                yield GenerationEvent(type='terminal',finish_reason='stop')
+                return
             if context.stage=='edit' and context.settings.provider.model=='synthetic-no-changes':
                 yield GenerationEvent(type='delta',text='{"edits":[]}')
                 yield GenerationEvent(type='terminal',finish_reason='stop')
@@ -533,6 +540,29 @@ def main():
             if slow_planner:
                 save_role_settings(repo,story.id,'planner',RoleSettings(provider=ProviderSettings(model='synthetic-slow')),repo.get_story(story.id).revision)
             return dict(story_id=story.id,first_id=ids[0],second_id=ids[1])
+
+        @app.post('/test-long-book')
+        def long_book_fixture():
+            """R16-SUGGEST-S07: a plan with an idea and three scenes; the writer's character limit fits the first two."""
+            import json
+            from storygen.authoring.blueprints import save_role_settings
+            from storygen.authoring.imports import SourceFile, import_sources
+            from storygen.generation.dependencies import save_manual_prose
+            from storygen.generation.publication_metadata import build_publication_context
+            from storygen.providers.models import RoleSettings,ProviderSettings
+            story=rated_story('Маяк над затокою')
+            plan='Задум: доглядачка маяка шукає зниклого брата.\n\n'+''.join(f'## Сцена {n}: {title}\nОпис\n' for n,title in enumerate(('Ранок','Шторм','Човен'),1))
+            import_sources(repo,story.id,[SourceFile(name='plan.md',raw=plan.encode())])
+            for scene in repo.list_scenes(story.id):
+                save_manual_prose(repo,scene.id,f'{scene.title}. '+'Хвилі билися об каміння, і ліхтар світив крізь туман. '*30,repo.get_scene(scene.id).revision)
+            def writer(limit):
+                save_role_settings(repo,story.id,'writer',RoleSettings(provider=ProviderSettings(model='synthetic-card-writer'),
+                    context_tokens=400000,max_input_chars=limit,max_output_tokens=4096),repo.get_story(story.id).revision)
+            writer(4000000)
+            full=build_publication_context(repo,story.id)
+            whole=len(json.dumps(full.api_request,ensure_ascii=False,separators=(',',':')))
+            writer(whole-1200)  # one scene (~1.7k characters) short of the whole book
+            return dict(story_id=story.id)
 
         @app.post('/test-editor-import')
         def editor_import_fixture():

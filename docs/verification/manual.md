@@ -275,6 +275,11 @@ MODEL-005-S01, MODEL-005-S02. Автоматична частина — Playwrig
 
 MODEL-001-S02. Автоматична частина — Playwright `tests/web/browser/writer-variant.spec.mjs` (два cases: перемикач «Окрема модель для сцен рівня 0–1» відкриває власні поля, збереження пише `low_rating_variant` з лімітами, відновлення після reload, зняття перемикача зберігає `null`; модель варіанта без Uncensored отримує власний блок згоди для ролі письменника): `node frontend/node_modules/@playwright/test/cli.js test tests/web/browser/writer-variant.spec.mjs --config frontend/playwright.config.mjs`. Цей зв’язок не є доказом виконання; фактичний запуск фіксується окремо.
 
+<a id="publication-long-book-browser"></a>
+## Пропозиція картки для довгої книжки у браузері
+
+R16-SUGGEST-S07. Автоматична частина — Playwright `tests/web/browser/publication-long-book.spec.mjs` (фікстура `/test-long-book`: план з ідеєю й трьома сценами, ліміт символів синтетичного письменника вміщає дві). Під кнопкою «Запропонувати» видно «…модель прочитає ідею твору й сцени 1–2 із 3 (до «Шторм»)» з підказкою про ліміт символів. Кнопка активна. Після запуску пропозиція показує «Прочитано: ідея й сцени 1–2 із 3», а запуск несе `expected_selection`. Запуск: `cd frontend; npx playwright test -c playwright.config.mjs publication-long-book`. Прогін 24.11.2026 на гілці `claude/publication-suggest-long-book`: 2 passed (desktop, mobile). Цей зв’язок не є доказом виконання в інших ревізіях.
+
 <a id="openrouter-reasoning-browser"></a>
 ## Поле Reasoning OpenRouter у браузері
 

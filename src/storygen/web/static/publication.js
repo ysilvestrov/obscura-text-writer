@@ -269,7 +269,11 @@ if(suggest){
     const request={story_id:storyId,mode:'publication_suggest'};
     if(partial(readiness?.selection))request.expected_selection=readiness.selection.key;
     try{await api('/api/runs',json('POST',{request,request_id:crypto.randomUUID()}));await refreshSuggestions(true);}
-    catch(error){uiText(suggestStatus,"textContent",()=>(diagnostic(error.message)));notice(error.message,'error');}
+    catch(error){
+      // A refused run (for example a changed selection) re-reads readiness, so the line and the next key are current.
+      await refreshSuggestions(true);
+      uiText(suggestStatus,"textContent",()=>(diagnostic(error.message)));notice(error.message,'error');
+    }
     finally{suggestionBusy=false;suggestionControls();}
   };
   suggestCancel.onclick=async()=>{

@@ -36,7 +36,7 @@ globalThis.confirm=()=>false;
 installDialogFixture(globalThis.document);
 globalThis.FormData=class{append(){}};
 let revision=0,hold=false,release,uploadFailure=false,initialRelease;
-let proposals=[],suggestionBody=null,runCalls=0,lastSave,readinessSelection=null,historyItems=[];
+let proposals=[],suggestionBody=null,runCalls=0,lastSave,readinessSelection=null,historyItems=[],refuseRun=false;
 let putCalls=0,generateCalls=0,generateBody=null,generateFailure=false,holdGenerate=false,releaseGenerate;
 const initialReady=new Promise(resolve=>initialRelease=resolve);
 let card={title:'',language:'uk',annotation:'',cycle_title:'',publication_date:'',publisher:'',isbn:'',rights:'',source_language:'',cycle_number:null,keywords:[],genres:[],author_ids:[],translator_ids:[],cover_id:null,story_id:'story',revision};
@@ -48,7 +48,7 @@ globalThis.fetch=async(url,options={})=>{
   if(url.includes('publication-signatures'))data={signatures:[person]};
   else if(url.endsWith('/suggestions/readiness'))data={ready:true,roles:{writer:{model:'fake-writer'}},selection:readinessSelection};
   else if(url.endsWith('/suggestions'))data={proposals,history:historyItems,active_runs:[]};
-  else if(url==='/api/runs'){runCalls++;suggestionBody=JSON.parse(options.body);data={id:'run'};}
+  else if(url==='/api/runs'){runCalls++;suggestionBody=JSON.parse(options.body);if(refuseRun){ok=false;data={detail:'Відбір сцен змінився; перегляньте його знову'};}else data={id:'run'};}
   else if(url.endsWith('/cover/generate')){
     generateCalls++;generateBody=JSON.parse(options.body);
     if(holdGenerate)await new Promise(resolve=>releaseGenerate=resolve);
@@ -165,4 +165,13 @@ readinessSelection={...readinessSelection,idea:false,bound_by:'tokens'};
 historyItems=[];proposals=[];
 await nodes['#publication-suggest'].onclick();
 assert.equal(selectionLine.textContent,'Книжка не вміщається у вікно моделі повністю: модель прочитає сцени 1–14 із 31 (до «Шторм»), без ідеї твору.');
+// A refused run (the selection changed meanwhile) re-reads readiness: the line and the next key follow the new selection.
+refuseRun=true;readinessSelection={...readinessSelection,included:12,last_scene_title:'Туман',key:'c'.repeat(64)};
+await nodes['#publication-suggest'].onclick();
+assert.equal(suggestionBody.request.expected_selection,key,'The refused click still sent the key it showed');
+assert.ok(selectionLine.textContent.includes('сцени 1–12 із 31 (до «Туман»)'),'The line shows the new selection after a refusal');
+assert.equal(nodes['#publication-suggest-status'].textContent,'Відбір сцен змінився; перегляньте його знову');
+refuseRun=false;
+await nodes['#publication-suggest'].onclick();
+assert.equal(suggestionBody.request.expected_selection,'c'.repeat(64),'The next click sends the key of the selection shown now');
 console.log('publication dirty/async save/CAS/upload/text cover/long book selection passed');
