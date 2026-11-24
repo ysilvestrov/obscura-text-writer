@@ -456,13 +456,19 @@ pre { white-space: pre-wrap; overflow-wrap: anywhere; font: 14px/1.7 var(--font-
 .consistency-icon { flex: none; width: 1.375rem; text-align: center; font-weight: 700; color: var(--text-secondary); }
 .consistency-rows > li[data-state="ok"] .consistency-icon { color: var(--success); }
 .consistency-rows > li[data-state="discrepancy"] .consistency-icon, .consistency-rows > li[data-state="unavailable"] .consistency-icon { color: var(--warning); }
-.consistency-body { flex: 1 1 auto; min-width: 0; display: grid; gap: 0.125rem; }
+.consistency-body { flex: 1 1 0; min-width: 0; display: grid; gap: 0.125rem; }
 .consistency-status { margin: 0; font-size: 0.8125rem; }
 .consistency-discrepancy { margin-top: 0.25rem; padding: 0.5rem 0.625rem; border-left: 3px solid var(--warning); background: var(--bg-subtle); }
 .consistency-discrepancy > p { margin: 0 0 0.25rem; }
 .consistency-discrepancy > .consistency-hint { margin: 0.25rem 0 0; font-size: 0.8125rem; }
 .consistency-actions { flex: none; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.25rem 0.75rem; max-width: 45%; }
 .consistency-actions .link-button { font-size: 0.875rem; text-align: right; }
+/* A narrow window: the actions go under the text of their row instead of squeezing it. */
+@media (max-width: 600px) {
+  .consistency-rows > li { flex-wrap: wrap; }
+  .consistency-actions { max-width: none; flex-basis: 100%; justify-content: flex-start; padding-left: 2rem; }
+  .consistency-actions .link-button { text-align: left; }
+}
 .consistency-primary { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 0.75rem; margin: 0.75rem 0 0; }
 .consistency-primary small[hidden] { display: none; }
 .link-audit-summary { margin: 0.25rem 0 0; }
