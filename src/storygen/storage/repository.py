@@ -596,7 +596,7 @@ class Repository:
         with self.db.connection() as db:
             return self._get(db,'stage_attempts',id,StageAttempt)
 
-    ATTEMPT_CONTEXT_KEYS=frozenset({'copyedit_proposal','rewrite_proposal','classification_proposal_id','classification_refusal'})
+    ATTEMPT_CONTEXT_KEYS=frozenset({'copyedit_proposal','rewrite_proposal','classification_proposal_id','classification_refusal','editor_import'})
 
     def list_attempts(self,story_id: str,run_id: str | None = None,*,scene_id: str | None = None,context_key: str | None = None) -> list[StageAttempt]:
         if context_key is not None and context_key not in self.ATTEMPT_CONTEXT_KEYS:
