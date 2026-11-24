@@ -119,6 +119,9 @@ def test_card_name_wins_in_acquaintance_protagonist_and_narrator_lines():
     arc = SimpleNamespace(id='a1', protagonist_id=None)
     assert _apply_protagonists(SimpleNamespace(parts=[SimpleNamespace(arcs=[arc])]), [('a1', 'Джон')], cards) == ([], [])
     assert arc.protagonist_id == 'A'
+    from storygen.narration import effective_narrator, narrator_value
+    plan = SimpleNamespace(beats='Сцена 1: Ворота\nОповідач: перша особа, Джон', narrator=None)
+    assert narrator_value(effective_narrator(plan, cards)[0]) == 'first:A'
 
 
 def test_new_scene_cast_line_writes_an_id_only_for_an_ambiguous_name():

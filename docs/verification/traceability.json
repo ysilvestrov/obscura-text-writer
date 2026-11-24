@@ -3880,7 +3880,7 @@
     {
       "id": "CHARACTER-NAMES-S03",
       "requirement": "CHARACTER-NAMES",
-      "scope": "Однакове інше чи основне ім’я кількох карток: «Неоднозначне ім’я», попередження «Знайомий з:», «Протагоніст:» без вибору, ID у cast_names, попередження сторінки й preview.",
+      "scope": "Однакове інше чи основне ім’я кількох карток: «Неоднозначне ім’я», попередження «Знайомий з:», «Протагоніст:» без вибору, ID у cast_names для однакового основного імені, основні імена для однакового іншого, попередження сторінки й preview.",
       "tests": [
         "tests/characters/test_character_names.py::test_name_shared_by_two_cards_is_ambiguous_and_warned",
         "tests/characters/test_character_names.py::test_acquaintance_names_a_shared_other_name_ambiguous_and_arc_skips_it",
