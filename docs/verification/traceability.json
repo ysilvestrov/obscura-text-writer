@@ -4072,6 +4072,16 @@
       }
     },
     {
+      "id": "MODEL-METADATA-S05",
+      "requirement": "MODEL-METADATA",
+      "scope": "Тариф вибраної моделі після збереження форми ролі; каталог за точною identity до перезавантаження сторінки.",
+      "tests": [],
+      "manual": {
+        "procedure": "docs/verification/manual.md#model-import-metadata",
+        "reason": "Перебудова форми після збереження перевіряється Playwright-сценарієм model-metadata.spec.mjs; check_docs індексує лише pytest IDs."
+      }
+    },
+    {
       "id": "GENERATION-DIAGNOSTICS-S01",
       "requirement": "GENERATION-DIAGNOSTICS",
       "scope": "Точні synthetic/MockTransport server contracts; жодного production inference.",

@@ -6,7 +6,7 @@ Four roles prepare a scene: the **Planner** writes the outline and brief, the **
 
 ## Role settings
 
-Open the story settings → **Models** and choose a role. Enter the provider, API address, exact model ID, context, response reserve and input limit. **Get model list** shows the available IDs and known prices. Save the role with the **Save:** button carrying the role name; other roles' settings stay unchanged.
+Open the story settings → **Models** and choose a role. Enter the provider, API address, exact model ID, context, response reserve and input limit. **Get model list** shows the available IDs and known prices. The list stays until the page is reloaded and applies to every role with the same provider and address, so the price under the model remains after saving. Save the role with the **Save:** button carrying the role name; other roles' settings stay unchanged.
 
 Providers:
 

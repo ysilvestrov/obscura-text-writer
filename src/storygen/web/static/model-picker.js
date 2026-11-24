@@ -84,6 +84,9 @@ let pickerCount=0;
 function el(tag,props={},...children){const node=document.createElement(tag);for(const[k,v]of Object.entries(props))if(k in node&&!k.includes('-'))node[k]=v;else node.setAttribute(k,v);node.append(...children);return node}
 const badgeList=model=>el('span',{className:'model-badges'},...modelBadges(model).map(b=>el('span',{className:`model-badge model-badge-${b.kind}`},t(b.key,b.params))));
 
+// MODEL-METADATA-S05: catalogs loaded on this page, by exact provider + address. Settings forms are rebuilt
+// after a save; the rebuilt picker reads the same catalog instead of forgetting the tariff it just showed.
+const loadedCatalogs=new Map();
 export function mountModelPicker({host,modelInput,providerInput,baseUrlInput,responseModeInput=null,limitInputs={}}){
   const uid=`model-picker-${++pickerCount}`;host.classList.add('model-picker');
   const caption=modelInput.parentElement.firstChild;
@@ -111,11 +114,12 @@ export function mountModelPicker({host,modelInput,providerInput,baseUrlInput,res
   uiText(privacyNote,'textContent',()=>t('models.privacy_not_reported'));
   for(const option of privacy.options)uiText(option,'textContent',()=>t(`models.privacy_${option.value}`));
   modelInput.setAttribute('aria-describedby',[modelInput.getAttribute('aria-describedby'),info.id].filter(Boolean).join(' '));
-  let catalog=new Map(),binding=null,sortKey='input',direction=1,userSchema=false,message=null;
+  let sortKey='input',direction=1,userSchema=false,message=null;
   const identity=()=>JSON.stringify([providerInput.value,baseUrlInput.value.replace(/\/$/,'')]);
   const context=()=>({provider:providerInput.value,responseMode:responseModeInput?.value});
-  const bound=()=>binding!==null&&binding===identity();
-  const current=()=>bound()?catalog.get(modelInput.value)??null:null;
+  const catalog=()=>loadedCatalogs.get(identity())??null;
+  const bound=()=>catalog()!==null;
+  const current=()=>catalog()?.get(modelInput.value)??null;
   let limits={};
   const limitValues=()=>Object.fromEntries(Object.entries(limits).filter(([,input])=>input).map(([name,input])=>[name,input.value===''?NaN:Number(input.value)]));
   function validate(){const check=selectable(current(),context());return check.ok?limitsProblem(current(),limitValues()):`models.blocked_${check.reason}`}
@@ -148,7 +152,7 @@ export function mountModelPicker({host,modelInput,providerInput,baseUrlInput,res
   function render(){
     const locked=schemaLocked(responseModeInput?.value),reports=providerReportsPrivacy(providerInput.value);
     schema.checked=locked||userSchema;schema.disabled=locked;privacy.disabled=!reports;privacyNote.hidden=reports;
-    const all=bound()?[...catalog.values()]:[],read=SORT_KEYS[sortKey];
+    const all=bound()?[...catalog().values()]:[],read=SORT_KEYS[sortKey];
     // In JSON Schema mode the filter is locked on, but non-schema rows stay visible as blocked instead of hidden.
     const shown=filterModels(all,{query:query.value,uncensoredOnly:uncensored.checked,minPrivacy:privacy.value,schemaOnly:!locked&&userSchema},providerInput.value)
       .sort((a,b)=>{const x=read(a),y=read(b);if(x===y)return 0;if(x===null)return 1;if(y===null)return -1;return (x>y?1:-1)*direction});
@@ -163,7 +167,8 @@ export function mountModelPicker({host,modelInput,providerInput,baseUrlInput,res
   }
   // The catalog can change without an input event on the model field; dependants (consent block) re-read selected().
   const catalogChanged=()=>modelInput.dispatchEvent(new CustomEvent('model-catalog-changed'));
-  function clear(){catalog=new Map();binding=null;message=null;render();catalogChanged()}
+  // Provider/address changes re-read the catalog for the new identity; one loaded for another identity never applies.
+  function clear(){message=null;render();catalogChanged()}
   toggle.onclick=()=>{panel.hidden=!panel.hidden;render()};
   schema.addEventListener('change',()=>{if(!schemaLocked(responseModeInput?.value))userSchema=schema.checked;render()});
   for(const control of [query,uncensored,privacy])control.addEventListener('input',render);
@@ -176,6 +181,6 @@ export function mountModelPicker({host,modelInput,providerInput,baseUrlInput,res
   render();bindLimits(limitInputs);
   return {capture:identity,bindLimits,clear,validate,update:render,selected:current,loaded:bound,open(){panel.hidden=false;render();toggle.focus()},setModels(models,captured){
     if(captured!==identity())return false;
-    catalog=new Map(models.map(model=>[model.id,model]));binding=captured;message=null;panel.hidden=false;render();catalogChanged();return true;
+    loadedCatalogs.set(captured,new Map(models.map(model=>[model.id,model])));message=null;panel.hidden=false;render();catalogChanged();return true;
   }};
 }

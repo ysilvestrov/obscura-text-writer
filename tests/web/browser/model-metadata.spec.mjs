@@ -24,6 +24,20 @@ test('selected model shows tariff units, caps and unknown without changing other
   await form.locator('[name=provider]').selectOption('openrouter');await expect(info).toContainText('Тариф невідомий');
 });
 
+// MODEL-METADATA-S05: saving rebuilds the role form; the tariff of the loaded catalog stays under the model.
+test('tariff stays under the chosen model after saving the role',async({page,request})=>{
+  const f=await(await request.post('/test-fixture')).json();
+  await page.route('**/api/providers/discover',route=>route.fulfill({json:{models:[{id:'synthetic-priced',context_tokens:200000,max_output_tokens:24000,uncensored:true,supports_schema:true,tariff}]}}));
+  await page.goto(`/stories/${f.story_id}/settings`);await page.locator('[data-settings-role=writer]').click();
+  const form=()=>page.locator('form[data-role=writer]'),info=()=>form().locator('[data-model-info]').first();
+  await form().locator('[name=provider]').selectOption('venice');
+  await form().locator('.discover').click();await form().locator('[name=model]').fill('synthetic-priced');
+  await expect(info()).toContainText('0.07');
+  await page.locator('#settings-save').click();await expect(page.locator('#settings-save')).toBeDisabled();
+  await expect(form().locator('[name=model]')).toHaveValue('synthetic-priced');
+  await expect(info()).toContainText('0.07');await expect(info()).not.toContainText('Тариф невідомий');
+});
+
 test('manual expired tariff is labelled and stale discovery cannot label another provider',async({page,request})=>{
   const f=await(await request.post('/test-fixture')).json();
   let release;const gate=new Promise(r=>release=r);
