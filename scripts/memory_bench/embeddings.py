@@ -29,6 +29,7 @@ class Embedder(Protocol):
     dim: int
     max_tokens: int
     truncated: int
+    last_truncated: list[bool]  # per text of the latest embed call: was it longer than max_tokens
 
     def embed(self, texts: Sequence[str], kind: Literal['query', 'passage']) -> np.ndarray: ...
 
@@ -53,6 +54,7 @@ class FakeEmbedder:
         self.dim = dim
 
     def embed(self, texts, kind):
+        self.last_truncated = [False] * len(texts)
         rows = []
         for text in texts:
             raw = b''
@@ -83,7 +85,8 @@ class LocalEmbedder:
         prefix = self.query_prefix if kind == 'query' else self.passage_prefix
         prepared = [prefix + t for t in texts]
         tokenizer = self._model.tokenizer
-        self.truncated += sum(len(tokenizer(t, add_special_tokens=True)['input_ids']) > self.max_tokens for t in prepared)
+        self.last_truncated = [len(tokenizer(t, add_special_tokens=True)['input_ids']) > self.max_tokens for t in prepared]
+        self.truncated += sum(self.last_truncated)
         out = self._model.encode(prepared, batch_size=8, normalize_embeddings=True, convert_to_numpy=True,
                                  show_progress_bar=False)
         return _normalized(out)
@@ -104,34 +107,40 @@ class CachedEmbedder:
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.hits = 0
         self.misses = 0
+        self.truncated = 0  # own count: warm-cache reruns report the same value as cold ones
+        self.last_truncated: list[bool] = []
 
     def __getattr__(self, name):
-        if name in ('key', 'model_id', 'revision', 'dim', 'max_tokens', 'truncated'):
+        if name in ('key', 'model_id', 'revision', 'dim', 'max_tokens'):
             return getattr(self.inner, name)
         raise AttributeError(name)
 
     def _path(self, kind, text) -> Path:
         prefix = getattr(self.inner, 'query_prefix' if kind == 'query' else 'passage_prefix', '')
         raw = '|'.join((self.inner.model_id, self.inner.revision, kind, prefix, text))
-        return self.cache_dir / (hashlib.sha256(raw.encode('utf-8')).hexdigest() + '.npy')
+        return self.cache_dir / (hashlib.sha256(raw.encode('utf-8')).hexdigest() + '.npz')
 
     def embed(self, texts, kind):
         paths = [self._path(kind, t) for t in texts]
-        found: dict[Path, np.ndarray] = {}
+        found: dict[Path, tuple[np.ndarray, bool]] = {}
         for p in paths:
             if p not in found and p.exists():
-                found[p] = np.load(p)
+                with np.load(p) as data:
+                    found[p] = (data['vec'], bool(data['truncated']))
         missing = list(dict.fromkeys((p, t) for p, t in zip(paths, texts) if p not in found))
         self.hits += sum(p in found for p in paths)
         self.misses += sum(p not in found for p in paths)
         if missing:
             vectors = self.inner.embed([t for _, t in missing], kind)
-            for (p, _), vec in zip(missing, vectors):
+            flags = getattr(self.inner, 'last_truncated', None) or [False] * len(missing)
+            for (p, _), vec, flag in zip(missing, vectors, flags):
                 tmp = p.with_suffix(f'.{os.getpid()}.tmp')
                 with open(tmp, 'wb') as f:
-                    np.save(f, vec)
+                    np.savez(f, vec=vec, truncated=np.array(flag))
                 os.replace(tmp, p)
-                found[p] = vec
+                found[p] = (vec, bool(flag))
+        self.last_truncated = [found[p][1] for p in paths]
+        self.truncated += sum(self.last_truncated)
         if not paths:
             return np.zeros((0, self.inner.dim), dtype=np.float32)
-        return np.stack([found[p] for p in paths]).astype(np.float32)
+        return np.stack([found[p][0] for p in paths]).astype(np.float32)

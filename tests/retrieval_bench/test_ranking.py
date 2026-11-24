@@ -73,31 +73,63 @@ def test_vec_rank_empty_query_ranks_nothing():
     assert vec_rank([], 'q', _embedder_of({})) == []
 
 
+def test_vec_rank_rounds_scores_to_1e6_before_tie_break():
+    pytest.importorskip('numpy')
+    import math
+    from memory_bench.ranking import vec_rank
+    x = 5e-4  # cosine 1 - 1.25e-7: below the 1e-6 rounding step, so it ties with the exact 1.0
+    table = {'q': [1, 0, 0], 'exact': [1, 0, 0], 'close': [math.sqrt(1 - x * x), x, 0]}
+    cands = [rec('b', 'facts', 'exact'), rec('a', 'facts', 'close')]
+    assert [r.claim_id for r in vec_rank(cands, 'q', _embedder_of(table))] == ['a', 'b']
+
+
+def _unit(cosine):
+    import math
+    return [cosine, math.sqrt(1 - cosine * cosine), 0]
+
+
+def _fused(bm25, vec, k):
+    ids = set(bm25) | set(vec)
+    score = {i: (1 / (k + bm25.index(i) + 1) if i in bm25 else 0) + (1 / (k + vec.index(i) + 1) if i in vec else 0)
+             for i in ids}
+    return sorted(ids, key=lambda i: (-score[i], i))
+
+
 def test_rrf_combines_ranks_with_k60():
     pytest.importorskip('numpy')
-    from memory_bench.ranking import rrf_rank
+    from memory_bench.ranking import rrf_rank, vec_rank
     from memory_bench.strategies import fts_rank
-    # BM25 order: A (more query words) before B; vector order: B before A. Third record only in vector.
-    cands = [rec('A', 'facts', 'маяк скеля море'), rec('B', 'facts', 'маяк'), rec('C', 'facts', 'щось інше')]
-    query = 'маяк скеля море'
-    assert [r.claim_id for r in fts_rank(cands, query)] == ['A', 'B']
-    table = {query: [1, 0, 0], 'маяк скеля море': [1, 0, 0], 'маяк': [0.99, 0.1, 0], 'щось інше': [0, 1, 0]}
-    # same text for query and A: A cosine 1.0, B ~0.995, C 0 -> vector order A, B, C
-    out = rrf_rank(cands, query, _embedder_of(table))
-    assert [r.claim_id for r in out] == ['A', 'B', 'C']
-    table['маяк скеля море'] = [0.5, 0.8, 0]
-    table[query] = [0.99, 0.1, 0]
-    # now vector favours B over A (B identical to query); BM25 favours A: tie 1/61+1/62 each -> claim_id
-    out = rrf_rank(cands, query, _embedder_of(table))
-    assert [r.claim_id for r in out][:2] == ['A', 'B']
+    query = 'маяк скеля море вітер'
+    cands = [rec('A', 'facts', 'вітер маяк скеля море'), rec('B', 'facts', 'маяк скеля море туман'),
+             rec('C', 'facts', 'маяк скеля дощ туман'), rec('D', 'facts', 'маяк сніг дощ туман')]
+    cos = {'A': 0.3, 'B': 0.7, 'C': 0.9, 'D': 0.5}
+    table = {'запит': [1, 0, 0], **{r.text: _unit(cos[r.claim_id]) for r in cands}}
+    emb = _embedder_of(table)
+    bm25 = [r.claim_id for r in fts_rank(cands, query)]
+    vec = [r.claim_id for r in vec_rank(cands, 'запит', emb)]
+    assert bm25 == ['A', 'B', 'C', 'D'] and vec == ['C', 'B', 'D', 'A']
+    table[query] = [1, 0, 0]
+    fused = [r.claim_id for r in rrf_rank(cands, query, emb)]
+    assert fused == _fused(bm25, vec, 60) == ['C', 'B', 'A', 'D']
+    assert fused not in (bm25, vec)
+    # exact values: A = 1/61 + 1/64 < B = 2/62 < C = 1/63 + 1/61
+    assert 1 / 61 + 1 / 64 < 2 / 62 < 1 / 63 + 1 / 61
+    # k matters: with k=1 A overtakes B
+    assert [r.claim_id for r in rrf_rank(cands, query, emb, k=1)] == _fused(bm25, vec, 1) == ['C', 'A', 'B', 'D']
 
 
 def test_rrf_record_missing_from_bm25_gets_vector_part_only():
     pytest.importorskip('numpy')
-    from memory_bench.ranking import rrf_rank
-    cands = [rec('only_vec', 'facts', 'zzz'), rec('both', 'facts', 'маяк')]
-    table = {'маяк': [0.6, 0.8, 0], 'zzz': [1, 0, 0]}
-    # query text 'маяк' embeds as [0.6, 0.8, 0]: 'both' is rank 1 in vector and rank 1 in BM25; 'only_vec' rank 2 vector only
-    out = rrf_rank(cands, 'маяк', _embedder_of(table))
-    assert [r.claim_id for r in out] == ['both', 'only_vec']
-    assert rrf_rank(cands, '  ', _embedder_of(table)) == []
+    from memory_bench.ranking import rrf_rank, vec_rank
+    from memory_bench.strategies import fts_rank
+    query = 'маяк скеля море'
+    cands = [rec('only_vec', 'facts', 'зовсім інше'), rec('both', 'facts', 'море скеля маяк'),
+             rec('bm_also', 'facts', 'маяк скеля дощ')]
+    cos = {'only_vec': 0.9, 'both': 0.6, 'bm_also': 0.3}
+    table = {query: [1, 0, 0], **{r.text: _unit(cos[r.claim_id]) for r in cands}}
+    emb = _embedder_of(table)
+    assert [r.claim_id for r in fts_rank(cands, query)] == ['both', 'bm_also']
+    assert [r.claim_id for r in vec_rank(cands, query, emb)] == ['only_vec', 'both', 'bm_also']
+    # only_vec: 1/61 (vector part only); both: 1/62 + 1/61; bm_also: 1/63 + 1/62
+    assert [r.claim_id for r in rrf_rank(cands, query, emb)] == ['both', 'bm_also', 'only_vec']
+    assert rrf_rank(cands, '  ', emb) == []

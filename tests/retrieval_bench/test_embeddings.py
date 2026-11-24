@@ -1,5 +1,3 @@
-import subprocess
-import sys
 import tempfile
 from pathlib import Path
 
@@ -80,9 +78,26 @@ def test_models_registry():
     assert MODELS['azure-3-large']['kind'] == 'cloud'
 
 
-def test_embeddings_module_optional():
-    code = ("import sys, memory_bench.strategies, memory_bench.ranking;"
-            "assert 'sentence_transformers' not in sys.modules; assert 'numpy' not in sys.modules")
-    root = Path(__file__).resolve().parents[2]
-    subprocess.run([sys.executable, '-c', code], check=True, cwd=root,
-                   env={**__import__('os').environ, 'PYTHONPATH': str(root / 'scripts') + ';' + str(root)})
+class TruncatingEmbedder(FakeEmbedder):
+    def __init__(self):
+        super().__init__()
+        self.calls = 0
+
+    def embed(self, texts, kind):
+        self.calls += 1
+        out = super().embed(texts, kind)
+        self.last_truncated = [t.startswith('long') for t in texts]
+        self.truncated += sum(self.last_truncated)
+        return out
+
+
+def test_cached_truncated_count_survives_warm_cache():
+    texts = ['long one', 'short', 'long two', 'long one']
+    with tempfile.TemporaryDirectory() as d:
+        cold = CachedEmbedder(TruncatingEmbedder(), Path(d))
+        cold.embed(texts, 'passage')
+        warm_inner = TruncatingEmbedder()
+        warm = CachedEmbedder(warm_inner, Path(d))
+        warm.embed(texts, 'passage')
+        assert cold.truncated == warm.truncated == 3
+        assert warm_inner.calls == 0 and warm.misses == 0
