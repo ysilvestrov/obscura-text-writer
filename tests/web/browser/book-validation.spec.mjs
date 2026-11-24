@@ -153,3 +153,44 @@ test('the menu never takes the run line from another active run',async({page,req
   await expect(page.locator('#run-status .run-progress-title')).toBeFocused();
   expect((await runs()).length).toBe(2);
 });
+
+test('a run that takes the run row blocks «Продовжити валідацію»; a cancelled re-consent resumes nothing',async({page,request})=>{
+  // Review Focus 1: the panel keeps the full stopped book run; while another run holds the row the main action is
+  // disabled with the busy reason, and after it ends the click follows the book run and asks again before any resume.
+  const fixture=await(await request.post('/test-book-validation?slow_planner=true')).json();
+  const runs=async()=>(await(await request.get(`/api/stories/${fixture.story_id}/runs`)).json()).runs;
+  const preview=await(await request.post(`/api/stories/${fixture.story_id}/audit/preview`,{data:{scope:'story'}})).json();
+  const book=await(await request.post('/api/runs',{data:{request_id:crypto.randomUUID(),request:{story_id:fixture.story_id,scene_id:null,mode:'audit',
+    stage:null,audit_scope:'story',audit_plan_fingerprint:preview.plan_fingerprint,pause_after:[]}}})).json();
+  await expect.poll(async()=>(await runs()).find(run=>run.id===book.id)?.state).toBe('needs_review');
+  const resumes=[];
+  page.on('request',req=>{if(req.method()==='POST'&&/\/resume$/.test(req.url()))resumes.push(req.url())});
+  await page.goto(`/stories/${fixture.story_id}?scene=${fixture.first_id}&material=prose`);
+  const primary=page.locator('#scene-consistency-primary'),reason=page.locator('#scene-consistency-reason');
+  await expect(primary).toHaveText('Продовжити валідацію');
+  const stage=await request.post('/api/runs',{data:{request_id:crypto.randomUUID(),request:{story_id:fixture.story_id,scene_id:fixture.second_id,
+    mode:'stage',stage:'brief',pause_after:[]}}});
+  expect(stage.ok(),await stage.text()).toBeTruthy();
+  const active=await stage.json();
+  try{
+    await expect.poll(async()=>(await runs()).find(run=>run.id===active.id)?.state).toBe('running');
+    const running=(await runs()).find(run=>run.id===active.id);
+    await page.evaluate(run=>document.dispatchEvent(new CustomEvent('run-reveal',{detail:run})),running);
+    await expect(page.locator('#run-status .run-progress-title')).toHaveText('Сцена 1 з 1, етап: завдання');
+    await expect(primary).toBeDisabled();
+    await expect(reason).toHaveText('Рядок запуску зайнятий іншим запуском: дочекайтеся його завершення');
+  }finally{
+    await request.post(`/api/runs/${active.id}/cancel`,{data:{}});
+  }
+  await expect.poll(async()=>(await runs()).find(run=>run.id===active.id)?.state).toBe('cancelled');
+  await page.locator('#scene-consistency li[data-link="brief"]').getByRole('button',{name:'Розбіжності немає'}).click();
+  await expect(primary).toBeEnabled();
+  await primary.click();
+  const dialog=page.locator('dialog[open]');
+  await expect(dialog).toContainText('Сцен до перевірки: 2.');
+  await expect(page.locator('#run-status .run-progress-title')).toHaveText(/^Валідація книги/);
+  await dialog.getByRole('button',{name:'Скасувати'}).click();
+  await expect(dialog).toBeHidden();
+  expect(resumes).toEqual([]);
+  expect((await runs()).find(run=>run.id===book.id).state).toBe('needs_review');
+});

@@ -273,6 +273,6 @@ if(pendingPrimary())void reconcilePrimary().catch(()=>{});
 
 registerWorkspaceCommand('run',async options=>{try{return await start(options.mode,options.stage,options)}catch(error){if(error.name!=='AbortError')document.dispatchEvent(new CustomEvent('workspace-operation-error',{detail:{stage:options.mode==='edit_loop'?'edit':options.stage||options.mode,message:error.message}}));throw error}finally{if(extraControls?.open)scheduleReadiness()}});
 registerWorkspaceCommand('refresh-readiness',loadReadiness);
-registerWorkspaceCommand('resume-run',async run=>{if(revealBlocked(active,run))throw new Error(t('book_validation.other_run_active'));if(active?.id!==run.id)await follow(run,{reveal:true});await resumeRun(false)});
+registerWorkspaceCommand('resume-run',async run=>{if(revealBlocked(active,run))throw new Error(t('book_validation.other_run_active'));if(active?.id!==run.id)await follow(run,{reveal:true});if(active?.id!==run.id)throw new Error(t('book_validation.other_run_active'));await resumeRun(false)});
 registerWorkspaceCommand('cancel-run',async id=>{const run=await api(`/api/runs/${id}/cancel`,json('POST',{}));if(active?.id===id)draw(run);return run});
 registerWorkspaceCommand('cancel-pending',async()=>{const pending=pendingPrimary();if(!pending)return;setPendingPrimary({...pending,cancelled:true});return reconcilePrimary()});
