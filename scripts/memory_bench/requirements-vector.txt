@@ -1,0 +1,5 @@
+# Research-only dependencies of the vector bench (#25); not part of the product.
+# Exact versions of sentence-transformers and torch (CPU build) are pinned in Task 8.
+numpy==2.5.5
+sentence-transformers
+torch
