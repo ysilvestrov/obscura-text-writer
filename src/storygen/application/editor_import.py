@@ -369,8 +369,31 @@ def sweep_temp(repo, *, now: datetime | None = None) -> int:
     return removed
 
 
-def preview_import(repo, story_id: str, content: bytes, *, now: datetime | None = None) -> ImportPreview:
-    sweep_temp(repo, now=now)
+@dataclass(frozen=True)
+class _Item:
+    scene: object
+    fragment: Fragment
+    entry: dict | None
+    plan: ScenePlan
+    counted: ScenePlan  # the plan the preview counts: base 'current' for a scene that needs a choice
+    preview: ScenePreview
+
+
+@dataclass(frozen=True)
+class _Summary:
+    doc: DocxManuscript
+    items: list[_Item]
+    fingerprint: str
+    unmatched: list[str]
+    warnings: list[str]
+
+    @property
+    def choice_required(self) -> bool:
+        return any(item.plan.needs_choice for item in self.items)
+
+
+def _summary(repo, story_id: str, content: bytes) -> _Summary:
+    """The read-only part of the preview; the save rebuilds it from the kept file to check the fingerprint."""
     repo.get_story(story_id)
     doc = read_docx(content)
     if doc.story_id != story_id:
@@ -411,14 +434,128 @@ def preview_import(repo, story_id: str, content: bytes, *, now: datetime | None 
             existing = _draft_comments(repo, scene.id)
             if existing:
                 scene_warnings.append(f'У чинній чернетці є коментарі ({existing}); вони лишаться в попередній версії чернетки.')
-        items.append(ScenePreview(scene_id=scene.id, title=scene.title, status=plan.status, needs_choice=plan.needs_choice,
+        preview = ScenePreview(scene_id=scene.id, title=scene.title, status=plan.status, needs_choice=plan.needs_choice,
             edits=counted.edits, comments=len(counted.comments), general_comments=counted.general_count,
-            dropped_comments=counted.dropped, replace_status=replace_status, warnings=scene_warnings))
+            dropped_comments=counted.dropped, replace_status=replace_status, warnings=scene_warnings)
+        items.append(_Item(scene, fragment, entry, plan, counted, preview))
     digest = hashlib.sha256(content).hexdigest()
     fingerprint = hashlib.sha256(json.dumps({'file_sha256': digest, 'export_id': doc.export_id, 'scenes': identity},
                                             sort_keys=True, ensure_ascii=False, separators=(',', ':')).encode()).hexdigest()
+    return _Summary(doc, items, fingerprint, [f.heading for f in fragments if not f.scene_id], warnings)
+
+
+def preview_import(repo, story_id: str, content: bytes, *, now: datetime | None = None) -> ImportPreview:
+    sweep_temp(repo, now=now)
+    summary = _summary(repo, story_id, content)
     import_id = new_id()
     repo.files.write(f'{TEMP_DIR}/{import_id}.docx', content)
-    return ImportPreview(import_id=import_id, export_id=doc.export_id, fingerprint=fingerprint,
-                         choice_required=any(item.needs_choice for item in items), scenes=items,
-                         unmatched=[f.heading for f in fragments if not f.scene_id], warnings=warnings)
+    return ImportPreview(import_id=import_id, export_id=summary.doc.export_id, fingerprint=summary.fingerprint,
+                         choice_required=summary.choice_required, scenes=[item.preview for item in summary.items],
+                         unmatched=summary.unmatched, warnings=summary.warnings)
+
+
+class ImportResult(DomainModel):
+    imported: list[str]
+    draft_only: list[str]  # over_limit: the editor's text became the draft, without a proposal (§5.1); also in imported
+    skipped: list[dict]  # {scene_id, status}; unchanged scenes are not listed
+    warnings: list[str]
+
+
+STALE_PREVIEW = 'Твір змінився після зведення; перегляньте його ще раз'
+WHOLE_SCENE_DELETED = 'редактор вилучив увесь текст сцени'
+
+
+def _temp_path(import_id):
+    if not isinstance(import_id, str) or not re.fullmatch('[0-9a-f]{32}', import_id):
+        raise KeyError('Імпорт не знайдено')
+    return f'{TEMP_DIR}/{import_id}.docx'
+
+
+def _proposal_factory(repo, story_id, scene_id, plan, attempt_id, origin, scene_index):
+    """Builds the model-less edit proposal of a changed scene inside the save transaction (§5.2)."""
+    from ..domain import StageAttempt
+    from ..generation.context import make_context
+    from ..rewrite_diff import rewrite_warnings
+    from .chat_stages import chat_role_settings
+    settings = chat_role_settings(repo, story_id, 'edit')
+
+    def factory(draft_ref, view):
+        scene = view.get_scene(scene_id)
+        draft_text = view.read_text(draft_ref.id)
+        ctx = make_context(view, view.story, scene, 'edit', settings, [draft_text], [draft_ref.id],
+                           {'copyedit_draft_id': draft_ref.id})
+        attempt = StageAttempt(id=attempt_id, story_id=story_id, scene_id=scene_id, stage='edit', state='needs_review',
+                               context=ctx.model_dump(), partial_path=f'stories/{story_id}/runs/{attempt_id}/partial.txt')
+        attempt.context.update(
+            copyedit_proposal={'protocol_version': 2, 'draft_id': draft_ref.id, 'proposal': plan.proposal.model_dump()},
+            editor_import={'import_id': origin.import_id, 'export_id': origin.export_id, 'scene_index': scene_index},
+            editor_warnings=rewrite_warnings(draft_text, plan.editor_text, plan.proposal.edits))
+        return attempt
+    return factory
+
+
+def _save_scene(repo, story_id, item, plan, origin, scene_index):
+    from ..authoring.comments import CommentPayload
+    from ..domain import RevisionConflict
+    scene = repo.get_scene(item.scene.id)
+    head = scene.heads.get('prose')
+    if head != item.scene.heads.get('prose') or scene.head_revisions.get('prose') != item.scene.head_revisions.get('prose'):
+        raise RevisionConflict(STALE_PREVIEW)
+    content_format = repo.get_version(head).content_format
+    text = plan.editor_text if plan.status == 'over_limit' else plan.normalized.text
+    factory = None
+    if plan.status == 'changed':
+        attempt_id = new_id()
+        # The partial goes first: a stray file after a failed transaction is harmless, an attempt without one is not.
+        with repo.files.open_partial(f'stories/{story_id}/runs/{attempt_id}/partial.txt') as out:
+            out.write(plan.editor_text.encode('utf-8'))
+        factory = _proposal_factory(repo, story_id, scene.id, plan, attempt_id, origin, scene_index)
+    repo.save_draft_with_comments(scene.id, text, content_format, scene.revision,
+        repo.get_comment_state(scene.id)['expected_comments_revision'],
+        CommentPayload(general=plan.general, comments=plan.comments),
+        expected_source_version_id=scene.heads.get('draft'), editor_import=origin, attempt_factory=factory)
+
+
+def apply_import(repo, story_id: str, import_id: str, fingerprint: str,
+                 changed_scenes: Literal['skip', 'replace'] | None) -> ImportResult:
+    """Save the previewed import (§5): per scene, draft, comments and (for `changed`) the proposal in one transaction."""
+    from ..domain import EditorImportOrigin, RevisionConflict
+    path = repo.files.resolve(_temp_path(import_id))
+    try:
+        content = path.read_bytes()
+    except FileNotFoundError:
+        raise KeyError('Імпорт не знайдено; завантажте файл ще раз') from None
+    if changed_scenes not in (None, 'skip', 'replace'):
+        raise ValueError('Невідомий вибір для змінених сцен')
+    summary = _summary(repo, story_id, content)
+    if summary.fingerprint != fingerprint:
+        raise RevisionConflict(STALE_PREVIEW)
+    if summary.choice_required and changed_scenes is None:
+        raise ValueError('Оберіть, що робити зі сценами, зміненими після експорту')
+    origin = EditorImportOrigin(import_id=import_id, export_id=summary.doc.export_id)
+    imported, draft_only, skipped, warnings = [], [], [], list(summary.warnings)
+    for index, item in enumerate(summary.items):
+        plan = item.plan
+        if plan.needs_choice and changed_scenes == 'replace':
+            plan = item.counted
+        if plan.status not in IMPORTED:
+            if plan.status != 'unchanged':
+                skipped.append({'scene_id': item.scene.id, 'status': plan.status})
+            continue
+        if not plan.editor_text.strip():
+            skipped.append({'scene_id': item.scene.id, 'status': plan.status})
+            warnings.append(f'«{item.scene.title}»: {WHOLE_SCENE_DELETED}; сцену не імпортовано.')
+            continue
+        _save_scene(repo, story_id, item, plan, origin, index)
+        imported.append(item.scene.id)
+        if plan.status == 'over_limit':
+            draft_only.append(item.scene.id)
+        warnings += [f'«{item.scene.title}»: {text}' for text in item.preview.warnings]
+    path.unlink(missing_ok=True)
+    return ImportResult(imported=imported, draft_only=draft_only, skipped=skipped, warnings=warnings)
+
+
+def cancel_import(repo, story_id: str, import_id: str) -> None:
+    """«Скасувати» of the preview dialog: nothing is written, the kept file is deleted."""
+    repo.get_story(story_id)
+    repo.files.resolve(_temp_path(import_id)).unlink(missing_ok=True)

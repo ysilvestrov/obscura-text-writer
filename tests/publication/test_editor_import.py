@@ -362,3 +362,158 @@ def test_tracked_paragraph_move_keeps_anchor(tmp_path, manifest):
     checked(plan)
     assert [(c.anchor.start, c.anchor.end) for c in plan.comments] == [(10, 16)]
     assert plan.editor_text == 'Початок.\n— Так.\n\n— Так.\n'
+
+
+# --- §5: saving the import ---------------------------------------------------------------------------------------
+
+EDITED = TEXTS[1].replace('пішов', 'побіг')
+
+
+def imported(repo, story, content, changed_scenes=None):
+    preview = preview_import(repo, story.id, content)
+    return preview, editor_import.apply_import(repo, story.id, preview.import_id, preview.fingerprint, changed_scenes)
+
+
+def import_attempts(repo, story, scene_id):
+    return repo.list_attempts(story.id, scene_id=scene_id, context_key='editor_import')
+
+
+def test_imported_proposal_is_selectable(tmp_path):
+    from storygen.generation.copyedit_review import copyedit_preview, select_copyedits
+    repo, story, scenes, content = book(tmp_path)
+    prose_head = scenes[1].heads['prose']
+    preview, result = imported(repo, story, edit(content, lambda xml: split(xml, 'пішов', tracked('пішов', 'побіг'))))
+    assert result.imported == [scenes[1].id] and result.skipped == [] and result.draft_only == []
+    [attempt] = import_attempts(repo, story, scenes[1].id)
+    assert attempt.run_id is None and attempt.state == 'needs_review' and attempt.stage == 'edit'
+    assert attempt.context['editor_import'] == {'import_id': preview.import_id, 'export_id': preview.export_id, 'scene_index': 1}
+    assert attempt.context['target_cas']['version_id'] == prose_head
+    assert repo.files.read_partial(attempt.partial_path) == EDITED
+    view = copyedit_preview(repo, scenes[1].id, attempt.id)
+    assert view['can_apply'], view['reason']
+    assert view['preview'] == EDITED and len(view['edits']) == 1
+    select_copyedits(repo, scenes[1].id, attempt.id, list(range(len(view['edits']))), view['expected_revision'],
+                     view['proposal_fingerprint'])
+    scene = repo.get_scene(scenes[1].id)
+    assert scene.heads['prose'] != prose_head and repo.read_text(scene.heads['prose']) == EDITED
+    assert repo.get_attempt(attempt.id).state == 'completed'
+    assert not (tmp_path / 'editor-import' / f'{preview.import_id}.docx').exists()
+
+
+def comment_on_speech(content):
+    return edit(content, lambda xml: split(xml, 'сказала вона', ranged(5, run('сказала вона'))), [(5, 'Редакторка', 'Точніше')])
+
+
+def test_comments_only_saves_draft_and_comments_without_attempt(tmp_path):
+    repo, story, scenes, content = book(tmp_path)
+    prose_head = scenes[1].heads['prose']
+    _, result = imported(repo, story, comment_on_speech(content))
+    assert result.imported == [scenes[1].id] and result.draft_only == []
+    scene = repo.get_scene(scenes[1].id)
+    assert scene.heads['prose'] == prose_head and repo.read_text(scene.heads['draft']) == TEXTS[1]
+    state = repo.get_comment_state(scenes[1].id)
+    notes = state['comment_set']
+    assert state['source_matches_current'] and notes.source_version_id == scene.heads['draft']
+    assert [(c.instruction, c.anchor.display_quote) for c in notes.comments] == [('Редактор (Редакторка): Точніше', 'сказала вона')]
+    assert import_attempts(repo, story, scenes[1].id) == []
+    assert repo.list_attempts(story.id) == []
+
+
+def test_over_limit_saves_editor_text_as_draft(tmp_path):
+    long = ' '.join(f'Слово{i} друге{i}.' for i in range(450))
+    repo, story, scenes, content = book(tmp_path, (TEXTS[0], long, TEXTS[2]))
+    changed = edit(content, lambda xml: split(re.sub(r'друге(\d+)', r'інше\1', xml), 'Слово7 ', ranged(3, run('Слово7 '))),
+                   [(3, 'Р', 'Примітка')])
+    _, result = imported(repo, story, changed)
+    assert result.imported == [scenes[1].id] and result.draft_only == [scenes[1].id]
+    scene = repo.get_scene(scenes[1].id)
+    assert repo.read_text(scene.heads['draft']) == long.replace('друге', 'інше')
+    assert repo.read_text(scene.heads['prose']) == long
+    notes = repo.get_comment_state(scenes[1].id)['comment_set']
+    assert notes.comments == [] and 'Примітка' in notes.general
+    assert repo.list_attempts(story.id) == []
+
+
+def test_whole_scene_deleted_is_skipped(tmp_path):
+    repo, story, scenes, content = book(tmp_path)
+    changed = edit(content, lambda xml: xml.replace(run('Третя сцена. Вечір.'), ''))
+    _, result = imported(repo, story, changed)
+    assert result.imported == [] and result.skipped == [{'scene_id': scenes[2].id, 'status': 'over_limit'}]
+    assert any('редактор вилучив увесь текст сцени' in w for w in result.warnings)
+    assert repo.get_scene(scenes[2].id).heads.get('draft') == scenes[2].heads.get('draft')
+
+
+def test_fingerprint_conflict(tmp_path):
+    from storygen.domain import RevisionConflict
+    repo, story, scenes, content = book(tmp_path)
+    preview = preview_import(repo, story.id, edit(content, lambda xml: xml.replace('пішов', 'побіг')))
+    save_manual_prose(repo, scenes[0].id, 'Новий початок.', scenes[0].revision, content_format='markdown')
+    before = {scene.id: repo.get_scene(scene.id).revision for scene in scenes}
+    with pytest.raises(RevisionConflict, match='Твір змінився після зведення'):
+        editor_import.apply_import(repo, story.id, preview.import_id, preview.fingerprint, None)
+    assert {scene.id: repo.get_scene(scene.id).revision for scene in scenes} == before
+    assert repo.list_attempts(story.id) == []
+
+
+def test_choice_required(tmp_path):
+    from storygen.generation.copyedit_review import copyedit_preview
+    repo, story, scenes, content = book(tmp_path)
+    save_manual_prose(repo, scenes[1].id, 'Зовсім інший текст.', scenes[1].revision, content_format='markdown')
+    preview = preview_import(repo, story.id, content)
+    with pytest.raises(ValueError):
+        editor_import.apply_import(repo, story.id, preview.import_id, preview.fingerprint, None)
+    result = editor_import.apply_import(repo, story.id, preview.import_id, preview.fingerprint, 'skip')
+    assert result.imported == [] and result.skipped == [{'scene_id': scenes[1].id, 'status': 'changed_since_export'}]
+    assert repo.list_attempts(story.id) == []
+    _, result = imported(repo, story, content, 'replace')
+    assert result.imported == [scenes[1].id] and result.skipped == []
+    [attempt] = import_attempts(repo, story, scenes[1].id)
+    view = copyedit_preview(repo, scenes[1].id, attempt.id)
+    assert view['original'] == 'Зовсім інший текст.' and view['preview'] == TEXTS[1] and view['can_apply']
+
+
+def test_second_import_is_pending_review(tmp_path):
+    repo, story, _, content = book(tmp_path)
+    changed = edit(content, lambda xml: xml.replace('пішов', 'побіг'))
+    imported(repo, story, changed)
+    preview = preview_import(repo, story.id, changed)
+    assert statuses(preview) == ['unchanged', 'pending_review', 'unchanged']
+
+
+def test_draft_version_marked(tmp_path):
+    import hashlib
+    repo, story, scenes, content = book(tmp_path)
+    preview, _ = imported(repo, story, edit(content, lambda xml: xml.replace('пішов', 'побіг')))
+    ref = repo.get_version(repo.get_scene(scenes[1].id).heads['draft'])
+    assert ref.editor_import.import_id == preview.import_id and ref.editor_import.export_id == preview.export_id
+    assert ref.sha256 == hashlib.sha256(TEXTS[1].encode('utf-8')).hexdigest()
+    assert ref.input_refs == [] and ref.dependency_snapshot is None
+
+
+def test_cancel_removes_temp(tmp_path):
+    repo, story, _, content = book(tmp_path)
+    preview = preview_import(repo, story.id, content)
+    path = tmp_path / 'editor-import' / f'{preview.import_id}.docx'
+    assert path.exists()
+    editor_import.cancel_import(repo, story.id, preview.import_id)
+    assert not path.exists()
+    with pytest.raises(KeyError):
+        editor_import.apply_import(repo, story.id, preview.import_id, preview.fingerprint, None)
+    with pytest.raises(KeyError):
+        editor_import.cancel_import(repo, story.id, '../../secret')
+
+
+def test_failed_proposal_rolls_back_draft_and_comments(tmp_path, monkeypatch):
+    import storygen.generation.context as context
+    repo, story, scenes, content = book(tmp_path)
+    changed = edit(comment_on_speech(content), lambda xml: xml.replace('пішов', 'побіг'))
+    preview = preview_import(repo, story.id, changed)
+
+    def broken(*args, **kwargs):
+        raise RuntimeError('context failed')
+    monkeypatch.setattr(context, 'make_context', broken)
+    with pytest.raises(RuntimeError):
+        editor_import.apply_import(repo, story.id, preview.import_id, preview.fingerprint, None)
+    scene = repo.get_scene(scenes[1].id)
+    assert scene.revision == scenes[1].revision and scene.heads.get('draft') == scenes[1].heads.get('draft')
+    assert repo.get_comment_state(scenes[1].id)['comment_set'] is None and repo.list_attempts(story.id) == []

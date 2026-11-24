@@ -90,7 +90,10 @@ def _same_notes(left,right):
     return left is not None and left.model_dump(include=keys)==right.model_dump(include=keys)
 
 
-def save_draft_with_comments(repo,scene_id,text,content_format,expected_revision,expected_comments_revision,payload,*,expected_source_version_id):
+def save_draft_with_comments(repo,scene_id,text,content_format,expected_revision,expected_comments_revision,payload,*,expected_source_version_id,editor_import=None,attempt_factory=None):
+    """`editor_import` marks a new draft version (IMPORT-DOCX). `attempt_factory(draft_ref, view)` runs inside the
+    transaction after the draft is published, with a ContextView of that transaction; the attempt it returns is
+    inserted on the same connection, so draft, comments and attempt are written together or not at all."""
     if not text.strip():raise ValueError('Чернетка не може бути порожньою')
     if content_format not in {'plain','markdown'}:raise ValueError('Невідомий формат авторського тексту')
     payload=CommentPayload.model_validate(payload.model_dump() if isinstance(payload,CommentPayload) else payload)
@@ -110,7 +113,8 @@ def save_draft_with_comments(repo,scene_id,text,content_format,expected_revision
         policy=projection_policy(repo.context_view(scene.story_id),scene_id)
         id=new_id();raw=text.encode('utf-8')
         ref=VersionRef(id=id,story_id=scene.story_id,scene_id=scene_id,kind='draft',content_format=content_format,
-            sha256=hashlib.sha256(raw).hexdigest(),relative_path=f'stories/{scene.story_id}/versions/{id}.txt',manual_projection_policy=policy)
+            sha256=hashlib.sha256(raw).hexdigest(),relative_path=f'stories/{scene.story_id}/versions/{id}.txt',manual_projection_policy=policy,
+            editor_import=editor_import)
         repo.files.write(ref.relative_path,raw)
     with repo.db.connection() as db:
         db.execute('BEGIN IMMEDIATE')
@@ -133,4 +137,9 @@ def save_draft_with_comments(repo,scene_id,text,content_format,expected_revision
         if _same_notes(latest,notes):notes=latest
         elif latest is None and not notes.general and not notes.comments:notes=None
         else:_insert_comment_set(db,notes)
+        if attempt_factory is not None:
+            from .context_view import ContextView
+            from .repository import insert_attempt
+            attempt=attempt_factory(ref,ContextView(repo,db,current.story_id))
+            if attempt is not None:insert_attempt(db,attempt)
     return {'scene':repo.get_scene(scene_id),'version':ref,'comment_set':notes}
