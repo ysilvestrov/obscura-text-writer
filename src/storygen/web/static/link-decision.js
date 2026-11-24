@@ -31,7 +31,7 @@ async function loadPreview(key,sceneId){
   previewKeyValue=key;previewValue=null;
   let result;
   try{result=await api(`/api/stories/${state.storyId}/audit/preview`,json('POST',{scope:'scene',scene_id:sceneId}))}
-  catch(error){result={ready:false,reason:error.message}}
+  catch(error){result={ready:false,reason:error.message,failed:true}}  // M3: read again on the next refresh
   // Review Focus 2: a late answer for another scene or another state of the links is dropped.
   if(previewKey()!==key||previewKeyValue!==key)return;
   previewValue=result;render();
@@ -92,28 +92,49 @@ function renderRow(row){
 function renderPrimary(primary){
   const wrap=document.createElement('p');wrap.className='consistency-primary';
   const button=document.createElement('button');button.id='scene-consistency-primary';button.type='button';
-  button.dataset.focusKey='primary';button.disabled=busy||primary.disabled;
+  button.dataset.focusKey='primary';
   button.setAttribute('aria-describedby','scene-consistency-reason');
-  uiText(button,'textContent',()=>t(primary.label));
-  button.onclick=()=>{if(primary.action==='audit')void audit()};
-  wrap.append(button);
-  if(primary.detail){const cost=document.createElement('small');cost.className='consistency-cost muted';label(cost,primary.detail);wrap.append(' ',cost)}
+  const cost=document.createElement('small');cost.className='consistency-cost muted';
+  // The reason is the panel's only live text: it changes when an edit, a run or the preview blocks the action.
   const reason=document.createElement('small');reason.id='scene-consistency-reason';reason.className='consistency-reason muted';
-  label(reason,primary.reason);reason.hidden=!primary.reason;
-  wrap.append(' ',reason);
+  reason.setAttribute('aria-live','polite');
+  wrap.append(button,' ',cost,' ',reason);
+  updatePrimary(wrap,primary);
   return wrap;
 }
+// The main action follows the editor, the runs and the preview in place: typing never rebuilds the rows (I1).
+function updatePrimary(wrap,primary){
+  const button=wrap.querySelector('#scene-consistency-primary'),cost=wrap.querySelector('.consistency-cost'),reason=wrap.querySelector('#scene-consistency-reason');
+  button.disabled=busy||primary.disabled;
+  uiText(button,'textContent',()=>t(primary.label));
+  button.onclick=()=>{if(primary.action==='audit')void audit()};
+  label(cost,primary.detail);cost.hidden=!primary.detail;
+  label(reason,primary.reason);reason.hidden=!primary.reason;
+}
+let shown=null;
 function render(){
   if(!host)return;
   const key=previewKey();
   const panel=state.scene?sceneConsistency(state.view?.material_status,state.scene.id,state.view?.scenes||[],null,previewFor(key),blockedReason()):null;
+  // Only the main action changed (an edit, a run, the preview): update it in place and keep the rows and the focus.
+  const signature=panel&&JSON.stringify([state.scene.id,busy,panel.view,panel.pendingCount,panel.total,panel.rows,panel.primary.action]);
+  const wrap=host.querySelector('.consistency-primary');
+  if(signature&&signature===shown&&(panel.view!=='full'||wrap)){
+    if(panel.view==='full'){
+      updatePrimary(wrap,panel.primary);
+      if(!panel.resume&&key!==previewKeyValue)void loadPreview(key,state.scene.id);
+    }
+    scheduleCarry(panel);
+    return;
+  }
+  shown=signature;
   // Review Focus 4: a focused control of the panel keeps the focus across the redraw.
   const active=document.activeElement;
   const focusKey=host.contains(active)?(active===host?'host':active.dataset?.focusKey||'host'):null;
   host.replaceChildren();
   host.hidden=!panel||panel.view==='none';
   if(panel?.view==='valid'){
-    const valid=document.createElement('p');valid.className='consistency-valid';uiText(valid,'textContent',()=>t('consistency.valid'));
+    const valid=document.createElement('p');valid.className='consistency-valid';valid.id='scene-consistency-title';uiText(valid,'textContent',()=>t('consistency.valid'));
     host.append(valid);
   }else if(panel?.view==='full'){
     const head=document.createElement('div');head.className='consistency-head';
@@ -128,11 +149,17 @@ function render(){
   }
   if(focusKey){
     const target=focusKey==='host'?null:host.querySelector(`[data-focus-key="${focusKey}"]`);
-    (target&&!target.disabled&&!host.hidden?target:host).focus({preventScroll:true});
+    // M2: a panel that hid itself hands the focus to the status row (as openStopScene does), never to the page.
+    const row=document.querySelector('#workspace-status-row');
+    if(host.hidden&&row&&!row.hasAttribute('tabindex'))row.tabIndex=-1;
+    (host.hidden?row:target&&!target.disabled?target:host)?.focus({preventScroll:true});
   }
-  // MEMORY-CARRY: the carry runs in the background without a followed run; the view is read again until it reaches
-  // this scene, so «Пам’ять переноситься…» clears by itself. A paused or failed carry keeps the scene pending, so the
-  // polling stops after about two minutes per opened scene (the next refresh or scene switch shows the state again).
+  scheduleCarry(panel);
+}
+// MEMORY-CARRY: the carry runs in the background without a followed run; the view is read again until it reaches
+// this scene, so «Пам’ять переноситься…» clears by itself. A paused or failed carry keeps the scene pending, so the
+// polling stops after about two minutes per opened scene (the next refresh or scene switch shows the state again).
+function scheduleCarry(panel){
   clearTimeout(carryTimer);carryTimer=null;
   const pending=!!panel?.rows.some(row=>row.link==='memory'&&row.status?.key==='link.carry_pending');
   if(!pending)carryPolls=0;
@@ -188,6 +215,7 @@ async function createMemory(sceneId,options){
     await invokeWorkspaceCommand('run',options);
   }catch(error){if(error.name!=='AbortError')notice(error.message,'error')}
 }
-if(host)for(const event of ['story-refreshed','workspace-run-state','workspace-run-pending','workspace-readiness','editor-state-changed'])document.addEventListener(event,render);
+if(host)document.addEventListener('story-refreshed',()=>{if(previewValue?.failed){previewKeyValue=null;previewValue=null}render()});
+if(host)for(const event of ['workspace-run-state','workspace-run-pending','workspace-readiness','editor-state-changed'])document.addEventListener(event,render);
 document.addEventListener('scene-selected',()=>{carryPolls=0;previewKeyValue=null;previewValue=null;render()});
 render();

@@ -75,7 +75,7 @@ export function pendingLinks(materialStatus,sceneId,scenes=[]){
 // links of the scene and the items of pendingLinks; the render (link-decision.js) draws them.
 const LINKS=['brief','prose','memory'];
 const STATE={valid:'ok',unchecked:'pending',discrepancy:'discrepancy',unavailable:'unavailable'};
-const ICON={ok:'✓',pending:'○',discrepancy:'!',unavailable:'—',missing:'·'};
+const ICON={ok:'✓',pending:'○',discrepancy:'!',unavailable:'—',missing:''};
 const key=(name,params={})=>({key:name,params});
 
 function isBookStop(run,sceneId){
@@ -98,7 +98,7 @@ function consistencyRow(link,state,item){
     row.status=key(link==='memory'?'link.memory_unchecked':'consistency.state_pending');
     row.actions=relabel(item?.actions,link,'consistency.approve_self');
   }else if(kind==='discrepancy'){
-    row.status=key('consistency.state_discrepancy',{p0:state.confidence??'—'});
+    row.status=state.confidence==null?key('consistency.state_discrepancy_plain'):key('consistency.state_discrepancy',{p0:state.confidence});
     row.confidence=state.confidence??null;
     row.summary=state.summary??null;
     row.discrepancies=state.discrepancies||[];
@@ -110,7 +110,7 @@ function consistencyRow(link,state,item){
   }else if(item){
     row.status=key(item.text,item.params);
     row.actions=item.actions;
-  }else row.status=key('consistency.state_pending');
+  }else row.status={text:state.reason||'—'};  // an unavailable link without a panel item: its own reason (a server text)
   return row;
 }
 

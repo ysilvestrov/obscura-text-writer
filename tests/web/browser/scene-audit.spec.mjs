@@ -15,6 +15,8 @@ test('a valid scene offers no check',async({page,request})=>{
   await expect(page.locator('#audit-scene')).toHaveCount(0);
   await expect(page.locator('#scene-consistency')).toHaveText('Сцена узгоджена ✓');
   await expect(page.locator('#scene-consistency-primary')).toHaveCount(0);
+  // M5: the label of the panel exists in the valid view too.
+  await expect(page.locator('#scene-consistency-title')).toHaveText('Сцена узгоджена ✓');
 });
 
 test('the auditor checks the scene after consent and the author decides its discrepancy',async({page,request})=>{
@@ -109,12 +111,36 @@ test('the main action is disabled with its reason',async({page,request})=>{
   await expect(page.locator('#scene-consistency li[data-link="prose"]')).toHaveAttribute('data-state','discrepancy');
   await expect(reason).toHaveText('Ревізору нема що перевіряти: вирішіть зв’язки вручну');
   await expect(button).toBeDisabled();
+  // I1: typing updates the main action in place; the rows are not rebuilt and the panel is not a live region.
+  await expect(page.locator('#scene-consistency')).not.toHaveAttribute('aria-live',/.*/);
+  const rowNode=await page.locator('#scene-consistency li[data-link="prose"]').elementHandle();
   // An unsaved edit wins: the reason names it.
   const editor=page.locator('.rich-text-surface .ProseMirror');
   await expect(editor).toHaveAttribute('contenteditable','true');
   await editor.click();await page.keyboard.press('Control+End');await page.keyboard.type(' Човен.');
   await expect(reason).toHaveText('Спершу збережіть ручні правки');
   await expect(button).toBeDisabled();
+  await page.keyboard.type(' Ще.');
+  expect(await rowNode.evaluate(node=>node.isConnected)).toBe(true);
+});
+
+test('a failed preview is read again on the next refresh',async({page,request})=>{
+  // M3: an error of the preview request is not kept as a permanent reason.
+  const fixture=await(await request.post('/test-scene-audit')).json();
+  let fail=true;
+  await page.route('**/audit/preview',async route=>{
+    if(fail){await route.fulfill({status:500,contentType:'application/json',body:JSON.stringify({detail:'Тимчасова помилка'})});return}
+    await route.continue();
+  });
+  await page.goto(`/stories/${fixture.story_id}?scene=${fixture.scene_id}&material=prose`);
+  const button=page.locator('#scene-consistency-primary'),reason=page.locator('#scene-consistency-reason');
+  await expect(reason).toBeVisible();
+  await expect(button).toBeDisabled();
+  fail=false;
+  await page.evaluate(()=>document.dispatchEvent(new CustomEvent('story-refreshed')));
+  await expect(page.locator('#scene-consistency .consistency-cost')).toHaveText('2 викл.');
+  await expect(button).toBeEnabled();
+  await expect(reason).toBeHidden();
 });
 
 test('a late preview of another scene is dropped',async({page,request})=>{

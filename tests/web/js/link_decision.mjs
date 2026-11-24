@@ -129,4 +129,10 @@ assert.equal(sceneConsistency(view({},{validity:'valid'}),'s2',scenes,book({scen
 assert.equal(sceneConsistency(view({prose:over},{validity:'unchecked'}),'s2',scenes,book({scene_id:'s2',link:'prose',outcome:'unavailable'})).primary.disabled,false);
 assert.equal(sceneConsistency(view({brief:link('unchecked')}),'s2',scenes,book({scene_id:'s1',link:'brief',outcome:'discrepancy'}),pv(1)).primary.action,'audit');
 assert.equal(sceneConsistency(view({brief:link('unchecked')}),'s2',scenes,book({scene_id:'s2',link:'brief',outcome:'discrepancy'},'completed'),pv(1)).primary.action,'audit');
+// Fix round 1: a missing link has no icon (M1); a verdict without confidence omits it (M4); an unavailable link of
+// another source without a panel item names its own reason, never «не перевірено» (M4).
+assert.equal(briefOnly.rows[1].icon,'');
+assert.deepEqual(sceneConsistency(view({prose:{...disc,confidence:null}}),'s2',scenes,null,pv(0)).rows[1].status,{key:'consistency.state_discrepancy_plain',params:{}});
+c=sceneConsistency(view({memory:link('unavailable','carry_unknown')}),'s2',scenes,null,pv(0));
+assert.deepEqual([c.rows[2].state,c.rows[2].status],['unavailable',{text:'carry_unknown'}]);
 console.log('Link panel actions passed');

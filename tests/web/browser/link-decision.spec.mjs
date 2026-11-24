@@ -71,3 +71,17 @@ test('«Створити пам’ять» opens the previous scene and asks bef
   expect(runs).toEqual([]);
   await expect(panel).toContainText('У сцени ще немає пам’яті');
 });
+
+// M2: a row action that leaves nothing to decide hides the panel; the focus goes to the status row, never to the page.
+test('the focus stays in the workspace when the panel hides itself',async({page,request})=>{
+  const story=await(await request.post('/api/stories',{data:{title:'Маяк'}})).json();
+  const scene=await(await request.post(`/api/stories/${story.id}/scenes`,{data:{title:'Ранок'}})).json();
+  const brief={objective:'Світло на воді',beats:['Маяк'],constraints:[],proposed_changes:[]};
+  const saved=await request.post(`/api/scenes/${scene.id}/brief`,{data:{text:JSON.stringify(brief),expected_revision:scene.revision}});
+  expect(saved.ok(),await saved.text()).toBeTruthy();
+  await page.goto(`/stories/${story.id}?scene=${scene.id}&material=brief`);
+  const panel=page.locator('#scene-consistency');
+  await panel.locator('li[data-link="brief"]').getByRole('button',{name:'Я перевірив сам'}).click();
+  await expect(panel).toBeHidden();
+  await expect(page.locator('#workspace-status-row')).toBeFocused();
+});
