@@ -70,10 +70,14 @@ def append_run_event(repo, run_id, type, data):
         return event
 
 
-def list_run_events(repo, run_id, after_seq=0):
+def list_run_events(repo, run_id, after_seq=0, types=None):
     with repo.db.connection() as db:
         repo._get(db, 'runs', run_id, Run)
-        return [RunEvent.model_validate_json(row[0]) for row in db.execute('SELECT payload FROM run_events WHERE run_id=? AND seq>? ORDER BY seq', (run_id, after_seq))]
+        query, params = 'SELECT payload FROM run_events WHERE run_id=? AND seq>?', [run_id, after_seq]
+        if types:
+            query += f" AND type IN ({','.join('?' * len(types))})"
+            params += list(types)
+        return [RunEvent.model_validate_json(row[0]) for row in db.execute(query + ' ORDER BY seq', params)]
 
 
 def recover_running_attempts(repo):

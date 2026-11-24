@@ -3,7 +3,7 @@ import {t,uiText,diagnostic} from './i18n.js';
 import {api,json,notice} from './api.js';
 import {state,selectScene} from './editor.js';
 import {auditConfirmationText,operationReason} from './run-readiness.js';
-import {invalidSceneCount,bookMenuState} from './book-validation-state.js';
+import {invalidSceneCount,bookMenuState,latestBookRun} from './book-validation-state.js';
 import {stoppedAuditScene} from './run-summary.js';
 
 // R-44 book validation, design §9/§12: the story menu item counts the invalid scenes of the story view; a press reads the
@@ -15,17 +15,32 @@ const ACTIVE_RUN=new Set(['queued','running','pause_requested','cancellation_req
 const item=document.querySelector('#story-menu-validate'),jump=document.querySelector('#run-stop-scene');
 let busy=false,lastRun=null;
 
+// Visible run progress: a running or stopped book validation leads to its run row (Final(core) ruling 3), unless the row
+// follows a different active run (ruling 2: the item is then disabled with its reason in the title).
+const bookRun=()=>latestBookRun(state.workspaceRuns,lastRun||state.workspaceRun);
+const menuState=()=>bookMenuState(state.view?invalidSceneCount(state.view.material_status):null,bookRun(),state.workspaceRun);
 function renderMenu(){
   if(!item)return;
-  const menu=bookMenuState(state.view?invalidSceneCount(state.view.material_status):null);
+  const menu=menuState();
   uiText(item,'textContent',()=>t(menu.key,menu.params));
-  item.disabled=menu.disabled||busy||ACTIVE_RUN.has(state.workspaceRun?.state);
+  item.disabled=menu.disabled||busy||(!menu.show&&ACTIVE_RUN.has(state.workspaceRun?.state));
+  uiText(item,'title',()=>menu.reason?t(menu.reason):'');
+}
+// The stop scene is the main action of a stopped book validation; after it opens, the focus goes to the scene's
+// «Узгодженість сцени» panel, else (no panel) back to the run row.
+async function openStopScene(scene){
+  await selectScene(scene);
+  const panel=document.querySelector('#scene-consistency'),target=panel&&!panel.hidden?panel:document.querySelector('#workspace-status-row');
+  if(!target)return;
+  if(!target.hasAttribute('tabindex'))target.tabIndex=-1;
+  target.focus();
 }
 function renderJump(){
   if(!jump)return;
   const scene=stoppedAuditScene(lastRun,state.view?.scenes);
   jump.hidden=!scene;
-  jump.onclick=scene?()=>void selectScene(scene):null;
+  jump.classList.toggle('secondary',!scene);
+  jump.onclick=scene?()=>void openStopScene(scene).catch(error=>notice(error.message,'error')):null;
   if(scene)uiText(jump,'textContent',()=>t('run.go_to_scene',{p0:scene.position+1}));
 }
 function render(){renderMenu();renderJump()}
@@ -43,7 +58,7 @@ async function validate(){
         audit_plan_fingerprint:preview.plan_fingerprint,pause_after:[],budget_limit_usd:document.querySelector('#run-budget')?.value||null};
       try{
         const run=await api('/api/runs',json('POST',{request_id:crypto.randomUUID(),request}));
-        document.dispatchEvent(new CustomEvent('run-enqueued',{detail:run}));
+        document.dispatchEvent(new CustomEvent('run-reveal',{detail:run}));
         return;
       }catch(error){
         if(error.status!==409||error.message!==PLAN_CHANGED)throw error;
@@ -54,11 +69,16 @@ async function validate(){
   finally{busy=false;renderMenu()}
 }
 
-if(item)item.onclick=()=>void validate();
+if(item)item.onclick=()=>{
+  const run=bookRun(),menu=bookMenuState(null,run,state.workspaceRun);
+  if(menu.show){if(!menu.disabled)document.dispatchEvent(new CustomEvent('run-reveal',{detail:run}));return}
+  void validate();
+};
 document.addEventListener('workspace-run-state',event=>{lastRun=event.detail;render()});
 // A short run from the list has no checkpoint: keep the full run while it is the same run in the same state.
 document.addEventListener('workspace-run-pending',event=>{
   const run=event.detail;if(lastRun?.id!==run?.id||lastRun?.state!==run?.state)lastRun=null;render();
 });
 document.addEventListener('story-refreshed',render);
+document.addEventListener('workspace-readiness',renderMenu);
 render();

@@ -2,6 +2,8 @@
 // (link-decision.js) renders them. An approval goes only to an unchecked link (the server refuses Z3 `unavailable`);
 // a memory action launches the memory stage of the named scene through the usual preview and consent; rebuild launches
 // «Перебудувати пам’ять» from the scene; a carry action resumes or cancels the stalled carry run (MEMORY-CARRY).
+import {dollarsUpper} from "./run-summary.js";
+
 const UNCHECKED={
   brief:{text:'link.brief_unchecked',approve:'link.approve_brief'},
   prose:{text:'link.prose_unchecked',approve:'link.approve_prose'},
@@ -67,4 +69,87 @@ export function pendingLinks(materialStatus,sceneId,scenes=[]){
     items.push({key:link,text:rule.text,params:{},actions});
   }
   return items;
+}
+
+// VALID-LINKS-S15: the rows of the «Узгодженість сцени» panel. Always three rows (brief → prose → memory) built from the
+// links of the scene and the items of pendingLinks; the render (link-decision.js) draws them.
+const LINKS=['brief','prose','memory'];
+const STATE={valid:'ok',unchecked:'pending',discrepancy:'discrepancy',unavailable:'unavailable'};
+const ICON={ok:'✓',pending:'○',discrepancy:'!',unavailable:'—',missing:''};
+const key=(name,params={})=>({key:name,params});
+
+function isBookStop(run,sceneId){
+  return run?.request?.mode==='audit'&&run.request.audit_scope==='story'&&run.state==='needs_review'&&run.checkpoint?.scene_id===sceneId;
+}
+
+// Г4: the approval of a brief or prose link is worded by the state it decides; the memory keeps its own labels.
+function relabel(actions,link,label){
+  return (actions||[]).map(action=>action.type==='approve'&&link!=='memory'?{...action,label}:action);
+}
+
+function consistencyRow(link,state,item){
+  const kind=STATE[state?.status]||'missing';
+  const row={link,title:`consistency.row_${link}`,state:kind,icon:ICON[kind],status:null,actions:[]};
+  if(kind==='ok'){
+    const suffix=state.source==='auditor'?'_auditor':state.source==='author'?'_author':'';
+    row.status=key('consistency.state_ok'+suffix);
+  }else if(kind==='missing')row.status=key('consistency.state_missing');
+  else if(kind==='pending'){
+    row.status=key(link==='memory'?'link.memory_unchecked':'consistency.state_pending');
+    row.actions=relabel(item?.actions,link,'consistency.approve_self');
+  }else if(kind==='discrepancy'){
+    row.status=state.confidence==null?key('consistency.state_discrepancy_plain'):key('consistency.state_discrepancy',{p0:state.confidence});
+    row.confidence=state.confidence??null;
+    row.summary=state.summary??null;
+    row.discrepancies=state.discrepancies||[];
+    row.actions=relabel(item?.actions,link,'consistency.no_discrepancy');
+  }else if(state.source==='auditor'){
+    row.status=key('link.audit_unavailable');
+    row.reason=state.reason||'';
+    row.actions=item?.actions||[];
+  }else if(item){
+    row.status=key(item.text,item.params);
+    row.actions=item.actions;
+  }else row.status={text:state.reason||'—'};  // an unavailable link without a panel item: its own reason (a server text)
+  return row;
+}
+
+export function sceneConsistency(materialStatus,sceneId,scenes=[],run=null,preview=null,blocked=''){
+  const scene=(materialStatus||{})[sceneId];
+  const links=scene?.links||{};
+  const items=pendingLinks(materialStatus,sceneId,scenes);
+  const previousItem=items.find(item=>item.key==='previous');
+  // Г3: the previous scene's memory sits once, on the brief row when the brief is unavailable for it, otherwise on prose.
+  const needsPrevious=link=>links[link]?.status==='unavailable'&&links[link].reason==='no_previous_memory';
+  const previousOwner=previousItem?(needsPrevious('brief')?'brief':'prose'):null;
+  const rows=LINKS.map(link=>{
+    if(needsPrevious(link)&&link!==previousOwner){
+      return {...consistencyRow(link,links[link],null),status:key('consistency.state_needs_previous')};
+    }
+    return consistencyRow(link,links[link],link===previousOwner?previousItem:items.find(entry=>entry.key===link));
+  });
+  const pendingCount=rows.filter(row=>['pending','discrepancy','unavailable'].includes(row.state)).length;
+  const total=rows.filter(row=>row.state!=='missing').length;
+  const stop=isBookStop(run,sceneId);
+  const view=stop?'full':scene?.validity==='valid'?'valid':pendingCount===0?'none':'full';
+  let primary;
+  if(stop){
+    const checkpoint=run.checkpoint;
+    // Г6: ready when the stop link was decided (its status left the outcome) or the Auditor itself was unavailable.
+    const ready=links[checkpoint.link]?.status!==checkpoint.outcome||checkpoint.outcome==='unavailable';
+    const reason=blocked?{text:blocked}:ready?null:key('consistency.resolve_first');
+    primary={action:'resume',runId:run.id,label:'consistency.resume',disabled:reason!==null,reason};
+  }else{
+    let reason=null;
+    if(blocked)reason={text:blocked};
+    else if(preview&&!preview.ready)reason={text:preview.reason};
+    else if(preview&&preview.calls===0)reason=key('consistency.nothing_to_audit');
+    let detail=null;
+    if(preview?.ready){
+      const usd=preview.cost?.total_usd;
+      detail=usd==null?key('consistency.audit_calls',{p0:preview.calls}):key('consistency.audit_cost',{p0:preview.calls,p1:dollarsUpper(Number(usd))});
+    }
+    primary={action:'audit',label:'consistency.audit',detail,disabled:!preview||reason!==null,reason};
+  }
+  return {view,pendingCount,total,rows,primary,resume:primary.action==='resume'};
 }

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {pathToFileURL} from 'node:url';
 const root=process.argv[2];
-const {runSummaryText,runModeKey,runNoticeMark,runExpanded,toggleRunExpansion,syncRunPrefs,usageUsd,addRunCost,runCostText}=await import(pathToFileURL(root+'/src/storygen/web/static/run-summary.js'));
+const {runSummaryText,runModeKey,runNoticeMark,runExpanded,toggleRunExpansion,syncRunPrefs,revealTakesFocus,usageUsd,addRunCost,runCostText,dollarsUpper}=await import(pathToFileURL(root+'/src/storygen/web/static/run-summary.js'));
 
 // The one-line summary: state, the planned models when known, a warning mark when the run has a warning.
 const plan={roles:{writer:{provider:'venice',model:'gemma'}},evaluator:{provider:'local',model:'judge'}};
@@ -62,3 +62,26 @@ assert.equal(runCostText(addRunCost(costs,'r2','b1',{cost:{usd:1.5}}),'r2'),'$1.
 assert.equal(runCostText(addRunCost(null,'r3','c1',{prompt_tokens:3}),'r3'),'$—','usage without a price stays reachable through the tooltip');
 assert.equal(addRunCost(null,'r4','d1',{}),null,'no usage, nothing to show');
 console.log('ok');
+
+// needs_review is disclosed like failed: it opens by itself once, the author's collapse is remembered, the next stop opens it again.
+{
+  const review={id:'r5',state:'needs_review'};let p={expandedRun:null,collapsedFailure:null};
+  assert.equal(runExpanded(review,p),true,'needs_review opens once by itself');
+  p=toggleRunExpansion(review,p);assert.equal(runExpanded(review,p),false,'the author collapses it');
+  p=syncRunPrefs({id:'r5',state:'queued'},p);assert.equal(runExpanded({id:'r5',state:'running'},p),false);
+  assert.equal(runExpanded({id:'r5',state:'needs_review'},p),true,'the next stop opens it again');
+}
+
+// Г8: a reveal never takes the focus from a field the author is typing in.
+assert.equal(revealTakesFocus({matches:s=>s.includes('textarea')}),false);
+assert.equal(revealTakesFocus({matches:()=>false}),true);
+assert.equal(revealTakesFocus(null),true);
+
+// An upper bound rounds up at the displayed precision, never down; spent amounts keep rounding via dollars().
+assert.equal(dollarsUpper(0.0149),'$0.02');
+assert.equal(dollarsUpper(0.0099),'$0.0099');
+assert.equal(dollarsUpper(0.00991),'$0.01');
+assert.equal(dollarsUpper(0.0123),'$0.02');
+assert.equal(dollarsUpper(2.1),'$2.10');
+assert.equal(dollarsUpper(2.101),'$2.11');
+assert.equal(dollarsUpper(0),'$0.0000');

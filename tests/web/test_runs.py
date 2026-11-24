@@ -178,3 +178,27 @@ def test_book_audit_run_checks_the_plan_fingerprint(tmp_path):
         missing=client.post('/api/runs',json={'request_id':'no-plan','request':{**request,'audit_plan_fingerprint':None}})
         assert missing.status_code==422
         assert [r for r in app.state.coordinator.list_runs() if r.request.mode=='audit']==[] and calls==[]
+
+
+def test_get_run_includes_progress(tmp_path):
+    app=create_app(AppSettings(data_dir=tmp_path))
+    repo=app.state.repo; story=repo.create_story(StoryCreate(title='Приклад')); scene=repo.create_scene(story.id,SceneCreate(title='Сцена',beats='Ранок'))
+    from storygen.generation.worker import RunRequest
+    save_role_settings(repo,story.id,'planner',RoleSettings(provider=ProviderSettings(model='planned-model')),repo.get_story(story.id).revision)
+    run=app.state.coordinator.enqueue(RunRequest(story_id=story.id,scene_id=scene.id,mode='stage',stage='brief'),'progress-field')
+    body=TestClient(app,base_url='http://127.0.0.1:8765').get(f'/api/runs/{run.id}').json()
+    assert body['progress']['calls']=={'done':0,'planned':1}
+    assert body['progress']['step']=={'stage':'brief'} and body['progress']['stopped'] is None
+
+
+def test_get_run_survives_a_failing_progress(tmp_path,monkeypatch):
+    """A broken progress computation is logged and gives progress=None; GET /api/runs/{id} never fails because of it."""
+    import storygen.generation.run_progress as module
+    app=create_app(AppSettings(data_dir=tmp_path))
+    repo=app.state.repo; story=repo.create_story(StoryCreate(title='Приклад')); scene=repo.create_scene(story.id,SceneCreate(title='Сцена',beats='Ранок'))
+    from storygen.generation.worker import RunRequest
+    save_role_settings(repo,story.id,'planner',RoleSettings(provider=ProviderSettings(model='planned-model')),repo.get_story(story.id).revision)
+    run=app.state.coordinator.enqueue(RunRequest(story_id=story.id,scene_id=scene.id,mode='stage',stage='brief'),'progress-broken')
+    monkeypatch.setattr(module,'run_progress',lambda *_: (_ for _ in ()).throw(RuntimeError('boom')))
+    response=TestClient(app,base_url='http://127.0.0.1:8765').get(f'/api/runs/{run.id}')
+    assert response.status_code==200 and response.json()['progress'] is None and response.json()['run']['id']==run.id

@@ -3907,7 +3907,7 @@
     {
       "id": "R20-WORKSPACE-S04",
       "requirement": "R20-WORKSPACE",
-      "scope": "Правила підсумку й розгортання (run-summary.js) і структура згортання в runs.js/app.css; поведінку в браузері перевіряє ручна процедура.",
+      "scope": "Правила підсумку й розгортання (run-summary.js: failed і needs_review розгортаються один раз) і структура згортання в runs.js/app.css; поведінку в браузері перевіряє ручна процедура.",
       "tests": [
         "tests/web/test_run_status_collapse_ui.py::test_run_summary_rules",
         "tests/web/test_run_status_collapse_ui.py::test_run_status_details_collapse_behind_the_summary"
@@ -3967,6 +3967,21 @@
         "tests/web/test_copyedit_review_ui.py::test_copyedit_panel_selection_and_dirty_guards",
         "tests/web/test_workspace_route.py::test_workspace_route_save_and_source_regressions"
       ]
+    },
+    {
+      "id": "R20-WORKSPACE-S10",
+      "requirement": "R20-WORKSPACE",
+      "scope": "Чисті правила progressText (заголовок, крок, лічильники, смуга, Р5), тексти run_progress.* у uk і en, розмітка рядка прогресу й reveal лише для запусків з вкладки (Р2), розгортання needs_review, revealTakesFocus (Г8: поле введення лишає фокус; run_summary.mjs); фокус і прокрутку в браузері перевіряє ручна процедура. Повільний GET не забирає фокус із редактора, а без блоку прогресу фокус іде на .run-summary — Playwright book-validation.spec.mjs.",
+      "tests": [
+        "tests/web/test_run_progress_ui.py::test_run_progress_rules",
+        "tests/web/test_run_progress_ui.py::test_run_progress_texts_exist_in_both_languages",
+        "tests/web/test_run_progress_ui.py::test_runs_render_progress_and_reveal_only_runs_started_here",
+        "tests/web/test_run_status_collapse_ui.py::test_run_summary_rules"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#book-validation-browser",
+        "reason": "Playwright запускається окремим runner; check_docs.py індексує лише pytest IDs."
+      }
     },
     {
       "id": "WORKSPACE-TOOLS-S01",
@@ -7610,7 +7625,7 @@
       ],
       "manual": {
         "procedure": "docs/verification/manual.md#link-decision-browser",
-        "reason": "check_docs.py індексує лише pytest; перший Playwright case tests/web/browser/link-decision.spec.mjs (панель «Затвердити завдання»/«Затвердити відповідність» відкритої сцени, після обох затверджень лишається рядок «Створити пам’ять» сцени без пам’яті) виконується окремим runner, цей зв’язок не є доказом виконання."
+        "reason": "check_docs.py індексує лише pytest; перший Playwright case tests/web/browser/link-decision.spec.mjs (панель «Узгодженість сцени» відкритої сцени: «Я перевірив сам» для завдання й прози, після обох затверджень лишається рядок пам’яті зі «Створити пам’ять» сцени без пам’яті) виконується окремим runner, цей зв’язок не є доказом виконання."
       }
     },
     {
@@ -7680,6 +7695,19 @@
         "tests/generation/test_stale_context_message.py::test_stale_context_names_the_scene_and_action",
         "tests/generation/test_stale_context_message.py::test_unchecked_author_prose_names_its_action_and_other_stale_text_stays"
       ]
+    },
+    {
+      "id": "VALID-LINKS-S15",
+      "requirement": "VALID-LINKS",
+      "scope": "sceneConsistency: три рядки в порядку завдання → проза → пам’ять зі станами ok/pending/discrepancy/unavailable/missing і значками, розбіжність із упевненістю, підсумком і цитатами, «Я перевірив сам» / «Розбіжності немає» з тим самим approve за відбитком, рядок пам’яті попередньої сцени (Г3), вигляд valid/none/full (Г2), «Перевірити Ревізором» з «N викл., до $X» і причини неактивності (неготовий перегляд, 0 викликів, незбережені зміни, інший запуск); тексти consistency.* у uk і en. Рендер панелі, перегляд сцени з ключем і фокус — у ручній процедурі (Playwright link-decision.spec.mjs, scene-audit.spec.mjs).",
+      "tests": [
+        "tests/web/test_link_decision_ui.py::test_link_panel_actions",
+        "tests/web/test_link_decision_ui.py::test_scene_consistency_texts_exist_in_both_languages"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#link-decision-browser",
+        "reason": "Playwright запускається окремим runner; check_docs.py індексує лише pytest IDs."
+      }
     },
     {
       "id": "VALID-MEMORY-S01",
@@ -7976,7 +8004,7 @@
       ],
       "manual": {
         "procedure": "docs/verification/manual.md#scene-audit-browser",
-        "reason": "check_docs.py індексує лише pytest; Playwright case tests/web/browser/scene-audit.spec.mjs (панель із двома розбіжностями, цитатами, упевненістю й «Затвердити завдання») виконується окремим runner, цей зв’язок не є доказом виконання."
+        "reason": "check_docs.py індексує лише pytest; Playwright case tests/web/browser/scene-audit.spec.mjs (панель «Узгодженість сцени» з двома розбіжностями, цитатами, упевненістю й «Розбіжності немає») виконується окремим runner, цей зв’язок не є доказом виконання."
       }
     },
     {
@@ -7991,7 +8019,7 @@
     {
       "id": "VALID-RUN-S01",
       "requirement": "VALID-RUN",
-      "scope": "Запит audit, зв’язки в порядку читання, calls лише з викликом, похідний Ревізор, відмови валідної сцени й без Ревізора, промпти лише етапів із викликом за PROMPT-CONTRACT, carry_pending без виклику, текст згоди, роль audit → auditor для посилання налаштувань. Перегляд сцени через POST …/audit/preview з відбитком плану й cost; запуск несе audit_plan_fingerprint.",
+      "scope": "Запит audit, зв’язки в порядку читання, calls лише з викликом, похідний Ревізор, відмови валідної сцени й без Ревізора, промпти лише етапів із викликом за PROMPT-CONTRACT, carry_pending без виклику, текст згоди, роль audit → auditor для посилання налаштувань. Перегляд сцени через POST …/audit/preview з відбитком плану й cost; запуск несе audit_plan_fingerprint. «Перевірити Ревізором» у панелі «Узгодженість сцени» показує виклики й межу з перегляду сцени (Г7) і неактивна з причиною.",
       "tests": [
         "tests/generation/test_audit_run.py::test_request_needs_a_scene_and_scope",
         "tests/generation/test_audit_run.py::test_pending_links_in_reading_order_skip_valid_and_missing",
@@ -8011,7 +8039,7 @@
       ],
       "manual": {
         "procedure": "docs/verification/manual.md#scene-audit-browser",
-        "reason": "check_docs.py індексує лише pytest; Playwright case tests/web/browser/scene-audit.spec.mjs (кнопка «Перевірити сцену», перегляд зі зв’язками й моделлю, «Скасувати», план запуску «План: … · до N викл.» без «невідомо», audit_plan_fingerprint у запуску) виконується окремим runner, цей зв’язок не є доказом виконання."
+        "reason": "check_docs.py індексує лише pytest; Playwright case tests/web/browser/scene-audit.spec.mjs («Перевірити Ревізором» з «N викл.» у панелі, перегляд зі зв’язками й моделлю, «Скасувати», план запуску «План: … · до N викл.» без «невідомо», audit_plan_fingerprint у запуску, неактивна кнопка з причиною, запізнілий перегляд іншої сцени) виконується окремим runner, цей зв’язок не є доказом виконання."
       }
     },
     {
@@ -8121,7 +8149,7 @@
     {
       "id": "VALID-RUN-S09",
       "requirement": "VALID-RUN",
-      "scope": "Заміна зупинених audit (needs_review, paused, failed, interrupted) подією superseded і станом cancelled; правило походження: валідація автора замінює й запуски моста, валідація моста — лише запуски моста.",
+      "scope": "Заміна зупинених audit (needs_review, paused, failed, interrupted) подією superseded і станом cancelled; правило походження: валідація автора замінює й запуски моста, валідація моста — лише запуски моста. Те, що меню твору не ставить валідацію поверх найновішої зупиненої paused/needs_review валідації книги (VALID-UI-S05), — не цей тест.",
       "tests": [
         "tests/generation/test_audit_run.py::test_new_book_validation_supersedes_a_resumable_audit_of_the_story",
         "tests/generation/test_audit_run.py::test_mcp_book_validation_keeps_the_authors_stopped_audit",
@@ -8138,6 +8166,43 @@
         "tests/generation/test_audit_run.py::test_auditor_unavailable_whose_cause_cleared_is_measured_again_and_called",
         "tests/generation/test_audit_run.py::test_auditor_unavailable_that_still_holds_stops_without_a_call",
         "tests/generation/test_audit_run.py::test_link_state_unavailable_takes_no_call_and_no_measure"
+      ]
+    },
+    {
+      "id": "VALID-RUN-S11",
+      "requirement": "VALID-RUN",
+      "scope": "Правила extend_plan (Р3, Р4); enqueue зберігає cost_bound_usd і scenes перегляду; продовження доповнює план, не рахуючи відвідану сцену вдруге; завершальне продовження без викликів план лишає. Оплачене продовження через RunCoordinator.resume: межа = витрачено + межа перегляду продовження, невдалий виклик без ціни її не обнуляє.",
+      "tests": [
+        "tests/generation/test_run_progress.py::test_extend_plan_rules",
+        "tests/generation/test_run_progress.py::test_enqueue_stores_the_cost_bound_and_scenes_of_the_preview",
+        "tests/generation/test_run_progress.py::test_resume_extends_the_plan_without_counting_a_visited_scene_twice",
+        "tests/generation/test_run_progress.py::test_finishing_resume_keeps_the_plan",
+        "tests/generation/test_run_progress.py::test_priced_resume_extends_the_bound_after_a_failed_call"
+      ]
+    },
+    {
+      "id": "VALID-RUN-S12",
+      "requirement": "VALID-RUN",
+      "scope": "Серверний прогрес: виклики за attempt_id, витрачено й невідома ціна (невдалий виклик без ціни — $0, скасований без ціни — невідомо), сцена валідації книги після повернення до попередньої сцени, нуль без подій, зупинка книги, зв'язок під час виклику, сцена й етап курсора генерації, відсутність прогресу для переносу пам'яті, подія progress після кроків етапу й проходу редактора, поле progress у GET /api/runs/{id}. Помилка обчислення прогресу не провалює запуск, GET (progress=null) і продовження (план лишається); продовження читає лише події прогресу. stage_finished конвеєра сцени (generate_scene) і перебудови пам’яті (rebuild_memory) несе usage виклику (Г10).",
+      "tests": [
+        "tests/generation/test_run_progress.py::test_progress_counts_calls_and_spent_once_per_attempt",
+        "tests/generation/test_run_progress.py::test_a_call_without_a_price_makes_spent_unknown",
+        "tests/generation/test_run_progress.py::test_progress_without_events_is_zero",
+        "tests/generation/test_run_progress.py::test_book_stop_emits_progress_after_each_step_and_names_the_stop",
+        "tests/generation/test_run_progress.py::test_progress_after_stage_started_names_the_current_link",
+        "tests/generation/test_run_progress.py::test_generation_progress_names_the_scene_and_stage_of_the_cursor",
+        "tests/generation/test_run_progress.py::test_memory_carry_has_no_progress",
+        "tests/generation/test_run_progress.py::test_stage_run_emits_progress_after_the_cursor_moves",
+        "tests/generation/test_run_progress.py::test_editor_loop_pass_emits_progress",
+        "tests/web/test_runs.py::test_get_run_includes_progress",
+        "tests/generation/test_run_progress.py::test_a_failed_call_costs_nothing_but_a_cancelled_one_is_unknown",
+        "tests/generation/test_run_progress.py::test_audit_scene_after_a_revisit_is_the_latest_event_scene",
+        "tests/generation/test_run_progress.py::test_a_failing_progress_computation_does_not_fail_the_run",
+        "tests/web/test_runs.py::test_get_run_survives_a_failing_progress",
+        "tests/generation/test_run_progress.py::test_resume_survives_a_failing_progress_and_keeps_the_plan",
+        "tests/generation/test_run_progress.py::test_resume_reads_only_the_progress_events",
+        "tests/generation/test_scene_pipeline.py::test_stage_finished_carries_the_usage",
+        "tests/memory/test_rebuild.py::test_rebuild_stage_finished_carries_the_usage"
       ]
     },
     {
@@ -8181,13 +8246,38 @@
     {
       "id": "VALID-UI-S04",
       "requirement": "VALID-UI",
-      "scope": "stoppedAuditScene і мітка режиму «Валідація книги»; перехід, затвердження й продовження — у ручній процедурі.",
+      "scope": "stoppedAuditScene, bookResumeInRow і мітка режиму «Валідація книги»; перехід із фокусом на панелі «Узгодженість сцени», «Розбіжності немає», «Продовжити валідацію» в панелі без «Продовжити» в рядку — у ручній процедурі.",
       "tests": [
         "tests/web/test_book_validation_ui.py::test_book_validation_helpers"
       ],
       "manual": {
         "procedure": "docs/verification/manual.md#book-validation-browser",
-        "reason": "check_docs.py індексує лише pytest; Playwright case tests/web/browser/book-validation.spec.mjs («Перейти до сцени 1», «Затвердити завдання», «Продовжити», completed і «Книга валідна») виконується окремим runner, цей зв’язок не є доказом виконання."
+        "reason": "check_docs.py індексує лише pytest; Playwright case tests/web/browser/book-validation.spec.mjs («Перейти до сцени 1» з фокусом на #scene-consistency, «Розбіжності немає», «Продовжити валідацію» в панелі, без «Продовжити» в рядку, completed і «Книга валідна») виконується окремим runner, цей зв’язок не є доказом виконання."
+      }
+    },
+    {
+      "id": "VALID-UI-S05",
+      "requirement": "VALID-UI",
+      "scope": "latestBookRun, bookMenuState (running і stopped показують рядок; неактивні з причиною, поки рядок стежить за іншим активним запуском), revealBlocked; клік пункту, що веде до рядка без нового запуску, і run-reveal, що не забирає рядка в іншого активного запуску, — у ручній процедурі (Playwright); пункт «Валідація триває: показати» нічого не запускає (Playwright «the running validation is shown from the menu and starts nothing»).",
+      "tests": [
+        "tests/web/test_book_validation_ui.py::test_book_validation_helpers"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#book-validation-browser",
+        "reason": "Playwright запускається окремим runner; check_docs.py індексує лише pytest IDs."
+      }
+    },
+    {
+      "id": "VALID-UI-S06",
+      "requirement": "VALID-UI",
+      "scope": "Готовність «Продовжити валідацію» в sceneConsistency (Г6: стан зв’язку checkpoint.link відійшов від checkpoint.outcome або outcome unavailable), panelBookRun (кешований повний запуск книги, коли рядок перейшов на інший запуск), bookResumeInRow (сцена зупинки в кошику — «Продовжити» в рядку). Неактивна кнопка «Спершу вирішіть зв’язок», клік, поки рядок зайнятий іншим запуском, і скасована повторна згода — у ручній процедурі (Playwright book-validation.spec.mjs).",
+      "tests": [
+        "tests/web/test_book_validation_ui.py::test_book_validation_helpers",
+        "tests/web/test_link_decision_ui.py::test_link_panel_actions"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#book-validation-browser",
+        "reason": "Playwright запускається окремим runner; check_docs.py індексує лише pytest IDs."
       }
     }
   ]

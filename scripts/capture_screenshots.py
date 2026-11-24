@@ -25,13 +25,24 @@ STORIES={
           'draft':'Анна відчинила скриньку на пристані й побачила конверт без підпису. Вітер з моря шарпав папір.',
           'characters':'## Анна\nДоглядачка маяка, уважна до дрібниць.\n\n## Петро\nРибалка, давній друг родини.\n',
           'location_label':'Локація','locations':['Маяк / ліхтарна','Пристань','Пристань біля маяка','Маяк'],
-          'location_description':('Маяк','Білий маяк на скелі; гвинтові сходи ведуть до ліхтарної.')},
+          'location_description':('Маяк','Білий маяк на скелі; гвинтові сходи ведуть до ліхтарної.'),
+          # VALID-LINKS-S15: the first scene's own brief, the author's prose of both scenes and the Auditor's verdicts.
+          'brief1':'{"objective":"Анна оглядає маяк перед світанком","beats":["Анна піднімається до ліхтарної","Петро махає їй з пристані"],"constraints":[],"proposed_changes":[]}',
+          'prose1':'Анна піднялася гвинтовими сходами до ліхтарної. Унизу, на пристані, Петро махав їй рукою.',
+          'prose2':'Анна відчинила скриньку на пристані й побачила конверт без підпису. Вона сховала його в кишеню й пішла додому, не читаючи.',
+          'verdict1':('Завдання може розходитися з планом.','План називає ранок у селищі, а завдання — огляд маяка перед світанком.','перед світанком'),
+          'verdict2':('Проза може розходитися із завданням: Анна не читає листа.','Завдання каже, що Анна вирішує прочитати лист, а в прозі вона його не читає.','пішла додому, не читаючи')},
     'en':{'title':'Lighthouse pier','scenes':['Morning in the village','An unsigned letter','The storm','Coming back'],'hero':'Anna',
           'brief':'{"objective":"Anna finds the letter and decides to read it","beats":["Anna opens the box on the pier","Inside lies an envelope with no signature","The sea wind almost tears the paper away"],"constraints":["No flashbacks"],"proposed_changes":[]}',
           'draft':'Anna opened the box on the pier and found an envelope with no signature. The sea wind tugged at the paper.',
           'characters':'## Anna\nThe lighthouse keeper, attentive to small things.\n\n## Peter\nA fisherman and an old friend of the family.\n',
           'location_label':'Location','locations':['Lighthouse / lamp room','Pier','Pier by the lighthouse','Lighthouse'],
-          'location_description':('Lighthouse','A white lighthouse on the rock; a spiral stair leads to the lamp room.')},
+          'location_description':('Lighthouse','A white lighthouse on the rock; a spiral stair leads to the lamp room.'),
+          'brief1':'{"objective":"Anna inspects the lighthouse before dawn","beats":["Anna climbs to the lamp room","Peter waves to her from the pier"],"constraints":[],"proposed_changes":[]}',
+          'prose1':'Anna climbed the spiral stair to the lamp room. Down on the pier, Peter waved to her.',
+          'prose2':'Anna opened the box on the pier and found an envelope with no signature. She put it in her pocket and went home without reading it.',
+          'verdict1':('The brief may differ from the plan.','The plan names a morning in the village, but the brief has a lighthouse inspection before dawn.','before dawn'),
+          'verdict2':('The prose may differ from the brief: Anna does not read the letter.','The brief says Anna decides to read the letter, but in the prose she does not read it.','went home without reading it')},
 }
 
 
@@ -51,13 +62,92 @@ def seed(data_dir,languages=('uk','en')):
         from storygen.storage.locations import change_locations,set_description
         path,text=spec['location_description'];card=location_id(story.id,normalize((path,)))
         change_locations(repo,story.id,repo.get_story(story.id).revision,lambda db:set_description(db,story.id,card,text))
-        scene=scenes[1]
+        first,scene=scenes[0],scenes[1]
+        first_brief=repo.save_version(story.id,first.id,'brief',spec['brief1'],[])
+        repo.set_head(first.id,'brief',first_brief.id,repo.get_scene(first.id).revision)
         brief=repo.save_version(story.id,scene.id,'brief',spec['brief'],[])
         repo.set_head(scene.id,'brief',brief.id,repo.get_scene(scene.id).revision)
         draft=repo.save_version(story.id,scene.id,'draft',spec['draft'],[brief.id])
         repo.set_head(scene.id,'draft',draft.id,repo.get_scene(scene.id).revision)
-        result[lang]={'story_id':story.id,'scene_id':scene.id}
+        result[lang]={'story_id':story.id,'scene_id':scene.id,'first_id':first.id}
+        result[lang]['verdict_id']=seed_consistency(repo,story.id,first.id,scene.id,spec)
     return result
+
+
+def link_states(repo,story_id,scene_id):
+    """{link: LinkState} of a scene on a fresh view (the status and the fingerprint a decision or verdict must name)."""
+    from storygen.storage.context_view import ContextView
+    from storygen.storage.links import link_state
+    with repo.db.connection() as db:
+        view=ContextView(repo,db,story_id)
+        return {link:link_state(view,scene_id,link) for link in ('brief','prose','memory')}
+
+
+def seed_consistency(repo,story_id,first_id,second_id,spec):
+    """VALID-LINKS-S15: the author's prose and memory of the first two scenes, a cloud Auditor with a stored tariff (the scene preview is
+    ready without a key and shows a price) and the Auditor's discrepancies on the brief of scene 1 and the prose of
+    scene 2, which then shows: brief not checked, prose with a quote, memory consistent, its calls with the price bound.
+    Returns the id of the verdict on scene 1 (the stop of the book validation)."""
+    from datetime import timedelta
+    from storygen.authoring.blueprints import save_role_settings
+    from storygen.billing.models import Tariff,utcnow
+    from storygen.billing.service import save_tariff,set_limit
+    from storygen.generation.dependencies import save_manual_prose
+    from storygen.memory.journal import MemoryJournal,_add_event
+    from storygen.memory.service import save_scene_memory
+    from storygen.providers.models import ProviderSettings,RoleSettings
+    from storygen.storage.link_decisions import decide_link,write_auditor_verdict
+    # A cloud Auditor with a stored manual tariff: the preview prices from the tariff only, so it shows «N викл., до $X» with no key and no network.
+    auditor=ProviderSettings(provider='openrouter',model='neutral/auditor')
+    save_role_settings(repo,story_id,'auditor',RoleSettings(provider=auditor,temperature=0.2,context_tokens=32768,max_input_chars=60000,max_output_tokens=2048),
+        repo.get_story(story_id).revision)
+    save_tariff(repo,Tariff(provider='openrouter',model='neutral/auditor',base_url=auditor.base_url,input_per_million='1',output_per_million='2',
+        source='neutral screenshot tariff',kind='manual',expires_at=(utcnow()+timedelta(days=1)).isoformat()))
+    set_limit(repo,'story:'+story_id,'10',0)  # a cloud run needs an explicit budget limit before its preview is ready
+    # The editor role is set too, so the run row offers no «Налаштувати редактора».
+    save_role_settings(repo,story_id,'editor',RoleSettings(provider=ProviderSettings(provider='local',base_url='http://127.0.0.1:11434/v1',model='neutral-editor'),
+        temperature=0.2,context_tokens=32768,max_input_chars=60000,max_output_tokens=2048),repo.get_story(story_id).revision)
+    journal=MemoryJournal()
+    for scene_id,text in ((first_id,spec['prose1']),(second_id,spec['prose2'])):
+        prose=save_manual_prose(repo,scene_id,text,repo.get_scene(scene_id).revision)
+        fact=text.split('.')[0]
+        event=_add_event('facts',fact,prose.id,fact,len(journal.events))
+        journal=MemoryJournal(source_prose_ids=journal.source_prose_ids+[prose.id],events=journal.events+[event])
+        save_scene_memory(repo,scene_id,journal.model_dump_json(),repo.get_scene(scene_id).revision)
+    for scene_id in (first_id,second_id):
+        memory=link_states(repo,story_id,scene_id)['memory']
+        if memory.status!='valid':decide_link(repo,scene_id,'memory','approve',memory.fingerprint)
+    verdicts=[]
+    for scene_id,link,confidence,(summary,text,quote) in ((first_id,'brief',64,spec['verdict1']),(second_id,'prose',72,spec['verdict2'])):
+        state=link_states(repo,story_id,scene_id)[link]
+        status,verdict_id=write_auditor_verdict(repo,story_id,scene_id,link,fingerprint=state.fingerprint,marker=None,outcome='discrepancy',
+                                                confidence=confidence,discrepancies=[{'text':text,'quote':quote}],reason=summary)
+        if status!='written':raise RuntimeError(f'висновок Ревізора не записано: {scene_id} {link} {status}')
+        verdicts.append(verdict_id)
+    states={link:value.status for link,value in link_states(repo,story_id,second_id).items()}
+    if states!={'brief':'unchecked','prose':'discrepancy','memory':'valid'}:raise RuntimeError(f'сцена 2 не в очікуваному стані: {states}')
+    return verdicts[0]
+
+
+def seed_stopped_validation(data_dir,ids):
+    """VALID-UI-S06: a book validation stopped for the author on the brief of scene 1 (needs_review). Written while the
+    server runs, after the general shots, so the story menu there still reads «Валідація книги (N)», as workspace.md says."""
+    from storygen.domain import new_id
+    from storygen.run_models import Run,RunRequest
+    from storygen.storage import run_store
+    from storygen.storage.repository import Repository
+    repo=Repository(Path(data_dir));story_id,first_id,verdict_id=ids['story_id'],ids['first_id'],ids['verdict_id']
+    run=Run(id=new_id(),story_id=story_id,request_id='shots-'+new_id(),
+            request=RunRequest(story_id=story_id,scene_id=None,mode='audit',audit_scope='story',audit_plan_fingerprint='0'*64),  # a stand-in plan: the shot never resumes it
+            state='needs_review',tasks=[],
+            planned_telemetry={'roles':{'auditor':{'provider':'openrouter','model':'neutral/auditor'}},'calls':4,'cost_bound_usd':'0.0210','scenes':2},
+            checkpoint={'scene_id':first_id,'link':'brief','outcome':'discrepancy','verdict_id':verdict_id,'reason':None,'phase':'awaiting_author'})
+    # Inserted already stopped, so the server's worker never takes it as a queued run.
+    run_store.enqueue_run(repo,run)
+    for kind,data in (('stage_started',{'stage':'audit_brief','scene_id':first_id,'link':'brief','model':'neutral/auditor','provider':'openrouter'}),
+                      ('stage_finished',{'attempt_id':'shot-1','state':'completed','usage':{'cost':{'usd':0.0052}}}),
+                      ('audit_step',{'scene_id':first_id,'link':'brief','outcome':'discrepancy','verdict_id':verdict_id,'attempt_id':'shot-1'})):
+        run_store.append_run_event(repo,run.id,kind,data)
 
 
 def free_port():
@@ -144,6 +234,31 @@ def capture(base,ids,languages):
     return shots
 
 
+def capture_validation(base,ids,lang):
+    """VALID-LINKS-S15, VALID-UI-S06: after seed_stopped_validation — the «Узгодженість сцени» panel of scene 2 (brief not
+    checked, prose with the Auditor's quote, memory consistent, «Перевірити Ревізором» with its calls) and the expanded
+    run row of the stopped book validation with «Перейти до сцени 1». Element shots on a tall page, so the sticky tabs
+    never cover them."""
+    from playwright.sync_api import sync_playwright
+    shots=[];folder=OUT/lang;folder.mkdir(parents=True,exist_ok=True);story,scene=ids['story_id'],ids['scene_id']
+    with sync_playwright() as p:
+        browser=p.chromium.launch()
+        try:
+            page=browser.new_page(viewport={'width':1280,'height':800},locale='uk-UA' if lang=='uk' else 'en-US')
+            page.goto(base+'/');page.locator(f'[data-ui-locale={lang}]').click();page.wait_for_load_state('networkidle')
+            page.set_viewport_size({'width':1280,'height':1800})
+            page.goto(f'{base}/stories/{story}?scene={scene}&material=draft');page.wait_for_load_state('networkidle')
+            panel=page.locator('#scene-consistency')
+            panel.locator('.consistency-cost').wait_for(state='visible')
+            page.locator('#run-stop-scene').wait_for(state='visible')
+            page.mouse.move(0,0);page.wait_for_timeout(300)
+            path=folder/'scene-consistency-desktop.png';panel.screenshot(path=str(path));shots.append(path)
+            path=folder/'run-progress-desktop.png';page.locator('#workspace-status-row').screenshot(path=str(path));shots.append(path)
+            page.close()
+        finally:browser.close()
+    return shots
+
+
 def shot(page,path,shots):
     page.wait_for_timeout(300);page.screenshot(path=str(path));shots.append(path)
 
@@ -166,6 +281,8 @@ def main(argv=None):
         try:
             wait_for(base+'/',server)
             shots+=capture(base,ids,[lang])
+            seed_stopped_validation(data,ids[lang])
+            shots+=capture_validation(base,ids[lang],lang)
         finally:
             server.terminate()
             try:server.wait(timeout=10)

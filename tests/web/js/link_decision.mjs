@@ -1,12 +1,13 @@
 import assert from 'node:assert/strict';
 import {pathToFileURL} from 'node:url';
-const {pendingLinks}=await import(pathToFileURL(process.argv[2]+'/src/storygen/web/static/link-actions.js'));
+const {pendingLinks,sceneConsistency}=await import(pathToFileURL(process.argv[2]+'/src/storygen/web/static/link-actions.js'));
 
 // VALID-LINKS-S08/S11: the panel of the open scene — one row per pending link, with the actions the server accepts.
 const link=(status,reason=null,fingerprint='f-'+status)=>({status,source:null,reason,fingerprint});
 const valid=link('valid');
 const scenes=[{id:'s1',title:'Ранок',heads:{prose:'p1'}},{id:'s2',title:'Вечір',heads:{brief:'b2',prose:'p2'}}];
-const view=(links,extra={})=>({s2:{links:{brief:valid,prose:valid,memory:valid,...links},...extra}});
+const view=(links,extra={})=>{const all={brief:valid,prose:valid,memory:valid,...links};
+  return {s2:{links:all,validity:Object.values(all).every(l=>l.status==='valid')?'valid':'unchecked',...extra}};};
 const approve=(link,fingerprint,label)=>({type:'approve',link,fingerprint,label});
 const memory=(sceneId,label)=>({type:'memory',sceneId,label});
 
@@ -86,4 +87,52 @@ assert.deepEqual(pendingLinks(view({prose:unavailable('Вхід перевірк
 // Another reason of the auditor (unreadable material): the explanation without a settings button, never an approval.
 assert.deepEqual(pendingLinks(view({brief:unavailable('Матеріал перевірки не прочитано')}),'s2',scenes),[
   {key:'brief',text:'link.audit_unavailable',params:{},reason:'Матеріал перевірки не прочитано',actions:[]}]);
+
+// Task 1: the panel rules of «Узгодженість сцени».
+const disc={...link('discrepancy',null,'fp'),source:'auditor',confidence:72,summary:'Можлива розбіжність',discrepancies:[{text:'Інший порт',quote:'Герой іде до порту'}]};
+const pv=(calls,total='0.0123',ready=true,reason=null)=>({ready,reason,calls,cost:{total_usd:total}});
+let c=sceneConsistency(view({brief:link('unchecked',null,'fb'),prose:disc,memory:{...valid,source:'auditor'}}),'s2',scenes,null,pv(1));
+assert.deepEqual(c.rows.map(r=>[r.link,r.state,r.icon]),[['brief','pending','○'],['prose','discrepancy','!'],['memory','ok','✓']]);
+assert.deepEqual([c.view,c.pendingCount,c.total,c.resume],['full',2,3,false]);
+assert.deepEqual(c.rows[0].actions,[{type:'approve',link:'brief',fingerprint:'fb',label:'consistency.approve_self'}]);
+assert.deepEqual(c.rows[1].actions,[{type:'approve',link:'prose',fingerprint:'fp',label:'consistency.no_discrepancy'}]);
+assert.deepEqual([c.rows[1].status,c.rows[1].summary,c.rows[1].discrepancies],[{key:'consistency.state_discrepancy',params:{p0:72}},'Можлива розбіжність',disc.discrepancies]);
+assert.deepEqual(c.rows[2].status,{key:'consistency.state_ok_auditor',params:{}});
+assert.deepEqual(c.primary,{action:'audit',label:'consistency.audit',detail:{key:'consistency.audit_cost',params:{p0:1,p1:'$0.02'}},disabled:false,reason:null});
+// preview: loading, not ready, nothing to call, no price, blocked
+assert.deepEqual([sceneConsistency(view({brief:link('unchecked')}),'s2',scenes).primary.disabled,sceneConsistency(view({brief:link('unchecked')}),'s2',scenes).primary.reason],[true,null]);
+assert.deepEqual(sceneConsistency(view({brief:link('unchecked')}),'s2',scenes,null,pv(0,null,false,'Роль не налаштовано: Ревізор')).primary.reason,{text:'Роль не налаштовано: Ревізор'});
+assert.deepEqual(sceneConsistency(view({prose:disc}),'s2',scenes,null,pv(0,'0.0000')).primary.reason,{key:'consistency.nothing_to_audit',params:{}});  // every {key} reason carries params, {} when none
+assert.deepEqual(sceneConsistency(view({brief:link('unchecked')}),'s2',scenes,null,pv(2,null)).primary.detail,{key:'consistency.audit_calls',params:{p0:2}});
+assert.deepEqual(sceneConsistency(view({brief:link('unchecked')}),'s2',scenes,null,pv(1),'Збережіть зміни').primary,{action:'audit',label:'consistency.audit',detail:{key:'consistency.audit_cost',params:{p0:1,p1:'$0.02'}},disabled:true,reason:{text:'Збережіть зміни'}});
+// visibility (Г2): valid line, nothing at all, brief-only scene with nothing to decide
+assert.equal(sceneConsistency(view({}),'s2',scenes,null,pv(0)).view,'valid');
+assert.equal(sceneConsistency({s2:{links:{brief:link('missing'),prose:link('missing'),memory:link('missing')},validity:'incomplete'}},'s2',scenes).view,'none');
+assert.equal(sceneConsistency({s2:{links:{brief:valid,prose:link('missing'),memory:link('missing')},validity:'incomplete'}},'s2',scenes).view,'none');
+const briefOnly=sceneConsistency({s2:{links:{brief:link('unchecked'),prose:link('missing'),memory:link('missing')},validity:'incomplete'}},'s2',scenes,null,pv(1));
+assert.deepEqual([briefOnly.view,briefOnly.total,briefOnly.rows[1].status],['full',1,{key:'consistency.state_missing',params:{}}]);
+// Г3: the previous scene's memory sits on the brief row once
+const prev={s2:{links:{brief:link('unavailable','no_previous_memory'),prose:link('unavailable','no_previous_memory'),memory:valid},previous_scene_id:'s1',validity:'unchecked'}};
+c=sceneConsistency(prev,'s2',scenes,null,pv(0));
+assert.deepEqual(c.rows[0].status,{key:'link.no_previous_memory',params:{p0:'Ранок'}});
+assert.deepEqual(c.rows[0].actions,[memory('s1','link.create_memory')]);
+assert.deepEqual([c.rows[1].state,c.rows[1].status,c.rows[1].actions],['unavailable',{key:'consistency.state_needs_previous',params:{}},[]]);
+// auditor overflow keeps the settings link
+const over={status:'unavailable',source:'auditor',reason:'Вхід перевірки перевищує ліміт Ревізора: 9 > 8',fingerprint:'fo'};
+c=sceneConsistency(view({prose:over},{validity:'unchecked'}),'s2',scenes,null,pv(0));
+assert.deepEqual([c.rows[1].icon,c.rows[1].reason,c.rows[1].actions],['—',over.reason,[{type:'settings',label:'link.open_auditor_settings'}]]);
+// resume on the stop scene (Г6)
+const book=(cp,state='needs_review')=>({id:'r1',state,request:{mode:'audit',audit_scope:'story'},checkpoint:{phase:'awaiting_author',...cp}});
+c=sceneConsistency(view({brief:{...disc,fingerprint:'fb'}},{validity:'discrepancy'}),'s2',scenes,book({scene_id:'s2',link:'brief',outcome:'discrepancy'}),pv(1));
+assert.deepEqual([c.view,c.resume,c.primary],['full',true,{action:'resume',runId:'r1',label:'consistency.resume',disabled:true,reason:{key:'consistency.resolve_first',params:{}}}]);
+assert.equal(sceneConsistency(view({},{validity:'valid'}),'s2',scenes,book({scene_id:'s2',link:'brief',outcome:'discrepancy'})).primary.disabled,false);  // decided: shown in full though valid
+assert.equal(sceneConsistency(view({prose:over},{validity:'unchecked'}),'s2',scenes,book({scene_id:'s2',link:'prose',outcome:'unavailable'})).primary.disabled,false);
+assert.equal(sceneConsistency(view({brief:link('unchecked')}),'s2',scenes,book({scene_id:'s1',link:'brief',outcome:'discrepancy'}),pv(1)).primary.action,'audit');
+assert.equal(sceneConsistency(view({brief:link('unchecked')}),'s2',scenes,book({scene_id:'s2',link:'brief',outcome:'discrepancy'},'completed'),pv(1)).primary.action,'audit');
+// Fix round 1: a missing link has no icon (M1); a verdict without confidence omits it (M4); an unavailable link of
+// another source without a panel item names its own reason, never «не перевірено» (M4).
+assert.equal(briefOnly.rows[1].icon,'');
+assert.deepEqual(sceneConsistency(view({prose:{...disc,confidence:null}}),'s2',scenes,null,pv(0)).rows[1].status,{key:'consistency.state_discrepancy_plain',params:{}});
+c=sceneConsistency(view({memory:link('unavailable','carry_unknown')}),'s2',scenes,null,pv(0));
+assert.deepEqual([c.rows[2].state,c.rows[2].status],['unavailable',{text:'carry_unknown'}]);
 console.log('Link panel actions passed');
