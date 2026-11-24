@@ -65,7 +65,8 @@ def test_card_name_wins_over_an_other_name_of_another_card():
     cards = [card('A', 'Айя', ('Агентка', None)), card('R', 'Айя-бот', ("Інше ім'я: Айя", None))]
     assert resolve_participants(['Айя', 'айя-бот'], cards) == (['A', 'R'], [])
     assert name_warnings(cards) == ['Ім’я «Айя» є основним ім’ям картки «Айя» та іншим ім’ям карток: Айя-бот; у плані воно означає основну картку.']
-    assert name_warnings(cards + [card('Q', 'Квін', ("Інше ім'я: Айя", None))])[-1].endswith('іншим ім’ям карток: Айя-бот, Квін; у плані воно означає основну картку.')
+    assert name_warnings(cards + [card('Q', 'Квін', ("Інше ім'я: Айя", None))]) == [
+        'Ім’я «Айя» є основним ім’ям картки «Айя» та іншим ім’ям карток: Айя-бот, Квін; у плані воно означає основну картку.']
 
 
 def test_current_name_follows_the_latest_available_marker():
