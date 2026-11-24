@@ -81,6 +81,7 @@ After the import, the result shows how many scenes were imported and skipped, wi
 Limitations:
 
 - tables, images, footnotes and formatting changes other than italics and bold are not imported — the summary shows a warning;
+- a scene whose prose has a one-line list, a quote or a heading is not imported: DOCX cannot carry such markup unchanged (status “the prose markup cannot pass through DOCX”);
 - an edit in a scene heading is not imported, and a scene whose whole text the editor deleted is skipped;
 - a new paragraph the editor inserted right after a list, a quote or a line with a break may merge with it — the summary warns about this, so check paragraph boundaries in the proposal;
 - only Microsoft Word has been tested; Google Docs and other editors have not;
