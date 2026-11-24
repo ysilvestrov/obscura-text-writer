@@ -314,7 +314,7 @@ def test_tracked_paragraph_insertion_keeps_anchor_on_its_paragraph(tmp_path, man
     plan = plan_of(repo, story, changed, scenes[1].id)
     checked(plan)
     assert [(c.anchor.start, c.anchor.end) for c in plan.comments] == [(10, 16)]
-    assert plan.editor_text == 'Початок.\nНове.\n\n\n— Так.\n\n— Так.'
+    assert plan.editor_text == 'Початок.\n\nНове.\n\n\n— Так.\n\n— Так.'
 
 
 @pytest.mark.parametrize('manifest', [True, False])
@@ -333,11 +333,12 @@ def test_tracked_split_and_merge_of_paragraphs(tmp_path):
     split_first = f'<w:p>{INS_MARK}<w:r>{T}Поча</w:t></w:r></w:p><w:p><w:r>{T}ток.</w:t></w:r></w:p>'
     merged = edit(content, lambda xml: xml.replace(FIRST + EMPTY, FIRST + f'<w:p>{DEL_MARK}</w:p>', 1))
     plan = plan_of(repo, story, merged, scenes[1].id)
-    assert plan.status == 'changed' and plan.editor_text == 'Початок.\n— Так.\n\n— Так.'
+    # Only the empty separator paragraph was removed: Word still shows two paragraphs, so nothing changed.
+    assert plan.status == 'unchanged' and plan.editor_text == 'Початок.\n\n— Так.\n\n— Так.'
     split = edit(content, lambda xml: with_comment_on_first_twin(xml.replace(FIRST, split_first, 1)), [(6, 'Р', 'Перше')])
     plan = plan_of(repo, story, split, scenes[1].id)
     checked(plan)
-    assert plan.status == 'changed' and plan.editor_text == 'Поча\nток.\n\n— Так.\n\n— Так.'
+    assert plan.status == 'changed' and plan.editor_text == 'Поча\n\nток.\n\n— Так.\n\n— Так.'
     assert [(c.anchor.start, c.anchor.end) for c in plan.comments] == [(10, 16)]
 
 
@@ -361,7 +362,7 @@ def test_tracked_paragraph_move_keeps_anchor(tmp_path, manifest):
     plan = plan_of(repo, story, changed, scenes[1].id)
     checked(plan)
     assert [(c.anchor.start, c.anchor.end) for c in plan.comments] == [(10, 16)]
-    assert plan.editor_text == 'Початок.\n— Так.\n\n— Так.\n'
+    assert plan.editor_text == 'Початок.\n\n— Так.\n\n— Так.\n'
 
 
 # --- §5: saving the import ---------------------------------------------------------------------------------------
@@ -624,3 +625,59 @@ def test_concurrent_apply_creates_one_proposal(tmp_path, monkeypatch):
     assert len([a for a in import_attempts(repo, story, scenes[1].id) if a.state == 'needs_review']) == 1
     assert repo.get_scene(scenes[1].id).heads['draft'] == draft
     assert check_integrity(tmp_path).ok
+
+
+def accept_all(repo, scene_id, attempt_id):
+    from storygen.generation.copyedit_review import copyedit_preview, select_copyedits
+    view = copyedit_preview(repo, scene_id, attempt_id)
+    assert view['can_apply'], view['reason']
+    select_copyedits(repo, scene_id, attempt_id, list(range(len(view['edits']))), view['expected_revision'],
+                     view['proposal_fingerprint'])
+
+
+def custom_prose_editor(repo, story):
+    """An editor role in prose mode with its own prose-mode prompt and a context too small for the proposal."""
+    from storygen.authoring.blueprints import save_role_settings
+    from storygen.prompt_contracts import expected_contract
+    from storygen.providers.models import ProviderSettings, RoleSettings
+    role = RoleSettings(provider=ProviderSettings(model='local-test'), edit_mode='prose', context_tokens=512,
+                        max_output_tokens=256, max_input_chars=40)
+    prompt = repo.save_version(story.id, None, 'prompt', 'Редагуй прозу.', [], prompt_contract=expected_contract('edit', role))
+    save_role_settings(repo, story.id, 'editor', role.model_copy(update={'prompt_version_id': prompt.id}),
+                       repo.get_story(story.id).revision)
+
+
+@pytest.mark.parametrize('configured', [False, True])
+def test_accepting_one_imported_scene_keeps_the_next_selectable(tmp_path, configured):
+    repo, story, scenes, content = book(tmp_path)
+    if configured:
+        custom_prose_editor(repo, story)
+    _, result = imported(repo, story, edit_all(content))
+    assert result.imported == [s.id for s in scenes] and result.skipped == []
+    [first] = import_attempts(repo, story, scenes[0].id)
+    assert first.context['dependency_snapshot']['scope'] == 'patches'
+    accept_all(repo, scenes[0].id, first.id)
+    [second] = import_attempts(repo, story, scenes[1].id)
+    accept_all(repo, scenes[1].id, second.id)
+    assert repo.read_text(repo.get_scene(scenes[1].id).heads['prose']) == EDITED
+
+
+def test_paragraph_split_in_word_stays_two_paragraphs(tmp_path):
+    repo, story, scenes, content = book(tmp_path)
+    split_paragraph = edit(content, lambda xml: xml.replace(' Ранок', f'</w:t></w:r></w:p><w:p><w:r>{T}Ранок', 1))
+    _, result = imported(repo, story, split_paragraph)
+    assert result.imported == [scenes[0].id]
+    [attempt] = import_attempts(repo, story, scenes[0].id)
+    accept_all(repo, scenes[0].id, attempt.id)
+    assert repo.read_text(repo.get_scene(scenes[0].id).heads['prose']) == 'Перша сцена.\n\nРанок був тихий.'
+
+
+def test_formatting_markdown_cannot_carry_is_warned(tmp_path):
+    repo, story, scenes, content = book(tmp_path)
+    middle = f'<w:r><w:rPr><w:i/></w:rPr>{T}сцена.</w:t></w:r><w:r>{T}Ранок</w:t></w:r>'
+    changed = edit(content, lambda xml: split(xml, 'сцена. Ранок', middle))
+    plan = plan_of(repo, story, changed, scenes[0].id)
+    assert plan.status == 'changed' and plan.editor_text == 'Перша *сцена.*Ранок був тихий.'
+    assert editor_import.FORMATTING_LOST in plan.warnings
+    plain = plan_of(repo, story, edit(content, lambda xml: xml.replace('пішов', 'побіг')), scenes[1].id)
+    assert plain.status == 'changed' and editor_import.FORMATTING_LOST not in plain.warnings

@@ -24,7 +24,7 @@ from ..authoring.comments import InputAnchor, InputComment
 from ..domain import DomainModel, new_id
 from ..markdown_document import source_range_text
 from ..publication.docx_import import DocxManuscript, Run, read_docx
-from ..publication.docx_text import SceneText, normalized, roundtrip_ok, serialize
+from ..publication.docx_text import SceneText, carries, normalized, roundtrip_ok, serialize
 from ..publication.markup import chapter_paragraphs
 from ..rewrite_diff import RewriteDiff, build_rewrite_diff
 from ..storage.integrity import EDITOR_IMPORT_DIR
@@ -281,6 +281,7 @@ def _limited(notes):
 
 
 PENDING_REVIEW = 'Спершу вирішіть пропозицію попереднього імпорту редакції.'
+FORMATTING_LOST = 'Частину форматування з DOCX Markdown не передає без змін; перевірте курсив і жирний у пропозиції.'
 
 
 def _skip(status, warnings=()):
@@ -302,8 +303,11 @@ def plan_scene(repo, story_id, scene, fragment: Fragment, doc: DocxManuscript, m
     norm = normalized(prose, content_format)
     body = doc.paragraphs[fragment.first:fragment.last]
     original_view = _view(doc, fragment, 'original')
-    editor_text = serialize(_view(doc, fragment, 'editor').paragraphs, content_format).text
+    editor_paragraphs = _view(doc, fragment, 'editor').paragraphs
+    editor_text = serialize(editor_paragraphs, content_format).text
     warnings = []
+    if not carries(editor_paragraphs, editor_text, content_format):
+        warnings.append(FORMATTING_LOST)
     if content_format == 'plain' and any(run.bold or run.italic for p in body for run in p.editor):
         warnings.append('Проза у простому тексті: курсив і жирний з DOCX не переносяться.')
     if fragment.first > 0 and doc.paragraphs[fragment.first - 1].changed:
@@ -485,7 +489,11 @@ def _proposal_factory(repo, story_id, scene_id, plan, attempt_id, origin, scene_
     from ..generation.context import make_context
     from ..rewrite_diff import rewrite_warnings
     from .chat_stages import chat_role_settings
-    settings = chat_role_settings(repo, story_id, 'edit')
+    # The proposal is a positional diff of the draft, whatever mode the editor role has: diff mode keeps the dependency
+    # snapshot on the scene's draft (scope 'patches'), so accepting another scene does not make it stale. No model sees
+    # this context, so the role's own prompt (its contract follows the role's mode) and its context limits do not apply.
+    settings = chat_role_settings(repo, story_id, 'edit').model_copy(update={
+        'edit_mode': 'diff', 'prompt_version_id': None, 'context_tokens': 2 ** 31, 'max_input_chars': 2 ** 31})
 
     def factory(draft_ref, view):
         scene = view.get_scene(scene_id)

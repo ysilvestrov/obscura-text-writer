@@ -5,8 +5,8 @@ import zipfile
 import pytest
 
 from storygen.publication import docx_import
-from storygen.publication.docx_import import read_docx
-from tests.authoring.test_docx_exports import _rewrite, flat_book, rendered, runs
+from storygen.publication.docx_import import Run, read_docx
+from tests.authoring.test_docx_exports import _rewrite, flat_book, rendered
 from tests.authoring.test_ebook_exports import seeded
 
 WNS = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"'
@@ -43,8 +43,8 @@ def test_reads_exported_manuscript(tmp_path):
     assert manuscript.warnings == ()
     repo, story = flat_book(tmp_path / 'md', 'Слово *курсив* і **жирний**.\n', content_format='markdown')
     _, content = rendered(repo, story)
-    found = [(r.text, r.bold, r.italic) for p in read_docx(content).paragraphs for r in p.editor]
-    assert set(runs(content)) <= set(found)
+    assert read_docx(content).paragraphs[-1].editor == (
+        Run('Слово '), Run('курсив', italic=True), Run(' і '), Run('жирний', bold=True), Run('.'))
     repo, story = flat_book(tmp_path / 'plain', 'ліва\tправа\nрядок\n')
     _, content = rendered(repo, story)
     assert [text(p.editor) for p in read_docx(content).paragraphs][-2:] == ['ліва\tправа', 'рядок']
