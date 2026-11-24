@@ -202,7 +202,7 @@ def test_deploy_retries_once_when_the_artifact_is_not_listed_yet():
     assert "steps.deployment.outcome == 'failure'" in retry['if']
     ids=[s.get('id') or s.get('name') for s in steps]
     wait=next(s for s in steps if s.get('name')=='Wait before the second publication attempt')
-    assert "steps.deployment.outcome == 'failure'" in wait['if'] and wait['run'].startswith('sleep ')
+    assert "steps.deployment.outcome == 'failure'" in wait['if'] and wait['run'].strip()=='sleep 30'
     assert ids.index('deployment')<ids.index('Wait before the second publication attempt')<ids.index('deployment_retry')<ids.index('Check the published address')
     check=next(s for s in steps if s.get('name')=='Check the published address')
     assert check['env']['PAGE_URL']=='${{ steps.deployment.outputs.page_url || steps.deployment_retry.outputs.page_url }}'
