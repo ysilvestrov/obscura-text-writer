@@ -69,8 +69,8 @@ test('the summary, the choice and the result lead to the proposal of scene 1',as
   await expect(dialog).toBeHidden();
   await expect(page.locator('#mode-tabs [data-mode="review"]')).toHaveAttribute('aria-selected','true');
   const panel=page.locator('.copyedit-review').filter({has:page.locator('summary',{hasText:'Правки редактора'})});
-  // workspace-route.js already opens the panel in review mode; a click would close it.
-  if(!await panel.evaluate(node=>node.open))await panel.locator('summary').click();
+  // Following the result link opens the review panel by itself (workspace-route.js): assert it, never repair it.
+  await expect(panel).toHaveJSProperty('open',true);
   await expect(panel.locator('select option')).toHaveCount(1);
   await expect(panel.locator('select option').first()).toContainText(' · від редактора (DOCX)');
   await expect(panel.locator('[data-editor-import-note]')).toBeVisible();
@@ -151,4 +151,19 @@ test('the English interface shows English statuses and warnings',async({page,req
   await expect(dialog).toBeHidden();
   await expect(page.locator('#scene-title')).toContainText('Хвилі');
   await expect(page.locator('#mode-tabs [data-mode="draft"]')).toHaveAttribute('aria-selected','true');
+});
+
+test('the client sends a file of exactly 20 MiB and rejects a larger one before sending',async({page,request})=>{
+  const fixture=await seed(request);
+  await openWorkspace(page,fixture);
+  const dialog=await openDialog(page);
+  const sent=[];page.on('request',req=>{if(req.method()==='POST'&&req.url().endsWith('/editor-import/preview'))sent.push(req.url())});
+  const limit=20*1024*1024;
+  await dialog.locator('#editor-import-file').setInputFiles({name:'big.docx',mimeType:DOCX,buffer:Buffer.alloc(limit+1)});
+  await expect(dialog.locator('#editor-import-status')).toContainText('20');
+  expect(sent).toHaveLength(0);
+  const answered=page.waitForResponse(res=>res.request().method()==='POST'&&res.url().endsWith('/editor-import/preview'));
+  await dialog.locator('#editor-import-file').setInputFiles({name:'exact.docx',mimeType:DOCX,buffer:Buffer.alloc(limit)});
+  await answered;
+  expect(sent).toHaveLength(1);
 });

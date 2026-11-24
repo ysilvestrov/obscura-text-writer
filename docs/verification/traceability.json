@@ -1335,7 +1335,7 @@
       ],
       "manual": {
         "procedure": "docs/verification/manual.md#editor-import-browser",
-        "reason": "check_docs.py індексує лише pytest; Playwright cases tests/web/browser/editor-import.spec.mjs (зведення, вибір, підсумок з посиланнями, мітка пропозиції, незбережені правки, скасування, 409, англійський інтерфейс) виконуються окремим runner, цей зв’язок не є доказом виконання."
+        "reason": "check_docs.py індексує лише pytest; Playwright cases tests/web/browser/editor-import.spec.mjs (зведення, вибір, підсумок з посиланнями, мітка пропозиції, незбережені правки, скасування, 409, англійський інтерфейс, межа 20 МіБ на клієнті) виконуються окремим runner, цей зв’язок не є доказом виконання."
       }
     },
     {
