@@ -82,3 +82,20 @@ def test_cloud_allowed_by_prefix_only():
     assert cloud_allowed('demo-1', []) is False
     assert cloud_allowed('demo-1', ['']) is False
     assert cloud_allowed('demo-1', ('', 'demo')) is True
+
+
+def test_azure_malformed_response_maps_to_bad_response():
+    emb = make(lambda request: httpx.Response(200, json={'data': [{'index': 0}], 'usage': {'prompt_tokens': 1}}))
+    with pytest.raises(ValueError) as info:
+        emb.embed(['секретний текст'], 'query')
+    assert str(info.value) == 'cloud_bad_response' and info.value.__cause__ is None
+    emb = make(lambda request: httpx.Response(200, json={'data': [], 'usage': None}))
+    with pytest.raises(ValueError, match='cloud_bad_response'):
+        emb.embed(['x'], 'query')
+
+
+def test_azure_client_has_timeout_and_close():
+    emb = make(lambda request: httpx.Response(200, json={}))
+    assert emb._client.timeout.read == 60.0
+    emb.close()
+    assert emb._client.is_closed

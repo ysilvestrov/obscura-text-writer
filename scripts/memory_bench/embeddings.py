@@ -174,7 +174,10 @@ class AzureEmbedder:
         self._url = f"{endpoint.rstrip('/')}/openai/deployments/{deployment}/embeddings"
         self._api_version = api_version
         self._headers = {'api-key': api_key}
-        self._client = httpx.Client(transport=transport) if transport is not None else httpx.Client()
+        self._client = httpx.Client(transport=transport, timeout=60.0)
+
+    def close(self):
+        self._client.close()
 
     def embed(self, texts, kind):
         texts = list(texts)
@@ -197,10 +200,14 @@ class AzureEmbedder:
                 status = getattr(getattr(error, 'response', None), 'status_code', None)
                 raise ValueError(f'cloud_http_{status}' if status else 'cloud_error') from None
             self.latencies.append(time.perf_counter() - began)
-            used = int(body['usage']['prompt_tokens'])
+            try:
+                used = int(body['usage']['prompt_tokens'])
+                batch_rows = [item['embedding'] for item in sorted(body['data'], key=lambda item: item['index'])]
+            except (KeyError, TypeError):  # malformed body: never echo it
+                raise ValueError('cloud_bad_response') from None
             self.tokens += used
             self.usd += used * self.price_per_mtok / 1e6
-            rows.extend(item['embedding'] for item in sorted(body['data'], key=lambda item: item['index']))
+            rows.extend(batch_rows)
         matrix = _normalized(np.array(rows, dtype=np.float32))
         self.dim = int(matrix.shape[1])
         return matrix

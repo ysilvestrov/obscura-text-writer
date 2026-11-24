@@ -3,8 +3,13 @@
 Prints aggregates, codes and the protagonist ID only: never story texts, character names or claim IDs."""
 import argparse
 import json
+import math
+import os
 import statistics
 import sys
+import tempfile
+import time
+from importlib import metadata
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -21,12 +26,18 @@ from memory_bench.synthetic import fit_linear, generate, measure_rates  # noqa: 
 
 MEASURES = ('conservative', 'realistic')
 CORE_AWARE = ('structural', 'structural_fts')
+VECTOR_PREFIXES = ('structural_vec[', 'structural_hybrid[')
+CLOUD_KEYS = ('azure-3-large',)  # models that go to the network; checked before embeddings.py (numpy) is imported
+CLOUD_ENV = ('AZURE_OPENAI_ENDPOINT', 'AZURE_OPENAI_API_KEY', 'AZURE_OPENAI_EMBEDDING_DEPLOYMENT', 'AZURE_OPENAI_API_VERSION')
+DEFAULT_CACHE_DIR = r'C:\tmp\rag-bench\cache'
+CLOUD_PRICE_PER_MTOK = 0.13  # USD list price for text-embedding-3-large, per million tokens
 SAMPLES_PER_SYNTHETIC = 60
 
 
-def variants():
-    for name in STRATEGIES:
-        if name in CORE_AWARE:
+def variants(extra=None):
+    """(key, strategy name, core mode); extra holds the vector strategies of --vector-models, after the built-in ones."""
+    for name in [*STRATEGIES, *(extra or {})]:
+        if name in CORE_AWARE or name.startswith(VECTOR_PREFIXES):
             for mode in ('upper', 'lower'):
                 yield f'{name}[core={mode}]', name, mode
         else:
@@ -59,18 +70,19 @@ def budget(context, args, other, measure):
     return max(0, room - other[measure])
 
 
-def evaluate(scenes, others, args, contexts, measures):
+def evaluate(scenes, others, args, contexts, measures, extra=None):
+    strategies = {**STRATEGIES, **(extra or {})}
     result = {}
     for context in contexts:
         result[str(context)] = {}
         for measure in measures:
             result[str(context)][measure] = {}
-            for key, name, mode in variants():
+            for key, name, mode in variants(extra):
                 rows, sels = [], []
                 for scene in scenes:
                     params = Params(budget(context, args, others.get(scene.scene_id), measure), measure, mode,
                                     core_recent_scenes=args.core_recent)
-                    sel = STRATEGIES[name](scene, params)
+                    sel = strategies[name](scene, params)
                     rows.append(scene_metrics(scene, sel))
                     sels.append(sel)
                 result[str(context)][measure][key] = aggregate(rows, sels)
@@ -113,8 +125,9 @@ def growth(scenes, args):
     return out
 
 
-def _selections(scenes, name, mode, args, budget_of, measure):
-    return {s.number: STRATEGIES[name](s, Params(budget_of(s), measure, mode, core_recent_scenes=args.core_recent))
+def _selections(scenes, name, mode, args, budget_of, measure, extra=None):
+    strategies = {**STRATEGIES, **(extra or {})}
+    return {s.number: strategies[name](s, Params(budget_of(s), measure, mode, core_recent_scenes=args.core_recent))
             for s in scenes}
 
 
@@ -127,7 +140,7 @@ def _load_pairs(args, story_id):
     return pairs, stories.get(story_id) or {}
 
 
-def evaluate_budget_steps(scenes, args, pair_data):
+def evaluate_budget_steps(scenes, args, pair_data, extra=None):
     """Memory budget of a scene = step x the realistic tokens of its full memory; pairs only with pair data."""
     unbounded = Params(10 ** 12, 'realistic', 'upper')
     totals = {s.scene_id: full(s, unbounded).tokens_realistic for s in scenes}
@@ -135,8 +148,8 @@ def evaluate_budget_steps(scenes, args, pair_data):
     result = {}
     for text in args.budget_steps.split(','):
         step, result[text.strip()] = float(text), {}
-        for key, name, mode in variants():
-            sels = _selections(scenes, name, mode, args, lambda s: int(step * totals[s.scene_id]), 'realistic')
+        for key, name, mode in variants(extra):
+            sels = _selections(scenes, name, mode, args, lambda s: int(step * totals[s.scene_id]), 'realistic', extra)
             ordered = [sels[s.number] for s in scenes]
             entry = aggregate([scene_metrics(s, x) for s, x in zip(scenes, ordered)], ordered)
             if pair_data:
@@ -145,8 +158,18 @@ def evaluate_budget_steps(scenes, args, pair_data):
     return result
 
 
-def layer_counts(annotation, entries, scenes_by_number, selections, params):
-    """Where annotated records present in memory came from: retrieval ('fts'), a structural layer or not selected."""
+def retrieval_layer(name):
+    """Layer label of a strategy's retrieval_ids: 'fts', 'vec' or 'hybrid'; None for strategies without retrieval."""
+    if name == 'structural_fts':
+        return 'fts'
+    if name.startswith('structural_vec['):
+        return 'vec'
+    return 'hybrid' if name.startswith('structural_hybrid[') else None
+
+
+def layer_counts(annotation, entries, scenes_by_number, selections, params, retrieval='fts'):
+    """Where annotated records present in memory came from: retrieval (fts / vec / hybrid), a structural layer or not
+    selected."""
     counts = {'not_selected': 0}
     for entry in entries:
         scene, sel = scenes_by_number.get(entry['repeat']), selections.get(entry['repeat'])
@@ -158,29 +181,198 @@ def layer_counts(annotation, entries, scenes_by_number, selections, params):
             if claim not in chosen:
                 layer = 'not_selected'
             elif claim in retrieved:
-                layer = 'fts'
+                layer = retrieval
             else:
                 layer = by_layer.get(claim) or ('timeline' if categories[claim] == 'timeline' else 'other')
             counts[layer] = counts.get(layer, 0) + 1
     return counts
 
 
-def evaluate_pairs(scenes, others, args, contexts, pair_data):
+def evaluate_pairs(scenes, others, args, contexts, pair_data, rankers=None, extra=None):
     """pairs / ranking sections at the largest context (realistic measure); counts and codes only."""
     pairs, annotation = pair_data
     by_number = {s.number: s for s in scenes}
     biggest = max(contexts)
     budget_of = lambda s: budget(biggest, args, others.get(s.scene_id), 'realistic')
     summary, layers, layers_control = {}, {}, {}
-    for key, name, mode in variants():
-        sels = _selections(scenes, name, mode, args, budget_of, 'realistic')
+    for key, name, mode in variants(extra):
+        sels = _selections(scenes, name, mode, args, budget_of, 'realistic', extra)
         summary[key] = pair_summary(pair_hits(annotation, pairs, by_number, sels))
-        if name == 'structural_fts':
+        label = retrieval_layer(name)
+        if label:
             params = Params(0, 'realistic', mode, core_recent_scenes=args.core_recent)
-            layers[key] = layer_counts(annotation, pairs.get('pairs', []), by_number, sels, params)
-            layers_control[key] = layer_counts(annotation, pairs.get('controls', []), by_number, sels, params)
-    ranking = pair_ranks({'bm25': fts_rank}, annotation, pairs, by_number)
+            layers[key] = layer_counts(annotation, pairs.get('pairs', []), by_number, sels, params, label)
+            layers_control[key] = layer_counts(annotation, pairs.get('controls', []), by_number, sels, params, label)
+    ranking = pair_ranks({'bm25': fts_rank, **(rankers or {})}, annotation, pairs, by_number)
     return summary, {**ranking, 'layers': layers, 'layers_control': layers_control}
+
+
+class TimedEmbedder:
+    """Times the inner embed calls (cache hits never reach it); everything else is delegated to the inner embedder."""
+
+    def __init__(self, inner, load_seconds=0.0):
+        self.inner, self.load_seconds, self.calls = inner, load_seconds, []
+
+    def __getattr__(self, name):
+        if name == 'inner':
+            raise AttributeError(name)
+        return getattr(self.inner, name)
+
+    def embed(self, texts, kind):
+        began = time.perf_counter()
+        try:
+            return self.inner.embed(texts, kind)
+        finally:
+            self.calls.append(time.perf_counter() - began)
+
+    @property
+    def cold_seconds(self):
+        """Model load plus the first embed call; None when every text came from the cache."""
+        return self.load_seconds + self.calls[0] if self.calls else None
+
+    @property
+    def total_seconds(self):
+        return self.load_seconds + sum(self.calls)
+
+
+def make_inner_embedder(key, spec, args):
+    """The only place a real model or the cloud client is built; tests replace it. Missing libraries raise ImportError."""
+    from memory_bench.embeddings import AzureEmbedder, LocalEmbedder
+    if spec['kind'] == 'cloud':
+        env = os.environ
+        return AzureEmbedder(key, env['AZURE_OPENAI_ENDPOINT'], env['AZURE_OPENAI_API_KEY'],
+                             env['AZURE_OPENAI_EMBEDDING_DEPLOYMENT'], env['AZURE_OPENAI_API_VERSION'],
+                             args.cloud_price_per_mtok, args.cloud_max_usd, model_id=spec['model_id'],
+                             revision=spec['revision'])
+    return LocalEmbedder(key, spec['model_id'], spec['revision'], spec['query_prefix'], spec['passage_prefix'],
+                         spec['max_tokens'], threads=1)
+
+
+def _wrap(key, inner, cache_dir, load_seconds):
+    from memory_bench.embeddings import CachedEmbedder
+    timed = TimedEmbedder(inner, load_seconds)
+    return timed, CachedEmbedder(timed, Path(cache_dir) / key)
+
+
+def setup_vectors(args, story_id):
+    """([model dicts], None) or (None, code). Every refusal happens before any embedder is built or the network used."""
+    keys = list(dict.fromkeys(k.strip() for k in args.vector_models.split(',') if k.strip()))
+    if any(k in CLOUD_KEYS for k in keys) and not args.cloud:
+        return None, 'cloud_not_allowed'
+    try:
+        from memory_bench.embeddings import MODELS, _inside_repo, cloud_allowed
+    except ImportError:
+        return None, 'vector_deps_missing'
+    if any(k not in MODELS for k in keys):
+        return None, 'unknown_vector_model'
+    if any(MODELS[k]['kind'] == 'cloud' for k in keys):
+        if not cloud_allowed(story_id, args.cloud_stories.split(',')):
+            return None, 'cloud_not_allowed'
+        if not all(os.environ.get(name) for name in CLOUD_ENV):
+            return None, 'cloud_config_missing'
+    if _inside_repo(args.cache_dir):
+        return None, 'inside_repo'
+    models = []
+    try:
+        for key in keys:
+            began = time.perf_counter()
+            inner = make_inner_embedder(key, MODELS[key], args)
+            timed, cached = _wrap(key, inner, args.cache_dir, time.perf_counter() - began)
+            models.append({'key': key, 'spec': MODELS[key], 'inner': inner, 'timed': timed, 'cached': cached})
+    except ImportError:
+        close_vectors(models)
+        return None, 'vector_deps_missing'
+    return models, None
+
+
+def close_vectors(models):
+    for model in models:
+        close = getattr(model['inner'], 'close', None)
+        if close:
+            close()
+
+
+def _lib_versions():
+    out = {}
+    for name, dist in (('numpy', 'numpy'), ('torch', 'torch'), ('sentence_transformers', 'sentence-transformers'),
+                       ('transformers', 'transformers')):
+        try:
+            out[name] = metadata.version(dist)
+        except metadata.PackageNotFoundError:
+            out[name] = None
+    return out
+
+
+def _dir_bytes(path):
+    """Size of the regular files under path (symlinks skipped, so Hugging Face blobs are not counted twice)."""
+    total = 0
+    for root, _, files in os.walk(path):
+        for name in files:
+            f = Path(root) / name
+            if f.is_file() and not f.is_symlink():
+                total += f.stat().st_size
+    return total
+
+
+def _weights_bytes(spec):
+    if spec['kind'] != 'local':
+        return None
+    try:
+        from huggingface_hub import constants
+    except ImportError:
+        return None
+    folder = Path(constants.HF_HUB_CACHE) / ('models--' + spec['model_id'].replace('/', '--'))
+    return _dir_bytes(folder) if folder.is_dir() else None
+
+
+def _percentile(values, share):
+    ordered = sorted(values)
+    return ordered[max(0, math.ceil(share * len(ordered)) - 1)]
+
+
+def vector_report(models, args, repro):
+    libs = _lib_versions()
+    out = {}
+    for model in models:
+        inner, timed, cached, spec = model['inner'], model['timed'], model['cached'], model['spec']
+        local = spec['kind'] == 'local'
+        entry = {'model_id': inner.model_id, 'revision': inner.revision, 'dim': int(cached.dim),
+                 'max_tokens': inner.max_tokens, 'query_prefix': getattr(inner, 'query_prefix', ''),
+                 'passage_prefix': getattr(inner, 'passage_prefix', ''), 'truncated': cached.truncated,
+                 'threads': 1 if local else None, 'libs': libs,
+                 'load_seconds': round(timed.load_seconds, 3),
+                 'index_seconds_cold': None if timed.cold_seconds is None else round(timed.cold_seconds, 3),
+                 'index_seconds': round(timed.total_seconds, 3), 'weights_bytes': _weights_bytes(spec),
+                 'cache_bytes': _dir_bytes(cached.cache_dir), 'cache_hits': cached.hits, 'cache_misses': cached.misses,
+                 'repro_identical_share': repro.get(model['key'])}
+        if not local:
+            lat = list(getattr(inner, 'latencies', []))
+            entry.update(tokens=inner.tokens, usd=round(inner.usd, 8),
+                         latency_ms={'p50': round(_percentile(lat, 0.5) * 1000, 1), 'p90': round(_percentile(lat, 0.9) * 1000, 1)}
+                         if lat else {'p50': None, 'p90': None})
+        out[model['key']] = entry
+    return out
+
+
+def repro_share(model, scenes, others, args, biggest):
+    """Share of (scene, vector variant) pairs with identical record_ids after a re-run on an empty cache in a temporary
+    directory and a new inner embedder, at the largest context (realistic measure). Local models only."""
+    from memory_bench.strategies import vector_strategies
+    main = vector_strategies(model['cached'])
+    began = time.perf_counter()
+    inner = make_inner_embedder(model['key'], model['spec'], args)
+    with tempfile.TemporaryDirectory(prefix='rag-bench-repro-') as tmp:
+        _, fresh_cached = _wrap(model['key'], inner, tmp, time.perf_counter() - began)
+        fresh = vector_strategies(fresh_cached)
+        same = total = 0
+        for name in main:
+            for mode in ('upper', 'lower'):
+                for scene in scenes:
+                    params = Params(budget(biggest, args, others.get(scene.scene_id), 'realistic'), 'realistic', mode,
+                                    core_recent_scenes=args.core_recent)
+                    total += 1
+                    same += main[name](scene, params).record_ids == fresh[name](scene, params).record_ids
+    return same / total if total else None
 
 
 def run(args):
@@ -199,6 +391,22 @@ def run(args):
     if not chosen:
         return None, 'story_not_found'
     story = max(chosen, key=lambda s: (len(repo.list_scenes(s.id)), s.id))
+    models = None
+    if args.vector_models:
+        models, error = setup_vectors(args, story.id)
+        if error:
+            return None, error
+    try:
+        return _build_report(args, repo, story, models), None
+    finally:
+        close_vectors(models or [])
+
+
+def _build_report(args, repo, story, models):
+    from memory_bench.strategies import vector_strategies
+    extra = {}
+    for model in models or []:
+        extra.update(vector_strategies(model['cached']))
     scenes, skipped = extract_story(repo, story.id, args.protagonist)
     others = {s.scene_id: other_context(repo, story.id, s.scene_id) for s in scenes}
     contexts = _ints(args.context)
@@ -235,7 +443,7 @@ def run(args):
                   'first_meetings_total': sum(s.first_meetings for s in scenes),
                   'other_context_source': {'attempt': sum(1 for o in others.values() if o),
                                            'share': sum(1 for o in others.values() if not o)}},
-        'real': evaluate(scenes, others, args, contexts, MEASURES),
+        'real': evaluate(scenes, others, args, contexts, MEASURES, extra),
         'memory_stage': memory_stage,
         'product': evaluate_product(scenes, others, args, contexts),
         'memory_stage_v4': memory_stage_v4(scenes),
@@ -247,13 +455,24 @@ def run(args):
                    'tokenizer': args.tokenizer, 'chars_per_token': round(realistic_ratio(), 3), 'synthetic': _ints(args.synthetic)},
     }
     if pair_data:
-        report['pairs'], report['ranking'] = evaluate_pairs(scenes, others, args, contexts, pair_data)
+        rankers = {}
+        for model in models or []:
+            from memory_bench.ranking import rrf_rank, vec_rank
+            embedder, key = model['cached'], model['key']
+            rankers[f'vec[{key}]'] = lambda pool, query, e=embedder: vec_rank(pool, query, e)
+            rankers[f'hybrid[{key}]'] = lambda pool, query, e=embedder: rrf_rank(pool, query, e)
+        report['pairs'], report['ranking'] = evaluate_pairs(scenes, others, args, contexts, pair_data, rankers, extra)
     if args.budget_steps:
-        report['budget_steps'] = evaluate_budget_steps(scenes, args, pair_data)
-    return report, None
+        report['budget_steps'] = evaluate_budget_steps(scenes, args, pair_data, extra)
+    if models:
+        repro = {}
+        if args.repro:
+            repro = {m['key']: repro_share(m, scenes, others, args, biggest) for m in models if m['spec']['kind'] == 'local'}
+        report['vector'] = vector_report(models, args, repro)
+    return report
 
 
-def main(argv=None):
+def build_parser():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--data', required=True, help='copy of the data directory (the working one is refused)')
     parser.add_argument('--story', help='story ID prefix; default: the story with most scenes')
@@ -271,9 +490,25 @@ def main(argv=None):
     parser.add_argument('--seed', type=int, default=0)
     parser.add_argument('--tokenizer', choices=sorted(FERTILITY), default=DEFAULT_TOKENIZER,
                         help='realistic measure: Ukrainian fertility of this tokenizer family (ukrqualbench)')
-    args = parser.parse_args(argv)
+    parser.add_argument('--vector-models', help='comma-separated keys of embedding models, e.g. e5-base,bge-m3,azure-3-large')
+    parser.add_argument('--cache-dir', default=DEFAULT_CACHE_DIR, help='vector cache; must be outside the repository')
+    parser.add_argument('--cloud', action='store_true', help='allow the cloud model (azure-3-large) for stories of --cloud-stories')
+    parser.add_argument('--cloud-stories', default='', help='comma-separated story ID prefixes that may be sent to the cloud')
+    parser.add_argument('--cloud-max-usd', type=float, default=2.0, help='estimate above this stops the run')
+    parser.add_argument('--cloud-price-per-mtok', type=float, default=CLOUD_PRICE_PER_MTOK)
+    parser.add_argument('--repro', action='store_true', help='re-run the local vector variants on an empty cache in a temporary directory')
+    return parser
+
+
+def main(argv=None):
+    args = build_parser().parse_args(argv)
     set_tokenizer(args.tokenizer)
-    report, error = run(args)
+    try:
+        report, error = run(args)
+    except ValueError as exc:  # cloud_budget, cloud_http_<status>, cloud_error, cloud_bad_response: codes only
+        if not str(exc).startswith('cloud_'):
+            raise
+        report, error = None, str(exc)
     if error:
         print(error, file=sys.stderr)
         return 2

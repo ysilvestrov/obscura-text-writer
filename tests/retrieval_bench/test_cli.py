@@ -1,3 +1,4 @@
+import pytest
 import hashlib
 import json
 import subprocess
@@ -145,8 +146,198 @@ def test_ranking_section_has_bm25(synthetic_repo,tmp_path):
     assert info['fact'] not in out.stdout
 
 
-def test_pairs_without_annotated_story_is_empty(synthetic_repo,tmp_path):
+def test_pairs_without_annotated_story_is_empty(synthetic_repo,tmp_path,cache_dir):
     repo,story_id,info=synthetic_repo
     out=run_cli(['--data',str(repo.root),'--synthetic','',*_pair_files(tmp_path,story_id,info,annotate=False)])
     assert out.returncode==0,out.stderr
     assert json.loads(out.stdout)['pairs']['full']['pair']['total']==0
+
+
+# ---- vector models in the CLI (Task 7): in-process, FakeEmbedder through the embedder factory ----
+
+CLOUD_ENV=('AZURE_OPENAI_ENDPOINT','AZURE_OPENAI_API_KEY','AZURE_OPENAI_EMBEDDING_DEPLOYMENT','AZURE_OPENAI_API_VERSION')
+
+
+def _bench():
+    import memory_retrieval_bench
+    return memory_retrieval_bench
+
+
+def _patch_factory(monkeypatch,built,cls=None):
+    bench=_bench()
+
+    def make(key,spec,args):
+        from memory_bench.embeddings import FakeEmbedder
+        embedder=(cls or FakeEmbedder)();embedder.key=key;built.append(key)
+        return embedder
+    monkeypatch.setattr(bench,'make_inner_embedder',make)
+
+
+@pytest.fixture
+def cache_dir():
+    """The vector cache must lie outside the repository; pytest's tmp_path may be inside it."""
+    import tempfile
+    with tempfile.TemporaryDirectory(prefix='rb-cache-') as tmp:
+        yield Path(tmp)
+
+
+def _vec_args(repo,cache_dir,*extra):
+    return ['--data',str(repo.root),'--synthetic','','--cache-dir',str(cache_dir),*extra]
+
+
+def _report(args):
+    bench=_bench();parsed=bench.build_parser().parse_args(args)
+    bench.set_tokenizer(parsed.tokenizer)
+    return bench.run(parsed)
+
+
+def _set_cloud_env(monkeypatch,value='x'):
+    for name in CLOUD_ENV:
+        monkeypatch.setenv(name,value)
+
+
+def test_vector_variants_in_real_and_steps(synthetic_repo,tmp_path,monkeypatch,cache_dir):
+    pytest.importorskip('numpy')
+    repo,story_id,info=synthetic_repo;built=[]
+    _patch_factory(monkeypatch,built)
+    report,error=_report(_vec_args(repo,cache_dir,'--vector-models','e5-base','--context','32768','--budget-steps','0.5',*_pair_files(tmp_path,story_id,info)))
+    assert error is None and built==['e5-base']
+    vec={f'structural_{k}[e5-base][core={m}]' for k in ('vec','hybrid') for m in ('upper','lower')}
+    assert vec<=set(report['real']['32768']['realistic']) and vec<=set(report['real']['32768']['conservative'])
+    assert vec<=set(report['budget_steps']['0.5']) and vec<=set(report['pairs'])
+    assert 'pairs' in report['budget_steps']['0.5']['structural_vec[e5-base][core=upper]']
+    assert {'vec[e5-base]','hybrid[e5-base]','bm25'}<=set(report['ranking'])
+    assert report['ranking']['vec[e5-base]']['pair']['total']==2
+    assert vec<=set(report['ranking']['layers']) and vec<=set(report['ranking']['layers_control'])
+    layers=report['ranking']['layers']['structural_vec[e5-base][core=upper]']
+    assert sum(layers.values())==2 and 'fts' not in layers
+    section=report['vector']['e5-base']
+    assert section['model_id']=='fake' and section['dim']==16 and section['threads']==1
+    assert section['cache_misses']>0 and section['cache_hits']>0 and section['cache_bytes']>0
+    assert section['index_seconds']>=section['index_seconds_cold']>=0 and section['weights_bytes'] is None
+    assert set(section['libs'])=={'numpy','torch','sentence_transformers','transformers'}
+    assert 'tokens' not in section and section['repro_identical_share'] is None
+
+
+def test_synthetic_has_no_vector_variants(synthetic_repo,tmp_path,monkeypatch,cache_dir):
+    pytest.importorskip('numpy')
+    repo,story_id,info=synthetic_repo
+    _patch_factory(monkeypatch,[])
+    cases=tmp_path/'cases.json';cases.write_text(json.dumps([{'scene_id':'x','claim_id':'y'}]),encoding='utf-8')
+    args=_vec_args(repo,cache_dir,'--vector-models','e5-base','--control-cases',str(cases))
+    args[args.index('--synthetic')+1]='60'
+    report,error=_report(args)
+    assert error is None
+
+    def has_vec(section):
+        return any('_vec[' in k or '_hybrid[' in k for k in section)
+    assert not has_vec(report['synthetic']['60']['32768']['conservative']) and not has_vec(report['growth'])
+    assert not has_vec(report['control_cases']) and not has_vec(report['product']['32768']['realistic'])
+    assert not has_vec(report['memory_stage']) and has_vec(report['real']['32768']['realistic'])
+
+
+def test_no_vector_models_has_no_vector_section(synthetic_repo):
+    repo,_,_=synthetic_repo
+    report,error=_report(['--data',str(repo.root),'--synthetic',''])
+    assert error is None and 'vector' not in report
+
+
+def test_cloud_model_without_flag_refused(synthetic_repo,tmp_path,monkeypatch,capsys,cache_dir):
+    repo,_,_=synthetic_repo;built=[]
+    _patch_factory(monkeypatch,built)
+    for extra in ([],['--cloud-stories','']):
+        assert _bench().main(_vec_args(repo,cache_dir,'--vector-models','e5-base,azure-3-large',*extra))==2
+        out=capsys.readouterr()
+        assert out.err.strip()=='cloud_not_allowed' and out.out=='' and built==[]
+
+
+def test_cloud_story_outside_allowlist_refused(synthetic_repo,tmp_path,monkeypatch,capsys,cache_dir):
+    pytest.importorskip('numpy')
+    repo,story_id,_=synthetic_repo;built=[]
+    _patch_factory(monkeypatch,built)
+    assert _bench().main(_vec_args(repo,cache_dir,'--vector-models','azure-3-large','--cloud','--cloud-stories','zzz-,'))==2
+    assert capsys.readouterr().err.strip()=='cloud_not_allowed' and built==[]
+
+
+def test_cloud_config_missing(synthetic_repo,tmp_path,monkeypatch,capsys,cache_dir):
+    pytest.importorskip('numpy')
+    repo,story_id,_=synthetic_repo;built=[]
+    _patch_factory(monkeypatch,built)
+    _set_cloud_env(monkeypatch)
+    monkeypatch.delenv('AZURE_OPENAI_API_KEY')
+    assert _bench().main(_vec_args(repo,cache_dir,'--vector-models','azure-3-large','--cloud','--cloud-stories',story_id))==2
+    assert capsys.readouterr().err.strip()=='cloud_config_missing' and built==[]
+
+
+def test_cloud_section_and_repro_none(synthetic_repo,tmp_path,monkeypatch,cache_dir):
+    pytest.importorskip('numpy')
+    from memory_bench.embeddings import FakeEmbedder
+    repo,story_id,_=synthetic_repo
+
+    class FakeCloud(FakeEmbedder):
+        tokens,usd,latencies=120,0.0000156,[0.1,0.2,0.3,0.4]
+    _patch_factory(monkeypatch,[],FakeCloud)
+    _set_cloud_env(monkeypatch)
+    report,error=_report(_vec_args(repo,cache_dir,'--vector-models','azure-3-large','--cloud','--cloud-stories',story_id,'--repro','--context','32768'))
+    assert error is None
+    section=report['vector']['azure-3-large']
+    assert section['tokens']==120 and section['usd']==pytest.approx(0.0000156) and section['threads'] is None
+    assert section['latency_ms']=={'p50':200.0,'p90':400.0} and section['repro_identical_share'] is None
+    assert section['weights_bytes'] is None
+
+
+def test_cloud_budget_maps_to_exit_2(synthetic_repo,tmp_path,monkeypatch,capsys,cache_dir):
+    pytest.importorskip('numpy')
+    from memory_bench.embeddings import FakeEmbedder
+    repo,story_id,_=synthetic_repo
+
+    class Over(FakeEmbedder):
+        def embed(self,texts,kind):
+            raise ValueError('cloud_budget')
+    _patch_factory(monkeypatch,[],Over)
+    _set_cloud_env(monkeypatch,'SECRET-VALUE')
+    assert _bench().main(_vec_args(repo,cache_dir,'--vector-models','azure-3-large','--cloud','--cloud-stories',story_id))==2
+    out=capsys.readouterr()
+    assert out.err.strip()=='cloud_budget' and 'SECRET-VALUE' not in out.err+out.out
+
+
+def test_vector_deps_missing_inside_repo_unknown_model(synthetic_repo,tmp_path,monkeypatch,capsys,cache_dir):
+    pytest.importorskip('numpy')
+    repo,_,_=synthetic_repo
+    bench=_bench()
+
+    def broken(key,spec,args):
+        raise ImportError('sentence_transformers')
+    monkeypatch.setattr(bench,'make_inner_embedder',broken)
+    assert bench.main(_vec_args(repo,cache_dir,'--vector-models','e5-base'))==2
+    assert capsys.readouterr().err.strip()=='vector_deps_missing'
+    built=[];_patch_factory(monkeypatch,built)
+    args=_vec_args(repo,cache_dir,'--vector-models','e5-base');args[args.index('--cache-dir')+1]=str(ROOT/'tmp-cache-test')
+    assert bench.main(args)==2
+    assert capsys.readouterr().err.strip()=='inside_repo' and built==[]
+    assert bench.main(_vec_args(repo,cache_dir,'--vector-models','nope'))==2
+    assert capsys.readouterr().err.strip()=='unknown_vector_model' and built==[]
+
+
+def test_repro_identical_share_with_fake_is_one(synthetic_repo,tmp_path,monkeypatch,cache_dir):
+    pytest.importorskip('numpy')
+    repo,story_id,_=synthetic_repo;built=[]
+    _patch_factory(monkeypatch,built)
+    report,error=_report(_vec_args(repo,cache_dir,'--vector-models','e5-base','--repro','--context','32768,65536'))
+    assert error is None and report['vector']['e5-base']['repro_identical_share']==1.0
+    assert built==['e5-base','e5-base']  # a NEW inner embedder for the re-run
+
+
+def test_report_contains_no_texts(synthetic_repo,tmp_path,monkeypatch,cache_dir):
+    pytest.importorskip('numpy')
+    from memory_bench.extract import extract_story
+    repo,story_id,info=synthetic_repo
+    _patch_factory(monkeypatch,[])
+    report,error=_report(_vec_args(repo,cache_dir,'--vector-models','e5-base','--repro','--budget-steps','0.5',*_pair_files(tmp_path,story_id,info)))
+    assert error is None
+    scenes,_=extract_story(repo,story_id,None)
+    secrets={r.text for s in scenes for r in s.records}|{s.plan_text for s in scenes}|set(SECRETS)
+    assert len(secrets)>10
+    dumped=json.dumps(report,ensure_ascii=False)
+    for text in secrets:
+        assert text and text not in dumped
