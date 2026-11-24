@@ -34,6 +34,7 @@ UK_BASELINE = {
     'role:memory': '9f264f1639f2c8bb',
     'assisted_writer_v1': '3922abece0145c4a',
     'publication_metadata_v1': '437acd9305806407',
+    'publication_metadata_v2': 'ed83df328420932c',  # R16-SUGGEST-S07: the idea and the coverage of a long book
     'markdown': '765b0f5d1cdaeaf3',
     'brief_contract': 'd90e6ef926f0ffba',
     'rating': '48a7f1766c500c59',

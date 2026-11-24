@@ -127,3 +127,6 @@ class PublicationSnapshot(DomainModel):
     story: Story
     publication: PublicationView
     scenes: list[tuple[Scene,VersionRef | None]]
+    # R16-SUGGEST: the plan preamble (story idea); '' without a plan or preamble.
+    idea: str = ''
+    idea_version_id: str | None = None

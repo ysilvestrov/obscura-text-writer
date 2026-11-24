@@ -40,7 +40,10 @@ def source_stamp(snapshot):
         if ref is None or not ref.complete or ref.stale or scene.needs_review:
             raise ValueError('Для пропозиції потрібна повна актуальна проза всіх активних сцен')
         scenes.append({'scene_id':scene.id,'title':scene.title,'position':scene.position,'version_id':ref.id,'sha256':ref.sha256})
-    return {'story_id':snapshot.story.id,'title':snapshot.story.title,'scenes':scenes}
+    stamp={'story_id':snapshot.story.id,'title':snapshot.story.title,'scenes':scenes}
+    # R16-SUGGEST-S08: the idea is a source only when it exists, so stamps of stories without a preamble keep their shape.
+    if snapshot.idea:stamp['idea_sha256']=hashlib.sha256(snapshot.idea.encode('utf-8')).hexdigest()
+    return stamp
 
 
 def fingerprint(value):

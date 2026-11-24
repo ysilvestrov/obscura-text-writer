@@ -573,7 +573,7 @@ class RunCoordinator:
                     context=build_rewrite_context(self.repo,run.request)
                 elif stage=='publication_suggest':
                     from .publication_metadata import build_publication_context
-                    context=build_publication_context(self.repo,run.story_id)
+                    context=build_publication_context(self.repo,run.story_id,run.request.expected_selection,True)
                 elif stage=='timeline_summary':
                     from .timeline_summary import build_summary_context
                     context=build_summary_context(self.repo,run.story_id,run.request.summary_block_key)

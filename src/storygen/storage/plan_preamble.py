@@ -3,7 +3,7 @@
 The preamble stays part of the active `source_plan`; a change is a new plan version with the same scene sections,
 prepared like an import (the version is saved first) and published in one transaction."""
 from ..domain import RevisionConflict, Scene
-from ..plan_sections import PreambleError, preamble_editable, replace_preamble, split_plan
+from ..plan_sections import PreambleError, preamble_editable, preamble_text, replace_preamble, split_plan
 
 
 def _lf(text):
@@ -16,7 +16,7 @@ def read_plan_preamble(repo,story_id):
         return {'text':'','plan_version_id':None,'editable':False,'reason':'no_plan'}
     text=repo.read_text(ref.id)
     editable=preamble_editable(text)
-    return {'text':_lf(split_plan(text)[0]).strip(),'plan_version_id':ref.id,'editable':editable,'reason':None if editable else 'no_scenes'}
+    return {'text':preamble_text(text),'plan_version_id':ref.id,'editable':editable,'reason':None if editable else 'no_scenes'}
 
 
 def _series_lines(text):

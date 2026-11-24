@@ -200,6 +200,11 @@ const suggestCancel=document.querySelector('#publication-suggest-cancel');
 const suggestStatus=document.querySelector('#publication-suggest-status');
 let suggestionBusy=false,activeSuggestion=null,readiness=null,pollTimer=null;
 const fieldLabels={get title(){return t("m_382c87f95f48")},get annotation(){return t("m_68c7c9c9e256")},get genres(){return t("m_8fc22bc825df")},get keywords(){return t("m_919849ae2f0f")}};
+// R16-SUGGEST-S07: a book that does not fit whole is read as the idea and scenes 1..k; the author sees which.
+const selectionLine=document.querySelector('#publication-suggestion-selection');
+const partial=selection=>!!selection&&selection.included<selection.total;
+const selectionText=s=>t(s.idea?'publication.selection.idea':'publication.selection.no_idea',{p0:s.included,p1:s.total,p2:s.last_scene_title})+(s.bound_by==='chars'?' '+t('publication.selection.chars_hint'):'');
+const coverageText=(kind,s)=>t(`publication.${kind}.${s.idea?'idea':'no_idea'}`,{p0:s.included,p1:s.total});
 function suggestionControls(){
   suggest.disabled=suggestionBusy||!!activeSuggestion||!readiness?.ready;
   suggestCancel.hidden=!activeSuggestion;
@@ -211,13 +216,16 @@ async function refreshSuggestions(checkReady=false){
     const response=await api(base+'/suggestions');
     activeSuggestion=response.active_runs[0]||null;
     if(checkReady||!activeSuggestion)readiness=await api(base+'/suggestions/readiness');
+    if(selectionLine){const selection=readiness?.selection;selectionLine.hidden=!partial(selection);uiText(selectionLine,"textContent",()=>(partial(selection)?selectionText(selection):''));}
     const history=document.querySelector('#publication-suggestion-history');history.replaceChildren();
-    for(const item of response.history){const line=document.createElement('p');uiText(line,"textContent",()=>(`${item.created_at} · ${item.state}${diagnostic(item.error)?' · '+diagnostic(item.error):''}${item.warnings?.length?' · '+item.warnings.join(' '):''}`));history.append(line);}
+    // A history entry may have failed before a model got the request: it says what was selected, not what was read.
+    for(const item of response.history){const line=document.createElement('p');uiText(line,"textContent",()=>(`${item.created_at} · ${item.state}${partial(item.selection)?' · '+coverageText('selected',item.selection):''}${diagnostic(item.error)?' · '+diagnostic(item.error):''}${item.warnings?.length?' · '+item.warnings.join(' '):''}`));history.append(line);}
     if(!response.history.length)uiText(history,"textContent",()=>(t("m_6c77004041e5")));
     const container=document.querySelector('#publication-suggestions');container.replaceChildren();
     for(const proposal of response.proposals){
       const details=document.createElement('details');
       const summary=document.createElement('summary');uiText(summary,"textContent",()=>(`${proposal.created_at} · ${proposal.model}`));details.append(summary);
+      if(partial(proposal.selection)){const read=document.createElement('p');read.className='muted publication-suggestion-coverage';uiText(read,"textContent",()=>(coverageText('read',proposal.selection)));details.append(read);}
       for(const message of proposal.warnings||[]){const warning=document.createElement('p');warning.className='muted';uiText(warning,"textContent",()=>(diagnostic(message)));details.append(warning);}
       for(const [key,value] of Object.entries(proposal.suggestions)){
         const line=document.createElement('p');
@@ -257,7 +265,10 @@ async function refreshSuggestions(checkReady=false){
 if(suggest){
   suggest.onclick=async()=>{
     if(suggest.disabled)return;suggestionBusy=true;suggestionControls();
-    try{await api('/api/runs',json('POST',{request:{story_id:storyId,mode:'publication_suggest'},request_id:crypto.randomUUID()}));await refreshSuggestions(true);}
+    // The key binds the run to the selection shown above; a changed selection is refused before any cost.
+    const request={story_id:storyId,mode:'publication_suggest'};
+    if(partial(readiness?.selection))request.expected_selection=readiness.selection.key;
+    try{await api('/api/runs',json('POST',{request,request_id:crypto.randomUUID()}));await refreshSuggestions(true);}
     catch(error){uiText(suggestStatus,"textContent",()=>(diagnostic(error.message)));notice(error.message,'error');}
     finally{suggestionBusy=false;suggestionControls();}
   };

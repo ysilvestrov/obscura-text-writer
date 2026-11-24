@@ -44,6 +44,11 @@ def split_plan(text,default_title='Сцена'):
     return text[:boundaries[0][0]],sections
 
 
+def preamble_text(text):
+    """PLAN-PREAMBLE / R16-SUGGEST: the preamble as the author sees it on the plan page (LF, stripped)."""
+    return split_plan(text)[0].replace('\r\n','\n').strip()
+
+
 class PreambleError(ValueError):
     """PLAN-PREAMBLE-S02: 'boundary' — the new preamble would change the scene split; 'no_scenes' — the plan has no
     scene boundary, so it has no preamble at all."""

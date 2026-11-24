@@ -25,6 +25,7 @@ PROMPTS: dict[str, tuple[str, str, frozenset]] = {
     'audit_memory_v1': ('storygen.generation', 'audit_memory', BOTH),
     'assisted_writer_v1': ('storygen.generation', 'assisted_writer', BOTH),
     'publication_metadata_v1': ('storygen.generation', 'publication_metadata', BOTH),
+    'publication_metadata_v2': ('storygen.generation', 'publication_metadata', BOTH),
     'timeline_summary_v1': ('storygen.generation', 'timeline_summary', BOTH),
     # Calibrated on Ukrainian only (EVAL-002): English prose is not evaluated.
     'evaluator_v1': ('storygen.evaluation', 'evaluator', UK_ONLY),

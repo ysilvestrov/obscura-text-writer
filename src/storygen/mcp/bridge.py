@@ -911,7 +911,8 @@ def build_server(http: httpx.Client | None, client_name: str | None = None, *, c
 
     @server.tool()
     def start_run(story_id: str, action: str, scene_id: str | None = None, confirm: bool = False,
-                  budget_limit_usd: str | None = None, plan_fingerprint: str | None = None) -> dict[str, Any]:
+                  budget_limit_usd: str | None = None, plan_fingerprint: str | None = None,
+                  selection_key: str | None = None) -> dict[str, Any]:
         """Запустити моделлю Obscura один етап сцени (brief, draft, edit, memory), пропозицію картки публікації
         (publication_suggest, без scene_id) або перевірку зв'язків Ревізором (audit: зі scene_id — одна сцена, без нього —
         валідація всієї книги). Етапи й пропозиція — лише у творі з режимом «пише Obscura»; audit — у будь-якому режимі, бо
@@ -920,7 +921,9 @@ def build_server(http: httpx.Client | None, client_name: str | None = None, *, c
         для audit ще зв'язки до перевірки (links), кількість невалідних сцен, plan_fingerprint і cost — верхню межу вартості
         (total_usd; якщо суми немає — пояснення в cost.reason). Покажіть перегляд авторові й дочекайтеся його згоди в чаті; лише
         тоді викличте з confirm=true, а для audit передайте plan_fingerprint із показаного перегляду: якщо план змінився,
-        Obscura відмовить, і перегляд треба показати знову. budget_limit_usd — ліміт цього запуску в доларах (рядок, напр.
+        Obscura відмовить, і перегляд треба показати знову. Для publication_suggest перегляд має selection: якщо книжка не
+        вміщається повністю, модель прочитає ідею й сцени 1–included із total (попередження — у warnings); покажіть це авторові
+        й передайте selection_key = selection.key з показаного перегляду, тоді змінений відбір Obscura відхилить. budget_limit_usd — ліміт цього запуску в доларах (рядок, напр.
         "0.50"). Запуск іде у фоні: стан і результат — get_run(run_id); результат етапу читайте get_scene_text, пропозиції
         картки — у get_run. Кожен виклик з confirm=true створює новий запуск."""
         if action not in RUN_ACTIONS:
@@ -953,6 +956,8 @@ def build_server(http: httpx.Client | None, client_name: str | None = None, *, c
                    'budget': {'limit_usd': usd(budget.get('limit_nanos')), 'spent_usd': usd(budget.get('exposure_nanos')),
                               'available_usd': usd(budget.get('available_nanos')),
                               'default_run_limit_usd': usd(policy.get('default_run_limit_nanos'))}}
+        if action == 'publication_suggest':
+            preview['selection'] = ready.get('selection')
         if audit_scope is not None:
             cost = ready.get('cost') or {}
             preview.update({'links': ready.get('links') or [], 'invalid_scenes': ready.get('invalid_scenes'),
@@ -967,6 +972,10 @@ def build_server(http: httpx.Client | None, client_name: str | None = None, *, c
             raise ToolError(MEMORY_APPROVAL if ready.get('can_confirm') else f"Запуск не готовий: {ready.get('reason')}")
         if action == 'publication_suggest':
             body: dict[str, Any] = {'story_id': story, 'mode': 'publication_suggest'}
+            selection = ready.get('selection') or {}
+            if selection_key or selection.get('included', 0) < selection.get('total', 0):
+                # R16-SUGGEST-S07: the key of the preview shown; without it, the fresh readiness of this confirm call.
+                body['expected_selection'] = selection_key or selection.get('key')
         elif audit_scope is not None:
             if not plan_fingerprint:
                 raise ToolError(AUDIT_FINGERPRINT)

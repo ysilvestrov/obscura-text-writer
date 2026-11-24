@@ -42,7 +42,11 @@ def _publication_snapshot(repo,db,story_id,shared=False):
     from .context_view import ContextView
     from .shared_snapshot import read_view
     captured=read_view(repo,db,story_id) if shared else ContextView(repo,db,story_id)
+    from ..plan_sections import preamble_text
+    plan=captured.active_source(story_id,'source_plan')
+    idea=preamble_text(captured.read_text(plan.id)) if plan else ''
     return PublicationSnapshot(story=captured.story,publication=view(db,captured.story),
+        idea=idea,idea_version_id=plan.id if idea else None,
         scenes=[(captured.effective_scene(s.id),captured.get_version(s.heads['prose']) if s.heads.get('prose') else None)
                 for s in captured.list_scenes(story_id)])
 

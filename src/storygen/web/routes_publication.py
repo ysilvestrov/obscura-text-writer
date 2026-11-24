@@ -99,7 +99,7 @@ def suggestions(story_id: str,request: Request):
 def suggestion_readiness(story_id: str,request: Request):
     from ..generation.publication_metadata import readiness
     from ..run_models import RunRequest
-    return readiness(request.app.state.repo,RunRequest(story_id=story_id,mode='publication_suggest'))
+    return readiness(request.app.state.repo,RunRequest(story_id=story_id,mode='publication_suggest'),enforce_selection=False)
 
 
 @router.post('/api/stories/{story_id}/publication/cover')
