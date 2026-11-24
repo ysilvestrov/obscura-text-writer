@@ -53,7 +53,7 @@ jobs:
       id-token: write
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      url: ${{ steps.deployment.outputs.page_url || steps.deployment_retry.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
       - id: fresh
@@ -78,11 +78,22 @@ jobs:
         uses: actions/upload-pages-artifact@v3
         with:
           path: _site
+      # DOCS-SITE-S12: right after the upload the artifacts API may still list nothing ("Found 0 artifact(s)");
+      # the first attempt may fail on that, and one retry after a pause publishes the same artifact.
       - id: deployment
         if: steps.fresh.outputs.current == 'true'
+        continue-on-error: true
+        uses: actions/deploy-pages@v4
+      - name: Wait before the second publication attempt
+        if: steps.fresh.outputs.current == 'true' && steps.deployment.outcome == 'failure'
+        run: sleep 30
+      - id: deployment_retry
+        if: steps.fresh.outputs.current == 'true' && steps.deployment.outcome == 'failure'
         uses: actions/deploy-pages@v4
       - name: Check the published address
         if: steps.fresh.outputs.current == 'true'
+        env:
+          PAGE_URL: ${{ steps.deployment.outputs.page_url || steps.deployment_retry.outputs.page_url }}
         run: |
-          curl --fail --silent --show-error --retry 6 --retry-delay 10 --retry-all-errors --output /dev/null "${{ steps.deployment.outputs.page_url }}"
-          curl --fail --silent --show-error --retry 6 --retry-delay 10 --retry-all-errors --output /dev/null "${{ steps.deployment.outputs.page_url }}en/install.html"
+          curl --fail --silent --show-error --retry 6 --retry-delay 10 --retry-all-errors --output /dev/null "$PAGE_URL"
+          curl --fail --silent --show-error --retry 6 --retry-delay 10 --retry-all-errors --output /dev/null "${PAGE_URL}en/install.html"
