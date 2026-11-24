@@ -211,3 +211,14 @@ def test_integrity_check_ignores_what_edge_keeps_in_the_window_profile(tmp_path)
     _winapi.CreateJunction(str(tmp_path / 'elsewhere'), str(profile / 'junction'))
     assert check_integrity(repo.root).ok
     assert create_backup(repo.root, tmp_path / 'backup').is_dir()
+
+
+def test_backup_skips_kept_editor_import_files(tmp_path):
+    repo, story, _, _ = sample(tmp_path / 'source')
+    repo.files.write('editor-import/' + 'a' * 32 + '.docx', b'preview kept until save')
+    assert check_integrity(repo.root).ok
+    backup = create_backup(repo.root, tmp_path / 'backup')
+    copied = [item['path'] for item in json.loads((backup / 'manifest.json').read_text(encoding='utf-8'))['files']]
+    assert not any(path.startswith('editor-import/') for path in copied)
+    assert not (backup / 'data' / 'editor-import').exists()
+    assert (repo.root / 'editor-import' / ('a' * 32 + '.docx')).is_file()

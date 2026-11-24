@@ -25,9 +25,10 @@ from ..publication.docx_import import DocxManuscript, Run, read_docx
 from ..publication.docx_text import SceneText, normalized, roundtrip_ok, serialize
 from ..publication.markup import chapter_paragraphs
 from ..rewrite_diff import RewriteDiff, build_rewrite_diff
+from ..storage.integrity import EDITOR_IMPORT_DIR
 from .editor_import_match import Fragment, match_scenes
 
-TEMP_DIR = 'editor-import'
+TEMP_DIR = EDITOR_IMPORT_DIR  # outside story folders; backups and fsck skip it
 TEMP_TTL = timedelta(hours=24)
 # R23-COMMENTS limits: anchored and general notes together, per scene.
 MAX_NOTES = 100

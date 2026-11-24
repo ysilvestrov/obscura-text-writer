@@ -55,6 +55,10 @@ def contained_path(root: Path, relative: str) -> Path:
 # DESKTOP-001-S07: the Edge profile of the Obscura window at the root of the data folder is not user data; Edge keeps
 # whatever it wants there, so integrity checks and backups do not walk into it.
 WINDOW_PROFILE = '.window'
+# EDITOR-IMPORT-S10: kept DOCX files between an import preview and its save are not story data either; backups and
+# fsck skip this top-level folder (design §4, §9).
+EDITOR_IMPORT_DIR = 'editor-import'
+NOT_DATA = (WINDOW_PROFILE, EDITOR_IMPORT_DIR)
 
 
 def regular_files(root: Path, skip: tuple[str, ...] = ()) -> list[Path]:
@@ -92,7 +96,7 @@ def check_integrity(root: Path) -> IntegrityReport:
         report.add('database_missing', 'storygen.sqlite3', 'The database is missing')
         return report
     try:
-        files = regular_files(root, skip=(WINDOW_PROFILE,))
+        files = regular_files(root, skip=NOT_DATA)
     except (OSError, ValueError):
         report.add('unsafe_path', '.', 'Unsafe or inaccessible file tree')
         return report
