@@ -14,7 +14,7 @@ from storygen.token_budget.core import canonical
 
 from .model import Record, realistic_ratio, SceneInput, Selection, render, tokens_conservative, tokens_realistic
 
-LAYERS = ('core', 'present', 'general', 'threads', 'facts', 'timeline', 'atmosphere', 'fts')
+LAYERS = ('core', 'present', 'general', 'threads', 'facts', 'timeline', 'atmosphere', 'fts', 'vec', 'hybrid')
 
 
 @dataclass(frozen=True)
@@ -207,20 +207,37 @@ def fts_rank(candidates: list[Record], query_text: str) -> list[Record]:
     return [candidates[i] for i, _ in sorted(rows, key=lambda row: (row[1], candidates[row[0]].claim_id))]
 
 
-def structural_fts(scene: SceneInput, params: Params) -> Selection:
-    chosen, timeline, summary, layers, overflow, dropped, budget = _structural(scene, params, 'structural_fts')
-    retrieved = []
-    if not overflow:
-        taken = {r.claim_id for r in chosen}
-        # Timeline-category claims are rendered by the timeline layer, never as records.
-        pool = [r for r in scene.records if r.claim_id not in taken and r.category != 'timeline']
-        for r in fts_rank(pool, scene.plan_text):
-            if budget.take(_line_cost(r.text, params.measure)):
-                chosen.append(r)
-                layers['fts'] = layers.get('fts', 0) + 1
-                retrieved.append(r.claim_id)
-    return _selection('structural_fts', chosen, timeline, summary, layers, overflow, dropped, layers.get('_atmosphere_ids', ()),
-                      retrieved)
+def _structural_retrieval(name: str, layer: str, ranker: Callable[[list[Record], str], list[Record]]):
+    """One body for every retrieval strategy: structural layers first, then the ranker fills the remaining budget."""
+    def strategy(scene: SceneInput, params: Params) -> Selection:
+        chosen, timeline, summary, layers, overflow, dropped, budget = _structural(scene, params, name)
+        retrieved = []
+        if not overflow:
+            taken = {r.claim_id for r in chosen}
+            # Timeline-category claims are rendered by the timeline layer, never as records.
+            pool = [r for r in scene.records if r.claim_id not in taken and r.category != 'timeline']
+            for r in ranker(pool, scene.plan_text):
+                if budget.take(_line_cost(r.text, params.measure)):
+                    chosen.append(r)
+                    layers[layer] = layers.get(layer, 0) + 1
+                    retrieved.append(r.claim_id)
+        return _selection(name, chosen, timeline, summary, layers, overflow, dropped, layers.get('_atmosphere_ids', ()),
+                          retrieved)
+    return strategy
+
+
+structural_fts = _structural_retrieval('structural_fts', 'fts', fts_rank)
+
+
+def vector_strategies(embedder) -> dict[str, Callable[[SceneInput, Params], Selection]]:
+    """structural_vec / structural_hybrid for one embedder; built per embedder, so not part of STRATEGIES.
+    ranking is imported lazily: this module stays importable without numpy."""
+    from .ranking import rrf_rank, vec_rank
+    vec_name, hybrid_name = f'structural_vec[{embedder.key}]', f'structural_hybrid[{embedder.key}]'
+    return {
+        vec_name: _structural_retrieval(vec_name, 'vec', lambda pool, query: vec_rank(pool, query, embedder)),
+        hybrid_name: _structural_retrieval(hybrid_name, 'hybrid', lambda pool, query: rrf_rank(pool, query, embedder)),
+    }
 
 
 PRODUCT_STEPS = 12

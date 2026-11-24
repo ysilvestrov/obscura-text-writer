@@ -3,7 +3,9 @@
 Texts never leave this module except into the embedder itself; the cache stores vectors only, keyed by a hash.
 numpy is required here; memory_bench.strategies and memory_bench.ranking stay importable without it."""
 import hashlib
+import math
 import os
+import time
 from pathlib import Path
 from typing import Literal, Protocol, Sequence
 
@@ -17,7 +19,7 @@ MODELS: dict[str, dict] = {
                 'query_prefix': 'query: ', 'passage_prefix': 'passage: ', 'max_tokens': 512},
     'bge-m3': {'kind': 'local', 'model_id': 'BAAI/bge-m3', 'revision': 'main',
                'query_prefix': '', 'passage_prefix': '', 'max_tokens': 8192},  # dense only
-    # Azure deployment name; AzureEmbedder is added in Task 6.
+    # Azure deployment name comes from the cloud config, not from here; the client is AzureEmbedder.
     'azure-3-large': {'kind': 'cloud', 'model_id': 'text-embedding-3-large', 'revision': 'azure'},
 }
 
@@ -144,3 +146,61 @@ class CachedEmbedder:
         if not paths:
             return np.zeros((0, self.inner.dim), dtype=np.float32)
         return np.stack([found[p][0] for p in paths]).astype(np.float32)
+
+
+def cloud_allowed(story_id: str, prefixes: Sequence[str]) -> bool:
+    """True only for a story whose id starts with one of the non-empty allowed prefixes."""
+    return any(p and story_id.startswith(p) for p in prefixes)
+
+
+class AzureEmbedder:
+    """Azure OpenAI embeddings over httpx, in batches, with a hard budget check before any request.
+
+    Texts go only into the request body; neither texts nor the api key appear in exceptions. No prefix is added for
+    either kind. Truncation is not measured for the cloud model: last_truncated is all False and truncated stays 0."""
+    BATCH = 64
+
+    def __init__(self, key, endpoint, api_key, deployment, api_version, price_per_mtok: float, max_usd: float,
+                 transport=None, model_id='text-embedding-3-large', revision='azure', dim=0):
+        import httpx
+        self.key, self.model_id, self.revision, self.dim = key, model_id, revision, dim
+        self.max_tokens = 8191
+        self.truncated = 0
+        self.last_truncated: list[bool] = []
+        self.query_prefix = self.passage_prefix = ''
+        self.price_per_mtok, self.max_usd = price_per_mtok, max_usd
+        self.tokens, self.usd = 0, 0.0
+        self.latencies: list[float] = []
+        self._url = f"{endpoint.rstrip('/')}/openai/deployments/{deployment}/embeddings"
+        self._api_version = api_version
+        self._headers = {'api-key': api_key}
+        self._client = httpx.Client(transport=transport) if transport is not None else httpx.Client()
+
+    def embed(self, texts, kind):
+        texts = list(texts)
+        self.last_truncated = [False] * len(texts)
+        if not texts:
+            return np.zeros((0, self.dim), dtype=np.float32)
+        estimate = sum(math.ceil(len(t) / 2) for t in texts)
+        if self.usd + estimate * self.price_per_mtok / 1e6 > self.max_usd:
+            raise ValueError('cloud_budget')
+        rows = []
+        for start in range(0, len(texts), self.BATCH):
+            batch = texts[start:start + self.BATCH]
+            began = time.perf_counter()
+            try:
+                response = self._client.post(self._url, params={'api-version': self._api_version},
+                                             headers=self._headers, json={'input': batch})
+                response.raise_for_status()
+                body = response.json()
+            except Exception as error:  # message never echoes the body, texts or the key
+                status = getattr(getattr(error, 'response', None), 'status_code', None)
+                raise ValueError(f'cloud_http_{status}' if status else 'cloud_error') from None
+            self.latencies.append(time.perf_counter() - began)
+            used = int(body['usage']['prompt_tokens'])
+            self.tokens += used
+            self.usd += used * self.price_per_mtok / 1e6
+            rows.extend(item['embedding'] for item in sorted(body['data'], key=lambda item: item['index']))
+        matrix = _normalized(np.array(rows, dtype=np.float32))
+        self.dim = int(matrix.shape[1])
+        return matrix
