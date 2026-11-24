@@ -202,3 +202,15 @@ def test_paragraph_mark_revisions():
         '<w:p><w:r><w:t>звичайний</w:t></w:r></w:p>'))
     flags = [(p.mark_inserted, p.mark_deleted, p.changed) for p in manuscript.paragraphs]
     assert flags == [(True, False, True), (False, True, True), (True, True, True), (False, False, False)]
+
+
+def test_moves_are_revisions():
+    manuscript = read_docx(package(
+        '<w:p><w:pPr><w:rPr><w:moveTo w:id="1" w:author="Р"/></w:rPr></w:pPr><w:moveToRangeStart w:id="7" w:name="m"/>'
+        '<w:moveTo w:id="2" w:author="Р"><w:r><w:t>сюди</w:t></w:r></w:moveTo><w:moveToRangeEnd w:id="7"/></w:p>'
+        '<w:p><w:pPr><w:rPr><w:moveFrom w:id="3" w:author="Р"/></w:rPr></w:pPr><w:moveFromRangeStart w:id="8" w:name="m"/>'
+        '<w:moveFrom w:id="4" w:author="Р"><w:r><w:t>звідси</w:t></w:r></w:moveFrom><w:moveFromRangeEnd w:id="8"/></w:p>'
+        '<w:p><w:r><w:t>а </w:t></w:r><w:moveFrom w:id="5" w:author="Р"><w:r><w:t>б </w:t></w:r></w:moveFrom>'
+        '<w:r><w:t>в</w:t></w:r><w:moveTo w:id="6" w:author="Р"><w:r><w:t> б</w:t></w:r></w:moveTo></w:p>'))
+    flags = [(p.mark_inserted, p.mark_deleted, p.changed, text(p.original), text(p.editor)) for p in manuscript.paragraphs]
+    assert flags == [(True, False, True, '', 'сюди'), (False, True, True, 'звідси', ''), (False, False, True, 'а б в', 'а в б')]

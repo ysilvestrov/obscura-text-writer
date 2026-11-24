@@ -165,7 +165,7 @@ class _Reader:
             elif child.tag == _q('commentRangeEnd'):
                 last = len(self.paragraphs) - 1
                 self.ends.setdefault(child.get(_q('id')), (last, self.lengths[last]) if last >= 0 else None)
-            elif child.tag in (_q('ins'), _q('del')) or child.tag.rsplit('}', 1)[-1] in _TRANSPARENT:
+            elif child.tag in (_q('ins'), _q('del'), _q('moveTo'), _q('moveFrom')) or child.tag.rsplit('}', 1)[-1] in _TRANSPARENT:
                 self.body(child)
 
     def paragraph(self, element):
@@ -179,8 +179,9 @@ class _Reader:
             if any(next(element.iter(_q(tag)), None) is not None for tag in tags):
                 self.warn(index, text)
         mark = element.find(f'{_q("pPr")}/{_q("rPr")}')
-        inserted = mark is not None and mark.find(_q('ins')) is not None
-        deleted = mark is not None and mark.find(_q('del')) is not None
+        # A tracked move is an insertion at its destination (moveTo) and a deletion at its source (moveFrom).
+        inserted = mark is not None and any(mark.find(_q(tag)) is not None for tag in ('ins', 'moveTo'))
+        deleted = mark is not None and any(mark.find(_q(tag)) is not None for tag in ('del', 'moveFrom'))
         self.paragraphs.append(DocxParagraph(style.get(_q('val')) if style is not None else None, tuple(state['bookmarks']),
             _merge(state['editor']), _merge(state['original']), state['changed'] or inserted or deleted, inserted, deleted))
         self.lengths.append(state['length'])

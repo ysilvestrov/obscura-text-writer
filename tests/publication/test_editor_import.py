@@ -339,3 +339,26 @@ def test_tracked_split_and_merge_of_paragraphs(tmp_path):
     checked(plan)
     assert plan.status == 'changed' and plan.editor_text == 'Поча\nток.\n\n— Так.\n\n— Так.'
     assert [(c.anchor.start, c.anchor.end) for c in plan.comments] == [(10, 16)]
+
+
+@pytest.mark.parametrize('manifest', [True, False])
+def test_tracked_paragraph_move_keeps_anchor(tmp_path, manifest):
+    repo, story, scenes, content = book(tmp_path, TWINS)
+    if not manifest:
+        drop_manifest(tmp_path, story, content)
+    moved_to = (f'<w:p><w:pPr><w:rPr><w:moveTo w:id="84" w:author="Р"/></w:rPr></w:pPr>'
+                f'<w:moveTo w:id="85" w:author="Р">{run("— Так.")}</w:moveTo></w:p>')
+    moved_from = (f'<w:p><w:pPr><w:rPr><w:moveFrom w:id="86" w:author="Р"/></w:rPr></w:pPr>'
+                  f'<w:moveFrom w:id="87" w:author="Р">{run("— Так.")}</w:moveFrom></w:p>')
+
+    def change(xml):
+        head, tail = xml.rsplit(TWIN, 1)
+        return with_comment_on_first_twin((head + moved_from + tail).replace(FIRST, FIRST + moved_to, 1))
+
+    changed = edit(content, change, [(6, 'Р', 'Перше')])
+    item = preview_import(repo, story.id, changed).scenes[1]
+    assert (item.status, item.needs_choice, item.comments) == ('changed', False, 1)
+    plan = plan_of(repo, story, changed, scenes[1].id)
+    checked(plan)
+    assert [(c.anchor.start, c.anchor.end) for c in plan.comments] == [(10, 16)]
+    assert plan.editor_text == 'Початок.\n— Так.\n\n— Так.\n'
