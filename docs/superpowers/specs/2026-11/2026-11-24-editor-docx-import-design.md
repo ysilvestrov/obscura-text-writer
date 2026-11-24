@@ -1,7 +1,7 @@
 # Імпорт редакції з DOCX: проза → чернетка, правки → перегляд редактури, примітки → коментарі
 
 Дата: 2026-11-24
-Статус: чекає на затвердження
+Статус: затверджено (власник, 24.11.2026)
 Spec-review: agy/gemini-3.8-flash @ 00364d1 (author: claude) — 8 findings: 8 fixed, 0 rejected. Перший прогін без `--reviewer` не вдався: codex — вичерпано ліміт, agy/gemini-4-argon — тайм-аут 15 хв.
 
 Задача беклогу R-46 ([#271](https://github.com/ysilvestrov/obscura-text-writer/issues/271)), що поглинула R-45 ([#270](https://github.com/ysilvestrov/obscura-text-writer/issues/270)) за рішенням власника 24.11.2026.
