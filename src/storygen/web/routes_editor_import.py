@@ -13,7 +13,10 @@ from ..publication import docx_import
 
 router = APIRouter()
 _IMPORT_ID = re.compile('[0-9a-f]{32}')
-TOO_LARGE = 'Файл має бути до 20 MiB'
+
+
+def _too_large() -> str:
+    return f'Файл має бути до {docx_import.MAX_FILE / (1024 * 1024):g} MiB'
 
 
 class ImportApply(DomainModel):
@@ -47,7 +50,7 @@ async def preview(story_id: str, request: Request):
         form = await MultiPartParser(request.headers, bounded_stream(), max_files=1, max_fields=0).parse()
     except MultiPartException as exc:
         if exc.message == 'upload_limit':
-            raise HTTPException(413, TOO_LARGE) from None
+            raise HTTPException(413, _too_large()) from None
         raise ValueError('Завантажте один файл DOCX') from None
     try:
         item = form.get('file')
@@ -55,7 +58,7 @@ async def preview(story_id: str, request: Request):
             raise ValueError('Оберіть один файл DOCX')
         content = await item.read(limit + 1)
         if len(content) > limit:
-            raise HTTPException(413, TOO_LARGE)
+            raise HTTPException(413, _too_large())
     finally:
         await form.close()
     return await run_in_threadpool(editor_import.preview_import, repo, story_id, content)

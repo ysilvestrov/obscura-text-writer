@@ -9,7 +9,9 @@ Status precedence of a scene: `no_prose` → `unsupported_markup` → `pending_r
 """
 import hashlib
 import json
+import logging
 import re
+import threading
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from os.path import commonprefix
@@ -28,6 +30,7 @@ from ..rewrite_diff import RewriteDiff, build_rewrite_diff
 from ..storage.integrity import EDITOR_IMPORT_DIR
 from .editor_import_match import Fragment, match_scenes
 
+logger = logging.getLogger(__name__)
 TEMP_DIR = EDITOR_IMPORT_DIR  # outside story folders; backups and fsck skip it
 TEMP_TTL = timedelta(hours=24)
 # R23-COMMENTS limits: anchored and general notes together, per scene.
@@ -277,6 +280,9 @@ def _limited(notes):
     return '\n'.join(general), comments, dropped, len(general)
 
 
+PENDING_REVIEW = 'Спершу вирішіть пропозицію попереднього імпорту редакції.'
+
+
 def _skip(status, warnings=()):
     return ScenePlan(status, None, '', None, '', [], 0, list(warnings))
 
@@ -292,7 +298,7 @@ def plan_scene(repo, story_id, scene, fragment: Fragment, doc: DocxManuscript, m
     if not roundtrip_ok(prose, content_format):
         return _skip('unsupported_markup', ['Розмітку прози не можна передати через DOCX без змін; сцену не імпортовано.'])
     if any(a.state == 'needs_review' for a in repo.list_attempts(story_id, scene_id=scene.id, context_key='editor_import')):
-        return _skip('pending_review', ['Спершу вирішіть пропозицію попереднього імпорту редакції.'])
+        return _skip('pending_review', [PENDING_REVIEW])
     norm = normalized(prose, content_format)
     body = doc.paragraphs[fragment.first:fragment.last]
     original_view = _view(doc, fragment, 'original')
@@ -506,23 +512,50 @@ def _save_scene(repo, story_id, item, plan, origin, scene_index):
         raise RevisionConflict(SCENE_CHANGED)
     content_format = repo.get_version(head).content_format
     text = plan.editor_text if plan.status == 'over_limit' else plan.normalized.text
-    factory = None
-    if plan.status == 'changed':
-        attempt_id = new_id()
-        # The partial goes first: a stray file after a failed transaction is harmless, an attempt without one is not.
-        with repo.files.open_partial(f'stories/{story_id}/runs/{attempt_id}/partial.txt') as out:
-            out.write(plan.editor_text.encode('utf-8'))
-        factory = _proposal_factory(repo, story_id, scene.id, plan, attempt_id, origin, scene_index)
-    repo.save_draft_with_comments(scene.id, text, content_format, scene.revision,
-        repo.get_comment_state(scene.id)['expected_comments_revision'],
-        CommentPayload(general=plan.general, comments=plan.comments),
-        expected_source_version_id=scene.heads.get('draft'), editor_import=origin, attempt_factory=factory)
+    factory, partial = None, None
+    try:
+        if plan.status == 'changed':
+            attempt_id = new_id()
+            partial = f'stories/{story_id}/runs/{attempt_id}/partial.txt'
+            # The partial goes first, an attempt without one is not valid; a failed transaction removes it below.
+            with repo.files.open_partial(partial) as out:
+                out.write(plan.editor_text.encode('utf-8'))
+            factory = _proposal_factory(repo, story_id, scene.id, plan, attempt_id, origin, scene_index)
+        repo.save_draft_with_comments(scene.id, text, content_format, scene.revision,
+            repo.get_comment_state(scene.id)['expected_comments_revision'],
+            CommentPayload(general=plan.general, comments=plan.comments),
+            expected_source_version_id=scene.heads.get('draft'), editor_import=origin, attempt_factory=factory)
+    except BaseException:
+        if partial is not None:  # the attempt was never inserted: drop its partial and the run folder made for it
+            path = repo.files.resolve(partial)
+            try:
+                path.unlink(missing_ok=True)
+                path.parent.rmdir()
+            except OSError:
+                pass
+        raise
+
+
+_APPLY_LOCKS: dict[str, threading.Lock] = {}
+_APPLY_LOCKS_GUARD = threading.Lock()
+
+
+def _apply_lock(story_id):
+    with _APPLY_LOCKS_GUARD:
+        return _APPLY_LOCKS.setdefault(story_id, threading.Lock())
 
 
 def apply_import(repo, story_id: str, import_id: str, fingerprint: str,
                  changed_scenes: Literal['skip', 'replace'] | None) -> ImportResult:
-    """Save the previewed import (§5): per scene, draft, comments and (for `changed`) the proposal in one transaction."""
+    """Save the previewed import (§5): per scene, draft, comments and (for `changed`) the proposal in one transaction.
+    Applies of one story run one at a time in this process; the scene transaction itself refuses a second proposal."""
+    with _apply_lock(story_id):
+        return _apply_import(repo, story_id, import_id, fingerprint, changed_scenes)
+
+
+def _apply_import(repo, story_id, import_id, fingerprint, changed_scenes):
     from ..domain import EditorImportOrigin, RevisionConflict
+    from ..storage.comment_store import PendingEditorImport
     path = repo.files.resolve(_temp_path(import_id))
     try:
         content = path.read_bytes()
@@ -551,7 +584,12 @@ def apply_import(repo, story_id: str, import_id: str, fingerprint: str,
             continue
         try:
             _save_scene(repo, story_id, item, plan, origin, index)
+        except PendingEditorImport:  # a concurrent apply already left a proposal for this scene
+            skipped.append({'scene_id': item.scene.id, 'status': 'pending_review'})
+            warnings.append(f'«{item.scene.title}»: {PENDING_REVIEW}')
+            continue
         except Exception as exc:  # the scene's transaction rolled back; the other scenes go on (§5)
+            logger.exception('Editor import: scene %s was not saved', item.scene.id)
             skipped.append({'scene_id': item.scene.id, 'status': plan.status})
             warnings.append(f'«{item.scene.title}»: сцену не імпортовано — {exc or type(exc).__name__}')
             continue

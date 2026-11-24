@@ -560,3 +560,67 @@ def test_import_works_in_unrated_story(tmp_path):
     select_copyedits(repo, scenes[1].id, attempt.id, list(range(len(view['edits']))), view['expected_revision'],
                      view['proposal_fingerprint'])
     assert repo.read_text(repo.get_scene(scenes[1].id).heads['prose']) == EDITED
+
+
+def test_import_over_equal_draft_keeps_previous_version(tmp_path):
+    """I-1: a draft equal to normalized(prose) still gets a new marked version; the author's notes stay with the old one."""
+    repo, story, scenes, content = book(tmp_path)
+    sid = scenes[1].id
+    saved = repo.save_draft_with_comments(sid, TEXTS[1], 'markdown', repo.get_scene(sid).revision, 0,
+                                          CommentPayload(general='Моя власна нотатка'), expected_source_version_id=None)
+    old_draft, old_notes = saved['version'].id, saved['comment_set']
+    dependent = repo.save_version(story.id, sid, 'memory', 'Пам’ять сцени.', [old_draft])
+    preview, result = imported(repo, story, comment_on_speech(content))
+    assert any('попередній версії чернетки' in w for w in preview.scenes[1].warnings)
+    assert result.imported == [sid]
+    scene = repo.get_scene(sid)
+    new_draft = repo.get_version(scene.heads['draft'])
+    assert new_draft.id != old_draft and new_draft.editor_import.import_id == preview.import_id
+    assert repo.read_text(new_draft.id) == TEXTS[1]
+    notes = repo.get_comment_state(sid)['comment_set']
+    assert notes.source_version_id == new_draft.id and notes.general == ''
+    kept = repo.get_comment_set(sid, old_notes.id)
+    assert kept.source_version_id == old_draft and kept.general == 'Моя власна нотатка'
+    # Identical bytes invalidate nothing: what depended on the old draft stays fresh.
+    assert not repo.get_version(dependent.id).stale and not repo.get_version(scene.heads['prose']).stale
+
+
+def test_failed_scene_leaves_no_orphan_files(tmp_path, monkeypatch, caplog):
+    """I-2: a scene whose transaction fails removes the draft blob and the partial it wrote; fsck and backup stay clean."""
+    import storygen.generation.context as context
+    from storygen.storage.backup import require_integrity
+    from storygen.storage.integrity import check_integrity
+    repo, story, scenes, content = book(tmp_path)
+    assert check_integrity(tmp_path).ok
+    preview = preview_import(repo, story.id, edit_all(content))
+
+    def broken(*args, **kwargs):
+        raise ValueError('Контекст не вміщується')
+    monkeypatch.setattr(context, 'make_context', broken)
+    with caplog.at_level('ERROR', logger='storygen.application.editor_import'):
+        result = editor_import.apply_import(repo, story.id, preview.import_id, preview.fingerprint, None)
+    assert result.imported == [] and len(result.skipped) == 3
+    report = check_integrity(tmp_path)
+    assert report.ok, [i.code for i in report.issues]
+    require_integrity(tmp_path)
+    assert list((tmp_path / 'stories' / story.id).glob('runs/*/partial.txt')) == []
+    assert [r for r in caplog.records if r.exc_info] and len(caplog.records) == 3
+
+
+def test_concurrent_apply_creates_one_proposal(tmp_path, monkeypatch):
+    """I-3: a second apply that passed the upfront pending_review check is refused inside the scene transaction."""
+    from storygen.storage.integrity import check_integrity
+    repo, story, scenes, content = book(tmp_path)
+    changed = edit(content, lambda xml: xml.replace('пішов', 'побіг'))
+    preview = preview_import(repo, story.id, changed)
+    stale = editor_import._summary(repo, story.id, changed)  # request B has built its summary
+    editor_import.apply_import(repo, story.id, preview.import_id, preview.fingerprint, None)  # request A finished
+    draft = repo.get_scene(scenes[1].id).heads['draft']
+    repo.files.write(f'editor-import/{preview.import_id}.docx', changed)
+    monkeypatch.setattr(editor_import, '_summary', lambda *args: stale)
+    result = editor_import.apply_import(repo, story.id, preview.import_id, preview.fingerprint, None)
+    assert result.imported == [] and result.skipped == [{'scene_id': scenes[1].id, 'status': 'pending_review'}]
+    assert any('Спершу вирішіть пропозицію попереднього імпорту' in w for w in result.warnings)
+    assert len([a for a in import_attempts(repo, story, scenes[1].id) if a.state == 'needs_review']) == 1
+    assert repo.get_scene(scenes[1].id).heads['draft'] == draft
+    assert check_integrity(tmp_path).ok

@@ -46,9 +46,11 @@ def test_preview_and_apply_roundtrip(tmp_path):
 def test_preview_too_large_413(tmp_path, monkeypatch):
     from storygen.publication import docx_import
     repo, story, _, content = book(tmp_path)
-    monkeypatch.setattr(docx_import, 'MAX_FILE', len(content) - 1)
+    monkeypatch.setattr(docx_import, 'MAX_FILE', 3 * 1024 * 1024)
     with client_for(tmp_path) as client:
-        assert upload(client, story.id, content).status_code == 413
+        response = upload(client, story.id, content + b'x' * (3 * 1024 * 1024))
+        assert response.status_code == 413
+        assert '3 MiB' in response.text  # the message follows MAX_FILE
     assert list(tmp_path.glob('editor-import/*.docx')) == []
 
 
@@ -85,7 +87,8 @@ def test_bad_import_id_404(tmp_path, import_id):
                                json={'fingerprint': 'x', 'changed_scenes': None})
         assert response.status_code == 404
         assert client.delete(f'/api/stories/{story.id}/editor-import/{import_id}').status_code == 404
-        # A well-formed id whose file is gone (imported, cancelled or swept) is 404 too.
+        # A well-formed id whose file is gone (imported, cancelled or swept): saving is 404, cancelling is idempotent.
+        assert client.delete(f'/api/stories/{story.id}/editor-import/{"f" * 32}').status_code == 204
         assert client.post(f'/api/stories/{story.id}/editor-import/{"f" * 32}',
                            json={'fingerprint': 'x', 'changed_scenes': None}).status_code == 404
 

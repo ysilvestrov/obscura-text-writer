@@ -1252,6 +1252,8 @@
         "tests/publication/test_editor_import.py::test_draft_version_marked",
         "tests/publication/test_editor_import.py::test_failed_scene_is_skipped_and_others_imported",
         "tests/publication/test_editor_import.py::test_scene_conflict_is_skipped_not_raised",
+        "tests/publication/test_editor_import.py::test_failed_scene_leaves_no_orphan_files",
+        "tests/publication/test_editor_import.py::test_concurrent_apply_creates_one_proposal",
         "tests/publication/test_editor_import.py::test_import_works_in_unrated_story",
         "tests/web/test_editor_import_api.py::test_preview_and_apply_roundtrip"
       ]
@@ -1262,7 +1264,8 @@
       "scope": "Лише примітки: чернетка й коментарі без спроби. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
       "tests": [
         "tests/publication/test_editor_import.py::test_comments_only",
-        "tests/publication/test_editor_import.py::test_comments_only_saves_draft_and_comments_without_attempt"
+        "tests/publication/test_editor_import.py::test_comments_only_saves_draft_and_comments_without_attempt",
+        "tests/publication/test_editor_import.py::test_import_over_equal_draft_keeps_previous_version"
       ]
     },
     {
