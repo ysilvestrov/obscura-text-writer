@@ -35,9 +35,10 @@ async function openStopScene(scene){
   if(!target.hasAttribute('tabindex'))target.tabIndex=-1;
   target.focus();
 }
+const finishableFor=run=>Boolean(run&&state.workspaceFinishable?.runId===run.id&&state.workspaceFinishable.value);
 function renderJump(){
   if(!jump)return;
-  const {scene,hidden,disabled,secondary,here}=stopSceneJump(lastRun,state.view?.scenes,state.scene?.id);
+  const {scene,hidden,disabled,secondary,here}=stopSceneJump(lastRun,state.view?.scenes,state.scene?.id,finishableFor(lastRun));
   jump.hidden=hidden;
   jump.disabled=disabled;
   jump.classList.toggle('secondary',secondary);
@@ -83,5 +84,6 @@ document.addEventListener('workspace-run-pending',event=>{
 });
 document.addEventListener('story-refreshed',render);
 document.addEventListener('scene-selected',renderJump);
+document.addEventListener('workspace-finishable',renderJump);
 document.addEventListener('workspace-readiness',renderMenu);
 render();

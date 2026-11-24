@@ -126,6 +126,9 @@ const book=(cp,state='needs_review')=>({id:'r1',state,request:{mode:'audit',audi
 c=sceneConsistency(view({brief:{...disc,fingerprint:'fb'}},{validity:'discrepancy'}),'s2',scenes,book({scene_id:'s2',link:'brief',outcome:'discrepancy'}),pv(1));
 assert.deepEqual([c.view,c.resume,c.primary],['full',true,{action:'resume',runId:'r1',label:'consistency.resume',disabled:true,reason:{key:'consistency.resolve_first',params:{}}}]);
 assert.equal(sceneConsistency(view({},{validity:'valid'}),'s2',scenes,book({scene_id:'s2',link:'brief',outcome:'discrepancy'})).primary.disabled,false);  // decided: shown in full though valid
+// VALID-UI-S08: nothing left to check — the same action is named «Завершити валідацію».
+assert.deepEqual(sceneConsistency(view({},{validity:'valid'}),'s2',scenes,book({scene_id:'s2',link:'brief',outcome:'discrepancy'}),null,'',true).primary,
+  {action:'resume',runId:'r1',label:'book_validation.finish',disabled:false,reason:null});
 assert.equal(sceneConsistency(view({prose:over},{validity:'unchecked'}),'s2',scenes,book({scene_id:'s2',link:'prose',outcome:'unavailable'})).primary.disabled,false);
 assert.equal(sceneConsistency(view({brief:link('unchecked')}),'s2',scenes,book({scene_id:'s1',link:'brief',outcome:'discrepancy'}),pv(1)).primary.action,'audit');
 assert.equal(sceneConsistency(view({brief:link('unchecked')}),'s2',scenes,book({scene_id:'s2',link:'brief',outcome:'discrepancy'},'completed'),pv(1)).primary.action,'audit');

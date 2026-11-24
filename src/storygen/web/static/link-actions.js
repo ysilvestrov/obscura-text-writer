@@ -114,7 +114,7 @@ function consistencyRow(link,state,item){
   return row;
 }
 
-export function sceneConsistency(materialStatus,sceneId,scenes=[],run=null,preview=null,blocked=''){
+export function sceneConsistency(materialStatus,sceneId,scenes=[],run=null,preview=null,blocked='',finishable=false){
   const scene=(materialStatus||{})[sceneId];
   const links=scene?.links||{};
   const items=pendingLinks(materialStatus,sceneId,scenes);
@@ -138,7 +138,8 @@ export function sceneConsistency(materialStatus,sceneId,scenes=[],run=null,previ
     // Г6: ready when the stop link was decided (its status left the outcome) or the Auditor itself was unavailable.
     const ready=links[checkpoint.link]?.status!==checkpoint.outcome||checkpoint.outcome==='unavailable';
     const reason=blocked?{text:blocked}:ready?null:key('consistency.resolve_first');
-    primary={action:'resume',runId:run.id,label:'consistency.resume',disabled:reason!==null,reason};
+    // VALID-UI-S08: nothing left to check — the same action finishes the validation and says so.
+    primary={action:'resume',runId:run.id,label:finishable?'book_validation.finish':'consistency.resume',disabled:reason!==null,reason};
   }else{
     let reason=null;
     if(blocked)reason={text:blocked};

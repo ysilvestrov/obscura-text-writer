@@ -4,7 +4,7 @@ import {acceptedContinuation} from './acceptance.js';
 import {violationDetails} from './memory-violations.js';
 import {revealTakesFocus,runSummaryText,runModeKey,runNoticeMark,runExpanded,toggleRunExpansion,syncRunPrefs,addRunCost,runCostText} from './run-summary.js';
 import {progressText} from './run-progress.js';
-import {revealBlocked,bookResumeInRow} from './book-validation-state.js';
+import {revealBlocked,bookResumeInRow,finishKey} from './book-validation-state.js';
 import {api,json,notice} from './api.js';
 import {state,refresh,loadBuffer,textEditor} from './editor.js';
 import {registerWorkspaceCommand} from './workspace-commands.js';
@@ -41,9 +41,11 @@ async function reconcilePrimaryOnce(){
   if(pending.storageKey)sessionStorage.removeItem(pending.storageKey);setPendingPrimary(null);document.dispatchEvent(new CustomEvent('workspace-primary-recovered',{detail:run}));await follow(run,{reveal:true});return run;
 }
 const actions=[];
-function updateControls(){for(const item of actions){let reason=item.operation?operationReason(state,readiness?.operations[item.operation]):['latest','proposal','apply'].includes(item.action)?materialReason(item.action,state,historyRuns):item.action==='accepted'?operationReason(state,{ready:!!continuation,reason:t("m_7795d03d9c33")}):item.action?controlReason(item.action,active):'';if(['resume','repeat'].includes(item.action))reason=reason||operationReason(state,pendingReadiness)||auditResumeReason(pendingReadiness);if(item.action==='resume')uiText(item.button,"textContent",()=>(auditFinishable(pendingReadiness)?t('audit.finish'):t("m_a50d268827d2")));if(item.busy)reason=t("m_08ee1e43995d");item.button.disabled=!!reason;uiText(item.button,"title",()=>(diagnostic(reason)));uiText(item.hint,"textContent",()=>(diagnostic(reason)));item.button.setAttribute('aria-describedby',item.hint.id);if(['pause','cancel','resume','repeat','accepted'].includes(item.action))item.wrapper.hidden=['resume','repeat'].includes(item.action)?!!controlReason(item.action,active):!!reason;if(item.action==='resume'&&!bookResumeInRow(active,state.view?.scenes))item.wrapper.hidden=true}}
+function updateControls(){for(const item of actions){let reason=item.operation?operationReason(state,readiness?.operations[item.operation]):['latest','proposal','apply'].includes(item.action)?materialReason(item.action,state,historyRuns):item.action==='accepted'?operationReason(state,{ready:!!continuation,reason:t("m_7795d03d9c33")}):item.action?controlReason(item.action,active):'';if(['resume','repeat'].includes(item.action))reason=reason||operationReason(state,pendingReadiness)||auditResumeReason(pendingReadiness);if(item.action==='resume')uiText(item.button,"textContent",()=>(auditFinishable(pendingReadiness)?t(finishKey(active)):t("m_a50d268827d2")));if(item.busy)reason=t("m_08ee1e43995d");item.button.disabled=!!reason;uiText(item.button,"title",()=>(diagnostic(reason)));uiText(item.hint,"textContent",()=>(diagnostic(reason)));item.button.setAttribute('aria-describedby',item.hint.id);if(['pause','cancel','resume','repeat','accepted'].includes(item.action))item.wrapper.hidden=['resume','repeat'].includes(item.action)?!!controlReason(item.action,active):!!reason;if(item.action==='resume'&&!bookResumeInRow(active,state.view?.scenes,auditFinishable(pendingReadiness)))item.wrapper.hidden=true}}
+// VALID-UI-S08: the book validation's jump and panel follow the same «nothing left to check» as the row's resume.
+function sharePending(runId){const finishable=runId!==null&&auditFinishable(pendingReadiness);if(state.workspaceFinishable?.runId===runId&&state.workspaceFinishable?.value===finishable)return;state.workspaceFinishable={runId,value:finishable};document.dispatchEvent(new CustomEvent('workspace-finishable'))}
 async function loadPending(){
-  const epoch=++pendingEpoch;pendingReadiness=null;continuation=null;updateControls();if(!active)return;
+  const epoch=++pendingEpoch;pendingReadiness=null;continuation=null;sharePending(null);updateControls();if(!active)return;
   const runId=active.id;
   try{
     const [result,details]=await Promise.all([api(`/api/runs/${runId}/readiness`),api(`/api/runs/${runId}`)]);
@@ -54,7 +56,7 @@ async function loadPending(){
       candidate=acceptedContinuation(details.run,details.attempts,history.scene,history.versions,history.acceptances||[]);
     }
     // VALID-RUN-S16: the author's decisions since the stop change what is left, so the progress is read again with the preview.
-    if(epoch===pendingEpoch){pendingReadiness=result;continuation=candidate;if(active?.id===runId&&'progress' in details){setProgress(runId,details.progress);if(progressNode?.isConnected)fillProgress(progressNode,active,details.progress)}updateControls()}
+    if(epoch===pendingEpoch){pendingReadiness=result;continuation=candidate;sharePending(runId);if(active?.id===runId&&'progress' in details){setProgress(runId,details.progress);if(progressNode?.isConnected)fillProgress(progressNode,active,details.progress)}updateControls()}
   }catch(error){if(epoch===pendingEpoch){pendingReadiness={ready:false,reason:error.message};updateControls()}}
 }
 function selectedSource(options={}){

@@ -25,8 +25,9 @@ export function stoppedAuditScene(run,scenes){
 }
 // VALID-UI-S07: on the stop scene itself the jump has nowhere to go: it stays visible (it names the scene of the stop),
 // but is inactive and secondary, so the panel's «Продовжити валідацію» is the only main action.
-export function stopSceneJump(run,scenes,currentSceneId){
-  const scene=stoppedAuditScene(run,scenes);
+// VALID-UI-S08: once nothing is left to check (`finishable`), there is no scene to go to: the row shows «Завершити валідацію».
+export function stopSceneJump(run,scenes,currentSceneId,finishable=false){
+  const scene=finishable?null:stoppedAuditScene(run,scenes);
   const here=Boolean(scene&&currentSceneId===scene.id);
   return {scene,hidden:!scene,disabled:here,secondary:!scene||here,here};
 }

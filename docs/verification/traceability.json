@@ -8322,6 +8322,19 @@
         "procedure": "docs/verification/manual.md#book-validation-browser",
         "reason": "Playwright запускається окремим runner; check_docs.py індексує лише pytest IDs."
       }
+    },
+    {
+      "id": "VALID-UI-S08",
+      "requirement": "VALID-UI",
+      "scope": "stopSceneJump з finishable ховає перехід; bookResumeInRow з finishable лишає дію в рядку; finishKey дає book_validation.finish для книги й audit.finish для сцени; sceneConsistency з finishable називає дію панелі «Завершити валідацію». Рядок і панель у браузері та завершення без діалогу — у ручній процедурі (Playwright book-validation.spec.mjs).",
+      "tests": [
+        "tests/web/test_book_validation_ui.py::test_book_validation_helpers",
+        "tests/web/test_link_decision_ui.py::test_link_panel_actions"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#book-validation-browser",
+        "reason": "Playwright запускається окремим runner; check_docs.py індексує лише pytest IDs."
+      }
     }
   ]
 }
