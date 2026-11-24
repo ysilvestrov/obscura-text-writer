@@ -74,6 +74,7 @@ class Selection:
     overflow: bool
     dropped_by_budget: int
     atmosphere_ids: tuple[str, ...] = ()
+    retrieval_ids: tuple[str, ...] = ()  # IDs taken by the retrieval layer (fts; later vec / hybrid)
 
 
 def render(records: Sequence[Record], timeline: Sequence[Record], summary_chars: int = 0) -> str:

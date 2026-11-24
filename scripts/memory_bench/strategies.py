@@ -55,11 +55,11 @@ def _base_cost(measure: str) -> float:
     return tokens_conservative(empty) if measure == 'conservative' else len(empty) / realistic_ratio()
 
 
-def _selection(name, records, timeline, summary_chars, layers, overflow, dropped, atmosphere=()):
+def _selection(name, records, timeline, summary_chars, layers, overflow, dropped, atmosphere=(), retrieval=()):
     text = render(records, timeline, summary_chars)
     ids = tuple(r.claim_id for r in records) + tuple(r.claim_id for r in timeline)
     return Selection(name, ids, {k: layers.get(k, 0) for k in LAYERS}, len(text), tokens_conservative(text),
-                     tokens_realistic(text), overflow, dropped, tuple(atmosphere))
+                     tokens_realistic(text), overflow, dropped, tuple(atmosphere), tuple(retrieval))
 
 
 def _over(selection: Selection, params: Params) -> bool:
@@ -203,6 +203,7 @@ def fts_rank(candidates: list[Record], query_text: str) -> list[Record]:
 
 def structural_fts(scene: SceneInput, params: Params) -> Selection:
     chosen, timeline, summary, layers, overflow, dropped, budget = _structural(scene, params, 'structural_fts')
+    retrieved = []
     if not overflow:
         taken = {r.claim_id for r in chosen}
         # Timeline-category claims are rendered by the timeline layer, never as records.
@@ -211,7 +212,9 @@ def structural_fts(scene: SceneInput, params: Params) -> Selection:
             if budget.take(_line_cost(r.text, params.measure)):
                 chosen.append(r)
                 layers['fts'] = layers.get('fts', 0) + 1
-    return _selection('structural_fts', chosen, timeline, summary, layers, overflow, dropped, layers.get('_atmosphere_ids', ()))
+                retrieved.append(r.claim_id)
+    return _selection('structural_fts', chosen, timeline, summary, layers, overflow, dropped, layers.get('_atmosphere_ids', ()),
+                      retrieved)
 
 
 PRODUCT_STEPS = 12

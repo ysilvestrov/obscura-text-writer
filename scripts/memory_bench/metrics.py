@@ -60,3 +60,37 @@ def control_hits(cases: list[dict], scenes: Mapping[str, SceneInput], selections
         else:
             out.append({'index': index, 'hit': case['claim_id'] in selections[case['scene_id']].record_ids, 'reason': None})
     return out
+
+
+def pair_hits(annotation: Mapping[str, list[str]], pairs: dict, scenes_by_number: Mapping[int, SceneInput],
+              selections_by_number: Mapping[int, Selection]) -> list[dict]:
+    """Planted pairs and controls → one row each: whether the repeat scene's selection holds an annotated record
+    (hit) and whether the retrieval layer took it (by_retrieval). Rows carry pair IDs only, never claim IDs."""
+    out = []
+    for kind, key in (('pair', 'pairs'), ('control', 'controls')):
+        for entry in pairs.get(key, []):
+            row = {'id': entry['id'], 'kind': kind, 'hit': None, 'by_retrieval': None, 'reason': None}
+            ids = set(annotation.get(entry['id']) or ())
+            scene, sel = scenes_by_number.get(entry['repeat']), selections_by_number.get(entry['repeat'])
+            if not ids:
+                row['reason'] = 'not_annotated'
+            elif scene is None or sel is None:
+                row['reason'] = 'scene_skipped'
+            else:
+                present = ids & {r.claim_id for r in scene.records}
+                if not present:
+                    row['reason'] = 'missing_in_memory'
+                else:
+                    row['hit'] = bool(present & set(sel.record_ids))
+                    row['by_retrieval'] = bool(present & set(sel.retrieval_ids))
+            out.append(row)
+    return out
+
+
+def pair_summary(rows: list[dict]) -> dict:
+    result = {}
+    for kind in ('pair', 'control'):
+        counted = [r for r in rows if r['kind'] == kind and r['reason'] is None]
+        result[kind] = {'hit': sum(bool(r['hit']) for r in counted), 'by_retrieval': sum(bool(r['by_retrieval']) for r in counted),
+                        'total': len(counted)}
+    return result

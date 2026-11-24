@@ -111,3 +111,13 @@ def test_budget_respected_with_json_escaped_quotes(measure):
         p=params(memory_budget_tokens=n,measure=measure)
         sel=STRATEGIES['structural'](s,p)
         assert sel.overflow or measured(sel,p)<=n
+
+
+def test_structural_fts_reports_retrieval_ids():
+    records=rich_records()
+    sel=STRATEGIES['structural_fts'](scene(records,plan='маяк скелі'),params())
+    assert sel.layers['fts']>0
+    assert 'fact_far' in sel.retrieval_ids and 'fact_far' in sel.record_ids
+    assert 'core1' not in sel.retrieval_ids
+    assert len(sel.retrieval_ids)==sel.layers['fts']
+    assert STRATEGIES['structural'](scene(records),params()).retrieval_ids==()
