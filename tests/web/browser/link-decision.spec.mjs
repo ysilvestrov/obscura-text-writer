@@ -1,6 +1,6 @@
 import {test,expect} from '../../../frontend/browser-test.mjs';
 
-// VALID-LINKS-S08 in the browser: an unchecked brief and prose of the open scene offer the author's approval.
+// VALID-LINKS-S08/S15 in the browser: the «Узгодженість сцени» panel offers «Я перевірив сам» for an unchecked brief and prose.
 test.use({locale:'uk-UA'});
 
 test('the author approves the brief and the prose of a scene',async({page,request})=>{
@@ -13,17 +13,23 @@ test('the author approves the brief and the prose of a scene',async({page,reques
   saved=await request.post(`/api/scenes/${scene.id}/prose`,{data:{text:'Ранок: світло на воді.',expected_revision:scene.revision}});
   expect(saved.ok(),await saved.text()).toBeTruthy();
   await page.goto(`/stories/${story.id}?scene=${scene.id}&material=prose`);
-  const panel=page.locator('#link-attention');
-  await expect(panel).toContainText('Завдання не підтверджено');
-  await expect(panel).toContainText('Проза не підтверджена');
-  await panel.getByRole('button',{name:'Затвердити завдання'}).click();
-  await expect(panel).not.toContainText('Завдання не підтверджено');
-  await panel.getByRole('button',{name:'Затвердити відповідність'}).click();
-  await expect(panel).not.toContainText('Проза не підтверджена');
-  // The scene has no memory yet: only that row stays, with the memory stage as its action.
-  await expect(panel.locator('.link-attention-row')).toHaveCount(1);
-  await expect(panel).toContainText('У сцени ще немає пам’яті');
-  await expect(panel.getByRole('button',{name:'Створити пам’ять'})).toBeVisible();
+  const panel=page.locator('#scene-consistency');
+  const briefRow=panel.locator('li[data-link="brief"]'),proseRow=panel.locator('li[data-link="prose"]'),memoryRow=panel.locator('li[data-link="memory"]');
+  await expect(panel.locator('#scene-consistency-title')).toHaveText('Узгодженість сцени');
+  await expect(briefRow).toHaveAttribute('data-state','pending');
+  await expect(briefRow.locator('.consistency-status')).toHaveText('не перевірено');
+  await expect(proseRow).toHaveAttribute('data-state','pending');
+  await briefRow.getByRole('button',{name:'Я перевірив сам'}).click();
+  await expect(panel).toBeFocused();  // Review Focus 4: the focus waits on the panel while the row redraws
+  await expect(briefRow).toHaveAttribute('data-state','ok');
+  await expect(briefRow.locator('.consistency-status')).toHaveText('узгоджено · ви');
+  await proseRow.getByRole('button',{name:'Я перевірив сам'}).click();
+  await expect(proseRow).toHaveAttribute('data-state','ok');
+  await expect(panel).toBeFocused();
+  // The scene has no memory yet, so it is not valid: the memory row stays, with the memory stage as its action.
+  await expect(panel.locator('.consistency-badge')).toHaveText('1 з 3 не перевірено');
+  await expect(memoryRow).toContainText('У сцени ще немає пам’яті');
+  await expect(memoryRow.getByRole('button',{name:'Створити пам’ять'})).toHaveClass(/link-button/);
   const view=await(await request.get(`/api/stories/${story.id}`)).json();
   expect(view.material_status[scene.id].links.brief.source).toBe('author');
   expect(view.material_status[scene.id].links.prose.source).toBe('author');
@@ -37,11 +43,12 @@ test('«Залишити попередню пам’ять» unblocks the next 
   expect(before.ready).toBe(false);
   expect(before.reason).toContain('пам’ять попередньої сцени');
   await page.goto(`/stories/${fixture.story_id}?scene=${fixture.first_id}&material=memory`);
-  const panel=page.locator('#link-attention');
-  await expect(panel).toContainText('Пам’ять не підтверджена: прозу змінено після неї.');
+  const panel=page.locator('#scene-consistency');
+  await expect(panel.locator('li[data-link="memory"]')).toContainText('Пам’ять не підтверджена: прозу змінено після неї.');
   await expect(panel.getByRole('button',{name:'Створити нову пам’ять'})).toBeVisible();
   await panel.getByRole('button',{name:'Залишити попередню пам’ять'}).click();
   await expect(panel).not.toContainText('Пам’ять не підтверджена');
+  await expect(panel).toBeFocused();
   const view=await(await request.get(`/api/stories/${fixture.story_id}`)).json();
   expect(view.material_status[fixture.first_id].links.memory.source).toBe('author');
   const after=await readiness();
@@ -53,8 +60,8 @@ test('«Залишити попередню пам’ять» unblocks the next 
 test('«Створити пам’ять» opens the previous scene and asks before the run',async({page,request})=>{
   const fixture=await(await request.post('/test-memory-decision?previous_memory=false')).json();
   await page.goto(`/stories/${fixture.story_id}?scene=${fixture.second_id}&material=brief`);
-  const panel=page.locator('#link-attention');
-  await expect(panel).toContainText('Попередня сцена «Ранок» не має пам’яті');
+  const panel=page.locator('#scene-consistency');
+  await expect(panel.locator('li[data-link="brief"]')).toContainText('Попередня сцена «Ранок» не має пам’яті');
   await panel.getByRole('button',{name:'Створити пам’ять'}).click();
   await expect(page.locator('#scene-title')).toContainText('Ранок');
   const dialog=page.getByRole('dialog');

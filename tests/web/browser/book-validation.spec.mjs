@@ -58,11 +58,11 @@ test('book validation stops on a discrepancy, leads to the scene and finishes th
   await expect(page.locator('#run-status .run-progress-title')).not.toBeFocused();
   await jump.click();
   await expect(page.locator('#scene-title')).toContainText('Ранок');
-  const row=page.locator('#link-attention [data-link="brief"]');
+  const row=page.locator('#scene-consistency li[data-link="brief"]');
   await expect(row).toContainText('Місце дії не збігається з планом');
-  await expect(page.locator('#link-attention')).toBeFocused();  // Р7: the stop scene's link panel takes the focus
-  await row.getByRole('button',{name:'Затвердити завдання'}).click();
-  await expect(row).toHaveCount(0);
+  await expect(page.locator('#scene-consistency')).toBeFocused();  // Р7: the stop scene's «Узгодженість сцени» takes the focus
+  await row.getByRole('button',{name:'Розбіжності немає'}).click();
+  await expect(row).toHaveAttribute('data-state','ok');
   await page.locator('#run-actions').getByRole('button',{name:'Продовжити'}).click();
   dialog=page.locator('dialog[open]');
   await expect(dialog).toContainText('Сцен до перевірки: 2.');

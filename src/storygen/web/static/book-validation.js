@@ -27,10 +27,10 @@ function renderMenu(){
   uiText(item,'title',()=>menu.reason?t(menu.reason):'');
 }
 // The stop scene is the main action of a stopped book validation; after it opens, the focus goes to the scene's
-// link panel (Р7: #link-attention until the coherence panel exists), else back to the run row.
+// «Узгодженість сцени» panel, else (no panel) back to the run row.
 async function openStopScene(scene){
   await selectScene(scene);
-  const panel=document.querySelector('#link-attention'),target=panel&&!panel.hidden?panel:document.querySelector('#workspace-status-row');
+  const panel=document.querySelector('#scene-consistency'),target=panel&&!panel.hidden?panel:document.querySelector('#workspace-status-row');
   if(!target)return;
   if(!target.hasAttribute('tabindex'))target.tabIndex=-1;
   target.focus();

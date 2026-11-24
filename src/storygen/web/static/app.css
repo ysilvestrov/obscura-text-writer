@@ -441,7 +441,31 @@ pre { white-space: pre-wrap; overflow-wrap: anywhere; font: 14px/1.7 var(--font-
 /* VALID-LINKS: the auditor's discrepancies under their row: items with quotes, then the author's actions. */
 .link-discrepancies { margin: 0.25rem 0 0; padding-left: 1.25rem; }
 .link-discrepancy blockquote { margin: 0.25rem 0 0.5rem; padding-left: 0.75rem; border-left: 3px solid var(--border-color); color: var(--text-secondary); }
-.link-audit-summary, .link-attention-actions { margin: 0.25rem 0 0; }
+/* VALID-LINKS-S15: the «Узгодженість сцени» panel: a title with the count, three rows (icon, link, state, actions as
+   links), a discrepancy as a block with a warning stripe, and one main action with its cost or reason. */
+.scene-consistency { margin: 0.75rem 0 0; padding: 0.75rem 1rem; border: 1px solid var(--border-color); border-radius: 10px; font-size: 0.875rem; }
+.scene-consistency[hidden] { display: none; }
+.scene-consistency:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
+.scene-consistency .consistency-valid { margin: 0; color: var(--success); font-weight: 600; }
+.scene-consistency .consistency-head { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.75rem; }
+.scene-consistency h3 { margin: 0; font-size: 1rem; }
+.scene-consistency .consistency-badge { padding: 0.125rem 0.625rem; border-radius: 999px; background: var(--accent-soft); color: var(--text-primary); font-size: 0.8125rem; }
+.scene-consistency .consistency-badge[hidden] { display: none; }
+.consistency-rows { list-style: none; margin: 0.5rem 0 0; padding: 0; }
+.consistency-rows > li { display: flex; align-items: flex-start; gap: 0.625rem; padding: 0.5rem 0; border-top: 1px solid var(--border-color); }
+.consistency-icon { flex: none; width: 1.375rem; text-align: center; font-weight: 700; color: var(--text-secondary); }
+.consistency-rows > li[data-state="ok"] .consistency-icon { color: var(--success); }
+.consistency-rows > li[data-state="discrepancy"] .consistency-icon, .consistency-rows > li[data-state="unavailable"] .consistency-icon { color: var(--warning); }
+.consistency-body { flex: 1 1 auto; min-width: 0; display: grid; gap: 0.125rem; }
+.consistency-status { margin: 0; font-size: 0.8125rem; }
+.consistency-discrepancy { margin-top: 0.25rem; padding: 0.5rem 0.625rem; border-left: 3px solid var(--warning); background: var(--bg-subtle); }
+.consistency-discrepancy > p { margin: 0 0 0.25rem; }
+.consistency-discrepancy > .consistency-hint { margin: 0.25rem 0 0; font-size: 0.8125rem; }
+.consistency-actions { flex: none; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.25rem 0.75rem; max-width: 45%; }
+.consistency-actions .link-button { font-size: 0.875rem; text-align: right; }
+.consistency-primary { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 0.75rem; margin: 0.75rem 0 0; }
+.consistency-primary small[hidden] { display: none; }
+.link-audit-summary { margin: 0.25rem 0 0; }
 .external-change { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; color: var(--warning); font-weight: 600; }
 .run-options { flex-basis: 100%; }
 /* R20-WORKSPACE-S03: the status row and the consequence note scroll under the material. */
@@ -457,7 +481,7 @@ pre { white-space: pre-wrap; overflow-wrap: anywhere; font: 14px/1.7 var(--font-
 /* R20-WORKSPACE-S05: full screen inside the app window; only the editor and a thin save row remain. */
 body:has(#workspace.focus-mode) .topbar, #workspace.focus-mode .storybar, #workspace.focus-mode .scene-panel, #workspace.focus-mode .context-panel,
 #workspace.focus-mode .scene-heading, #workspace.focus-mode #mode-tabs, #workspace.focus-mode .workspace-primary-wrap, #workspace.focus-mode #run-jump,
-#workspace.focus-mode .workspace-hint-info, #workspace.focus-mode #link-attention, #workspace.focus-mode .workspace-status-row,
+#workspace.focus-mode .workspace-hint-info, #workspace.focus-mode #scene-consistency, #workspace.focus-mode .workspace-status-row,
 #workspace.focus-mode #workspace-history, #workspace.focus-mode .workspace-extra, #workspace.focus-mode #scene-statistics, #workspace.focus-mode .workspace-output,
 #workspace.focus-mode .workspace-compact-status, #workspace.focus-mode #workspace-use-draft, #workspace.focus-mode #workspace-edit-prose, #workspace.focus-mode #plan-renumber { display: none !important; }
 #workspace.focus-mode .editor-panel { position: fixed; inset: 0; z-index: 20; display: flex; flex-direction: column; padding: 0.5rem 1rem 1rem; background: var(--bg-surface); }
