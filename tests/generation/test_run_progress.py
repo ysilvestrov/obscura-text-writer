@@ -297,3 +297,101 @@ def test_resume_reads_only_the_progress_events(tmp_path, monkeypatch):
     monkeypatch.setattr(repo, 'list_run_events', lambda run_id, after_seq=0, types=None: seen.append(types) or original(run_id, after_seq, types))
     worker.resume(run.id)
     assert seen and all(types == PROGRESS_EVENTS for types in seen)
+
+
+def _stopped_scene_check(tmp_path):
+    """The owner's case: a scene check stops on a brief discrepancy, then the author approves prose by hand."""
+    from storygen.storage.links import link_state
+    from tests.generation.test_audit_run import DISCREPANCY, decide_link, start
+    from tests.generation.test_audit_verdict import unchecked_scene
+    repo, story, (scene,) = unchecked_scene(tmp_path)
+    worker, run = start(repo, story, scene, Answers(DISCREPANCY))
+    assert run.planned_telemetry['calls'] == 2
+    run = drive(worker, run.id)
+    assert run.state == 'needs_review' and run.checkpoint['link'] == 'brief'
+    prose = link_state(repo.context_view(story.id), scene.id, 'prose')
+    decide_link(repo, scene.id, 'prose', 'approve', prose.fingerprint)
+    return repo, story, scene, worker, run
+
+
+def test_resume_preview_names_the_link_awaiting_the_author(tmp_path):
+    from storygen.storage.links import link_state
+    from tests.generation.test_audit_run import decide_link
+    repo, story, scene, worker, run = _stopped_scene_check(tmp_path)
+    preview = worker.run_readiness(run.id)
+    assert preview['ready'] is True and preview['calls'] == 0  # resume itself stays allowed (VALID-RUN-S03)
+    assert preview['awaiting_decision'] == {'scene_id': scene.id, 'link': 'brief', 'status': 'discrepancy'}
+    brief = link_state(repo.context_view(story.id), scene.id, 'brief')
+    decide_link(repo, scene.id, 'brief', 'approve', brief.fingerprint)
+    preview = worker.run_readiness(run.id)
+    assert preview['awaiting_decision'] is None and preview['links'] == []
+
+
+def test_resume_preview_of_a_called_link_awaits_nothing(tmp_path):
+    from storygen.storage.links import link_state
+    from tests.generation.test_audit_run import DISCREPANCY, decide_link, start
+    from tests.generation.test_audit_verdict import unchecked_scene
+    repo, story, (scene,) = unchecked_scene(tmp_path)
+    worker, run = start(repo, story, scene, Answers(DISCREPANCY))
+    run = drive(worker, run.id)
+    brief = link_state(repo.context_view(story.id), scene.id, 'brief')
+    decide_link(repo, scene.id, 'brief', 'approve', brief.fingerprint)
+    preview = worker.run_readiness(run.id)
+    assert preview['calls'] == 1 and preview['awaiting_decision'] is None
+
+
+def test_stopped_progress_plans_only_what_is_left(tmp_path):
+    from storygen.storage.links import link_state
+    from tests.generation.test_audit_run import decide_link
+    repo, story, scene, worker, run = _stopped_scene_check(tmp_path)
+    progress = run_progress(repo, repo.get_run(run.id))
+    assert progress['calls'] == {'done': 1, 'planned': 1}  # prose was approved by hand: no second call is left
+    assert progress['awaiting'] == {'scene_id': scene.id, 'link': 'brief', 'status': 'discrepancy'}
+    assert progress['finishable'] is False
+    assert repo.get_run(run.id).planned_telemetry['calls'] == 2  # the stored plan is not rewritten
+    brief = link_state(repo.context_view(story.id), scene.id, 'brief')
+    decide_link(repo, scene.id, 'brief', 'approve', brief.fingerprint)
+    progress = run_progress(repo, repo.get_run(run.id))
+    assert progress['awaiting'] is None and progress['finishable'] is True
+    assert progress['calls'] == {'done': 1, 'planned': 1}
+
+
+def test_running_progress_has_no_decision_fields(tmp_path):
+    from tests.generation.test_audit_run import request as audit_request
+    repo, story, (s1, s2, s3, s4), _ = four_scenes(tmp_path)
+    run = Run(id='r', story_id=story.id, request_id='q', tasks=[], request=audit_request(story, s3))
+    progress = progress_from_events(run, [])
+    assert progress['awaiting'] is None and progress['finishable'] is False
+
+
+def test_an_overflow_that_still_holds_awaits_an_action(tmp_path):
+    # Cross-review finding 2: an overflow verdict is measured again on resume; while the input still does not fit, the
+    # run stops again without a call, so the preview names it. A raised limit clears the wait.
+    from storygen.generation.audit_context import OVERFLOW_CHARS
+    from tests.generation.test_audit_context import auditor
+    from tests.generation.test_audit_run import auditor_unavailable, start
+    from tests.generation.test_audit_verdict import unchecked_scene
+    repo, story, (scene,) = unchecked_scene(tmp_path)
+    auditor(repo, story, max_input_chars=1000)
+    auditor_unavailable(repo, story, scene, 'brief', OVERFLOW_CHARS.format(chars=5000, limit=1000))
+    worker, run = start(repo, story, scene, Answers(answer(95)))
+    run = drive(worker, run.id)
+    assert run.state == 'needs_review' and run.checkpoint['link'] == 'brief'
+    assert worker.run_readiness(run.id)['awaiting_decision'] == {'scene_id': scene.id, 'link': 'brief', 'status': 'unavailable'}
+    auditor(repo, story)  # the default limit fits the scene
+    assert worker.run_readiness(run.id)['awaiting_decision'] is None
+
+
+def test_finished_check_keeps_the_left_plan(tmp_path):
+    # Cross-review finding 1: after «Завершити перевірку» the completed run does not fall back to the stale plan.
+    from storygen.storage.links import link_state
+    from tests.generation.test_audit_run import decide_link
+    repo, story, scene, worker, run = _stopped_scene_check(tmp_path)
+    brief = link_state(repo.context_view(story.id), scene.id, 'brief')
+    decide_link(repo, scene.id, 'brief', 'approve', brief.fingerprint)
+    worker.resume(run.id)
+    run = drive(worker, run.id)
+    assert run.state == 'completed'
+    progress = run_progress(repo, run)
+    assert progress['calls'] == {'done': 1, 'planned': 1}
+    assert run.planned_telemetry['calls'] == 2

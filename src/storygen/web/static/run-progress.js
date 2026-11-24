@@ -32,13 +32,24 @@ function countsOf(progress){
   return parts.join(' · ');
 }
 
+// A run stopped for the author (VALID-RUN-S16) names the link it waits for, or that the check can be finished.
+function stepOf(run,progress){
+  if(run?.request?.mode!=='audit')return '';
+  // A discrepancy waits for the author's decision; an unavailable link waits for an action (e.g. building the memory).
+  const waiting=progress.awaiting?.link;
+  if(LINKS.has(waiting))return t(progress.awaiting.status==='discrepancy'?'run_progress.awaiting':'run_progress.awaiting_action',{p0:t(`run_progress.link_${waiting}`)});
+  if(progress.finishable===true)return t('run_progress.finishable');
+  const link=progress.step?.link;
+  return LINKS.has(link)?t(`run_progress.link_${link}`):'';
+}
+
 // null when the server sent no progress (memory_carry, an old run). fraction is null while the call plan is open.
 export function progressText(run,progress,scenes){
   if(progress==null)return null;
-  const link=progress.step?.link,done=progress.calls?.done,planned=progress.calls?.planned;
+  const done=progress.calls?.done,planned=progress.calls?.planned;
   return {
     title:titleOf(run,progress,scenes),
-    step:run?.request?.mode==='audit'&&LINKS.has(link)?t(`run_progress.link_${link}`):'',
+    step:stepOf(run,progress),
     counts:countsOf(progress),
     fraction:Number.isFinite(done)&&Number.isFinite(planned)&&planned>0?Math.min(1,Math.max(0,done/planned)):null};
 }

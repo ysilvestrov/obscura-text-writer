@@ -38,7 +38,7 @@ test('book validation stops on a discrepancy, leads to the scene and finishes th
   const status=page.locator('#run-status'),title=status.locator('.run-progress-title');
   await expect(status).toHaveClass(/expanded/);
   await expect(title).toHaveText('Валідація книги: перевірено сцен 1 з 2 · «Ранок»');
-  await expect(status.locator('.run-progress-step')).toHaveText('завдання ↔ план');
+  await expect(status.locator('.run-progress-step')).toHaveText('Чекає вашого рішення: завдання ↔ план');  // VALID-RUN-S13
   await expect(status.locator('.run-progress-counts')).toHaveText(/^Викликів: 1 \/ 4/);
   await expect(status.locator('progress.run-progress-bar')).toHaveAttribute('value','0.25');
   await expect(title).toBeFocused();  // Review Focus 1: survives the redraws of queued → running → needs_review

@@ -51,3 +51,19 @@ assert.doesNotMatch(confirmation,/Зв’язки до перевірки/);
   assert.equal(materialReason('latest',{},history),'');
   assert.ok(materialReason('proposal',{},[short('prepare','failed'),short('stage','completed')]));
 }
+
+// A stopped audit run (VALID-RUN-S16): resume is blocked while the first link it visits awaits the author, and a run
+// with nothing left to check is finished without the consent dialog.
+{
+  const {auditResumeReason,auditFinishable}=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
+  const audit={ready:true,calls:0,roles:{auditor:{provider:'venice',model:'m'}},plan_fingerprint:'f',cost:{total_usd:'0.0000'}};
+  assert.equal(auditResumeReason({...audit,links:[{link:'brief',status:'discrepancy'}],awaiting_decision:{scene_id:'s',link:'brief',status:'discrepancy'}}),
+    'Спершу вирішіть зв’язок «завдання ↔ план» у панелі «Узгодженість сцени»');
+  assert.equal(auditResumeReason({...audit,links:[]}),'');
+  assert.equal(auditResumeReason({...audit,calls:1,links:[{link:'prose',status:'unchecked'}],awaiting_decision:null}),'');
+  assert.equal(auditResumeReason(null),'');
+  assert.equal(auditFinishable({...audit,links:[],awaiting_decision:null}),true);
+  assert.equal(auditFinishable({...audit,links:[{link:'brief',status:'discrepancy'}],awaiting_decision:{link:'brief'}}),false);
+  assert.equal(auditFinishable({...audit,ready:false,links:[]}),false);
+  assert.equal(auditFinishable({ready:true,calls:0,roles:{memory:{}},evaluator:null}),false);  // not an audit run
+}

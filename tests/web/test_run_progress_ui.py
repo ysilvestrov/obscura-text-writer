@@ -28,7 +28,9 @@ def test_run_progress_texts_exist_in_both_languages():
             'run_progress.stage_evaluate', 'run_progress.calls', 'run_progress.calls_open', 'run_progress.spent_bound',
             'run_progress.spent', 'run_progress.stage_prepare', 'run_progress.stage_rewrite', 'run_progress.stage_classify',
             'run_progress.stage_publication_suggest', 'run_progress.stage_timeline_summary', 'book_validation.other_run_active',
-            'book_validation.menu_running', 'book_validation.menu_stopped', 'book_validation.cancel']
+            'book_validation.menu_running', 'book_validation.menu_stopped', 'book_validation.cancel',
+            'run_progress.awaiting', 'run_progress.awaiting_action', 'run_progress.finishable', 'audit.resume_decide_first',
+            'audit.finish']
     for locale in ('uk', 'en'):
         missing = [key for key in keys if not catalogs[locale].get(key)]
         assert missing == [], (locale, missing)

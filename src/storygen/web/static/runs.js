@@ -9,7 +9,7 @@ import {api,json,notice} from './api.js';
 import {state,refresh,loadBuffer,textEditor} from './editor.js';
 import {registerWorkspaceCommand} from './workspace-commands.js';
 import {assertReadyDispatch} from './workspace-state.js';
-import {operationReason,confirmationText,runKind,controlReason,materialReason,editorLoopOperation} from './run-readiness.js';
+import {operationReason,confirmationText,runKind,controlReason,materialReason,editorLoopOperation,auditResumeReason,auditFinishable} from './run-readiness.js';
 // STORE-FOOTER: the Store page has no extra actions; their buttons then live in a detached node.
 const controls=document.querySelector('#generation-controls')||document.createElement('div'),status=document.querySelector('#run-status'),live=document.querySelector('#live-text');
 // R20-WORKSPACE: «Текст, що пише модель» opens while a stage runs and closes once its text is in.
@@ -41,7 +41,7 @@ async function reconcilePrimaryOnce(){
   if(pending.storageKey)sessionStorage.removeItem(pending.storageKey);setPendingPrimary(null);document.dispatchEvent(new CustomEvent('workspace-primary-recovered',{detail:run}));await follow(run,{reveal:true});return run;
 }
 const actions=[];
-function updateControls(){for(const item of actions){let reason=item.operation?operationReason(state,readiness?.operations[item.operation]):['latest','proposal','apply'].includes(item.action)?materialReason(item.action,state,historyRuns):item.action==='accepted'?operationReason(state,{ready:!!continuation,reason:t("m_7795d03d9c33")}):item.action?controlReason(item.action,active):'';if(['resume','repeat'].includes(item.action))reason=reason||operationReason(state,pendingReadiness);if(item.busy)reason=t("m_08ee1e43995d");item.button.disabled=!!reason;uiText(item.button,"title",()=>(diagnostic(reason)));uiText(item.hint,"textContent",()=>(diagnostic(reason)));item.button.setAttribute('aria-describedby',item.hint.id);if(['pause','cancel','resume','repeat','accepted'].includes(item.action))item.wrapper.hidden=['resume','repeat'].includes(item.action)?!!controlReason(item.action,active):!!reason;if(item.action==='resume'&&!bookResumeInRow(active,state.view?.scenes))item.wrapper.hidden=true}}
+function updateControls(){for(const item of actions){let reason=item.operation?operationReason(state,readiness?.operations[item.operation]):['latest','proposal','apply'].includes(item.action)?materialReason(item.action,state,historyRuns):item.action==='accepted'?operationReason(state,{ready:!!continuation,reason:t("m_7795d03d9c33")}):item.action?controlReason(item.action,active):'';if(['resume','repeat'].includes(item.action))reason=reason||operationReason(state,pendingReadiness)||auditResumeReason(pendingReadiness);if(item.action==='resume')uiText(item.button,"textContent",()=>(auditFinishable(pendingReadiness)?t('audit.finish'):t("m_a50d268827d2")));if(item.busy)reason=t("m_08ee1e43995d");item.button.disabled=!!reason;uiText(item.button,"title",()=>(diagnostic(reason)));uiText(item.hint,"textContent",()=>(diagnostic(reason)));item.button.setAttribute('aria-describedby',item.hint.id);if(['pause','cancel','resume','repeat','accepted'].includes(item.action))item.wrapper.hidden=['resume','repeat'].includes(item.action)?!!controlReason(item.action,active):!!reason;if(item.action==='resume'&&!bookResumeInRow(active,state.view?.scenes))item.wrapper.hidden=true}}
 async function loadPending(){
   const epoch=++pendingEpoch;pendingReadiness=null;continuation=null;updateControls();if(!active)return;
   const runId=active.id;
@@ -53,7 +53,8 @@ async function loadPending(){
       const history=await api(`/api/scenes/${task.scene_id}/versions`);
       candidate=acceptedContinuation(details.run,details.attempts,history.scene,history.versions,history.acceptances||[]);
     }
-    if(epoch===pendingEpoch){pendingReadiness=result;continuation=candidate;updateControls()}
+    // VALID-RUN-S16: the author's decisions since the stop change what is left, so the progress is read again with the preview.
+    if(epoch===pendingEpoch){pendingReadiness=result;continuation=candidate;if(active?.id===runId&&'progress' in details){setProgress(runId,details.progress);if(progressNode?.isConnected)fillProgress(progressNode,active,details.progress)}updateControls()}
   }catch(error){if(epoch===pendingEpoch){pendingReadiness={ready:false,reason:error.message};updateControls()}}
 }
 function selectedSource(options={}){
@@ -249,7 +250,7 @@ button(liveLabel(()=>(t("m_3f2da413a47a"))),()=>start('scene'),'scene');button(l
 const pauseLabel=document.createElement('label');uiHTML(pauseLabel,"<input id=\"pause-each\" type=\"checkbox\"> <span data-i18n=\"m_991c0d0700bb\">Пауза після кожного етапу</span>",{});controls.append(pauseLabel);
 button(liveLabel(()=>(t("m_03498e395a43"))),async()=>{if(active)draw(await api(`/api/runs/${active.id}/pause`,json('POST',{})))},null,'pause');
 button(liveLabel(()=>(t("m_8b4c2025378a"))),async()=>{if(active)draw(await api(`/api/runs/${active.id}/cancel`,json('POST',{})))},null,'cancel');cancelItem=actions.at(-1);
-async function resumeRun(repeat){if(!active)return;const runId=active.id,captured={sceneId:state.scene?.id,epoch:state.bufferEpoch,mode:state.mode};await loadPending();const reason=operationReason(state,pendingReadiness);if(reason)throw new Error(reason);const shown=confirmationText(pendingReadiness);if(!await confirmDialog((repeat?t("m_f126caaa8d97"):'')+shown))return;if(active?.id!==runId||state.scene?.id!==captured.sceneId||state.bufferEpoch!==captured.epoch||state.mode!==captured.mode||state.dirty||state.saving)return;await loadPending();if(active?.id!==runId||operationReason(state,pendingReadiness)||confirmationText(pendingReadiness)!==shown)return;await follow(await api(`/api/runs/${runId}/resume`,json('POST',{repeat_interrupted:repeat})),{reveal:true})}
+async function resumeRun(repeat){if(!active)return;const runId=active.id,captured={sceneId:state.scene?.id,epoch:state.bufferEpoch,mode:state.mode};await loadPending();const reason=operationReason(state,pendingReadiness)||auditResumeReason(pendingReadiness);if(reason)throw new Error(reason);const shown=confirmationText(pendingReadiness),finish=!repeat&&auditFinishable(pendingReadiness);/* nothing left to check: no call and no cost, so no consent */if(!finish&&!await confirmDialog((repeat?t("m_f126caaa8d97"):'')+shown))return;if(active?.id!==runId||state.scene?.id!==captured.sceneId||state.bufferEpoch!==captured.epoch||state.mode!==captured.mode||state.dirty||state.saving)return;await loadPending();if(active?.id!==runId||operationReason(state,pendingReadiness)||confirmationText(pendingReadiness)!==shown)return;await follow(await api(`/api/runs/${runId}/resume`,json('POST',{repeat_interrupted:repeat})),{reveal:true})}
 button(liveLabel(()=>(t("m_387c0a3209b9"))),async()=>{
   await loadPending();
   const reason=operationReason(state,{ready:!!continuation,reason:t("m_46e01b57161e")});if(reason)throw new Error(reason);

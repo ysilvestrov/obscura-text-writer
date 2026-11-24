@@ -216,3 +216,60 @@ test('the derived auditor form follows a saved editor',async({page,request})=>{
   expect(data.roles.auditor.provider.model).toBe('synthetic-editor-2');
   expect(data.roles.auditor.temperature).toBe(0.3);
 });
+
+test('a stopped check waits for the decision and then finishes without consent',async({page,request})=>{
+  // VALID-RUN-S16, the owner's case: the check stops on the brief, the author approves the prose by hand (memory is valid).
+  // Resuming now would stop again at once, so «Продовжити» is disabled with the link; the progress plans only what is left.
+  const made=await request.post('/test-scene-audit?memory=true');expect(made.ok(),await made.text()).toBeTruthy();const fixture=await made.json();
+  const plan=await scenePreview(request,fixture.story_id,fixture.scene_id);
+  expect(plan.calls,JSON.stringify(plan)).toBe(2);
+  const started=await request.post('/api/runs',{data:{request_id:crypto.randomUUID(),request:{story_id:fixture.story_id,scene_id:fixture.scene_id,
+    mode:'audit',stage:null,audit_scope:'scene',audit_plan_fingerprint:plan.plan_fingerprint,pause_after:[]}}});
+  expect(started.ok(),await started.text()).toBeTruthy();
+  const runId=(await started.json()).id;
+  const runOf=async()=>(await(await request.get(`/api/runs/${runId}`)).json()).run;
+  await expect.poll(async()=>(await runOf()).state).toBe('needs_review');
+  const decide=async link=>{
+    const view=await(await request.get(`/api/stories/${fixture.story_id}`)).json();
+    const decided=await request.post(`/api/scenes/${fixture.scene_id}/links/${link}/decision`,
+      {data:{action:'approve',fingerprint:view.material_status[fixture.scene_id].links[link].fingerprint}});
+    expect(decided.ok(),await decided.text()).toBeTruthy();
+  };
+  await decide('prose');
+  await page.goto(`/stories/${fixture.story_id}?scene=${fixture.scene_id}&material=prose`);
+  const progress=page.locator('#run-status .run-progress');
+  await expect(progress.locator('.run-progress-step')).toHaveText('Чекає вашого рішення: завдання ↔ план');
+  await expect(progress.locator('.run-progress-counts')).toHaveText(/^Викликів: 1 \/ 1/);
+  const resume=page.locator('#run-actions').getByRole('button',{name:'Продовжити'});
+  await expect(resume).toBeDisabled();
+  await expect(page.locator('#run-actions')).toContainText('Спершу вирішіть зв’язок «завдання ↔ план» у панелі «Узгодженість сцени»');
+  // The author decides the brief in the panel: nothing is left, so the check is finished, free and without a dialog.
+  await page.locator('#scene-consistency li[data-link="brief"]').getByRole('button',{name:'Розбіжності немає'}).click();
+  await expect(progress.locator('.run-progress-step')).toHaveText('Усе вирішено: перевірку можна завершити');
+  const finish=page.locator('#run-actions').getByRole('button',{name:'Завершити перевірку'});
+  await expect(finish).toBeEnabled();
+  await finish.click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect.poll(async()=>(await runOf()).state).toBe('completed');
+});
+
+test('a stopped check on an unavailable memory waits for an action',async({page,request})=>{
+  // VALID-RUN-S16: a scene without memory stops on its memory link once the brief is decided; that link takes no call.
+  const fixture=await(await request.post('/test-scene-audit')).json();
+  const view=await(await request.get(`/api/stories/${fixture.story_id}`)).json();
+  for(const link of ['brief','prose']){
+    const fingerprint=(await(await request.get(`/api/stories/${fixture.story_id}`)).json()).material_status[fixture.scene_id].links[link].fingerprint;
+    const decided=await request.post(`/api/scenes/${fixture.scene_id}/links/${link}/decision`,{data:{action:'approve',fingerprint}});
+    expect(decided.ok(),await decided.text()).toBeTruthy();
+  }
+  expect(view.material_status[fixture.scene_id].links.memory.status).toBe('unavailable');
+  const started=await request.post('/api/runs',{data:{request_id:crypto.randomUUID(),request:{story_id:fixture.story_id,scene_id:fixture.scene_id,
+    mode:'audit',stage:null,audit_scope:'scene',pause_after:[]}}});
+  expect(started.ok(),await started.text()).toBeTruthy();
+  const runId=(await started.json()).id;
+  await expect.poll(async()=>(await(await request.get(`/api/runs/${runId}`)).json()).run.state).toBe('needs_review');
+  await page.goto(`/stories/${fixture.story_id}?scene=${fixture.scene_id}&material=prose`);
+  await expect(page.locator('#run-status .run-progress .run-progress-step')).toHaveText("Чекає вашої дії: пам'ять ↔ проза");
+  await expect(page.locator('#run-actions').getByRole('button',{name:'Продовжити'})).toBeDisabled();
+  await expect(page.locator('#run-actions')).toContainText("Спершу вирішіть зв’язок «пам'ять ↔ проза» у панелі «Узгодженість сцени»");
+});
