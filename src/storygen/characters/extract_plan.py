@@ -16,18 +16,16 @@ EXTRACT_RUNNING = 'Пошук персонажів уже виконується
 EXTRACT_PROSE_CHANGED = 'Проза змінилася; запустіть пошук знову'
 NO_PROSE = 'Немає сцен із завершеною прозою: пошуку персонажів нічого читати'
 NO_BUDGET_LIMIT = 'Спершу задайте явний ліміт бюджету в налаштуваннях'
+PROPOSAL_SUPERSEDED = 'Є новіша пропозиція'
 PENDING_PROPOSAL = 'Є неприйнята пропозиція персонажів: новий пошук зробить її неприйнятною'
 NO_FINISHED_PROSE = 'немає завершеної прози'
 UNREADABLE_PROSE = 'не вдалося прочитати прозу сцени'
 
 
 def _pending_proposal(repo, story_id: str) -> bool:
-    """The latest `character_extract` run of the book left a proposal (Task 5 checkpoint) that is not accepted yet."""
-    runs = [run for run in repo.list_runs(story_id) if run.request.mode == 'character_extract']
-    if not runs:
-        return False
-    checkpoint = runs[-1].checkpoint or {}
-    return checkpoint.get('phase') == 'done' and not checkpoint.get('accepted_at')
+    """The book has a proposal that can still be accepted (`extract_accept.current_proposal`)."""
+    from .extract_accept import current_proposal
+    return current_proposal(repo, story_id) is not None
 
 
 def _tariff(repo, settings):

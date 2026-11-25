@@ -109,14 +109,14 @@ def test_preview_reports_cards_protagonist_and_pending_proposal(tmp_path):
     assert (plan['cards_count'], plan['has_protagonist']) == (2, True)
     coordinator = RunCoordinator(repo)
     run = coordinator.enqueue(request(story), 'one')
-    run.state, run.checkpoint = 'completed', {'phase': 'done'}
+    run.state, run.checkpoint = 'completed', {'phase': 'done', 'proposal': {'fingerprint': 'f'}}
     repo.save_run(run)
     assert extract_plan(repo, story.id)['pending_proposal'] is True
     assert PENDING_PROPOSAL in preview(repo, request(story))['warnings']
-    run.checkpoint = {'phase': 'done', 'accepted_at': '2026-11-25T10:00:00+00:00'}
+    run.checkpoint = {'phase': 'done', 'proposal': {'fingerprint': 'f'}, 'accepted_at': '2026-11-25T10:00:00+00:00'}
     repo.save_run(run)
     assert extract_plan(repo, story.id)['pending_proposal'] is False
-    run.checkpoint = {'phase': 'done'}
+    run.checkpoint = {'phase': 'done', 'proposal': {'fingerprint': 'f'}}
     repo.save_run(run)
     newer = coordinator.enqueue(request(story), 'two')  # a newer run: the older proposal is no longer the pending one
     assert extract_plan(repo, story.id)['pending_proposal'] is False and newer.state == 'queued'

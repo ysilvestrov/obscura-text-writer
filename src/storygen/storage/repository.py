@@ -155,6 +155,14 @@ class Repository:
         from .run_store import save_run
         return save_run(self, run)
 
+    def story_runs_in_transaction(self, db, story_id):
+        from .run_store import story_runs_in_transaction
+        return story_runs_in_transaction(self, db, story_id)
+
+    def save_run_in_transaction(self, db, run):
+        from .run_store import save_run_in_transaction
+        return save_run_in_transaction(self, db, run)
+
     def requeue_run(self, run):
         from .run_store import requeue_run
         return requeue_run(self, run)
@@ -512,6 +520,11 @@ class Repository:
         self.files.write(version.relative_path,data)
         self._insert_version_row(db,version)
         return version
+
+    def discard_unregistered_version(self,version) -> None:
+        """Removes the file of a version whose transaction rolled back: an unlisted file fails fsck (orphan_blob)."""
+        try:self.files.resolve(version.relative_path).unlink(missing_ok=True)
+        except OSError:pass
 
     def _insert_version_row(self,db,version):
         """The catalogue row and dependency edges of a version whose file is already written, on an open transaction."""
