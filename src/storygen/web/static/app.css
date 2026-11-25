@@ -742,6 +742,11 @@ body.ghost-open #notice { z-index: 70; }
    a scene's paragraphs scroll inside it, each with its boundary button. */
 .export-dialog.manuscript-import-dialog { width: min(48rem, calc(100vw - 32px)); max-width: min(48rem, calc(100vw - 32px)); box-sizing: border-box; }
 .manuscript-import-dialog label { display: block; margin: 0.5rem 0; }
+/* R-48 «Побудувати пам’ять»: the build preview; author titles wrap, so a phone never scrolls sideways. */
+.export-dialog.memory-build-dialog { width: min(36rem, calc(100vw - 32px)); max-width: min(36rem, calc(100vw - 32px)); box-sizing: border-box; overflow-wrap: anywhere; }
+.memory-build-series { border-left: 3px solid var(--warning); padding-left: 0.75rem; margin-bottom: 0.75rem; }
+.memory-build-unfit ul { margin: 0.25rem 0 0.75rem; padding-left: 1.25rem; }
+.memory-build-reason { color: var(--warning); }
 .manuscript-import-dialog input:not([type="checkbox"]), .manuscript-import-dialog select { display: block; width: 100%; max-width: 100%; box-sizing: border-box; }
 .manuscript-import-dialog .checkbox { display: flex; align-items: flex-start; gap: 8px; }
 .manuscript-import-dialog .checkbox input { width: auto; }

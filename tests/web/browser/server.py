@@ -625,6 +625,39 @@ def main():
             return {'docx_base64':base64.b64encode(docx(body,[style('Title','title')])).decode('ascii'),
                     'md_base64':base64.b64encode(md.encode('utf-8')).decode('ascii')}
 
+        @app.post('/test-memory-build')
+        def memory_build_fixture(series: bool = False, narrow: bool = False):
+            """R-48 «Побудувати пам'ять» (spec §5): a book imported from a manuscript (two scenes of prose, no plan, no
+            memory) with card «Олена», named in scene 1. The memory role is local (no tariff: the cost is unknown) and slow,
+            so a started run waits until it is cancelled. `narrow`: the default role limits, which neither scene fits.
+            `series`: the book is number 2 of a series whose finished book 1 has memory, without a start snapshot and
+            without cards of its own. Neutral text about a pier lighthouse."""
+            import uuid
+            from datetime import datetime, timezone
+            from storygen.authoring.blueprints import save_role_settings
+            from storygen.domain import ContentRating, ManuscriptImportOrigin
+            from storygen.providers.models import RoleSettings, ProviderSettings
+            from storygen.storage.manuscript_store import publish_manuscript
+            from tests.series.helpers import card, finished_book, into_series, publish_cards
+            origin = ManuscriptImportOrigin(file_name='mayak.docx', file_sha256='a'*64, imported_at=datetime.now(timezone.utc))
+            slot = None
+            if series:
+                from storygen.storage import series as store
+                item = store.create_series(repo, f'Сага маяка {uuid.uuid4().hex[:6]}')
+                first, _, _ = finished_book(repo, 'Перша книга')
+                into_series(repo, first, item.id, 1)
+                slot = (item.id, 2)
+            story, scenes = publish_manuscript(repo, StoryCreate(title='Маяк на пірсі', content_rating=ContentRating(sexual=0, violence=0, themes=0)),
+                                               [('Пірс', 'Олена стояла на пірсі й дивилася на воду.', 'markdown', None, 8),
+                                                ('Шторм', 'Уночі почався шторм, і маяк світив до ранку.', 'markdown', None, 9)],
+                                               origin, False, series=slot)
+            if not series:
+                publish_cards(repo, story, [card('A', 'Олена')])
+            role = RoleSettings(provider=ProviderSettings(model='synthetic-slow')) if narrow else \
+                RoleSettings(provider=ProviderSettings(model='synthetic-slow'), context_tokens=131072)
+            save_role_settings(repo, story.id, 'memory', role, repo.get_story(story.id).revision)
+            return {'story_id': story.id, 'scene_ids': [scene.id for scene in scenes]}
+
         @app.post('/test-editor-import-touch/{scene_id}')
         def editor_import_touch(scene_id: str):
             # Changes a scene's prose between the summary and the save: the save then answers 409.

@@ -41,7 +41,8 @@ export function displaySceneTitle(title){
 }
 
 // MCP-BRIDGE: the status row names the external client of the version in the buffer; an author save replaces the ref.
-function renderOrigin(ref){renderOriginInto(document.querySelector('#workspace-origin'),ref)}
+// R-48: an imported scene without a plan also says that the plan is optional, so the label reads the buffer's scene.
+function renderOrigin(ref){renderOriginInto(document.querySelector('#workspace-origin'),ref,state.scene)}
 export function loadBuffer(scene,mode,text,origin='current',ref=null){
   textEditor.write(text,{material:mode,content_format:ref?.content_format||'plain',version_id:ref?.id,source_ref:ref});
   state.scene=scene;state.mode=mode;state.dirty=false;state.externalChange=false;state.bufferEpoch++;
