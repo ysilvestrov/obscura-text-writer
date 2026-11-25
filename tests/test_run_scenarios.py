@@ -11,8 +11,9 @@ from run_scenarios import (author_asked, author_problems, bible_problems, creati
                            publish_problems,
                            settings_problems, verdict, obscura_revise_problems, revise_chain_problems,
                            replacement_table_problems,
-                           revise_preconsent_problems, revise_text_problems)
-from revise_setup import NEW_STEM, OLD_STEM, fixture_text  # noqa: E402
+                           revise_preconsent_problems, revise_text_problems, check_preamble, revise_memory_problems,
+                           sum_usage)
+from revise_setup import NEW_STEM, OLD_STEM, _core_decisions, fixture_text  # noqa: E402
 from scripts.skills_stand import Result  # noqa: E402
 
 CREATE = [('create_story', {}), ('get_templates', {}), ('import_plan_and_characters', {}), ('get_story', {})]
@@ -219,7 +220,7 @@ def test_revise_text_old_stem_in_any_case_is_a_problem():
 def test_revise_text_changed_unrelated_sentence_is_a_problem():
     original = 'Жила в Одесі. Пила чай.'
     assert revise_text_problems(original, 'Жила в Херсоні. Пила каву.', 'Одес', 'Херсон', 'сцена 1') == [
-        'сцена 1: змінено речення без старого факту: «Пила чай.»']
+        'сцена 1: змінено речення без старого факту: «Пила чай.»', 'сцена 1: додано речення: «Пила каву.»']
     assert revise_text_problems(original, 'Жила в Херсоні. Пила чай.', 'Одес', 'Херсон', 'сцена 1') == []
 
 
@@ -291,3 +292,100 @@ def test_run_turns_keeps_each_turn_calls_apart(monkeypatch, tmp_path):
     assert result.tool_calls == [('get_story', {}), ('save_draft', {})]
     assert result.errors == [('a', 'x'), ('b', 'y')]
     assert run_scenarios.revise_preconsent_problems(turn_calls[0]) == []
+
+
+@pytest.mark.req('CLAUDE-SKILLS')
+def test_revise_preconsent_flags_any_bridge_write():
+    for name in ('update_story', 'update_settings', 'apply_role_preset', 'add_scene', 'import_plan_and_characters',
+                 'export_book', 'update_plan_preamble', 'save_draft'):
+        assert revise_preconsent_problems([('get_story', {}), (name, {})]) == [f"до згоди записано: ['{name}']"]
+    assert revise_preconsent_problems([('start_run', {'action': 'memory'}), ('get_stage_task', {})]) == []
+
+
+@pytest.mark.req('CLAUDE-SKILLS')
+def test_revise_text_header_line_is_separate():
+    original = '## Сцена 1: Лист\nЛокація: пристань біля Одеси.\nПочаток: день 1'
+    # A changed heading is its own sentence now, not merged into the location line that holds the old fact.
+    assert revise_text_problems(original, '## Сцена 1: Лист!\nЛокація: пристань біля Херсона.\nПочаток: день 1',
+                                'Одес', 'Херсон', 'план') == [
+        'план: змінено речення без старого факту: «## Сцена 1: Лист»', 'план: додано речення: «## Сцена 1: Лист!»']
+    # CRLF and trailing whitespace are not changes; whitespace inside a line is.
+    assert revise_text_problems(original, '## Сцена 1: Лист  \r\nЛокація: пристань біля Херсона.\r\nПочаток: день 1',
+                                'Одес', 'Херсон', 'план') == []
+    assert revise_text_problems(original, '## Сцена 1:  Лист\nЛокація: пристань біля Херсона.\nПочаток: день 1',
+                                'Одес', 'Херсон', 'план')[0] == 'план: змінено речення без старого факту: «## Сцена 1: Лист»'
+
+
+@pytest.mark.req('CLAUDE-SKILLS')
+def test_revise_text_added_sentence_is_a_problem():
+    original = 'Жила в Одесі. Пила чай.'
+    assert revise_text_problems(original, 'Жила в Херсоні. Пила чай. Там було гарно.', 'Одес', 'Херсон', 'сцена 1') == [
+        'сцена 1: додано речення: «Там було гарно.»']
+    # A sentence with the new fact replaces one with the old fact: not an addition.
+    assert revise_text_problems(original, 'Жила в Херсоні. Пила чай.', 'Одес', 'Херсон', 'сцена 1') == []
+
+
+@pytest.mark.req('CLAUDE-SKILLS')
+def test_revise_chain_scene_order_is_checked():
+    s1, s2 = 'a', 'b'
+
+    def chain(scene):
+        return [('save_stage_result', {'scene_id': scene, 'stage': st}) if st != 'draft' else ('save_draft', {'scene_id': scene})
+                for st in ('brief', 'draft', 'edit', 'memory')]
+    assert revise_chain_problems([('update_scene', {'scene_id': s2})] + chain(s1) + chain(s2), [s1, s2]) == []
+    mixed = chain(s1)[:2] + chain(s2)[:1] + chain(s1)[2:] + chain(s2)[1:]
+    assert revise_chain_problems(mixed, [s1, s2]) == ['сцена 2: записи до завершення сцени 1']
+    assert revise_chain_problems(chain(s2) + chain(s1), [s1, s2]) == ['сцена 2: записи до завершення сцени 1']
+
+
+@pytest.mark.req('CLAUDE-SKILLS')
+def test_revise_preamble_is_part_of_the_text_check():
+    original = 'Робоча назва: Маяк\nЗадум: Доглядачка маяка під Одесою.'
+    story = {'plan_preamble': {'text': 'Робоча назва: Маяк\nЗадум: Доглядачка маяка під Херсоном.'}}
+    assert check_preamble(original, story, 'Одес', 'Херсон') == []
+    assert check_preamble(original, {'plan_preamble': {'text': original}}, 'Одес', 'Херсон') == [
+        'преамбула плану: лишилося «Одес»', 'преамбула плану: немає «Херсон»']
+    assert check_preamble(original, {}, 'Одес', 'Херсон')[0] == 'преамбула плану: немає «Херсон»'
+
+
+@pytest.mark.req('CLAUDE-SKILLS')
+def test_revise_memory_preserved_with_stem_replaced():
+    old = [{'claim_id': 'mc_1', 'category': 'facts', 'text': 'Анна живе на маяку під Одесою.',
+            'quote': 'Маяк стояв за кілька миль від Одеси, і пошту привозили по понеділках.', 'supporting_quotes': []}]
+    new = [{'claim_id': 'mc_9', 'category': 'facts', 'text': 'Анна живе на маяку під Херсоном.',
+            'quote': 'Маяк стояв за кілька миль від Херсона, і пошту привозили по понеділках.', 'supporting_quotes': []},
+           {'claim_id': 'mc_10', 'category': 'character_states', 'text': 'Анна втомлена.', 'quote': 'Анна позіхнула.'}]
+    assert revise_memory_problems(old, new, 'Одес', 'Херсон', 'сцена 1') == []
+    reworded = [dict(new[0], text='Анна мешкає на маяку під Херсоном.')]
+    assert revise_memory_problems(old, reworded, 'Одес', 'Херсон', 'сцена 1') == [
+        "сцена 1: пам'ять не зберегла «Анна живе на маяку під Херсон….»"]
+    assert revise_memory_problems(old, [], 'Одес', 'Херсон', 'сцена 1')
+    assert revise_memory_problems([], [], 'Одес', 'Херсон', 'x') == []
+
+
+@pytest.mark.req('CLAUDE-SKILLS')
+def test_revise_fixture_core_follows_the_day_change_rule():
+    head = '{"names":{"c1":"Анна"},"core":{"c1":{"clothing":{},"carried":{},"location":{},"body":{},"company":{}}}}'
+    material = 'ЯДРО СТАНУ ВІДСТЕЖУВАНИХ ПЕРСОНАЖІВ — УСІ СЛОТИ ОБОВ’ЯЗКОВІ\n' + head + '\n\n'
+    same_day = _core_decisions({'material': material})
+    assert {d['status'] for d in same_day['c1'].values()} == {'unchanged'}
+    changed = _core_decisions({'material': material + 'ЗМІНИВСЯ ДЕНЬ: день 1 → день 4 (Анна)\nОдяг…\n'})
+    assert {slot for slot, d in changed['c1'].items() if d['status'] == 'unknown'} == {'clothing', 'carried', 'body'}
+    assert all(changed['c1'][slot]['reason'] for slot in ('clothing', 'carried', 'body'))
+    assert changed['c1']['location']['status'] == changed['c1']['company']['status'] == 'unchanged'
+
+
+@pytest.mark.req('CLAUDE-SKILLS')
+def test_run_turns_sums_usage(monkeypatch, tmp_path):
+    import run_scenarios
+    from types import SimpleNamespace
+    first = {'input_tokens': 10, 'output_tokens': 5, 'service_tier': 'standard', 'cache_creation': {'ephemeral_5m_input_tokens': 2}}
+    turns = iter([Result(usage=first, cost_usd=0.5, session_id='s'),
+                  Result(usage={'input_tokens': 7, 'output_tokens': 1, 'cache_creation': {'ephemeral_5m_input_tokens': 3}},
+                         cost_usd=0.25, session_id='s')])
+    monkeypatch.setattr(run_scenarios, 'run_claude', lambda cmd, out: next(turns))
+    result, _ = run_scenarios.run_turns(['a', 'b'], SimpleNamespace(mcp_config=tmp_path/'m.json'), tmp_path, 'sonnet', 1)
+    assert result.usage == {'input_tokens': 17, 'output_tokens': 6, 'service_tier': 'standard',
+                            'cache_creation': {'ephemeral_5m_input_tokens': 5}}
+    assert result.cost_usd == 0.75 and first['input_tokens'] == 10
+    assert sum_usage({}, None) == {}

@@ -136,7 +136,8 @@ def parse_result(lines):
             result.cost_usd = event.get('total_cost_usd')
             result.usage = event.get('usage') or {}
             result.is_error = bool(event.get('is_error'))
-            if event.get('result'):
+            # The `result` text repeats the last assistant message; keep it only when it says something new.
+            if event.get('result') and (not texts or event['result'].strip() != texts[-1].strip()):
                 texts.append(event['result'])
     result.text = '\n'.join(texts)
     return result

@@ -36,12 +36,23 @@ def fixture_text(name):
     return (FIXTURE/'revise'/name).read_text(encoding='utf-8')
 
 
-def _core_unchanged(task):
-    """The memory core answer: every slot of every tracked character stays as it is."""
-    head = task['material'].split('ЯДРО СТАНУ ВІДСТЕЖУВАНИХ ПЕРСОНАЖІВ — УСІ СЛОТИ ОБОВ’ЯЗКОВІ\n', 1)[1].split('\n', 1)[0]
-    core = json.loads(head)['core']
-    return {cid: {slot: {'status': 'unchanged', 'text': '', 'evidence_ids': [], 'reason': ''} for slot in slots}
-            for cid, slots in core.items()}
+DAY_CHANGED = re.compile(r'^ЗМІНИВСЯ ДЕНЬ: (.+?) → (.+?) \((.+)\)$', re.M)
+DAY_SLOTS = ('clothing', 'carried', 'body')
+
+
+def _core_decisions(task):
+    """The memory core answer by the memory role's rules: a slot stays as it is, except that after «ЗМІНИВСЯ ДЕНЬ» the
+    clothing, the things carried and the body of that character are unknown with a reason (the prose confirms none)."""
+    head = json.loads(task['material'].split('ЯДРО СТАНУ ВІДСТЕЖУВАНИХ ПЕРСОНАЖІВ — УСІ СЛОТИ ОБОВ’ЯЗКОВІ\n', 1)[1].split('\n', 1)[0])
+    changed = {name: (before, after) for before, after, name in DAY_CHANGED.findall(task['material'])}
+
+    def decision(cid, slot):
+        day = changed.get(head['names'].get(cid))
+        if day and slot in DAY_SLOTS:
+            return {'status': 'unknown', 'text': '', 'evidence_ids': [],
+                    'reason': f'змінився день ({day[0]} → {day[1]}), проза сцени цього не підтверджує'}
+        return {'status': 'unchanged', 'text': '', 'evidence_ids': [], 'reason': ''}
+    return {cid: {slot: decision(cid, slot) for slot in slots} for cid, slots in head['core'].items()}
 
 
 def _memory_result(task):
@@ -50,7 +61,7 @@ def _memory_result(task):
     evidence = next((fid for fid, text in fragments if OLD_STEM in text), None)
     if evidence is None:
         raise SystemExit('у матеріалі пам’яті немає фрагмента з містом')
-    return {'schema_version': 4, 'core': _core_unchanged(task), 'threads': {},
+    return {'schema_version': 4, 'core': _core_decisions(task), 'threads': {},
             'facts': {'add': [{'text': MEMORY_FACT, 'evidence_ids': [evidence]}]},
             'timeline': {'add': []}, 'character_states': {'add': [], 'update': [], 'retire': []},
             'open_threads': {'add': []}}

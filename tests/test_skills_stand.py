@@ -38,6 +38,14 @@ def test_tool_calls_and_cost_from_stream_json():
 
 
 @pytest.mark.req('CLAUDE-SKILLS')
+def test_result_text_equal_to_last_message_is_not_repeated():
+    lines = [json.dumps({'type': 'assistant', 'message': {'content': [{'type': 'text', 'text': 'Reading.'}]}}),
+             json.dumps({'type': 'assistant', 'message': {'content': [{'type': 'text', 'text': 'Done: table below.'}]}}),
+             json.dumps({'type': 'result', 'total_cost_usd': 0.1, 'result': 'Done: table below.'})]
+    assert parse_result(lines).text == 'Reading.\nDone: table below.'
+
+
+@pytest.mark.req('CLAUDE-SKILLS')
 def test_stream_without_result_event_is_an_error():
     lines = [json.dumps({'type': 'assistant', 'message': {'content': [{'type': 'text', 'text': 'half'}]}})]
     assert parse_result(lines).is_error is True

@@ -24,7 +24,7 @@ from scripts.skills_stand import PLUGIN, claude_command, obscura_call, run_claud
 PIPELINE_ORDER = ['brief', 'draft', 'edit', 'memory']
 WRITES = {'create_story', 'import_plan_and_characters', 'save_draft', 'save_stage_result', 'update_settings', 'apply_role_preset',
           'update_publication', 'add_scene', 'update_scene', 'update_story', 'start_run', 'upload_cover', 'add_signature',
-          'generate_cover', 'export_book'}
+          'generate_cover', 'export_book', 'update_plan_preamble', 'import_manuscript'}
 
 
 def names(calls):
@@ -259,7 +259,8 @@ def setup_patches(base, story):
                                                       'context_tokens': 128000}})
 
 
-REVISE_WRITES = {'save_draft', 'save_stage_result', 'update_scene', 'update_plan_preamble'}
+# Every bridge write; start_run counts only with confirm (a preview without it writes nothing).
+REVISE_WRITES = WRITES - {'start_run'}
 
 
 def revise_preconsent_problems(calls):
@@ -269,24 +270,64 @@ def revise_preconsent_problems(calls):
 
 
 def _sentences(text):
-    return [s for s in re.split(r'(?<=[.!?…])\s+', ' '.join(text.split())) if s]
+    """Sentences line by line: a line without a final period (a plan heading or field) is a sentence of its own. Whitespace
+    inside a line stays as it is; only line endings (CRLF -> LF) and trailing whitespace are normalised."""
+    return [s for line in text.replace('\r\n', '\n').replace('\r', '\n').split('\n')
+            for s in re.split(r'(?<=[.!?…])\s+', line.rstrip()) if s]
 
 
 def revise_text_problems(original, revised, old_stem, new_stem, label):
-    """A fact replaced everywhere (any case), the new one present, every sentence without the old fact untouched."""
+    """A fact replaced everywhere (any case), the new one present, every sentence without the old fact untouched, and no
+    sentence without the new fact added."""
     problems = [f'{label}: лишилося «{old_stem}»'] * (old_stem.lower() in revised.lower())
     problems += [f'{label}: немає «{new_stem}»'] * (new_stem.lower() not in revised.lower())
-    kept = set(_sentences(revised))
-    problems += [f'{label}: змінено речення без старого факту: «{s}»' for s in _sentences(original)
+    before, after = _sentences(original), _sentences(revised)
+    kept, had = set(after), set(before)
+    problems += [f'{label}: змінено речення без старого факту: «{s}»' for s in before
                  if old_stem.lower() not in s.lower() and s not in kept]
+    problems += [f'{label}: додано речення: «{s}»' for s in after if new_stem.lower() not in s.lower() and s not in had]
     return problems
+
+
+def check_preamble(original, story, old_stem, new_stem):
+    """The plan preamble (get_story.plan_preamble) is part of the fact: the same text check as a scene's plan."""
+    revised = ((story or {}).get('plan_preamble') or {}).get('text') or ''
+    return revise_text_problems(original or '', revised, old_stem, new_stem, 'преамбула плану')
+
+
+def memory_claims(payload):
+    """Claims of get_scene_text(material='memory'): its text is a JSON list of claims; [] when there is no memory."""
+    text = (payload or {}).get('text')
+    return json.loads(text) if text else []
+
+
+def _claim_texts(claims, stem_word):
+    """Texts and quotes of the claims, each word with the city's stem masked so a declined form compares equal."""
+    pieces = [piece for claim in claims for piece in (claim.get('text'), claim.get('quote'), *(claim.get('supporting_quotes') or []))
+              if piece]
+    return {re.sub(stem_word, '\x00', piece.strip()) for piece in pieces}
+
+
+def revise_memory_problems(old_claims, new_claims, old_stem, new_stem, label):
+    """The new memory keeps every text and quote of the old one word for word, the city aside (the stem Одес -> Херсон, any
+    ending on both sides); claim IDs are not compared, and the new memory may add claims."""
+    old = _claim_texts(old_claims, rf'(?i){re.escape(old_stem)}\w*')
+    new = _claim_texts(new_claims, rf'(?i){re.escape(new_stem)}\w*')
+    return [f"{label}: пам'ять не зберегла «{piece.replace(chr(0), new_stem + '…')}»" for piece in sorted(old - new)]
 
 
 def revise_chain_problems(calls, scene_ids):
     """Per scene the saved stages go brief -> draft -> edit -> memory; the second scene needs a new brief before its draft
-    (the first scene's brief is optional when its plan did not change)."""
-    problems = []
+    (the first scene's brief is optional when its plan did not change), and a scene's saves begin only after the previous
+    scene's last save. Only saves count: a plan edit of a later scene before that is legitimate."""
+    problems, last = [], None
     for number, scene in enumerate(scene_ids, 1):
+        positions = [i for i, (n, args) in enumerate(calls)
+                     if n in ('save_draft', 'save_stage_result') and args.get('scene_id') == scene]
+        if positions and last is not None and positions[0] < last:
+            problems.append(f'сцена {number}: записи до завершення сцени {number - 1}')
+        if positions:
+            last = positions[-1]
         saves = [('draft' if n == 'save_draft' else args.get('stage')) for n, args in calls
                  if n in ('save_draft', 'save_stage_result') and args.get('scene_id') == scene]
         present = [s for s in PIPELINE_ORDER if s in saves]
@@ -326,6 +367,22 @@ def check_s12(stand, calls, text, ctx):
                                                 if s['title'] not in text]
 
 
+# The story-level original in ctx['originals'], beside the per-scene ones (a scene id is never this key).
+PREAMBLE = ':plan_preamble'
+
+
+def revise_originals(base, story, scenes):
+    """What S13 compares against after the run: each scene's prose, plan and memory (version and claims), and the plan
+    preamble."""
+    originals = {}
+    for scene in scenes:
+        memory = scene_text(base, scene, 'memory')
+        originals[scene] = {'prose': scene_text(base, scene, 'prose').get('text'), 'plan': scene_text(base, scene, 'plan').get('text'),
+                            'memory_version_id': memory.get('version_id'), 'memory_claims': memory_claims(memory)}
+    originals[PREAMBLE] = (obscura_call(base, 'get_story', {'story_id': story}).get('plan_preamble') or {}).get('text')
+    return originals
+
+
 def check_s13(stand, calls, text, ctx):
     base, scenes = stand.base, ctx['scenes']
     problems = revise_preconsent_problems(ctx['turn_calls'][0])
@@ -340,8 +397,11 @@ def check_s13(stand, calls, text, ctx):
             problems.append(f"сцена {number}: пам'ять не оновлено")
         if OLD_STEM.lower() in dumped or NEW_STEM.lower() not in dumped:
             problems.append(f"сцена {number}: пам'ять без «{NEW_STEM}» або з «{OLD_STEM}»")
+        problems += revise_memory_problems(original['memory_claims'], memory_claims(memory), OLD_STEM, NEW_STEM, f'сцена {number}')
     problems += revise_chain_problems(ctx['turn_calls'][1], scenes)
-    states = {s['id']: s['state'] for s in obscura_call(base, 'get_story', {'story_id': ctx['story']})['scenes']}
+    story = obscura_call(base, 'get_story', {'story_id': ctx['story']})
+    problems += check_preamble(ctx['originals'][PREAMBLE], story, OLD_STEM, NEW_STEM)
+    states = {s['id']: s['state'] for s in story['scenes']}
     return problems + [f'сцена {n}: стан {states.get(s)}' for n, s in enumerate(scenes, 1) if states.get(s) != 'prose']
 
 
@@ -402,22 +462,39 @@ SCENARIOS = {
 }
 
 
+def sum_usage(total, more):
+    """Token usage of two turns added up: numbers summed (nested dicts too); any other value is the later turn's."""
+    joined = dict(total)
+    for key, value in (more or {}).items():
+        before = joined.get(key)
+        if isinstance(value, dict):
+            joined[key] = sum_usage(before if isinstance(before, dict) else {}, value)
+        elif isinstance(value, (int, float)) and not isinstance(value, bool) and isinstance(before, (int, float)) \
+                and not isinstance(before, bool):
+            joined[key] = before + value
+        else:
+            joined[key] = value
+    return joined
+
+
 def run_turns(turns, stand, work, model, budget):
     """One claude session of several turns (--resume of the previous turn's session). Calls, errors and text of all turns are
-    joined into one result; the calls of each turn stay apart. A turn without a session id fails the scenario."""
+    joined into one result, cost and usage summed; the calls of each turn stay apart. A turn without a session id fails the
+    scenario. `budget` is --max-budget-usd of each turn: a scenario of N turns can spend up to N times it."""
     joined, turn_calls, session = None, [], None
     for number, turn in enumerate(turns, 1):
         result = run_claude(claude_command(turn, mcp_config=stand.mcp_config, plugin_dir=PLUGIN, model=model, budget_usd=budget,
                                            resume=session), work/(f'run-{number}.jsonl' if len(turns) > 1 else 'run.jsonl'))
         turn_calls.append(result.tool_calls)
         if joined is None:
-            joined = replace(result, tool_calls=list(result.tool_calls), errors=list(result.errors))
+            joined = replace(result, tool_calls=list(result.tool_calls), errors=list(result.errors), usage=dict(result.usage or {}))
         else:
             joined.tool_calls += result.tool_calls
             joined.errors += result.errors
             joined.text += '\n' + result.text
             joined.is_error = joined.is_error or result.is_error
             joined.cost_usd = (joined.cost_usd or 0) + (result.cost_usd or 0)
+            joined.usage = sum_usage(joined.usage, result.usage)
         session = result.session_id
         if session is None:
             joined.is_error = True
@@ -434,10 +511,7 @@ def run(scenario, work, model, budget):
         ctx = {}
         if spec['setup'] in ('revise', 'revise-obscura'):
             ctx['story'], ctx['scenes'] = prepare_revise(stand.base, 'obscura' if spec['setup'] == 'revise-obscura' else 'chat')
-            ctx['originals'] = {scene: {'prose': scene_text(stand.base, scene, 'prose').get('text'),
-                                        'plan': scene_text(stand.base, scene, 'plan').get('text'),
-                                        'memory_version_id': scene_text(stand.base, scene, 'memory').get('version_id')}
-                                for scene in ctx['scenes']}
+            ctx['originals'] = revise_originals(stand.base, ctx['story'], ctx['scenes'])
         elif spec['setup']:
             stage = 'memory' if spec['setup'] == 'memory' else 'brief'
             ctx['story'], ctx['scene'] = prepare(stand.base, stage, 'obscura' if spec['setup'] == 'obscura' else 'chat')
@@ -451,7 +525,7 @@ def run(scenario, work, model, budget):
         problems = verdict(spec['check'](stand, result.tool_calls, result.text, ctx), result)
     (work/'text.md').write_text(result.text, encoding='utf-8')
     row = {'scenario': scenario, 'model': model, 'passed': not problems, 'problems': problems, 'cost_usd': result.cost_usd,
-           'tools': [n for n in names(result.tool_calls) if n not in ('ToolSearch',)], 'errors': result.errors[:5],
+           'usage': result.usage, 'tools': [n for n in names(result.tool_calls) if n not in ('ToolSearch',)], 'errors': result.errors[:5],
            'is_error': result.is_error, 'dir': str(work)}
     (work/'summary.json').write_text(json.dumps(row, ensure_ascii=False, indent=2), encoding='utf-8')
     return row
@@ -463,7 +537,8 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description='Сценарії поведінки скілів Obscura на ізольованому стенді.')
     parser.add_argument('--scenario', choices=sorted(SCENARIOS), action='append', required=True)
     parser.add_argument('--model', default='sonnet')
-    parser.add_argument('--budget', type=float, default=2.0)
+    parser.add_argument('--budget', type=float, default=2.0,
+                        help='--max-budget-usd кожного ходу claude: сценарій із N ходів (S13 — 2) може витратити до N × бюджет')
     parser.add_argument('--work', required=True)
     args = parser.parse_args(argv)
     for scenario in args.scenario:
