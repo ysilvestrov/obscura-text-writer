@@ -23,7 +23,7 @@ export function installMemoryBuild({api,json,notice,document,state}){
   if(!item||!dialog||!state.storyId)return;
   const part=name=>dialog.querySelector('#memory-build-'+name);
   const summary=part('summary'),cost=part('cost'),unfit=part('unfit'),cast=part('cast'),series=part('series'),seriesButton=part('refresh'),
-    reasonNode=part('reason'),status=part('status'),submit=part('submit'),cancel=part('cancel');
+    reasonNode=part('reason'),seriesWarning=part('series-warning'),status=part('status'),submit=part('submit'),cancel=part('cancel');
   const storyPath=()=>`/api/stories/${encodeURIComponent(state.storyId)}`;
   let target={scene_id:null,count:0},plan=null,failure='',loading=false,busy=false,epoch=0,keepFocus=false;
   // Why «Побудувати» is unavailable: a failed preview, an active run, then the preview's own readiness (dirty buffer included).
@@ -59,7 +59,7 @@ export function installMemoryBuild({api,json,notice,document,state}){
   }
   function clear(){
     summary.textContent='';cost.textContent='';cost.hidden=true;cast.replaceChildren();
-    unfit.hidden=true;unfit.querySelector('ul').replaceChildren();series.hidden=true;
+    unfit.hidden=true;unfit.querySelector('ul').replaceChildren();series.hidden=true;seriesWarning.hidden=true;
   }
   function renderCast(entry){
     cast.replaceChildren();
@@ -103,7 +103,8 @@ export function installMemoryBuild({api,json,notice,document,state}){
     unfit.hidden=!list.children.length;
     renderCast(preview.cast);
     // §5: a series book without a start snapshot first offers the refresh from the previous book; the build stays secondary.
-    series.hidden=!preview.series_refresh;
+    // An offer, never a gate (a failed refresh must not block the author): the build then warns what its memory lacks.
+    series.hidden=seriesWarning.hidden=!preview.series_refresh;
     submit.classList.toggle('secondary',!!preview.series_refresh);
   }
 

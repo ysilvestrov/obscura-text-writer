@@ -10,7 +10,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from storygen.application.settings import AppSettings
-from storygen.domain import StoryCreate
+from storygen.domain import SceneCreate, StoryCreate
 from storygen.web.app import create_app
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -75,3 +75,23 @@ def test_origin_label_names_the_manuscript():
                             capture_output=True, encoding='utf-8', errors='replace', timeout=15)
     assert result.returncode == 0, result.stderr
     assert 'manuscript_import' in (STATIC/'external-origin.js').read_text(encoding='utf-8')
+
+
+def test_story_view_names_the_manuscript_of_the_prose_head(tmp_path):
+    # R-48 spec §4.4: the scene summary carries the origin of its prose head; an author save replaces it with null.
+    from datetime import datetime, timezone
+    from storygen.domain import ManuscriptImportOrigin
+    from storygen.generation.dependencies import save_manual_prose
+    from storygen.storage.manuscript_store import publish_manuscript
+    app = create_app(AppSettings(data_dir=tmp_path))
+    repo = app.state.repo
+    origin = ManuscriptImportOrigin(file_name='mayak.docx', file_sha256='a'*64, imported_at=datetime.now(timezone.utc))
+    story, scenes = publish_manuscript(repo, StoryCreate(title='Маяк'), [('Пірс', 'Олена на пірсі.', 'markdown', None, 3),
+                                                                        ('Шторм', 'Почався шторм.', 'markdown', None, 2)], origin, False)
+    plain = repo.create_scene(story.id, SceneCreate(title='Без прози'))
+    save_manual_prose(repo, scenes[1].id, 'Шторм ущух.', repo.get_scene(scenes[1].id).revision)
+    with TestClient(app, base_url='http://127.0.0.1:8765') as client:
+        listed = {scene['id']: scene for scene in client.get(f'/api/stories/{story.id}').json()['scenes']}
+    assert listed[scenes[0].id]['prose_origin'] == {'kind': 'manuscript_import', 'file_name': 'mayak.docx'}
+    assert listed[scenes[1].id]['prose_origin'] is None
+    assert listed[plain.id]['prose_origin'] is None

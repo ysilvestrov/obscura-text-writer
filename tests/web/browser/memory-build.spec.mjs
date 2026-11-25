@@ -158,10 +158,18 @@ test('scenes that will not fit the memory role are listed with links',async({pag
   await expect(unfit.locator('a').first()).toHaveAttribute('href',`/stories/${fixture.story_id}?scene=${fixture.scene_ids[0]}&material=prose`);
 });
 
-test('the imported scene names its manuscript and says the plan is optional',async({page,request})=>{
+test('the imported scene names its manuscript next to its status and says the plan is optional',async({page,request})=>{
   const fixture=await seed(request);
+  // The default plan tab: the status row names the manuscript of the prose head (spec §4.4).
+  await openWorkspace(page,fixture);
+  const origin=page.locator('#workspace-scene-origin');
+  await expect(origin).toBeVisible();
+  await expect(origin).toHaveText('Імпортовано з рукопису: mayak.docx · План необов’язковий: валідація перевіряє прозу й пам’ять');
+  await expect(page.locator('#workspace-scene-status')).toBeVisible();
+  // The prose buffer still names the version's origin, as the version history does.
   await openWorkspace(page,fixture,'prose');
-  await expect(page.locator('#workspace-origin')).toHaveText('Імпортовано з рукопису: mayak.docx · План необов’язковий: валідація перевіряє прозу й пам’ять');
+  await expect(page.locator('#workspace-origin')).toHaveText('Імпортовано з рукопису: mayak.docx');
+  await expect(page.locator('#version-panel')).toContainText('Імпортовано з рукопису: mayak.docx');
 });
 
 test('a series book with an empty start snapshot offers «Оновити з попередньої книги» before the build',async({page,request})=>{
@@ -170,6 +178,9 @@ test('a series book with an empty start snapshot offers «Оновити з по
   const dialog=await openDialog(page);
   const series=dialog.locator('#memory-build-series');
   await expect(series).toBeVisible();
+  // An offer, not a gate: «Побудувати» stays available and says what its memory will lack.
+  await expect(dialog.locator('#memory-build-series-warning')).toHaveText('Поки книгу не оновлено з попередньої, пам’ять не враховуватиме попередню книгу.');
+  await expect(dialog.locator('#memory-build-submit')).toBeEnabled();
   const refresh=dialog.locator('#memory-build-refresh');
   await expect(refresh).toHaveText('Оновити з попередньої книги');
   // The refresh comes first in the dialog's order of actions.
@@ -187,6 +198,7 @@ test('a series book with an empty start snapshot offers «Оновити з по
   await refresh.click();
   await page.locator('dialog[open]').filter({hasText:'Знімок візьметься'}).getByRole('button',{name:'Оновити з попередньої книги'}).click();
   await expect(series).toBeHidden();
+  await expect(dialog.locator('#memory-build-series-warning')).toBeHidden();
   await expect(dialog).toBeVisible();
   const story=(await(await request.get(`/api/stories/${fixture.story_id}`)).json()).story;
   expect(story.series_start_version_id).toBeTruthy();
