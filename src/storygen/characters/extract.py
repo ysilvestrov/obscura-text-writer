@@ -16,6 +16,8 @@ from ..scene_description import name_key
 
 SKIP_INPUT_LIMIT = "не вміщується в ліміт входу ролі «Пам'ять»"
 SKIP_CONTEXT_LIMIT = "не вміщується в контекст ролі «Пам'ять»"
+SKIP_NO_ANSWER = 'модель не дала відповіді'
+SKIP_CALLS_EXHAUSTED = 'вичерпано запас викликів'
 PROTAGONIST_THRESHOLD = 1.0
 PROTAGONIST_CANDIDATES = 3
 

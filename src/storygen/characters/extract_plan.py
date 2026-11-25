@@ -13,6 +13,7 @@ DEFAULT_GROUP_WORDS = 5000
 CATALOGUE_RESERVE_CAP = 4000  # chars; catalogue_reserve = min(5 % of max_input_chars, 4000)
 EXTRACT_PLAN_CHANGED = 'План змінився; перегляньте знову'
 EXTRACT_RUNNING = 'Пошук персонажів уже виконується'
+EXTRACT_PROSE_CHANGED = 'Проза змінилася; запустіть пошук знову'
 NO_PROSE = 'Немає сцен із завершеною прозою: пошуку персонажів нічого читати'
 NO_BUDGET_LIMIT = 'Спершу задайте явний ліміт бюджету в налаштуваннях'
 PENDING_PROPOSAL = 'Є неприйнята пропозиція персонажів: новий пошук зробить її неприйнятною'

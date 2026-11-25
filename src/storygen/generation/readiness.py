@@ -227,7 +227,11 @@ def pending_preview(repo,run):
         return dict(ready=True,reason=None,roles={},calls=0,evaluator=None)
     if run.request.mode=='character_extract':
         from ..characters.extract_plan import readiness
-        return readiness(repo,run.request)
+        result=readiness(repo,run.request)
+        checkpoint=run.checkpoint or {}
+        if checkpoint.get('phase')=='reading':  # a resume calls at most what is left of the bound priced at start
+            result['calls']=max(checkpoint['calls_bound']-checkpoint['state']['calls'],0)
+        return result
     if run.request.mode=='audit':
         from .audit_run import readiness
         return readiness(repo,run.request,resume=True)
