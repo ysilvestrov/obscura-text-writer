@@ -14,6 +14,26 @@ def validate_scene_participants(view,story,scene):
     if problems:raise ValueError("Уточніть склад сцени в плані або картках: "+"; ".join(problems[:5]))
 
 
+def name_spelling_section(view,story,scene):
+    """EDITOR-NAME-SPELLING: names of the scene cast available in this scene, for the editor; '' without fresh cards.
+    Adds no refs: a hint line, not a dependency of the proposal."""
+    if not story.characters_version_id or not scene.character_ids:return ''
+    ref=view.get_version(story.characters_version_id)
+    if ref.stale or not ref.complete:return ''
+    from .names import scene_name,_active
+    from ..generation.context_labels import label
+    cards={card.id:card for card in load_characters(view.read_text(ref.id))}
+    active=_active(view.list_scenes(story.id))
+    lines=[]
+    for card_id in scene.character_ids:
+        card=cards.get(card_id)
+        if card is None:continue
+        current,earlier=scene_name(card,active,scene)
+        lines.append('— '+current+(label('character_also',story.language,names=', '.join(earlier)) if earlier else ''))
+    if not lines:return ''
+    return '\n'.join([label('name_spelling',story.language),label('name_spelling_rule',story.language),*lines])
+
+
 def character_material(view,story,scene):
     validate_scene_participants(view,story,scene)
     if story.characters_version_id:

@@ -87,6 +87,12 @@ LABELS: dict[str, dict[str, str]] = {
     'characters': {'uk': 'КАРТКИ ПЕРСОНАЖІВ', 'en': 'CHARACTER CARDS'},
     'character': {'uk': 'ПЕРСОНАЖ: ', 'en': 'CHARACTER: '},
     'character_also': {'uk': ' (також: {names})', 'en': ' (also: {names})'},
+    # EDITOR-NAME-SPELLING: the editor keeps the spelling of the scene cast's names (characters/context.py).
+    'name_spelling': {'uk': 'НАПИСАННЯ ІМЕН', 'en': 'NAME SPELLING'},
+    'name_spelling_rule': {'uk': 'Пиши імена персонажів точно так, як подано нижче: тими самими літерами й тим самим алфавітом. '
+                                 'Не транслітеруй, не перекладай і не замінюй їх іншими формами. Відмінюй їх так, як це вже робить чернетка.',
+                           'en': 'Write the character names exactly as given below: the same letters in the same alphabet. '
+                                 'Do not transliterate, translate or replace them with other forms. Inflect them the way the draft already does.'},
     'character_timeless': {'uk': 'ПОЗАЧАСОВІ ВІДОМОСТІ', 'en': 'TIMELESS DETAILS'},
     'character_from_scene': {'uk': 'ДОСТУПНІ АВТОРСЬКІ ВКАЗІВКИ — НЕ ДОКАЗ МИНУЛИХ ПОДІЙ',
                              'en': 'AVAILABLE AUTHOR NOTES — NOT EVIDENCE OF PAST EVENTS'},

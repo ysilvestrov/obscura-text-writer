@@ -5,6 +5,7 @@
 The **Editing** stage follows the draft. The editor suggests changes, and you decide what to accept.
 
 - **Targeted language edits** (an editor role setting) fix spelling, punctuation and single sentences without rewriting the text. They are applied **Automatically after validation** or after **Author review first**.
+- The editor writes the names of the scene's characters the way the character cards spell them: Latin stays Latin and is not transliterated. If an edit still changes a name, leave it unticked. To change how a name is spelled, edit the card and the draft yourself.
 - In review, open **Editor changes**, tick the replacements you want and press **Accept edits**: this creates a new prose version. Edits from a manuscript an outside editor returned appear here too, marked “· from editor (DOCX)” — see [Importing the editor’s revision](publication.md#importing-the-editors-revision-docx).
 - If the stage stopped for your decision, after accepting press **Continue after accepted stage**: the editor is not called again.
 
