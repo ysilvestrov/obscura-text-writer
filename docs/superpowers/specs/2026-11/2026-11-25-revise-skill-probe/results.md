@@ -34,3 +34,13 @@
 
 1. Редактор зберігає чернетку `POST /api/scenes/{id}/draft {text, expected_revision, content_format}` без `external_origin` (`static/versions.js:72`). Результат: `kind: draft`, `external_origin: null`. Редактура з неї (чат) → зв'язок прози `unchecked` (ручна чернетка розриває ланцюжок, VALID-LINKS-S03).
 2. Дві пам'яті сцени 1 з тими самими твердженнями після зміни лише в `f000002` відрізняються лише `claim_id` (`mc_8c6c…` → `mc_f147…`). `claim_id = stable_id('mc_', [category, text, prose_id, quote, occurrence, …])` (`memory/journal.py:221-226`): ID версії прози входить у `claim_id`, тож будь-яка нова проза дає нові `claim_id`, змінює `memory_digest` і робить З1/З2 наступної сцени `unchecked`, а `update`/`retire` наступних сцен посилаються на зниклі ID → `carry_failed`.
+
+## D. Як зняти неперевірене завдання сцени 2 (`d.py`, `d2.py`)
+
+Підготовка як в A: три сцени готові; змінено прозу сцени 1 (draft → edit → memory), сцена 2 — `brief: unchecked, prose: unchecked`.
+
+- D1. `save_stage_result(brief)` з JSON, ідентичним поточному брифу (`get_scene_text(brief)`), приймається як зміна: `{'state': 'completed', 'version_id': '0590e70f…'}` (була `923e1d44…`). Після цього `brief: valid (construction), prose: unchecked`; сцена `needs_review`.
+- D2. Одразу після D1, без нової чернетки: `get_stage_task(edit)` → `400: Некоректні дані: Контекст містить застарілий матеріал; потрібне оновлення` (прапорці: `draft stale=True, prose stale=True`). Повторне збереження ТОГО САМОГО тексту чернетки через `save_draft` знімає блок: edit (проза = чернетка) → `completed`, memory → `completed`, сцена 2 → `prose`/`valid`. Наступна сцена 3 стає `needs_review` (brief/prose `unchecked`) — каскад іде далі.
+- D3. `POST /api/scenes/{id}/accept-brief` для поточної голови брифа → `400: Ця версія не може стати поточною` (це вибір версії-кандидата, а не затвердження зв'язку); edit далі заблоковано («завдання не перевірено…»).
+- D3b. Затвердження автором лише зв'язку брифа `POST /links/brief/decision {approve}` → `brief: valid (author)`; edit без нової чернетки → та сама 400 «Контекст містить застарілий матеріал»; після повторного `save_draft` того самого тексту edit → memory дають `prose`/`valid`.
+- D4. Пам'ять сцени 2 з незмінною прозою й валідними зв'язками, повтор лише memory зі зміненим текстом твердження («Олена відімкнула двері в Одесі.»): `completed`, сцена 2 лишається `prose`/`valid`; запускається `memory_carry` для сцени 3 (`completed`), і сцена 3 стає `needs_review` (brief/prose `unchecked`).
