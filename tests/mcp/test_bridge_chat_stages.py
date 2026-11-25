@@ -80,3 +80,23 @@ def test_next_steps_suggests_memory_after_prose(tmp_path):
     steps = text(call(build_server(http), 'next_steps', {'scene_id': scene.id}))
     assert "get_stage_task(stage='memory')" in steps
     assert writes == []
+
+
+@pytest.mark.req('MEMORY-003')
+def test_chat_memory_claims_are_bound_to_the_scene(tmp_path):
+    """MEMORY-003-S09: the memory stage from the chat gives claim IDs of the scene, not of its prose version."""
+    from storygen.memory.journal import _add_event, load_memory
+    app, http, repo, story, scene = scene_with_prose(tmp_path)
+    server = build_server(http)
+    task = ok(call(server, 'get_stage_task', {'scene_id': scene.id, 'stage': 'memory'}))
+    saved = ok(call(server, 'save_stage_result', {'scene_id': scene.id, 'stage': 'memory', 'task_fingerprint': task['task_fingerprint'],
+                                                  'result': MEMORY}))
+    adds = [e for e in load_memory(repo.read_text(saved['version_id'])).events if e.operation == 'add']
+    assert adds
+    for event in adds:
+        fields = dict(slot=event.slot, source_kind=event.source_kind, evidence_version_id=event.evidence_version_id,
+                      resolves_claim_id=event.resolves_claim_id, location_ids=event.location_ids)
+        occurrences = range(3)
+        bound = {_add_event(event.category, event.text, event.source_version_id, event.quote, n, event.character_ids,
+                            event.supporting_quotes, scene_id=scene.id, **fields).claim_id for n in occurrences}
+        assert event.claim_id in bound

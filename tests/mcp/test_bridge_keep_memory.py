@@ -43,3 +43,17 @@ def test_keep_scene_memory_refuses_a_prose_read_before_a_change(tmp_path):
     assert result.is_error and 'прочитайте їх знову' in text(result)
     view = repo.context_view(story.id)
     assert link_state(view, scene.id, 'memory').status == 'unchecked' and not view.prose_equivalences
+
+
+@pytest.mark.req('VALID-MEMORY')
+def test_keep_scene_memory_leaves_an_auditor_discrepancy_to_the_author(tmp_path):
+    from storygen.storage.link_decisions import write_auditor_verdict
+    repo, story, scene, server = changed_prose(tmp_path)
+    state = link_state(repo.context_view(story.id), scene.id, 'memory')
+    assert write_auditor_verdict(repo, story.id, scene.id, 'memory', fingerprint=state.fingerprint, marker=None,
+                                 outcome='discrepancy', confidence=40, reason='Місто не те')[0] == 'written'
+    result = call(server, 'keep_scene_memory', {'story_id': story.id, 'scene_id': scene.id,
+        'prose_version_id': scene.heads['prose'], 'memory_version_id': scene.heads['memory']})
+    assert result.is_error and 'рішення ухвалює автор' in text(result)
+    view = repo.context_view(story.id)
+    assert link_state(view, scene.id, 'memory').status == 'discrepancy' and not view.prose_equivalences

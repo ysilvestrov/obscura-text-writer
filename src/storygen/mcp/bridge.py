@@ -41,6 +41,7 @@ TOOLS = ('list_stories', 'get_story', 'get_scene_context', 'get_scene_text', 'im
 KEEP_REFUSALS = {
     'carry_pending': 'Пам’ять сцени переноситься на нову пам’ять попередньої сцени — дочекайтеся завершення переносу (get_story)',
     'carry_failed': 'Пам’ять сцени не перенесено на нову пам’ять попередньої сцени, і рішення її не залишить — створіть нову пам’ять цієї сцени',
+    'discrepancy': 'Ревізор знайшов можливу розбіжність пам’яті з прозою: рішення ухвалює автор в Obscura (панель «Узгодженість сцени»)',
     None: 'У сцени немає пам’яті й прози, яку можна залишити: спершу створіть пам’ять сцени',
 }
 MATERIALS = ('plan', 'brief', 'draft', 'prose', 'memory')
@@ -796,7 +797,12 @@ def build_server(http: httpx.Client | None, client_name: str | None = None, *, c
         if heads.get('prose') != prose_version_id or heads.get('memory') != memory_version_id:
             raise ToolError('Прозу чи пам’ять сцени змінено після того, як їх прочитали — прочитайте їх знову (get_scene_text)')
         link = (((data.get('material_status') or {}).get(scene_id) or {}).get('links') or {}).get('memory') or {}
-        if not link.get('fingerprint'):
+        if link.get('status') == 'valid':
+            return {'memory': 'valid', 'validity': ((data.get('material_status') or {}).get(scene_id) or {}).get('validity')}
+        if link.get('status') == 'discrepancy':
+            # An auditor's discrepancy stays the author's decision in Obscura, like the stops of book validation.
+            raise ToolError(KEEP_REFUSALS['discrepancy'])
+        if not link.get('fingerprint') or link.get('status') != 'unchecked':
             raise ToolError(KEEP_REFUSALS.get(link.get('reason'), KEEP_REFUSALS[None]))
         result = request('POST', f'/api/scenes/{scene_id}/links/memory/decision',
                          json={'action': 'approve', 'fingerprint': link['fingerprint']})
