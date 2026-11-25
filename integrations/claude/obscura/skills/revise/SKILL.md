@@ -14,7 +14,7 @@ The rule that matters most: **nothing is written until the author agrees to the 
 1. Find the story (`list_stories` if the author did not name it). Then call `get_story(story_id)`.
 2. Note:
    - `writing_mode` (`chat` or `obscura`);
-   - `series` (not null means a series bible exists);
+   - `series` (only `title`, `number` and `bible`; not null means the book belongs to a series, which may have a bible: find it as §3 of the fact-change route says);
    - `plan_preamble` and its `plan_version_id`;
    - the scenes in order: id, title, state.
 
@@ -29,7 +29,7 @@ Pick the route from the request and say it in one line. The author may pick the 
 
 - `needs_review` in `get_story` means unchecked links between scenes, not edits waiting for review: unreviewed point edits of the editor show as `prose`. So `needs_review` does not block this skill.
 - Only server refusals block, for example «Спершу оновіть пам'ять попередньої сцени», «Пам'ять переноситься», or a request to confirm the memory. If a refusal does not come from your own chain of changes (see the route), stop and tell the author what to do in Obscura.
-- Read everything first; reading needs no consent. Show the table, and any question still open, in one message.
+- Read everything first; reading needs no consent. Show the table in one message whose only question is the consent ask. A point still open goes into the table as a row marked «потребує рішення» (needs a decision), not as a second question.
 
 ## 4. Summary
 

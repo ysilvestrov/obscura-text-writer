@@ -20,5 +20,5 @@ The author asks for a change of quality or tone in one scene ("funnier", "slower
    Wait for the author's explicit «ок» before any write. The choices alone are not consent. A changed choice needs a new summary and new consent.
 6. **Apply** only what the summary showed.
    - **`chat` mode, editor `prose`** (the mode read in step 2): the chain from the draft for this one scene — draft → prose → memory — as steps 3–5 of §6 in `${CLAUDE_PLUGIN_ROOT}/skills/revise/references/fact-change.md`. Every sentence you were not asked to change stays byte for byte. Then the next scene's links become unchecked: handle it as §7 there.
-   - **`obscura` mode, or editor `patches`/`diff`:** write nothing. Give the table of chosen replacements «знайти — замінити на» for the author to make in Obscura, and finish as §10 there.
+   - **`obscura` mode, or editor `patches`/`diff`:** write nothing. Give the table of chosen replacements «знайти — замінити на» for the author to make in the scene's prose in Obscura (the «Проза» tab; edits only in the draft leave the memory reading the old prose), and finish as §10 there.
 7. **Final summary:** what changed, the variants you invented as your decisions, and the reminder to read and approve the prose in Obscura (`next_steps(scene_id)`).

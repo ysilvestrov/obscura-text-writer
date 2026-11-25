@@ -33,7 +33,7 @@ Read everything, in full: follow `next_offset` until it is null.
 - the text of every scene: `get_scene_text(scene_id, 'prose')`, and `get_scene_text(scene_id, 'draft')` when the draft differs from the prose (see step 3 of §6);
 - the memory of every scene: `get_scene_text(scene_id, 'memory')`;
 - the character cards: `get_scene_context(scene_id)`;
-- the series bible articles, if `series` is not null.
+- the series bible articles, if `series` is not null. `get_story.series` gives only `title`, `number` and `bible`, not the bible's story id: find the bible with `list_stories` by its title «<Series>: біблія» (or "<Series>: bible"), then read it like the book (`get_story`, the plan and prose of every article). If no story or more than one matches, ask the author one question.
 
 Match the old fact by its stem, in every case form and every derived word («Одеса», «Одесі», «одеський»).
 
@@ -44,7 +44,7 @@ For every place, one row: scene, quote, kind, proposal. Kinds:
 
 In an `obscura` story you may also offer the Auditor (Ревізор) after the edits are in, as an extra check — never instead of this search.
 
-**The editor's mode** (`chat` story only), read now, before the table: it decides whether the chat writes the text or the author makes the edits by hand (§4, §6). Call `get_stage_task(first_affected_scene_id, 'edit')` once: it only reads and needs no consent. Its `result_format` follows the editor's mode in the story's settings and is the same for every scene. If the server refuses that task (for example, the scene's brief link is unchecked), read the mode from `get_settings(story_id)` instead: `roles.editor.edit_mode` (no editor role configured: the default, `prose`). Do not stop over this refusal. In an `obscura` story skip this: the text edits are made by hand anyway (§9).
+**The editor's mode** (`chat` story only), read now, before the table: it decides whether the chat writes the text or the author makes the edits by hand (§4, §6). Call `get_stage_task(first_affected_scene_id, 'edit', max_chars=1000)` once (the server refuses `max_chars` below 1000): it only reads and needs no consent. Its `result_format` follows the editor's mode in the story's settings and is the same for every scene. If the server refuses that task (for example, the scene's brief link is unchecked), read the mode from `get_settings(story_id)` instead: `roles.editor.edit_mode` (no editor role configured: the default, `prose`). Do not stop over this refusal. In an `obscura` story skip this: the text edits are made by hand anyway (§9).
 
 ## 4. The table of changes
 
@@ -60,7 +60,7 @@ Before consent, warn: unreviewed point edits of the editor in the affected scene
 
 In an `obscura` story, or with an editor in `patches`/`diff`, the text edits are made by hand (§9). End the table message by asking the author to say «готово» once those edits are in, and say that until then the memory of the affected scenes is stale.
 
-Show any open question in the same message as the table; do not hold the table back.
+The consent ask is the only question in the table message. A point still open (an unconfirmed detail, a choice between the prose and the draft) goes into the table as its own row marked «потребує рішення» (needs a decision), with your proposal; do not hold the table back and do not add a second question. The author's answer to the consent covers or corrects that row.
 
 ## 5. The first scene
 
@@ -103,7 +103,7 @@ After each scene, one progress line, for example:
 A scene's brief depends on the previous scene's memory. After new memory for scene k, the server marks the brief and prose of scene k+1 as unchecked, even when their content is right.
 
 - **Scene k+1 has its own edits:** its chain starts no lower than the brief. Save the brief again, unchanged if its content is fine (the server accepts an identical brief as a new version); without it the editor refuses «завдання не перевірено проти плану й пам'яті попередньої сцени». Then save the draft again too, even if identical; otherwise the editor answers «Контекст містить застарілий матеріал».
-- **Scene k+1 has no edits:** do not rewrite it. After all rows of the table, offer the Auditor for the whole book: `start_run(story_id, action='audit')` without `scene_id` and without `confirm`, show the preview and its cost, and only after the author's yes call it again with `confirm=true`; watch it with `get_run(run_id)`. The Auditor writes nothing:
+- **Scene k+1 has no edits:** do not rewrite it. After all rows of the table, offer the Auditor for the whole book: `start_run(story_id, action='audit')` without `scene_id` and without `confirm`, show the preview and its cost, and only after the author's yes call it again with `confirm=true` and the `plan_fingerprint` from that preview; watch it with `get_run(run_id)`. The Auditor writes nothing:
   - `valid` clears the check by itself;
   - `discrepancy` means the scene needs an edit: offer it as a new table row (usually new memory, step 5; changing prose only with the author's consent).
 
@@ -120,7 +120,7 @@ A scene's brief depends on the previous scene's memory. After new memory for sce
 
 - Write only what this mode allows: the scene plan (`update_scene`) and the plan preamble (`update_plan_preamble`), after consent to the table. A changed plan puts the affected scenes into «чекає перевірки».
 - Never call `save_draft` or `save_stage_result` in an `obscura` story, and never start a paid run without its own preview and consent.
-- Give the text edits as a replacement table «сцена — знайти — замінити на», for the author to make in Obscura. Say that automatic edits by Obscura's models will come in a later package.
+- Give the text edits as a replacement table «сцена — знайти — замінити на», for the author to make in the scene's prose in Obscura (the «Проза» tab of the scene). Say in the table that the memory is built from the prose: edits made only in the draft («Чернетка») leave the old fact in the prose, and the memory runs of §10 would read it. Say that automatic edits by Obscura's models will come in a later package.
 - End the table by asking the author to say «готово» when the edits are in. Say that until then the memory of the affected scenes is stale.
 
 ## 10. After the manual edits
