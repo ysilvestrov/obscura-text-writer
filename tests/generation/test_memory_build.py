@@ -485,3 +485,18 @@ def test_memory_the_build_writes_is_valid(tmp_path):
     view = repo.context_view(story.id)
     assert not any(view.is_stale(view.peek_scene(s.id).heads['memory']) for s in scenes)
     assert memory_build_target(view) == (None, 0)
+
+
+def test_memory_the_memory_stage_writes_is_valid(tmp_path):
+    # Review M-3, no loop on the run's own path: the memory stage (as `rebuild_memory` executes it) publishes memory whose
+    # link holds by construction, with no verdicts — the target moves past the scene.
+    from tests.generation.test_memory_v4_pipeline import _run, prepared, role
+    from tests.memory.wire_helpers import core_unchanged, v4_response
+    from storygen.generation.context import build_context
+    repo, story, scene = prepared(tmp_path)
+    assert memory_build_target(repo.context_view(story.id)) == (scene.id, 1)
+    attempt = _run(repo, scene, build_context(repo, scene.id, 'memory', role()), v4_response(core_unchanged('A')))
+    assert attempt.state == 'completed', attempt.error
+    view = repo.context_view(story.id)
+    assert not view.is_stale(view.peek_scene(scene.id).heads['memory'])
+    assert memory_build_target(view) == (None, 0)

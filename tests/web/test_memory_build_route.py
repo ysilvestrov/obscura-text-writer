@@ -64,3 +64,16 @@ def test_book_in_progress_is_not_buildable(tmp_path):
             save_manual_prose(app.state.repo, scene.id, text, app.state.repo.get_scene(scene.id).revision)
         assert client.get(f'/api/stories/{story.id}/memory-build').json() == {'scene_id': scenes[0].id, 'count': 3,
                                                                               'buildable': True}
+
+
+def test_memory_saved_from_the_chat_is_valid_for_the_build(tmp_path):
+    # Review M-3, no loop on the chat path: memory saved through the chat stage result holds its link by construction, so
+    # the build target moves past the scene.
+    from tests.web.test_chat_stage_routes import MEMORY, app_with_scene, dump, save, task
+    from storygen.generation.memory_build import memory_build_target
+    app, repo, story, scene, client = app_with_scene(tmp_path)
+    data = task(client, scene.id, 'memory')
+    assert save(client, scene.id, 'memory', data['task_fingerprint'], dump(MEMORY)).status_code == 200
+    view = repo.context_view(story.id)
+    assert not view.is_stale(view.peek_scene(scene.id).heads['memory'])
+    assert memory_build_target(view) == (None, 0)

@@ -8900,7 +8900,9 @@
         "tests/generation/test_memory_build.py::test_memory_stale_only_by_freshness_is_the_target",
         "tests/generation/test_memory_build.py::test_memory_the_build_writes_is_valid",
         "tests/web/test_memory_build_route.py::test_two_confirmed_memory_builds_give_one_run_and_one_409",
-        "tests/web/test_memory_build_route.py::test_book_in_progress_is_not_buildable"
+        "tests/web/test_memory_build_route.py::test_book_in_progress_is_not_buildable",
+        "tests/generation/test_memory_build.py::test_memory_the_memory_stage_writes_is_valid",
+        "tests/web/test_memory_build_route.py::test_memory_saved_from_the_chat_is_valid_for_the_build"
       ],
       "manual": {
         "procedure": "docs/verification/manual.md#memory-build-browser",
