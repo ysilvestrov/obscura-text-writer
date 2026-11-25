@@ -45,9 +45,12 @@ def written_book(tmp_path, texts, memory_role=None):
 
 
 def give_memory(repo, story, scene):
+    """A memory head whose link holds (an author verdict): valid by freshness as well as by the stored flag."""
+    from tests.link_helpers import approve_links
     scene = repo.get_scene(scene.id)
     memory = repo.save_version(story.id, scene.id, 'memory', '{}', [scene.heads['prose']])
     repo.set_head(scene.id, 'memory', memory.id, repo.get_scene(scene.id).revision)
+    approve_links(repo, story.id, [scene.id])
 
 
 def rebuild(story, scene, **extra):
@@ -419,3 +422,66 @@ def test_snapshot_memory_of_a_newly_cast_scene_stays_the_target(tmp_path):
     assert memory_build_target(view) == (scenes[1].id, 2)
     # The run is never started: a later preview still starts at that scene.
     assert memory_build_target(repo.context_view(story.id)) == (scenes[1].id, 2)
+
+
+def test_second_memory_build_is_refused_while_one_is_active(tmp_path):
+    # Review I-1: a retried confirm (MCP) or a second tab must not queue the paid build twice; the replay of the same
+    # request_id still answers the existing run, and a finished or cancelled build lets a new one start.
+    from storygen.generation.memory_build import MEMORY_BUILD_RUNNING
+    repo, story, scenes = written_book(tmp_path, ['Перша.', 'Друга.'])
+    coordinator = RunCoordinator(repo)
+    fingerprint = preview(repo, rebuild(story, scenes[0]))['plan_fingerprint']
+    first = coordinator.enqueue(rebuild(story, scenes[0], memory_plan_fingerprint=fingerprint), 'one')
+    assert first.state == 'queued'
+    with pytest.raises(RevisionConflict, match='Побудова пам’яті цього твору вже в черзі'):
+        coordinator.enqueue(rebuild(story, scenes[0], memory_plan_fingerprint=fingerprint), 'two')
+    assert coordinator.enqueue(rebuild(story, scenes[0], memory_plan_fingerprint=fingerprint), 'one').id == first.id
+    assert [run.id for run in coordinator.list_runs(story.id)] == [first.id]
+    for state in ('running', 'paused', 'pause_requested', 'cancellation_requested'):
+        first.state = state
+        repo.save_run(first)
+        with pytest.raises(RevisionConflict, match=MEMORY_BUILD_RUNNING):
+            coordinator.enqueue(rebuild(story, scenes[0]), 'three-' + state)
+    first.state = 'cancelled'
+    repo.save_run(first)
+    assert coordinator.enqueue(rebuild(story, scenes[0]), 'four').state == 'queued'
+
+
+def test_memory_build_running_is_translated():
+    from storygen.generation.memory_build import MEMORY_BUILD_RUNNING
+    from storygen.web.localization import diagnostic
+    assert diagnostic(MEMORY_BUILD_RUNNING, 'en') == ('A memory build of this story is already queued, running or paused: '
+                                                       'resume or cancel it in the runs panel')
+
+
+def test_memory_stale_only_by_freshness_is_the_target(tmp_path):
+    # Review M-3: the stored flag is not set, but the memory head's link does not hold (VALID-LINKS: unchecked here), so
+    # the shown mark is stale and the build starts at that scene; once its link holds, the memory is valid again.
+    from tests.link_helpers import approve_links
+    repo, story, scenes = written_book(tmp_path, ['Перша.', 'Друга.'])
+    for scene in scenes:
+        scene = repo.get_scene(scene.id)
+        memory = repo.save_version(story.id, scene.id, 'memory', '{}', [scene.heads['prose']])
+        repo.set_head(scene.id, 'memory', memory.id, repo.get_scene(scene.id).revision)
+    view = repo.context_view(story.id)
+    head = view.peek_scene(scenes[0].id).heads['memory']
+    assert not view.peek_version(head).stale and view.is_stale(head)
+    assert memory_build_target(view) == (scenes[0].id, 2)
+    approve_links(repo, story.id)
+    assert memory_build_target(repo.context_view(story.id)) == (None, 0)
+
+
+def test_memory_the_build_writes_is_valid(tmp_path):
+    # Review M-3, no loop: memory written through the app's memory path, scene after scene and with no link verdicts,
+    # is valid by construction — the target moves past it and ends at (None, 0).
+    from storygen.memory.journal import MemoryJournal
+    from storygen.memory.service import publish_memory_journal
+    repo, story, scenes = written_book(tmp_path, ['Перша.', 'Друга.', 'Третя.'])
+    for index, scene in enumerate(scenes):
+        assert memory_build_target(repo.context_view(story.id)) == (scene.id, len(scenes) - index)
+        prose = [repo.get_scene(s.id).heads['prose'] for s in scenes[:index + 1]]
+        current = repo.get_scene(scene.id)
+        publish_memory_journal(repo, scene.id, MemoryJournal(schema_version=3, source_prose_ids=prose), current.revision)
+    view = repo.context_view(story.id)
+    assert not any(view.is_stale(view.peek_scene(s.id).heads['memory']) for s in scenes)
+    assert memory_build_target(view) == (None, 0)

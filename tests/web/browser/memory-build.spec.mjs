@@ -209,15 +209,78 @@ test('a known price shows the total; an unknown one shows its reason',async({pag
   await expect(dialog.locator('#memory-build-cost')).toHaveText('Вартість невідома: Немає ціни моделі');
 });
 
-test('a scene without finished prose: the reason is shown and «Побудувати» is disabled',async({page,request})=>{
+test('a book still being written hides the item; a direct open shows why the build waits',async({page,request})=>{
+  // Owner, 25.11.2026 (review I-2): a scene after the target has no prose yet, so the build would be refused — the menu
+  // does not offer it. The summary link (?build_memory=1) still opens the dialog with the reason.
   const fixture=await seed(request);
   await request.post(`/api/stories/${fixture.story_id}/scenes`,{data:{title:'Порожня'}});
+  expect((await(await request.get(`/api/stories/${fixture.story_id}/memory-build`)).json()).buildable).toBe(false);
   await openWorkspace(page,fixture);
   await page.locator('#story-menu-toggle').click();
-  await page.locator('#story-menu-build-memory').click();
+  await expect(page.locator('#story-menu-build-memory')).toBeHidden();
+  await page.locator('#story-menu-toggle').click();
+  await openWorkspace(page,fixture,'plan','&build_memory=1');
   const dialog=page.locator('#memory-build-dialog');
+  await expect(dialog).toBeVisible();
   await expect(dialog.locator('#memory-build-reason')).toHaveText('Спершу виберіть завершену прозу сцени 3');
   await expect(dialog.locator('#memory-build-submit')).toBeDisabled();
+});
+
+for(const shape of ['reason','can_confirm'])test(`previous memory awaiting the author's confirmation blocks the build with a link to the scene (${shape})`,async({page,request})=>{
+  // Review M-1: the dialog cannot give that confirmation; the server sends it as the reason of a not-ready preview (a
+  // memory stage of one scene offers `can_confirm` instead): either way «Побудувати» stays disabled and links to the scene.
+  const fixture=await seed(request);
+  await page.route(/\/readiness\?.*operation=rebuild_memory/,async route=>{
+    const response=await route.fetch(),body=await response.json();
+    Object.assign(body.operations.rebuild_memory,{ready:false,plan_fingerprint:null,reason:'Попередня пам’ять потребує авторського підтвердження'},
+                  shape==='can_confirm'?{can_confirm:true}:{});
+    await route.fulfill({response,json:body});
+  });
+  await openWorkspace(page,fixture);
+  const dialog=await openDialog(page);
+  await expect(dialog.locator('#memory-build-reason')).toContainText('Попередня пам’ять потребує авторського підтвердження');
+  await expect(dialog.locator('#memory-build-submit')).toBeDisabled();
+  const link=dialog.locator('#memory-build-approval');
+  await expect(link).toHaveText('Відкрити сцену 1');
+  await expect(link).toHaveAttribute('href',`/stories/${fixture.story_id}?scene=${fixture.scene_ids[0]}&material=memory`);
+  await dialog.locator('#memory-build-submit').click({force:true});
+  expect(await runsOf(request,fixture)).toEqual([]);
+});
+
+test('a second build refused by the server (409) is said as is and the preview stays',async({page,request})=>{
+  // Review I-1: another tab or the chat has queued, started or paused a build; the server refuses this one.
+  const fixture=await seed(request);
+  await page.route(/\/api\/runs$/,async route=>{
+    if(route.request().method()!=='POST')return route.continue();
+    const detail='Побудова пам’яті цього твору вже в черзі, виконується або призупинена: продовжте чи скасуйте її в панелі запусків';
+    await route.fulfill({status:409,json:{detail,detail_original:detail}});
+  });
+  await openWorkspace(page,fixture);
+  const dialog=await openDialog(page);
+  await expect(dialog.locator('#memory-build-cost')).toHaveText('Вартість невідома');
+  await dialog.locator('#memory-build-submit').click();
+  await expect(dialog.locator('#memory-build-status')).toHaveText('Побудова пам’яті цього твору вже в черзі, виконується або призупинена: продовжте чи скасуйте її в панелі запусків');
+  await expect(dialog).toBeVisible();
+  await expect(dialog.locator('#memory-build-summary')).toContainText('Сцен: 2');
+  await expect(dialog.locator('#memory-build-status')).not.toContainText('Перевірте перегляд ще раз');
+});
+
+test.describe('store edition',()=>{
+  test.beforeEach(async({request})=>{expect((await(await request.post('/test-build-edition',{data:{edition:'store'}})).json()).edition).toBe('store')});
+  test.afterEach(async({request})=>{expect((await(await request.post('/test-build-edition',{data:{edition:'full'}})).json()).edition).toBe('full')});
+  test('a series book is read-only: no build item; a plain book keeps it without the series offer',async({page,request})=>{
+    // Review M-8: the long-prose guard refuses the writes of a series or structured book in this edition.
+    const series=await seed(request,'?series=true');
+    await openWorkspace(page,series);
+    await page.locator('#story-menu-toggle').click();
+    await expect(page.locator('#story-menu-rename')).toBeVisible();
+    await expect(page.locator('#story-menu-build-memory')).toBeHidden();
+    await page.locator('#story-menu-toggle').click();
+    const plain=await seed(request);
+    await openWorkspace(page,plain);
+    const dialog=await openDialog(page);
+    await expect(dialog.locator('#memory-build-series')).toBeHidden();
+  });
 });
 
 test('scenes that will not fit the memory role are listed with links',async({page,request})=>{

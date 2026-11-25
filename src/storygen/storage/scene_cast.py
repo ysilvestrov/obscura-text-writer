@@ -1,8 +1,10 @@
 """R-48 PR 2 (design §5.1, amendment 1): the cast of scenes from the names mentioned in their prose, without a model.
 
-Before the memory build each active scene with prose whose plan has no participants line gets as its cast the character
-cards whose name available in that scene (`characters/names.py::scene_match_names`) its prose mentions under the stem
-rule of memory selection, in order of first mention. Scenes whose plan names participants are never changed."""
+Before the memory build each active scene with author prose (a `manual` prose head: imported or written by the author)
+whose plan has no participants line gets as its cast the character cards whose name available in that scene
+(`characters/names.py::scene_match_names`) its prose mentions under the stem rule of memory selection, in order of first
+mention. Scenes whose plan names participants and scenes whose prose a model derived (`edited`) are never changed, so the
+cast write never stales model prose (review M-2)."""
 import threading
 
 from ..characters.acquaintance import protagonist
@@ -25,15 +27,18 @@ def _planned(scene) -> bool:
     return parse_scene_description(scene.beats or '').participants is not None
 
 
+AUTHOR_PROSE = 'manual'
+
+
 def propose_cast(view, cards) -> dict[str, list[str]]:
-    """{scene id: card IDs in order of first mention} for every active scene with a prose head whose plan has no
-    participants line (or no plan) and whose cast is empty; scenes with that line or a cast the author set are absent and
-    never changed. A tie (one word for two cards) keeps card order."""
+    """{scene id: card IDs in order of first mention} for every active scene with an author (`manual`) prose head whose plan
+    has no participants line (or no plan) and whose cast is empty; scenes with that line or a cast the author set are absent
+    and never changed. A tie (one word for two cards) keeps card order."""
     scenes = sorted((s for s in view.list_scenes(view.story.id) if not s.trashed_at), key=lambda s: s.position)
     result = {}
     for scene in scenes:
         prose_id = scene.heads.get('prose')
-        if not prose_id or _planned(scene) or scene.character_ids:
+        if not prose_id or _planned(scene) or scene.character_ids or view.peek_version(prose_id).kind != AUTHOR_PROSE:
             continue
         if not cards:
             result[scene.id] = []
@@ -86,10 +91,11 @@ def cast_preview(view):
 
 def apply_cast(repo, story_id, proposal, expected_revision) -> list[str]:
     """Writes the proposed casts in one transaction under CAS on the story revision; returns the IDs of the scenes whose
-    cast changed. A scene whose plan now names participants or which already has a cast, a trashed scene or one of another
-    story is skipped; an empty proposal for an empty cast writes nothing. A changed
-    cast stales the scene's material as a changed participants line does (`stale_scene_material`); nothing changes →
+    cast changed. A scene whose plan now names participants or which already has a cast, whose prose head is not author
+    text (`manual`), a trashed scene or one of another story is skipped; an empty proposal for an empty cast writes
+    nothing. A changed cast stales the scene's material as a changed participants line does (`stale_scene_material`); nothing changes →
     nothing is written and the story revision stays."""
+    from ..domain import VersionRef
     from .scene_metadata import stale_scene_material, story_cards
     with repo.db.connection() as db:
         db.execute('BEGIN IMMEDIATE')
@@ -106,7 +112,9 @@ def apply_cast(repo, story_id, proposal, expected_revision) -> list[str]:
             if row is None:
                 continue
             scene = Scene.model_validate_json(row[0])
-            if not ids or scene.trashed_at or _planned(scene) or scene.character_ids:
+            if not ids or scene.trashed_at or _planned(scene) or scene.character_ids or not scene.heads.get('prose'):
+                continue
+            if repo._get(db, 'versions', scene.heads['prose'], VersionRef).kind != AUTHOR_PROSE:
                 continue
             scene.character_ids = list(ids)
             stale_scene_material(repo, db, scene)

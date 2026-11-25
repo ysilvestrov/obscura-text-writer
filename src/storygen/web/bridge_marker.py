@@ -40,6 +40,12 @@ def guard_bridge_run(request,run_request) -> None:
     if run_request.mode=='rebuild_memory' and run_request.memory_plan_fingerprint is None:raise RevisionConflict(MEMORY_PLAN_REQUIRED)
 
 
+def guard_bridge_cast(request,story_id: str) -> None:
+    """R-48 review M-9: the scene casts from the names in the prose are written only as the first step of a memory build,
+    so the bridge may write them in the same stories it may start that build in (`guard_bridge_run`)."""
+    if from_bridge(request) and request.app.state.repo.get_story(story_id).writing_mode!='obscura':raise RevisionConflict(CHAT_WRITES)
+
+
 def guard_bridge_cancel(request,run) -> None:
     if from_bridge(request) and run.origin!='mcp':raise BridgeForbidden(RUN_OWNER_ONLY)
 

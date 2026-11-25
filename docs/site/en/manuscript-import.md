@@ -57,16 +57,17 @@ Every scene has your prose as an author's version, and the scene plans are empty
 
 Memory keeps the protagonist's state (clothes, things at hand, place, body, who they are with) only for a character from a card who takes part in the scene. So add character cards before you build memory: on the [Characters](characters.md) page or by [importing a characters file](imports.md). Mark the protagonist in their card; without a mark the first participant of the first scene becomes the protagonist.
 
-Obscura fills the participants of imported scenes itself, without a model, before the memory build starts:
+Obscura fills the participants of imported scenes itself, without a model, before the memory build starts. Only scenes with your prose (imported or written by you) are filled; a scene whose prose a model wrote is left as it is:
 
 - a scene's participants are the cards whose name its prose mentions, in order of first mention;
 - a scene whose plan has a "Characters:" or "Participants:" line, or a scene whose participants you have already chosen, is left as it is;
-- a name is also found in inflected forms: for a name longer than four letters the last letter is dropped (the Ukrainian "Марія" also finds "Марію"). A name of up to four letters is looked up as a whole word, so the Ukrainian "Оля" does not find "Олю", and a name of one or two letters is not found at all;
+- a name is also found in inflected forms: for a name longer than four letters the last letter is dropped (the Ukrainian "Марія" also finds "Марію"). A name of up to four letters is not shortened, so the Ukrainian "Оля" does not find "Олю". A name is looked up as the start of a word, so a short name may be found by mistake inside a longer word: the Ukrainian "Рома" also finds "романтичний" ("romantic"). A name of one or two letters is not found at all;
+- participants filled from names count as chosen afterwards: cards you add later are not added to such scenes. Add a new character to the participants of these scenes yourself;
 - a character named only by a pronoun or a description does not get into the cast, and a namesake may get in by mistake. Fix the participants in the scene plan or the scene properties.
 
 ## Building memory
 
-**Build memory (scenes: N)** is in the import summary and in the **☰ Story actions** menu while the book has scenes without valid memory. Details are in [Building the book memory](memory.md#building-the-book-memory).
+**Build memory (scenes: N)** is in the import summary, and in the **☰ Story actions** menu when the book has scenes without valid memory and every scene from the first such scene to the end of the book has prose. Details are in [Building the book memory](memory.md#building-the-book-memory).
 
 ## Chat clients
 
@@ -79,3 +80,4 @@ Through [MCP](mcp.md) the chat can import a manuscript from the full path of a l
 - Markdown: a `---` line right after text is taken as a scene separator, not a heading.
 - In the paid edition the text before the first part becomes a first part without a title.
 - If the series was deleted between the preview and the import, the dialog says the preview file is no longer kept: choose the file again.
+- Participants from names: a short name may be found by mistake inside a longer word (the Ukrainian "Рома" in "романтичний"), and cards added after the first memory build do not get into scenes already filled. Check the participants in the scene properties.

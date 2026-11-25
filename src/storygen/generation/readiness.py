@@ -163,8 +163,7 @@ def preview(repo, request, view=None):
                         raise ValueError(f'Спершу додайте план сцени {target.position+1}')
             if request.mode=='rebuild_memory':
                 for target in targets:
-                    prose=view.peek_version(target.heads['prose']) if target.heads.get('prose') else None
-                    if not prose or not prose.complete or prose.kind not in {'edited','manual'}:
+                    if not memory_build.finished_prose(view,target):
                         raise ValueError(f'Спершу виберіть завершену прозу сцени {target.position+1}')
                 # Priced before the refusals below, so a run refused for its budget still shows what it may cost.
                 result['cost']=memory_build.memory_cost(repo,settings['memory'],[len(view.read_text(t.heads['prose'])) for t in targets])

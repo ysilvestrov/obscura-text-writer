@@ -81,6 +81,21 @@ def test_bridge_rebuild_memory_follows_the_stage_rule(tmp_path, ready):
     assert app.state.coordinator.get_run(accepted.json()['id']).origin == 'mcp'
 
 
+def test_bridge_cast_inference_follows_the_stage_rule(tmp_path):
+    """R-48 review M-9: the bridge writes scene casts only where it may start the memory build; the author in any mode."""
+    app, repo, story, scene, client = scene_app(tmp_path, 'chat')
+    revision = repo.get_story(story.id).revision
+    refused = client.post(f'/api/stories/{story.id}/scene-cast/infer', json={'expected_revision': revision}, headers=BRIDGE)
+    assert refused.status_code == 409 and CHAT_WRITES in refused.text
+    assert repo.get_story(story.id).revision == revision
+    author = client.post(f'/api/stories/{story.id}/scene-cast/infer', json={'expected_revision': revision})
+    assert author.status_code == 200, author.text
+    app, repo, story, scene, client = scene_app(tmp_path / 'o', 'obscura')
+    accepted = client.post(f'/api/stories/{story.id}/scene-cast/infer',
+                           json={'expected_revision': repo.get_story(story.id).revision}, headers=BRIDGE)
+    assert accepted.status_code == 200, accepted.text
+
+
 @pytest.mark.req('MCP-BRIDGE')
 def test_bridge_cancels_only_its_own_run_and_never_pauses(tmp_path, ready):
     app, repo, story, scene, client = scene_app(tmp_path, 'obscura')

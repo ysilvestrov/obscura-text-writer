@@ -205,3 +205,46 @@ def test_proposal_searches_each_prose_once_across_requests(tmp_path, monkeypatch
     publish_cards(repo, story.id, [card('marko', 'Марко'), card('olia', 'Оля', 'Інше ім\'я: Ольга')])
     proposal(repo, story)
     assert len(searched) == 5  # new names: every scene is searched again
+
+
+def model_prose(repo, story, scene, text):
+    """Prose the editor role derived from a draft: kind `edited` with the stage's dependency snapshot."""
+    from storygen.generation.context import build_context
+    from storygen.providers.models import ProviderSettings, RoleSettings
+    draft = repo.save_version(story.id, scene.id, 'draft', text, [])
+    repo.set_head(scene.id, 'draft', draft.id, repo.get_scene(scene.id).revision)
+    context = build_context(repo, scene.id, 'edit', RoleSettings(provider=ProviderSettings(model='fake'), edit_mode='patches'))
+    ref = repo.save_version(story.id, scene.id, 'edited', text, [draft.id], dependency_snapshot=context.dependency_snapshot)
+    repo.set_head(scene.id, 'prose', ref.id, repo.get_scene(scene.id).revision)
+    return ref
+
+
+def test_cast_is_inferred_only_over_author_prose(tmp_path):
+    # Review M-2 (owner ruling 25.11.2026): only author text — kind `manual`, imported prose included (see
+    # test_manuscript_import_apply) — gets a cast from
+    # names; model-derived prose is never touched, so applying a cast never stales it.
+    repo = Repository(tmp_path)
+    story, scenes = book(repo, ['Оля йде.', ''], [card('marko', 'Марко'), card('olia', 'Оля')])
+    prose = model_prose(repo, story, scenes[1], 'Марко побачив Олю.')
+    view = repo.context_view(story.id)
+    assert not view.is_stale(prose.id)
+    before = view.effective_scene(scenes[1].id).needs_review
+    assert proposal(repo, story) == {scenes[0].id: ['olia']}
+    # A forged proposal for the model-written scene is skipped inside the transaction.
+    revision = repo.get_story(story.id).revision
+    assert apply_cast(repo, story.id, {scenes[0].id: ['olia'], scenes[1].id: ['marko', 'olia']}, revision) == [scenes[0].id]
+    view = repo.context_view(story.id)
+    assert view.get_scene(scenes[1].id).character_ids == []
+    assert not stored_stale(repo, prose.id) and not view.is_stale(prose.id)
+    assert view.effective_scene(scenes[1].id).needs_review == before
+    assert view.get_scene(scenes[0].id).character_ids == ['olia']
+
+
+
+def test_short_name_is_a_word_prefix_without_inflection(tmp_path):
+    # Review I-3 (known limitation, as documented): a name of up to four letters keeps its whole stem, which is looked up as
+    # the start of a word — «Рома» is found inside «романтичний», while «Оля» does not find «Олю».
+    repo = Repository(tmp_path)
+    story, scenes = book(repo, ['Був романтичний вечір.', 'Марко покликав Олю.'], [card('roma', 'Рома'), card('olia', 'Оля'),
+                                                                                    card('marko', 'Марко')])
+    assert proposal(repo, story) == {scenes[0].id: ['roma'], scenes[1].id: ['marko']}

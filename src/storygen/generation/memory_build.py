@@ -12,13 +12,15 @@ from .audit_cost import CHARS_TO_TOKENS, CLOUD, INPUT_OVERHEAD, NO_PRICE, curren
 # The previous memory is bounded by the same share of the role's input that `memory_fits` reserves for it.
 PREVIOUS_MEMORY_SHARE = 8
 MEMORY_PLAN_CHANGED = 'План побудови пам’яті змінився. Перегляньте його ще раз'
+MEMORY_BUILD_RUNNING = 'Побудова пам’яті цього твору вже в черзі, виконується або призупинена: продовжте чи скасуйте її в панелі запусків'
 
 
 def memory_build_target(view, proposal=None) -> tuple[str | None, int]:
     """The first active scene, by position, without valid memory (design §5, §5.1), and the number of scenes from it to the
     end of the book — the scenes `rebuild_memory` from it covers. Memory is not valid when there is no memory head, when
-    the head is stale (the stored flag), when the cast recorded in its dependency snapshot differs from the scene's cast
-    (the stage's memory: `stale_scene_material` leaves snapshot versions to their selectors) or when the proposed cast
+    the head is stale (the stored flag or its freshness: a link that does not hold), when the cast recorded in its
+    dependency snapshot differs from the scene's cast (the stage's memory: `stale_scene_material` leaves snapshot versions
+    to their selectors) or when the proposed cast
     (`scene_cast.propose_cast`, computed when not given; an unreadable cards file proposes nothing) changes the scene's
     cast. (None, 0) when every scene has valid memory. A scene without finished prose is still the target: the readiness
     of the run then names what is missing."""
@@ -31,14 +33,33 @@ def memory_build_target(view, proposal=None) -> tuple[str | None, int]:
     scenes = sorted((s for s in view.list_scenes(view.story.id) if not s.trashed_at), key=lambda s: s.position)
     for index, scene in enumerate(scenes):
         memory_id = scene.heads.get('memory')
-        if not memory_id or not _memory_valid(view.peek_version(memory_id), scene)                 or proposal.get(scene.id, scene.character_ids) != scene.character_ids:
+        if not memory_id or not _memory_valid(view, memory_id, scene) \
+                or proposal.get(scene.id, scene.character_ids) != scene.character_ids:
             return scene.id, len(scenes) - index
     return None, 0
 
 
-def _memory_valid(ref, scene) -> bool:
-    """The memory head was built for the scene as it is: not flagged stale and, with a snapshot, over the same cast."""
-    if ref.stale:
+def finished_prose(view, scene) -> bool:
+    """The scene has the prose a memory call reads: a complete prose head of kind `edited` or `manual` (as readiness of
+    `rebuild_memory` requires for every target scene)."""
+    prose_id = scene.heads.get('prose')
+    prose = view.peek_version(prose_id) if prose_id else None
+    return bool(prose and prose.complete and prose.kind in {'edited', 'manual'})
+
+
+def memory_build_buildable(view, count: int) -> bool:
+    """Whether the build of the last `count` active scenes can start as far as prose goes: every one of them has finished
+    prose (owner, 25.11.2026: the menu item stays hidden until then). False when there is nothing to build."""
+    scenes = sorted((s for s in view.list_scenes(view.story.id) if not s.trashed_at), key=lambda s: s.position)
+    return count > 0 and all(finished_prose(view, scene) for scene in scenes[len(scenes) - count:])
+
+
+def _memory_valid(view, memory_id, scene) -> bool:
+    """The memory head was built for the scene as it is: neither flagged stale nor stale by freshness (the mark the author
+    sees: for a head memory, VALID-LINKS — its link holds; memory the stage writes holds by construction, review M-3) and,
+    with a snapshot, over the same cast."""
+    ref = view.peek_version(memory_id)
+    if ref.stale or view.is_stale(memory_id):
         return False
     snapshot = ref.dependency_snapshot
     return snapshot is None or all(

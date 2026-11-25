@@ -13,10 +13,10 @@ def test_memory_build_route_returns_target_and_count(tmp_path):
     with TestClient(app, base_url='http://127.0.0.1:8765') as client:
         response = client.get(f'/api/stories/{story.id}/memory-build')
         assert response.status_code == 200
-        assert response.json() == {'scene_id': scenes[1].id, 'count': 2}
+        assert response.json() == {'scene_id': scenes[1].id, 'count': 2, 'buildable': True}
         for scene in scenes[1:]:
             give_memory(app.state.repo, story, scene)
-        assert client.get(f'/api/stories/{story.id}/memory-build').json() == {'scene_id': None, 'count': 0}
+        assert client.get(f'/api/stories/{story.id}/memory-build').json() == {'scene_id': None, 'count': 0, 'buildable': False}
         assert client.get('/api/stories/missing/memory-build').status_code == 404
 
 
@@ -32,4 +32,35 @@ def test_memory_build_route_survives_unreadable_cards(tmp_path):
     with TestClient(app, base_url='http://127.0.0.1:8765') as client:
         response = client.get(f'/api/stories/{story.id}/memory-build')
         assert response.status_code == 200, response.text
-        assert response.json() == {'scene_id': scenes[1].id, 'count': 1}
+        assert response.json() == {'scene_id': scenes[1].id, 'count': 1, 'buildable': True}
+
+
+def test_two_confirmed_memory_builds_give_one_run_and_one_409(tmp_path):
+    # Review I-1: two confirms of the same preview (a retried MCP call, a second tab) queue one paid run; the other is 409.
+    repo, story, scenes = written_book(tmp_path, ['Перша.', 'Друга.'])
+    app = create_app(AppSettings(data_dir=tmp_path))
+    with TestClient(app, base_url='http://127.0.0.1:8765') as client:
+        app.state.coordinator.stop()  # no worker: the first run stays queued, as one waiting behind another would
+        preview = client.get(f'/api/stories/{story.id}/readiness',
+                             params={'scene_id': scenes[0].id, 'operation': 'rebuild_memory'}).json()['operations']['rebuild_memory']
+        request = {'story_id': story.id, 'scene_id': scenes[0].id, 'mode': 'rebuild_memory',
+                   'memory_plan_fingerprint': preview['plan_fingerprint']}
+        answers = [client.post('/api/runs', json={'request_id': name, 'request': request}) for name in ('one', 'two')]
+        assert [answer.status_code for answer in answers] == [200, 409]
+        assert answers[1].json()['detail'].startswith('Побудова пам’яті цього твору вже в черзі')
+        assert len(client.get(f'/api/stories/{story.id}/runs').json()['runs']) == 1
+
+
+def test_book_in_progress_is_not_buildable(tmp_path):
+    # Owner, 25.11.2026 (review I-2): prose in scene 1 only and plans after it — the build would be refused, so the menu
+    # item is hidden; once every scene from the target to the end has finished prose, it is shown.
+    from storygen.generation.dependencies import save_manual_prose
+    repo, story, scenes = written_book(tmp_path, ['Перша.', '', ''])
+    app = create_app(AppSettings(data_dir=tmp_path))
+    with TestClient(app, base_url='http://127.0.0.1:8765') as client:
+        assert client.get(f'/api/stories/{story.id}/memory-build').json() == {'scene_id': scenes[0].id, 'count': 3,
+                                                                              'buildable': False}
+        for scene, text in zip(scenes[1:], ['Друга.', 'Третя.']):
+            save_manual_prose(app.state.repo, scene.id, text, app.state.repo.get_scene(scene.id).revision)
+        assert client.get(f'/api/stories/{story.id}/memory-build').json() == {'scene_id': scenes[0].id, 'count': 3,
+                                                                              'buildable': True}

@@ -2831,6 +2831,7 @@
     "manuscript_import.ui.origin": "Імпортовано з рукопису: {p0}",
     "manuscript_import.ui.plan_optional": "План необов’язковий: валідація перевіряє прозу й пам’ять",
     "memory_build.server.plan_changed": "План побудови пам’яті змінився. Перегляньте його ще раз",
+    "memory_build.server.running": "Побудова пам’яті цього твору вже в черзі, виконується або призупинена: продовжте чи скасуйте її в панелі запусків",
     "memory_build.server.cast_conflict": "Твір уже змінено. Оновіть сторінку; учасників сцен не записано.",
     "memory_build.ui.title": "Побудувати пам’ять",
     "memory_build.ui.intro": "Модель пам’яті прочитає прозу сцен по черзі й запише, що в них сталося. Зупинка й продовження — у панелі запусків.",
@@ -2851,6 +2852,7 @@
     "memory_build.ui.build": "Побудувати",
     "memory_build.ui.stale": "План побудови змінився. Перевірте перегляд ще раз.",
     "memory_build.ui.nothing": "Пам’ять усіх сцен уже побудовано",
+    "memory_build.ui.open_scene": "Відкрити сцену {p0}",
     "manuscript_import.ui.close": "Закрити",
     "manuscript_import.ui.vanished": "Файл перегляду більше не зберігається: минуло 24 години або імпорт скасовано в іншій вкладці. Виберіть файл ще раз.",
     "manuscript_import.ui.series_no_memory": "Пам’ять попередньої книги серії ще не побудовано, тож нова книга почнеться без знімка початку серії. Імпорт це не блокує; знімок можна оновити пізніше. Попередня книга:"
@@ -5687,6 +5689,7 @@
     "manuscript_import.ui.origin": "Imported from manuscript: {p0}",
     "manuscript_import.ui.plan_optional": "Plan optional: validation checks the prose and the memory",
     "memory_build.server.plan_changed": "The memory build plan has changed. Review it again",
+    "memory_build.server.running": "A memory build of this story is already queued, running or paused: resume or cancel it in the runs panel",
     "memory_build.server.cast_conflict": "The story has already changed. Refresh the page; the scene casts were not saved.",
     "memory_build.ui.title": "Build memory",
     "memory_build.ui.intro": "The memory model reads the prose of the scenes one by one and records what happened in them. Pause and resume are in the runs panel.",
@@ -5707,6 +5710,7 @@
     "memory_build.ui.build": "Build",
     "memory_build.ui.stale": "The build plan has changed. Check the preview again.",
     "memory_build.ui.nothing": "Memory of every scene is already built",
+    "memory_build.ui.open_scene": "Open scene {p0}",
     "manuscript_import.ui.close": "Close",
     "manuscript_import.ui.vanished": "The preview file is no longer kept: 24 hours passed or the import was cancelled in another tab. Choose the file again.",
     "manuscript_import.ui.series_no_memory": "The memory of the previous book in the series is not built yet, so the new book starts without a series start snapshot. This does not block the import; the snapshot can be refreshed later. Previous book:"

@@ -2,13 +2,18 @@ import {t,uiText,diagnostic} from './i18n.js';
 import {operationReason} from './run-readiness.js';
 import {refreshBook} from './series-status.js';
 import {refresh,displaySceneTitle} from './editor.js';
+import {appInfo} from './app-info.js';
 // R-48 «Побудувати пам'ять» (spec §5, §5.1): the story-menu item counts the scenes from the first one without valid memory
 // to the end of the book (GET /memory-build). Its dialog reads the rebuild_memory preview of that scene — calls, the upper
 // bound on cost, the scenes that will not fit, the cast the build fills — and nothing runs without «Побудувати». The press
 // writes the cast (scene-cast/infer, under the story revision read before the preview), then starts the run with the
-// preview's plan fingerprint and hands it to the run panel (pause, cancel and resume live there). A 409 from either call is
-// a stale preview: the dialog reads it again and asks the author to check it; nothing starts on its own. While a run is
-// active in the workspace the build waits (a second build would be queued and paid twice).
+// preview's plan fingerprint and hands it to the run panel (pause, cancel and resume live there). A 409 for a changed plan
+// or cast from either call is a stale preview: the dialog reads it again and asks the author to check it; nothing starts on
+// its own. While a run is
+// active in the workspace the build waits; the server also refuses a second build while one is queued, running or paused
+// (409, shown as is). The item is shown only when every scene the build covers has finished prose (`buildable`, owner
+// 25.11.2026); a direct open (?build_memory=1) still shows the refusal. In an edition without long prose a structured or
+// series book is read-only: the item and the series offer stay hidden there (the server refuses those writes either way).
 
 // The server's rounded-up total is shown as is; a per-call price is never multiplied out. Unknown → the reason, if any.
 export function costText(cost){
@@ -25,12 +30,19 @@ export function installMemoryBuild({api,json,notice,document,state}){
   const summary=part('summary'),cost=part('cost'),unfit=part('unfit'),cast=part('cast'),series=part('series'),seriesButton=part('refresh'),
     reasonNode=part('reason'),seriesWarning=part('series-warning'),status=part('status'),submit=part('submit'),cancel=part('cancel');
   const storyPath=()=>`/api/stories/${encodeURIComponent(state.storyId)}`;
-  let target={scene_id:null,count:0},plan=null,failure='',loading=false,busy=false,epoch=0,keepFocus=false,pending=null;
+  let target={scene_id:null,count:0,buildable:false},plan=null,failure='',loading=false,busy=false,epoch=0,keepFocus=false,pending=null;
+  let longProse=true;
+  appInfo().then(info=>{longProse=info.long_prose!==false;renderMenu()});
+  const readOnly=()=>!longProse&&(state.view?.book_structure?.kind==='structured'||!!state.view?.story?.series_id);
+  // The previous memory awaits the author's confirmation in the scene: this dialog cannot give it, so the build is blocked
+  // with the reason and a link to the scene (review M-1), whether the preview says so with `can_confirm` or as its reason.
+  const needsApproval=preview=>!!preview&&(preview.can_confirm||!!preview.reason&&diagnostic(preview.reason)===t('memory.needs_approval'));
   // Why «Побудувати» is unavailable: a failed preview, an active run, then the preview's own readiness (dirty buffer included).
-  const blocked=()=>(failure==='memory_build.ui.nothing'?t(failure):failure)||(!plan?'':ACTIVE_RUN.has(state.workspaceRun?.state)?t('memory_build.ui.run_active'):operationReason(state,plan.preview));
+  const blocked=()=>(failure==='memory_build.ui.nothing'?t(failure):failure)||(!plan?'':ACTIVE_RUN.has(state.workspaceRun?.state)?t('memory_build.ui.run_active'):
+    plan.preview.can_confirm?(plan.preview.reason||t('memory.needs_approval')):operationReason(state,plan.preview));
 
   function renderMenu(){
-    item.hidden=!target.count;
+    item.hidden=!target.count||!target.buildable||readOnly();
     uiText(item,'textContent',()=>t('manuscript_import.ui.build_memory',{p0:target.count}));
   }
   // The count is asked on every workspace refresh; one request at a time, and one more if a refresh came meanwhile.
@@ -56,7 +68,17 @@ export function installMemoryBuild({api,json,notice,document,state}){
     item.disabled=busy;  // a build still in flight (even with the dialog closed) must settle before another can start
     dialog.setAttribute('aria-busy',String(busy||loading));
     reasonNode.hidden=!reason;
-    if(reason)uiText(reasonNode,'textContent',()=>diagnostic(blocked()));else reasonNode.textContent='';
+    if(!reason){reasonNode.textContent='';return}
+    const text=element('span');
+    uiText(text,'textContent',()=>diagnostic(blocked()));
+    reasonNode.replaceChildren(text);
+    if(plan&&needsApproval(plan.preview)&&diagnostic(reason)===t('memory.needs_approval')){
+      const link=element('a'),scene=sceneOf(plan.scene_id);
+      link.id='memory-build-approval';
+      link.href=`/stories/${encodeURIComponent(state.storyId)}?scene=${encodeURIComponent(plan.scene_id)}&material=memory`;
+      uiText(link,'textContent',()=>t('memory_build.ui.open_scene',{p0:scene?scene.position+1:'—'}));
+      reasonNode.append(document.createTextNode(' '),link);
+    }
   }
   function clear(){
     summary.textContent='';cost.textContent='';cost.hidden=true;cast.replaceChildren();
@@ -105,8 +127,9 @@ export function installMemoryBuild({api,json,notice,document,state}){
     renderCast(preview.cast);
     // §5: a series book without a start snapshot first offers the refresh from the previous book; the build stays secondary.
     // An offer, never a gate (a failed refresh must not block the author): the build then warns what its memory lacks.
-    series.hidden=seriesWarning.hidden=!preview.series_refresh;
-    submit.classList.toggle('secondary',!!preview.series_refresh);
+    const offer=!!preview.series_refresh&&longProse;  // no series in an edition without long prose
+    series.hidden=seriesWarning.hidden=!offer;
+    submit.classList.toggle('secondary',offer);
   }
 
   // The revision is read before the preview, so a change in between is refused by the cast write (409), never applied.
@@ -156,6 +179,13 @@ export function installMemoryBuild({api,json,notice,document,state}){
     }catch(error){
       pending=null;
       if(build.aborted){if(inferred)await refreshWorkspace();if(error.status!==409)notice(error.message,'error');return}
+      const stale=[t('memory_build.server.plan_changed'),t('memory_build.server.cast_conflict')].includes(diagnostic(error.message));
+      if(error.status===409&&!stale){
+        // Another build is already queued, running or paused (or another refusal): said as is; the preview is kept.
+        if(inferred)await refreshWorkspace();
+        setStatus(()=>diagnostic(error.message));sync();
+        return;
+      }
       if(error.status===409){
         // A stale preview (the plan or the story changed): read it again; the author decides after checking it.
         await refreshWorkspace();

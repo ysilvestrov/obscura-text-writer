@@ -15,6 +15,8 @@ from .stages import execute_stage
 from ..book.lineage import lineage_scope
 
 
+# A memory build in these states still covers its scenes: a second one would pay for them twice (R-48 review I-1).
+MEMORY_BUILD_ACTIVE=frozenset({'queued','running','pause_requested','paused','cancellation_requested'})
 TERMINAL={'completed','failed','cancelled','interrupted','needs_review','alternative','paused'}
 CANCEL_TRANSITIONS = {
     'queued': 'cancelled',
@@ -155,6 +157,13 @@ class RunCoordinator:
                 for r in self.list_runs(request.story_id)
             ):
                 raise ValueError('Багатопрохідна редактура цієї сцени вже виконується')
+            if request.mode == 'rebuild_memory' and any(
+                r.request.mode == 'rebuild_memory' and r.state in MEMORY_BUILD_ACTIVE for r in self.list_runs(request.story_id)
+            ):
+                # R-48 review I-1: a retried confirm (MCP) or a second tab would queue the paid build twice; the run that
+                # exists is resumed or cancelled in the run panel.
+                from .memory_build import MEMORY_BUILD_RUNNING
+                raise RevisionConflict(MEMORY_BUILD_RUNNING)
             readiness=None
             if request.mode == 'evaluate':
                 from ..evaluation.story_adapter import get_evaluation_settings

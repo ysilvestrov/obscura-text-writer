@@ -8868,7 +8868,7 @@
     {
       "id": "MANUSCRIPT-IMPORT-S13",
       "requirement": "MANUSCRIPT-IMPORT",
-      "scope": "Ціль побудови (перша сцена без чинної пам'яті, застаріла пам'ять, знімок над іншим складом), оцінка вартості (тариф, невідома ціна, локальна модель, відмова бюджету), справжній запит пам'яті в memory_fits, непридатні сцени й кеш, відбиток плану й звірка в enqueue, пропозиція оновити серію, маршрут memory-build, розмітка й правила діалогу. Діалог у браузері — ручна процедура (Playwright). Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "scope": "Ціль побудови (перша сцена без чинної пам'яті, застаріла пам'ять, знімок над іншим складом), оцінка вартості (тариф, невідома ціна, локальна модель, відмова бюджету), справжній запит пам'яті в memory_fits, непридатні сцени й кеш, відбиток плану й звірка в enqueue, пропозиція оновити серію, маршрут memory-build, розмітка й правила діалогу. Друга побудова, поки перша в черзі, виконується чи призупинена (409, один запуск), ціль за актуальністю без повернення по колу, `buildable` для книги, яку ще пишуть. Діалог у браузері — ручна процедура (Playwright). Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
       "tests": [
         "tests/generation/test_memory_build.py::test_target_is_first_scene_without_memory",
         "tests/generation/test_memory_build.py::test_target_is_first_scene_without_memory_even_without_prose",
@@ -8894,7 +8894,13 @@
         "tests/web/test_memory_build_ui.py::test_menu_item_and_dialog_markup",
         "tests/web/test_memory_build_ui.py::test_ui_keys_exist_in_both_languages",
         "tests/web/test_memory_build_ui.py::test_script_follows_the_cost_and_budget_rules",
-        "tests/application/test_manuscript_import_preview.py::test_memory_fits_uses_tokens_and_chars"
+        "tests/application/test_manuscript_import_preview.py::test_memory_fits_uses_tokens_and_chars",
+        "tests/generation/test_memory_build.py::test_second_memory_build_is_refused_while_one_is_active",
+        "tests/generation/test_memory_build.py::test_memory_build_running_is_translated",
+        "tests/generation/test_memory_build.py::test_memory_stale_only_by_freshness_is_the_target",
+        "tests/generation/test_memory_build.py::test_memory_the_build_writes_is_valid",
+        "tests/web/test_memory_build_route.py::test_two_confirmed_memory_builds_give_one_run_and_one_409",
+        "tests/web/test_memory_build_route.py::test_book_in_progress_is_not_buildable"
       ],
       "manual": {
         "procedure": "docs/verification/manual.md#memory-build-browser",
@@ -8937,7 +8943,7 @@
     {
       "id": "MANUSCRIPT-IMPORT-S15",
       "requirement": "MANUSCRIPT-IMPORT",
-      "scope": "Склад за згадками імен: порядок першої згадки, інше доступне ім'я, рядок учасників і склад автора не змінюються, без карток — попередження, герой за позначкою чи першим учасником, запис під CAS, застарювання пам'яті, без змін — без запису, маршрут infer, кеш; MentionIndex ≡ mentions; склад у readiness і відбитку, ціль, що повертається до сцени зі зміненим складом. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "scope": "Склад за згадками імен: порядок першої згадки, інше доступне ім'я, рядок учасників і склад автора не змінюються, без карток — попередження, герой за позначкою чи першим учасником, запис під CAS, застарювання пам'яті, без змін — без запису, маршрут infer, кеш; MentionIndex ≡ mentions; лише авторська проза (модельна не застаріває), коротке ім'я як префікс слова, міст у творі «пише чат» складу не пише; склад у readiness і відбитку, ціль, що повертається до сцени зі зміненим складом. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
       "tests": [
         "tests/storage/test_scene_cast.py::test_cast_from_name_mentions_in_order",
         "tests/storage/test_scene_cast.py::test_other_name_available_in_scene_counts",
@@ -8958,7 +8964,10 @@
         "tests/generation/test_memory_build.py::test_no_cards_warning_does_not_block_the_run",
         "tests/generation/test_memory_build.py::test_memory_fingerprint_changes_with_cards",
         "tests/generation/test_memory_build.py::test_fingerprint_survives_applying_the_cast",
-        "tests/generation/test_memory_build.py::test_target_moves_back_to_an_earlier_scene_whose_cast_changes"
+        "tests/generation/test_memory_build.py::test_target_moves_back_to_an_earlier_scene_whose_cast_changes",
+        "tests/storage/test_scene_cast.py::test_cast_is_inferred_only_over_author_prose",
+        "tests/storage/test_scene_cast.py::test_short_name_is_a_word_prefix_without_inflection",
+        "tests/web/test_bridge_run_routes.py::test_bridge_cast_inference_follows_the_stage_rule"
       ],
       "manual": {
         "procedure": "docs/verification/manual.md#memory-build-browser",
