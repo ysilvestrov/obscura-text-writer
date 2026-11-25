@@ -99,3 +99,17 @@ def test_plan_source_stays_a_ref_next_to_prose(tmp_path):
                                'sources': [{'version_id': plan.id, 'quote': 'героїня'}]})
     result = save_character_material(repo, story.id, [payload], repo.get_story(story.id).revision)
     assert repo.get_version(result['version_id']).input_refs == [plan.id]
+
+
+@pytest.mark.req('CHARACTER-EXTRACT')
+def test_card_editor_shows_the_model_origin():
+    # An accepted entry has origin `model`: the editor's origin list must name it (in both languages) instead of showing
+    # a blank choice; the author cannot newly mark an entry as the model's.
+    import json
+    from pathlib import Path
+    static = Path(__file__).resolve().parents[2] / 'src/storygen/web/static'
+    source = (static / 'characters.js').read_text(encoding='utf-8')
+    assert 'get model(){return t("characters.origin_model")}' in source
+    assert "value==='model'&&entry.origin!=='model'" in source
+    catalog = json.loads((static / 'i18n.json').read_text(encoding='utf-8'))
+    assert (catalog['uk']['characters.origin_model'], catalog['en']['characters.origin_model']) == ('Від моделі', 'From model')

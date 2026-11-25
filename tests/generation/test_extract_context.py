@@ -82,7 +82,7 @@ def test_bundle_carries_prompt_catalogue_and_prose(tmp_path):
     assert bundle.stage == 'character_extract' and bundle.policy_role == 'memory'
     assert bundle.scene_id == group[0].scene_id and bundle.story_id == story.id
     assert bundle.input_refs == [scene.version_id for scene in group]
-    assert catalogue_text(state) in bundle.user_text and 'c1: Анна' in bundle.user_text
+    assert catalogue_text(state, 'uk') in bundle.user_text and 'c1: Анна' in bundle.user_text
     for short, scene_id in scenes.items():
         text = next(scene.text for scene in group if scene.scene_id == scene_id)
         assert short in bundle.user_text and text in bundle.user_text
@@ -94,6 +94,7 @@ def test_bundle_carries_prompt_catalogue_and_prose(tmp_path):
 def test_prompt_follows_story_language(tmp_path):
     bundle = build(case(tmp_path, memory_role(), language='en'))
     assert 'VERBATIM' in bundle.system_text and 'ДОСЛІВН' not in bundle.system_text
+    assert 'other names: Анничка' in bundle.user_text and 'інші імена' not in bundle.user_text
 
 
 @pytest.mark.req('CHARACTER-EXTRACT')
@@ -115,8 +116,8 @@ def test_unfit_input_returns_reason(tmp_path):
 def test_reserve_chars_replaces_the_catalogue(tmp_path):
     c = case(tmp_path, memory_role())
     real, reserved = build(c), build(c, reserve_chars=500)
-    assert catalogue_text(c[3]) not in reserved.user_text
-    assert len(reserved.user_text) - len(real.user_text) == 500 - len(catalogue_text(c[3]))
+    assert catalogue_text(c[3], 'uk') not in reserved.user_text
+    assert len(reserved.user_text) - len(real.user_text) == 500 - len(catalogue_text(c[3], 'uk'))
     assert build(case(tmp_path / 'over', memory_role(max_input_chars=3000)), reserve_chars=5000) == SKIP_INPUT_LIMIT
 
 

@@ -4,7 +4,7 @@ import json
 import pytest
 
 from storygen.characters.extract_accept import (
-    PROPOSAL_SUPERSEDED, SKIP_CARD_GONE, SKIP_NAME_TAKEN, SKIP_NOT_AUTHOR_PROSE, SKIP_NOTHING_TO_ADD, SKIP_PLANNED,
+    PROPOSAL_SUPERSEDED, SKIP_CARD_GONE, SKIP_NAME_OTHER_CARD, SKIP_NAME_TAKEN, SKIP_NOT_AUTHOR_PROSE, SKIP_NOTHING_TO_ADD, SKIP_PLANNED,
     SKIP_PROSE_CHANGED, SKIP_PROTAGONIST_MARKED, SKIP_PROTAGONIST_NOT_ACCEPTED, SKIP_SCENE_TRASHED, AcceptRequest,
     accept_proposal, current_proposal)
 from storygen.characters.extract_plan import extract_plan
@@ -412,3 +412,102 @@ def test_saved_cards_pass_raw_quote_check_on_next_save(tmp_path):
     assert cast_of(repo, s1) == [olya['id']]
     again = save_character_material(repo, story.id, saved['cards'], saved['revision'])
     assert again['cards'] == saved['cards']
+
+
+def names_of(card):
+    from storygen.characters.models import load_characters
+    from storygen.characters.names import card_names
+    return card_names(load_characters(json.dumps([card], ensure_ascii=False))[0])
+
+
+@pytest.mark.req('CHARACTER-EXTRACT')
+def test_name_of_another_card_is_skipped(tmp_path):
+    repo, story, (s1, s2, s3) = book(tmp_path)
+    story = with_cards(repo, story, 'Оля', 'Марко')
+    run = finished_run(repo, story, [s1, s2, s3], cards=[
+        new_card('new1', 'Петро', quote(s2, 'Петро спав'), other_names=[('Марко', True), ('Петрик', True)])],
+        name_updates=[
+            {'card_id': 'c0', 'names': [{'name': n, 'suggested': True} for n in ('Марко', 'Петрик', 'Олечка')]},
+            {'card_id': 'c1', 'names': [{'name': 'Олечка', 'suggested': True}]}])
+    result = accept(repo, story, run, cards=[{'key': 'new1', 'names': ['Марко', 'Петрик']}], name_updates=[
+        {'card_id': 'c0', 'names': ['Марко', 'Петрик', 'Олечка']}, {'card_id': 'c1', 'names': ['Олечка']}])
+    found = by_name(repo, story)
+    # The new card is still created under its free main name; a name of a current card or of a card accepted earlier in
+    # the same request is never given to a second card.
+    assert names_of(found['Петро']) == ['Петро', 'Петрик']
+    assert names_of(found['Оля']) == ['Оля', 'Олечка']
+    assert names_of(found['Марко']) == ['Марко']
+    assert result['skipped'] == [
+        {'item': item('name', key='new1', name='Марко'), 'reason': SKIP_NAME_OTHER_CARD},
+        {'item': item('name', card_id='c0', name='Марко'), 'reason': SKIP_NAME_OTHER_CARD},
+        {'item': item('name', card_id='c0', name='Петрик'), 'reason': SKIP_NAME_OTHER_CARD},
+        {'item': item('name', card_id='c1', name='Олечка'), 'reason': SKIP_NAME_OTHER_CARD}]
+    assert result['applied'] == [item('card', key='new1'), item('name_update', card_id='c0')]
+
+
+def chained_memory(repo, story, first, second):
+    """A valid memory of `second` built over the memory of `first` (the previous memory is an input of the next one)."""
+    from storygen.memory.journal import MemoryJournal
+    from tests.link_helpers import approve_links
+    valid_first_memory(repo, story, first)
+    previous = repo.get_scene(first.id).heads['memory']
+    prose = repo.get_scene(second.id).heads['prose']
+    memory = repo.save_version(story.id, second.id, 'memory',
+                               MemoryJournal(schema_version=3, source_prose_ids=[prose]).model_dump_json(), [prose, previous])
+    repo.set_head(second.id, 'memory', memory.id, repo.get_scene(second.id).revision)
+    approve_links(repo, story.id)
+
+
+def memory_valid(repo, story, scene):
+    from storygen.generation.memory_build import _memory_valid
+    view = repo.context_view(story.id)
+    current = view.get_scene(scene.id)
+    return _memory_valid(view, current.heads['memory'], current)
+
+
+@pytest.mark.req('CHARACTER-EXTRACT')
+def test_first_cards_of_the_book_report_all_stale_memory(tmp_path):
+    # A book without cards (an imported manuscript): the first version of the cards stales the memory of every scene,
+    # not only of the scenes whose cast changes, and the author must see that cost before accepting.
+    repo, story, (s1, s2, s3) = book(tmp_path)
+    valid_first_memory(repo, story, s1)
+    valid_first_memory(repo, story, s2)
+    assert memory_valid(repo, story, s1) and memory_valid(repo, story, s2)
+    run = finished_run(repo, story, [repo.get_scene(s.id) for s in (s1, s2, s3)],
+                       cards=[new_card('new1', 'Оля', quote(s1, 'Оля пішла додому'))])
+    choice = {'cards': [{'key': 'new1', 'names': []}]}
+    preview = accept(repo, story, run, dry_run=True, **choice)
+    assert preview['changed_scene_ids'] == [] and preview['stale_memory_scenes'] == [s1.id, s2.id]
+    result = accept(repo, story, run, **choice)
+    assert result['stale_memory_scenes'] == [s1.id, s2.id]
+    assert not memory_valid(repo, story, s1) and not memory_valid(repo, story, s2)
+
+
+@pytest.mark.req('CHARACTER-EXTRACT')
+def test_cast_change_reports_stale_memory_of_later_scenes(tmp_path):
+    # The cast of the first scene changes; the memory of the second scene is built over the first one's memory, so the
+    # invalidation stales it too.
+    repo, story, (s1, s2, s3) = book(tmp_path)
+    story = with_cards(repo, story, 'Марко')
+    chained_memory(repo, story, s1, s2)
+    assert memory_valid(repo, story, s1) and memory_valid(repo, story, s2)
+    run = finished_run(repo, story, [repo.get_scene(s.id) for s in (s1, s2, s3)], casts=[cast(s1, 'c0')])
+    preview = accept(repo, story, run, dry_run=True, casts=[s1.id])
+    assert preview['changed_scene_ids'] == [s1.id] and preview['stale_memory_scenes'] == [s1.id, s2.id]
+    result = accept(repo, story, run, casts=[s1.id])
+    assert result['stale_memory_scenes'] == [s1.id, s2.id]
+    assert not memory_valid(repo, story, s1) and not memory_valid(repo, story, s2)
+
+
+@pytest.mark.req('CHARACTER-EXTRACT')
+def test_new_cards_version_alone_keeps_memory_valid(tmp_path):
+    # With cards already in the book, a new version of the cards without a cast change stales no memory: the memory does
+    # not depend on the cards version.
+    repo, story, (s1, s2, s3) = book(tmp_path)
+    story = with_cards(repo, story, 'Марко')
+    chained_memory(repo, story, s1, s2)
+    run = finished_run(repo, story, [repo.get_scene(s.id) for s in (s1, s2, s3)],
+                       cards=[new_card('new1', 'Оля', quote(s1, 'Оля пішла додому'))])
+    result = accept(repo, story, run, cards=[{'key': 'new1', 'names': []}])
+    assert result['applied'] == [item('card', key='new1')] and result['stale_memory_scenes'] == []
+    assert memory_valid(repo, story, s1) and memory_valid(repo, story, s2)

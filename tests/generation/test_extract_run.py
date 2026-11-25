@@ -374,3 +374,45 @@ def test_proposal_fingerprint_stable(tmp_path):
     assert extract_run.proposal_fingerprint(body) == result['fingerprint']
     assert proposal(worker.get_run(run.id))['fingerprint'] == result['fingerprint']
     assert extract_run.proposal_fingerprint({**body, 'calls': 3}) != result['fingerprint']
+
+
+@pytest.mark.req('CHARACTER-EXTRACT')
+def test_failure_before_the_gateway_spends_nothing(tmp_path):
+    # Raised before the request reaches the gateway (here: the gateway cannot even be built): resuming again and again
+    # never spends the bound.
+    from storygen.providers.client import ProviderConfigurationError
+    repo, story, scenes = book(tmp_path, 600)
+
+    def broken(_provider):
+        raise ProviderConfigurationError('Ключ провайдера не знайдено')
+    worker = RunCoordinator(repo, gateway_factory=broken)
+    run = worker.enqueue(RunRequest(story_id=story.id, mode='character_extract', group_words=1000,
+                                    extract_plan_fingerprint=extract_plan(repo, story.id, 1000)['plan_fingerprint']), 'x')
+    for _ in range(3):
+        run = drive(worker, run.id)
+        assert (run.state, run.error) == ('failed', 'Ключ провайдера не знайдено')
+        assert run.checkpoint['phase'] == 'reading' and run.checkpoint['state']['calls'] == 0
+        assert run.checkpoint['pending'] == [[scenes[0].id]]
+        worker.resume(run.id)
+
+
+@pytest.mark.req('CHARACTER-EXTRACT')
+def test_missing_key_in_the_real_gateway_spends_nothing(tmp_path, secret_store, monkeypatch):
+    # The real gateway turns a missing key (and a budget refusal, a policy block) into a failure event before any
+    # completion is sent: the call is given back to the bound.
+    from storygen.billing.service import set_limit
+    from tests.characters.test_extract_plan import cloud_role
+    from tests.generation.test_memory_build import tariff
+    monkeypatch.delenv('OPENROUTER_API_KEY', raising=False)
+    repo, story, scenes = written_book(tmp_path, [prose(600)], memory_role=cloud_role())
+    tariff(repo)
+    set_limit(repo, 'story:' + story.id, '10', 0)
+    worker = RunCoordinator(repo)  # the production gateway factory
+    run = worker.enqueue(RunRequest(story_id=story.id, mode='character_extract', group_words=1000,
+                                    extract_plan_fingerprint=extract_plan(repo, story.id, 1000)['plan_fingerprint']), 'x')
+    for _ in range(3):
+        run = drive(worker, run.id)
+        assert run.state == 'failed' and 'Ключ провайдера не знайдено' in run.error
+        assert run.checkpoint['phase'] == 'reading' and run.checkpoint['state']['calls'] == 0
+        assert run.checkpoint['state']['skipped'] == [] and run.checkpoint['pending'] == [[scenes[0].id]]
+        worker.resume(run.id)

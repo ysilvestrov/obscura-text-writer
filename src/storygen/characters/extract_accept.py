@@ -20,6 +20,7 @@ PROPOSAL_CHANGED = 'Пропозиція змінилася; переглянь�
 NO_PROPOSAL = 'Немає неприйнятої пропозиції персонажів'
 
 SKIP_NAME_TAKEN = 'картка з таким іменем уже є'
+SKIP_NAME_OTHER_CARD = "ім'я вже має інша картка"
 SKIP_CARD_GONE = 'картки вже немає'
 SKIP_NO_NEW_NAMES = 'картка вже має ці імена'
 SKIP_PROTAGONIST_MARKED = 'позначку героя вже має картка'
@@ -143,17 +144,35 @@ def _card_payload(view, proposal, chosen_cards, chosen_updates, protagonist, mar
     from .names import card_names
     payload = [card.model_dump() for card in current]
     by_id = {card['id']: card for card in payload}
-    taken = {name_key(name) for card in current for name in card_names(card)}
-    names = {card.id: {name_key(name) for name in card_names(card)} for card in current}
+    # Who has each name: the current cards, then the cards and names accepted so far in this request. A name is never
+    # given to a second card.
+    owners = {}
+    for card in current:
+        for name in card_names(card):
+            owners.setdefault(name_key(name), set()).add(card.id)
+
+    def kept_names(owner, names, item):
+        """The names free of any other card, now owned by `owner`; a name of another card is skipped."""
+        kept, dropped = [], False
+        for name in names:
+            others = owners.get(name_key(name), set()) - {owner}
+            if others:
+                outcome.skip(item(name), SKIP_NAME_OTHER_CARD)
+                dropped = True
+            elif owner not in owners.get(name_key(name), set()):
+                owners.setdefault(name_key(name), set()).add(owner)
+                kept.append(name)
+        return kept, dropped
     new = {}
     for card in proposal['cards']:
         if card['key'] not in chosen_cards:
             continue
-        key, chosen = card['key'], chosen_cards[card['key']]
-        if name_key(card['name']) in taken:
+        key = card['key']
+        if name_key(card['name']) in owners:
             outcome.skip(_item('card', key=key), SKIP_NAME_TAKEN)
             continue
-        taken |= {name_key(name) for name in [card['name'], *chosen]}
+        owners[name_key(card['name'])] = {key}
+        chosen, _ = kept_names(key, chosen_cards[key], lambda name, key=key: _item('name', key=key, name=name))
         entries = []
         for quote in card['quotes']:  # spec 4.3: one entry per quote, available from the scene of that quote
             scene = view.scenes.get(quote['scene_id'])
@@ -174,13 +193,11 @@ def _card_payload(view, proposal, chosen_cards, chosen_updates, protagonist, mar
         if card_id not in by_id:
             outcome.skip(_item('name_update', card_id=card_id), SKIP_CARD_GONE)
             continue
-        added, seen = [], set(names[card_id])
-        for name in chosen_updates[card_id]:
-            if name_key(name) not in seen:
-                seen.add(name_key(name))
-                added.append(name)
+        added, dropped = kept_names(card_id, chosen_updates[card_id],
+                                    lambda name, card_id=card_id: _item('name', card_id=card_id, name=name))
         if not added:
-            outcome.skip(_item('name_update', card_id=card_id), SKIP_NO_NEW_NAMES)
+            if not dropped:  # a name of another card is skipped item by item above
+                outcome.skip(_item('name_update', card_id=card_id), SKIP_NO_NEW_NAMES)
             continue
         by_id[card_id]['entries'].append(_entry(markers['other_names'].format(', '.join(added))))
         outcome.apply(_item('name_update', card_id=card_id))
@@ -200,13 +217,19 @@ def _card_payload(view, proposal, chosen_cards, chosen_updates, protagonist, mar
     return (payload if changed else None), new
 
 
-def _cast_plan(view, proposal, chosen_casts, refs, outcome):
-    """({scene id: card IDs to add}, scenes with valid memory among them). A participant that is a new card not accepted
-    or a card that no longer exists is left out before `apply_cast` (which refuses unknown IDs)."""
+def _valid_memory_scenes(view) -> list[str]:
+    """Active scenes, in book order, whose memory head is valid (`memory_build._memory_valid`)."""
     from ..generation.memory_build import _memory_valid
+    scenes = sorted((s for s in view.scenes.values() if not s.trashed_at), key=lambda s: s.position)
+    return [s.id for s in scenes if s.heads.get('memory') and _memory_valid(view, s.heads['memory'], s)]
+
+
+def _cast_plan(view, proposal, chosen_casts, refs, outcome):
+    """{scene id: card IDs to add}. A participant that is a new card not accepted or a card that no longer exists is
+    left out before `apply_cast` (which refuses unknown IDs)."""
     from ..storage.scene_cast import AUTHOR_PROSE, _planned
     source = proposal['source']['scenes']
-    plan, memory = {}, []
+    plan = {}
     for item in proposal['casts']:
         scene_id = item['scene_id']
         if scene_id not in chosen_casts:
@@ -232,10 +255,7 @@ def _cast_plan(view, proposal, chosen_casts, refs, outcome):
             continue
         plan[scene_id] = missing
         outcome.apply(_item('cast', scene_id=scene_id))
-        memory_id = scene.heads.get('memory')
-        if memory_id and _memory_valid(view, memory_id, scene):
-            memory.append(scene_id)
-    return plan, memory
+    return plan
 
 
 def _accept(repo, db, story_id, request, written):
@@ -247,6 +267,7 @@ def _accept(repo, db, story_id, request, written):
     chosen_cards, chosen_updates, chosen_casts = _choice(proposal, request)
     view = repo.view_in_transaction(db, story_id)
     current = view_cards(view)
+    valid_memory = _valid_memory_scenes(view)
     outcome = _Outcome()
     payload, new = _card_payload(view, proposal, chosen_cards, chosen_updates, request.protagonist,
                                  MARKERS[story.language], current, outcome)
@@ -258,13 +279,16 @@ def _accept(repo, db, story_id, request, written):
     created = [card.id for card in saved if card.id not in before]  # new cards keep their order in the payload
     refs = {card.id: card.id for card in saved} | dict(zip(new, created))
     cast_outcome = _Outcome()
-    plan, memory = _cast_plan(view, proposal, chosen_casts, refs, cast_outcome)
+    plan = _cast_plan(view, proposal, chosen_casts, refs, cast_outcome)
     changed_scenes = apply_cast_in_transaction(repo, db, story_id, plan, 'add') if plan else []
+    # Measured, not predicted: the new cards version (the first one of a book stales all its material), a changed cast
+    # and everything downstream of the invalidation, read back from the transaction.
+    still_valid = set(_valid_memory_scenes(repo.view_in_transaction(db, story_id)))
     run.checkpoint = {**run.checkpoint, 'accepted_at': now()}
     repo.save_run_in_transaction(db, run)
     return {'applied': outcome.applied + cast_outcome.applied, 'skipped': outcome.skipped + cast_outcome.skipped,
             'changed_card_ids': changed_character_ids(current, saved), 'changed_scene_ids': changed_scenes,
-            'stale_memory_scenes': [scene_id for scene_id in memory if scene_id in changed_scenes]}
+            'stale_memory_scenes': [scene_id for scene_id in valid_memory if scene_id not in still_valid]}
 
 
 class _DryRun(Exception):

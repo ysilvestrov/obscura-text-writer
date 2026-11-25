@@ -147,8 +147,8 @@ def test_valid_response_builds_cards_cast_and_scores():
     assert result.casts == {'sc1': ['new1', 'new2'], 'sc2': ['new1', 'new3']}
     assert result.scores == {'new1': 0.7, 'new2': 0.2}
     assert result.catalogue[1].quotes[0].quote == 'Ходімо додому — вже пізно, мамо'
-    assert catalogue_text(result).splitlines()[0] == 'c1: Іванка'
-    assert catalogue_text(state(ANNA)) == 'c1: Анна (інші імена: Анничка)'
+    assert catalogue_text(result, 'uk').splitlines()[0] == 'c1: Іванка'
+    assert catalogue_text(state(ANNA), 'uk') == 'c1: Анна (інші імена: Анничка)'
     assert short_ids(result, ['sc2']) == ({'c1': 'new1', 'c2': 'new2', 'c3': 'new3'}, {'s2': 'sc2'})
 
 
@@ -231,3 +231,19 @@ def test_protagonist_sum_rounding_over_groups():
     assert st.scores['card-1'] < 1.0
     protagonist = finalize(st, {}, False)['protagonist']
     assert protagonist == {'ref': 'card-1', 'scores': [{'ref': 'card-1', 'score': 1.0}]}
+
+
+@pytest.mark.req('CHARACTER-EXTRACT')
+def test_padded_quote_is_stripped_not_rejected():
+    # The trim measures the stripped quote: a quote of 300 characters with padding passes the trim, so the schema must
+    # strip it too instead of failing the whole answer on its raw length.
+    padded = '  ' + 'a' * 300 + '\n'
+    parsed = parse_extract(json.dumps({'new_cards': [{'key': 'n1', 'name': 'Іванка', 'quotes': [padded, ' b ']}]}))
+    assert parsed.new_cards[0].quotes == ['a' * 300, 'b']
+
+
+@pytest.mark.req('CHARACTER-EXTRACT')
+def test_catalogue_labels_follow_the_story_language():
+    assert catalogue_text(state(ANNA), 'uk') == 'c1: Анна (інші імена: Анничка)'
+    assert catalogue_text(state(ANNA), 'en') == 'c1: Анна (other names: Анничка)'
+    assert (catalogue_text(state(), 'uk'), catalogue_text(state(), 'en')) == ('(порожньо)', '(empty)')

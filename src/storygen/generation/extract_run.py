@@ -9,7 +9,10 @@ checkpoint before it is sent, so the run never makes more than `calls_bound` cal
   halved; a single scene that fails again is skipped («модель не дала відповіді»).
 - A group that does not fit with the current catalogue is halved before the call; a single scene is skipped with the reason.
 - A provider or budget error, or a refusal of the model, stops the run `failed`; resuming reads the same group again
-  within the bound. A call refused before it is sent (model policy, budget) gives its count back to the bound.
+  within the bound. A call that fails before its request is sent gives its count back to the bound: an exception raised
+  before the request reaches the gateway (building the gateway, the model policy check, a context error), a budget
+  refusal or a policy block, and a failure the gateway reports before sending the completion (category `budget`,
+  `model_policy`, `configuration`: a missing key, an unavailable model, limits). A call that reached the provider counts.
 - The bound spent with groups left completes the run with a partial proposal; the rest is skipped.
 - Cancel completes the run with a partial proposal; pause leaves it `paused` with its checkpoint.
 
@@ -29,6 +32,8 @@ STAGE = 'character_extract'
 # and a refusal too — it is recorded (stages.record_refusal), and check_refusal would then block every later group of
 # the same rating before the call, so splitting or skipping would silently drop the rest of the book.
 CALL_FAILURES = frozenset({'protocol', 'empty_output', 'output_limit'})
+# Failures `OpenAIGenerationGateway.stream` reports before it sends the completion: no request reached the provider.
+UNSENT_FAILURES = frozenset({'budget', 'model_policy', 'configuration'})
 
 
 def proposal_fingerprint(body: dict) -> str:
@@ -148,24 +153,27 @@ def _cost_nanos(attempt, per_call_usd) -> int:
     return money(per_call_usd) if per_call_usd is not None else 0
 
 
-def _unsent(exc) -> bool:
-    """A model policy block or a budget refusal: raised before the request is sent, so it spends no call."""
+def _unsent(exc, gateway) -> bool:
+    """Raised before the request is sent, so it spends no call: before the request reached the gateway, or a model
+    policy block or a budget refusal."""
     from ..billing.models import BudgetError
     from ..providers.policy import ModelPolicyBlocked
-    return isinstance(exc, (ModelPolicyBlocked, BudgetError))
+    return gateway is None or not gateway.reached or isinstance(exc, (ModelPolicyBlocked, BudgetError))
 
 
 class _Announced:
     """The gateway that announces `stage_started` when the request reaches it: a call refused before (a model policy
-    block in execute_stage) is not shown as started."""
+    block in execute_stage) is not shown as started. `reached` tells whether it did."""
 
     def __init__(self, gateway, announce):
         self._gateway, self._announce = gateway, announce
+        self.reached = False
 
     def __getattr__(self, name):  # bind_accounting, accounting, retirement of the wrapped gateway
         return getattr(self._gateway, name)
 
     def stream(self, context, cancel):
+        self.reached = True
         self._announce()
         yield from self._gateway.stream(context, cancel)
 
@@ -242,15 +250,16 @@ def execute(coordinator, run_id: str) -> None:
         started_data = {'stage': STAGE, 'scene_id': ids[0], 'scene_ids': ids, 'model': built.settings.provider.model,
                         'provider': built.settings.provider.provider, 'estimated_tokens': built.estimated_tokens,
                         'streaming': False}
-        gateway = _Announced(coordinator.gateway_factory(built.settings.provider),
-                             lambda: coordinator.event(run_id, 'stage_started', started_data))
+        gateway = None
         try:
+            gateway = _Announced(coordinator.gateway_factory(built.settings.provider),
+                                 lambda: coordinator.event(run_id, 'stage_started', started_data))
             attempt = execute_stage(repo, ids[0], STAGE, built, gateway, coordinator.cancel_event, lambda _text: None,
                                     run_id, task_cursor=run.cursor)
         except ValidationError:
             raise
         except ValueError as exc:  # a budget refusal, a model policy block: shown as is; resuming reads the group again
-            if _unsent(exc):  # nothing was sent: the call is given back to the bound
+            if _unsent(exc, gateway):  # nothing was sent: the call is given back to the bound
                 state.calls -= 1
                 checkpoint['state'] = state.model_dump(mode='json')
             with coordinator.condition:
@@ -259,7 +268,9 @@ def execute(coordinator, run_id: str) -> None:
                 if _cancelling(coordinator, current):
                     return _close(coordinator, current, 'cancelled', True)
                 return _finish(coordinator, current, 'failed', str(exc))
-        checkpoint['cost_nanos'] += _cost_nanos(attempt, checkpoint['per_call_usd'])
+        unsent = attempt.state == 'failed' and (attempt.context.get('extract_failure') or {}).get('category') in UNSENT_FAILURES
+        if not unsent:  # a completion refused before sending costs nothing
+            checkpoint['cost_nanos'] += _cost_nanos(attempt, checkpoint['per_call_usd'])
         with coordinator.condition:
             current = coordinator.get_run(run_id)
             coordinator.event(run_id, 'stage_finished', {'attempt_id': attempt.id, 'state': attempt.state,
@@ -281,6 +292,9 @@ def execute(coordinator, run_id: str) -> None:
                 else:
                     _skip(checkpoint, state, ids, SKIP_NO_ANSWER)
             else:  # spec 3.7: a provider or network error, a refusal: the run stops and can be resumed
+                if unsent:
+                    state.calls -= 1  # the gateway refused before sending the completion: the call is given back
+                    checkpoint['state'] = state.model_dump(mode='json')
                 coordinator._save(current)
                 return _finish(coordinator, current, 'failed', attempt.error)
             coordinator._save(current)

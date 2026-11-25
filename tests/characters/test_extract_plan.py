@@ -205,3 +205,42 @@ def test_request_validators():
     with pytest.raises(ValueError):
         RunRequest(story_id='s', mode='character_extract', group_words=20001)
     assert RunRequest(story_id='s', mode='character_extract', group_words=1000).group_words == 1000
+
+
+def reading_run(repo, story, calls, bound, per_call_usd):
+    """A paused `character_extract` run in phase `reading` with `calls` of `bound` spent, priced `per_call_usd` at start."""
+    from storygen.characters.extract import ExtractState
+    from storygen.domain import new_id
+    from storygen.run_models import Run
+    run = Run(id=new_id(), story_id=story.id, request_id='paused', state='paused', tasks=[], request=request(story),
+              checkpoint={'phase': 'reading', 'state': ExtractState(calls=calls).model_dump(mode='json'), 'pending': [],
+                          'calls_bound': bound, 'cost_nanos': 0, 'per_call_usd': per_call_usd})
+    repo.enqueue_run(run)
+    return run
+
+
+@pytest.mark.req('CHARACTER-EXTRACT')
+def test_resume_preview_prices_what_is_left_of_the_bound(tmp_path):
+    # The resume calls what is left of the bound priced at start; a fresh plan of today (cheaper tariff, other bound)
+    # must not lower the shown cost below what the run may still spend.
+    repo, story, _ = written_book(tmp_path, [WORDS] * 3, memory_role=cloud_role())
+    tariff(repo)
+    set_limit(repo, 'story:' + story.id, '10', 0)
+    run = reading_run(repo, story, calls=3, bound=20, per_call_usd='0.5000')
+    seen = pending_preview(repo, run)
+    assert seen['calls'] == 17
+    assert seen['cost'] == {'per_call_usd': '0.5000', 'total_usd': '8.5000', 'reason': None}
+    assert pending_preview(repo, reading_run(repo, story, calls=20, bound=20, per_call_usd='0.5000'))['cost'][
+        'total_usd'] == '0.0000'
+
+
+@pytest.mark.req('CHARACTER-EXTRACT')
+def test_resume_preview_without_a_start_price_keeps_the_reason(tmp_path):
+    # No tariff at start (a cloud model without a stored price): no USD, and the reason of the price stays visible.
+    repo, story, _ = written_book(tmp_path, [WORDS], memory_role=cloud_role())
+    set_limit(repo, 'story:' + story.id, '10', 0)
+    seen = pending_preview(repo, reading_run(repo, story, calls=1, bound=4, per_call_usd=None))
+    assert seen['calls'] == 3 and seen['cost']['total_usd'] is None and seen['cost']['reason']
+    repo, story, _ = written_book(tmp_path / 'local', [WORDS], memory_role=local_role())
+    local = pending_preview(repo, reading_run(repo, story, calls=1, bound=4, per_call_usd=None))
+    assert local['calls'] == 3 and local['cost'] == {'per_call_usd': None, 'total_usd': None, 'reason': None}

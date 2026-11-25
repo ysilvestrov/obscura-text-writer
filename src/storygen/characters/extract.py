@@ -130,7 +130,7 @@ def plan_groups(scenes: list[tuple[str, int, int]], group_words: int,
 # ---------------------------------------------------------------- response
 
 _Name = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=80)]
-_Quote = Annotated[str, StringConstraints(min_length=1, max_length=300)]
+_Quote = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=300)]  # trimmed as `_fitting` measures
 
 
 class _Part(BaseModel):
@@ -276,12 +276,17 @@ def _others(card: CatalogueCard) -> list[str]:
     return result
 
 
-def catalogue_text(state: ExtractState) -> str:
+CATALOGUE_LABELS = {'uk': ('інші імена', '(порожньо)'), 'en': ('other names', '(empty)')}
+
+
+def catalogue_text(state: ExtractState, language: str) -> str:
+    """The catalogue the model sees, its labels in the language of the book (Ukrainian for an unknown one)."""
+    others_label, empty = CATALOGUE_LABELS.get(language, CATALOGUE_LABELS['uk'])
     lines = []
     for number, card in enumerate(state.catalogue, 1):
         others = _others(card)
-        lines.append(f'c{number}: {card.name}' + (f" (інші імена: {', '.join(others)})" if others else ''))
-    return '\n'.join(lines) or '(порожньо)'
+        lines.append(f'c{number}: {card.name}' + (f" ({others_label}: {', '.join(others)})" if others else ''))
+    return '\n'.join(lines) or empty
 
 
 def short_ids(state: ExtractState, group_scene_ids: list[str]) -> tuple[dict[str, str], dict[str, str]]:

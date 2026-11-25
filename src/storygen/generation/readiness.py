@@ -230,7 +230,15 @@ def pending_preview(repo,run):
         result=readiness(repo,run.request)
         checkpoint=run.checkpoint or {}
         if checkpoint.get('phase')=='reading':  # a resume calls at most what is left of the bound priced at start
-            result['calls']=max(checkpoint['calls_bound']-checkpoint['state']['calls'],0)
+            from .audit_cost import usd
+            from ..billing.models import money
+            left=max(checkpoint['calls_bound']-checkpoint['state']['calls'],0)
+            per_call=checkpoint.get('per_call_usd')
+            # The price the run counts unsettled calls at, not today's fresh plan; local or no price at start: no USD,
+            # and the price reason of the fresh plan stays.
+            total=usd(money(per_call)*left) if per_call is not None else None
+            result.update(calls=left,cost={'per_call_usd':per_call,'total_usd':total,
+                                           'reason':None if total is not None else result['cost']['reason']})
         return result
     if run.request.mode=='audit':
         from .audit_run import readiness

@@ -152,3 +152,15 @@ def test_tools_list_includes_accept_character_proposal(tmp_path):
     assert len(TOOLS) == 30 and 'accept_character_proposal' in TOOLS and 'accept_character_proposal' in tools
     assert {'run_id', 'fingerprint', 'cards', 'name_updates', 'protagonist', 'casts', 'confirm'} <= set(
         tools['accept_character_proposal'].input_schema['properties'])
+
+
+@pytest.mark.req('CHARACTER-EXTRACT')
+def test_get_run_calls_made_after_done(tmp_path):
+    # After phase `done` the running state is gone from the checkpoint: the calls come from the published proposal, also
+    # once a newer run supersedes the proposal.
+    app, http, server, story, scenes = setup(tmp_path)
+    run = finished_run(app.state.repo, story, scenes, calls=3)
+    assert ok(call(server, 'get_run', {'run_id': run.id}))['character_extract']['calls_made'] == 3
+    finished_run(app.state.repo, story, scenes, request_id='extract-2')
+    block = ok(call(server, 'get_run', {'run_id': run.id}))['character_extract']
+    assert block['proposal'] is None and block['calls_made'] == 3

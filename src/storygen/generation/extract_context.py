@@ -50,7 +50,7 @@ def build_extract_context(repo, story_id: str, settings: RoleSettings, state: Ex
     from ..token_budget.service import token_estimate
     story = repo.get_story(story_id)
     short_by_scene = {scene_id: short for short, scene_id in scene_numbers.items()}
-    catalogue = RESERVE_FILLERS.get(story.language, 'a') * reserve_chars if reserve_chars is not None else catalogue_text(state)
+    catalogue = RESERVE_FILLERS.get(story.language, 'a') * reserve_chars if reserve_chars is not None else catalogue_text(state, story.language)
     system = load_prompt('character_extract_v1', story.language)
     user = _user_text(story.language, catalogue, group, short_by_scene)
     body = generation_request('character_extract', settings, system, user, {})

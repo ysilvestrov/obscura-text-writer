@@ -1316,7 +1316,9 @@ def build_server(http: httpx.Client | None, client_name: str | None = None, *, c
             found = send('GET', f"/api/stories/{identifier(run['story_id'])}/character-proposal")
             if found.status_code == 200 and found.json().get('run_id') == run['id']:
                 proposal = found.json().get('proposal')
-            result['character_extract'] = {'phase': checkpoint.get('phase'), 'calls_made': (checkpoint.get('state') or {}).get('calls'),
+            # Phase `done` keeps no running state: the calls are those of the published proposal.
+            calls_made = (checkpoint.get('state') or checkpoint.get('proposal') or {}).get('calls')
+            result['character_extract'] = {'phase': checkpoint.get('phase'), 'calls_made': calls_made,
                                            'groups_pending': len(checkpoint['pending']) if 'pending' in checkpoint else None,
                                            'proposal': proposal}
         if mode == 'publication_suggest':

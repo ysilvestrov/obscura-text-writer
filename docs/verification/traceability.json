@@ -3942,7 +3942,7 @@
     {
       "id": "CHARACTER-EXTRACT-S01",
       "requirement": "CHARACTER-EXTRACT",
-      "scope": "Перегляд пошуку персонажів: групи, кількість викликів і межа вартості (хмарна з тарифом, локальна), сцени без прози, відсутня роль «Пам'ять», ліміт бюджету, картки, герой і неприйнята пропозиція; маршрут перегляду нічого не пише; виконавець — роль «Пам'ять». Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "scope": "Перегляд пошуку персонажів: групи, кількість викликів і межа вартості (хмарна з тарифом, локальна), сцени без прози, відсутня роль «Пам'ять», ліміт бюджету, картки, герой і неприйнята пропозиція; маршрут перегляду нічого не пише; виконавець — роль «Пам'ять»; ціна продовження — залишок межі за ціною на старті. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
       "tests": [
         "tests/characters/test_extract_plan.py::test_preview_counts_groups_calls_cost",
         "tests/characters/test_extract_plan.py::test_local_preview_is_free_and_cloud_needs_a_limit",
@@ -3951,7 +3951,9 @@
         "tests/characters/test_extract_plan.py::test_preview_reports_cards_protagonist_and_pending_proposal",
         "tests/web/test_character_extract_routes.py::test_preview_route_writes_nothing",
         "tests/generation/test_extract_context.py::test_extractor_borrows_memory_role",
-        "tests/generation/test_extract_context.py::test_no_memory_role_is_none"
+        "tests/generation/test_extract_context.py::test_no_memory_role_is_none",
+        "tests/characters/test_extract_plan.py::test_resume_preview_prices_what_is_left_of_the_bound",
+        "tests/characters/test_extract_plan.py::test_resume_preview_without_a_start_price_keeps_the_reason"
       ]
     },
     {
@@ -3972,7 +3974,7 @@
     {
       "id": "CHARACTER-EXTRACT-S03",
       "requirement": "CHARACTER-EXTRACT",
-      "scope": "Групи з цілих сцен до бюджету, сцена понад бюджет, поділ і пропуск групи, що не вміщується, резерв каталогу, реалістичний український контекст, ліміт виходу в межах контексту, мова промпту, поділ і пропуск без виклику під час запуску. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "scope": "Групи з цілих сцен до бюджету, сцена понад бюджет, поділ і пропуск групи, що не вміщується, резерв каталогу, реалістичний український контекст, ліміт виходу в межах контексту, мова промпту, поділ і пропуск без виклику під час запуску; підписи каталогу мовою твору. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
       "tests": [
         "tests/characters/test_extract.py::test_groups_whole_scenes_to_budget",
         "tests/characters/test_extract.py::test_oversized_scene_own_group",
@@ -3984,7 +3986,8 @@
         "tests/generation/test_extract_context.py::test_output_limit_capped_by_context",
         "tests/generation/test_extract_context.py::test_unfit_input_returns_reason",
         "tests/generation/test_extract_context.py::test_reserve_chars_replaces_the_catalogue",
-        "tests/generation/test_extract_run.py::test_unfit_group_splits_then_skips_without_call"
+        "tests/generation/test_extract_run.py::test_unfit_group_splits_then_skips_without_call",
+        "tests/characters/test_extract.py::test_catalogue_labels_follow_the_story_language"
       ]
     },
     {
@@ -4006,7 +4009,8 @@
         "tests/characters/test_extract.py::test_protagonist_threshold_and_author_marker",
         "tests/characters/test_extract.py::test_protagonist_sum_rounding_over_groups",
         "tests/characters/test_extract.py::test_cast_set_vs_add_and_ineligible",
-        "tests/characters/test_extract.py::test_finalize_cards_name_updates_and_skipped"
+        "tests/characters/test_extract.py::test_finalize_cards_name_updates_and_skipped",
+        "tests/characters/test_extract.py::test_padded_quote_is_stripped_not_rejected"
       ]
     },
     {
@@ -4020,7 +4024,7 @@
     {
       "id": "CHARACTER-EXTRACT-S06",
       "requirement": "CHARACTER-EXTRACT",
-      "scope": "Повтор, поділ і пропуск за збою відповіді (порожня, обрізана, невалідна), відмова моделі й помилка провайдера зупиняють запуск failed, виклик, відхилений до надсилання, не витрачає запас, межа викликів і часткова пропозиція за вичерпання, перервана спроба зараховується; етап розбирає відповідь у спробу. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "scope": "Повтор, поділ і пропуск за збою відповіді (порожня, обрізана, невалідна), відмова моделі й помилка провайдера зупиняють запуск failed, виклик, відхилений до надсилання (також до шлюзу й без ключа в справжньому шлюзі), не витрачає запас, межа викликів і часткова пропозиція за вичерпання, перервана спроба зараховується; етап розбирає відповідь у спробу. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
       "tests": [
         "tests/generation/test_extract_run.py::test_retry_then_split_then_skip",
         "tests/generation/test_extract_run.py::test_bound_exhausted_completes_partial",
@@ -4032,7 +4036,9 @@
         "tests/generation/test_extract_context.py::test_stage_parses_response_into_attempt",
         "tests/generation/test_extract_context.py::test_unparseable_response_fails_attempt",
         "tests/generation/test_extract_context.py::test_empty_stop_fails_attempt",
-        "tests/generation/test_extract_context.py::test_truncated_output_fails_attempt"
+        "tests/generation/test_extract_context.py::test_truncated_output_fails_attempt",
+        "tests/generation/test_extract_run.py::test_failure_before_the_gateway_spends_nothing",
+        "tests/generation/test_extract_run.py::test_missing_key_in_the_real_gateway_spends_nothing"
       ]
     },
     {
@@ -4052,7 +4058,7 @@
     {
       "id": "CHARACTER-EXTRACT-S08",
       "requirement": "CHARACTER-EXTRACT",
-      "scope": "Походження model і цитати з прози в картках (без джерел, джерело-проза, правка прози не застарює картки, чужа й незавершена проза, цілісність, старі версії, джерело плану поряд з прозою, імпорт задуму не робить прозу залежністю); поштучне прийняття, цитата окремою відомістю з доступністю від сцени, ім'я вже зайняте, позначка героя автора, англійські позначки, друге прийняття, новіший запуск, хибний відбиток, невідомі пункти, дослівна перевірка при наступному збереженні; маршрути пропозиції й конфлікти. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "scope": "Походження model і цитати з прози в картках (без джерел, джерело-проза, правка прози не застарює картки, чужа й незавершена проза, цілісність, старі версії, джерело плану поряд з прозою, імпорт задуму не робить прозу залежністю); поштучне прийняття, цитата окремою відомістю з доступністю від сцени, ім'я вже зайняте, ім'я іншої картки, позначка героя автора, походження «Від моделі» в редакторі, англійські позначки, друге прийняття, новіший запуск, хибний відбиток, невідомі пункти, дослівна перевірка при наступному збереженні; маршрути пропозиції й конфлікти. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
       "tests": [
         "tests/characters/test_model_origin.py::test_model_entry_needs_no_sources",
         "tests/characters/test_model_origin.py::test_prose_quote_source_saves",
@@ -4073,13 +4079,15 @@
         "tests/characters/test_extract_accept.py::test_unknown_items_are_refused",
         "tests/characters/test_extract_accept.py::test_saved_cards_pass_raw_quote_check_on_next_save",
         "tests/web/test_character_extract_routes.py::test_proposal_routes_preview_accept_and_conflicts",
-        "tests/authoring/test_blueprints.py::test_blueprint_prose_source_is_not_a_dependency"
+        "tests/authoring/test_blueprints.py::test_blueprint_prose_source_is_not_a_dependency",
+        "tests/characters/test_extract_accept.py::test_name_of_another_card_is_skipped",
+        "tests/characters/test_model_origin.py::test_card_editor_shows_the_model_origin"
       ]
     },
     {
       "id": "CHARACTER-EXTRACT-S09",
       "requirement": "CHARACTER-EXTRACT",
-      "scope": "Склад: вилучена наявна й не прийнята нова картка виходять із пункту, змінена проза, проза не manual, режим add дописує лише відсутніх, set над непорожнім як add, перегляд dry_run нічого не пише й рахує застарілу пам'ять. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "scope": "Склад: вилучена наявна й не прийнята нова картка виходять із пункту, змінена проза, проза не manual, режим add дописує лише відсутніх, set над непорожнім як add, перегляд dry_run нічого не пише й рахує застарілу пам'ять (перша версія карток, пізніші сцени, нова версія без зміни складу). Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
       "tests": [
         "tests/characters/test_extract_accept.py::test_removed_existing_card_dropped_from_cast",
         "tests/characters/test_extract_accept.py::test_rejected_new_card_dropped_from_cast",
@@ -4087,13 +4095,16 @@
         "tests/characters/test_extract_accept.py::test_cast_skipped_when_prose_head_is_not_author_text",
         "tests/characters/test_extract_accept.py::test_add_mode_appends_missing_only",
         "tests/characters/test_extract_accept.py::test_set_on_nonempty_applies_as_add",
-        "tests/characters/test_extract_accept.py::test_dry_run_writes_nothing_counts_stale_memory"
+        "tests/characters/test_extract_accept.py::test_dry_run_writes_nothing_counts_stale_memory",
+        "tests/characters/test_extract_accept.py::test_first_cards_of_the_book_report_all_stale_memory",
+        "tests/characters/test_extract_accept.py::test_cast_change_reports_stale_memory_of_later_scenes",
+        "tests/characters/test_extract_accept.py::test_new_cards_version_alone_keeps_memory_valid"
       ]
     },
     {
       "id": "CHARACTER-EXTRACT-S10",
       "requirement": "CHARACTER-EXTRACT",
-      "scope": "MCP: start_run(character_extract) — перегляд, запуск з відбитком, відмова без відбитка чи зі scene_id, режим «пише чат», серверна вимога відбитка від моста; get_run з пропозицією; accept_character_proposal — перегляд, запис, хибний відбиток; список інструментів. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "scope": "MCP: start_run(character_extract) — перегляд, запуск з відбитком, відмова без відбитка чи зі scene_id, режим «пише чат», серверна вимога відбитка від моста; get_run з пропозицією й calls_made після done; accept_character_proposal — перегляд, запис, хибний відбиток; список інструментів. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
       "tests": [
         "tests/mcp/test_bridge_character_extract.py::test_start_run_preview_then_confirm",
         "tests/mcp/test_bridge_character_extract.py::test_confirm_without_fingerprint_refused",
@@ -4103,7 +4114,8 @@
         "tests/mcp/test_bridge_character_extract.py::test_get_run_reports_proposal",
         "tests/mcp/test_bridge_character_extract.py::test_accept_tool_preview_then_confirm",
         "tests/mcp/test_bridge_character_extract.py::test_accept_tool_wrong_fingerprint_is_refused",
-        "tests/mcp/test_bridge_character_extract.py::test_tools_list_includes_accept_character_proposal"
+        "tests/mcp/test_bridge_character_extract.py::test_tools_list_includes_accept_character_proposal",
+        "tests/mcp/test_bridge_character_extract.py::test_get_run_calls_made_after_done"
       ]
     },
     {
