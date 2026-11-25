@@ -90,6 +90,14 @@ def test_source_drift_refuses_the_whole_bundle(tmp_path, old, new):
 
 
 @pytest.mark.req('CODEX-SKILLS')
+def test_unknown_extra_skill_folder_changes_inventory(tmp_path):
+    source = copy_source(tmp_path)
+    shutil.copytree(source/'skills/revise', source/'skills/unknown-skill')
+    with pytest.raises(GenerationError, match='source_skill_inventory_changed'):
+        generate_skills(source)
+
+
+@pytest.mark.req('CODEX-SKILLS')
 def test_external_reference_is_rejected(tmp_path):
     source = copy_source(tmp_path)
     skill = source/'skills/start-story/SKILL.md'
