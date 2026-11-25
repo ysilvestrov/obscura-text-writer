@@ -52,9 +52,11 @@ Show one table for consent, naming every affected scene by its title from `get_s
 - the plan preamble, if it holds the fact (`update_plan_preamble`);
 - character cards: ready-made edits for the author to make on the «Персонажі» page, because the server does not change cards;
 - the series bible, as its own row (§8);
-- **follow-up writes:** briefs saved again for scenes whose previous scene changed, and new memory for later scenes whose memory carry fails (§7). In an `obscura` story, note that these are paid runs with their own consent.
+- **follow-up writes**, as a row of the table itself, not a note below it: briefs (and drafts) saved again for scenes whose previous scene changed, and new memory for later scenes whose memory carry fails (§7). In an `obscura` story, note that these are paid runs with their own consent.
 
 Before consent, warn: unreviewed point edits of the editor in the affected scenes will become invalid.
+
+In an `obscura` story, or with an editor in `patches`/`diff`, the text edits are made by hand (§9). End the table message by asking the author to say «готово» once those edits are in, and say that until then the memory of the affected scenes is stale.
 
 Show any open question in the same message as the table; do not hold the table back.
 
