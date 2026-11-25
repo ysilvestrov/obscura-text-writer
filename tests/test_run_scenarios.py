@@ -10,6 +10,7 @@ from run_scenarios import (author_asked, author_problems, bible_problems, creati
                            pipeline_problems,
                            publish_problems,
                            settings_problems, verdict)
+from revise_setup import NEW_STEM, OLD_STEM, fixture_text  # noqa: E402
 from scripts.skills_stand import Result  # noqa: E402
 
 CREATE = [('create_story', {}), ('get_templates', {}), ('import_plan_and_characters', {}), ('get_story', {})]
@@ -184,3 +185,11 @@ def test_publish_outcome_needs_a_saved_cover_and_a_successful_export():
     assert outcome_problems({'cover': None}, calls, [('export_book', 'Obscura відповіла 422')]) == \
         ['обкладинку не збережено в картці', 'жоден експорт не вдався']
     assert outcome_problems({'cover': {'id': 'c1'}}, calls + calls, [('export_book', '422')]) == []
+
+
+@pytest.mark.req('CLAUDE-SKILLS')
+def test_revise_fixture_has_old_city_in_plan_and_both_scenes():
+    for name in ('plan.md', 'prose-1.md', 'prose-2.md'):
+        assert OLD_STEM in fixture_text(name)
+        assert NEW_STEM not in fixture_text(name)
+    assert sum(1 for line in fixture_text('plan.md').splitlines() if line.startswith('Локація:') and OLD_STEM in line) == 2
