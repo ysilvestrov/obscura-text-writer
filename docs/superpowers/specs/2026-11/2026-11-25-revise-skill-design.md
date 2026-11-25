@@ -1,7 +1,7 @@
 # R-40, пакет 1: скіл `revise` — правка вже написаного твору з чату
 
 Дата: 2026-11-25
-Статус: чекає на затвердження
+Статус: затверджено 2026-11-25
 Spec-review: codex/gpt-6.1-sol @ e523ba2 (author: claude) — 5 findings: 5 fixed, 0 rejected
 
 GitHub [#203](https://github.com/ysilvestrov/obscura-text-writer/issues/203). Беклог: R-40. Пакет 2 (переписування Obscura з чату в режимі «obscura») — окрема специфікація після цього пакета.
