@@ -81,6 +81,16 @@ def audit_preview(story_id: str,body: AuditPreview,request: Request):
     return request.app.state.coordinator.readiness(story_id,body.scene_id,operation=operation)['operations'][operation]
 
 
+@router.get('/api/stories/{story_id}/memory-build')
+def memory_build(story_id: str,request: Request):
+    # R-48 design §5: read-only; the scene «Побудувати пам'ять» starts from and how many scenes the run covers.
+    from ..generation.memory_build import memory_build_target
+    repo=request.app.state.coordinator.repo
+    repo.get_story(story_id)
+    scene_id,count=memory_build_target(repo.context_view(story_id))
+    return {'scene_id':scene_id,'count':count}
+
+
 @router.post('/api/stories/{story_id}/prepare')
 def prepare(story_id: str,body: Prepare,request: Request):
     return request.app.state.coordinator.enqueue(RunRequest(story_id=story_id,mode='prepare'),body.request_id)

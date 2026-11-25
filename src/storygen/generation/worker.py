@@ -172,10 +172,14 @@ class RunCoordinator:
                         request.audit_plan_fingerprint!=readiness.get('plan_fingerprint'):
                     from .audit_run import PLAN_CHANGED
                     raise RevisionConflict(PLAN_CHANGED)  # the author saw another plan: nothing is queued or paid
+                if request.mode=='rebuild_memory' and request.memory_plan_fingerprint is not None and \
+                        request.memory_plan_fingerprint!=readiness.get('plan_fingerprint'):
+                    from .memory_build import MEMORY_PLAN_CHANGED
+                    raise RevisionConflict(MEMORY_PLAN_CHANGED)
             telemetry={'roles':readiness.get('roles',{}),'calls':readiness.get('calls')} if readiness is not None else None
             if telemetry is not None and readiness.get('evaluator'):
                 telemetry['evaluator']=readiness['evaluator']
-            if telemetry is not None and request.mode=='audit':
+            if telemetry is not None and request.mode in {'audit','rebuild_memory'}:
                 telemetry['cost_bound_usd']=(readiness.get('cost') or {}).get('total_usd')
                 if request.audit_scope=='story':
                     telemetry['scenes']=readiness.get('invalid_scenes')

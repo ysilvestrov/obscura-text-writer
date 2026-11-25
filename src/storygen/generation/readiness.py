@@ -86,6 +86,11 @@ def preview(repo, request, view=None):
     result={'ready':False,'reason':None,'roles':roles,'calls':len(stages),'evaluator':None,'warnings':[]}
     # Information only: auto mode never waits for confirmation, so the count changes neither ready nor reason.
     if request.mode in {'scene','remaining'}:result['unconfirmed_core_scenes']=unconfirmed_core_scenes(view,scenes)
+    if request.mode=='rebuild_memory':
+        # R-48 design §5: the build preview — cost, unfit scenes, the plan fingerprint (only when ready), the series hint.
+        from . import memory_build
+        result.update(cost=memory_build.memory_cost(repo,None,[]),unfit_scenes=[],plan_fingerprint=None,
+                      series_refresh=memory_build.series_refresh(repo,story))
     try:
         if request.mode!='prepare' and scene is None:
             raise ValueError('Оберіть сцену')
@@ -155,6 +160,9 @@ def preview(repo, request, view=None):
                     prose=view.peek_version(target.heads['prose']) if target.heads.get('prose') else None
                     if not prose or not prose.complete or prose.kind not in {'edited','manual'}:
                         raise ValueError(f'Спершу виберіть завершену прозу сцени {target.position+1}')
+                # Priced before the refusals below, so a run refused for its budget still shows what it may cost.
+                result['cost']=memory_build.memory_cost(repo,settings['memory'],[len(view.read_text(t.heads['prose'])) for t in targets])
+                result['unfit_scenes']=memory_build.unfit_scenes(repo,view,settings['memory'],[t.id for t in targets])
             # Every target scene passes the rating guard before the run starts, not only the first.
             from ..rating.guard import enforce_rating
             rated_story=view.get_story(story.id)
@@ -191,6 +199,8 @@ def preview(repo, request, view=None):
         result['ready']=True
         if result.get('memory_review'):
             result.update(ready=False,can_confirm=True,reason='Попередня пам’ять потребує авторського підтвердження')
+        if request.mode=='rebuild_memory' and result['ready']:
+            result['plan_fingerprint']=memory_build.plan_fingerprint(scene.id,targets,settings['memory'])
     except (ValueError,KeyError) as exc:
         result['reason']=str(exc) if isinstance(exc,ValueError) else 'Матеріал не знайдено; оновіть сторінку'
         from ..memory.previous import MergeRequired
