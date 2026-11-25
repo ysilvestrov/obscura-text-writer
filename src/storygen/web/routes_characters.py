@@ -1,7 +1,7 @@
 from fastapi import APIRouter,Request
 from pydantic import Field
 from ..domain import DomainModel
-from ..characters.service import read_character_material,save_character_material,preview_character_material
+from ..characters.service import read_character_material,save_character_material,preview_character_material,check_character_material
 
 router=APIRouter()
 
@@ -24,6 +24,12 @@ def read(story_id: str,request: Request,scene_id: str | None=None):
 @router.put('/api/stories/{story_id}/characters')
 def save(story_id: str,body: CharacterChange,request: Request):
     return save_character_material(request.app.state.repo,story_id,body.cards,body.expected_revision)
+
+
+@router.post('/api/stories/{story_id}/characters/check')
+def check(story_id: str,body: CharacterChange,request: Request):
+    """R-52: the save checks without a write, for the MCP preview of `update_characters`."""
+    return check_character_material(request.app.state.repo,story_id,body.cards,body.expected_revision)
 
 
 @router.post('/api/stories/{story_id}/characters/preview')

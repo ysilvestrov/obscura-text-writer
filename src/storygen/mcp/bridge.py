@@ -27,6 +27,7 @@ from .. import skill_bundles
 from ..characters.extract_plan import EXTRACT_PLAN_CHANGED
 from ..generation.memory_build import MEMORY_PLAN_CHANGED
 from ..publication_models import PublicationData
+from . import character_changes
 from .edition import edition_refusal
 from .launch import DEFAULT_URL, Connection, ObscuraUnavailable
 from ..roles import ROLES
@@ -37,7 +38,7 @@ TOOLS = ('list_stories', 'get_story', 'get_scene_context', 'get_scene_text', 'im
          'create_story', 'get_templates', 'update_story', 'update_plan_preamble', 'add_scene', 'update_scene', 'open_ghost_mode',
          'get_publication', 'update_publication', 'add_signature', 'upload_cover', 'generate_cover', 'export_book',
          'get_settings', 'update_settings', 'apply_role_preset', 'get_stage_task', 'save_stage_result', 'start_run', 'get_run', 'get_guide',
-         'import_manuscript', 'accept_character_proposal')
+         'import_manuscript', 'get_characters', 'update_characters', 'accept_character_proposal')
 MATERIALS = ('plan', 'brief', 'draft', 'prose', 'memory')
 STAGES = ('brief', 'edit', 'memory')
 RUN_ACTIONS = ('brief', 'draft', 'edit', 'memory', 'publication_suggest', 'audit', 'rebuild_memory', 'character_extract')
@@ -94,6 +95,8 @@ INSTRUCTIONS = ('Obscura — локальний редактор історій.
                 '→ get_story. План сцени переписуйте лише поверх прочитаного: plan_version_id з get_scene_text(material=plan). '
                 'Публікація: get_publication → update_publication (лише змінені поля, revision з прочитаного) → export_book. '
                 'Налаштування: get_settings → update_settings (один розділ, fingerprint з прочитаного). '
+                'Картки персонажів: get_characters → update_characters без confirm (перегляд) → показати авторові → той самий виклик '
+                'з confirm=true; залежні сцени позначає неперевіреними лише mark_unchecked=true за відповіддю автора. '
                 'Етапи brief, edit і memory: get_stage_task (інструкції й матеріал, як для моделі Obscura) → відповідь у форматі '
                 'result_format → save_stage_result з task_fingerprint; інструкції чернетки — поле instructions у get_scene_context. '
                 'Режим твору (writing_mode у get_story): «chat» — тексти пише чат; «obscura» — тексти пишуть моделі Obscura, '
@@ -474,6 +477,76 @@ def build_server(http: httpx.Client | None, client_name: str | None = None, *, c
         if not files:
             raise ToolError('Передайте план або персонажів')
         return request('POST', f'/api/stories/{identifier(story_id)}/sources', files=files)
+
+    @server.tool()
+    def get_characters(story_id: str) -> dict[str, Any]:
+        """Картки персонажів твору повністю: revision (передайте в update_characters), cards (id, name, entries з id, text,
+        availability: unclassified|timeless|from_scene, available_from_scene_id, origin, sources), scenes (id, title,
+        position — для from_scene) і warnings. Нічого не змінює й не коштує грошей."""
+        data = request('GET', f'/api/stories/{identifier(story_id)}/characters')
+        return {key: data.get(key) for key in ('story_id', 'revision', 'cards', 'scenes', 'warnings')}
+
+    def story_language(story_id: str) -> str:
+        return next((item.get('language') or 'uk' for item in request('GET', '/api/stories') if item.get('id') == story_id), 'uk')
+
+    @server.tool()
+    def update_characters(story_id: str, expected_revision: int, changes: list[dict[str, Any]], confirm: bool = False,
+                          mark_unchecked: bool | None = None) -> dict[str, Any]:
+        """Змінює картки персонажів поверх прочитаних (revision з get_characters). Грошей не коштує. changes — операції по
+        порядку: {"op": "add_character", "name", "entries"?: [{"text", "availability"?, "available_from_scene_id"?}]};
+        {"op": "rename", "character_id", "name", "keep_old_name"?: true} — старе ім'я лишається в рядку «Інше ім'я:», тож
+        плани зі старим ім'ям працюють; {"op": "set_entry", "character_id", "entry_id"?, "text"?, "availability"?,
+        "available_from_scene_id"?} — без entry_id нова відомість; {"op": "remove_entry", "character_id", "entry_id"}.
+        Картку цілком вилучає лише автор в Obscura. Без confirm нічого не записує й повертає перегляд: changes,
+        dependent_scenes, unresolved_scenes, warnings. Покажіть його авторові; запис — лише після згоди, тим самим викликом
+        з confirm=true. Якщо dependent_scenes не порожній, спитайте автора, чи позначити ці сцени неперевіреними, і
+        передайте відповідь як mark_unchecked (true чи false). Зміну, після якої ім'я в плані чи картці перестане
+        розпізнаватися (unresolved_scenes), інструмент не запише: спершу виправте плани (update_scene)."""
+        identifier(story_id)
+        if mark_unchecked is not None and not isinstance(mark_unchecked, bool):
+            raise ToolError('mark_unchecked: true або false')
+        data = request('GET', f'/api/stories/{story_id}/characters')
+        if data['revision'] != expected_revision:
+            raise ToolError(f'Obscura відповіла 409: картки чи твір змінено (revision {data["revision"]}, а не {expected_revision}) — '
+                            'прочитайте їх знову (get_characters)')
+        try:
+            # Only a rename may need the story language (a new «Інше ім'я:» line), and the story list is not free to read.
+            renames = isinstance(changes, list) and any(isinstance(c, dict) and c.get('op') == 'rename' for c in changes)
+            cards = character_changes.apply_changes(data['cards'], changes, story_language(story_id) if renames else 'uk')
+        except character_changes.ChangeError as error:
+            raise ToolError(str(error)) from error
+        body = {'expected_revision': expected_revision, 'cards': cards}
+        check = request('POST', f'/api/stories/{story_id}/characters/check', json=body)
+        titles = {scene['id']: scene['title'] for scene in data.get('scenes') or []}
+        preview = {'revision': expected_revision, 'changes': character_changes.describe(data['cards'], cards),
+                   'changed_character_ids': check['changed_character_ids'],
+                   'dependent_scenes': [{'id': id, 'title': titles.get(id, '')} for id in check['dependent_scene_ids']],
+                   'unresolved_scenes': check['unresolved_scenes'], 'warnings': check['warnings']}
+        if not confirm:
+            message = 'Покажіть зміни авторові; запис — лише після його згоди, тим самим викликом з confirm=true'
+            if check['dependent_scene_ids']:
+                message += '. Спитайте також, чи позначити залежні сцени неперевіреними (mark_unchecked)'
+            if check['unresolved_scenes']:
+                message = 'Цю зміну не буде записано: імена в unresolved_scenes перестануть розпізнаватися. Спершу виправте плани (update_scene)'
+            return preview | {'saved': False, 'message': message}
+        if check['unresolved_scenes']:
+            places = '; '.join(f'«{item["title"][:80]}»: {", ".join(item["problems"])}' for item in check['unresolved_scenes'][:5])
+            raise ToolError(f'Після зміни імена не розпізнаються: {places}. Спершу виправте плани (update_scene) або залиште старе ім’я')
+        if check['dependent_scene_ids'] and mark_unchecked is None:
+            raise ToolError('Зміна зачіпає сцени із завданням: спитайте автора, чи позначити їх неперевіреними, і передайте mark_unchecked')
+        saved = request('PUT', f'/api/stories/{story_id}/characters', json=body)
+        result = {'saved': True, 'revision': saved['revision'], 'cards': saved['cards'],
+                  'changed_character_ids': saved['changed_character_ids'], 'marked': False}
+        if mark_unchecked and saved['dependent_scene_ids']:
+            # VALID-CARDS: the invalidation takes the fingerprints of the links as they are now, so it goes after the save.
+            answer = send('POST', f'/api/stories/{story_id}/links/invalidate', json={
+                'scene_ids': saved['dependent_scene_ids'], 'reason': {'kind': 'character', 'ids': saved['changed_character_ids']}})
+            if answer.status_code >= 400:
+                result['message'] = (f'Картки збережено, але сцени не позначено (Obscura відповіла {answer.status_code}: {_detail(answer)}). '
+                                     'Щоб позначити їх, автор зберігає правку цих карток на сторінці «Персонажі» й відповідає «Так»')
+            else:
+                result['marked'] = len(answer.json().get('scene_ids') or [])
+        return result
 
     previews: dict[str, dict] = PREVIEW_STORE()
     # Tools may run concurrently: every read-modify-write of `previews` holds this lock (review M-11).
