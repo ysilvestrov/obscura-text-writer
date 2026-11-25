@@ -91,6 +91,8 @@ INSTRUCTIONS = ('Obscura — локальний редактор історій.
                 '→ get_story. План сцени переписуйте лише поверх прочитаного: plan_version_id з get_scene_text(material=plan). '
                 'Публікація: get_publication → update_publication (лише змінені поля, revision з прочитаного) → export_book. '
                 'Налаштування: get_settings → update_settings (один розділ, fingerprint з прочитаного). '
+                'Картки персонажів: get_characters → update_characters без confirm (перегляд) → показати авторові → той самий виклик '
+                'з confirm=true; залежні сцени позначає неперевіреними лише mark_unchecked=true за відповіддю автора. '
                 'Етапи brief, edit і memory: get_stage_task (інструкції й матеріал, як для моделі Obscura) → відповідь у форматі '
                 'result_format → save_stage_result з task_fingerprint; інструкції чернетки — поле instructions у get_scene_context. '
                 'Режим твору (writing_mode у get_story): «chat» — тексти пише чат; «obscura» — тексти пишуть моделі Obscura, '
