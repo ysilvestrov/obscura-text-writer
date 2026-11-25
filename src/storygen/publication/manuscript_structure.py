@@ -1,10 +1,13 @@
 """MANUSCRIPT-IMPORT: detects chapters, parts, scene separators and front matter in a paragraph sequence.
 
 Pure functions over `ManuscriptParagraph` (spec §3.3–3.5). Scene ranges are inclusive `ManuscriptParagraph.index` values of
-prose paragraphs only: chapter/part headings, the book title and separator paragraphs never fall inside a scene.
+prose paragraphs only; a scene's first paragraph can precede a chapter heading (text under a part heading is prepended to
+that part's first chapter), so a range may contain heading indices: filter by `Structure.prose_indices`. Paragraph
+`index` equals the list position (Task 1 re-indexing); `detect` keys internal sets by position and reports `index`.
 """
 import math
 import re
+from bisect import bisect_left
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import Literal
@@ -23,6 +26,7 @@ SINGLE_CHAPTER_TITLE = 'Рукопис'
 _WORD = re.compile(r"[^\W_]+(?:['’ʼ][^\W_]+)*")
 _FIRST_WORD = re.compile(r'^\s*([^\W\d_]+)')
 _ROMAN = re.compile(r'(?=[IVXLCDM])M{0,3}(?:CM|CD|D?C{0,3})(?:XC|XL|L?X{0,3})(?:IX|IV|V?I{0,3})')
+_CYRILLIC_ROMAN = str.maketrans('ІХСМ', 'IXCM')
 _SEPARATOR_CHARS = set('*#—–~⁂•· \t')
 _TITLE_LEAD = ' \t.:—–-)'
 _DIALOGUE = ('—', '–', '-', '«', '„', '“', '"')
@@ -103,7 +107,7 @@ def _is_number(token: str) -> bool:
         return False
     if token.isdigit():
         return True
-    return bool(_ROMAN.fullmatch(token)) or token.casefold() in _ORDINALS
+    return bool(_ROMAN.fullmatch(token.translate(_CYRILLIC_ROMAN))) or token.casefold() in _ORDINALS
 
 
 def _marker_title(text: str, markers: Sequence[str], need_number: bool) -> str | None:
@@ -162,8 +166,11 @@ def split_points(paragraphs: Sequence[ManuscriptParagraph], start: int, end: int
     previous = 0
     for i in range(1, needed + 1):
         target = i * total / parts
-        available = range(previous + 1, count - (needed - i))
-        window = [j for j in available if abs(before[j] - target) <= WINDOW * part_length]
+        low, high = previous + 1, count - (needed - i)  # allowed boundaries: low <= j < high
+        margin = WINDOW * part_length
+        first = max(low, bisect_left(before, target - margin, low, high))
+        last = max(first, bisect_left(before, target + margin + 1e-9, first, high))
+        window = range(first, last)
 
         def rank(j: int) -> tuple[int, float]:
             if not window:
@@ -178,7 +185,11 @@ def split_points(paragraphs: Sequence[ManuscriptParagraph], start: int, end: int
                 level = 3
             return (level, abs(before[j] - target))
 
-        best = min(window or available, key=rank)
+        if window:
+            best = min(window, key=rank)
+        else:
+            at = min(max(bisect_left(before, target, low, high), low), high - 1)
+            best = min((j for j in (at - 1, at) if low <= j < high), key=rank)
         chosen.append(best)
         previous = best
     return [items[j].index for j in chosen]
@@ -190,6 +201,14 @@ def _joined(items: Sequence[ManuscriptParagraph]) -> str:
 
 def _pieces(segment: list[ManuscriptParagraph], fits: Callable[[str], bool]):
     """Splits one separator-free run of prose into (paragraphs, proposed, warnings) pieces."""
+    cache: dict[str, bool] = {}
+    raw_fits = fits
+
+    def fits(text: str) -> bool:
+        if text not in cache:
+            cache[text] = raw_fits(text)
+        return cache[text]
+
     total = sum(words(p.text) for p in segment)
     first, last = segment[0].index, segment[-1].index
 
@@ -203,14 +222,32 @@ def _pieces(segment: list[ManuscriptParagraph], fits: Callable[[str], bool]):
         return groups
 
     base = math.ceil(total / SCENE_WORD_LIMIT) if total > SCENE_WORD_LIMIT else 1
+    cap = len(segment)
     if base == 1 and fits(_joined(segment)):
         groups = [segment]
     else:
-        groups = [segment]
-        for parts in range(max(base, 2), len(segment) + 1):
-            groups = cut(parts)
-            if all(fits(_joined(g)) for g in groups):
-                break
+        # More parts only make parts smaller, so fitting is treated as monotone: double, then bisect for the minimum.
+        def ok(parts: int) -> bool:
+            return all(fits(_joined(g)) for g in cut(parts))
+
+        low = max(base, 2)
+        groups = cut(low)  # fallback when nothing fits: the plain word-count split
+        if low <= cap:
+            if ok(low):
+                pass
+            else:
+                bad, good = low, None
+                while good is None and bad < cap:
+                    step = min(bad * 2, cap)
+                    if ok(step):
+                        good = step
+                    else:
+                        bad = step
+                if good is not None:
+                    while good - bad > 1:
+                        mid = (bad + good) // 2
+                        bad, good = (bad, mid) if ok(mid) else (mid, good)
+                    groups = cut(good)
     result = []
     for number, group in enumerate(groups):
         warnings = []
@@ -273,18 +310,18 @@ def detect(paragraphs: Sequence[ManuscriptParagraph], settings: ParseSettings = 
     title_suggestion = next((paras[i].text.strip() for i in sorted(titles)), None)
     title_positions = set(titles)
     if chapters:
-        part_heads = dict(part_marks)
-        if source == 'level':
-            for i in headings:
-                if i not in chapters and paras[i].heading_level < level:
-                    part_heads.setdefault(i, paras[i].text.strip())
+        part_heads = dict(part_marks)  # parts come only from marker paragraphs
+        first_chapter = min(chapters)
+        higher = [i for i in headings if i not in chapters and i not in part_marks and paras[i].heading_level < level]             if source == 'level' else []
         if title_suggestion is None:
-            candidates = [i for i in headings if i < min(chapters) and i not in part_marks
-                          and (source == 'markers' or paras[i].heading_level < level)]
+            candidates = [i for i in (higher if source == 'level' else headings)
+                          if i < first_chapter and i not in part_marks]
             if candidates and (not part_marks or candidates[0] < min(part_marks)):
                 title_suggestion = paras[candidates[0]].text.strip()
                 title_positions.add(candidates[0])
-                part_heads.pop(candidates[0], None)
+        for i in higher:  # a shallower non-marker heading is itself a chapter boundary
+            if i not in title_positions:
+                chapters[i] = paras[i].text.strip()
 
     parts: list[tuple[int, str]] = []
     dropped: list[tuple[int, str]] = []
@@ -303,10 +340,13 @@ def detect(paragraphs: Sequence[ManuscriptParagraph], settings: ParseSettings = 
                 part_index = len(parts) - 1
             else:
                 dropped.append((p.index, part_heads[i]))
-            current = _Section('loose', '', part_index, [])
+            current = _Section('loose', part_heads[i], part_index, [])
             sections.append(current)
         elif i in chapters:
-            current = _Section('chapter', chapters[i], part_index, [])
+            items = []
+            if current.kind == 'loose':  # text between a part heading and its first chapter opens that chapter
+                items, current.items = current.items, []
+            current = _Section('chapter', chapters[i], part_index, items)
             sections.append(current)
         elif i in separators:
             current.items.append(None)
@@ -327,11 +367,11 @@ def detect(paragraphs: Sequence[ManuscriptParagraph], settings: ParseSettings = 
                 segments[-1].append(item)
         segments = [s for s in segments if s]
         short_front = section.kind == 'front' and sum(words(p.text) for s in segments for p in s) <= PROLOGUE_MIN_WORDS
-        if section.kind == 'loose' or short_front:
+        if short_front:
             front_matter.extend(p.index for s in segments for p in s)
             continue
         pieces = [piece for segment in segments for piece in _pieces(segment, fits)]
-        if not pieces and section.kind == 'chapter':
+        if not pieces and section.kind == 'chapter' and section.title:
             warnings.append(f'Глава «{section.title}» без тексту: сцену не створено')
         for number, (group, proposed, scene_warnings) in enumerate(pieces, start=1):
             title = f'{section.title} ({number})' if len(pieces) > 1 else section.title
