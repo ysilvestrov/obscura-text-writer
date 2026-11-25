@@ -242,10 +242,11 @@ def test_origin_file_name_is_sanitized():
     assert service.origin_file_name('dir/') == 'manuscript'
 
 
-def test_apply_rejects_more_than_2000_scenes(tmp_path):
+def test_apply_rejects_more_than_500_scenes(tmp_path):
     repo, preview = setup(tmp_path)
-    scenes = [{'start': 3 + n, 'title': f'С{n}'} for n in range(service.MAX_SCENES + 1)]
-    with pytest.raises(ValueError, match='2000'):
+    assert service.MAX_SCENES == 500
+    scenes = [{'start': 3 + n, 'title': f'С{n}'} for n in range(501)]
+    with pytest.raises(ValueError, match='500'):
         service.apply_import(repo, preview.import_id, body(preview, scenes))
     assert repo.list_stories(include_trashed=True) == []
 

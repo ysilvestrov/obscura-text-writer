@@ -225,7 +225,7 @@ NO_START_SNAPSHOT = 'Знімок початку серії не створен�
 ORIGIN_NAME_LIMIT = 255
 ORIGIN_NAME_FALLBACK = 'manuscript'
 APPLYING = 'Цей імпорт уже виконується або виконаний'
-MAX_SCENES = 2000
+MAX_SCENES = 500
 TOO_MANY_SCENES = 'Забагато сцен: до {limit} за один імпорт'
 STORY_MIN_WORDS = 5000  # StoryCreate.target_words lower bound
 

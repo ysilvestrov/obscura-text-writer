@@ -109,11 +109,12 @@ def test_publish_removes_files_when_write_fails(tmp_path, monkeypatch):
 def test_publish_lock_time_is_bounded(tmp_path):
     import time
     repo = Repository(tmp_path / 'data')
-    scenes = [ManuscriptSceneData(f'Сцена {n}', 'Слово ' * 200, 'markdown', None, 200) for n in range(300)]
+    # MAX_SCENES (500) scenes: the whole publish, files included, stays under the 5 s other writers wait (busy_timeout).
+    scenes = [ManuscriptSceneData(f'Сцена {n}', 'Слово ' * 200, 'markdown', None, 200) for n in range(500)]
     started = time.perf_counter()
     story, created = publish_manuscript(repo, StoryCreate(title='Книга'), scenes, ORIGIN, False)
     elapsed = time.perf_counter() - started
-    assert len(created) == 300
-    assert elapsed < 3, elapsed  # other writers wait 5 s (busy_timeout) for the import's transaction
+    assert len(created) == 500
+    assert elapsed < 4, elapsed
     view = repo.context_view(story.id)
     assert not view.get_version(created[-1].heads['prose']).stale
