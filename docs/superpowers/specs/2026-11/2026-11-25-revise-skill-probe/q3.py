@@ -1,0 +1,16 @@
+from ob import *
+s = scenes()
+t = call('get_stage_task', scene_id=s[0], stage='memory')
+print('MAT mutable/immutable:', t['material'].split('ЧИННІ ТВЕРДЖЕННЯ')[1][:400])
+p(do_memory(s[0], ['Олена приїхала потягом на вокзал у Вінниці.']), 1500)
+summary()
+for i in (0,1):
+    st = stale(s[i]); print('scene', i+1, {m: (v.get('version_id'), v.get('stale'), v.get('kind')) for m,v in st.items()})
+code, d = http('GET', f'/api/stories/{sid()}')
+print('s2 ms', json.dumps(d['material_status'][s[1]], ensure_ascii=False))
+print('RUNS', http('GET', f'/api/stories/{sid()}/runs'))
+print('MEM1', call('get_scene_text', scene_id=s[0], material='memory')['text'])
+t2 = call('get_stage_task', scene_id=s[1], stage='memory')
+print('S2 memory task immutable:', t2['material'].split('ЧИННІ ТВЕРДЖЕННЯ')[1][:400])
+c2 = call('get_scene_context', scene_id=s[1]); print('S2 context keys', list(c2.keys()))
+print('S2 ctx mentions Житомир?', 'Житомир' in json.dumps(c2, ensure_ascii=False), 'Вінниц' in json.dumps(c2, ensure_ascii=False))

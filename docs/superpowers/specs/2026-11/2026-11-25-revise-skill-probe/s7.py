@@ -1,0 +1,12 @@
+from ob import *
+s = scenes()
+print('MEMTEXT', call('get_scene_text', scene_id=s[0], material='memory').get('text'))
+p(do_brief(s[1], 'Олена знаходить лист у будинку.'), 500)
+p(do_draft(s[1], 'Олена відімкнула двері. У шухляді лежав лист від матері. Вона прочитала його біля вікна.'), 500)
+t = call('get_stage_task', scene_id=s[1], stage='edit')
+p(call('save_stage_result', scene_id=s[1], stage='edit', task_fingerprint=t['task_fingerprint'], result='Олена відімкнула двері. У шухляді лежав лист від матері. Вона прочитала його біля вікна, не знімаючи плаща.'), 500)
+summary()
+t = call('get_stage_task', scene_id=s[1], stage='memory')
+print('MAT2', t['material'][:2500])
+p(do_memory(s[1], ['Олена знайшла лист від матері в шухляді.']), 800)
+summary()
