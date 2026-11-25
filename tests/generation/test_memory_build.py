@@ -65,9 +65,13 @@ def test_target_is_first_scene_without_memory(tmp_path):
     assert memory_build_target(repo.context_view(story.id)) == (scenes[2].id, 2)
 
 
-def test_target_skips_scene_without_finished_prose(tmp_path):
+def test_target_is_first_scene_without_memory_even_without_prose(tmp_path):
+    # Design §5: the build starts at the first scene without memory; the preview then says what that scene still needs.
     repo, story, scenes = written_book(tmp_path, ['', 'Друга.', 'Третя.'])
-    assert memory_build_target(repo.context_view(story.id)) == (scenes[1].id, 2)
+    assert memory_build_target(repo.context_view(story.id)) == (scenes[0].id, 3)
+    result = preview(repo, rebuild(story, scenes[0]))
+    assert result['ready'] is False and result['reason'] == 'Спершу виберіть завершену прозу сцени 1'
+    assert result['cost'] is None and result['plan_fingerprint'] is None
 
 
 def test_target_none_when_all_scenes_have_memory(tmp_path):
@@ -115,15 +119,85 @@ def test_cost_local_provider_is_unknown(tmp_path):
     assert result['cost'] == {'per_call_usd': None, 'total_usd': None, 'calls': 2, 'reason': None}
 
 
-def test_unfit_scenes_listed_for_small_role(tmp_path):
-    # 80 000 input characters (the default); the request carries the prose twice plus a 10 000-character reserve.
+def paragraphs(chars):
+    """Cyrillic prose of about `chars` characters in paragraphs of about 500."""
+    words = ('Слово ' * (chars // 6 + 1))[:chars]
+    return '\n\n'.join(words[i:i + 500].strip() for i in range(0, len(words), 500))
+
+
+def real_request(tmp_path, prose, role):
+    """The memory stage's own request for a first scene with this prose: (bundle, None) or (None, ContextOverflow)."""
+    from storygen.generation.context import ContextOverflow, build_context
+    repo, story, (scene,) = written_book(tmp_path, [prose], memory_role=role)
+    try:
+        return build_context(repo, scene.id, 'memory', role), None
+    except ContextOverflow as overflow:
+        return None, overflow
+
+
+def passes_with_reserve(repo, bundle, role):
+    """The checks `_finish_context` applies, on the stage's request plus the previous-memory reserve."""
+    from storygen.providers.requests import generation_request
+    from storygen.token_budget.service import token_estimate
+    user = bundle.user_text + '\n\n' + 'а' * (role.max_input_chars // 8)
+    if len(bundle.system_text) + len(user) > role.max_input_chars:
+        return False
+    request = generation_request('memory', role, bundle.system_text, user, bundle.fragments)
+    return token_estimate(repo, role.provider.provider, role.provider.base_url, request)['input_tokens'] <= \
+        role.context_tokens - role.max_output_tokens
+
+
+def test_prose_memory_request_is_the_stage_request(tmp_path):
+    from storygen.generation.memory_build import PROSE_ID_PLACEHOLDER, prose_memory_request
     role = RoleSettings(provider=ProviderSettings(model='memory'), context_tokens=131072)
-    repo, story, scenes = written_book(tmp_path, ['Коротка.', 'Д' * 40000, 'Ще коротка.'], memory_role=role)
+    prose = paragraphs(1200)
+    bundle, _ = real_request(tmp_path, prose, role)
+    prose_id = bundle.input_refs[0]
+    system, user, fragments = prose_memory_request(role, prose)
+    assert system == bundle.system_text
+    assert user == bundle.user_text.replace(prose_id, PROSE_ID_PLACEHOLDER)
+    assert fragments == {key: value.replace(prose_id, PROSE_ID_PLACEHOLDER) for key, value in bundle.fragments.items()}
+
+
+@pytest.mark.parametrize('role', [
+    RoleSettings(provider=ProviderSettings(model='memory'), context_tokens=131072),
+    RoleSettings(provider=ProviderSettings(model='memory'), context_tokens=131072, max_input_chars=8000)],
+    ids=['context-131k', 'input-8000'])
+def test_memory_fits_matches_the_stage_check_on_both_sides_of_the_boundary(tmp_path, role):
+    from storygen.application.manuscript_import import memory_fits
+    repo = Repository(tmp_path / 'measure')
+    fits = memory_fits(repo, role)
+    low, high = 1, role.max_input_chars  # fits(low) and not fits(high)
+    assert fits(paragraphs(low)) and not fits(paragraphs(high))
+    while high - low > 50:
+        middle = (low + high) // 2
+        low, high = (middle, high) if fits(paragraphs(middle)) else (low, middle)
+    # The largest fitting scene passes the stage's own check with the reserve to spare; the next does not.
+    bundle, overflow = real_request(tmp_path / 'low', paragraphs(low), role)
+    assert overflow is None and passes_with_reserve(repo, bundle, role)
+    big = role.model_copy(update={'max_input_chars': 10 ** 7, 'context_tokens': 2 ** 22})
+    bundle, _ = real_request(tmp_path / 'high', paragraphs(high), big)
+    assert not passes_with_reserve(repo, bundle, role)
+    # A scene the stage refuses outright is unfit.
+    over = paragraphs(high + role.max_input_chars // 8 + 2000)
+    assert real_request(tmp_path / 'over', over, role)[1] is not None and not fits(over)
+
+
+def test_unfit_scenes_listed_for_small_role(tmp_path):
+    role = RoleSettings(provider=ProviderSettings(model='memory'), context_tokens=131072, max_input_chars=8000)
+    repo, story, scenes = written_book(tmp_path, ['Коротка.', paragraphs(6000), 'Ще коротка.'], memory_role=role)
     view = repo.context_view(story.id)
     assert unfit_scenes(repo, view, role, [s.id for s in scenes]) == [scenes[1].id]
     result = preview(repo, rebuild(story, scenes[0]))
     assert result['unfit_scenes'] == [scenes[1].id]
     assert result['ready'] is True, result['reason']  # listed in advance; the run stops on that scene itself
+
+
+def test_chapter_sized_scene_fits_the_wide_role(tmp_path):
+    # A 40 000-character chapter: the stage request carries the prose once, so a 131k-token, 80 000-character role holds it.
+    role = RoleSettings(provider=ProviderSettings(model='memory'), context_tokens=131072)
+    repo, story, scenes = written_book(tmp_path, [paragraphs(40000)], memory_role=role)
+    assert unfit_scenes(repo, repo.context_view(story.id), role, [scenes[0].id]) == []
 
 
 def test_series_refresh_suggested_when_previous_book_has_memory(tmp_path):
@@ -156,6 +230,20 @@ def test_plan_fingerprint_changes_with_prose_and_role(tmp_path):
     assert preview(repo, rebuild(story, scenes[0]))['plan_fingerprint'] not in {first, second}
 
 
+def test_role_limits_change_the_fingerprint_and_the_worker_rejects_the_old_one(tmp_path):
+    wide = RoleSettings(provider=ProviderSettings(model='memory'), context_tokens=131072)
+    repo, story, scenes = written_book(tmp_path, ['Перша.', 'Друга.'], memory_role=wide)
+    worker = RunCoordinator(repo)
+    seen = preview(repo, rebuild(story, scenes[0]))['plan_fingerprint']
+    assert seen is not None
+    save_role_settings(repo, story.id, 'memory', wide.model_copy(update={'max_output_tokens': 4096}),
+                       repo.get_story(story.id).revision)
+    assert preview(repo, rebuild(story, scenes[0]))['plan_fingerprint'] != seen
+    with pytest.raises(RevisionConflict, match='План побудови пам’яті змінився'):
+        worker.enqueue(rebuild(story, scenes[0], memory_plan_fingerprint=seen), 'limits')
+    assert worker.list_runs() == []
+
+
 def test_stale_memory_fingerprint_rejected_by_worker(tmp_path):
     repo, story, scenes = written_book(tmp_path, ['Перша.', 'Друга.'])
     worker = RunCoordinator(repo)
@@ -184,8 +272,8 @@ def test_unfit_scenes_measure_each_prose_once_across_requests(tmp_path, monkeypa
     measured = []
     original = manuscript_import.memory_fits
 
-    def counting(repo, role=None):
-        fits = original(repo, role)
+    def counting(repo, role=None, **kwargs):
+        fits = original(repo, role, **kwargs)
         return lambda text: measured.append(text) or fits(text)
 
     monkeypatch.setattr(manuscript_import, 'memory_fits', counting)

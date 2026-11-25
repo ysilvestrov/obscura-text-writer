@@ -138,8 +138,8 @@ def test_memory_fits_uses_tokens_and_chars(tmp_path):
     assert service.memory_fits(repo)(prose)  # the default role: 131 072 tokens, 80 000 characters
     assert not service.memory_fits(repo, small_memory_role())(prose)  # tokens: about 3 000 available
     chars_only = RoleSettings(provider=ProviderSettings(model='wide'), context_tokens=2 ** 20, max_output_tokens=1024,
-                              max_input_chars=20000)
-    assert not service.memory_fits(repo, chars_only)(prose)  # 2 x 12 000 characters plus the reserve
+                              max_input_chars=15000)
+    assert not service.memory_fits(repo, chars_only)(prose)  # 12 000 characters of prose, the memory prompt and the reserve
     assert service.memory_fits(repo, chars_only)('коротко')
 
 
@@ -148,7 +148,7 @@ def test_scene_that_does_not_fit_the_memory_role_is_split(tmp_path):
     paragraphs = '\n\n'.join(' '.join(['слово'] * 100) + '.' for _ in range(20)).encode()
     plain = service.preview(repo, paragraphs, 'one.txt', SETTINGS)
     chars_only = RoleSettings(provider=ProviderSettings(model='wide'), context_tokens=2 ** 20, max_output_tokens=1024,
-                              max_input_chars=20000)
+                              max_input_chars=15000)
     small = service.preview(repo, paragraphs, 'one.txt', SETTINGS, role=chars_only)
     assert len(plain.scenes) == 1 and len(small.scenes) > 1
     assert not any(scene.warnings for scene in small.scenes)

@@ -5,31 +5,55 @@ compares, and whether a series book should first refresh its start memory from t
 Read-only: priced from the stored tariff only (as `audit_cost`), never refusing the run on an unknown price."""
 import hashlib
 import json
+import threading
 
 from .audit_cost import CHARS_TO_TOKENS, CLOUD, INPUT_OVERHEAD, NO_PRICE, current_tariff, usd
 
-PROSE_KINDS = frozenset({'manual', 'edited'})
 # The previous memory is bounded by the same share of the role's input that `memory_fits` reserves for it.
 PREVIOUS_MEMORY_SHARE = 8
 MEMORY_PLAN_CHANGED = 'План побудови пам’яті змінився. Перегляньте його ще раз'
 
 
-def _has_finished_prose(view, scene) -> bool:
-    prose_id = scene.heads.get('prose')
-    if not prose_id:
-        return False
-    prose = view.peek_version(prose_id)
-    return bool(prose.complete) and prose.kind in PROSE_KINDS
-
-
 def memory_build_target(view) -> tuple[str | None, int]:
-    """The first scene, by position, with finished author prose (`manual`/`edited`) and no memory head, and the number of
-    scenes from it to the end of the book — the scenes `rebuild_memory` from it covers. (None, 0) when there is none."""
+    """The first active scene, by position, without a memory head (design §5), and the number of scenes from it to the end
+    of the book — the scenes `rebuild_memory` from it covers. (None, 0) when every scene has memory. A scene without
+    finished prose is still the target: the readiness of the run then names what is missing."""
     scenes = sorted(view.list_scenes(view.story.id), key=lambda s: s.position)
     for index, scene in enumerate(scenes):
-        if not scene.heads.get('memory') and _has_finished_prose(view, scene):
+        if not scene.heads.get('memory'):
             return scene.id, len(scenes) - index
     return None, 0
+
+
+# A placeholder of a version ID's length: the request names the prose version in its fragments label.
+PROSE_ID_PLACEHOLDER = '0' * 32
+
+
+def prose_memory_request(settings, prose: str, *, language: str = 'uk', system: str | None = None):
+    """(system, user, fragments) of the memory request of a first scene with this prose and no tracked characters or places,
+    composed from the pieces `context.build_context` uses for the memory stage (a test compares the two). `system`: the
+    book's memory prompt (`stage_system_text`); the default prompt of the role otherwise."""
+    from ..evidence import render_fragments
+    from ..memory.journal import MemoryJournal
+    from ..memory.projection import memory_catalog_v4
+    from ..memory.wire_v4 import schema_bounds_v4
+    from .context_labels import label
+    from .prompts import role_prompt
+    if system is None:
+        system = role_prompt('memory', settings, language)
+    past = MemoryJournal()
+    parts = json.loads(memory_catalog_v4(past, [], {}, all_tracked=[]))
+    dump = lambda value: json.dumps(value, ensure_ascii=False, separators=(',', ':'))
+    sections = [label('memory_core', language) + '\n' + dump({'names': parts['names'], 'core': parts['core']}),
+                label('memory_threads', language) + '\n' + dump(parts['threads']),
+                label('memory_claims', language) + '\n' + dump({'mutable': parts['mutable'], 'immutable': parts['immutable']}),
+                label('allowed_ids', language) + '\n' + json.dumps([], ensure_ascii=False),
+                label('prose_fragments', language, id=PROSE_ID_PLACEHOLDER) + '\n' + render_fragments(prose)]
+    bounds = schema_bounds_v4(past, prose, [], [], {}, flashback=False)
+    fragments = {'previous_memory': past.model_dump_json(), 'expected_source_prose_ids': json.dumps([PROSE_ID_PLACEHOLDER]),
+                 'memory_allowed_character_ids': json.dumps([]), 'memory_wire_version': '4',
+                 'memory_schema_bounds': json.dumps(bounds, ensure_ascii=False), 'memory_tracked': json.dumps([], ensure_ascii=False)}
+    return system, '\n\n'.join(sections), fragments
 
 
 def input_tokens(settings, chars: int) -> int:
@@ -60,46 +84,60 @@ def memory_cost(repo, settings, prose_chars: list[int]) -> dict:
     return result
 
 
-# `memory_fits` measures the doubled prose of every scene, and the workspace asks readiness of every operation on each
-# refresh: an answer is kept per (prose text, role, token profiles), so only changed scenes are measured again.
+# `memory_fits` measures the request of every scene, and the workspace asks readiness of every operation on each refresh:
+# an answer is kept per (prose text, role, prompt, token profiles), so only changed scenes are measured again.
 _FITS_CACHE: dict = {}
 _FITS_CACHE_SIZE = 4096
+_FITS_LOCK = threading.Lock()
+
+
+def _remember(key, fit) -> None:
+    with _FITS_LOCK:
+        while len(_FITS_CACHE) >= _FITS_CACHE_SIZE:
+            _FITS_CACHE.pop(next(iter(_FITS_CACHE)))
+        _FITS_CACHE[key] = fit
 
 
 def unfit_scenes(repo, view, settings, scene_ids) -> list[str]:
-    """The scenes whose memory request would exceed the memory role's limits (`memory_fits`: characters and tokens);
-    the run stops on them with the existing «Текст не обрізається» refusal. Scenes without prose are not listed."""
+    """The scenes whose memory request would exceed the memory role's limits (`memory_fits`: characters and tokens, the
+    book's own memory prompt); the run stops on them with the existing «Текст не обрізається» refusal. Scenes without
+    prose are not listed."""
     from ..application.manuscript_import import memory_fits
+    from .context import stage_system_text
+    story = view.get_story(view.story.id)
+    system = stage_system_text(repo, story, None, 'memory', settings, {}, [])
     try:
         profiles = json.dumps(repo.token_records('profile'), sort_keys=True, default=str)
     except Exception:  # no stored profiles to key on: measure without the cache
         profiles = None
-    role = settings.model_dump_json()
+    common = None if profiles is None else hashlib.sha256(
+        json.dumps([settings.model_dump_json(), system, story.language, profiles]).encode('utf-8')).hexdigest()
     fits = None
     unfit = []
     for scene_id in scene_ids:
         prose_id = view.peek_scene(scene_id).heads.get('prose')
         if not prose_id:
             continue
-        key = (view.peek_version(prose_id).sha256, role, profiles)
-        fit = _FITS_CACHE.get(key) if profiles is not None else None
+        key = None if common is None else (view.peek_version(prose_id).sha256, common)
+        fit = _FITS_CACHE.get(key) if key is not None else None
         if fit is None:
-            fits = fits or memory_fits(repo, settings)
+            fits = fits or memory_fits(repo, settings, language=story.language, system=system)
             fit = fits(view.read_text(prose_id))
-            if profiles is not None:
-                if len(_FITS_CACHE) >= _FITS_CACHE_SIZE:
-                    _FITS_CACHE.pop(next(iter(_FITS_CACHE)))
-                _FITS_CACHE[key] = fit
+            if key is not None:
+                _remember(key, fit)
         if not fit:
             unfit.append(scene_id)
     return unfit
 
 
 def plan_fingerprint(scene_id, targets, settings) -> str:
-    """sha256 of the plan the author saw: the start scene, each target scene with its prose head, and the memory model."""
+    """sha256 of the plan the author saw: the start scene, each target scene with its prose head, and the memory role fields
+    that decide what the run costs and which scenes fit (model, endpoint, input, output and context limits)."""
     provider = settings.provider
     payload = {'scene_id': scene_id, 'scenes': [[scene.id, scene.heads.get('prose')] for scene in targets],
-               'memory': {'provider': provider.provider, 'model': provider.model, 'base_url': provider.base_url}}
+               'memory': {'provider': provider.provider, 'model': provider.model, 'base_url': provider.base_url,
+                          'max_input_chars': settings.max_input_chars, 'max_output_tokens': settings.max_output_tokens,
+                          'context_tokens': settings.context_tokens}}
     text = json.dumps(payload, sort_keys=True, ensure_ascii=False, separators=(',', ':'))
     return hashlib.sha256(text.encode('utf-8')).hexdigest()
 

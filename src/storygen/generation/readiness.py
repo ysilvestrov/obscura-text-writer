@@ -89,7 +89,7 @@ def preview(repo, request, view=None):
     if request.mode=='rebuild_memory':
         # R-48 design §5: the build preview — cost, unfit scenes, the plan fingerprint (only when ready), the series hint.
         from . import memory_build
-        result.update(cost=memory_build.memory_cost(repo,None,[]),unfit_scenes=[],plan_fingerprint=None,
+        result.update(cost=None,unfit_scenes=[],plan_fingerprint=None,
                       series_refresh=memory_build.series_refresh(repo,story))
     try:
         if request.mode!='prepare' and scene is None:
