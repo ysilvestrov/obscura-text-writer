@@ -165,12 +165,12 @@ def _styles(data):
 
 
 def _outline(element):
-    """outlineLvl 0..8 is a heading level; 9 means body text."""
+    """outlineLvl 0..8 is a heading level; 9 is an explicit body text that stops resolution."""
     try:
         value = int(element.get(_q('val'))) if element is not None else None
     except (TypeError, ValueError):
         return None
-    return value if value is not None and 0 <= value <= 8 else None
+    return value if value is not None and 0 <= value <= 9 else None
 
 
 def _chain(styles, style_id):
@@ -183,11 +183,11 @@ def _chain(styles, style_id):
 
 def _heading_level(styles, style_id, direct):
     if direct is not None:
-        return direct
+        return None if direct == 9 else direct
     chain = list(_chain(styles, style_id))
     for _, outline, _ in chain:
         if outline is not None:
-            return outline
+            return None if outline == 9 else outline
     for name, _, _ in chain:
         match = _HEADING_NAME.fullmatch(name.strip())
         if match:

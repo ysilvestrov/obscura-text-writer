@@ -76,6 +76,11 @@ def _read_docx(content):
             continue
         paragraphs.append(ManuscriptParagraph(len(paragraphs), text, runs, first_level, pending_break, first_title))
         pending_break = False
+    if pending:  # the last paragraph mark was deleted: nothing follows to join, keep the text
+        runs = _merge(pending)
+        text = ''.join(run.text for run in runs)
+        if text.strip():
+            paragraphs.append(ManuscriptParagraph(len(paragraphs), text, runs, first_level, pending_break, first_title))
     changed = sum(1 for source in document.paragraphs if source.changed)
     warnings = [warning.text for warning in document.warnings]
     if changed:
@@ -100,12 +105,25 @@ def _blocks(text):
         yield block, after_break
 
 
+_SENTENCE_END = ('.', '!', '?', '…', '»', '"', '”', ':')
+
+
+def _hard_wrapped(lines):
+    """Most non-final lines stop without sentence-ending punctuation: the block is one wrapped paragraph."""
+    open_lines = sum(1 for line in lines[:-1] if not line.endswith(_SENTENCE_END))
+    return open_lines * 2 > len(lines) - 1
+
+
 def _plain(text):
     blocks = list(_blocks(text))
-    if len(blocks) == 1 and len(blocks[0][0]) > 1 and not any(not line.strip() for line in text.strip().splitlines()):
-        blocks = [([line], False) for line in blocks[0][0]]  # no blank lines in the file: one line, one paragraph
-    return [ManuscriptParagraph(i, ' '.join(lines), (Run(' '.join(lines)),), None, after, False)
-            for i, (lines, after) in enumerate(blocks)]
+    has_blank = any(not line.strip() for line in text.strip().splitlines())
+    result = []
+    for lines, after in blocks:
+        if len(lines) == 1 or (has_blank and _hard_wrapped(lines)):
+            lines = [" ".join(lines)]
+        for i, line in enumerate(lines):
+            result.append(ManuscriptParagraph(len(result), line, (Run(line),), None, after and i == 0, False))
+    return result
 
 
 def _emphasis(text, bold=False, italic=False):

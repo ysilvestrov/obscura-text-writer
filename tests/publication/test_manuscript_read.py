@@ -104,3 +104,28 @@ def test_unknown_extension_rejected():
 
 def test_extension_is_case_insensitive():
     assert read_manuscript(txt('Один'), 'B.TXT').paragraphs[0].text == 'Один'
+
+
+def test_txt_one_line_per_paragraph_with_scene_breaks():
+    result = read_manuscript(txt('— Привіт.\n— Здоров!\n— Як справи?\n\n— Добре.\n— Чудово.'), 'b.txt')
+    assert [(p.text, p.after_break) for p in result.paragraphs] == [
+        ('— Привіт.', False), ('— Здоров!', False), ('— Як справи?', False), ('— Добре.', True), ('— Чудово.', False)]
+
+
+def test_txt_hard_wrapped_blocks_joined():
+    result = read_manuscript(txt('Це довге речення, яке\nпереносять посеред\nдумки.\n\nДругий абзац теж\nпереноситься.'), 'b.txt')
+    assert [p.text for p in result.paragraphs] == [
+        'Це довге речення, яке переносять посеред думки.', 'Другий абзац теж переноситься.']
+
+
+def test_docx_deleted_mark_on_last_paragraph_keeps_text():
+    body = ('<w:p><w:r><w:t>Перший</w:t></w:r></w:p>'
+            '<w:p><w:pPr><w:rPr><w:del w:id="5" w:author="Р"/></w:rPr></w:pPr><w:r><w:t>Останній</w:t></w:r></w:p>')
+    result = read_manuscript(docx(body), 'b.docx')
+    assert [p.text for p in result.paragraphs] == ['Перший', 'Останній']
+
+
+def test_docx_outline_level_9_overrides_heading_style():
+    content = docx(para('Звичайний', '1', outline=9) + para('Стиль-тіло', 'Body') + para('Глава', '1'),
+                   [style('1', 'heading 1'), style('Body', 'Body', outline=9, based_on='1')])
+    assert [p.heading_level for p in read_manuscript(content, 'b.docx').paragraphs] == [None, None, 0]
