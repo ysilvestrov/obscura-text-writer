@@ -454,10 +454,9 @@ def test_memory_build_running_is_translated():
                                                        'resume or cancel it in the runs panel')
 
 
-def test_memory_stale_only_by_freshness_is_the_target(tmp_path):
-    # Review M-3: the stored flag is not set, but the memory head's link does not hold (VALID-LINKS: unchecked here), so
-    # the shown mark is stale and the build starts at that scene; once its link holds, the memory is valid again.
-    from tests.link_helpers import approve_links
+def test_legacy_memory_with_an_unchecked_link_is_not_a_target(tmp_path):
+    # Guard (review M-3 reverted, coordinator 25.11.2026): the target reads the stored flag and the snapshot cast, not
+    # freshness, so a link verdict (here unchecked) never makes legacy memory without a snapshot a paid target again.
     repo, story, scenes = written_book(tmp_path, ['Перша.', 'Друга.'])
     for scene in scenes:
         scene = repo.get_scene(scene.id)
@@ -465,10 +464,9 @@ def test_memory_stale_only_by_freshness_is_the_target(tmp_path):
         repo.set_head(scene.id, 'memory', memory.id, repo.get_scene(scene.id).revision)
     view = repo.context_view(story.id)
     head = view.peek_scene(scenes[0].id).heads['memory']
-    assert not view.peek_version(head).stale and view.is_stale(head)
-    assert memory_build_target(view) == (scenes[0].id, 2)
-    approve_links(repo, story.id)
-    assert memory_build_target(repo.context_view(story.id)) == (None, 0)
+    assert view.peek_version(head).dependency_snapshot is None
+    assert not view.peek_version(head).stale and view.is_stale(head)  # the link is unchecked
+    assert memory_build_target(view) == (None, 0)
 
 
 def test_memory_the_build_writes_is_valid(tmp_path):
