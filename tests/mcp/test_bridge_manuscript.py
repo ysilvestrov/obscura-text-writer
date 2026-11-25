@@ -400,6 +400,23 @@ def test_preview_returns_front_matter(tmp_path):
     assert plain['front_matter'] == []
 
 
+def test_confirm_with_front_matter_and_the_proposed_boundaries(tmp_path):
+    # Cross-review P2: confirm without `scenes` and include_front_matter=true moves the first proposed boundary to the start
+    # of the front matter, as the browser does, so the dedication opens the first scene instead of a FIRST_SCENE refusal.
+    content = '\n\n'.join(['# Книга', 'Присвята мамі.', '## Глава перша', 'Текст першої глави. ' * 5, '## Глава друга',
+                            'Текст другої глави. ' * 5])
+    app, http, server = bridge(tmp_path / 'data')
+    data = preview(server, file_path=manuscript(tmp_path, content=content))
+    assert data['front_matter'] and data['front_matter'][0] < data['scenes'][0]['start']
+    created = ok(call(server, 'import_manuscript', {'confirm': True, 'import_id': data['import_id'],
+                                                     'fingerprint': data['fingerprint'], 'title': 'Книга',
+                                                     'include_front_matter': True}))
+    repo = app.state.repo
+    first = repo.get_scene(created['scene_ids'][0])
+    assert repo.get_version(first.heads['prose']) and 'Присвята мамі.' in repo.read_text(first.heads['prose'])
+    assert len(created['scene_ids']) == len(data['scenes'])
+
+
 def test_series_refresh_carries_the_author_hint(tmp_path, monkeypatch):
     # Review M-6: the refresh from the previous book is the author's action in Obscura; the preview says so.
     from storygen.generation import memory_build
@@ -432,27 +449,69 @@ def test_re_preview_by_import_id_keeps_the_language(tmp_path):
 
 
 def test_previews_are_changed_under_a_lock(tmp_path, monkeypatch):
-    # Review M-11: tools may run concurrently; the kept previews are changed only while the bridge's lock is held.
+    # Review M-11, cross-review P3: tools may run concurrently; every read and change of the kept previews happens while the
+    # bridge's lock is held — the store itself checks it on each access, not a count of lock blocks.
     import threading
-    held = []
     real_lock = threading.Lock
+    locks = []
 
     class Recording:
         def __init__(self):
-            self.lock = real_lock()
+            self.lock, self.held = real_lock(), False
+            locks.append(self)
 
         def __enter__(self):
             self.lock.acquire()
-            held.append(True)
+            self.held = True
             return self
 
         def __exit__(self, *exc):
-            held.append(False)
+            self.held = False
             self.lock.release()
+
+    accesses = []
+
+    class Guarded(dict):
+        def _check(self, name):
+            assert locks and all(lock.held for lock in locks), f'previews.{name} outside the lock'
+            accesses.append(name)
+
+        def __setitem__(self, key, value):
+            self._check('__setitem__')
+            super().__setitem__(key, value)
+
+        def __delitem__(self, key):
+            self._check('__delitem__')
+            super().__delitem__(key)
+
+        def pop(self, *args):
+            self._check('pop')
+            return super().pop(*args)
+
+        def get(self, *args):
+            self._check('get')
+            return super().get(*args)
+
+        def __getitem__(self, key):
+            self._check('__getitem__')
+            return super().__getitem__(key)
+
+        def __iter__(self):
+            self._check('__iter__')
+            return super().__iter__()
+
+        def __len__(self):
+            self._check('__len__')
+            return super().__len__()
     from types import SimpleNamespace
     monkeypatch.setattr(bridge_module, 'threading', SimpleNamespace(Lock=Recording))
+    monkeypatch.setattr(bridge_module, 'PREVIEW_STORE', Guarded)
+    monkeypatch.setattr(bridge_module, 'MANUSCRIPT_CACHE', 1)
     app, http, server = bridge(tmp_path / 'data')
-    data = preview(server, file_path=manuscript(tmp_path))
-    ok(call(server, 'import_manuscript', {'confirm': True, 'import_id': data['import_id'], 'fingerprint': data['fingerprint'],
-                                          'title': 'Книга'}))
-    assert held.count(True) >= 3 and held.count(True) == held.count(False)
+    first = preview(server, file_path=manuscript(tmp_path))
+    data = preview(server, file_path=manuscript(tmp_path, name='second.md'))  # evicts the first preview from the cache
+    again = preview(server, import_id=data['import_id'], chapter_markers=['Розділ'])
+    ok(call(server, 'import_manuscript', {'confirm': True, 'import_id': again['import_id'],
+                                          'fingerprint': again['fingerprint'], 'title': 'Книга'}))
+    assert first['import_id'] != data['import_id']
+    assert {'__setitem__', 'pop', 'get', '__len__', '__iter__'} <= set(accesses)

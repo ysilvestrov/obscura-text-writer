@@ -10,7 +10,6 @@ import threading
 from .audit_cost import CHARS_TO_TOKENS, CLOUD, INPUT_OVERHEAD, NO_PRICE, current_tariff, usd
 
 # The previous memory is bounded by the same share of the role's input that `memory_fits` reserves for it.
-PREVIOUS_MEMORY_SHARE = 8
 MEMORY_PLAN_CHANGED = 'План побудови пам’яті змінився. Перегляньте його ще раз'
 MEMORY_BUILD_RUNNING = 'Побудова пам’яті цього твору вже в черзі або виконується: дочекайтеся її чи скасуйте в панелі запусків'
 MEMORY_BUILD_RESUME_BLOCKED = 'Інша побудова пам’яті цього твору вже в черзі або виконується: дочекайтеся її чи скасуйте, перш ніж продовжувати цю'
@@ -98,14 +97,17 @@ def prose_memory_request(settings, prose: str, *, language: str = 'uk', system: 
     return system, '\n\n'.join(sections), fragments
 
 
-def input_tokens(settings, chars: int) -> int:
-    """Input tokens of one memory request: the prose plus the previous memory bound, capped by the role's input limit."""
-    return min(settings.max_input_chars, chars + settings.max_input_chars // PREVIOUS_MEMORY_SHARE) * CHARS_TO_TOKENS \
-        + INPUT_OVERHEAD
+def input_tokens(settings) -> int:
+    """Input tokens priced for one memory request: the role's input limit (`max_input_chars · 4 + 256`, as the audit bound).
+    The request carries the memory prompt (the book's own one included), the catalog of the previous memory and the prose;
+    the prompt and the catalog have no smaller bound, and a request above `max_input_chars` is refused before any call
+    (`ContextOverflow`), so this is the honest upper bound (cross-review P2: prose plus a reserve could price less)."""
+    return settings.max_input_chars * CHARS_TO_TOKENS + INPUT_OVERHEAD
 
 
 def memory_cost(repo, settings, prose_chars: list[int]) -> dict:
-    """Upper bound in USD of one memory call per scene (`prose_chars` — the prose length of each), rounded up.
+    """Upper bound in USD of one memory call per scene (`prose_chars` — the prose length of each; only their number decides
+    the bound, see `input_tokens`), rounded up.
     No USD for a local model; an unknown or stale cloud price leaves the totals None with the reason."""
     result = {'per_call_usd': None, 'total_usd': None, 'calls': len(prose_chars), 'reason': None}
     if settings is None or settings.provider.provider not in CLOUD:
@@ -118,7 +120,7 @@ def memory_cost(repo, settings, prose_chars: list[int]) -> dict:
         result['reason'] = reason
         return result
     try:
-        prices = [tariff.price(input_tokens(settings, chars), settings.max_output_tokens) for chars in prose_chars]
+        prices = [tariff.price(input_tokens(settings), settings.max_output_tokens) for _ in prose_chars]
     except Exception:  # a broken stored row is an unknown price, not a refused preview
         result['reason'] = NO_PRICE
         return result
@@ -172,18 +174,27 @@ def unfit_scenes(repo, view, settings, scene_ids) -> list[str]:
     return unfit
 
 
-def plan_fingerprint(scene_id, targets, settings, cast=None) -> str:
+def plan_fingerprint(scene_id, targets, settings, cast=None, cost=None, repo=None) -> str:
     """sha256 of the plan the author saw: the start scene, each target scene with its prose head, the memory role fields
-    that decide what the run costs and which scenes fit (model, endpoint, input, output and context limits), and `cast` —
-    every scene's cast with the proposal applied, and the cards it comes from (design §5.1). That cast stays the same once
-    `apply_cast` writes it, so the fingerprint the author saw still matches; new cards in between change it."""
+    that decide what the run costs and which scenes fit (model, endpoint, input, output and context limits), `cast` —
+    every scene's cast with the proposal applied, and the cards it comes from (design §5.1) —, the shown `cost` (total, per
+    call, reason) and the prices of the role's current tariff (cross-review P1: a price changed after the preview refuses
+    the old fingerprint). That cast stays the same once `apply_cast` writes it, so the fingerprint the author saw still
+    matches; new cards in between change it."""
     provider = settings.provider
+    tariff = None
+    if repo is not None and provider.provider in CLOUD:
+        current, reason = current_tariff(repo, settings)
+        tariff = reason if current is None else {
+            'input_per_million': str(current.input_per_million), 'output_per_million': str(current.output_per_million),
+            'request_usd': str(current.request_usd), 'kind': current.kind, 'source': current.source}
+    shown = None if cost is None else {key: cost.get(key) for key in ('per_call_usd', 'total_usd', 'reason')}
     payload = {'scene_id': scene_id, 'scenes': [[scene.id, scene.heads.get('prose')] for scene in targets],
                'memory': {'provider': provider.provider, 'model': provider.model, 'base_url': provider.base_url,
                           'max_input_chars': settings.max_input_chars, 'max_output_tokens': settings.max_output_tokens,
                           'context_tokens': settings.context_tokens},
-               'cast': cast}
-    text = json.dumps(payload, sort_keys=True, ensure_ascii=False, separators=(',', ':'))
+               'cast': cast, 'cost': shown, 'tariff': tariff}
+    text = json.dumps(payload, sort_keys=True, ensure_ascii=False, separators=(',', ':'), default=str)
     return hashlib.sha256(text.encode('utf-8')).hexdigest()
 
 

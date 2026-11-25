@@ -8905,7 +8905,10 @@
         "tests/web/test_memory_build_route.py::test_memory_saved_from_the_chat_is_valid_for_the_build",
         "tests/generation/test_memory_build.py::test_paused_memory_build_does_not_block_a_new_one",
         "tests/generation/test_memory_build.py::test_resuming_a_memory_build_while_another_is_active_is_refused",
-        "tests/web/test_memory_build_route.py::test_resuming_a_paused_build_next_to_an_active_one_is_409"
+        "tests/web/test_memory_build_route.py::test_resuming_a_paused_build_next_to_an_active_one_is_409",
+        "tests/generation/test_memory_build.py::test_cost_bound_covers_a_long_custom_prompt",
+        "tests/generation/test_memory_build.py::test_tariff_change_after_the_preview_refuses_the_old_fingerprint",
+        "tests/web/test_memory_build_route.py::test_price_raised_through_the_tariff_api_refuses_the_shown_plan"
       ],
       "manual": {
         "procedure": "docs/verification/manual.md#memory-build-browser",
@@ -8945,6 +8948,7 @@
         "tests/web/test_bridge_run_routes.py::test_bridge_rebuild_memory_follows_the_stage_rule",
         "tests/mcp/test_bridge_manuscript.py::test_two_confirms_of_one_preview_start_one_build",
         "tests/mcp/test_bridge_manuscript.py::test_preview_returns_front_matter",
+        "tests/mcp/test_bridge_manuscript.py::test_confirm_with_front_matter_and_the_proposed_boundaries",
         "tests/mcp/test_bridge_manuscript.py::test_series_refresh_carries_the_author_hint",
         "tests/mcp/test_bridge_manuscript.py::test_re_preview_by_import_id_keeps_the_language",
         "tests/mcp/test_bridge_manuscript.py::test_previews_are_changed_under_a_lock"

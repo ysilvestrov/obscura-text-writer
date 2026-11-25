@@ -289,7 +289,7 @@ The chat can go through every stage of a scene itself: write the scene brief, wr
 The chat can create a book from your finished manuscript the same way as the [manuscript import](manuscript-import.md) in the library.
 
 - Give the chat the full path to a `.docx`, `.md` or `.txt` file on a local disk (with the drive letter, up to 20 MiB). Obscura reads only the file itself: it refuses a link, a folder, a network path or a file on a network drive. OneDrive files on your disk work. The chat can also send a small file (up to 2 MiB) as content.
-- First the chat shows a preview: scenes with titles and word counts, proposed boundaries and warnings. It can parse the file again with other chapter or part markers and pass its own scene boundaries.
+- First the chat shows a preview: scenes with titles and word counts, proposed boundaries and warnings. It can parse the file again with other chapter or part markers and pass its own scene boundaries. On your request the chat adds the front matter (a dedication or an epigraph before the first chapter) to the start of the first scene, like the switch in the library.
 - The book is created only after your consent, in the language of the preview. No model is called, the import costs nothing.
 - The answer has a link to the book in Obscura. The chat builds the book memory with a separate [run](#obscura-runs-from-the-chat) with a cost preview.
 

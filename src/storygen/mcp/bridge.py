@@ -52,6 +52,8 @@ LINK_REPARSE_TAGS = (0xA000000C, 0xA0000003)
 MANUSCRIPT_EXTENSIONS = ('.docx', '.md', '.txt')
 MANUSCRIPT_MAX_BYTES = 20 * 1024 * 1024
 MANUSCRIPT_BASE64_MAX = 2 * 1024 * 1024
+# The mapping type of the kept manuscript previews; a test replaces it with one that checks the lock on every access.
+PREVIEW_STORE = dict
 MANUSCRIPT_PREVIEW_KEYS = ('import_id', 'fingerprint', 'file_name', 'title_suggestion', 'chapter_source', 'scenes', 'parts',
                            'front_matter', 'warnings', 'tracked_changes', 'edition')
 MANUSCRIPT_REPEAT = 'Перегляд рукопису застарів або втрачений: викличте import_manuscript без confirm ще раз'
@@ -465,7 +467,7 @@ def build_server(http: httpx.Client | None, client_name: str | None = None, *, c
             raise ToolError('Передайте план або персонажів')
         return request('POST', f'/api/stories/{identifier(story_id)}/sources', files=files)
 
-    previews: dict[str, dict] = {}
+    previews: dict[str, dict] = PREVIEW_STORE()
     # Tools may run concurrently: every read-modify-write of `previews` holds this lock (review M-11).
     previews_lock = threading.Lock()
 
@@ -475,7 +477,7 @@ def build_server(http: httpx.Client | None, client_name: str | None = None, *, c
         with previews_lock:
             previews.pop(data['import_id'], None)
             previews[data['import_id']] = {'fingerprint': data['fingerprint'], 'language': language, 'scenes': data['scenes'],
-                                           'parts': data['parts']}
+                                           'parts': data['parts'], 'front_matter': list(data.get('front_matter') or [])}
             while len(previews) > MANUSCRIPT_CACHE:
                 previews.pop(next(iter(previews)))
 
@@ -534,7 +536,8 @@ def build_server(http: httpx.Client | None, client_name: str | None = None, *, c
         import_id, fingerprint, title_suggestion, chapter_source, scenes (start, end — індекси абзаців, title, words, part_index,
         proposed, warnings), parts, front_matter (індекси абзаців вступного тексту: присвята, епіграф; у сцени він потрапляє лише з
         include_front_matter=true), warnings, tracked_changes і edition. Покажіть сцени авторові й дочекайтеся згоди. З confirm=true потрібні import_id, fingerprint і title з показаного
-        перегляду: без scenes створюються запропоновані сцени, або передайте свої межі scenes[{start, title, part_index}] та
+        перегляду: без scenes створюються запропоновані сцени (з include_front_matter=true перша з них починається з вступного
+        тексту), або передайте свої межі scenes[{start, title, part_index}] та
         parts[{index, title}] (частини й серії — лише в повній збірці). content_rating — {sexual, violence, themes}. Повертає
         story_id, scene_ids, warnings і next_steps. Мова книги — мова перегляду (інша мова в confirm відхиляється). Пам'ять побудуйте окремо: start_run(action='rebuild_memory')."""
         if not confirm:
@@ -572,6 +575,11 @@ def build_server(http: httpx.Client | None, client_name: str | None = None, *, c
             if kept is None or kept['fingerprint'] != fingerprint:
                 raise ToolError(MANUSCRIPT_REPEAT)
             scenes = [{'start': scene['start'], 'title': scene['title'], 'part_index': scene.get('part_index')} for scene in kept['scenes']]
+            front = kept.get('front_matter') or []
+            if include_front_matter and front and scenes:
+                # Cross-review P2: as the browser does, the front matter opens the first scene (the server requires the
+                # first boundary at the first included paragraph).
+                scenes[0]['start'] = min(scenes[0]['start'], front[0])
         if parts is None and kept is not None and kept['fingerprint'] == fingerprint:
             parts = [{'index': part['index'], 'title': part['title']} for part in kept['parts']]
         if isinstance(content_rating, str):

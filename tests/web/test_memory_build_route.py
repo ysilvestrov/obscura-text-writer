@@ -70,6 +70,33 @@ def test_resuming_a_paused_build_next_to_an_active_one_is_409(tmp_path):
         assert app.state.repo.get_run(paused['id']).state == 'paused'
 
 
+def test_price_raised_through_the_tariff_api_refuses_the_shown_plan(tmp_path):
+    # Cross-review P1: the author agreed to the shown cost; a higher request price saved before the confirm is a new plan
+    # (409), and nothing is queued.
+    from datetime import timedelta
+    from storygen.billing.models import utcnow
+    from storygen.billing.service import set_limit
+    from tests.generation.test_memory_build import cloud_role, tariff
+    repo, story, scenes = written_book(tmp_path, ['Перша.', 'Друга.'], memory_role=cloud_role(80000))
+    set_limit(repo, 'story:' + story.id, '10', 0)
+    tariff(repo)
+    app = create_app(AppSettings(data_dir=tmp_path))
+    with TestClient(app, base_url='http://127.0.0.1:8765') as client:
+        app.state.coordinator.stop()
+        shown = client.get(f'/api/stories/{story.id}/readiness',
+                           params={'scene_id': scenes[0].id, 'operation': 'rebuild_memory'}).json()['operations']['rebuild_memory']
+        assert shown['ready'] is True, shown['reason']
+        price = {'provider': 'openrouter', 'model': 'cloud-model', 'input_per_million': '1', 'output_per_million': '2',
+                 'request_usd': '0.5', 'source': 'test tariff', 'expires_at': (utcnow() + timedelta(days=1)).isoformat()}
+        assert client.post(f'/api/stories/{story.id}/budget/prices', json=price).status_code == 200
+        request = {'story_id': story.id, 'scene_id': scenes[0].id, 'mode': 'rebuild_memory',
+                   'memory_plan_fingerprint': shown['plan_fingerprint']}
+        answer = client.post('/api/runs', json={'request_id': 'go', 'request': request})
+        assert answer.status_code == 409
+        assert answer.json()['detail'].startswith('План побудови пам’яті змінився')
+        assert client.get(f'/api/stories/{story.id}/runs').json()['runs'] == []
+
+
 def test_book_in_progress_is_not_buildable(tmp_path):
     # Owner, 25.11.2026 (review I-2): prose in scene 1 only and plans after it — the build would be refused, so the menu
     # item is hidden; once every scene from the target to the end has finished prose, it is shown.

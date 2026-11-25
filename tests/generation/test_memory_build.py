@@ -57,8 +57,9 @@ def rebuild(story, scene, **extra):
     return RunRequest(story_id=story.id, scene_id=scene.id, mode='rebuild_memory', **extra)
 
 
-def tokens(role, chars):
-    return min(role.max_input_chars, chars + role.max_input_chars // 8) * 4 + 256
+def tokens(role):
+    # Cross-review P2: the honest bound of one memory request is the role's input limit (a longer request is refused).
+    return role.max_input_chars * 4 + 256
 
 
 def test_target_is_first_scene_without_memory(tmp_path):
@@ -89,11 +90,45 @@ def test_cost_upper_bound_with_tariff(tmp_path):
     tariff(repo)
     role = cloud_role()
     result = memory_cost(repo, role, [100, 2000])
-    # Per scene: min(1000, chars + 125) * 4 + 256 input tokens at $1/M and 1000 output tokens at $2/M.
-    per_scene = [Decimal(tokens(role, c)) / 10**6 + Decimal(2000) / 10**6 for c in (100, 2000)]
+    # Per scene: 1000 * 4 + 256 input tokens at $1/M and 1000 output tokens at $2/M, whatever the prose length.
+    per_scene = [Decimal(tokens(role)) / 10**6 + Decimal(2000) / 10**6 for _ in (100, 2000)]
     up = lambda value: str(value.quantize(Decimal('0.0001'), rounding=ROUND_CEILING))
     assert result == {'per_call_usd': up(max(per_scene)), 'total_usd': up(sum(per_scene)), 'calls': 2, 'reason': None}
-    assert result['total_usd'] == '0.0095'
+    assert result['total_usd'] == '0.0126'
+
+
+def test_cost_bound_covers_a_long_custom_prompt(tmp_path):
+    # Cross-review P2: the request carries the book's memory prompt and the catalog besides the prose; a long custom
+    # prompt with short prose must still be priced within «до X $». The old prose-plus-reserve bound priced less.
+    from storygen.generation.memory_build import input_tokens, prose_memory_request
+    repo = Repository(tmp_path)
+    tariff(repo)
+    role = cloud_role(80000)
+    system, user, _ = prose_memory_request(role, 'Коротка сцена.', system='Інструкція пам’яті. ' * 2500)
+    request_chars = len(system) + len(user) + role.max_input_chars // 8
+    assert request_chars <= role.max_input_chars  # the run accepts this request
+    assert input_tokens(role) >= request_chars * 4 + 256
+    assert min(role.max_input_chars, len('Коротка сцена.') + role.max_input_chars // 8) * 4 + 256 < request_chars * 4 + 256
+    priced = memory_cost(repo, role, [len('Коротка сцена.')])
+    assert Decimal(priced['per_call_usd']) >= (Decimal(request_chars * 4 + 256) + Decimal(2 * role.max_output_tokens)) / 10**6
+
+
+def test_tariff_change_after_the_preview_refuses_the_old_fingerprint(tmp_path):
+    # Cross-review P1: the author agreed to the shown cost; a price raised before the confirm changes the plan.
+    from storygen.generation.memory_build import MEMORY_PLAN_CHANGED
+    repo, story, scenes = written_book(tmp_path, ['Перша.', 'Друга.'], memory_role=cloud_role(80000))
+    set_limit(repo, 'story:' + story.id, '10', 0)
+    tariff(repo)
+    shown = preview(repo, rebuild(story, scenes[0]))
+    assert shown['ready'] is True, shown['reason']
+    save_tariff(repo, Tariff(provider='openrouter', model='cloud-model', base_url=OPENROUTER, input_per_million='1',
+                             output_per_million='2', request_usd='0.5', source='test tariff', kind='manual',
+                             expires_at=(utcnow() + timedelta(days=1)).isoformat()))
+    again = preview(repo, rebuild(story, scenes[0]))
+    assert again['cost']['total_usd'] != shown['cost']['total_usd']
+    assert again['plan_fingerprint'] != shown['plan_fingerprint']
+    with pytest.raises(RevisionConflict, match=MEMORY_PLAN_CHANGED):
+        RunCoordinator(repo).enqueue(rebuild(story, scenes[0], memory_plan_fingerprint=shown['plan_fingerprint']), 'go')
 
 
 def test_cost_unknown_without_tariff_does_not_block(tmp_path):
