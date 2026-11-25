@@ -24,6 +24,14 @@ export function mountChangeReview({host,state,api,json,notice,onApplied,onQueued
   panel.append(help,label,open,info,proposalNote,warnings,selectAll,edits,showSelection,selectedText,apply,classify,classificationInfo);
   let current=null,choices=[],busy=false,previewLoading=false,sceneId=null,latestId=null,listEpoch=0,previewEpoch=0;
   let assembled=null,selectionLoading=false,selectionEpoch=0;
+  // EDIT-SENTENCE-GROUPS-S04: groups the author split (smallest index); restored only from the last decision.
+  let split=new Set(),toggles=[];
+  const splitGroups=()=>(current?.groups||[]).filter(g=>g.units?.length>1&&split.has(g.indices[0])).map(g=>g.indices[0]);
+  const splitBody=()=>{const groups=splitGroups();return groups.length?{split_groups:groups}:{}};
+  const chosen=()=>new Set(choices.flatMap(c=>c.checked?c.editIndices:c.indeterminate?c.partial:[]));
+  function toggleSplit(group,on){if(reason().trim())return;const keep=chosen();on?split.add(group):split.delete(group);render(current,keep)}
+  function selectionChanged(){selectionEpoch++;if(!selectionReady())uiText(selectedText,"textContent",()=>(t("m_94bbf9a6cf09")));updateAvailability()}
+  function splitButton(key,onclick){const button=document.createElement('button');button.type='button';button.className='secondary copyedit-split-toggle';uiText(button,'textContent',key);button.onclick=event=>{event.preventDefault();event.stopPropagation();onclick()};toggles.push(button);return button}
   function clearSelection(){proposalNote.hidden=true;assembled=null;selectionEpoch++;selectionLoading=false;uiText(selectedText,"textContent",()=>(''));uiText(warnings,"textContent",()=>(''));uiText(classificationInfo,"textContent",()=>(''))}
   const indices=()=>choices.flatMap(c=>c.checked?c.editIndices:[]).sort((a,b)=>a-b);
   const selectionKey=()=>JSON.stringify(indices());
@@ -31,16 +39,16 @@ export function mountChangeReview({host,state,api,json,notice,onApplied,onQueued
   const selectionReady=()=>!unresolved()&&(current?.protocol_version!==2||(assembled?.fingerprint===current.proposal_fingerprint&&assembled?.key===selectionKey()));
   const hasChanges=()=>!!current&&(current.has_changes??current.edits.some(e=>e.original!==e.replacement));
   function reason(){return busy?t("m_08ee1e43995d"):previewLoading?t("m_e1dafad3f121"):!state.scene?t("m_f0f1417db6de"):state.saving?t("m_1322882bbef7"):state.dirty?t("m_a4c2e86ecc1a"):state.characterDirty?t("m_c2fa0cfd122f"):!current?t("m_7e42688654c2"):!hasChanges()?t("m_c0b819b5b279"):!current.can_apply?(current.reason||t("m_1f54fb7a81a9")):''}
-  function updateAvailability(){onAvailability({ready:!reason().trim()&&selectionReady(),reason:reason().trim()||(!selectionReady()?t("m_0cd4e9e1948c"):''),hasChanges:hasChanges(),pending:hasChanges()&&!current?.decisions?.length&&!!current?.can_apply});help.hidden=!!current&&!hasChanges();classificationInfo.hidden=!hasChanges();apply.hidden=!!current&&!hasChanges();showSelection.hidden=!!current&&!hasChanges();selectedText.hidden=!hasChanges();const message=reason().trim();selectAll.hidden=!rewrite||!hasChanges();selectAll.disabled=!!message||!choices.length||choices.every(c=>c.checked&&!c.indeterminate);apply.disabled=!!message||!selectionReady();uiText(apply,"title",()=>(diagnostic(message)||(unresolved()?t("m_f5ad568e5569"):!selectionReady()?t("m_7c6afe03778e"):'')));for(const input of choices)input.disabled=!!message;open.disabled=busy||!state.scene;select.disabled=busy||!state.scene;showSelection.disabled=!!message||selectionLoading||unresolved();showSelection.className=hasChanges()&&!showSelection.disabled&&!selectionReady()?'':'secondary';classify.hidden=rewrite||current?.protocol_version!==2||!hasChanges();classify.disabled=!!message||!current?.can_classify;uiText(classify,"title",()=>(diagnostic(current?.classification_reason)||diagnostic(message)));uiText(info,"textContent",()=>(diagnostic(message)||t("m_9ac04dc56df6",{p0:(choices.filter(c=>c.checked).length),p1:(choices.length),p2:(current.decisions.length)})+(unresolved()?t("m_521285129056"):!selectionReady()?t("m_f821edf97ae7"):'')))}
+  function updateAvailability(){onAvailability({ready:!reason().trim()&&selectionReady(),reason:reason().trim()||(!selectionReady()?t("m_0cd4e9e1948c"):''),hasChanges:hasChanges(),pending:hasChanges()&&!current?.decisions?.length&&!!current?.can_apply});help.hidden=!!current&&!hasChanges();classificationInfo.hidden=!hasChanges();apply.hidden=!!current&&!hasChanges();showSelection.hidden=!!current&&!hasChanges();selectedText.hidden=!hasChanges();const message=reason().trim();selectAll.hidden=!rewrite||!hasChanges();selectAll.disabled=!!message||!choices.length||choices.every(c=>c.checked&&!c.indeterminate);apply.disabled=!!message||!selectionReady();uiText(apply,"title",()=>(diagnostic(message)||(unresolved()?t("m_f5ad568e5569"):!selectionReady()?t("m_7c6afe03778e"):'')));for(const input of choices)input.disabled=!!message;for(const toggle of toggles)toggle.disabled=!!message;open.disabled=busy||!state.scene;select.disabled=busy||!state.scene;showSelection.disabled=!!message||selectionLoading||unresolved();showSelection.className=hasChanges()&&!showSelection.disabled&&!selectionReady()?'':'secondary';classify.hidden=rewrite||current?.protocol_version!==2||!hasChanges();classify.disabled=!!message||!current?.can_classify;uiText(classify,"title",()=>(diagnostic(current?.classification_reason)||diagnostic(message)));uiText(info,"textContent",()=>(diagnostic(message)||t("m_9ac04dc56df6",{p0:(choices.filter(c=>c.checked).length),p1:(choices.length),p2:(current.decisions.length)})+(unresolved()?t("m_521285129056"):!selectionReady()?t("m_f821edf97ae7"):'')))}
   selectAll.onclick=()=>{
     if(!rewrite||reason().trim()||!choices.length)return;
     for(const input of choices){input.checked=true;input.indeterminate=false;}
     clearSelection();uiText(selectedText,'textContent',()=>t('m_94bbf9a6cf09'));updateAvailability();
   };
   function render(data,preserved=null){
-    if(!preserved)clearSelection();
+    if(!preserved){clearSelection();split=new Set(data.decisions?.at(-1)?.split_groups||[])}
     adapter.onReview?.(data);
-    current=data;choices=[];edits.replaceChildren();
+    current=data;choices=[];toggles=[];edits.replaceChildren();
     const selected=preserved||new Set(data.decisions.length?data.decisions.at(-1).selected_indices:(data.default_selected_indices??data.edits.map((_,i)=>i)));
     uiText(warnings,"textContent",()=>warningText(data.warnings));
     proposalNote.hidden=data.source!=='editor_import';uiText(proposalNote,"textContent",()=>(data.source==='editor_import'?t('editor_import.proposal_note'):''));
@@ -48,13 +56,42 @@ export function mountChangeReview({host,state,api,json,notice,onApplied,onQueued
     const statuses={get completed(){return t("m_71fb1279f355")},get failed(){return t("m_5d7bd00d31cf")},get running(){return t("m_e36f5ec8b962")},get cancelled(){return t("m_7b52c9f5fa73")},get interrupted(){return t("m_df6c9d11fd91")}};
     uiText(classificationInfo,"textContent",()=>((data.classification_provider?t("m_9012a3510d66",{p0:(data.classification_provider.model),p1:(data.classification_provider.provider)}):'')+(data.classification?t("m_791e2bfe3efc",{p0:(data.classification_advice_model||'')}):'')+(last?t("m_c3b35dc36426",{p0:(statuses[last.state]||last.state),p1:(diagnostic(last.error)?' · '+diagnostic(last.error):'')}):(diagnostic(data.classification_reason)||''))));
     const rows=data.groups??data.edits.map((edit,index)=>({...edit,indices:[index]}));
+    const kindLabels={get grammar(){return t("m_47cc828f5912")},get spelling(){return t("m_d24ca9b3179c")},get punctuation(){return t("m_50d0f64a2654")},get wording(){return t("m_a668090555ad")},get unclassified(){return t("m_8537b35c8b70")},get mixed(){return t("m_263fd5722361")}};
+    const kindText=edit=>kindLabels[edit.category]||edit.category;
+    const hints=(content,list)=>{for(const index of list){
+      const advice=data.classification?.changes.find(c=>c.index===index);
+      if(advice){const hint=document.createElement('small');const categories={get grammar(){return t("m_47cc828f5912")},get spelling(){return t("m_d24ca9b3179c")},get punctuation(){return t("m_50d0f64a2654")},get wording(){return t("m_a668090555ad")},get style(){return t("m_f6a2879f703d")},get meaning(){return t("m_b27ca992c5f6")},get formatting(){return t("m_ec4994865a1d")},get mixed(){return t("m_1c3a73c9781a")},get uncertain(){return t("m_f6894ee2b8e7")}},assessments={get improvement(){return t("m_1fbe594daa88")},get regression(){return t("m_08e7332a4fd3")},get neutral(){return t("m_7213794ddfa8")},get uncertain(){return t("m_d35f25d1cbc6")}};uiText(hint,"textContent",()=>(t("m_9bc97c4b9891",{p0:(categories[advice.category]||advice.category),p1:(assessments[advice.assessment]||advice.assessment),p2:(advice.explanation)})));content.append(hint)}
+    }};
     for(const edit of (hasChanges()?rows:[])){
+      const group=edit.indices[0],splittable=edit.units?.length>1;
+      if(splittable&&split.has(group)){
+        // One copy of the sentence per part: only that part is shown as del → ins.
+        const block=document.createElement('div');block.className='copyedit-split';block.dataset.splitGroup=group;
+        const head=document.createElement('div');head.className='copyedit-item-head';
+        const kind=document.createElement('strong');uiText(kind,'textContent',()=>kindText(edit)+t('edit_split.split_suffix'));
+        head.append(kind,splitButton(()=>t('edit_split.split_together'),()=>toggleSplit(group,false)));block.append(head);
+        const result=document.createElement('p');result.className='copyedit-sentence copyedit-split-result';result.setAttribute('data-split-result','');
+        const parts=[];
+        const refresh=()=>{const picked=new Set(parts.flatMap(c=>c.checked?c.editIndices:[]));const text=edit.before_parts.map((part,i)=>part.changed&&picked.has(part.index)?edit.after_parts[i].text:part.text).join('');uiText(result,'textContent',()=>t('edit_split.split_result',{p0:text}))};
+        for(const unit of edit.units){
+          const item=document.createElement('label');item.className='copyedit-item';
+          const input=document.createElement('input');input.type='checkbox';input.editIndices=unit;input.partial=[];input.checked=unit.every(index=>selected.has(index));input.onchange=()=>{refresh();selectionChanged()};choices.push(input);parts.push(input);
+          const content=document.createElement('span'),sentence=document.createElement('p');sentence.className='copyedit-sentence';
+          edit.before_parts.forEach((part,i)=>{
+            if(part.changed&&unit.includes(part.index)){const del=document.createElement('del'),ins=document.createElement('ins');uiText(del,'textContent',()=>part.text);uiText(ins,'textContent',()=>edit.after_parts[i].text);sentence.append(del,ins)}
+            else{const span=document.createElement('span');uiText(span,'textContent',()=>part.text);sentence.append(span)}
+          });
+          content.append(sentence);hints(content,unit);item.append(input,content);block.append(item);
+        }
+        refresh();block.append(result);edits.append(block);continue;
+      }
       const item=document.createElement('label');item.className='copyedit-item';
-      const input=document.createElement('input');input.type='checkbox';input.editIndices=edit.indices;input.checked=edit.indices.every(index=>selected.has(index));input.indeterminate=!input.checked&&edit.indices.some(index=>selected.has(index));input.onchange=()=>{input.indeterminate=false;selectionEpoch++;if(!selectionReady())uiText(selectedText,"textContent",()=>(t("m_94bbf9a6cf09")));updateAvailability()};choices.push(input);
-      const content=document.createElement('span'),kind=document.createElement('strong');uiText(kind,"textContent",()=>({get grammar(){return t("m_47cc828f5912")},get spelling(){return t("m_d24ca9b3179c")},get punctuation(){return t("m_50d0f64a2654")},get wording(){return t("m_a668090555ad")},get unclassified(){return t("m_8537b35c8b70")},get mixed(){return t("m_263fd5722361")}}[edit.category]||edit.category));
+      const input=document.createElement('input');input.type='checkbox';input.editIndices=edit.indices;input.partial=edit.indices.filter(index=>selected.has(index));input.checked=edit.indices.every(index=>selected.has(index));input.indeterminate=!input.checked&&input.partial.length>0;input.onchange=()=>{input.indeterminate=false;selectionChanged()};choices.push(input);
+      const content=document.createElement('span'),kind=document.createElement('strong');uiText(kind,"textContent",()=>kindText(edit));
       const original=document.createElement('del');uiText(original,"textContent",()=>(edit.original));
       const replacement=document.createElement('ins');uiText(replacement,"textContent",()=>(edit.replacement));
-      content.append(kind);
+      if(splittable){const head=document.createElement('div');head.className='copyedit-item-head';head.append(kind,splitButton(()=>t('edit_split.split',{p0:edit.units.length}),()=>toggleSplit(group,true)));content.append(head)}
+      else content.append(kind);
       for(const [caption,change,parts,tag]of [[msg("m_d3481e5cb0ae"),original,edit.before_parts,'del'],[msg("m_729db2d9951b"),replacement,edit.after_parts,'ins']]){
         const sentence=document.createElement('p');sentence.className='copyedit-sentence';
         const label=document.createElement('span');label.className='copyedit-line-label';uiText(label,"textContent",()=>(caption));
@@ -65,10 +102,7 @@ export function mountChangeReview({host,state,api,json,notice,onApplied,onQueued
         content.append(sentence);
       }
       if(rewrite){const location=document.createElement('small');uiText(location,'textContent',()=>t('rewrite.location.'+edit.location));content.append(location);}
-      for(const index of edit.indices){
-      const advice=data.classification?.changes.find(c=>c.index===index);
-      if(advice){const hint=document.createElement('small');const categories={get grammar(){return t("m_47cc828f5912")},get spelling(){return t("m_d24ca9b3179c")},get punctuation(){return t("m_50d0f64a2654")},get wording(){return t("m_a668090555ad")},get style(){return t("m_f6a2879f703d")},get meaning(){return t("m_b27ca992c5f6")},get formatting(){return t("m_ec4994865a1d")},get mixed(){return t("m_1c3a73c9781a")},get uncertain(){return t("m_f6894ee2b8e7")}},assessments={get improvement(){return t("m_1fbe594daa88")},get regression(){return t("m_08e7332a4fd3")},get neutral(){return t("m_7213794ddfa8")},get uncertain(){return t("m_d35f25d1cbc6")}};uiText(hint,"textContent",()=>(t("m_9bc97c4b9891",{p0:(categories[advice.category]||advice.category),p1:(assessments[advice.assessment]||advice.assessment),p2:(advice.explanation)})));content.append(hint)}
-      }
+      hints(content,edit.indices);
       item.append(input,content);edits.append(item);
     }
     if(!hasChanges())for(const option of select.children){if(option.value===data.attempt_id)uiText(option,"textContent",()=>option.dataset.createdAt+(option.dataset.source==='editor_import'?t('editor_import.proposal_label'):'')+t("m_d0e75138d549"))}
@@ -112,7 +146,7 @@ export function mountChangeReview({host,state,api,json,notice,onApplied,onQueued
     const captured={sceneId:state.scene.id,attemptId:current.attempt_id,fingerprint:current.proposal_fingerprint,key:selectionKey(),epoch:++selectionEpoch};
     selectionLoading=true;updateAvailability();
     try{
-      const result=await api(url(captured.sceneId,captured.attemptId,'/selection-preview'),json('POST',{expected_revision:current.expected_revision,proposal_fingerprint:captured.fingerprint,selected_indices:indices(),...extra()}));
+      const result=await api(url(captured.sceneId,captured.attemptId,'/selection-preview'),json('POST',{expected_revision:current.expected_revision,proposal_fingerprint:captured.fingerprint,selected_indices:indices(),...splitBody(),...extra()}));
       if(captured.epoch!==selectionEpoch||state.scene?.id!==captured.sceneId||current?.attempt_id!==captured.attemptId||selectionKey()!==captured.key)return;
       assembled={fingerprint:captured.fingerprint,key:captured.key,text:result.text,warnings:result.warnings||[]};uiText(selectedText,"textContent",()=>(result.text));uiText(warnings,"textContent",()=>warningText(assembled.warnings));
     }catch(error){notice(error.message,'error')}
@@ -132,7 +166,7 @@ export function mountChangeReview({host,state,api,json,notice,onApplied,onQueued
   apply.onclick=async()=>{
     if(reason().trim()||!selectionReady())return;
     const captured={sceneId:state.scene.id,epoch:state.bufferEpoch};
-    const body={expected_revision:current.expected_revision,proposal_fingerprint:current.proposal_fingerprint,selected_indices:indices(),...extra()};
+    const body={expected_revision:current.expected_revision,proposal_fingerprint:current.proposal_fingerprint,selected_indices:indices(),...splitBody(),...extra()};
     const attemptId=current.attempt_id;busy=true;updateAvailability();
     try{
       const result=await api(url(captured.sceneId,attemptId,rewrite?'/apply':''),json('POST',body));
