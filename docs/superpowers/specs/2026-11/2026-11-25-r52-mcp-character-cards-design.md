@@ -1,7 +1,7 @@
 # R-52: зміна карток персонажів через MCP
 
 Дата: 2026-11-25
-Статус: чекає на затвердження
+Статус: затверджено 2026-11-25
 Spec-review: agy/gemini-4-argon @ 097f166 (author: claude) — 6 findings: 6 fixed, 0 rejected (fallback: codex — usage limit)
 
 GitHub [#326](https://github.com/ysilvestrov/obscura-text-writer/issues/326). Беклог: R-52. Пов'язано з R-40 (#203, скіл `revise`, PR #325).
