@@ -323,6 +323,11 @@ def test_revise_text_added_sentence_is_a_problem():
         'сцена 1: додано речення: «Там було гарно.»']
     # A sentence with the new fact replaces one with the old fact: not an addition.
     assert revise_text_problems(original, 'Жила в Херсоні. Пила чай.', 'Одес', 'Херсон', 'сцена 1') == []
+    # A repeated or dropped copy of an unchanged sentence counts.
+    assert revise_text_problems(original, 'Жила в Херсоні. Пила чай. Пила чай.', 'Одес', 'Херсон', 'сцена 1') == [
+        'сцена 1: додано речення: «Пила чай.»']
+    assert revise_text_problems('Пила чай. Жила в Одесі. Пила чай.', 'Пила чай. Жила в Херсоні.', 'Одес', 'Херсон', 'с') == [
+        'с: змінено речення без старого факту: «Пила чай.»']
 
 
 @pytest.mark.req('CLAUDE-SKILLS')

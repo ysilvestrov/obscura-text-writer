@@ -11,6 +11,7 @@ import json
 import re
 import sys
 import urllib.request
+from collections import Counter
 from dataclasses import replace
 from pathlib import Path
 
@@ -24,7 +25,7 @@ from scripts.skills_stand import PLUGIN, claude_command, obscura_call, run_claud
 PIPELINE_ORDER = ['brief', 'draft', 'edit', 'memory']
 WRITES = {'create_story', 'import_plan_and_characters', 'save_draft', 'save_stage_result', 'update_settings', 'apply_role_preset',
           'update_publication', 'add_scene', 'update_scene', 'update_story', 'start_run', 'upload_cover', 'add_signature',
-          'generate_cover', 'export_book', 'update_plan_preamble', 'import_manuscript'}
+          'generate_cover', 'export_book', 'update_plan_preamble'}
 
 
 def names(calls):
@@ -281,11 +282,11 @@ def revise_text_problems(original, revised, old_stem, new_stem, label):
     sentence without the new fact added."""
     problems = [f'{label}: лишилося «{old_stem}»'] * (old_stem.lower() in revised.lower())
     problems += [f'{label}: немає «{new_stem}»'] * (new_stem.lower() not in revised.lower())
-    before, after = _sentences(original), _sentences(revised)
-    kept, had = set(after), set(before)
+    # Counts, not sets: a dropped or repeated copy of an unchanged sentence is a change too.
+    before, after = Counter(_sentences(original)), Counter(_sentences(revised))
     problems += [f'{label}: змінено речення без старого факту: «{s}»' for s in before
-                 if old_stem.lower() not in s.lower() and s not in kept]
-    problems += [f'{label}: додано речення: «{s}»' for s in after if new_stem.lower() not in s.lower() and s not in had]
+                 if old_stem.lower() not in s.lower() and after[s] < before[s]]
+    problems += [f'{label}: додано речення: «{s}»' for s in after if new_stem.lower() not in s.lower() and after[s] > before[s]]
     return problems
 
 
