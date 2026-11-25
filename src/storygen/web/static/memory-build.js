@@ -147,13 +147,14 @@ export function installMemoryBuild({api,json,notice,document,state}){
         pause_after:document.querySelector('#pause-each')?.checked?['brief','draft','edit','memory']:[],
         memory_plan_fingerprint:current.preview.plan_fingerprint,budget_limit_usd:document.querySelector('#run-budget')?.value||null};
       const run=await api('/api/runs',json('POST',{request_id:crypto.randomUUID(),request}));
-      // A run requested before the close exists: it goes to the run panel, where it can be cancelled.
-      busy=false;pending=null;
+      // A run requested before the close exists: it goes to the run panel, where it can be cancelled. `busy` stays set until
+      // the workspace refresh settles (finally), so the menu item is not re-armed in between.
+      pending=null;
       if(dialog.open)dialog.close();
       document.dispatchEvent(new CustomEvent('run-reveal',{detail:run}));
       await refreshWorkspace();
     }catch(error){
-      busy=false;pending=null;
+      pending=null;
       if(build.aborted){if(inferred)await refreshWorkspace();if(error.status!==409)notice(error.message,'error');return}
       if(error.status===409){
         // A stale preview (the plan or the story changed): read it again; the author decides after checking it.
@@ -170,14 +171,15 @@ export function installMemoryBuild({api,json,notice,document,state}){
     }
   }
 
+  // The dialog may be closed while the refresh runs: `busy` and the menu item are restored in finally either way.
   async function refreshSeries(){
     if(busy||loading)return;
     busy=true;sync();
-    let changed=false;
-    try{changed=await refreshBook(state.storyId)}finally{busy=false}
-    if(!changed){sync();return}
-    await refreshWorkspace();
-    if(dialog.open)await load();
+    try{
+      if(!await refreshBook(state.storyId))return;
+      await refreshWorkspace();
+      if(dialog.open)await load();
+    }finally{busy=false;sync()}
   }
 
   function open(){

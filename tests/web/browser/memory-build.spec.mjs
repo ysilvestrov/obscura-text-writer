@@ -120,7 +120,7 @@ test('a run refused after the cast was written can be started again without a fa
   await request.post(`/api/runs/${(await runsOf(request,fixture))[0].id}/cancel`,{data:{}});
 });
 
-test('Cancel while the cast is being written stops the build before the run, and nothing else starts meanwhile',async({page,request})=>{
+for(const close of ['Cancel','Escape'])test(`${close} while the cast is being written stops the build before the run, and nothing else starts meanwhile`,async({page,request})=>{
   const fixture=await seed(request);
   let release,inferSeen=false;
   const held=new Promise(resolve=>{release=resolve});
@@ -132,7 +132,7 @@ test('Cancel while the cast is being written stops the build before the run, and
   await expect(dialog.locator('#memory-build-cost')).toHaveText('Вартість невідома');
   await dialog.locator('#memory-build-submit').click();
   await expect.poll(()=>inferSeen).toBe(true);
-  await dialog.locator('#memory-build-cancel').click();
+  if(close==='Escape')await page.keyboard.press('Escape');else await dialog.locator('#memory-build-cancel').click();
   await expect(dialog).toBeHidden();
   // The build is still in flight: the menu cannot open the dialog for a second one.
   await page.locator('#story-menu-toggle').click();
@@ -146,6 +146,50 @@ test('Cancel while the cast is being written stops the build before the run, and
   await expect(page.locator('#story-menu-build-memory')).toBeEnabled();
   expect(runPosts).toEqual([]);
   expect(await runsOf(request,fixture)).toEqual([]);
+});
+
+test('a close after the run request was sent leaves the run in the run panel',async({page,request})=>{
+  const fixture=await seed(request);
+  let release,runSeen=false;
+  const held=new Promise(resolve=>{release=resolve});
+  await page.route(/\/api\/runs$/,async route=>{if(route.request().method()!=='POST')return route.continue();runSeen=true;await held;await route.continue()});
+  await openWorkspace(page,fixture);
+  const dialog=await openDialog(page);
+  await expect(dialog.locator('#memory-build-cost')).toHaveText('Вартість невідома');
+  await dialog.locator('#memory-build-submit').click();
+  await expect.poll(()=>runSeen).toBe(true);
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+  release();
+  await expect.poll(async()=>(await runsOf(request,fixture)).length).toBe(1);
+  // The run panel follows it and offers its cancellation.
+  const cancel=page.locator('#run-actions').getByRole('button',{name:/Скасувати/}).first();
+  await expect(cancel).toBeVisible();
+  await expect(cancel).toBeEnabled();
+  await cancel.click();
+  await expect.poll(async()=>(await runsOf(request,fixture)).at(-1)?.state).toMatch(/cancel/);
+});
+
+test('closing the dialog during a series refresh re-enables the menu item once the refresh settles',async({page,request})=>{
+  const fixture=await seed(request,'?series=true');
+  let release,refreshSeen=false;
+  const held=new Promise(resolve=>{release=resolve});
+  await page.route(/\/series\/refresh$/,async route=>{refreshSeen=true;await held;await route.continue()});
+  await openWorkspace(page,fixture);
+  const dialog=await openDialog(page);
+  await dialog.locator('#memory-build-refresh').click();
+  await page.locator('dialog[open]').filter({hasText:'Знімок візьметься'}).getByRole('button',{name:'Оновити з попередньої книги'}).click();
+  await expect.poll(()=>refreshSeen).toBe(true);
+  await dialog.locator('#memory-build-cancel').click();
+  await expect(dialog).toBeHidden();
+  const settled=page.waitForResponse(/\/series\/refresh$/);
+  release();
+  await settled;
+  await page.locator('#story-menu-toggle').click();
+  await expect(page.locator('#story-menu-build-memory')).toBeEnabled();
+  await page.locator('#story-menu-build-memory').click();
+  await expect(dialog).toBeVisible();
+  await expect(dialog.locator('#memory-build-series')).toBeHidden();  // the refresh took the snapshot
 });
 
 test('a known price shows the total; an unknown one shows its reason',async({page,request})=>{
