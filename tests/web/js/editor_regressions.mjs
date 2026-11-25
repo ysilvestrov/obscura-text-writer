@@ -12,7 +12,7 @@ class Element{
   append(...items){this.children.push(...items)}
 }
 function element(id){if(!elements.has(id))elements.set(id,new Element());return elements.get(id)}
-globalThis.document={querySelector:element,querySelectorAll:()=>[],createElement:()=>new Element(),addEventListener(name,handler){if(!listeners.has(name))listeners.set(name,[]);listeners.get(name).push(handler)},dispatchEvent(event){for(const handler of listeners.get(event.type)||[]){const result=handler(event);if(result?.then)pendingEvents.push(result)}}};
+globalThis.document={querySelector:element,querySelectorAll:()=>[],createElement:()=>new Element(),createElementNS:()=>new Element(),addEventListener(name,handler){if(!listeners.has(name))listeners.set(name,[]);listeners.get(name).push(handler)},dispatchEvent(event){for(const handler of listeners.get(event.type)||[]){const result=handler(event);if(result?.then)pendingEvents.push(result)}}};
 globalThis.CustomEvent=class {constructor(type){this.type=type}};
 globalThis.confirm=()=>true;
 const originalTimeout=globalThis.setTimeout;globalThis.setTimeout=(...args)=>{const timer=originalTimeout(...args);timer.unref();return timer};

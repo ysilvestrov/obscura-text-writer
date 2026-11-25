@@ -16,7 +16,7 @@ class Element{
 const nodes=Object.fromEntries(['memory-view','editor','save-text','save-state'].map(id=>['#'+id,new Element()]));
 const events={};
 globalThis.CustomEvent=class{constructor(type){this.type=type;}};
-globalThis.document={body:new Element('body'),querySelector:id=>nodes[id],createElement:tag=>new Element(tag),addEventListener:(type,fn)=>(events[type]??=[]).push(fn),dispatchEvent:event=>{for(const fn of events[event.type]||[])fn();}};
+globalThis.document={body:new Element('body'),querySelector:id=>nodes[id],createElement:tag=>new Element(tag),createElementNS:(_,tag)=>new Element(tag),addEventListener:(type,fn)=>(events[type]??=[]).push(fn),dispatchEvent:event=>{for(const fn of events[event.type]||[])fn();}};
 globalThis.confirm=()=>false;
 const state={scene:{id:'s',position:0,heads:{memory:'m'},revision:0},view:{scenes:[{id:'s',position:0,title:'Початок'},{id:'s2',position:1,title:'Друга'}]},mode:'memory',bufferOrigin:'current',bufferEpoch:1,dirty:false,saving:false};
 let release,hold=false,fail=false,sent;
@@ -32,7 +32,7 @@ const api=async(url,options)=>{
 const {installMemoryTable}=await import(pathToFileURL(process.argv[2]+'/src/storygen/web/static/memory-table.js'));
 const memory=installMemoryTable({state,api,json:(method,body)=>({method,body}),notice:()=>{},refresh:async()=>{},loadBuffer:()=>{}});
 document.dispatchEvent(new CustomEvent('editor-state-changed'));await tick();
-const panel=nodes['#memory-view'],body=panel.children[5].children[0].children[2];
+const panel=nodes['#memory-view'],body=panel.children[6].children[0].children[2];
 assert.equal(nodes['#editor'].hidden,true);assert.equal(memory.active(),true);
 const sceneFilter=panel.children[4].children[2];
 assert.equal(sceneFilter.value,'s','Current scene is selected by default');

@@ -9,25 +9,55 @@ test('memory kind is saved at once and slots stay core',async({page,request})=>{
   const thread=table.locator('tbody tr').filter({hasText:'Хто стукав?'});
   await expect(thread).toBeVisible();
   await expect(table.locator('tbody tr').filter({hasText:'Халат'})).toContainText('Ядро (слот)');
-  const select=thread.getByRole('combobox',{name:'Тип запису «Хто стукав?»'});
-  await expect(select).toHaveValue('');
-  // A table cell with an auto layout must not squeeze the select below its longest option («Атмосфера»).
-  const fits=async()=>{
-    const fit=await select.evaluate(el=>{
-      const style=getComputedStyle(el),context=document.createElement('canvas').getContext('2d');context.font=style.font;
-      const text=Math.max(...[...el.options].map(option=>context.measureText(option.text).width));
-      return {inner:el.clientWidth-parseFloat(style.paddingLeft)-parseFloat(style.paddingRight),text};
-    });
-    expect(fit.inner).toBeGreaterThanOrEqual(fit.text);
+  // The closed control is a compact icon button; the legend above the table names the icons.
+  await expect(page.locator('#memory-view .memory-kind-legend')).toContainText('Тип запису:');
+  await expect(page.locator('#memory-view .memory-kind-legend')).toContainText('Атмосфера');
+  const button=thread.getByRole('button',{name:'Тип запису «Хто стукав?»: Авто',exact:true});
+  await expect(button).toHaveAttribute('aria-haspopup','menu');
+  expect((await button.boundingBox()).width).toBeLessThanOrEqual(64);
+  const menu=thread.getByRole('menu');
+  await expect(menu).toBeHidden();
+  await button.click();
+  await expect(menu).toBeVisible();
+  await expect(menu.getByRole('menuitemradio')).toHaveText(['Авто','Ядро','Атмосфера'].map(name=>new RegExp(`^${name}`)));
+  await expect(menu.getByRole('menuitemradio',{name:/^Авто/})).toHaveAttribute('aria-checked','true');
+  // The open menu stays inside the window (a phone included) and no container clips it: every item is on top.
+  const inside=async()=>{
+    const box=await menu.boundingBox(),{width,height}=page.viewportSize();
+    expect(box.x).toBeGreaterThanOrEqual(0);expect(box.x+box.width).toBeLessThanOrEqual(width);
+    expect(box.y).toBeGreaterThanOrEqual(0);expect(box.y+box.height).toBeLessThanOrEqual(height);
+    for(const item of await menu.getByRole('menuitemradio').all())
+      expect(await item.evaluate(el=>{const r=el.getBoundingClientRect();return el.contains(document.elementFromPoint(r.left+r.width/2,r.top+r.height/2));})).toBe(true);
   };
-  await fits();
-  // A narrow desktop window just above the phone layout squeezes the table hardest.
-  if(test.info().project.name==='desktop'){const size=page.viewportSize();await page.setViewportSize({width:760,height:900});await fits();await page.setViewportSize(size);}
-  await select.selectOption('core');
-  await expect(select).toBeEnabled();
+  await inside();
+  await page.screenshot({path:`docs/images/memory-kind-menu-${test.info().project.name}.png`});
+  await menu.getByRole('menuitemradio',{name:/^Ядро/}).click();
+  await expect(menu).toBeHidden();
   await expect.poll(async()=>Object.values((await(await request.get(`/api/stories/${fixture.story_id}`)).json()).story.memory_kind_overrides)).toEqual(['core']);
+  const core=thread.getByRole('button',{name:'Тип запису «Хто стукав?»: Ядро',exact:true});
+  await expect(core).toBeFocused();
+  // Keyboard: arrows open the menu and move, Escape closes it without a change, Enter picks.
+  await core.press('ArrowDown');
+  await expect(menu.getByRole('menuitemradio',{name:/^Ядро/})).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(menu).toBeHidden();await expect(core).toBeFocused();
+  await core.press('ArrowDown');await page.keyboard.press('ArrowDown');
+  await expect(menu.getByRole('menuitemradio',{name:/^Атмосфера/})).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect.poll(async()=>Object.values((await(await request.get(`/api/stories/${fixture.story_id}`)).json()).story.memory_kind_overrides)).toEqual(['atmosphere']);
+  await expect(thread.getByRole('button',{name:'Тип запису «Хто стукав?»: Атмосфера',exact:true})).toBeFocused();
+  // A click outside closes the menu.
+  await thread.getByRole('button',{name:/Атмосфера$/}).click();await expect(menu).toBeVisible();
+  await page.locator('#memory-view .memory-kind-legend').click();await expect(menu).toBeHidden();
   await page.reload();
-  await expect(table.locator('tbody tr').filter({hasText:'Хто стукав?'}).getByRole('combobox')).toHaveValue('core');
+  await expect(table.locator('tbody tr').filter({hasText:'Хто стукав?'}).getByRole('button',{name:/Атмосфера$/})).toBeVisible();
+  // A narrow desktop window just above the phone layout keeps the button and menu usable.
+  if(test.info().project.name==='desktop'){
+    const size=page.viewportSize();await page.setViewportSize({width:760,height:900});
+    const narrow=table.locator('tbody tr').filter({hasText:'Хто стукав?'}).getByRole('button',{name:/Атмосфера$/});
+    await narrow.click();await expect(menu).toBeVisible();await inside();
+    await page.keyboard.press('Escape');await page.setViewportSize(size);
+  }
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBeTruthy();
   await page.screenshot({path:`docs/images/memory-kind-${test.info().project.name}.png`,fullPage:true});
 });
