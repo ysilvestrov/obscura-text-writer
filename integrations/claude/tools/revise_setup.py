@@ -16,7 +16,7 @@ sys.path[:0] = [str(ROOT), str(ROOT/'src')]
 from scripts.skills_stand import obscura_call, start_stand  # noqa: E402
 
 FIXTURE = Path(__file__).resolve().parent/'fixture'
-REVISE_TITLE = 'Маяк на Ланжероні'
+REVISE_TITLE = 'Маяк над затокою'
 OLD_STEM = 'Одес'
 NEW_CITY = 'Херсон'
 NEW_STEM = 'Херсон'

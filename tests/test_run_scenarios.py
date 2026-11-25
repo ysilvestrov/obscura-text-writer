@@ -193,3 +193,8 @@ def test_revise_fixture_has_old_city_in_plan_and_both_scenes():
         assert OLD_STEM in fixture_text(name)
         assert NEW_STEM not in fixture_text(name)
     assert sum(1 for line in fixture_text('plan.md').splitlines() if line.startswith('Локація:') and OLD_STEM in line) == 2
+    for name in ('plan.md', 'prose-1.md', 'prose-2.md'):
+        text = fixture_text(name)
+        assert text.lower().count('одес') == text.count('Одес')
+    for name in ('prose-1.md', 'prose-2.md'):
+        assert 2 <= fixture_text(name).count('Одес') <= 3
