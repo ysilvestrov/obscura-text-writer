@@ -49,7 +49,10 @@ export function kindMenu({value,text,disabled,onPick}){
     const anchor=button.getBoundingClientRect(),own=menu.getBoundingClientRect(),gap=4,edge=8;
     const width=globalThis.innerWidth,height=globalThis.innerHeight;
     const left=Math.max(edge,Math.min(anchor.right-own.width,width-own.width-edge));
-    const below=anchor.bottom+gap,top=below+own.height>height-edge&&anchor.top-gap-own.height>=edge?anchor.top-gap-own.height:below;
+    // Below the button; above it when only that side has room; otherwise clamped into the window.
+    const below=anchor.bottom+gap,above=anchor.top-gap-own.height;
+    const wanted=below+own.height>height-edge&&above>=edge?above:below;
+    const top=Math.max(edge,Math.min(wanted,height-own.height-edge));
     menu.style.left=`${left}px`;menu.style.top=`${top}px`;
   }
   function open(){

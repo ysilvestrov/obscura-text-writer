@@ -21,10 +21,11 @@ const state={scene:{id:'s',story_id:'st',position:1,heads:{memory:'m'},revision:
 const rows=()=>[
   {claim_id:'SLOT',text:'Синій халат',quote:'q',category:'character_states',category_label:'Стан персонажа',forward:true,source_scene:2,source_title:'Друга',kind:null,slot:true},
   {claim_id:'FACT',text:'Маяк на карті',quote:'q',category:'facts',category_label:'Факт',forward:true,source_scene:2,source_title:'Друга',kind:'atmosphere',slot:false}];
-let revision=3,loads=0,sent=null,fail=false;const notices=[];
+let revision=3,loads=0,sent=null,fail=false,gate=null;const notices=[];
 const api=async(url,options)=>{
   if(url.endsWith('/memory-kind')){
     sent={url,...JSON.parse(JSON.stringify(options.body))};
+    if(gate)await gate;
     if(fail)throw Error('Твір уже змінено');
     return {id:'st',revision:++revision};
   }
@@ -55,8 +56,14 @@ assert.deepEqual({claim_id:sent.claim_id,kind:sent.kind,expected_revision:sent.e
 assert.equal(sent.url,'/api/stories/st/memory-kind');
 assert.equal(state.dirty,false,'A type change is saved at once, not left for Save');
 ({button,menu}=control());assert.equal(button.dataset.kind,'core');
+assert.equal(document.activeElement,button,'After saving, focus returns to the redrawn button');
 button.onclick();await menu.children[0].onclick({stopPropagation(){}});await tick();
 assert.equal(sent.kind,null);assert.equal(sent.expected_revision,4,'The next change uses the new story revision');
+// The author moves to another field while the type is saving: the redraw does not take focus back.
+let release;gate=new Promise(resolve=>{release=resolve;});
+({button,menu}=control());button.onclick();const saving=menu.children[1].onclick({stopPropagation(){}});
+const search={isConnected:true};document.activeElement=search;release();await saving;await tick();gate=null;
+assert.equal(document.activeElement,search,'A save in flight does not steal focus from the field the author moved to');
 fail=true;const before=loads;({button,menu}=control());button.onclick();await menu.children[2].onclick({stopPropagation(){}});await tick();
 assert.equal(notices.at(-1)[1],'error');assert.equal(loads,before+1,'A failed change reloads the table');
 assert.equal(JSON.stringify(panel).includes('"FACT"'),false,'Claim IDs are not visible DOM text');

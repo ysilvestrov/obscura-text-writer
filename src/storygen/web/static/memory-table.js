@@ -90,8 +90,9 @@ export function installMemoryTable({state,api,json,notice,refresh,loadBuffer}){
         if(currentKey()===captured&&!state.dirty){kindBusy=false;void load();return;}
       }finally{kindBusy=false;if(data===snapshot)draw();}
     }});
-    // Keyboard focus comes back to the same entry's button after the table redraws.
-    if(refocusClaim===row.claim_id&&!control.button.disabled){refocusClaim=null;queueMicrotask(()=>control.button.focus());}
+    // Keyboard focus comes back to the same entry's button after the table redraws,
+    // unless the author has moved on (for example into the search field) while the type was saving.
+    if(refocusClaim===row.claim_id&&!control.button.disabled){refocusClaim=null;queueMicrotask(()=>{const active=document.activeElement;if(!active||active===document.body||!active.isConnected)control.button.focus();});}
     cell.append(control.box);return cell;
   }
   function draw(){
