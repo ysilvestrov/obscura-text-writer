@@ -174,6 +174,11 @@ def stage_system_text(repo,story,scene,stage,settings,fragments: dict,refs: list
         # STORY-LANGUAGE-S03: a scene whose prose language differs from the story gets one sentence, before the rating block.
         directive=prose_language_directive(story,scene)
         if directive:system+='\n\n'+directive
+    if stage=='edit' and scene is not None:
+        # EDITOR-NAME-SPELLING: every edit mode and a custom prompt; user_text of patches/diff stays the draft alone.
+        from ..characters.context import name_spelling_section
+        spelling=name_spelling_section(repo,story,scene)
+        if spelling:system+='\n\n'+spelling
     rating_text=rating_instructions(repo,story,scene,stage,settings)
     if rating_text:system+='\n\n'+rating_text
     return system

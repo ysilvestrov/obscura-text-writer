@@ -2525,6 +2525,26 @@
       ]
     },
     {
+      "id": "EDITOR-NAME-SPELLING-S01",
+      "requirement": "EDITOR-NAME-SPELLING",
+      "scope": "Імена учасників у запиті редактора в усіх режимах і в багатопрохідному запуску; імена пізніших сцен не розкриваються; user_text diff і input_refs не змінюються. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/generation/test_editor_name_spelling.py::test_every_edit_mode_names_the_cast_available_in_the_scene",
+        "tests/generation/test_editor_name_spelling.py::test_name_current_in_a_later_scene_comes_first",
+        "tests/generation/test_editor_name_spelling.py::test_english_story_label_and_rule",
+        "tests/generation/test_editor_name_spelling.py::test_block_adds_no_refs"
+      ]
+    },
+    {
+      "id": "EDITOR-NAME-SPELLING-S02",
+      "requirement": "EDITOR-NAME-SPELLING",
+      "scope": "Власний промпт редактора зберігає розділ імен; без карток або з застарілою чи неповною версією розділу немає й помилки не виникає. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
+      "tests": [
+        "tests/generation/test_editor_name_spelling.py::test_custom_editor_prompt_keeps_the_block",
+        "tests/generation/test_editor_name_spelling.py::test_no_block_and_no_error_without_fresh_cards"
+      ]
+    },
+    {
       "id": "DOCS-TRACE-S01",
       "requirement": "DOCS-TRACE",
       "scope": "Видалений тест або новий сценарій. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
