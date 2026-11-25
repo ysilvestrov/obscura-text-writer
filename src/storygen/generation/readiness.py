@@ -89,8 +89,14 @@ def preview(repo, request, view=None):
     if request.mode=='rebuild_memory':
         # R-48 design §5: the build preview — cost, unfit scenes, the plan fingerprint (only when ready), the series hint.
         from . import memory_build
-        result.update(cost=None,unfit_scenes=[],plan_fingerprint=None,
+        result.update(cost=None,unfit_scenes=[],plan_fingerprint=None,cast=None,
                       series_refresh=memory_build.series_refresh(repo,story))
+        # Design §5.1: the scene casts from the names in the prose, applied right before the run; information only.
+        from ..storage.scene_cast import cast_preview
+        try:
+            result['cast'],proposal=cast_preview(view)
+        except (ValueError,KeyError,OSError):  # unreadable cards: no cast preview, the checks below name the problem
+            proposal=None
     try:
         if request.mode!='prepare' and scene is None:
             raise ValueError('Оберіть сцену')
@@ -200,7 +206,9 @@ def preview(repo, request, view=None):
         if result.get('memory_review'):
             result.update(ready=False,can_confirm=True,reason='Попередня пам’ять потребує авторського підтвердження')
         if request.mode=='rebuild_memory' and result['ready']:
-            result['plan_fingerprint']=memory_build.plan_fingerprint(scene.id,targets,settings['memory'])
+            cast=None if proposal is None else {'cards':view.get_story(story.id).characters_version_id,
+                                                'scenes':sorted(proposal.items())}
+            result['plan_fingerprint']=memory_build.plan_fingerprint(scene.id,targets,settings['memory'],cast)
     except (ValueError,KeyError) as exc:
         result['reason']=str(exc) if isinstance(exc,ValueError) else 'Матеріал не знайдено; оновіть сторінку'
         from ..memory.previous import MergeRequired

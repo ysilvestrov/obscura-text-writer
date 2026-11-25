@@ -130,14 +130,17 @@ def unfit_scenes(repo, view, settings, scene_ids) -> list[str]:
     return unfit
 
 
-def plan_fingerprint(scene_id, targets, settings) -> str:
-    """sha256 of the plan the author saw: the start scene, each target scene with its prose head, and the memory role fields
-    that decide what the run costs and which scenes fit (model, endpoint, input, output and context limits)."""
+def plan_fingerprint(scene_id, targets, settings, cast=None) -> str:
+    """sha256 of the plan the author saw: the start scene, each target scene with its prose head, the memory role fields
+    that decide what the run costs and which scenes fit (model, endpoint, input, output and context limits), and `cast` —
+    the proposed scene casts with the cards they come from (design §5.1). The proposal stays the same once applied, so the
+    fingerprint the author saw still matches after `apply_cast`; new cards in between change it."""
     provider = settings.provider
     payload = {'scene_id': scene_id, 'scenes': [[scene.id, scene.heads.get('prose')] for scene in targets],
                'memory': {'provider': provider.provider, 'model': provider.model, 'base_url': provider.base_url,
                           'max_input_chars': settings.max_input_chars, 'max_output_tokens': settings.max_output_tokens,
-                          'context_tokens': settings.context_tokens}}
+                          'context_tokens': settings.context_tokens},
+               'cast': cast}
     text = json.dumps(payload, sort_keys=True, ensure_ascii=False, separators=(',', ':'))
     return hashlib.sha256(text.encode('utf-8')).hexdigest()
 

@@ -285,3 +285,72 @@ def test_unfit_scenes_measure_each_prose_once_across_requests(tmp_path, monkeypa
     save_manual_prose(repo, scenes[1].id, 'Інша друга.', repo.get_scene(scenes[1].id).revision)
     preview(repo, rebuild(story, scenes[0]))
     assert measured[3:] == ['Інша друга.']
+
+
+def with_cards(repo, story, *names, marked=None):
+    import json
+    cards = [{'schema_version': 2, 'id': f'c{i}', 'name': name,
+              'entries': [{'id': f'c{i}e', 'text': 'Протагоніст' if name == marked else 'Вік: 30',
+                           'availability': 'timeless', 'available_from_scene_id': None, 'origin': 'author',
+                           'sources': []}]} for i, name in enumerate(names)]
+    ref = repo.save_version(story.id, None, 'character_cards', json.dumps(cards, ensure_ascii=False), [])
+    repo.publish_story_material(story.id, 'characters_version_id', ref.id, repo.get_story(story.id).revision)
+    return repo.get_story(story.id)
+
+
+def test_readiness_reports_the_proposed_cast(tmp_path):
+    from storygen.storage.scene_cast import NO_CARDS_WARNING
+    repo, story, scenes = written_book(tmp_path, ['Оля побачила Марка.', 'Тиша.'])
+    assert preview(repo, rebuild(story, scenes[0]))['cast'] == \
+        {'cards': 0, 'protagonist': None, 'scenes_to_fill': 0, 'warning': NO_CARDS_WARNING}
+    story = with_cards(repo, story, 'Марко', 'Оля')
+    result = preview(repo, rebuild(story, scenes[0]))
+    assert result['ready'] is True, result['reason']
+    assert result['cast'] == {'cards': 2, 'protagonist': 'Оля', 'scenes_to_fill': 1, 'warning': None}
+
+
+def test_no_cards_warning_does_not_block_the_run(tmp_path):
+    repo, story, scenes = written_book(tmp_path, ['Перша.'])
+    result = preview(repo, rebuild(story, scenes[0]))
+    assert result['ready'] is True and result['reason'] is None and result['cast']['warning']
+
+
+def test_memory_fingerprint_changes_with_cards(tmp_path):
+    repo, story, scenes = written_book(tmp_path, ['Оля побачила Марка.', 'Боб чекав.'])
+    story = with_cards(repo, story, 'Марко', 'Оля')
+    worker = RunCoordinator(repo)
+    seen = preview(repo, rebuild(story, scenes[0]))['plan_fingerprint']
+    story = with_cards(repo, story, 'Марко', 'Оля', 'Боб')  # a card mentioned in the prose: the proposed cast changes
+    assert preview(repo, rebuild(story, scenes[0]))['plan_fingerprint'] != seen
+    with pytest.raises(RevisionConflict, match='План побудови пам’яті змінився'):
+        worker.enqueue(rebuild(story, scenes[0], memory_plan_fingerprint=seen), 'cards')
+    assert worker.list_runs() == []
+
+
+@pytest.mark.parametrize('earlier_memory', [False, True])
+def test_fingerprint_survives_applying_the_cast(tmp_path, earlier_memory):
+    # The UI and MCP apply the proposed cast right before the run: the fingerprint the author saw must still match.
+    from storygen.storage.scene_cast import apply_cast, propose_cast, view_cards
+    repo, story, scenes = written_book(tmp_path, ['Оля йде.', 'Оля побачила Марка.', 'Марко пішов.'])
+    if earlier_memory:  # a valid memory of the first scene: the cast change must stale it, not break the run
+        from storygen.memory.journal import MemoryJournal
+        from tests.link_helpers import approve_links
+        prose = [repo.get_scene(scenes[0].id).heads['prose']]
+        memory = repo.save_version(story.id, scenes[0].id, 'memory',
+                                   MemoryJournal(schema_version=3, source_prose_ids=prose).model_dump_json(), prose)
+        repo.set_head(scenes[0].id, 'memory', memory.id, repo.get_scene(scenes[0].id).revision)
+        approve_links(repo, story.id)
+    story = with_cards(repo, story, 'Марко', 'Оля')
+    target = scenes[1] if earlier_memory else scenes[0]
+    seen = preview(repo, rebuild(story, target))
+    assert seen['ready'] is True, seen['reason']
+    view = repo.context_view(story.id)
+    changed = apply_cast(repo, story.id, propose_cast(view, view_cards(view)), repo.get_story(story.id).revision)
+    assert changed == [scene.id for scene in scenes]
+    story = repo.get_story(story.id)
+    again = preview(repo, rebuild(story, target))
+    assert again['ready'] is True, again['reason']
+    assert again['plan_fingerprint'] == seen['plan_fingerprint']
+    assert again['cast']['scenes_to_fill'] == 0
+    run = RunCoordinator(repo).enqueue(rebuild(story, target, memory_plan_fingerprint=seen['plan_fingerprint']), 'go')
+    assert [task['stage'] for task in run.tasks] == ['memory'] * (2 if earlier_memory else 3)
