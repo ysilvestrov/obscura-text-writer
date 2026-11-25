@@ -8,6 +8,7 @@ export const MAX_PARAGRAPHS=2000;  // application/manuscript_import.py: MAX_PARA
 export const SCENE_TITLE_LIMIT=200,BOOK_TITLE_LIMIT=300;
 const IMPORTED=new Set(['prose','front_matter']);  // the paragraphs a scene carries; headings and separators stay out
 const AXES=['sexual','violence','themes'];
+const NOT_FOUND='Імпорт не знайдено';  // application/manuscript_import.py: NOT_FOUND (the kept file is gone); other 404s keep the preview
 
 const byIndex=paragraphs=>paragraphs instanceof Map?paragraphs:new Map((paragraphs||[]).map(p=>[p.index,p]));
 // Words of one scene: from its paragraphs when all of them are loaded, otherwise the count it already has.
@@ -59,6 +60,9 @@ export function setFrontMatter(scenes,frontMatter,include,firstProse){
   if(joined.length>1)first.words=joined.reduce((sum,scene)=>sum+(scene.words??0),0);
   return [first,...list.slice(next)];
 }
+// Did the author move a boundary or rename a scene: the first start is left out, the front matter moves it.
+const signature=scenes=>JSON.stringify(scenes.map((scene,position)=>[position?scene.start:0,String(scene.title)]));
+export function authorEdits(scenes,proposed){return signature(scenes)!==signature(proposed)}
 // The detected source ('markers', 'level:N', 'none') as the value the preview request takes ('markers', '1'–'3', 'auto').
 export function chapterSourceValue(source){
   if(source==='markers')return 'markers';
@@ -199,7 +203,9 @@ export function installManuscriptImport({api,json,notice,document,appInfo}){
       if(details.open)renderParagraphs(box,scene,position);
       details.ontoggle=()=>{
         if(!details.open){expanded.delete(scene.start);return}
-        expanded.add(scene.start);renderParagraphs(box,scene,position);
+        expanded.add(scene.start);
+        if(box.childElementCount&&!missing(scene).length)return;  // already shown: a re-render would drop the focus
+        renderParagraphs(box,scene,position);
         ensureParagraphs(scene).then(()=>{if(box.isConnected)renderParagraphs(box,scene,position)});
       };
       item.append(details);list.append(item);
@@ -268,7 +274,7 @@ export function installManuscriptImport({api,json,notice,document,appInfo}){
     return body;
   }
   function accept(data,{again}){
-    const hadEdits=again&&preview&&JSON.stringify(scenes.map(s=>[s.start,s.title]))!==JSON.stringify(preview.scenes.map(s=>[s.start,s.title]));
+    const hadEdits=again&&preview&&authorEdits(scenes,preview.scenes);
     const keepTitle=again?bookTitle.value:null;
     clearPreview();
     preview=data;pending=data.import_id;reset=!!hadEdits;
@@ -303,9 +309,10 @@ export function installManuscriptImport({api,json,notice,document,appInfo}){
     }catch(error){if(mine!==epoch)return;busy=false;fail(error)}
     finally{if(mine===epoch){busy=false;if(preview)renderScenes();else sync()}}
   }
-  // 409 (an older preview, or the import already runs) and 404 (the kept file is gone): the file is chosen again.
+  // 409 (an older preview, or the import already runs) and a missing kept file: the file is chosen again. Every other
+  // refusal (a taken series number, a bad title) keeps the preview and the author's boundaries for a fix.
   function fail(error){
-    if(error.status===409||error.status===404){
+    if(error.status===409||(error.status===404&&error.message===NOT_FOUND)){
       busy=saving=false;discard();clearPreview();input.value='';show('pick');
       setStatus(()=>t('manuscript_import.ui.choose_again',{p0:diagnostic(error.message)}),'error');input.focus();
     }else setStatus(()=>diagnostic(error.message),'error');

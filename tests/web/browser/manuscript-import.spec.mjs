@@ -63,6 +63,10 @@ test('a DOCX preview, a new boundary, the import and the summary with the memory
   const before=await scenes.nth(2).locator('.manuscript-import-words').innerText();
   await paragraphs.nth(6).locator('button',{hasText:'Межа тут'}).click();
   await expect(sceneTitles(dialog)).toHaveCount(5);
+  // Focus stays on the moved boundary: now the «Прибрати межу» button of the new scene.
+  await expect(dialog.locator('.manuscript-import-boundary[data-index="14"]')).toBeFocused();
+  await page.waitForTimeout(100);  // a late re-render of the paragraph list would drop the focus
+  await expect(dialog.locator('.manuscript-import-boundary[data-index="14"]')).toBeFocused();
   await expect(sceneTitles(dialog).nth(3)).toHaveValue('Шторм (1) (2)');
   await expect(scenes.nth(2).locator('.manuscript-import-words')).not.toHaveText(before);
   await expect(scenes.nth(3).locator('.manuscript-import-paragraphs > li').first().locator('button')).toHaveText('Прибрати межу');
@@ -171,6 +175,52 @@ test('the English interface leaves only the manuscript text in Ukrainian',async(
     return clone.innerText??clone.textContent;
   });
   expect(text).not.toMatch(/[А-Яа-яІіЇїЄєҐґ]/);
+});
+
+test('a book of a series: the number goes with the import; a taken number keeps the preview',async({page,request})=>{
+  const fixture=await seed(request);
+  // Series titles are unique on the shared fixture server: one per project run.
+  const created=await request.post('/api/series',{data:{title:`Маяки узбережжя ${test.info().project.name} ${Date.now()}`}});
+  expect(created.ok(),await created.text()).toBeTruthy();
+  const series=await created.json();
+  await page.goto('/');
+  let {dialog}=await preview(page,docxFile(fixture));
+  await expect(dialog.locator('#manuscript-import-series-number')).toBeDisabled();
+  await dialog.locator('#manuscript-import-series').selectOption(series.id);
+  await dialog.locator('#manuscript-import-series-number').fill('1');
+  await dialog.locator('#manuscript-import-submit').click();
+  const href=await dialog.locator('#manuscript-import-build-memory').getAttribute('href');
+  const storyId=href.split('/')[2].split('?')[0];
+  const settings=await (await request.get(`/api/stories/${storyId}/settings`)).json();
+  expect([settings.story.series_id,settings.story.series_number]).toEqual([series.id,1]);
+  await dialog.locator('#manuscript-import-cancel').click();
+  // The same number again: the server refuses it (400); the preview and its boundaries stay for a fix.
+  ({dialog}=await preview(page,docxFile(fixture)));
+  await dialog.locator('#manuscript-import-series').selectOption(series.id);
+  await dialog.locator('#manuscript-import-series-number').fill('1');
+  await dialog.locator('#manuscript-import-submit').click();
+  await expect(dialog.locator('#manuscript-import-status')).toContainText('Номер 1 у серії вже зайнятий');
+  await expect(sceneTitles(dialog)).toHaveCount(4);
+  await dialog.locator('#manuscript-import-series-number').fill('2');
+  await dialog.locator('#manuscript-import-submit').click();
+  await expect(dialog.locator('#manuscript-import-build-memory')).toBeVisible();
+});
+
+test('more than 500 scenes keep Import disabled with the reason',async({page,request})=>{
+  const fixture=await seed(request);
+  await page.route('**/api/manuscript-import/preview',async route=>{
+    const response=await route.fetch(),data=await response.json();
+    data.scenes=Array.from({length:501},(_,index)=>({start:index,end:index,title:`Сцена ${index+1}`,words:10,part_index:null,proposed:false,warnings:[]}));
+    await route.fulfill({response,json:data});
+  });
+  await page.goto('/');
+  await openDialog(page);
+  const dialog=page.locator('#manuscript-import-dialog');
+  await dialog.locator('#manuscript-import-file').setInputFiles(docxFile(fixture));
+  await expect(sceneTitles(dialog)).toHaveCount(501);
+  await expect(dialog.locator('#manuscript-import-submit')).toBeDisabled();
+  await expect(dialog.locator('#manuscript-import-limit')).toBeVisible();
+  await expect(dialog.locator('#manuscript-import-limit')).toHaveText('Сцен: 501, а за один імпорт можна до 500. Об’єднайте сцени або розділіть рукопис на кілька файлів.');
 });
 
 test('the client rejects a file over 20 MiB before sending',async({page})=>{

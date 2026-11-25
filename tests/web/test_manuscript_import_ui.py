@@ -78,3 +78,10 @@ def test_strings_and_limits():
     assert '?build_memory=1' in script
     for key in re.findall(r"t\('(manuscript_import\.ui\.[a-z_.]+)'", script):
         assert key in catalog['uk'] and key in catalog['en'], key
+
+
+def test_js_boundary_logic():
+    import subprocess
+    result = subprocess.run(['node', str(Path(__file__).parent/'js'/'manuscript_import_boundaries.mjs')],
+                            capture_output=True, encoding='utf8', timeout=20)
+    assert result.returncode == 0, result.stderr

@@ -69,6 +69,11 @@ const store=applyBody({fingerprint:'f',title:'Маяк',language:'uk',content_ra
   parts:[{index:0,paragraph:2,title:'Перша'}],include_front_matter:false,series:{series_id:'s1',number:2},long_prose:false});
 assert.deepEqual(store,{fingerprint:'f',title:'Маяк',language:'uk',content_rating:null,include_front_matter:false,scenes:[{start:3,title:'Пірс (1)'}],parts:[]});
 
+// The author changed something only when a boundary or a title differs; the front matter moving the first start does not count.
+const {authorEdits}=await import('../../../src/storygen/web/static/manuscript-import.js');
+assert.equal(authorEdits(withFront,scenes),false);assert.equal(authorEdits(split,scenes),true);
+assert.equal(authorEdits([{...scenes[0],title:'Інша'},...scenes.slice(1)],scenes),true);
+
 // The detected chapter source as the request value.
 assert.equal(chapterSourceValue('markers'),'markers');assert.equal(chapterSourceValue('level:2'),'2');assert.equal(chapterSourceValue('none'),'auto');
 console.log('Manuscript import boundaries passed');
