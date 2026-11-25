@@ -8,6 +8,7 @@ the import re-parses the file with them and compares the fingerprint.
 import hashlib
 import json
 import logging
+import os
 import re
 from dataclasses import asdict, dataclass, replace
 from datetime import datetime, timedelta, timezone
@@ -27,6 +28,10 @@ from ..storage.integrity import MANUSCRIPT_IMPORT_DIR
 logger = logging.getLogger(__name__)
 TEMP_DIR = MANUSCRIPT_IMPORT_DIR
 TEMP_TTL = timedelta(hours=24)
+# An import claims the kept file by renaming it to `{import_id}.<ext>.applying` (a second submit of the same import is a
+# conflict); a claim older than this is left over from a crash mid-import and is swept.
+CLAIM_SUFFIX = '.applying'
+CLAIM_TTL = timedelta(minutes=10)
 MAX_FILE = 20 * 1024 * 1024  # every format; the DOCX reader adds its own unpacked-size limit
 MAX_PARAGRAPHS = 2000
 HEAD_CHARS = 160
@@ -108,12 +113,17 @@ def _files(repo, import_id):
     return [path for path in folder.glob(f'{import_id}.*')]
 
 
-def load(repo, import_id: str) -> tuple[bytes, str]:
-    """(content, original file name) of a kept manuscript; KeyError for an unknown, malformed or expired id."""
+def _stored(repo, import_id: str):
     import_id = _checked(import_id)
     stored = next((path for path in _files(repo, import_id) if path.suffix[1:] in EXTENSIONS), None)
     if stored is None:
         raise KeyError(NOT_FOUND)
+    return stored
+
+
+def load(repo, import_id: str) -> tuple[bytes, str]:
+    """(content, original file name) of a kept manuscript; KeyError for an unknown, malformed or expired id."""
+    stored = _stored(repo, import_id)
     try:
         content = stored.read_bytes()
     except OSError:
@@ -136,13 +146,15 @@ def sweep_temp(repo, *, now: datetime | None = None) -> int:
     folder = _folder(repo)
     if not folder.is_dir():
         return 0
-    limit = (now or datetime.now(timezone.utc)).timestamp() - TEMP_TTL.total_seconds()
+    moment = (now or datetime.now(timezone.utc)).timestamp()
     removed = 0
     for path in folder.iterdir():
+        claim = path.suffix == CLAIM_SUFFIX
+        limit = moment - (CLAIM_TTL if claim else TEMP_TTL).total_seconds()
         try:
             if path.is_file() and path.stat().st_mtime < limit:
                 path.unlink()
-                removed += path.suffix[1:] in EXTENSIONS  # the name and settings files belong to their manuscript
+                removed += claim or path.suffix[1:] in EXTENSIONS  # the name and settings files belong to their manuscript
         except OSError:
             continue
     return removed
@@ -212,6 +224,9 @@ DUPLICATE_PART = 'Номери частин мають бути унікальн
 NO_START_SNAPSHOT = 'Знімок початку серії не створено: пам’ять попередньої книги ще не побудовано'
 ORIGIN_NAME_LIMIT = 255
 ORIGIN_NAME_FALLBACK = 'manuscript'
+APPLYING = 'Цей імпорт уже виконується або виконаний'
+MAX_SCENES = 2000
+TOO_MANY_SCENES = 'Забагато сцен: до {limit} за один імпорт'
 STORY_MIN_WORDS = 5000  # StoryCreate.target_words lower bound
 
 
@@ -297,8 +312,12 @@ def apply_import(repo, import_id: str, body) -> dict:
     from ..book.guard import require_long_prose
     from ..storage.manuscript_store import ManuscriptSceneData, publish_manuscript
     body = ManuscriptApply.model_validate(body)
+    if len(body.scenes) > MAX_SCENES:
+        raise ValueError(TOO_MANY_SCENES.format(limit=MAX_SCENES))
     if body.parts or body.series or any(scene.part_index is not None for scene in body.scenes):
         require_long_prose()  # §4.2: before any file or database write
+    if any(path.suffix == CLAIM_SUFFIX for path in _files(repo, _checked(import_id))):
+        raise RevisionConflict(APPLYING)
     content, file_name = load(repo, import_id)
     settings = _stored_settings(repo, import_id)
     if _fingerprint(content, settings) != body.fingerprint:
@@ -316,29 +335,60 @@ def apply_import(repo, import_id: str, body) -> dict:
         chosen = [manuscript[index] for index in indices]
         text = serialize([p.runs for p in chosen], content_format).text
         part_title = part_titles[scene.part_index] if scene.part_index is not None else None
-        scenes.append(ManuscriptSceneData(scene.title, text, content_format, part_title, sum(words(p.text) for p in chosen),
-                                          scene.part_index))
+        # A scene of punctuation only has no words, yet a scene needs a target of at least one word.
+        scenes.append(ManuscriptSceneData(scene.title, text, content_format, part_title,
+                                          max(1, sum(words(p.text) for p in chosen)), scene.part_index))
     story = StoryCreate(title=body.title, language=body.language, content_rating=body.content_rating,
                         target_words=max(STORY_MIN_WORDS, sum(item.target_words for item in scenes)))
     origin = ManuscriptImportOrigin(file_name=origin_file_name(file_name), file_sha256=hashlib.sha256(content).hexdigest(),
                                     imported_at=datetime.now(timezone.utc))
     series = (body.series.series_id, body.series.number) if body.series else None
     structured = any(scene.part_index is not None for scene in body.scenes)
-    created, created_scenes = publish_manuscript(repo, story, scenes, origin, structured, series=series)
+    claimed = _claim(repo, import_id)
+    try:
+        created, created_scenes = publish_manuscript(repo, story, scenes, origin, structured, series=series)
+    except BaseException:
+        _release(claimed)  # nothing was created: the author can retry the same import
+        raise
     warnings = _series_start(repo, created) if series is not None else []
-    discard(repo, import_id)
+    try:
+        discard(repo, import_id)
+    except OSError:  # the book exists; a leftover claim is swept later and only refuses a repeat of this import
+        logger.exception('Не вдалося прибрати тимчасовий файл імпорту рукопису')
     return {'story_id': created.id, 'scene_ids': [scene.id for scene in created_scenes], 'warnings': warnings}
+
+
+def _claim(repo, import_id: str):
+    """Rename the kept file to its claim; a concurrent submit of the same import loses the rename and gets a conflict."""
+    try:
+        stored = _stored(repo, import_id)
+        claimed = stored.with_name(stored.name + CLAIM_SUFFIX)
+        os.rename(stored, claimed)
+        os.utime(claimed)  # the claim's age, for sweep_temp
+    except (KeyError, OSError):
+        raise RevisionConflict(APPLYING) from None
+    return stored, claimed
+
+
+def _release(claimed) -> None:
+    stored, claim = claimed
+    try:
+        os.rename(claim, stored)
+    except OSError:
+        logger.exception('Не вдалося повернути тимчасовий файл імпорту рукопису')
 
 
 def _series_start(repo, story) -> list[str]:
     """The start snapshot, taken as entering a series takes it (`set_story_series`): only after the book is committed.
-    Without the previous book's memory there is no snapshot; the author takes it later («Оновити з попередньої книги»)."""
+    Without the previous book's memory there is no snapshot; the author takes it later (the series refresh action).
+    The book exists already, so any failure here is a warning, never a failed import."""
     from ..book.series import snapshot_sources
     from ..storage import series as series_store
-    if not snapshot_sources(repo.list_stories(include_trashed=True), story):
-        return []  # the first book of a series has nothing to start from
     try:
+        if not snapshot_sources(repo.list_stories(include_trashed=True), story):
+            return []  # the first book of a series has nothing to start from
         series_store.take_snapshot_if_ready(repo, story.id)
-    except Exception:  # the book exists already: a failed snapshot is a warning, never a failed import
+        return [] if repo.get_story(story.id).series_start_version_id else [NO_START_SNAPSHOT]
+    except Exception:
         logger.exception('Не вдалося зробити знімок початку серії для імпортованої книги')
-    return [] if repo.get_story(story.id).series_start_version_id else [NO_START_SNAPSHOT]
+        return [NO_START_SNAPSHOT]

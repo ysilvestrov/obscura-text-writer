@@ -9,6 +9,7 @@ existing book).
 import hashlib
 from typing import NamedTuple
 
+from .context_view import ContextView
 from ..domain import ManuscriptImportOrigin, Scene, Story, StoryCreate, VersionRef, new_id
 
 NO_SCENES = 'Рукопис не містить жодної сцени'
@@ -77,21 +78,35 @@ def publish_manuscript(repo, story: StoryCreate, scenes, origin: ManuscriptImpor
             # before it. All heads are already on the scenes, so one view of this transaction serves every snapshot.
             for _, version, _ in prepared:
                 repo._insert_version_row(db, version)
-            from .context_view import ContextView
             from .snapshots import author_text_snapshot
             from ..memory.forwarding import projection_policy
-            view = ContextView(repo, db, created.id)
-            for scene, version, _ in prepared:
-                snapshot = author_text_snapshot(view, view.peek_scene(scene.id))
-                final = version.model_copy(update={'dependency_snapshot': snapshot, 'input_refs': list(snapshot.refs),
-                                                   'manual_projection_policy': projection_policy(view, scene.id)})
-                VersionRef.model_validate_json(final.model_dump_json())
-                db.execute('UPDATE versions SET payload=? WHERE id=?', (final.model_dump_json(), final.id))
-                db.executemany('INSERT INTO dependency_edges VALUES(?,?)', [(source, final.id) for source in set(final.input_refs)])
+            from ..book.lineage import lineage_scope
+            view = _ReadOnlyView(repo, db, created.id)
+            with lineage_scope():  # the lineage map of the book once, not once per scene (PERF-001)
+                for scene, version, _ in prepared:
+                    snapshot = author_text_snapshot(view, view.peek_scene(scene.id))
+                    final = version.model_copy(update={'dependency_snapshot': snapshot, 'input_refs': list(snapshot.refs),
+                                                       'manual_projection_policy': projection_policy(view, scene.id)})
+                    VersionRef.model_validate_json(final.model_dump_json())
+                    db.execute('UPDATE versions SET payload=? WHERE id=?', (final.model_dump_json(), final.id))
+                    db.executemany('INSERT INTO dependency_edges VALUES(?,?)', [(source, final.id) for source in set(final.input_refs)])
+            stored = [view.peek_scene(scene.id).model_copy(deep=True) for scene in active]
     except BaseException:
         _remove(repo, created.id, written)
         raise
-    return repo.get_story(created.id), repo.list_scenes(created.id)
+    return repo.get_story(created.id), stored  # the scenes as committed
+
+
+class _ReadOnlyView(ContextView):
+    """The view of the snapshot loop, without deep copies: `ContextView.list_scenes` copies every scene on every call and
+    the author_text snapshot asks for them several times per scene, so an import of n scenes cost O(n²) copies under the
+    write lock. The snapshot path only reads what it gets (previous_scenes, previous_memory_selector, scene_series_start,
+    projection_policy, location_selectors), and this view is private to the import's transaction."""
+    def get_story(self, id):
+        return self.peek_story(id)
+
+    def list_scenes(self, story_id):
+        return self.peek_scenes(story_id)
 
 
 def _remove(repo, story_id, written):

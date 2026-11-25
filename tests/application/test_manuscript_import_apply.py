@@ -240,3 +240,86 @@ def test_origin_file_name_is_sanitized():
     assert service.origin_file_name('кни\ud800га.md') == 'книга.md'
     assert len(service.origin_file_name('я' * 400 + '.txt')) == 255
     assert service.origin_file_name('dir/') == 'manuscript'
+
+
+def test_apply_rejects_more_than_2000_scenes(tmp_path):
+    repo, preview = setup(tmp_path)
+    scenes = [{'start': 3 + n, 'title': f'С{n}'} for n in range(service.MAX_SCENES + 1)]
+    with pytest.raises(ValueError, match='2000'):
+        service.apply_import(repo, preview.import_id, body(preview, scenes))
+    assert repo.list_stories(include_trashed=True) == []
+
+
+def test_series_start_snapshot_failure_keeps_book_and_warns(tmp_path, monkeypatch):
+    from storygen.storage import series as series_store
+    repo, preview = setup(tmp_path)
+    series = series_store.create_series(repo, 'Серія')
+    series_store.create_book(repo, series.id, 'Перша')
+
+    def broken(*args, **kwargs):
+        raise RuntimeError('збій знімка')
+    monkeypatch.setattr(series_store, 'take_snapshot_if_ready', broken)
+    result = service.apply_import(repo, preview.import_id, body(preview, series={'series_id': series.id, 'number': 2}))
+    assert repo.get_story(result['story_id']).series_number == 2
+    assert result['warnings'] == [service.NO_START_SNAPSHOT]
+    assert temp_files(tmp_path) == []
+    monkeypatch.setattr('storygen.book.series.snapshot_sources', broken)
+    repo, preview = setup(tmp_path / 'sources')
+    series = series_store.create_series(repo, 'Серія')
+    result = service.apply_import(repo, preview.import_id, body(preview, series={'series_id': series.id, 'number': 1}))
+    assert repo.get_story(result['story_id']).series_number == 1 and result['warnings'] == [service.NO_START_SNAPSHOT]
+    assert temp_files(tmp_path / 'sources') == []
+
+
+def test_second_apply_with_same_import_is_rejected(tmp_path, monkeypatch):
+    from storygen.storage import manuscript_store
+    repo, preview = setup(tmp_path)
+    original = manuscript_store.publish_manuscript
+    nested = []
+
+    def publish(*args, **kwargs):
+        with pytest.raises(RevisionConflict, match=service.APPLYING):
+            service.apply_import(repo, preview.import_id, body(preview))  # the same import submitted again meanwhile
+        nested.append(True)
+        return original(*args, **kwargs)
+    monkeypatch.setattr(manuscript_store, 'publish_manuscript', publish)
+    service.apply_import(repo, preview.import_id, body(preview))
+    assert nested and len(repo.list_stories(include_trashed=True)) == 1
+    assert temp_files(tmp_path) == []
+
+
+def test_failed_apply_releases_the_claim(tmp_path, monkeypatch):
+    from storygen.storage import manuscript_store
+
+    def broken(*args, **kwargs):
+        raise RuntimeError('збій')
+    repo, preview = setup(tmp_path)
+    monkeypatch.setattr(manuscript_store, 'publish_manuscript', broken)
+    with pytest.raises(RuntimeError):
+        service.apply_import(repo, preview.import_id, body(preview))
+    monkeypatch.undo()
+    assert not any(name.endswith('.applying') for name in temp_files(tmp_path))
+    assert service.apply_import(repo, preview.import_id, body(preview))['story_id']
+
+
+def test_sweep_removes_stale_claims(tmp_path):
+    import os
+    import time
+    repo, preview = setup(tmp_path)
+    folder = tmp_path / 'data' / 'manuscript-import'
+    stale = folder / f'{"b" * 32}.md.applying'
+    stale.write_bytes(b'x')
+    old = time.time() - service.CLAIM_TTL.total_seconds() - 60
+    os.utime(stale, (old, old))
+    fresh = folder / f'{"c" * 32}.md.applying'
+    fresh.write_bytes(b'x')
+    service.sweep_temp(repo)
+    assert not stale.exists() and fresh.exists()
+
+
+def test_scene_without_letters_imports(tmp_path):
+    text = '\n\n'.join(['## Глава 1', 'Звичайний текст глави.', '## Глава 2', '— … !!! ?.. «»']).encode()
+    repo, preview = setup(tmp_path, text)
+    result = service.apply_import(repo, preview.import_id, body(preview))
+    scene = repo.get_scene(result['scene_ids'][-1])
+    assert scene.target_words >= 1 and prose(repo, scene.id)[1]

@@ -86,3 +86,34 @@ def test_series_slot_taken_rolls_back(tmp_path):
         publish_manuscript(repo, StoryCreate(title='Книга'), SCENES, ORIGIN, False, series=(series.id, first.series_number))
     assert [s.id for s in repo.list_stories(include_trashed=True)] == [first.id]
     assert len(version_files(tmp_path)) == before
+
+
+def test_publish_removes_files_when_write_fails(tmp_path, monkeypatch):
+    repo = Repository(tmp_path / 'data')
+    original = repo.files.write
+    calls = []
+
+    def failing(relative, content):
+        calls.append(relative)
+        if len(calls) == 3:
+            raise OSError('диск повний')
+        return original(relative, content)
+    monkeypatch.setattr(repo.files, 'write', failing)
+    with pytest.raises(OSError):
+        publish_manuscript(repo, StoryCreate(title='Книга'), SCENES, ORIGIN, False)
+    assert len(calls) == 3
+    assert repo.list_stories(include_trashed=True) == []
+    assert version_files(tmp_path) == []
+
+
+def test_publish_lock_time_is_bounded(tmp_path):
+    import time
+    repo = Repository(tmp_path / 'data')
+    scenes = [ManuscriptSceneData(f'Сцена {n}', 'Слово ' * 200, 'markdown', None, 200) for n in range(300)]
+    started = time.perf_counter()
+    story, created = publish_manuscript(repo, StoryCreate(title='Книга'), scenes, ORIGIN, False)
+    elapsed = time.perf_counter() - started
+    assert len(created) == 300
+    assert elapsed < 3, elapsed  # other writers wait 5 s (busy_timeout) for the import's transaction
+    view = repo.context_view(story.id)
+    assert not view.get_version(created[-1].heads['prose']).stale
