@@ -40,7 +40,7 @@ The status row above the text shows the scene status and the run progress, along
 
 ## Story actions
 
-Everything that concerns the whole story lives in the **☰ Story actions** menu next to the title: **Build memory (scenes: N)** (while some scenes have no valid memory; see [Memory](memory.md#building-the-book-memory)), **Accept all prose as the author's** (when some prose is unchecked), **Card and publication**, **Export…**, **Import editor's revision (DOCX)…**, the budget and rename. Export to Markdown, TXT, FB2, EPUB, PDF, DOCX or RTF is available as soon as scenes have accepted text.
+Everything that concerns the whole story lives in the **☰ Story actions** menu next to the title: **Build memory (scenes: N)** (when some scenes have no valid memory and all of them up to the end of the book already have prose; see [Memory](memory.md#building-the-book-memory)), **Accept all prose as the author's** (when some prose is unchecked), **Card and publication**, **Export…**, **Import editor's revision (DOCX)…**, the budget and rename. Export to Markdown, TXT, FB2, EPUB, PDF, DOCX or RTF is available as soon as scenes have accepted text.
 
 ## Next
 
