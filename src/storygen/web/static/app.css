@@ -280,6 +280,7 @@ pre { white-space: pre-wrap; overflow-wrap: anywhere; font: 14px/1.7 var(--font-
 .memory-table td p { margin: 0 0 8px; white-space: pre-wrap; }
 .memory-table td:nth-child(2) { min-width: 18ch; }
 .memory-table input[type="checkbox"] { width: 1.25rem; height: 1.25rem; }
+.memory-table .memory-kind { width: auto; min-width: max-content; }
 .memory-table details { color: var(--text-secondary); }
 .memory-table summary { cursor: pointer; }
 .core-review { margin-block: 16px; padding-block: 8px; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); min-width: 0; overflow-wrap: anywhere; }
