@@ -179,7 +179,7 @@ class RunCoordinator:
             telemetry={'roles':readiness.get('roles',{}),'calls':readiness.get('calls')} if readiness is not None else None
             if telemetry is not None and readiness.get('evaluator'):
                 telemetry['evaluator']=readiness['evaluator']
-            if telemetry is not None and request.mode in {'audit','rebuild_memory'}:
+            if telemetry is not None and request.mode=='audit':
                 telemetry['cost_bound_usd']=(readiness.get('cost') or {}).get('total_usd')
                 if request.audit_scope=='story':
                     telemetry['scenes']=readiness.get('invalid_scenes')

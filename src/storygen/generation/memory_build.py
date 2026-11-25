@@ -60,15 +60,37 @@ def memory_cost(repo, settings, prose_chars: list[int]) -> dict:
     return result
 
 
+# `memory_fits` measures the doubled prose of every scene, and the workspace asks readiness of every operation on each
+# refresh: an answer is kept per (prose text, role, token profiles), so only changed scenes are measured again.
+_FITS_CACHE: dict = {}
+_FITS_CACHE_SIZE = 4096
+
+
 def unfit_scenes(repo, view, settings, scene_ids) -> list[str]:
     """The scenes whose memory request would exceed the memory role's limits (`memory_fits`: characters and tokens);
     the run stops on them with the existing «Текст не обрізається» refusal. Scenes without prose are not listed."""
     from ..application.manuscript_import import memory_fits
-    fits = memory_fits(repo, settings)
+    try:
+        profiles = json.dumps(repo.token_records('profile'), sort_keys=True, default=str)
+    except Exception:  # no stored profiles to key on: measure without the cache
+        profiles = None
+    role = settings.model_dump_json()
+    fits = None
     unfit = []
     for scene_id in scene_ids:
         prose_id = view.peek_scene(scene_id).heads.get('prose')
-        if prose_id and not fits(view.read_text(prose_id)):
+        if not prose_id:
+            continue
+        key = (view.peek_version(prose_id).sha256, role, profiles)
+        fit = _FITS_CACHE.get(key) if profiles is not None else None
+        if fit is None:
+            fits = fits or memory_fits(repo, settings)
+            fit = fits(view.read_text(prose_id))
+            if profiles is not None:
+                if len(_FITS_CACHE) >= _FITS_CACHE_SIZE:
+                    _FITS_CACHE.pop(next(iter(_FITS_CACHE)))
+                _FITS_CACHE[key] = fit
+        if not fit:
             unfit.append(scene_id)
     return unfit
 

@@ -116,12 +116,14 @@ def test_cost_local_provider_is_unknown(tmp_path):
 
 
 def test_unfit_scenes_listed_for_small_role(tmp_path):
-    role = RoleSettings(provider=ProviderSettings(model='memory'), max_input_chars=1000)
-    repo, story, scenes = written_book(tmp_path, ['Коротка.', 'Д' * 600, 'Ще коротка.'], memory_role=role)
+    # 80 000 input characters (the default); the request carries the prose twice plus a 10 000-character reserve.
+    role = RoleSettings(provider=ProviderSettings(model='memory'), context_tokens=131072)
+    repo, story, scenes = written_book(tmp_path, ['Коротка.', 'Д' * 40000, 'Ще коротка.'], memory_role=role)
     view = repo.context_view(story.id)
     assert unfit_scenes(repo, view, role, [s.id for s in scenes]) == [scenes[1].id]
     result = preview(repo, rebuild(story, scenes[0]))
     assert result['unfit_scenes'] == [scenes[1].id]
+    assert result['ready'] is True, result['reason']  # listed in advance; the run stops on that scene itself
 
 
 def test_series_refresh_suggested_when_previous_book_has_memory(tmp_path):
@@ -174,3 +176,24 @@ def test_memory_fingerprint_only_for_rebuild_memory():
         RunRequest(story_id='s', scene_id='x', mode='rebuild_memory', memory_plan_fingerprint='not-hex')
     assert RunRequest(story_id='s', scene_id='x', mode='rebuild_memory',
                       memory_plan_fingerprint='a' * 64).memory_plan_fingerprint == 'a' * 64
+
+
+def test_unfit_scenes_measure_each_prose_once_across_requests(tmp_path, monkeypatch):
+    import storygen.application.manuscript_import as manuscript_import
+    repo, story, scenes = written_book(tmp_path, ['Перша.', 'Друга.', 'Третя.'])
+    measured = []
+    original = manuscript_import.memory_fits
+
+    def counting(repo, role=None):
+        fits = original(repo, role)
+        return lambda text: measured.append(text) or fits(text)
+
+    monkeypatch.setattr(manuscript_import, 'memory_fits', counting)
+    monkeypatch.setattr('storygen.generation.memory_build._FITS_CACHE', {})
+    preview(repo, rebuild(story, scenes[0]))
+    assert len(measured) == 3
+    preview(repo, rebuild(story, scenes[0]))
+    assert len(measured) == 3  # a later request (a new view) reuses the answers
+    save_manual_prose(repo, scenes[1].id, 'Інша друга.', repo.get_scene(scenes[1].id).revision)
+    preview(repo, rebuild(story, scenes[0]))
+    assert measured[3:] == ['Інша друга.']
