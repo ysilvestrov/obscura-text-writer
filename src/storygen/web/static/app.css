@@ -245,6 +245,13 @@ pre { white-space: pre-wrap; overflow-wrap: anywhere; font: 14px/1.7 var(--font-
 .copyedit-item ins { text-decoration: underline; text-underline-offset: .15em; color: var(--success); }
 .copyedit-sentence { margin-block: 8px; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--text-primary); }
 .copyedit-line-label { color: var(--text-secondary); }
+.copyedit-item-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 12px; }
+.copyedit-review .copyedit-item-head button { margin-block: 0; }
+.copyedit-split { padding-block: 16px 8px; border-bottom: 1px solid var(--border-color); }
+.copyedit-split > .copyedit-item { padding-block: 8px; border-bottom: 0; }
+.copyedit-split del, .copyedit-split ins { white-space: pre-wrap; overflow-wrap: anywhere; }
+.copyedit-split-result { color: var(--text-secondary); }
+.copyedit-split-location { display: block; color: var(--text-secondary); margin-block: 8px; }
 .language-warnings { overflow-wrap: anywhere; }
 .copyedit-item small { display: block; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--text-secondary); margin-block: 8px; }
 .copyedit-selected-text { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 32rem; overflow-y: auto; padding: 16px; border: 1px solid var(--border-color); font: inherit; }

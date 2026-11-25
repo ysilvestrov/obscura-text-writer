@@ -41,7 +41,7 @@ def copyedit_preview(repo, scene_id, attempt_id):
                 decisions=attempt.context.get('copyedit_decisions', []), can_apply=reason is None, reason=reason)
 
 
-def select_copyedits(repo, scene_id, attempt_id, selected_indices, expected_revision, proposal_fingerprint):
+def select_copyedits(repo, scene_id, attempt_id, selected_indices, expected_revision, proposal_fingerprint, split_groups=()):
     attempt = repo.get_attempt(attempt_id)
     if attempt.scene_id != scene_id:
         raise ValueError('Пропозиція належить іншій сцені')
@@ -49,8 +49,8 @@ def select_copyedits(repo, scene_id, attempt_id, selected_indices, expected_revi
     _, original, proposal, _, fingerprint = proposal_data(view, attempt)
     if fingerprint != proposal_fingerprint:
         raise ValueError('Пропозиція змінилася; відкрийте її знову')
-    indices = validate_indices(selected_indices, len(proposal.edits))
-    validate_group_selection(original,proposal,indices,repo.get_version(attempt.context['copyedit_proposal']['draft_id']).content_format)
+    indices = validate_indices(selected_indices, len(proposal.edits));split=sorted(set(split_groups))
+    validate_group_selection(original,proposal,indices,repo.get_version(attempt.context['copyedit_proposal']['draft_id']).content_format,split)
     ensure_selectable(view, attempt, compare_snapshot(view, DependencySnapshot.model_validate(attempt.context["dependency_snapshot"])))
     text = apply_proposal(original,proposal,indices)
     snapshot = DependencySnapshot.model_validate(attempt.context['dependency_snapshot'])
@@ -61,10 +61,10 @@ def select_copyedits(repo, scene_id, attempt_id, selected_indices, expected_revi
                             attempt.run_id, dependency_snapshot=snapshot,content_format=source_ref.content_format,
                             external_origin=ExternalOrigin.model_validate(origin) if origin else None)
     from .language import language_warnings, scene_prose_language
-    return repo.commit_copyedit_selection(attempt_id, ref, indices, expected_revision, fingerprint, language_warnings(text, scene_prose_language(repo, scene_id)))
+    return repo.commit_copyedit_selection(attempt_id, ref, indices, expected_revision, fingerprint, language_warnings(text, scene_prose_language(repo, scene_id)), split)
 
 
-def selection_preview(repo,scene_id,attempt_id,indices,expected_revision,fingerprint):
+def selection_preview(repo,scene_id,attempt_id,indices,expected_revision,fingerprint,split_groups=()):
     preview=copyedit_preview(repo,scene_id,attempt_id)
     if preview['expected_revision']!=expected_revision or preview['proposal_fingerprint']!=fingerprint:
         from ..domain import RevisionConflict
@@ -74,7 +74,7 @@ def selection_preview(repo,scene_id,attempt_id,indices,expected_revision,fingerp
     attempt=repo.get_attempt(attempt_id)
     _,original,proposal,_,_=proposal_data(repo.context_view(attempt.story_id),attempt)
     indices=validate_indices(indices,len(proposal.edits))
-    validate_group_selection(original,proposal,indices,repo.get_version(attempt.context['copyedit_proposal']['draft_id']).content_format)
+    validate_group_selection(original,proposal,indices,repo.get_version(attempt.context['copyedit_proposal']['draft_id']).content_format,sorted(set(split_groups)))
     text=apply_proposal(original,proposal,indices)
     from ..rewrite_diff import rewrite_warnings
     return dict(text=text,selected_indices=indices,proposal_fingerprint=fingerprint,warnings=rewrite_warnings(original,text,[proposal.edits[i] for i in indices]) if preview['protocol_version']==2 else [])

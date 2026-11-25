@@ -10,11 +10,12 @@ from .comment_store import _latest,_insert_comment_set
 from .invalidation import invalidate_in_transaction
 
 
-def publish_rewrite_selection(repo,scene_id,attempt_id,indices,expected_revision,fingerprint,expected_comments_revision):
+def publish_rewrite_selection(repo,scene_id,attempt_id,indices,expected_revision,fingerprint,expected_comments_revision,split_groups=()):
+    split=sorted(set(split_groups))  # EDIT-SENTENCE-GROUPS-S05
     from ..rewriting import proposal_data,ensure_current
     attempt=repo.get_attempt(attempt_id)
     _,source,original,proposal,_,_,_=proposal_data(repo.context_view(attempt.story_id),attempt)
-    indices=validate_indices(indices,len(proposal.edits));validate_group_selection(original,proposal,indices,source.content_format)
+    indices=validate_indices(indices,len(proposal.edits));validate_group_selection(original,proposal,indices,source.content_format,split)
     text=apply_proposal(original,proposal,indices)
     ref=None
     if indices and text!=original:
@@ -32,7 +33,7 @@ def publish_rewrite_selection(repo,scene_id,attempt_id,indices,expected_revision
         if scene.revision!=expected_revision or actual!=fingerprint or notes.revision!=expected_comments_revision:
             raise RevisionConflict('Сцену, коментарі або пропозицію змінено')
         ensure_current(view,attempt,scene,source,notes,_latest(db,scene.id))
-        indices=validate_indices(indices,len(proposal.edits));validate_group_selection(original,proposal,indices,source.content_format)
+        indices=validate_indices(indices,len(proposal.edits));validate_group_selection(original,proposal,indices,source.content_format,split)
         if ref:
             if (ref.input_refs!=attempt.context['input_refs'] or ref.dependency_snapshot!=DependencySnapshot.model_validate(attempt.context['dependency_snapshot']) or
                 ref.content_format!=source.content_format or repo.files.read(ref.relative_path,ref.sha256).decode('utf-8')!=apply_proposal(original,proposal,indices)):
@@ -46,7 +47,7 @@ def publish_rewrite_selection(repo,scene_id,attempt_id,indices,expected_revision
             cleared=CommentSet(story_id=scene.story_id,scene_id=scene.id,revision=notes.revision+1,source_version_id=ref.id,source_sha256=ref.sha256,content_format=ref.content_format)
             _insert_comment_set(db,cleared)
         attempt.context.setdefault('rewrite_decisions',[]).append(dict(id=new_id(),created_at=now(),source_version_id=source.id,comment_set_id=notes.id,
-            selected_indices=indices,result_version_id=ref.id if ref else None,proposal_fingerprint=fingerprint))
+            selected_indices=indices,split_groups=split,result_version_id=ref.id if ref else None,proposal_fingerprint=fingerprint))
         attempt.state='completed';attempt.error=None;attempt.result_version_id=ref.id if ref else None
         db.execute('UPDATE stage_attempts SET state=?,payload=? WHERE id=?',(attempt.state,attempt.model_dump_json(),attempt.id))
         if attempt.run_id:

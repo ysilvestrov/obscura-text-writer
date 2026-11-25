@@ -2648,6 +2648,35 @@
       ]
     },
     {
+      "id": "EDIT-SENTENCE-GROUPS-S04",
+      "requirement": "EDIT-SENTENCE-GROUPS",
+      "scope": "Частини групи з номерами правок; розділення, «Вийде так», «Разом» і відновлення з рішення в UI.",
+      "tests": [
+        "tests/generation/test_sentence_groups_split.py::test_each_edit_of_a_sentence_is_a_part_with_its_index",
+        "tests/generation/test_sentence_groups_split.py::test_overlapping_markdown_dependencies_form_one_part"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#edit-split-browser",
+        "reason": "check_docs.py індексує лише pytest; Playwright case tests/web/browser/edit-split.spec.mjs (кнопка, копії, «Вийде так», «Разом», відновлення, мобільна ширина) виконується окремим runner, цей зв’язок не є доказом виконання."
+      }
+    },
+    {
+      "id": "EDIT-SENTENCE-GROUPS-S05",
+      "requirement": "EDIT-SENTENCE-GROUPS",
+      "scope": "split_groups у маршрутах, сервісах і storage-перевірці copyedits/rewrites; Markdown-частини; помилка нерозділюваної групи.",
+      "tests": [
+        "tests/generation/test_sentence_groups_split.py::test_only_a_split_group_accepts_whole_parts",
+        "tests/generation/test_sentence_groups_split.py::test_split_must_name_a_group_with_several_parts",
+        "tests/generation/test_sentence_groups_split.py::test_single_part_group_cannot_be_split",
+        "tests/generation/test_sentence_groups_split.py::test_markdown_part_stays_whole_in_a_split_group",
+        "tests/web/test_edit_split_selection.py::test_copyedit_partial_sentence_needs_split_groups",
+        "tests/web/test_edit_split_selection.py::test_copyedit_storage_recheck_receives_split",
+        "tests/web/test_edit_split_selection.py::test_copyedit_storage_rejects_partial_group_without_split",
+        "tests/web/test_edit_split_selection.py::test_rewrite_partial_sentence_needs_split_groups",
+        "tests/web/test_edit_split_selection.py::test_rewrite_storage_recheck_uses_split"
+      ]
+    },
+    {
       "id": "ROLE-PROFILES-S01",
       "requirement": "ROLE-PROFILES",
       "scope": "Контракт R-11: профілі, копіювання та перевірка застосування.",

@@ -226,6 +226,28 @@ def main():
             attempt=execute_stage(repo,scene.id,'brief',build_context(repo,scene.id,'brief',role),Proposal(),threading.Event(),lambda _:None)
             return dict(**fixture,proposal_id=attempt.result_version_id,old_brief_id=old.id)
 
+        @app.post('/test-edit-split')
+        def edit_split_fixture():
+            """EDIT-SENTENCE-GROUPS-S04: an editor proposal with two separate edits in one sentence (name + wording)."""
+            import threading
+            from storygen.authoring.blueprints import save_role_settings
+            from storygen.generation.context import build_context
+            from storygen.generation.stages import execute_stage
+            from storygen.providers.models import RoleSettings,ProviderSettings
+            from storygen.providers.streaming import GenerationEvent
+            story=rated_story('Станція')
+            scene=repo.create_scene(story.id,SceneCreate(title='Жилет',beats='Борис знімає жилет.'))
+            draft=repo.save_version(story.id,scene.id,'draft','Boris скинув важкий робочий жилет на стілець та розстібнув комір комбінезона, що з тихим шелестом відійшов від шкіри.',[],content_format='markdown')
+            repo.set_head(scene.id,'draft',draft.id,scene.revision)
+            role=RoleSettings(provider=ProviderSettings(model='synthetic-editor'),edit_mode='diff')
+            save_role_settings(repo,story.id,'editor',role,repo.get_story(story.id).revision)
+            class Editor:
+                def stream(self,*_):
+                    yield GenerationEvent(type='delta',text='Борис скинув важкий робочий жилет на стілець і розстебнув комір комбінезона; тканина з тихим шелестом відійшла від шкіри.')
+                    yield GenerationEvent(type='terminal',finish_reason='stop')
+            execute_stage(repo,scene.id,'edit',build_context(repo,scene.id,'edit',role),Editor(),threading.Event(),lambda _:None)
+            return {'story_id':story.id,'scene_id':scene.id}
+
         @app.post('/test-brief-link')
         def brief_link_fixture():
             import json

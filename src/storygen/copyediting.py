@@ -141,8 +141,8 @@ def validate_indices(indices, count):
     return sorted(indices)
 
 
-def record_decision(attempt, scene, indices, result_id, mode, warnings):
+def record_decision(attempt, scene, indices, result_id, mode, warnings, split=()):
     from .domain import now, new_id
     decision = dict(id=new_id(), created_at=now(), selected_indices=indices, result_version_id=result_id,
-                    head_revision=scene.head_revisions['prose'], mode=mode, language_warnings=warnings)
+                    head_revision=scene.head_revisions['prose'], mode=mode, language_warnings=warnings, split_groups=sorted(set(split)))
     attempt.context.setdefault('copyedit_decisions', []).append(decision)

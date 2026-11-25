@@ -28,18 +28,18 @@ def rewrite_preview(repo,scene_id,attempt_id):
         can_apply=reason is None,reason=reason,warnings=list(attempt.context.get('rewrite_warnings',[])),classification_history=[],can_classify=False)
 
 
-def selection_preview(repo,scene_id,attempt_id,indices,expected_revision,fingerprint,expected_comments_revision):
+def selection_preview(repo,scene_id,attempt_id,indices,expected_revision,fingerprint,expected_comments_revision,split_groups=()):
     p=rewrite_preview(repo,scene_id,attempt_id)
     if p['expected_revision']!=expected_revision or p['proposal_fingerprint']!=fingerprint or p['expected_comments_revision']!=expected_comments_revision:
         raise RevisionConflict('Сцену, коментарі або пропозицію змінено')
     if not p['can_apply']:raise RevisionConflict(p['reason'])
     attempt=repo.get_attempt(attempt_id)
     _,source,original,proposal,_,_,_=proposal_data(repo.context_view(attempt.story_id),attempt)
-    indices=validate_indices(indices,len(proposal.edits));validate_group_selection(original,proposal,indices,source.content_format)
+    indices=validate_indices(indices,len(proposal.edits));validate_group_selection(original,proposal,indices,source.content_format,sorted(set(split_groups)))
     return dict(text=apply_proposal(original,proposal,indices),selected_indices=indices,proposal_fingerprint=fingerprint,warnings=[])
 
 
-def apply_selection(repo,scene_id,attempt_id,indices,expected_revision,fingerprint,expected_comments_revision):
-    selection_preview(repo,scene_id,attempt_id,indices,expected_revision,fingerprint,expected_comments_revision)
+def apply_selection(repo,scene_id,attempt_id,indices,expected_revision,fingerprint,expected_comments_revision,split_groups=()):
+    selection_preview(repo,scene_id,attempt_id,indices,expected_revision,fingerprint,expected_comments_revision,split_groups)
     from ..storage.rewrite_store import publish_rewrite_selection
-    return publish_rewrite_selection(repo,scene_id,attempt_id,indices,expected_revision,fingerprint,expected_comments_revision)
+    return publish_rewrite_selection(repo,scene_id,attempt_id,indices,expected_revision,fingerprint,expected_comments_revision,split_groups)

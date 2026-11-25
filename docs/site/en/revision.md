@@ -5,8 +5,9 @@
 The **Editing** stage follows the draft. The editor suggests changes, and you decide what to accept.
 
 - **Targeted language edits** (an editor role setting) fix spelling, punctuation and single sentences without rewriting the text. They are applied **Automatically after validation** or after **Author review first**.
-- The editor writes the names of the scene's characters the way the character cards spell them: Latin stays Latin and is not transliterated. If an edit still changes a name, leave it unticked. To change how a name is spelled, edit the card and the draft yourself.
+- The editor writes the names of the scene's characters the way the character cards spell them: Latin stays Latin and is not transliterated. If an edit still changes a name, accept the sentence’s other edits separately (see below). To change how a name is spelled, edit the card and the draft yourself.
 - In review, open **Editor changes**, tick the replacements you want and press **Accept edits**: this creates a new prose version. Edits from a manuscript an outside editor returned appear here too, marked “· from editor (DOCX)” — see [Importing the editor’s revision](publication.md#importing-the-editors-revision-docx).
+- All edits of one sentence are accepted together with one checkbox, so a part accepted alone cannot break the sentence. When a sentence has several separate edits, the item header has an **Accept separately (N)** button. It shows a copy of the sentence for each edit with its own checkbox, and the **Result** line shows the sentence built from the ticked edits. **Together** brings back one checkbox. The grammar of a split sentence is up to you: check the “Result” line before accepting.
 - If the stage stopped for your decision, after accepting press **Continue after accepted stage**: the editor is not called again.
 
 In the version history you can choose a draft or prose version and press **Check the selected version’s language**. The rules find letters from another alphabet, mixed alphabets within a word, repeated neighbouring words and a hyphen instead of a dash in dialogue. The saved version is checked, with no model call.

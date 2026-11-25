@@ -10,6 +10,7 @@ class Selection(DomainModel):
     expected_comments_revision:int
     proposal_fingerprint:str
     selected_indices:list[int]
+    split_groups:list[int]=[]  # EDIT-SENTENCE-GROUPS-S05
 
 class RewriteSource(DomainModel):
     source_version_id:str
@@ -34,9 +35,9 @@ def preview(scene_id:str,attempt_id:str,request:Request):
 
 @router.post('/api/scenes/{scene_id}/rewrites/{attempt_id}/selection-preview')
 def preview_selection(scene_id:str,attempt_id:str,body:Selection,request:Request):
-    return selection_preview(request.app.state.repo,scene_id,attempt_id,body.selected_indices,body.expected_revision,body.proposal_fingerprint,body.expected_comments_revision)
+    return selection_preview(request.app.state.repo,scene_id,attempt_id,body.selected_indices,body.expected_revision,body.proposal_fingerprint,body.expected_comments_revision,body.split_groups)
 
 @router.post('/api/scenes/{scene_id}/rewrites/{attempt_id}')
 @router.post('/api/scenes/{scene_id}/rewrites/{attempt_id}/apply')
 def apply(scene_id:str,attempt_id:str,body:Selection,request:Request):
-    return apply_selection(request.app.state.repo,scene_id,attempt_id,body.selected_indices,body.expected_revision,body.proposal_fingerprint,body.expected_comments_revision)
+    return apply_selection(request.app.state.repo,scene_id,attempt_id,body.selected_indices,body.expected_revision,body.proposal_fingerprint,body.expected_comments_revision,body.split_groups)

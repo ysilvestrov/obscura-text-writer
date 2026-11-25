@@ -176,3 +176,21 @@ assert.equal(descendants(historicalHost).find(e=>e.tagName==='input').indetermin
   picker().value='a1';await passes.reload();assert.equal(picker().value,'a1','an older pass chosen by the author stays selected');
   passState.scene={id:'q'};await passes.reload();assert.equal(picker().value,'a2','another scene starts from its latest pass');
 }
+// EDIT-SENTENCE-GROUPS-S04: "select all" in a split rewrite sentence refreshes the «Вийде так» line too.
+{
+  const {mountChangeReview}=await import(pathToFileURL(root+'/src/storygen/web/static/change-review.js'));
+  const splitHost=new Element('div'),splitState={scene:{id:'r'},dirty:false,saving:false,bufferEpoch:0};
+  const splitPreview={...groupedPreview,attempt_id:'r1',location:'inside',decisions:[{selected_indices:[],split_groups:[0]}],
+    groups:[{...groupedPreview.groups[0],location:'inside',units:[[0],[1]],
+      before_parts:groupedPreview.groups[0].before_parts.map((part,i)=>part.changed?{...part,index:i===1?0:1}:part),
+      after_parts:groupedPreview.groups[0].after_parts.map((part,i)=>part.changed?{...part,index:i===1?0:1}:part)}]};
+  const splitApi=async url=>url.endsWith('/rewrites')?{attempts:[{id:'r1',created_at:'2026-11-25T10:00:00',state:'needs_review'}]}:splitPreview;
+  const panel=mountChangeReview({host:splitHost,state:splitState,api:splitApi,json:()=>({}),notice:()=>{},onApplied:async()=>{},adapter:{kind:'rewrite'}});
+  await panel.reload();
+  const nodes=()=>descendants(splitHost);
+  const result=()=>nodes().find(e=>e['data-split-result']==='').textContent;
+  assert.equal(nodes().filter(e=>e.tagName==='input').length,2,'the last decision restores the split view');
+  assert.equal(result(),'Вийде так: Вона йшов до дома.');
+  nodes().find(e=>e['data-review-select-all']==='').onclick();
+  assert.equal(result(),'Вийде так: Вона йшла додому.');
+}
