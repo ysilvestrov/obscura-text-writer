@@ -84,19 +84,21 @@ def test_next_steps_suggests_memory_after_prose(tmp_path):
 
 @pytest.mark.req('MEMORY-003')
 def test_chat_memory_claims_are_bound_to_the_scene(tmp_path):
-    """MEMORY-003-S09: the memory stage from the chat gives claim IDs of the scene, not of its prose version."""
-    from storygen.memory.journal import _add_event, load_memory
+    """MEMORY-003-S09: the same chat memory from a new prose version of the scene keeps the claim IDs."""
+    from storygen.memory.journal import load_memory
+    EXTRA = chr(10) * 2 + 'За вікном стемніло.'  # a new paragraph after the quoted fragments
     app, http, repo, story, scene = scene_with_prose(tmp_path)
     server = build_server(http)
-    task = ok(call(server, 'get_stage_task', {'scene_id': scene.id, 'stage': 'memory'}))
-    saved = ok(call(server, 'save_stage_result', {'scene_id': scene.id, 'stage': 'memory', 'task_fingerprint': task['task_fingerprint'],
-                                                  'result': MEMORY}))
-    adds = [e for e in load_memory(repo.read_text(saved['version_id'])).events if e.operation == 'add']
-    assert adds
-    for event in adds:
-        fields = dict(slot=event.slot, source_kind=event.source_kind, evidence_version_id=event.evidence_version_id,
-                      resolves_claim_id=event.resolves_claim_id, location_ids=event.location_ids)
-        occurrences = range(3)
-        bound = {_add_event(event.category, event.text, event.source_version_id, event.quote, n, event.character_ids,
-                            event.supporting_quotes, scene_id=scene.id, **fields).claim_id for n in occurrences}
-        assert event.claim_id in bound
+
+    def memory_ids():
+        task = ok(call(server, 'get_stage_task', {'scene_id': scene.id, 'stage': 'memory'}))
+        saved = ok(call(server, 'save_stage_result', {'scene_id': scene.id, 'stage': 'memory',
+                                                      'task_fingerprint': task['task_fingerprint'], 'result': MEMORY}))
+        journal = load_memory(repo.read_text(saved['version_id']))
+        return journal.source_prose_ids[-1], [e.claim_id for e in journal.events if e.operation == 'add']
+    first_prose, first = memory_ids()
+    version = repo.save_version(story.id, scene.id, 'manual', PROSE + EXTRA, [])
+    repo.set_head(scene.id, 'prose', version.id, repo.get_scene(scene.id).revision)
+    second_prose, second = memory_ids()
+    assert first and (first_prose, second_prose) == (scene.heads['prose'], version.id)
+    assert second == first

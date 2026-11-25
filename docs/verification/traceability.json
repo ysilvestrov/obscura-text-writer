@@ -8142,7 +8142,9 @@
       "tests": [
         "tests/mcp/test_bridge_keep_memory.py::test_keep_scene_memory_records_the_author_decision_and_equivalence",
         "tests/mcp/test_bridge_keep_memory.py::test_keep_scene_memory_refuses_a_prose_read_before_a_change",
-        "tests/mcp/test_bridge_keep_memory.py::test_keep_scene_memory_leaves_an_auditor_discrepancy_to_the_author"
+        "tests/mcp/test_bridge_keep_memory.py::test_keep_scene_memory_leaves_an_auditor_discrepancy_to_the_author",
+        "tests/mcp/test_bridge_keep_memory.py::test_keep_scene_memory_twice_and_for_another_story",
+        "tests/mcp/test_bridge_keep_memory.py::test_keep_scene_memory_explains_a_link_it_cannot_keep"
       ]
     },
     {

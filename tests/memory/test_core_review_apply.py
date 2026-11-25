@@ -271,5 +271,6 @@ def test_rebuilt_head_keeps_claim_ids_of_its_form(tmp_path, monkeypatch, legacy)
     assert before
     apply_core_review(repo, scene.id, body(scene, slot_edit('carried', 'keep')))
     after = _own_adds(repo, scene.id)
-    assert {key: after[key] for key in before if key in after} == {key: before[key] for key in before if key in after}
-    assert set(before) & set(after)
+    # The keep edit drops records of the model answer but adds none: every remaining record keeps its ID.
+    assert after and set(after) <= set(before)
+    assert after == {key: before[key] for key in after}
