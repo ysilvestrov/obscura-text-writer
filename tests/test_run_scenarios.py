@@ -10,6 +10,7 @@ from run_scenarios import (author_asked, author_problems, bible_problems, creati
                            pipeline_problems,
                            publish_problems,
                            settings_problems, verdict, obscura_revise_problems, revise_chain_problems,
+                           replacement_table_problems,
                            revise_preconsent_problems, revise_text_problems)
 from revise_setup import NEW_STEM, OLD_STEM, fixture_text  # noqa: E402
 from scripts.skills_stand import Result  # noqa: E402
@@ -236,6 +237,25 @@ def test_revise_chain_brief_before_draft_in_second_scene():
 def test_obscura_revise_plan_write_is_allowed():
     assert obscura_revise_problems([('update_scene', {}), ('update_plan_preamble', {})]) == []
     assert obscura_revise_problems([('save_draft', {})]) == ["у творі obscura записано текст: ['save_draft']"]
+
+
+@pytest.mark.req('CLAUDE-SKILLS')
+def test_obscura_revise_paid_run_needs_its_own_consent():
+    assert obscura_revise_problems([('start_run', {'action': 'memory'})]) == []
+    assert obscura_revise_problems([('start_run', {'action': 'memory', 'confirm': True})]) == [
+        "запущено платний запуск: ['memory']"]
+
+
+@pytest.mark.req('CLAUDE-SKILLS')
+def test_replacement_table_is_not_an_echo_of_the_request():
+    echo = 'Перенеси дію з Одеси в Херсон? Добре, зроблю. Сцени «Лист» і «Четвер».'
+    assert replacement_table_problems(echo, 'Одес', 'Херсон', ['Лист', 'Четвер']) == [
+        'немає рядка таблиці з «Одес» і «Херсон»', 'сцена «Лист» не названа в таблиці',
+        'сцена «Четвер» не названа в таблиці']
+    table = ('| Сцена | Знайти | Замінити на |\n|---|---|---|\n| «Лист» | від Одеси | від Херсона |\n'
+             '| «Четвер» | вогні Одеси | вогні Херсона |')
+    assert replacement_table_problems(table, 'Одес', 'Херсон', ['Лист', 'Четвер']) == []
+    assert replacement_table_problems(table, 'Одес', 'Херсон', ['Лист', 'Маяк']) == ['сцена «Маяк» не названа в таблиці']
 
 
 @pytest.mark.req('CLAUDE-SKILLS')

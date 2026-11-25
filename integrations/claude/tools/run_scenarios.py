@@ -300,9 +300,20 @@ def revise_chain_problems(calls, scene_ids):
 
 
 def obscura_revise_problems(calls):
-    """In a story of writing_mode obscura the chat writes no text: only the plan and the card (update_scene, preamble)."""
+    """In a story of writing_mode obscura the chat writes no text: only the plan and the card (update_scene, preamble).
+    A paid run (start_run with confirm) never starts without its own preview and consent."""
     texts = [n for n in names(calls) if n in ('save_draft', 'save_stage_result')]
-    return [f'у творі obscura записано текст: {texts}'] * bool(texts)
+    runs = [args.get('action') for n, args in calls if n == 'start_run' and args.get('confirm')]
+    return [f'у творі obscura записано текст: {texts}'] * bool(texts) + [f'запущено платний запуск: {runs}'] * bool(runs)
+
+
+def replacement_table_problems(text, old_stem, new_stem, titles):
+    """The reply holds a replacement table: a markdown table row with both the old and the new fact, and every scene
+    named in a table row (an echo of the request is not a table)."""
+    rows = [line for line in text.splitlines() if line.strip().startswith('|')]
+    problems = [f'немає рядка таблиці з «{old_stem}» і «{new_stem}»'] * (
+        not any(old_stem.lower() in r.lower() and new_stem.lower() in r.lower() for r in rows))
+    return problems + [f'сцена «{t}» не названа в таблиці' for t in titles if not any(t in r for r in rows)]
 
 
 def scene_text(base, scene, material):
@@ -335,7 +346,8 @@ def check_s13(stand, calls, text, ctx):
 
 
 def check_s14(stand, calls, text, ctx):
-    return obscura_revise_problems(calls) + [f'у тексті немає «{NEW_STEM}»'] * (NEW_STEM.lower() not in text.lower())
+    titles = [s['title'] for s in obscura_call(stand.base, 'get_story', {'story_id': ctx['story']})['scenes']]
+    return obscura_revise_problems(calls) + replacement_table_problems(text, OLD_STEM, NEW_STEM, titles)
 
 
 def check_s15(stand, calls, text, ctx):
