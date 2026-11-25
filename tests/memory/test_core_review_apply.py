@@ -250,3 +250,26 @@ def test_repeated_author_value_with_captured_answer(tmp_path):
     assert slots_of(journal)[('A', 'clothing')].text == 'Плащ'
     ids = [e.event_id for e in journal.events]
     assert len(ids) == len(set(ids))
+
+
+def _own_adds(repo, scene_id):
+    scene, journal = head_journal(repo, scene_id)
+    return {(e.category, e.text): e.claim_id for e in journal.events
+            if e.source_version_id == scene.heads['prose'] and e.operation == 'add' and e.source_kind == 'prose'}
+
+
+@pytest.mark.req('MEMORY-003')
+@pytest.mark.parametrize('legacy', [False, True])
+def test_rebuilt_head_keeps_claim_ids_of_its_form(tmp_path, monkeypatch, legacy):
+    # MEMORY-003-S09: the rebuilt journal keeps the claim IDs of the head, also when it was made with v2-form IDs.
+    from storygen.memory import journal as J
+    if legacy:
+        monkeypatch.setattr(J, 'claim_owner', lambda prose_id, scene_id=None: prose_id)
+    repo, story, scene, claims, attempt = v4_scene(tmp_path)
+    monkeypatch.undo()
+    before = _own_adds(repo, scene.id)
+    assert before
+    apply_core_review(repo, scene.id, body(scene, slot_edit('carried', 'keep')))
+    after = _own_adds(repo, scene.id)
+    assert {key: after[key] for key in before if key in after} == {key: before[key] for key in before if key in after}
+    assert set(before) & set(after)

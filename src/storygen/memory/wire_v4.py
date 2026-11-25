@@ -236,7 +236,7 @@ def check_v4(data,previous,bounds) -> list[Violation]:
     return result
 
 
-def wire_v4_events(wire: MemoryWireV4,previous,prose_id,prose,bounds) -> MemoryJournal:
+def wire_v4_events(wire: MemoryWireV4,previous,prose_id,prose,bounds,*,scene_id=None) -> MemoryJournal:
     frag={f.id:f.text for f in fragment_text(prose)}
     active=replay_memory(previous);events=[];duplicates={}
     slots={(c.character_ids[0],c.slot):c for c in active.values() if c.slot}
@@ -244,7 +244,7 @@ def wire_v4_events(wire: MemoryWireV4,previous,prose_id,prose,bounds) -> MemoryJ
     def add(category,text,quote,supporting=(),chars=(),places=(),**extra):
         key=duplicate_key(category,text,quote,supporting,**extra)
         occurrence=duplicates.get(key,0);duplicates[key]=occurrence+1
-        events.append(_add_event(category,text,prose_id,quote,occurrence,chars,supporting,location_ids=places,**extra))
+        events.append(_add_event(category,text,prose_id,quote,occurrence,chars,supporting,location_ids=places,scene_id=scene_id,**extra))
     def change(action,claim,text,quote,supporting=(),**extra):
         events.append(_change_event(action,claim.claim_id,text,claim.category,claim.character_ids,prose_id,quote,supporting,slot=claim.slot,
             location_ids=claim.location_ids,**extra))

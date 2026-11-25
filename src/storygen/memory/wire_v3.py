@@ -131,7 +131,7 @@ def check_v3(data,previous,fragment_ids,allowed_character_ids) -> list[Violation
     return result
 
 
-def wire_v3_events(wire: MemoryWireV3,previous,prose_id,prose) -> list[MemoryEvent]:
+def wire_v3_events(wire: MemoryWireV3,previous,prose_id,prose,*,scene_id=None) -> list[MemoryEvent]:
     frag={f.id:f.text for f in fragment_text(prose)}
     active=replay_memory(previous);events=[];duplicates={}
     for category in CATEGORIES:
@@ -141,7 +141,7 @@ def wire_v3_events(wire: MemoryWireV3,previous,prose_id,prose) -> list[MemoryEve
                 chars=getattr(item,'character_ids',[])
                 key=(category,item.text,quote,tuple(supporting))
                 occurrence=duplicates.get(key,0);duplicates[key]=occurrence+1
-                events.append(_add_event(category,item.text,prose_id,quote,occurrence,chars,supporting))
+                events.append(_add_event(category,item.text,prose_id,quote,occurrence,chars,supporting,scene_id=scene_id))
             else:
                 claim=active[item.claim_id]
                 events.append(_change_event(action,item.claim_id,item.text,category,claim.character_ids,prose_id,quote,supporting,slot=claim.slot,

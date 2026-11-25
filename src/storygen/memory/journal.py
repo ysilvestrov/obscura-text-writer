@@ -218,8 +218,14 @@ def duplicate_key(category,text,quote,supporting=(),*,slot=None,source_kind='pro
     return (category,text,quote,tuple(supporting),tuple(sorted(extras.items())))
 
 
-def _add_event(category,text,prose_id,quote,occurrence,characters=(),supporting=(),*,slot=None,source_kind='prose',evidence_version_id=None,resolves_claim_id=None,location_ids=()):
-    value=[category,text,prose_id,quote,occurrence]
+def claim_owner(prose_id,scene_id=None):
+    # MEMORY-003: the claim ID names the scene, not its prose version, so a new prose version with the same records keeps
+    # the IDs (VALID-LINKS memory_digest, MEMORY-CARRY references). Without a scene (benchmark replay, legacy) the v2 form.
+    return prose_id if scene_id is None else 'scene:'+scene_id
+
+
+def _add_event(category,text,prose_id,quote,occurrence,characters=(),supporting=(),*,slot=None,source_kind='prose',evidence_version_id=None,resolves_claim_id=None,location_ids=(),scene_id=None):
+    value=[category,text,claim_owner(prose_id,scene_id),quote,occurrence]
     if supporting:value.append(list(supporting))
     extras=_extras(quote,slot,source_kind,evidence_version_id,resolves_claim_id)
     if extras:value.append(extras)
@@ -262,7 +268,7 @@ def _extend(previous,prose_id,events,schema_version=None):
         events=[e.model_copy(deep=True) for e in previous.events]+events)
 
 
-def apply_operations(previous,delta,prose_id,prose,allowed_character_ids):
+def apply_operations(previous,delta,prose_id,prose,allowed_character_ids,*,scene_id=None):
     delta=MemoryOperations.model_validate(delta)
     fragments={fragment.id:fragment.text for fragment in fragment_text(prose)}
     events=[];duplicates={};active=replay_memory(previous)
@@ -274,20 +280,20 @@ def apply_operations(previous,delta,prose_id,prose,allowed_character_ids):
                 raise ValueError('Невідомий scope персонажа')
             key=(op.category,op.text,quote)
             occurrence=duplicates.get(key,0);duplicates[key]=occurrence+1
-            events.append(_add_event(op.category,op.text,prose_id,quote,occurrence,op.character_ids))
+            events.append(_add_event(op.category,op.text,prose_id,quote,occurrence,op.character_ids,scene_id=scene_id))
         else:
             events.append(_change_event(op.action,op.claim_id,op.text,op.category,op.character_ids,prose_id,quote,
                 slot=getattr(active.get(op.claim_id),'slot',None),location_ids=getattr(active.get(op.claim_id),'location_ids',())))
     return _extend(previous,prose_id,events)
 
 
-def merge_legacy_delta(previous,delta,prose_id,prose):
+def merge_legacy_delta(previous,delta,prose_id,prose,*,scene_id=None):
     return apply_operations(previous,MemoryOperations(operations=[MemoryOperation(action='add',
         category=category,text=claim.text,evidence_id=claim.evidence_id)
-        for category in CATEGORIES for claim in getattr(delta,category)]),prose_id,prose,[])
+        for category in CATEGORIES for claim in getattr(delta,category)]),prose_id,prose,[],scene_id=scene_id)
 
 
-def merge_legacy_snapshot(previous,snapshot,prose_id,prose):
+def merge_legacy_snapshot(previous,snapshot,prose_id,prose,*,scene_id=None):
     if snapshot.source_prose_ids!=previous.source_prose_ids+[prose_id]:
         raise ValueError('Пам’ять повинна посилатися на всі поточні джерела прози')
     active=legacy_view(previous);events=[]
@@ -304,7 +310,7 @@ def merge_legacy_snapshot(previous,snapshot,prose_id,prose):
             if entry.source_version_id!=prose_id or entry.quote not in prose:
                 raise ValueError('Новий запис потребує підтвердження поточною прозою')
             key=(entry.text,entry.quote);occurrence=duplicates.get(key,0);duplicates[key]=occurrence+1
-            events.append(_add_event(category,entry.text,prose_id,entry.quote,occurrence))
+            events.append(_add_event(category,entry.text,prose_id,entry.quote,occurrence,scene_id=scene_id))
     return _extend(previous,prose_id,events)
 
 
@@ -313,18 +319,18 @@ def unwrap_model_memory(raw):
     return unwrap_model_json(raw)
 
 
-def parse_memory_result(raw,previous,prose_id,prose,mode,allowed_character_ids,*,warnings=None,wire_version=2,bounds=None):
+def parse_memory_result(raw,previous,prose_id,prose,mode,allowed_character_ids,*,warnings=None,wire_version=2,bounds=None,scene_id=None):
     normalized=unwrap_model_memory(raw)
-    result=_parse_memory_data(decode_memory(normalized),previous,prose_id,prose,mode,allowed_character_ids,warnings,wire_version,bounds)
+    result=_parse_memory_data(decode_memory(normalized),previous,prose_id,prose,mode,allowed_character_ids,warnings,wire_version,bounds,scene_id)
     if warnings is not None and normalized!=raw:
         warnings.append('Пам’ять: прибрано зовнішню обгортку JSON; вміст і докази не змінено.')
     return result
 
 
-def _parse_memory_data(data,previous,prose_id,prose,mode,allowed_character_ids,warnings,wire_version,bounds=None):
+def _parse_memory_data(data,previous,prose_id,prose,mode,allowed_character_ids,warnings,wire_version,bounds=None,scene_id=None):
     from .models import MemoryDelta
     if mode=='snapshot':
-        return merge_legacy_snapshot(previous,MemorySnapshot.model_validate(data),prose_id,prose)
+        return merge_legacy_snapshot(previous,MemorySnapshot.model_validate(data),prose_id,prose,scene_id=scene_id)
     if wire_version==4:
         # v4 checks need the captured bounds (tracked core, threads, fragments) of the attempt, never recomputed ones.
         from .violations import MemoryViolations
@@ -334,13 +340,13 @@ def _parse_memory_data(data,previous,prose_id,prose,mode,allowed_character_ids,w
         violations=check_v4(data,previous,bounds)
         if violations:raise MemoryViolations(violations)
         if split and warnings is not None:warnings.append(JOINED_EVIDENCE_WARNING)
-        return wire_v4_events(MemoryWireV4.model_validate(data),previous,prose_id,prose,bounds)
+        return wire_v4_events(MemoryWireV4.model_validate(data),previous,prose_id,prose,bounds,scene_id=scene_id)
     if wire_version==3:
         from .violations import MemoryViolations
         from .wire_v3 import MemoryWireV3,check_v3,wire_v3_events
         violations=check_v3(data,previous,{fragment.id for fragment in fragment_text(prose)},allowed_character_ids)
         if violations:raise MemoryViolations(violations)
-        return wire_v3_events(MemoryWireV3.model_validate(data),previous,prose_id,prose)
+        return wire_v3_events(MemoryWireV3.model_validate(data),previous,prose_id,prose,scene_id=scene_id)
     if isinstance(data,dict) and data.get('schema_version')==3:
         from .violations import MemoryViolations,Violation
         raise MemoryViolations([Violation('$','wire_version')])
@@ -357,8 +363,8 @@ def _parse_memory_data(data,previous,prose_id,prose,mode,allowed_character_ids,w
         from .violations import MemoryViolations,check_v2
         violations=check_v2(data,previous,{fragment.id for fragment in fragment_text(prose)},allowed_character_ids)
         if violations:raise MemoryViolations(violations)
-        return apply_operations(previous,MemoryOperations.model_validate(data),prose_id,prose,allowed_character_ids)
-    return merge_legacy_delta(previous,MemoryDelta.model_validate(data),prose_id,prose)
+        return apply_operations(previous,MemoryOperations.model_validate(data),prose_id,prose,allowed_character_ids,scene_id=scene_id)
+    return merge_legacy_delta(previous,MemoryDelta.model_validate(data),prose_id,prose,scene_id=scene_id)
 
 
 def validate_memory_journal(journal,source_versions,previous=None):
@@ -392,11 +398,11 @@ def _inherit_places(data,raw):
     return json.dumps(data,ensure_ascii=False) if filled else raw
 
 
-def normalize_manual_memory(raw,previous,prose_id,prose,allowed_character_ids,*,tracked=()):
+def normalize_manual_memory(raw,previous,prose_id,prose,allowed_character_ids,*,tracked=(),scene_id=None):
     data=decode_memory(raw)
     if not isinstance(data,dict):raise ValueError('Потрібен JSON об’єкт пам’яті')
     if 'schema_version' not in data:
-        return merge_legacy_snapshot(previous,MemorySnapshot.model_validate(data),prose_id,prose)
+        return merge_legacy_snapshot(previous,MemorySnapshot.model_validate(data),prose_id,prose,scene_id=scene_id)
     raw=_inherit_places(data,raw)
     journal=load_memory(raw)
     if journal.events[:len(previous.events)]!=previous.events:
@@ -422,9 +428,13 @@ def normalize_manual_memory(raw,previous,prose_id,prose,allowed_character_ids,*,
             key=duplicate_key(event.category,event.text,event.quote,event.supporting_quotes,slot=event.slot,source_kind=event.source_kind,
                 evidence_version_id=event.evidence_version_id,resolves_claim_id=link)
             occurrence=duplicates.get(key,0);duplicates[key]=occurrence+1
-            canonical=_add_event(event.category,event.text,prose_id,event.quote,occurrence,event.character_ids,event.supporting_quotes,
-                slot=event.slot,source_kind=event.source_kind,evidence_version_id=event.evidence_version_id,resolves_claim_id=link,
+            fields=dict(slot=event.slot,source_kind=event.source_kind,evidence_version_id=event.evidence_version_id,resolves_claim_id=link,
                 location_ids=event.location_ids)
+            canonical=_add_event(event.category,event.text,prose_id,event.quote,occurrence,event.character_ids,event.supporting_quotes,
+                scene_id=scene_id,**fields)
+            # A claim saved before scene-bound IDs keeps its v2-form ID on a re-save, so later scenes still find it.
+            legacy=_add_event(event.category,event.text,prose_id,event.quote,occurrence,event.character_ids,event.supporting_quotes,**fields)
+            if scene_id is not None and event.claim_id==legacy.claim_id:canonical=legacy
             mapping[event.claim_id]=canonical.claim_id;known.add(canonical.claim_id)
         else:
             claim=mapping.get(event.claim_id,event.claim_id)
