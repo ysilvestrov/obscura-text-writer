@@ -16,7 +16,8 @@ from ..book.lineage import lineage_scope
 
 
 # A memory build in these states still covers its scenes: a second one would pay for them twice (R-48 review I-1).
-MEMORY_BUILD_ACTIVE=frozenset({'queued','running','pause_requested','paused','cancellation_requested'})
+# R-48 re-review N-0: a paused build does not block (it may be hidden behind a newer run); resuming it is guarded (N-1).
+MEMORY_BUILD_ACTIVE=frozenset({'queued','running','pause_requested','cancellation_requested'})
 TERMINAL={'completed','failed','cancelled','interrupted','needs_review','alternative','paused'}
 CANCEL_TRANSITIONS = {
     'queued': 'cancelled',
@@ -160,8 +161,8 @@ class RunCoordinator:
             if request.mode == 'rebuild_memory' and any(
                 r.request.mode == 'rebuild_memory' and r.state in MEMORY_BUILD_ACTIVE for r in self.list_runs(request.story_id)
             ):
-                # R-48 review I-1: a retried confirm (MCP) or a second tab would queue the paid build twice; the run that
-                # exists is resumed or cancelled in the run panel.
+                # R-48 review I-1: a retried confirm (MCP) or a second tab would queue the paid build twice; the active run
+                # is awaited or cancelled in the run panel.
                 from .memory_build import MEMORY_BUILD_RUNNING
                 raise RevisionConflict(MEMORY_BUILD_RUNNING)
             readiness=None
@@ -314,6 +315,14 @@ class RunCoordinator:
             if run.request.mode=='impact':raise ValueError(IMPACT_REMOVED)
             if run.state not in TERMINAL-{'completed'}:
                 raise ValueError('Запуск ще виконується')
+            if run.request.mode == 'rebuild_memory' and any(
+                r.id != run.id and r.request.mode == 'rebuild_memory' and r.state in MEMORY_BUILD_ACTIVE
+                for r in self.list_runs(run.story_id)
+            ):
+                # R-48 re-review N-1: a stopped build (paused, interrupted, needs_review) resumed next to an active one
+                # would run over the same scenes; the duplicate guard of enqueue applies here too.
+                from .memory_build import MEMORY_BUILD_RESUME_BLOCKED
+                raise RevisionConflict(MEMORY_BUILD_RESUME_BLOCKED)
             attempts=self.repo.list_attempts(run.story_id,run.id)
             task=run.tasks[run.cursor] if run.cursor<len(run.tasks) else None
             latest={}

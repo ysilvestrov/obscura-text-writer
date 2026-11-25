@@ -10,7 +10,7 @@ import {appInfo} from './app-info.js';
 // preview's plan fingerprint and hands it to the run panel (pause, cancel and resume live there). A 409 for a changed plan
 // or cast from either call is a stale preview: the dialog reads it again and asks the author to check it; nothing starts on
 // its own. While a run is
-// active in the workspace the build waits; the server also refuses a second build while one is queued, running or paused
+// active in the workspace the build waits; the server also refuses a second build while one is queued or running
 // (409, shown as is). The item is shown only when every scene the build covers has finished prose (`buildable`, owner
 // 25.11.2026); a direct open (?build_memory=1) still shows the refusal. In an edition without long prose a structured or
 // series book is read-only: the item and the series offer stay hidden there (the server refuses those writes either way).
@@ -21,7 +21,11 @@ export function costText(cost){
   return cost?.reason?t('memory_build.ui.cost_unknown_reason',{p0:diagnostic(cost.reason)}):t('memory_build.ui.cost_unknown');
 }
 
+// The run states the server's duplicate-build guard blocks on (worker MEMORY_BUILD_ACTIVE; re-review N-0, N-2): a paused
+// build does not block. Any such memory build of the story blocks «Побудувати» before infer writes the casts, even when a
+// newer run hides it from the run row.
 const ACTIVE_RUN=new Set(['queued','running','pause_requested','cancellation_requested']);
+const activeBuild=state=>[state.workspaceRun,...(state.workspaceRuns||[])].some(run=>run?.request?.mode==='rebuild_memory'&&ACTIVE_RUN.has(run.state));
 
 export function installMemoryBuild({api,json,notice,document,state}){
   const item=document.querySelector('#story-menu-build-memory'),dialog=document.querySelector('#memory-build-dialog');
@@ -38,7 +42,7 @@ export function installMemoryBuild({api,json,notice,document,state}){
   // with the reason and a link to the scene (review M-1), whether the preview says so with `can_confirm` or as its reason.
   const needsApproval=preview=>!!preview&&(preview.can_confirm||!!preview.reason&&diagnostic(preview.reason)===t('memory.needs_approval'));
   // Why «Побудувати» is unavailable: a failed preview, an active run, then the preview's own readiness (dirty buffer included).
-  const blocked=()=>(failure==='memory_build.ui.nothing'?t(failure):failure)||(!plan?'':ACTIVE_RUN.has(state.workspaceRun?.state)?t('memory_build.ui.run_active'):
+  const blocked=()=>(failure==='memory_build.ui.nothing'?t(failure):failure)||(!plan?'':ACTIVE_RUN.has(state.workspaceRun?.state)||activeBuild(state)?t('memory_build.ui.run_active'):
     plan.preview.can_confirm?(plan.preview.reason||t('memory.needs_approval')):operationReason(state,plan.preview));
 
   function renderMenu(){
@@ -181,7 +185,7 @@ export function installMemoryBuild({api,json,notice,document,state}){
       if(build.aborted){if(inferred)await refreshWorkspace();if(error.status!==409)notice(error.message,'error');return}
       const stale=[t('memory_build.server.plan_changed'),t('memory_build.server.cast_conflict')].includes(diagnostic(error.message));
       if(error.status===409&&!stale){
-        // Another build is already queued, running or paused (or another refusal): said as is; the preview is kept.
+        // Another build is already queued or running (or another refusal): said as is; the preview is kept.
         if(inferred)await refreshWorkspace();
         setStatus(()=>diagnostic(error.message));sync();
         return;

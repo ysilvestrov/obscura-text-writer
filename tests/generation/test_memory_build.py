@@ -437,7 +437,7 @@ def test_second_memory_build_is_refused_while_one_is_active(tmp_path):
         coordinator.enqueue(rebuild(story, scenes[0], memory_plan_fingerprint=fingerprint), 'two')
     assert coordinator.enqueue(rebuild(story, scenes[0], memory_plan_fingerprint=fingerprint), 'one').id == first.id
     assert [run.id for run in coordinator.list_runs(story.id)] == [first.id]
-    for state in ('running', 'paused', 'pause_requested', 'cancellation_requested'):
+    for state in ('running', 'pause_requested', 'cancellation_requested'):
         first.state = state
         repo.save_run(first)
         with pytest.raises(RevisionConflict, match=MEMORY_BUILD_RUNNING):
@@ -447,11 +447,45 @@ def test_second_memory_build_is_refused_while_one_is_active(tmp_path):
     assert coordinator.enqueue(rebuild(story, scenes[0]), 'four').state == 'queued'
 
 
+def test_paused_memory_build_does_not_block_a_new_one(tmp_path):
+    # Re-review N-0 (ruling b): a paused build may be hidden behind a newer run in the run row; it no longer blocks a new
+    # book build (resuming it is guarded instead, N-1).
+    repo, story, scenes = written_book(tmp_path, ['Перша.', 'Друга.'])
+    coordinator = RunCoordinator(repo)
+    paused = coordinator.enqueue(rebuild(story, scenes[0]), 'paused')
+    paused.state = 'paused'
+    repo.save_run(paused)
+    other = coordinator.enqueue(RunRequest(story_id=story.id, scene_id=scenes[0].id, mode='stage', stage='memory'), 'other')
+    other.state = 'completed'
+    repo.save_run(other)
+    assert coordinator.enqueue(rebuild(story, scenes[0]), 'new').state == 'queued'
+
+
+@pytest.mark.parametrize('stopped', ['paused', 'interrupted', 'needs_review'])
+def test_resuming_a_memory_build_while_another_is_active_is_refused(tmp_path, stopped):
+    # Re-review N-1 (ruling b): resume applies the duplicate guard, so a stopped build and a newer active one never run
+    # over the same scenes together; once the newer build ends, the stopped one may be resumed again.
+    from storygen.generation.memory_build import MEMORY_BUILD_RESUME_BLOCKED
+    repo, story, scenes = written_book(tmp_path, ['Перша.', 'Друга.'])
+    coordinator = RunCoordinator(repo)
+    old = coordinator.enqueue(rebuild(story, scenes[0]), 'old')
+    old.state = stopped
+    repo.save_run(old)
+    new = coordinator.enqueue(rebuild(story, scenes[0]), 'new')
+    assert new.state == 'queued'
+    with pytest.raises(RevisionConflict, match=MEMORY_BUILD_RESUME_BLOCKED):
+        coordinator.resume(old.id, repeat_interrupted=True)
+    assert coordinator.get_run(old.id).state == stopped
+
+
 def test_memory_build_running_is_translated():
     from storygen.generation.memory_build import MEMORY_BUILD_RUNNING
     from storygen.web.localization import diagnostic
-    assert diagnostic(MEMORY_BUILD_RUNNING, 'en') == ('A memory build of this story is already queued, running or paused: '
-                                                       'resume or cancel it in the runs panel')
+    from storygen.generation.memory_build import MEMORY_BUILD_RESUME_BLOCKED
+    assert diagnostic(MEMORY_BUILD_RUNNING, 'en') == ('A memory build of this story is already queued or running: '
+                                                       'wait for it or cancel it in the runs panel')
+    assert diagnostic(MEMORY_BUILD_RESUME_BLOCKED, 'en') == ('Another memory build of this story is already queued or '
+                                                              'running: wait for it or cancel it before resuming this one')
 
 
 def test_legacy_memory_with_an_unchecked_link_is_not_a_target(tmp_path):

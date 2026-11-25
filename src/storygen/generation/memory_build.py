@@ -12,7 +12,8 @@ from .audit_cost import CHARS_TO_TOKENS, CLOUD, INPUT_OVERHEAD, NO_PRICE, curren
 # The previous memory is bounded by the same share of the role's input that `memory_fits` reserves for it.
 PREVIOUS_MEMORY_SHARE = 8
 MEMORY_PLAN_CHANGED = 'План побудови пам’яті змінився. Перегляньте його ще раз'
-MEMORY_BUILD_RUNNING = 'Побудова пам’яті цього твору вже в черзі, виконується або призупинена: продовжте чи скасуйте її в панелі запусків'
+MEMORY_BUILD_RUNNING = 'Побудова пам’яті цього твору вже в черзі або виконується: дочекайтеся її чи скасуйте в панелі запусків'
+MEMORY_BUILD_RESUME_BLOCKED = 'Інша побудова пам’яті цього твору вже в черзі або виконується: дочекайтеся її чи скасуйте, перш ніж продовжувати цю'
 
 
 def memory_build_target(view, proposal=None) -> tuple[str | None, int]:

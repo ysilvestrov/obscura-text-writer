@@ -51,6 +51,25 @@ def test_two_confirmed_memory_builds_give_one_run_and_one_409(tmp_path):
         assert len(client.get(f'/api/stories/{story.id}/runs').json()['runs']) == 1
 
 
+def test_resuming_a_paused_build_next_to_an_active_one_is_409(tmp_path):
+    # Re-review N-0/N-1 (ruling b): a paused build does not block a new one, and resuming the paused build while the new
+    # one is active answers 409 with the reason; the paused run stays paused.
+    repo, story, scenes = written_book(tmp_path, ['Перша.', 'Друга.'])
+    app = create_app(AppSettings(data_dir=tmp_path))
+    with TestClient(app, base_url='http://127.0.0.1:8765') as client:
+        app.state.coordinator.stop()
+        request = {'story_id': story.id, 'scene_id': scenes[0].id, 'mode': 'rebuild_memory'}
+        paused = client.post('/api/runs', json={'request_id': 'paused', 'request': request}).json()
+        run = app.state.repo.get_run(paused['id'])
+        run.state = 'paused'
+        app.state.repo.save_run(run)
+        assert client.post('/api/runs', json={'request_id': 'new', 'request': request}).status_code == 200
+        answer = client.post(f"/api/runs/{paused['id']}/resume", json={'repeat_interrupted': False})
+        assert answer.status_code == 409
+        assert answer.json()['detail'].startswith('Інша побудова пам’яті цього твору вже в черзі')
+        assert app.state.repo.get_run(paused['id']).state == 'paused'
+
+
 def test_book_in_progress_is_not_buildable(tmp_path):
     # Owner, 25.11.2026 (review I-2): prose in scene 1 only and plans after it — the build would be refused, so the menu
     # item is hidden; once every scene from the target to the end has finished prose, it is shown.

@@ -263,7 +263,7 @@ The chat can also start the [book memory build](memory.md#building-the-book-memo
 
 - The preview shows the number of scenes and calls, the upper bound on the cost (for a cloud model with a known price), the scenes that do not fit the memory role limits, the character cards and an offer to update a series book from the previous one first. You update the series book yourself in the Obscura window (**Update from the previous book**); the chat only reminds you.
 - The chat starts the build only after your consent and only with the plan you were shown: without it Obscura refuses the run from the chat. If the book, the cards or the memory model changed in the meantime, the chat has to show you a new preview.
-- If a build of this book is already queued, running or paused, Obscura does not start a second one, even when the chat repeats the confirmation: you do not pay twice for one build.
+- If a build of this book is already queued or running, Obscura does not start a second one, even when the chat repeats the confirmation: you do not pay twice for one build.
 - Before the run Obscura fills the scene participants from the names in the prose, as the **Build** button does. If the run is refused after that (for example, by the budget), the written participants stay.
 - In a "Chat writes" story Obscura does not start the memory build: the chat goes through the scenes one by one itself (the memory stage from the chat), or you switch the story mode.
 

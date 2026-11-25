@@ -8902,7 +8902,10 @@
         "tests/web/test_memory_build_route.py::test_two_confirmed_memory_builds_give_one_run_and_one_409",
         "tests/web/test_memory_build_route.py::test_book_in_progress_is_not_buildable",
         "tests/generation/test_memory_build.py::test_memory_the_memory_stage_writes_is_valid",
-        "tests/web/test_memory_build_route.py::test_memory_saved_from_the_chat_is_valid_for_the_build"
+        "tests/web/test_memory_build_route.py::test_memory_saved_from_the_chat_is_valid_for_the_build",
+        "tests/generation/test_memory_build.py::test_paused_memory_build_does_not_block_a_new_one",
+        "tests/generation/test_memory_build.py::test_resuming_a_memory_build_while_another_is_active_is_refused",
+        "tests/web/test_memory_build_route.py::test_resuming_a_paused_build_next_to_an_active_one_is_409"
       ],
       "manual": {
         "procedure": "docs/verification/manual.md#memory-build-browser",

@@ -248,21 +248,45 @@ for(const shape of ['reason','can_confirm'])test(`previous memory awaiting the a
 });
 
 test('a second build refused by the server (409) is said as is and the preview stays',async({page,request})=>{
-  // Review I-1: another tab or the chat has queued, started or paused a build; the server refuses this one.
+  // Review I-1: another tab or the chat has queued or started a build; the server refuses this one.
   const fixture=await seed(request);
   await page.route(/\/api\/runs$/,async route=>{
     if(route.request().method()!=='POST')return route.continue();
-    const detail='Побудова пам’яті цього твору вже в черзі, виконується або призупинена: продовжте чи скасуйте її в панелі запусків';
+    const detail='Побудова пам’яті цього твору вже в черзі або виконується: дочекайтеся її чи скасуйте в панелі запусків';
     await route.fulfill({status:409,json:{detail,detail_original:detail}});
   });
   await openWorkspace(page,fixture);
   const dialog=await openDialog(page);
   await expect(dialog.locator('#memory-build-cost')).toHaveText('Вартість невідома');
   await dialog.locator('#memory-build-submit').click();
-  await expect(dialog.locator('#memory-build-status')).toHaveText('Побудова пам’яті цього твору вже в черзі, виконується або призупинена: продовжте чи скасуйте її в панелі запусків');
+  await expect(dialog.locator('#memory-build-status')).toHaveText('Побудова пам’яті цього твору вже в черзі або виконується: дочекайтеся її чи скасуйте в панелі запусків');
   await expect(dialog).toBeVisible();
   await expect(dialog.locator('#memory-build-summary')).toContainText('Сцен: 2');
   await expect(dialog.locator('#memory-build-status')).not.toContainText('Перевірте перегляд ще раз');
+});
+
+test('an active memory build hidden behind a newer run disables «Побудувати»; a paused one does not',async({page,request})=>{
+  // Re-review N-0/N-2: the dialog blocks on the server's states (a paused build does not block) for any memory build of the
+  // story, not only the latest run, so infer never writes the casts before a sure 409.
+  const fixture=await seed(request);
+  let buildState='running';
+  const fake=(id,mode,state)=>({id,story_id:fixture.story_id,request_id:id,request:{story_id:fixture.story_id,scene_id:fixture.scene_ids[0],mode},
+    state,tasks:[],cursor:0,created_at:'2026-11-25T10:00:00Z'});
+  await page.route(/\/api\/stories\/[^/]+\/runs$/,route=>route.fulfill({json:{runs:[fake('build','rebuild_memory',buildState),
+    fake('later','prepare','completed')]}}));
+  const infer=[];
+  page.on('request',req=>{if(req.method()==='POST'&&/\/scene-cast\/infer$/.test(req.url()))infer.push(req.url())});
+  await openWorkspace(page,fixture);
+  let dialog=await openDialog(page);
+  await expect(dialog.locator('#memory-build-reason')).toHaveText('Спершу дочекайтеся завершення поточного запуску або скасуйте його');
+  await expect(dialog.locator('#memory-build-submit')).toBeDisabled();
+  expect(infer).toEqual([]);
+  buildState='paused';
+  await page.reload();
+  await expect(page.locator('#scene-title')).toHaveText('Пірс');
+  dialog=await openDialog(page);
+  await expect(dialog.locator('#memory-build-cost')).toHaveText('Вартість невідома');
+  await expect(dialog.locator('#memory-build-submit')).toBeEnabled();
 });
 
 test.describe('store edition',()=>{
