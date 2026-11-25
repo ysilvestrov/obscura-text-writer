@@ -8,7 +8,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, field_validator
 
 from ..memory.selection import MentionIndex, name_stems
 from ..model_json import unwrap_model_json
@@ -136,7 +136,7 @@ class NewCard(_Part):
     key: str = Field(min_length=1)
     name: _Name
     other_names: list[_Name] = Field(default_factory=list, max_length=10)
-    quotes: list[_Quote] = Field(min_length=1, max_length=2)
+    quotes: list[_Quote] = Field(default_factory=list, max_length=2)  # a card left without quotes is dropped later
 
 
 class CardUpdate(_Part):
@@ -159,6 +159,50 @@ class ExtractResponse(_Part):
     card_updates: list[CardUpdate] = Field(default_factory=list)
     scenes: list[SceneCast] = Field(default_factory=list)
     protagonist_candidates: list[Candidate] = Field(default_factory=list, max_length=PROTAGONIST_CANDIDATES)
+
+    # Over-limit values are trimmed, never a reason to lose the whole answer; only structural errors reject it.
+    @field_validator('new_cards', mode='before')
+    @classmethod
+    def _trim_cards(cls, value):
+        if not isinstance(value, list):
+            return value
+        result = []
+        for item in value:
+            if isinstance(item, dict):
+                name = item.get('name')
+                if isinstance(name, str) and not 1 <= len(name.strip()) <= 80:
+                    continue
+                item = {**item, 'other_names': _fitting(item.get('other_names', []), 1, 80, 10),
+                        'quotes': _fitting(item.get('quotes', []), 1, 300, 2)}
+            result.append(item)
+        return result
+
+    @field_validator('card_updates', mode='before')
+    @classmethod
+    def _trim_updates(cls, value):
+        if not isinstance(value, list):
+            return value
+        return [{**item, 'other_names': _fitting(item.get('other_names', []), 1, 80, 10)} if isinstance(item, dict) else item
+                for item in value]
+
+    @field_validator('protagonist_candidates', mode='before')
+    @classmethod
+    def _trim_candidates(cls, value):
+        if not isinstance(value, list):
+            return value
+
+        def out_of_range(item):
+            score = item.get('score') if isinstance(item, dict) else None
+            return isinstance(score, (int, float)) and not isinstance(score, bool) and not 0 <= score <= 1
+        return [item for item in value if not out_of_range(item)][:PROTAGONIST_CANDIDATES]
+
+
+def _fitting(items, low, high, limit):
+    """The strings of a list within their length limits, the first `limit` of them; other types stay for validation."""
+    if not isinstance(items, list):
+        return items
+    kept = [item for item in items if not isinstance(item, str) or low <= len(item.strip()) <= high]
+    return kept[:limit]
 
 
 def parse_extract(text: str) -> ExtractResponse:
@@ -263,7 +307,7 @@ def _add_names(state: ExtractState, card: CatalogueCard, names, index: MentionIn
         card.added_names.append(NameChoice(name=name, suggested=not name[:1].islower()))
 
 
-def apply_group(state: ExtractState, response: ExtractResponse, group: list[SceneProse],
+def apply_group(state: ExtractState, response: ExtractResponse, group: list[SceneProse], *,
                 scene_numbers: Mapping[str, str], card_numbers: Mapping[str, str]) -> ExtractState:
     """The state after one group's response (CHARACTER-EXTRACT validation); `state` itself is not changed.
     `scene_numbers` maps `s<N>` to scene ids and `card_numbers` maps `c<N>` to card refs (see `short_ids`)."""
@@ -337,10 +381,10 @@ def finalize(state: ExtractState, scenes_meta: Mapping[str, SceneMeta], has_auth
     protagonist = None
     if not has_author_protagonist:
         order = {card.ref: number for number, card in enumerate(state.catalogue)}
-        top = sorted((ref for ref in state.scores if ref in order), key=lambda ref: (-state.scores[ref], order[ref]))
-        top = top[:PROTAGONIST_CANDIDATES]
-        if top and state.scores[top[0]] >= PROTAGONIST_THRESHOLD:
-            protagonist = {'ref': top[0], 'scores': [{'ref': ref, 'score': round(state.scores[ref], 4)} for ref in top]}
+        sums = {ref: round(score, 6) for ref, score in state.scores.items() if ref in order}  # 0.7+0.2+0.1 is 0.9999999999999999
+        top = sorted(sums, key=lambda ref: (-sums[ref], order[ref]))[:PROTAGONIST_CANDIDATES]
+        if top and sums[top[0]] >= PROTAGONIST_THRESHOLD:
+            protagonist = {'ref': top[0], 'scores': [{'ref': ref, 'score': sums[ref]} for ref in top]}
     casts = []
     for scene_id, participants in state.casts.items():
         meta = scenes_meta.get(scene_id)

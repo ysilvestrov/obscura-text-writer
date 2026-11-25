@@ -8,7 +8,7 @@ from storygen.characters.extract import (
     ExtractState, CatalogueCard, SceneMeta, SceneProse, apply_group, catalogue_text, find_quote, finalize,
     normalize_with_map, parse_extract, plan_groups, short_ids, SKIP_INPUT_LIMIT)
 
-DATA = Path(__file__).parent / 'data'
+DATA = Path(__file__).parent.parent / 'fixtures' / 'character_extract'
 P1 = ('Іванка йшла лісом і насвистувала.\n\nАнничка сміялася: «Ходімо додому — вже пізно, мамо!» Стара мовчки\n'
       'дивилася на дорогу. **Тут була її хата.**')
 P2 = 'Наступного ранку Іванка прокинулась першою. Мирон приніс воду з колодязя. Ганнуся подякувала.'
@@ -28,7 +28,7 @@ def run(st, response):
     if isinstance(response, str):
         response = fixture(response)
     card_numbers, scene_numbers = short_ids(st, ['sc1', 'sc2'])
-    return apply_group(st, response, GROUP, scene_numbers, card_numbers)
+    return apply_group(st, response, GROUP, scene_numbers=scene_numbers, card_numbers=card_numbers)
 
 
 def new_cards(st):
@@ -154,14 +154,9 @@ def test_valid_response_builds_cards_cast_and_scores():
 
 @pytest.mark.req('CHARACTER-EXTRACT')
 @pytest.mark.parametrize('payload', [
-    '', 'not json', '[]', '{"new_cards": [{"key": "n1", "name": "x", "quotes": []}]}',
-    '{"new_cards": [{"key": "n1", "name": "x", "quotes": ["a", "b", "c"]}]}',
-    '{"new_cards": [{"key": "n1", "name": "' + 'я' * 81 + '", "quotes": ["a"]}]}',
-    '{"new_cards": [{"key": "n1", "name": "x", "quotes": ["' + 'я' * 301 + '"]}]}',
+    '', 'not json', '[]', '{"new_cards": [{"key": "n1", "name": "x", "quotes": [5]}]}',
     '{"new_cards": [{"key": "n1", "name": "x", "other_names": ["a"] , "quotes": ["a"]}], "new_cards": []}',
-    '{"protagonist_candidates": [{"id": "c1", "score": 1.5}]}',
     '{"protagonist_candidates": [{"id": "c1", "score": NaN}]}',
-    '{"protagonist_candidates": [{"id": "c1", "score": 0.1}, {"id": "c2", "score": 0.1}, {"id": "c3", "score": 0.1}, {"id": "c4", "score": 0.1}]}',
 ])
 def test_parse_rejects_invalid(payload):
     with pytest.raises(ValueError):
@@ -210,3 +205,29 @@ def test_finalize_cards_name_updates_and_skipped():
     assert final['name_updates'] == [{'card_id': 'card-1', 'names': [{'name': 'Ганнуся', 'suggested': True}]}]
     skipped = ExtractState(skipped=[('sc9', 'модель не дала відповіді')])
     assert finalize(skipped, {}, False)['skipped_scenes'] == [{'scene_id': 'sc9', 'reason': 'модель не дала відповіді'}]
+
+
+@pytest.mark.req('CHARACTER-EXTRACT')
+def test_over_limit_values_are_trimmed_not_rejected():
+    payload = {'new_cards': [
+        {'key': 'n1', 'name': 'x', 'other_names': [f'и{i}' for i in range(12)] + ['я' * 81],
+         'quotes': ['a' * 301, 'b', 'c', 'd']},
+        {'key': 'n2', 'name': 'я' * 81, 'quotes': ['a']}, {'key': 'n3', 'name': 'y', 'quotes': []}],
+        'card_updates': [{'id': 'c1', 'other_names': ['я' * 81, 'ок']}],
+        'protagonist_candidates': [{'id': 'a', 'score': 1.5}, {'id': 'b', 'score': 0.4}, {'id': 'c', 'score': 0.3},
+                                   {'id': 'd', 'score': 0.2}, {'id': 'e', 'score': 0.1}]}
+    parsed = parse_extract(json.dumps(payload))
+    assert [card.key for card in parsed.new_cards] == ['n1', 'n3']
+    assert parsed.new_cards[0].other_names == [f'и{i}' for i in range(10)] and parsed.new_cards[0].quotes == ['b', 'c']
+    assert parsed.new_cards[1].quotes == [] and parsed.card_updates[0].other_names == ['ок']
+    assert [item.id for item in parsed.protagonist_candidates] == ['b', 'c', 'd']
+
+
+@pytest.mark.req('CHARACTER-EXTRACT')
+def test_protagonist_sum_rounding_over_groups():
+    st = state(ANNA)
+    for score in (0.7, 0.2, 0.1):
+        st = run(st, parse_extract(json.dumps({'protagonist_candidates': [{'id': 'c1', 'score': score}]})))
+    assert st.scores['card-1'] < 1.0
+    protagonist = finalize(st, {}, False)['protagonist']
+    assert protagonist == {'ref': 'card-1', 'scores': [{'ref': 'card-1', 'score': 1.0}]}
