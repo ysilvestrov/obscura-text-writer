@@ -1,5 +1,5 @@
 """SERIES API: series of books and the series fields of a book. Long prose only (BUILD-EDITION-001)."""
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import Field
 
 from ..book.guard import require_long_prose
@@ -60,6 +60,20 @@ def series_view(series_id: str, request: Request):
              'start': b.series_start, 'status': asdict(series_status(repo, b))} for b in books]
     bible = next((b.id for b in books if b.series_bible), None)  # SERIES-BIBLE: shown apart from the axis
     return {'series': item, 'books': rows, 'placed': placed, 'outside': outside, 'bible': bible}
+
+
+@router.get('/api/series/{series_id}/start-readiness')
+def series_start_readiness(series_id: str, request: Request, number: int = Query(ge=1, le=1000000)):
+    """MANUSCRIPT-IMPORT §4.2: the start snapshot a new book with this number would get, read only. `state` as
+    `SeriesStatus` without a snapshot: 'first' (no earlier book), 'no_summary' (the source has no memory summary yet:
+    the import preview warns with a link) or 'source_finished'."""
+    from ..book.series import start_readiness
+    repo = request.app.state.repo
+    store.get_series(repo, series_id)
+    status = start_readiness(repo, series_id, number)
+    source = repo.get_story(status.source_story_id) if status.source_story_id else None
+    return {'state': status.state, 'source_story_id': status.source_story_id,
+            'source_title': source.title if source else None, 'source_number': status.source_number}
 
 
 def _long_prose_page():

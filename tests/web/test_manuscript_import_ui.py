@@ -35,6 +35,7 @@ def test_library_has_the_import_entry_and_dialog(tmp_path):
     assert re.search(r'<input[^>]*id="manuscript-import-book-title"[^>]*maxlength="300"', dialog)
     for id in ('manuscript-import-pick', 'manuscript-import-preview', 'manuscript-import-result', 'manuscript-import-scenes',
                'manuscript-import-language', 'manuscript-import-chapter-markers', 'manuscript-import-part-markers',
+               'manuscript-import-series-warning',
                'manuscript-import-chapter-source', 'manuscript-import-front-matter', 'manuscript-import-warnings',
                'manuscript-import-submit', 'manuscript-import-cancel', 'manuscript-import-series', 'manuscript-import-series-number'):
         assert f'id="{id}"' in dialog, id
@@ -53,13 +54,15 @@ def test_series_fields_only_with_long_prose(tmp_path, store_edition):
     dialog = dialog_of(html)
     assert 'id="manuscript-import-open"' in html  # the import itself is in every edition
     assert 'id="manuscript-import-series"' not in dialog and 'id="manuscript-import-series-number"' not in dialog
+    assert 'id="manuscript-import-part-markers"' not in dialog  # no parts in this edition
 
 
 def test_template_wraps_the_series_row_in_long_prose():
     template = (Path(__file__).resolve().parents[2]/'src/storygen/web/templates/library.html').read_text(encoding='utf-8')
-    row = template.index('id="manuscript-import-series-row"')
-    opened = template.rfind('{% if long_prose() %}', 0, row)
-    assert opened != -1 and template.find('{% endif %}', opened) > row
+    for id in ('manuscript-import-series-row', 'manuscript-import-series-warning', 'manuscript-import-part-markers-row'):
+        row = template.index(f'id="{id}"')
+        opened = template.rfind('{% if long_prose() %}', 0, row)
+        assert opened != -1 and template.find('{% endif %}', opened) > row, id
 
 
 def test_strings_and_limits():
@@ -68,7 +71,8 @@ def test_strings_and_limits():
     assert catalog['uk']['manuscript_import.ui.front_matter'] == 'Додати передмову на початок першої сцени'
     assert catalog['uk']['manuscript_import.ui.boundary_add'] == 'Межа тут'
     assert catalog['uk']['manuscript_import.ui.boundary_remove'] == 'Прибрати межу'
-    assert catalog['uk']['manuscript_import.ui.build_memory'] == 'Побудувати пам’ять ({p0} сцен)'
+    assert catalog['uk']['manuscript_import.ui.build_memory'] == 'Побудувати пам’ять (сцен: {p0})'
+    assert catalog['en']['manuscript_import.ui.build_memory'] == 'Build memory (scenes: {p0})'
     ui = {key for key in catalog['uk'] if key.startswith('manuscript_import.ui.')}
     assert ui == {key for key in catalog['en'] if key.startswith('manuscript_import.ui.')}
     script = (STATIC/'manuscript-import.js').read_text(encoding='utf-8')

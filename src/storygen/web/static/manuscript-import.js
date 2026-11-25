@@ -8,7 +8,6 @@ export const MAX_PARAGRAPHS=2000;  // application/manuscript_import.py: MAX_PARA
 export const SCENE_TITLE_LIMIT=200,BOOK_TITLE_LIMIT=300;
 const IMPORTED=new Set(['prose','front_matter']);  // the paragraphs a scene carries; headings and separators stay out
 const AXES=['sexual','violence','themes'];
-const NOT_FOUND='Імпорт не знайдено';  // application/manuscript_import.py: NOT_FOUND (the kept file is gone); other 404s keep the preview
 
 const byIndex=paragraphs=>paragraphs instanceof Map?paragraphs:new Map((paragraphs||[]).map(p=>[p.index,p]));
 // Words of one scene: from its paragraphs when all of them are loaded, otherwise the count it already has.
@@ -21,8 +20,10 @@ function wordsOf(scene,known){
   return total;
 }
 export function sceneWords(scenes,paragraphs){const known=byIndex(paragraphs);return scenes.map(scene=>wordsOf(scene,known))}
-// «<title> (n)» with the smallest free n ≥ 2; the base is cut, never the suffix, to stay within 200 characters.
-function nextTitle(base,taken){
+// «<title> (n)» with the smallest free n ≥ 2; a « (n)» the title already ends with is stripped first, so «Шторм (1)» gives
+// «Шторм (2)» (or the next free number), never «Шторм (1) (2)». The base is cut, never the suffix, to stay within 200 characters.
+function nextTitle(title,taken){
+  const base=title.replace(/ \(\d+\)$/,'');
   for(let n=2;;n++){
     const suffix=` (${n})`,title=base.slice(0,SCENE_TITLE_LIMIT-suffix.length)+suffix;
     if(!taken.has(title))return title;
@@ -97,6 +98,7 @@ export function installManuscriptImport({api,json,notice,document,appInfo}){
   const chapterMarkers=get('manuscript-import-chapter-markers'),partMarkers=get('manuscript-import-part-markers');
   const chapterSource=get('manuscript-import-chapter-source'),detected=get('manuscript-import-detected');
   const frontRow=get('manuscript-import-front-matter-row'),front=get('manuscript-import-front-matter'),frontText=get('manuscript-import-front-matter-text');
+  const partRow=get('manuscript-import-part-markers-row'),seriesWarning=get('manuscript-import-series-warning');
   const seriesRow=get('manuscript-import-series-row'),series=get('manuscript-import-series'),seriesNumber=get('manuscript-import-series-number');
   const list=get('manuscript-import-scenes'),warningsList=get('manuscript-import-warnings'),limit=get('manuscript-import-limit');
   const ratings=Object.fromEntries(AXES.map(axis=>[axis,get('manuscript-import-rating-'+axis)]));
@@ -132,9 +134,9 @@ export function installManuscriptImport({api,json,notice,document,appInfo}){
   }
   function restart(){
     epoch++;discard();clearPreview();busy=saving=false;input.value='';resultBox.replaceChildren();
-    chapterMarkers.value='';partMarkers.value='';chapterSource.value='auto';front.checked=false;bookTitle.value='';
+    chapterMarkers.value='';if(partMarkers)partMarkers.value='';chapterSource.value='auto';front.checked=false;bookTitle.value='';
     language.value=getLocale()==='en'?'en':'uk';for(const select of Object.values(ratings))select.value='';
-    if(series){series.value='';seriesNumber.value=''}
+    if(series){series.value='';seriesNumber.value='';readinessAsk++;seriesWarning.hidden=true;seriesWarning.replaceChildren()}
     setStatus(()=>'');show('pick');
   }
 
@@ -142,6 +144,7 @@ export function installManuscriptImport({api,json,notice,document,appInfo}){
     let info;try{info=await appInfo()}catch{info={}}
     longProse=info.long_prose!==false;
     if(seriesRow&&!longProse)seriesRow.hidden=true;
+    if(partRow&&!longProse)partRow.hidden=true;  // no parts in this edition: their markers would only feed warnings
     const max=info.max_rating||{sexual:2,violence:2,themes:2};
     for(const axis of AXES)for(const option of ratings[axis].options){if(option.value==='')continue;const off=Number(option.value)>max[axis];option.hidden=off;option.disabled=off}
     if(series&&longProse){
@@ -235,7 +238,7 @@ export function installManuscriptImport({api,json,notice,document,appInfo}){
         if(mine!==epoch)return;
         for(const item of items)paragraphs.set(item.index,item);
       }
-    }catch(error){if(mine===epoch)setStatus(()=>diagnostic(error.message),'error')}
+    }catch(error){if(mine===epoch)fail(error)}
   }
   function moveBoundary(index){
     const before=scenes.length;
@@ -268,7 +271,7 @@ export function installManuscriptImport({api,json,notice,document,appInfo}){
   function settingsForm(){
     const body=new FormData();
     if(chapterMarkers.value.trim())body.append('chapter_markers',chapterMarkers.value);
-    if(partMarkers.value.trim())body.append('part_markers',partMarkers.value);
+    if(partMarkers?.value.trim())body.append('part_markers',partMarkers.value);
     body.append('chapter_source',chapterSource.value||'auto');
     body.append('language',getLocale()==='en'?'en':'uk');  // the Prologue title follows the interface language (spec §3.3)
     return body;
@@ -311,10 +314,13 @@ export function installManuscriptImport({api,json,notice,document,appInfo}){
   }
   // 409 (an older preview, or the import already runs) and a missing kept file: the file is chosen again. Every other
   // refusal (a taken series number, a bad title) keeps the preview and the author's boundaries for a fix.
+  // A 404 from the import or the paragraphs means the kept file is gone (24 hours passed, a cancel in another tab); the
+  // server's 404 text is generic, so the status code decides and the dialog says it in its own words.
   function fail(error){
-    if(error.status===409||(error.status===404&&error.message===NOT_FOUND)){
+    if(error.status===409||error.status===404){
+      const gone=error.status===404;
       busy=saving=false;discard();clearPreview();input.value='';show('pick');
-      setStatus(()=>t('manuscript_import.ui.choose_again',{p0:diagnostic(error.message)}),'error');input.focus();
+      setStatus(()=>gone?t('manuscript_import.ui.vanished'):t('manuscript_import.ui.choose_again',{p0:diagnostic(error.message)}),'error');input.focus();
     }else setStatus(()=>diagnostic(error.message),'error');
   }
   function rating(){
@@ -364,9 +370,26 @@ export function installManuscriptImport({api,json,notice,document,appInfo}){
   }
 
   bookTitle.oninput=()=>sync();
-  chapterMarkers.onchange=partMarkers.onchange=chapterSource.onchange=()=>reparse();
+  chapterMarkers.onchange=chapterSource.onchange=()=>reparse();
+  if(partMarkers)partMarkers.onchange=()=>reparse();
   front.onchange=()=>{scenes=setFrontMatter(scenes,preview?.front_matter,front.checked,firstProse);renderScenes()};
-  if(series)series.onchange=()=>{if(!series.value)seriesNumber.value='';sync()};
+  // §4.2: a series book whose previous book has no memory yet starts without a snapshot; the preview says so with a link.
+  let readinessAsk=0;
+  async function readiness(){
+    const ask=++readinessAsk,number=Number(seriesNumber.value);
+    seriesWarning.hidden=true;seriesWarning.replaceChildren();
+    if(!series.value||!Number.isInteger(number)||number<1)return;
+    try{
+      const data=await api(`/api/series/${encodeURIComponent(series.value)}/start-readiness?number=${number}`);
+      if(ask!==readinessAsk||data.state!=='no_summary'||!data.source_story_id)return;
+      const link=document.createElement('a');link.href=`/stories/${encodeURIComponent(data.source_story_id)}`;link.textContent=data.source_title||'';
+      seriesWarning.append(node('span',()=>t('manuscript_import.ui.series_no_memory')+' '),link);seriesWarning.hidden=false;
+    }catch{}  // a missing answer only loses the hint: the import still warns after the book exists
+  }
+  if(series){
+    series.onchange=()=>{if(!series.value)seriesNumber.value='';sync();readiness()};
+    seriesNumber.oninput=()=>readiness();
+  }
   button.onclick=()=>{
     restart();dialog.showModal();button.setAttribute('aria-expanded','true');input.focus();
   };

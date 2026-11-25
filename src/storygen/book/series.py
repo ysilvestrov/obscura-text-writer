@@ -252,6 +252,15 @@ def series_status(repo, story) -> SeriesStatus | None:
     return status
 
 
+def start_readiness(repo, series_id: str, number: int) -> SeriesStatus:
+    """MANUSCRIPT-IMPORT §4.2: the snapshot status a new book with this number in the series would start with, read only
+    (no book exists yet): 'first', 'no_summary' (the source has no memory summary) or 'source_finished'."""
+    from types import SimpleNamespace
+    candidate = SimpleNamespace(id='', series_id=series_id, series_number=number, series_bible=False,
+                                series_start_version_id=None, trashed_at=None)
+    return _snapshot_status(repo, candidate)
+
+
 def _snapshot_status(repo, story) -> SeriesStatus | None:
     """The snapshot against the current sources: their set, summaries and cards (SERIES-S08)."""
     from ..memory.series_start import read_series_start

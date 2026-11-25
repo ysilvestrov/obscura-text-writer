@@ -2827,8 +2827,10 @@
     "manuscript_import.ui.choose_again": "{p0}. Виберіть файл ще раз.",
     "manuscript_import.ui.result": "Книгу створено (сцен: {p0}):",
     "manuscript_import.ui.build_memory_hint": "Пам’ять сцен потрібна, щоб Obscura знала, що вже сталося в книзі. Перед запуском ви побачите перегляд і оцінку вартості.",
-    "manuscript_import.ui.build_memory": "Побудувати пам’ять ({p0} сцен)",
-    "manuscript_import.ui.close": "Закрити"
+    "manuscript_import.ui.build_memory": "Побудувати пам’ять (сцен: {p0})",
+    "manuscript_import.ui.close": "Закрити",
+    "manuscript_import.ui.vanished": "Файл перегляду більше не зберігається: минуло 24 години або імпорт скасовано в іншій вкладці. Виберіть файл ще раз.",
+    "manuscript_import.ui.series_no_memory": "Пам’ять попередньої книги серії ще не побудовано, тож нова книга почнеться без знімка початку серії. Імпорт це не блокує; знімок можна оновити пізніше. Попередня книга:"
   },
   "en": {
     "ui.save": "Save",
@@ -5658,7 +5660,9 @@
     "manuscript_import.ui.choose_again": "{p0}. Choose the file again.",
     "manuscript_import.ui.result": "Book created (scenes: {p0}):",
     "manuscript_import.ui.build_memory_hint": "Scene memory lets Obscura know what has already happened in the book. Before the run you will see a preview and a cost estimate.",
-    "manuscript_import.ui.build_memory": "Build memory ({p0} scenes)",
-    "manuscript_import.ui.close": "Close"
+    "manuscript_import.ui.build_memory": "Build memory (scenes: {p0})",
+    "manuscript_import.ui.close": "Close",
+    "manuscript_import.ui.vanished": "The preview file is no longer kept: 24 hours passed or the import was cancelled in another tab. Choose the file again.",
+    "manuscript_import.ui.series_no_memory": "The memory of the previous book in the series is not built yet, so the new book starts without a series start snapshot. This does not block the import; the snapshot can be refreshed later. Previous book:"
   }
 }

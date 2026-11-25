@@ -29,7 +29,12 @@ const chapters=toggleBoundary(scenes,6,paragraphs);  // a chapter or separator b
 assert.deepEqual(chapters.map(s=>[s.start,s.end]),[[3,6],[8,11]]);
 // A taken suffix is skipped.
 const twice=toggleBoundary(toggleBoundary(split,9,paragraphs),11,paragraphs);
-assert.deepEqual(twice.map(s=>s.title),['Пірс (1)','Пірс (2)','Шторм','Шторм (3)','Шторм (2)','Шторм (2) (2)']);
+assert.deepEqual(twice.map(s=>s.title),['Пірс (1)','Пірс (2)','Шторм','Шторм (3)','Шторм (2)','Шторм (4)']);
+// A title that already ends in « (n)» is numbered from its base, never nested.
+const numbered=[{...scenes[2],title:'Шторм (1)'}];
+assert.deepEqual(toggleBoundary(numbered,10,paragraphs).map(s=>s.title),['Шторм (1)','Шторм (2)']);
+assert.deepEqual(toggleBoundary([{...scenes[0],title:'Шторм (2)'},{...scenes[2],title:'Шторм (1)'}],10,paragraphs).map(s=>s.title),['Шторм (2)','Шторм (1)','Шторм (3)']);
+assert.equal(toggleBoundary([{...scenes[2],title:'Розділ (без номера)'}],10,paragraphs)[1].title,'Розділ (без номера) (2)');
 
 // The new title stays within 200 characters and keeps its suffix.
 const long=[{...scenes[2],title:'я'.repeat(200)}];
