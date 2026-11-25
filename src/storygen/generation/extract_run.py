@@ -8,7 +8,8 @@ checkpoint before it is sent, so the run never makes more than `calls_bound` cal
 - A failed call (unparseable answer, empty answer, truncated output) is repeated once; a group that fails again is
   halved; a single scene that fails again is skipped («модель не дала відповіді»).
 - A group that does not fit with the current catalogue is halved before the call; a single scene is skipped with the reason.
-- A provider or budget error stops the run `failed`; resuming reads the same group again within the bound.
+- A provider or budget error, or a refusal of the model, stops the run `failed`; resuming reads the same group again
+  within the bound. A call refused before it is sent (model policy, budget) gives its count back to the bound.
 - The bound spent with groups left completes the run with a partial proposal; the rest is skipped.
 - Cancel completes the run with a partial proposal; pause leaves it `paused` with its checkpoint.
 
@@ -24,10 +25,10 @@ from ..characters.extract import (
 from .extract_context import build_extract_context
 
 STAGE = 'character_extract'
-CALL_FAILURES = frozenset({'protocol', 'empty_output', 'output_limit'})  # spec 3.4; repeated once, then halved
-# A refusal in the stream is recorded (stages.record_refusal), so check_refusal would block the same group before the
-# call: it is halved at once. Any other failure (a provider or network error) stops the run.
-REFUSALS = frozenset({'refusal_content', 'refusal_unknown'})
+# Spec 3.4: repeated once, then halved. Any other failure stops the run `failed`, resumable: a provider or network error,
+# and a refusal too — it is recorded (stages.record_refusal), and check_refusal would then block every later group of
+# the same rating before the call, so splitting or skipping would silently drop the rest of the book.
+CALL_FAILURES = frozenset({'protocol', 'empty_output', 'output_limit'})
 
 
 def proposal_fingerprint(body: dict) -> str:
@@ -154,20 +155,19 @@ def _unsent(exc) -> bool:
     return isinstance(exc, (ModelPolicyBlocked, BudgetError))
 
 
-def _refused_in_run(repo, run_id, context) -> bool:
-    """check_refusal blocked the group only on refusals this run's own calls recorded: like a refusal in the stream, the
-    group is halved or the scene skipped. A refusal recorded elsewhere stops the run as any policy block."""
-    from ..providers.policy import _args, blocking_refusal, context_rating
-    rating = context_rating(repo, context)
-    stored = repo.model_policy('get_refusal', **_args(context.policy_role, context.settings.provider))
-    blocking = [entry for entry in (stored or {}).get('refusals', []) if blocking_refusal([entry], rating)]
+class _Announced:
+    """The gateway that announces `stage_started` when the request reaches it: a call refused before (a model policy
+    block in execute_stage) is not shown as started."""
 
-    def own(entry):
-        try:
-            return repo.get_attempt(entry.get('attempt_id')).run_id == run_id
-        except (KeyError, TypeError):
-            return False
-    return bool(blocking) and all(own(entry) for entry in blocking)
+    def __init__(self, gateway, announce):
+        self._gateway, self._announce = gateway, announce
+
+    def __getattr__(self, name):  # bind_accounting, accounting, retirement of the wrapped gateway
+        return getattr(self._gateway, name)
+
+    def stream(self, context, cancel):
+        self._announce()
+        yield from self._gateway.stream(context, cancel)
 
 
 def _save_checkpoint(coordinator, run_id, checkpoint):
@@ -239,27 +239,20 @@ def execute(coordinator, run_id: str) -> None:
         state.calls += 1  # counted before the call is sent: an interrupted call still spends the bound
         checkpoint['state'] = state.model_dump(mode='json')
         run = _save_checkpoint(coordinator, run_id, checkpoint)
-        coordinator.event(run_id, 'stage_started', {'stage': STAGE, 'scene_id': ids[0], 'scene_ids': ids,
-                                                    'model': built.settings.provider.model,
-                                                    'provider': built.settings.provider.provider,
-                                                    'estimated_tokens': built.estimated_tokens, 'streaming': False})
+        started_data = {'stage': STAGE, 'scene_id': ids[0], 'scene_ids': ids, 'model': built.settings.provider.model,
+                        'provider': built.settings.provider.provider, 'estimated_tokens': built.estimated_tokens,
+                        'streaming': False}
+        gateway = _Announced(coordinator.gateway_factory(built.settings.provider),
+                             lambda: coordinator.event(run_id, 'stage_started', started_data))
         try:
-            attempt = execute_stage(repo, ids[0], STAGE, built, coordinator.gateway_factory(built.settings.provider),
-                                    coordinator.cancel_event, lambda _text: None, run_id, task_cursor=run.cursor)
+            attempt = execute_stage(repo, ids[0], STAGE, built, gateway, coordinator.cancel_event, lambda _text: None,
+                                    run_id, task_cursor=run.cursor)
         except ValidationError:
             raise
         except ValueError as exc:  # a budget refusal, a model policy block: shown as is; resuming reads the group again
-            from ..providers.policy import ModelPolicyBlocked
             if _unsent(exc):  # nothing was sent: the call is given back to the bound
                 state.calls -= 1
                 checkpoint['state'] = state.model_dump(mode='json')
-            if isinstance(exc, ModelPolicyBlocked) and exc.kind == 'refusal' and not coordinator.cancel_event.is_set()                     and _refused_in_run(repo, run_id, built):
-                if len(ids) > 1:
-                    _halve(checkpoint, ids)
-                else:
-                    _skip(checkpoint, state, ids, SKIP_NO_ANSWER)
-                _save_checkpoint(coordinator, run_id, checkpoint)
-                continue
             with coordinator.condition:
                 current = coordinator.get_run(run_id)
                 current.checkpoint = checkpoint
@@ -280,14 +273,14 @@ def execute(coordinator, run_id: str) -> None:
                 checkpoint['state'] = state.model_dump(mode='json')
                 checkpoint['pending'].pop(0)
                 checkpoint['retried'] = False
-            elif (attempt.context.get('extract_failure') or {}).get('category') in CALL_FAILURES | REFUSALS:
-                if not checkpoint['retried'] and attempt.context['extract_failure']['category'] in CALL_FAILURES:
+            elif (attempt.context.get('extract_failure') or {}).get('category') in CALL_FAILURES:
+                if not checkpoint['retried']:
                     checkpoint['retried'] = True
                 elif len(ids) > 1:
                     _halve(checkpoint, ids)
                 else:
                     _skip(checkpoint, state, ids, SKIP_NO_ANSWER)
-            else:  # spec 3.7: a provider or network error stops the run; it can be resumed
+            else:  # spec 3.7: a provider or network error, a refusal: the run stops and can be resumed
                 coordinator._save(current)
                 return _finish(coordinator, current, 'failed', attempt.error)
             coordinator._save(current)

@@ -5,7 +5,7 @@ import json
 import pytest
 
 from storygen.billing.models import BudgetError
-from storygen.characters.extract import SKIP_CALLS_EXHAUSTED, SKIP_INPUT_LIMIT, SKIP_NO_ANSWER
+from storygen.characters.extract import EXTRACT_REFUSED, SKIP_CALLS_EXHAUSTED, SKIP_INPUT_LIMIT, SKIP_NO_ANSWER
 from storygen.characters.extract_plan import EXTRACT_PLAN_CHANGED, EXTRACT_PROSE_CHANGED, EXTRACT_RUNNING, extract_plan
 from storygen.domain import RevisionConflict
 from storygen.generation import extract_run
@@ -288,18 +288,21 @@ def test_provider_error_fails_resumable(tmp_path):
 
 @pytest.mark.req('CHARACTER-EXTRACT')
 @pytest.mark.parametrize('reply', [FILTERED, REFUSED], ids=['content_filter', 'terminal_refusal'])
-def test_stream_refusal_splits_then_skips(tmp_path, reply):
+def test_stream_refusal_fails_resumable(tmp_path, reply):
     repo, story, scenes = book(tmp_path, 300, 300)  # one group [s1, s2]
     gateway = Script(reply, OLYA)
     worker, run = start(repo, story, gateway)
     run = drive(worker, run.id)
-    a, b = (s.id for s in scenes)
-    assert run.state == 'completed', run.error
-    # The refusal is recorded for this rating: the halves are blocked before the call and spend nothing.
-    assert groups(gateway) == [[a, b]]
-    result = proposal(run)
-    assert result['skipped_scenes'] == [{'scene_id': a, 'reason': SKIP_NO_ANSWER}, {'scene_id': b, 'reason': SKIP_NO_ANSWER}]
-    assert result['calls'] == 1
+    assert (run.state, run.error) == ('failed', EXTRACT_REFUSED)
+    assert run.checkpoint['phase'] == 'reading' and run.checkpoint['state']['calls'] == 1  # it reached the model
+    assert run.checkpoint['pending'] == [[s.id for s in scenes]] and run.checkpoint['state']['skipped'] == []
+    started = [e for e in worker.list_events(run.id) if e.type == 'stage_started']
+    worker.resume(run.id)
+    run = drive(worker, run.id)  # the refusal is recorded: the same model is blocked before the call
+    assert run.state == 'failed' and 'уже відмовила' in run.error
+    assert run.checkpoint['state']['calls'] == 1 and len(gateway.contexts) == 1
+    assert [e for e in worker.list_events(run.id) if e.type == 'stage_started'] == started  # not shown as started
+    assert proposal(worker.cancel(run.id))['partial'] is True  # cancel still publishes what was read
 
 
 @pytest.mark.req('CHARACTER-EXTRACT')

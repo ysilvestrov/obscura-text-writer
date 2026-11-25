@@ -191,7 +191,9 @@ def execute_stage(
                 'refusal_unknown' if terminal and terminal.refusal else
                 'empty_output' if terminal and terminal.finish_reason=='stop' and not text.strip() else
                 (terminal.failure.get('category','technical') if terminal else 'incomplete'))
-            attempt.error=attempt.error or {'empty_output':'Модель не дала відповіді','output_limit':'Вичерпано ліміт відповіді'}.get(category,'Пошук персонажів не завершено')
+            from ..characters.extract import EXTRACT_REFUSED
+            attempt.error=attempt.error or {'empty_output':'Модель не дала відповіді','output_limit':'Вичерпано ліміт відповіді',
+                'refusal_content':EXTRACT_REFUSED,'refusal_unknown':EXTRACT_REFUSED}.get(category,'Пошук персонажів не завершено')
             attempt.context['extract_failure']={**(terminal.failure if terminal else {}),'category':category,'message':attempt.error}
         if stage=='timeline_summary':
             attempt.error=attempt.error or ('Модель пам’яті повернула порожній підсумок' if attempt.state=='failed' and not text.strip() else 'Підсумок не завершено; автоматичного повтору немає')
@@ -425,8 +427,13 @@ def execute_stage(
                 attempt.context['edit_loop_failure_origin']='model_response'
             attempt.error='Помилка редактора: '+failure['message']+'. Оригінальну відповідь збережено; автоматичного повтору немає.'
         elif stage=='character_extract':
-            attempt.error=str(exc)  # Only trusted parse_extract messages reach this branch.
-            attempt.context['extract_failure']={'category':'protocol','message':attempt.error}
+            if terminal and terminal.refusal:  # a refusal in words is not a malformed answer: the run stops on it
+                from ..characters.extract import EXTRACT_REFUSED
+                attempt.error=EXTRACT_REFUSED
+                attempt.context['extract_failure']={'category':'refusal_unknown','message':attempt.error}
+            else:
+                attempt.error=str(exc)  # Only trusted parse_extract messages reach this branch.
+                attempt.context['extract_failure']={'category':'protocol','message':attempt.error}
         elif stage in AUDIT_STAGES:
             attempt.error=str(exc)+'. Висновку немає; автоматичного повтору немає.'  # trusted parse_audit message
             attempt.context['audit_failure']={'category':'protocol','message':attempt.error}

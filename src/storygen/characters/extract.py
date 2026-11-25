@@ -18,6 +18,8 @@ SKIP_INPUT_LIMIT = "не вміщується в ліміт входу ролі 
 SKIP_CONTEXT_LIMIT = "не вміщується в контекст ролі «Пам'ять»"
 SKIP_NO_ANSWER = 'модель не дала відповіді'
 SKIP_CALLS_EXHAUSTED = 'вичерпано запас викликів'
+EXTRACT_REFUSED = ("Модель ролі «Пам'ять» відмовилася відповідати через зміст. Виберіть іншу модель і продовжте "
+                   'пошук персонажів')
 PROTAGONIST_THRESHOLD = 1.0
 PROTAGONIST_CANDIDATES = 3
 
