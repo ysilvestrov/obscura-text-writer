@@ -2532,7 +2532,8 @@
         "tests/generation/test_editor_name_spelling.py::test_every_edit_mode_names_the_cast_available_in_the_scene",
         "tests/generation/test_editor_name_spelling.py::test_name_current_in_a_later_scene_comes_first",
         "tests/generation/test_editor_name_spelling.py::test_english_story_label_and_rule",
-        "tests/generation/test_editor_name_spelling.py::test_block_adds_no_refs"
+        "tests/generation/test_editor_name_spelling.py::test_block_adds_no_refs",
+        "tests/generation/test_editor_name_spelling.py::test_user_text_stays_the_editor_material"
       ]
     },
     {
@@ -2541,7 +2542,8 @@
       "scope": "Власний промпт редактора зберігає розділ імен; без карток або з застарілою чи неповною версією розділу немає й помилки не виникає. Перевірка зазначеного сценарію; не є доказом усієї вимоги або літературного допуску.",
       "tests": [
         "tests/generation/test_editor_name_spelling.py::test_custom_editor_prompt_keeps_the_block",
-        "tests/generation/test_editor_name_spelling.py::test_no_block_and_no_error_without_fresh_cards"
+        "tests/generation/test_editor_name_spelling.py::test_stale_or_incomplete_cards_give_no_block_and_no_error",
+        "tests/generation/test_editor_name_spelling.py::test_no_block_without_cards"
       ]
     },
     {

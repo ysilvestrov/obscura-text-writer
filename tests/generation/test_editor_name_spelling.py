@@ -6,7 +6,10 @@ from storygen.generation.context import build_context
 from storygen.providers.models import ProviderSettings, RoleSettings
 from tests.generation.test_character_names_context import remember, setup
 
-RULE = 'Пиши імена персонажів точно так, як подано нижче'
+RULE = ('НАПИСАННЯ ІМЕН\nПиши імена персонажів точно так, як подано нижче: тими самими літерами й тим самим алфавітом. '
+        'Не транслітеруй, не перекладай і не замінюй їх іншими формами. Відмінюй їх так, як це вже робить чернетка.')
+RULE_EN = ('NAME SPELLING\nWrite the character names exactly as given below: the same letters in the same alphabet. '
+           'Do not transliterate, translate or replace them with other forms. Inflect them the way the draft already does.')
 
 
 def role(mode):
@@ -37,9 +40,6 @@ def test_every_edit_mode_names_the_cast_available_in_the_scene(tmp_path, mode):
         assert '— Юлія\n— Хазяїн (також: Бос)' in block
         # A name that becomes available only in a later scene is not revealed earlier.
         assert 'Джон' not in block
-        # The diff request still sends the draft alone: the model returns the whole text, and the block must not echo.
-        if mode == 'diff':
-            assert context.user_text == 'Юлія чекає біля воріт.'
 
 
 @pytest.mark.req('EDITOR-NAME-SPELLING')
@@ -55,21 +55,43 @@ def test_english_story_label_and_rule(tmp_path):
     repo, scenes = setup(tmp_path, language='en')
     scene, _ = with_draft(repo, scenes[0])
     text = build_context(repo, scene.id, 'edit', role('patches')).system_text
-    assert 'NAME SPELLING\nWrite the character names exactly as given below' in text
+    assert RULE_EN in text
     assert '— Хазяїн (also: Бос)' in text
 
 
 @pytest.mark.req('EDITOR-NAME-SPELLING')
-def test_no_block_and_no_error_without_fresh_cards(tmp_path):
-    from types import SimpleNamespace
-    from storygen.characters.context import name_spelling_section
-    from storygen.domain import SceneCreate, StoryCreate
+@pytest.mark.parametrize('mode', ['patches', 'diff'])
+def test_user_text_stays_the_editor_material(tmp_path, mode):
+    from storygen.evidence import render_fragments
     repo, scenes = setup(tmp_path)
-    story = repo.get_story(scenes[0].story_id)
-    # Stale or incomplete cards give no block instead of an error.
-    for flags in ({'stale': True, 'complete': True}, {'stale': False, 'complete': False}):
-        view = SimpleNamespace(get_version=lambda _id, flags=flags: SimpleNamespace(id=_id, **flags))
-        assert name_spelling_section(view, story, scenes[0]) == ''
+    scene, draft = with_draft(repo, scenes[0])
+    expected = 'Юлія чекає біля воріт.' if mode == 'diff' else render_fragments('Юлія чекає біля воріт.')
+    for context in (build_context(repo, scene.id, 'edit', role(mode)), editor_loop.context(repo, scene.id, role(mode), draft.id)):
+        assert 'НАПИСАННЯ ІМЕН' not in context.user_text
+        assert context.user_text.endswith(expected)
+        if mode == 'diff':
+            # The model returns the whole text: the request sends the draft alone, so the block cannot echo.
+            assert context.user_text == expected
+
+
+@pytest.mark.req('EDITOR-NAME-SPELLING')
+@pytest.mark.parametrize('flag', [{'stale': True}, {'complete': False}])
+def test_stale_or_incomplete_cards_give_no_block_and_no_error(tmp_path, flag):
+    repo, scenes = setup(tmp_path)
+    scene, draft = with_draft(repo, scenes[0])
+    cards = repo.get_version(repo.get_story(scene.story_id).characters_version_id)
+    with repo.db.connection() as db:
+        db.execute('UPDATE versions SET payload=? WHERE id=?', (cards.model_copy(update=flag).model_dump_json(), cards.id))
+    assert repo.get_version(cards.id).model_dump(include=set(flag)) == flag
+    for mode in ('patches', 'diff'):
+        for context in (build_context(repo, scene.id, 'edit', role(mode)), editor_loop.context(repo, scene.id, role(mode), draft.id)):
+            assert 'НАПИСАННЯ ІМЕН' not in context.system_text
+
+
+@pytest.mark.req('EDITOR-NAME-SPELLING')
+def test_no_block_without_cards(tmp_path):
+    from storygen.domain import SceneCreate, StoryCreate
+    repo = __import__('storygen.storage.repository', fromlist=['Repository']).Repository(tmp_path)
     other = repo.create_story(StoryCreate(title='Без карток'))
     lone = repo.create_scene(other.id, SceneCreate(title='Сцена', beats='Тиша.'))
     lone, lone_draft = with_draft(repo, lone)
