@@ -17,18 +17,33 @@ MEMORY_PLAN_CHANGED = 'План побудови пам’яті змінивс�
 def memory_build_target(view, proposal=None) -> tuple[str | None, int]:
     """The first active scene, by position, without valid memory (design §5, §5.1), and the number of scenes from it to the
     end of the book — the scenes `rebuild_memory` from it covers. Memory is not valid when there is no memory head, when
-    the head is stale (the stored flag) or when the proposed cast (`scene_cast.propose_cast`, computed when not given)
-    changes the scene's cast. (None, 0) when every scene has valid memory. A scene without finished prose is still the
-    target: the readiness of the run then names what is missing."""
+    the head is stale (the stored flag), when the cast recorded in its dependency snapshot differs from the scene's cast
+    (the stage's memory: `stale_scene_material` leaves snapshot versions to their selectors) or when the proposed cast
+    (`scene_cast.propose_cast`, computed when not given; an unreadable cards file proposes nothing) changes the scene's
+    cast. (None, 0) when every scene has valid memory. A scene without finished prose is still the target: the readiness
+    of the run then names what is missing."""
     if proposal is None:
         from ..storage.scene_cast import propose_cast, view_cards
-        proposal = propose_cast(view, view_cards(view))
+        try:
+            proposal = propose_cast(view, view_cards(view))
+        except (ValueError, KeyError, OSError):  # as readiness: unreadable cards give no proposal, not a failed preview
+            proposal = {}
     scenes = sorted((s for s in view.list_scenes(view.story.id) if not s.trashed_at), key=lambda s: s.position)
     for index, scene in enumerate(scenes):
         memory_id = scene.heads.get('memory')
-        if not memory_id or view.peek_version(memory_id).stale or proposal.get(scene.id, scene.character_ids) != scene.character_ids:
+        if not memory_id or not _memory_valid(view.peek_version(memory_id), scene)                 or proposal.get(scene.id, scene.character_ids) != scene.character_ids:
             return scene.id, len(scenes) - index
     return None, 0
+
+
+def _memory_valid(ref, scene) -> bool:
+    """The memory head was built for the scene as it is: not flagged stale and, with a snapshot, over the same cast."""
+    if ref.stale:
+        return False
+    snapshot = ref.dependency_snapshot
+    return snapshot is None or all(
+        selector.expected == scene.character_ids for selector in snapshot.selectors
+        if selector.kind == 'scene' and selector.owner_id == scene.id and selector.field == 'character_ids')
 
 
 # A placeholder of a version ID's length: the request names the prose version in its fragments label.

@@ -18,3 +18,18 @@ def test_memory_build_route_returns_target_and_count(tmp_path):
             give_memory(app.state.repo, story, scene)
         assert client.get(f'/api/stories/{story.id}/memory-build').json() == {'scene_id': None, 'count': 0}
         assert client.get('/api/stories/missing/memory-build').status_code == 404
+
+
+def test_memory_build_route_survives_unreadable_cards(tmp_path):
+    # Review M-2: as readiness, an unreadable cards file gives no cast proposal, not a failed preview.
+    from tests.generation.test_memory_build import with_cards
+    repo, story, scenes = written_book(tmp_path, ['Оля йде.', 'Друга.'])
+    story = with_cards(repo, story, 'Оля')
+    give_memory(repo, story, scenes[0])
+    cards = repo.get_version(story.characters_version_id)
+    repo.files.resolve(cards.relative_path).write_bytes(b'broken')
+    app = create_app(AppSettings(data_dir=tmp_path))
+    with TestClient(app, base_url='http://127.0.0.1:8765') as client:
+        response = client.get(f'/api/stories/{story.id}/memory-build')
+        assert response.status_code == 200, response.text
+        assert response.json() == {'scene_id': scenes[1].id, 'count': 1}

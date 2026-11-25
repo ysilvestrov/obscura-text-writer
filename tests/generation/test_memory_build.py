@@ -386,3 +386,36 @@ def test_stale_memory_head_is_the_target(tmp_path):
     memory = repo.get_scene(scenes[1].id).heads['memory']
     assert repo.context_view(story.id).peek_version(memory).stale  # the head stays, its stored flag is set
     assert memory_build_target(repo.context_view(story.id)) == (scenes[1].id, 2)
+
+
+def published_memory(repo, story, scenes, upto):
+    """Memory of scenes[upto] through the app's own memory path: a version with a dependency snapshot."""
+    from storygen.memory.journal import MemoryJournal
+    from storygen.memory.service import publish_memory_journal
+    from tests.link_helpers import approve_links
+    prose = [repo.get_scene(s.id).heads['prose'] for s in scenes[:upto + 1]]
+    scene = repo.get_scene(scenes[upto].id)
+    version, _ = publish_memory_journal(repo, scene.id, MemoryJournal(schema_version=3, source_prose_ids=prose),
+                                        scene.revision)
+    approve_links(repo, story.id)
+    return version
+
+
+def test_snapshot_memory_of_a_newly_cast_scene_stays_the_target(tmp_path):
+    # Review I-1: the stage's memory carries a dependency snapshot, so apply_cast leaves its stored flag alone; the cast
+    # recorded in the snapshot differs from the written one, and the build still starts at that scene.
+    from storygen.storage.scene_cast import apply_cast, propose_cast, view_cards
+    repo, story, scenes = written_book(tmp_path, ['Тиша.', 'Оля йде.', 'Марко пішов.'])
+    story = with_cards(repo, story, 'Марко', 'Оля')
+    published_memory(repo, story, scenes, 0)
+    memory = published_memory(repo, story, scenes, 1)
+    assert repo.get_version(memory.id).dependency_snapshot is not None
+    assert memory_build_target(repo.context_view(story.id)) == (scenes[1].id, 2)
+    view = repo.context_view(story.id)
+    changed = apply_cast(repo, story.id, propose_cast(view, view_cards(view)), repo.get_story(story.id).revision)
+    assert scenes[1].id in changed
+    view = repo.context_view(story.id)
+    assert not view.peek_version(memory.id).stale  # the snapshot path: the stored flag is untouched
+    assert memory_build_target(view) == (scenes[1].id, 2)
+    # The run is never started: a later preview still starts at that scene.
+    assert memory_build_target(repo.context_view(story.id)) == (scenes[1].id, 2)
