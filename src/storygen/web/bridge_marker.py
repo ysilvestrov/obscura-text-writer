@@ -13,6 +13,7 @@ OBSCURA_WRITES='Твір у режимі «пише Obscura»: запустіт�
 CHAT_WRITES='Твір у режимі «пише чат»: напишіть текст самі (get_stage_task, save_draft)'
 RUN_OWNER_ONLY='Цю дію із запуском виконує лише автор в Obscura'
 BRIDGE_RUN_MODES=frozenset({'stage','publication_suggest','audit','rebuild_memory'})
+MEMORY_PLAN_REQUIRED='Побудову пам’яті з чату запускають із відбитком плану, який бачив автор: спершу покажіть перегляд'
 MODE_OWNER_ONLY='Режим твору змінює лише автор в Obscura'
 
 
@@ -30,11 +31,13 @@ def author_only_path(method: str,path: str) -> bool:
 
 def guard_bridge_run(request,run_request) -> None:
     """MCP-BRIDGE-S49/S51: the bridge starts one stage or a card suggestion, only in a story Obscura writes, and (R-44 PR 4)
-    an audit of links in either mode: the auditor writes no story text."""
+    an audit of links in either mode: the auditor writes no story text. R-48 PR 2: a memory build (its cost grows with the
+    book) also needs the plan fingerprint the author saw, so the consent rule is backed on the server."""
     if not from_bridge(request):return
     if run_request.mode not in BRIDGE_RUN_MODES:raise BridgeForbidden(RUN_OWNER_ONLY)
     if run_request.mode=='audit':return
     if request.app.state.repo.get_story(run_request.story_id).writing_mode!='obscura':raise RevisionConflict(CHAT_WRITES)
+    if run_request.mode=='rebuild_memory' and run_request.memory_plan_fingerprint is None:raise RevisionConflict(MEMORY_PLAN_REQUIRED)
 
 
 def guard_bridge_cancel(request,run) -> None:

@@ -23,6 +23,7 @@ from mcp.server.mcpserver import Context, MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 
 from .. import skill_bundles
+from ..generation.memory_build import MEMORY_PLAN_CHANGED
 from ..publication_models import PublicationData
 from .edition import edition_refusal
 from .launch import DEFAULT_URL, Connection, ObscuraUnavailable
@@ -180,9 +181,11 @@ def local_cover_path(file_path: str) -> str:
     return real
 
 
-def local_manuscript_path(file_path: str) -> str:
+def local_manuscript_path(file_path: str) -> tuple[str, os.stat_result]:
     """R-48 §6: a manuscript is read only from a local disk: a regular .docx, .md or .txt file of at most 20 MiB, not a link.
-    Every check runs before the file is opened."""
+    Every check runs before the file is opened. The last component must not be a symbolic link or a reparse point, and no
+    parent may be one: the path must equal its resolved form (`realpath`), compared case-insensitively. Returns the path
+    and its `lstat`, which the reader compares with the opened handle (the file cannot be swapped between check and read)."""
     raw = file_path if isinstance(file_path, str) else ''
     if raw.replace('/', '\\').startswith('\\\\'):
         raise ToolError('Рукопис має лежати на локальному диску: мережеві шляхи й шляхи пристроїв не приймаються')
@@ -196,13 +199,15 @@ def local_manuscript_path(file_path: str) -> str:
         raise ToolError(f'Файл рукопису не знайдено: {raw}') from error
     if Path(raw).is_symlink() or stat.S_ISLNK(info.st_mode) or getattr(info, 'st_file_attributes', 0) & 0x400:
         raise ToolError(f'Рукопис не може бути посиланням: вкажіть сам файл: {raw}')
+    if os.path.normcase(os.path.realpath(raw)) != os.path.normcase(os.path.abspath(raw)):
+        raise ToolError(f'Шлях до рукопису проходить через посилання: вкажіть справжній шлях до файла: {raw}')
     if not stat.S_ISREG(info.st_mode):
         raise ToolError(f'Рукопис має бути звичайним файлом, а не каталогом чи пристроєм: {raw}')
     if info.st_size > MANUSCRIPT_MAX_BYTES:
         raise ToolError('Рукопис має бути до 20 MiB')
     if _remote_drive(os.path.realpath(raw)):
         raise ToolError('Рукопис має лежати на локальному диску: мережеві шляхи й шляхи пристроїв не приймаються')
-    return raw
+    return raw, info
 
 
 def _detail(response: httpx.Response) -> str:
@@ -457,11 +462,11 @@ def build_server(http: httpx.Client | None, client_name: str | None = None, *, c
 
     previews: dict[str, dict] = {}
 
-    def remember_preview(data: dict) -> None:
+    def remember_preview(data: dict, language: str) -> None:
         # The server keeps no list of scenes for a confirm without `scenes`, and a new preview would overwrite the parse
         # settings (and the fingerprint): the bridge keeps the proposal of the preview the author was shown.
         previews.pop(data['import_id'], None)
-        previews[data['import_id']] = {'fingerprint': data['fingerprint'], 'scenes': data['scenes'], 'parts': data['parts']}
+        previews[data['import_id']] = {'fingerprint': data['fingerprint'], 'language': language, 'scenes': data['scenes'], 'parts': data['parts']}
         while len(previews) > MANUSCRIPT_CACHE:
             previews.pop(next(iter(previews)))
 
@@ -469,8 +474,11 @@ def build_server(http: httpx.Client | None, client_name: str | None = None, *, c
         if file_path is not None and content_base64 is not None:
             raise ToolError('Передайте або file_path, або content_base64, не обидва')
         if file_path is not None:
-            path = local_manuscript_path(file_path)
+            path, checked = local_manuscript_path(file_path)
             with open(path, 'rb') as handle:
+                opened = os.fstat(handle.fileno())
+                if (opened.st_ino, opened.st_dev) != (checked.st_ino, checked.st_dev) or not stat.S_ISREG(opened.st_mode):
+                    raise ToolError(f'Файл рукопису змінився під час перевірки: повторіть виклик: {path}')
                 content = handle.read(MANUSCRIPT_MAX_BYTES + 1)
             if len(content) > MANUSCRIPT_MAX_BYTES:
                 raise ToolError('Рукопис має бути до 20 MiB')
@@ -500,7 +508,7 @@ def build_server(http: httpx.Client | None, client_name: str | None = None, *, c
 
     @server.tool()
     def import_manuscript(file_path: str | None = None, file_name: str | None = None, content_base64: str | None = None,
-                          language: Literal['uk', 'en'] = 'uk', chapter_markers: list[str] | None = None,
+                          language: Literal['uk', 'en'] | None = None, chapter_markers: list[str] | None = None,
                           part_markers: list[str] | None = None, chapter_source: str | None = None, import_id: str | None = None,
                           confirm: bool = False, fingerprint: str | None = None, title: str | None = None,
                           content_rating: dict[str, int] | str | None = None, scenes: list[dict[str, Any]] | None = None,
@@ -514,7 +522,7 @@ def build_server(http: httpx.Client | None, client_name: str | None = None, *, c
         edition. Покажіть сцени авторові й дочекайтеся згоди. З confirm=true потрібні import_id, fingerprint і title з показаного
         перегляду: без scenes створюються запропоновані сцени, або передайте свої межі scenes[{start, title, part_index}] та
         parts[{index, title}] (частини й серії — лише в повній збірці). content_rating — {sexual, violence, themes}. Повертає
-        story_id, scene_ids, warnings і next_steps. Пам'ять побудуйте окремо: start_run(action='rebuild_memory')."""
+        story_id, scene_ids, warnings і next_steps. Мова книги — мова перегляду (інша мова в confirm відхиляється). Пам'ять побудуйте окремо: start_run(action='rebuild_memory')."""
         if not confirm:
             if import_id is not None:
                 identifier(import_id)
@@ -525,19 +533,24 @@ def build_server(http: httpx.Client | None, client_name: str | None = None, *, c
                 raise ToolError('Передайте file_path, або file_name з content_base64, або import_id попереднього перегляду')
             else:
                 name, content = manuscript_source(file_path, file_name, content_base64)
-            files = manuscript_fields(language, chapter_markers, part_markers, chapter_source)
+            files = manuscript_fields(language or 'uk', chapter_markers, part_markers, chapter_source)
             files.append(('import_id', (None, import_id)) if import_id is not None else ('file', (name, content, 'application/octet-stream')))
             response = send('POST', '/api/manuscript-import/preview', files=files)
             if response.status_code >= 400:
                 raise manuscript_refusal(response)
             data = response.json()
             result = {key: data.get(key) for key in MANUSCRIPT_PREVIEW_KEYS}
-            remember_preview(result)
+            remember_preview(result, language or 'uk')
             return result
         if not (import_id and fingerprint and title and title.strip()):
             raise ToolError('Для confirm потрібні import_id, fingerprint і title із показаного авторові перегляду')
         identifier(import_id)
         kept = previews.get(import_id)
+        fresh = kept is not None and kept['fingerprint'] == fingerprint
+        if language is not None and fresh and language != kept['language']:
+            raise ToolError(f"Мова книги ({language}) відрізняється від мови перегляду ({kept['language']}): "
+                            'назви сцен залежать від неї; зробіть перегляд з потрібною мовою ще раз')
+        language = language or (kept['language'] if fresh else 'uk')
         if scenes is None:
             if kept is None or kept['fingerprint'] != fingerprint:
                 raise ToolError(MANUSCRIPT_REPEAT)
@@ -1159,6 +1172,7 @@ def build_server(http: httpx.Client | None, client_name: str | None = None, *, c
             # The preview of this very call is fresh: a fingerprint of an older one is refused before anything is changed.
             if plan_fingerprint != ready.get('plan_fingerprint'):
                 raise ToolError(MEMORY_PLAN_STALE)
+            # Infer writes the casts before the run is queued: a refused enqueue (budget, limits) leaves them written, with no run.
             # R-48 §5.1: the casts from the names in the prose go in right before the run; the fingerprint hashes the result.
             revision = request('GET', f'/api/stories/{story}')['story']['revision']
             cast = send('POST', f'/api/stories/{story}/scene-cast/infer', json={'expected_revision': revision})
@@ -1174,7 +1188,7 @@ def build_server(http: httpx.Client | None, client_name: str | None = None, *, c
         payload = {'request_id': 'mcp-' + uuid.uuid4().hex, 'request': body}
         if action == 'rebuild_memory':
             queued = send('POST', '/api/runs', json=payload)
-            if queued.status_code == 409 and _original(queued).startswith('План побудови пам’яті змінився'):
+            if queued.status_code == 409 and MEMORY_PLAN_CHANGED in _original(queued):
                 raise ToolError(MEMORY_PLAN_STALE)
             if queued.status_code >= 400:
                 edition_check(queued)

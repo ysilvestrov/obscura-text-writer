@@ -247,3 +247,114 @@ def test_tools_list_includes_import_manuscript(tmp_path):
     tools = anyio.run(run)
     assert 'import_manuscript' in TOOLS and 'import_manuscript' in tools
     assert {'file_path', 'content_base64', 'confirm', 'fingerprint', 'scenes'} <= set(tools['import_manuscript'].input_schema['properties'])
+
+
+# --- fix round 1: language, file-check branches, restart, stale mapping ---
+
+def test_confirm_uses_the_language_of_the_preview(tmp_path):
+    app, http, server = bridge(tmp_path / 'data')
+    data = preview(server, file_path=manuscript(tmp_path), language='en')
+    created = ok(call(server, 'import_manuscript', {'confirm': True, 'import_id': data['import_id'], 'fingerprint': data['fingerprint'],
+                                                     'title': 'English book'}))
+    assert app.state.repo.get_story(created['story_id']).language == 'en'
+
+
+def test_confirm_refuses_another_language_than_the_preview(tmp_path):
+    app, http, server = bridge(tmp_path / 'data')
+    data = preview(server, file_path=manuscript(tmp_path), language='en')
+    refused = call(server, 'import_manuscript', {'confirm': True, 'import_id': data['import_id'], 'fingerprint': data['fingerprint'],
+                                                  'title': 'T', 'language': 'uk'})
+    assert refused.is_error and 'мови перегляду' in text(refused) and app.state.repo.list_stories() == []
+
+
+def fake_lstat(monkeypatch, target, mode, attributes=0):
+    real = os.lstat
+
+    def lstat(path, *a, **k):
+        info = real(path, *a, **k)
+        if str(path) != target:
+            return info
+        return type('Info', (), {'st_mode': mode, 'st_size': info.st_size, 'st_ino': info.st_ino, 'st_dev': info.st_dev,
+                                 'st_file_attributes': attributes})()
+    monkeypatch.setattr(bridge_module.os, 'lstat', lstat)
+
+
+def test_symlink_and_reparse_point_are_refused_without_privileges(tmp_path, monkeypatch):
+    import stat as st
+    app, http, server = bridge(tmp_path / 'data')
+    path = manuscript(tmp_path)
+    fake_lstat(monkeypatch, path, st.S_IFLNK | 0o777)
+    result = call(server, 'import_manuscript', {'file_path': path})
+    assert result.is_error and 'посиланням' in text(result)
+    fake_lstat(monkeypatch, path, st.S_IFREG | 0o644, 0x400)
+    result = call(server, 'import_manuscript', {'file_path': path})
+    assert result.is_error and 'посиланням' in text(result)
+
+
+def test_a_link_in_the_parent_path_is_refused(tmp_path, monkeypatch):
+    app, http, server = bridge(tmp_path / 'data')
+    path = manuscript(tmp_path)
+    monkeypatch.setattr(bridge_module.os.path, 'realpath', lambda value: str(value) + '-elsewhere')
+    result = call(server, 'import_manuscript', {'file_path': path})
+    assert result.is_error and 'проходить через посилання' in text(result)
+
+
+def test_network_paths_are_refused(tmp_path):
+    app, http, server = bridge(tmp_path / 'data')
+    for path in ('\\\\server\\share\\book.md', '//server/share/book.md'):
+        result = call(server, 'import_manuscript', {'file_path': path})
+        assert result.is_error and 'локальному диску' in text(result)
+
+
+def test_file_swapped_between_check_and_read_is_refused(tmp_path, monkeypatch):
+    app, http, server = bridge(tmp_path / 'data')
+    path = manuscript(tmp_path)
+    real = os.fstat
+
+    def fstat(fd):
+        info = real(fd)
+        return type('Info', (), {'st_mode': info.st_mode, 'st_ino': info.st_ino + 1, 'st_dev': info.st_dev})()
+    monkeypatch.setattr(bridge_module.os, 'fstat', fstat)
+    result = call(server, 'import_manuscript', {'file_path': path})
+    assert result.is_error and 'змінився' in text(result)
+
+
+def test_confirm_without_scenes_after_a_re_preview_refuses_the_old_fingerprint(tmp_path):
+    app, http, server = bridge(tmp_path / 'data')
+    first = preview(server, file_path=manuscript(tmp_path))
+    second = preview(server, import_id=first['import_id'], chapter_markers=['Розділ'])
+    assert second['fingerprint'] != first['fingerprint']
+    refused = call(server, 'import_manuscript', {'confirm': True, 'import_id': first['import_id'], 'fingerprint': first['fingerprint'],
+                                                  'title': 'T'})
+    assert refused.is_error and 'без confirm' in text(refused) and app.state.repo.list_stories() == []
+
+
+def test_confirm_without_scenes_after_a_bridge_restart_is_refused(tmp_path):
+    app, http, server = bridge(tmp_path / 'data')
+    data = preview(server, file_path=manuscript(tmp_path))
+    restarted = build_server(http)
+    refused = call(restarted, 'import_manuscript', {'confirm': True, 'import_id': data['import_id'], 'fingerprint': data['fingerprint'],
+                                                    'title': 'T'})
+    assert refused.is_error and 'без confirm' in text(refused) and app.state.repo.list_stories() == []
+
+
+def test_rebuild_memory_with_an_explicit_scene_id(tmp_path):
+    app, http, server, story, scenes = obscura_book(tmp_path, ['Перша.', 'Друга.', 'Третя.'])
+    shown = ok(call(server, 'start_run', {'story_id': story.id, 'action': 'rebuild_memory', 'scene_id': scenes[0].id}))['preview']
+    assert shown['scene_id'] == scenes[0].id and shown['calls'] == 3
+    other = ok(call(server, 'start_run', {'story_id': story.id, 'action': 'rebuild_memory', 'scene_id': scenes[2].id}))['preview']
+    assert other['scene_id'] == scenes[2].id and other['calls'] == 1 and other['scenes_count'] is None
+
+
+def test_enqueue_conflict_asks_for_a_new_preview(tmp_path, monkeypatch):
+    from storygen.domain import RevisionConflict
+    from storygen.generation.memory_build import MEMORY_PLAN_CHANGED
+    app, http, server, story, scenes = obscura_book(tmp_path, ['Перша.', 'Друга.'])
+    shown = ok(call(server, 'start_run', {'story_id': story.id, 'action': 'rebuild_memory'}))['preview']
+
+    def refuse(*args, **kwargs):
+        raise RevisionConflict(MEMORY_PLAN_CHANGED)
+    monkeypatch.setattr(app.state.coordinator, 'enqueue', refuse)
+    result = call(server, 'start_run', {'story_id': story.id, 'action': 'rebuild_memory', 'confirm': True,
+                                        'plan_fingerprint': shown['plan_fingerprint']})
+    assert result.is_error and MEMORY_PLAN_STALE in text(result)

@@ -3,11 +3,11 @@ the client is not started as a context manager, so the worker does not pick runs
 import pytest
 
 from storygen.generation import readiness
-from storygen.web.bridge_marker import CHAT_WRITES, RUN_OWNER_ONLY
+from storygen.web.bridge_marker import CHAT_WRITES, MEMORY_PLAN_REQUIRED, RUN_OWNER_ONLY
 from tests.web.test_chat_stage_routes import app_with_scene
 
 BRIDGE = {'X-Obscura-Client': 'mcp'}
-READY = {'ready': True, 'roles': {'planner': {'provider': 'local', 'model': 'm'}}, 'calls': 1, 'warnings': []}
+READY = {'ready': True, 'plan_fingerprint': 'a' * 64, 'roles': {'planner': {'provider': 'local', 'model': 'm'}}, 'calls': 1, 'warnings': []}
 
 
 @pytest.fixture
@@ -72,6 +72,10 @@ def test_bridge_rebuild_memory_follows_the_stage_rule(tmp_path, ready):
     assert refused.status_code == 409 and CHAT_WRITES in refused.text
     app, repo, story, scene, client = scene_app(tmp_path / 'o', 'obscura')
     request = {'story_id': story.id, 'scene_id': scene.id, 'mode': 'rebuild_memory'}
+    refused = client.post('/api/runs', json={'request_id': 'm3', 'request': request}, headers=BRIDGE)
+    assert refused.status_code == 409 and MEMORY_PLAN_REQUIRED in refused.text  # no fingerprint of a preview the author saw
+    assert app.state.coordinator.list_runs() == []
+    request = {**request, 'memory_plan_fingerprint': 'a' * 64}
     accepted = client.post('/api/runs', json={'request_id': 'm2', 'request': request}, headers=BRIDGE)
     assert accepted.status_code == 200, accepted.text
     assert app.state.coordinator.get_run(accepted.json()['id']).origin == 'mcp'
