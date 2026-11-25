@@ -22,7 +22,8 @@ def usd(nanos: int) -> str:
     return str((Decimal(nanos) / 10**9).quantize(Decimal('0.0001'), rounding=ROUND_CEILING))
 
 
-def _per_call_nanos(repo, settings) -> tuple[int | None, str | None]:
+def current_tariff(repo, settings):
+    """(tariff, None) for the role's current stored tariff, else (None, NO_PRICE | STALE_PRICE); never raises."""
     from ..billing.models import Tariff
     provider = settings.provider
     try:
@@ -32,8 +33,18 @@ def _per_call_nanos(repo, settings) -> tuple[int | None, str | None]:
         tariff = Tariff.model_validate(raw)
         if not tariff.current():
             return None, STALE_PRICE
-        return tariff.price(settings.max_input_chars * CHARS_TO_TOKENS + INPUT_OVERHEAD, settings.max_output_tokens), None
+        return tariff, None
     except Exception:  # a broken stored row is an unknown price, not a refused preview
+        return None, NO_PRICE
+
+
+def _per_call_nanos(repo, settings) -> tuple[int | None, str | None]:
+    tariff, reason = current_tariff(repo, settings)
+    if tariff is None:
+        return None, reason
+    try:
+        return tariff.price(settings.max_input_chars * CHARS_TO_TOKENS + INPUT_OVERHEAD, settings.max_output_tokens), None
+    except Exception:
         return None, NO_PRICE
 
 

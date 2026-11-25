@@ -3,11 +3,11 @@ the client is not started as a context manager, so the worker does not pick runs
 import pytest
 
 from storygen.generation import readiness
-from storygen.web.bridge_marker import CHAT_WRITES, RUN_OWNER_ONLY
+from storygen.web.bridge_marker import CHAT_WRITES, MEMORY_PLAN_REQUIRED, RUN_OWNER_ONLY
 from tests.web.test_chat_stage_routes import app_with_scene
 
 BRIDGE = {'X-Obscura-Client': 'mcp'}
-READY = {'ready': True, 'roles': {'planner': {'provider': 'local', 'model': 'm'}}, 'calls': 1, 'warnings': []}
+READY = {'ready': True, 'plan_fingerprint': 'a' * 64, 'roles': {'planner': {'provider': 'local', 'model': 'm'}}, 'calls': 1, 'warnings': []}
 
 
 @pytest.fixture
@@ -53,8 +53,7 @@ def test_chat_mode_refuses_bridge_runs_but_not_the_author(tmp_path, ready):
 @pytest.mark.req('MCP-BRIDGE')
 def test_bridge_may_not_start_other_run_kinds(tmp_path, ready):
     app, repo, story, scene, client = scene_app(tmp_path, 'obscura')
-    for request in ({'story_id': story.id, 'scene_id': scene.id, 'mode': 'scene'}, {'story_id': story.id, 'mode': 'prepare'},
-                    {'story_id': story.id, 'scene_id': scene.id, 'mode': 'rebuild_memory'}):
+    for request in ({'story_id': story.id, 'scene_id': scene.id, 'mode': 'scene'}, {'story_id': story.id, 'mode': 'prepare'}):
         refused = client.post('/api/runs', json={'request_id': 'x-' + request['mode'], 'request': request}, headers=BRIDGE)
         assert refused.status_code == 403 and RUN_OWNER_ONLY in refused.text, request
     for path in (f'/api/stories/{story.id}/prepare', f'/api/stories/{story.id}/evaluate', f'/api/scenes/{scene.id}/rebuild-memory',
@@ -63,6 +62,38 @@ def test_bridge_may_not_start_other_run_kinds(tmp_path, ready):
         response = client.post(path, json={'request_id': 'x'}, headers=BRIDGE)
         assert response.status_code == 403 and RUN_OWNER_ONLY in response.text, (path, response.status_code)
     assert app.state.coordinator.list_runs() == []
+
+
+def test_bridge_rebuild_memory_follows_the_stage_rule(tmp_path, ready):
+    """R-48 PR 2: the bridge may start the memory build, only in a story Obscura writes; the author-only route stays closed."""
+    app, repo, story, scene, client = scene_app(tmp_path, 'chat')
+    request = {'story_id': story.id, 'scene_id': scene.id, 'mode': 'rebuild_memory'}
+    refused = client.post('/api/runs', json={'request_id': 'm1', 'request': request}, headers=BRIDGE)
+    assert refused.status_code == 409 and CHAT_WRITES in refused.text
+    app, repo, story, scene, client = scene_app(tmp_path / 'o', 'obscura')
+    request = {'story_id': story.id, 'scene_id': scene.id, 'mode': 'rebuild_memory'}
+    refused = client.post('/api/runs', json={'request_id': 'm3', 'request': request}, headers=BRIDGE)
+    assert refused.status_code == 409 and MEMORY_PLAN_REQUIRED in refused.text  # no fingerprint of a preview the author saw
+    assert app.state.coordinator.list_runs() == []
+    request = {**request, 'memory_plan_fingerprint': 'a' * 64}
+    accepted = client.post('/api/runs', json={'request_id': 'm2', 'request': request}, headers=BRIDGE)
+    assert accepted.status_code == 200, accepted.text
+    assert app.state.coordinator.get_run(accepted.json()['id']).origin == 'mcp'
+
+
+def test_bridge_cast_inference_follows_the_stage_rule(tmp_path):
+    """R-48 review M-9: the bridge writes scene casts only where it may start the memory build; the author in any mode."""
+    app, repo, story, scene, client = scene_app(tmp_path, 'chat')
+    revision = repo.get_story(story.id).revision
+    refused = client.post(f'/api/stories/{story.id}/scene-cast/infer', json={'expected_revision': revision}, headers=BRIDGE)
+    assert refused.status_code == 409 and CHAT_WRITES in refused.text
+    assert repo.get_story(story.id).revision == revision
+    author = client.post(f'/api/stories/{story.id}/scene-cast/infer', json={'expected_revision': revision})
+    assert author.status_code == 200, author.text
+    app, repo, story, scene, client = scene_app(tmp_path / 'o', 'obscura')
+    accepted = client.post(f'/api/stories/{story.id}/scene-cast/infer',
+                           json={'expected_revision': repo.get_story(story.id).revision}, headers=BRIDGE)
+    assert accepted.status_code == 200, accepted.text
 
 
 @pytest.mark.req('MCP-BRIDGE')

@@ -6,7 +6,7 @@ The link is `storygen-mcp`, a small program the chat client starts by itself. It
 
 ## What the chat can do
 
-The chat gets twenty-eight tools:
+The chat gets twenty-nine tools:
 
 - **story list** and **story overview**: scenes, their order and their state, in the same words as the scene list, plus the story's rating, target length and characters;
 - **new story**: a title, a language, a target length, the story mode and, optionally, an age rating;
@@ -18,6 +18,7 @@ The chat gets twenty-eight tools:
 - **scene context**: the plan, the brief, the cast's cards, the scene's locations with descriptions, the memory of earlier scenes, the age rating, the language and the target length;
 - **scene text**: the scene's current plan, brief, draft, prose or memory together with the ID of the current version; the chat reads a long text in parts;
 - **import a plan and characters**: the same as the [import](imports.md) form;
+- **import a manuscript**: a new book from a finished DOCX, Markdown or TXT file — a scene preview first, the book is created only after your consent (see [Importing a manuscript from the chat](#importing-a-manuscript-from-the-chat));
 - **save a draft**: a new version of the scene's draft, only over the draft the chat has read;
 - **link to rewriting from memory**: a link that opens [Ghost Mode](ghost-mode.md) for the scene's current draft;
 - **next steps**: a link to the scene in Obscura;
@@ -31,7 +32,7 @@ The chat gets twenty-eight tools:
 - **role preset**: a preview and, with your consent in the chat, applying a saved preset;
 - **stage task**: the instructions and material for the scene brief, editing or memory — the same as an Obscura model would get;
 - **stage result**: the chat's answer to a stage task, which Obscura checks the same way as its own model's answer;
-- **run**: in an "Obscura writes" story, a preview and, with your consent in the chat, an Obscura model run of one scene stage or a publication card suggestion; in any story, an auditor check of a scene or of the whole book the same way;
+- **run**: in an "Obscura writes" story, a preview and, with your consent in the chat, an Obscura model run of one scene stage, the book memory build or a publication card suggestion; in any story, an auditor check of a scene or of the whole book the same way;
 - **run status**: what is happening with a run now, its result, and cancelling a run the chat started;
 - **guide**: the steps of the Obscura skills for chat clients that do not have the skills installed (see [Obscura skills](#obscura-skills)).
 
@@ -258,6 +259,14 @@ In a story with the **Obscura writes** mode the chat can ask Obscura to run one 
 - If the previous memory needs your confirmation, the memory stage does not start: the chat advises you to confirm it in Obscura.
 - You accept changes that wait for your decision in Obscura, as after a run started with a button.
 
+The chat can also start the [book memory build](memory.md#building-the-book-memory) from the first scene without valid memory.
+
+- The preview shows the number of scenes and calls, the upper bound on the cost (for a cloud model with a known price), the scenes that do not fit the memory role limits, the character cards and an offer to update a series book from the previous one first. You update the series book yourself in the Obscura window (**Update from the previous book**); the chat only reminds you.
+- The chat starts the build only after your consent and only with the plan you were shown: without it Obscura refuses the run from the chat. If the book, the cards or the memory model changed in the meantime, the chat has to show you a new preview.
+- If a build of this book is already queued or running, Obscura does not start a second one, even when the chat repeats the confirmation: you do not pay twice for one build.
+- Before the run Obscura fills the scene participants from the names in the prose, as the **Build** button does. If the run is refused after that (for example, by the budget), the written participants stay.
+- In a "Chat writes" story Obscura does not start the memory build: the chat goes through the scenes one by one itself (the memory stage from the chat), or you switch the story mode.
+
 In either mode the chat can also start an [auditor check](workspace.md#validating-the-book): of one scene or of the whole book.
 
 - The preview shows which scenes and links will be checked, the maximum number of calls and the upper bound on the cost (for a cloud model with a current price). The chat starts the check only after your consent in the chat and only with the plan you were shown. If the book changed in the meantime, Obscura refuses with “The check plan has changed. Review it again”, and the chat has to show you the new preview.
@@ -274,6 +283,15 @@ The chat can go through every stage of a scene itself: write the scene brief, wr
 - If the previous prose changed after its memory, the chat does not get the memory task: you confirm the use of the previous memory in Obscura.
 - In the version history such versions are marked "External client: <name>". Prose edited by the chat is an editing version with this mark.
 - These tools cost no money and are not counted in the budget. If a role is not configured, Obscura uses the chat's typical context limits; it does not know the chat's own window.
+
+## Importing a manuscript from the chat
+
+The chat can create a book from your finished manuscript the same way as the [manuscript import](manuscript-import.md) in the library.
+
+- Give the chat the full path to a `.docx`, `.md` or `.txt` file on a local disk (with the drive letter, up to 20 MiB). Obscura reads only the file itself: it refuses a link, a folder, a network path or a file on a network drive. OneDrive files on your disk work. The chat can also send a small file (up to 2 MiB) as content.
+- First the chat shows a preview: scenes with titles and word counts, proposed boundaries and warnings. It can parse the file again with other chapter or part markers and pass its own scene boundaries. On your request the chat adds the front matter (a dedication or an epigraph before the first chapter) to the start of the first scene, like the switch in the library.
+- The book is created only after your consent, in the language of the preview. No model is called, the import costs nothing.
+- The answer has a link to the book in Obscura. The chat builds the book memory with a separate [run](#obscura-runs-from-the-chat) with a cost preview.
 
 ## Start a story with one request
 

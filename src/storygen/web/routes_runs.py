@@ -81,6 +81,38 @@ def audit_preview(story_id: str,body: AuditPreview,request: Request):
     return request.app.state.coordinator.readiness(story_id,body.scene_id,operation=operation)['operations'][operation]
 
 
+@router.get('/api/stories/{story_id}/memory-build')
+def memory_build(story_id: str,request: Request):
+    # R-48 design §5: read-only; the scene «Побудувати пам'ять» starts from, how many scenes the run covers and whether
+    # each of them has finished prose (`buildable`: the menu item is shown only then; owner, 25.11.2026).
+    from ..generation.memory_build import memory_build_buildable, memory_build_target
+    repo=request.app.state.coordinator.repo
+    repo.get_story(story_id)
+    view=repo.context_view(story_id)
+    scene_id,count=memory_build_target(view)
+    return {'scene_id':scene_id,'count':count,'buildable':memory_build_buildable(view,count)}
+
+
+class CastInfer(DomainModel):
+    expected_revision: int
+
+
+@router.post('/api/stories/{story_id}/scene-cast/infer')
+def infer_scene_cast(story_id: str,body: CastInfer,request: Request):
+    # R-48 design §5.1: fills the cast of scenes without a participants line from the names in their prose, right before
+    # «Побудувати пам'ять»; no model is called. 409 when the story changed since the author's preview.
+    from ..domain import RevisionConflict
+    from ..storage.scene_cast import CAST_CONFLICT, apply_cast, propose_cast, view_cards
+    from .bridge_marker import guard_bridge_cast
+    guard_bridge_cast(request,story_id)
+    repo=request.app.state.coordinator.repo
+    view=repo.context_view(story_id)
+    if view.get_story(story_id).revision!=body.expected_revision:
+        raise RevisionConflict(CAST_CONFLICT)
+    changed=apply_cast(repo,story_id,propose_cast(view,view_cards(view)),body.expected_revision)
+    return {'story':repo.get_story(story_id),'changed_scene_ids':changed}
+
+
 @router.post('/api/stories/{story_id}/prepare')
 def prepare(story_id: str,body: Prepare,request: Request):
     return request.app.state.coordinator.enqueue(RunRequest(story_id=story_id,mode='prepare'),body.request_id)

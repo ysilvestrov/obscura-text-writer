@@ -749,3 +749,29 @@ body.ghost-open #notice { z-index: 70; }
 .editor-import-table th, .editor-import-table td { text-align: left; vertical-align: top; padding: 0.35rem 0.5rem; border-bottom: 1px solid var(--border-color); }
 .editor-import-table ul { margin: 0.25rem 0 0; padding-left: 1rem; font-weight: normal; }
 .story-menu-reason { display: block; font-size: 0.85em; color: var(--text-muted); }
+/* MANUSCRIPT-IMPORT: the library dialog. Scenes are a list (not a table), so a phone screen never scrolls sideways;
+   a scene's paragraphs scroll inside it, each with its boundary button. */
+.export-dialog.manuscript-import-dialog { width: min(48rem, calc(100vw - 32px)); max-width: min(48rem, calc(100vw - 32px)); box-sizing: border-box; }
+.manuscript-import-dialog label { display: block; margin: 0.5rem 0; }
+/* R-48 «Побудувати пам’ять»: the build preview; author titles wrap, so a phone never scrolls sideways. */
+.export-dialog.memory-build-dialog { width: min(36rem, calc(100vw - 32px)); max-width: min(36rem, calc(100vw - 32px)); box-sizing: border-box; overflow-wrap: anywhere; }
+.memory-build-series { border-left: 3px solid var(--warning); padding-left: 0.75rem; margin-bottom: 0.75rem; }
+.memory-build-unfit ul { margin: 0.25rem 0 0.75rem; padding-left: 1.25rem; }
+.memory-build-reason { color: var(--warning); }
+.workspace-scene-origin { margin: 0; font-size: 0.875rem; overflow-wrap: anywhere; }
+.manuscript-import-dialog input:not([type="checkbox"]), .manuscript-import-dialog select { display: block; width: 100%; max-width: 100%; box-sizing: border-box; }
+.manuscript-import-dialog .checkbox { display: flex; align-items: flex-start; gap: 8px; }
+.manuscript-import-dialog .checkbox input { width: auto; }
+.manuscript-import-rating, .manuscript-import-series { display: grid; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); gap: 0 0.75rem; min-width: 0; }
+.manuscript-import-rating legend, .manuscript-import-rating small { grid-column: 1 / -1; }
+.manuscript-import-scenes { list-style: none; margin: 0; padding: 0; }
+.manuscript-import-scene { border-bottom: 1px solid var(--border-color); padding: 0.5rem 0; min-width: 0; }
+.manuscript-import-meta { margin: 0.25rem 0; overflow-wrap: anywhere; }
+.manuscript-import-proposed { font-weight: 600; }
+.manuscript-import-scene details > div { max-height: 22rem; overflow-y: auto; }
+.manuscript-import-paragraphs { margin: 0.25rem 0; padding-left: 1.5rem; }
+.manuscript-import-paragraph { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 0.25rem 0.5rem; padding: 0.25rem 0; }
+.manuscript-import-text { flex: 1 1 12rem; min-width: 0; overflow-wrap: anywhere; }
+.manuscript-import-paragraph:not(.role-prose):not(.role-front_matter) .manuscript-import-text { color: var(--text-muted); font-style: italic; }
+.manuscript-import-boundary { flex: 0 0 auto; font-size: 0.85em; padding: 0.15rem 0.5rem; }
+#manuscript-import-result a.button { display: inline-block; }

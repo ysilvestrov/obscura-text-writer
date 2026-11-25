@@ -28,3 +28,24 @@ assert.deepEqual([node.hidden,node.textContent],[false,'Зовнішній кл�
 renderOriginInto(node,null);
 assert.deepEqual([node.hidden,node.textContent],[true,'']);
 renderOriginInto(null,{external_origin:{client:'Codex'}});
+// R-48 MANUSCRIPT-IMPORT: prose from the author's manuscript names its file; a scene without a plan adds that the plan is
+// optional (validation checks the prose and the memory). The file name is author text, never localized.
+const imported={manuscript_import:{file_name:'mayak <1>.docx',file_sha256:'a'.repeat(64),imported_at:'2026-11-25T00:00:00Z'}};
+assert.equal(externalOriginLabel(imported),'Імпортовано з рукопису: mayak <1>.docx');
+assert.equal(externalOriginLabel(imported,{heads:{prose:'p'},beats:''}),'Імпортовано з рукопису: mayak <1>.docx · План необов’язковий: валідація перевіряє прозу й пам’ять');
+assert.equal(externalOriginLabel(imported,{heads:{prose:'p',plan:'x'},beats:''}),'Імпортовано з рукопису: mayak <1>.docx');
+assert.equal(externalOriginLabel(imported,{heads:{prose:'p'},beats:'Сцена 1: план'}),'Імпортовано з рукопису: mayak <1>.docx');
+assert.equal(externalOriginLabel({id:'v'},{heads:{},beats:''}),'');
+renderOriginInto(node,imported,{heads:{prose:'p'},beats:'  '});
+assert.equal(node.hidden,false);
+await setLocale('en');
+assert.equal(node.textContent,'Imported from manuscript: mayak <1>.docx · Plan optional: validation checks the prose and the memory');
+await setLocale('uk');
+renderOriginInto(node,null);
+// R-48 (spec §4.4): the status row reads the scene's prose_origin from the story view.
+const {sceneOriginLabel}=await import(pathToFileURL(root+'/src/storygen/web/static/external-origin.js'));
+assert.equal(sceneOriginLabel(null),'');
+assert.equal(sceneOriginLabel({prose_origin:null,heads:{},beats:''}),'');
+assert.equal(sceneOriginLabel({prose_origin:{kind:'manuscript_import',file_name:'mayak.docx'},heads:{prose:'p'},beats:''}),'Імпортовано з рукопису: mayak.docx · План необов’язковий: валідація перевіряє прозу й пам’ять');
+assert.equal(sceneOriginLabel({prose_origin:{kind:'manuscript_import',file_name:'mayak.docx'},heads:{prose:'p'},beats:'План'}),'Імпортовано з рукопису: mayak.docx');
+assert.equal(sceneOriginLabel({prose_origin:{kind:'other',file_name:'x'},heads:{},beats:''}),'');

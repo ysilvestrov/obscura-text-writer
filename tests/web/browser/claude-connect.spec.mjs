@@ -19,8 +19,8 @@ test('Claude Desktop entry, restart choices and the fallback',async({page})=>{
   await block.getByRole('button',{name:'Перезапущу сам'}).click();
   await expect(block.locator('.connect-self-help')).toContainText('«Quit»');
   await block.getByRole('button',{name:'Перезапустити Claude зараз'}).click();
-  await expect(page.locator('dialog')).toContainText('відкритою розмовою');
-  await page.locator('dialog').getByRole('button',{name:'Перезапустити Claude зараз'}).click();
+  await expect(page.locator('dialog[open]')).toContainText('відкритою розмовою');
+  await page.locator('dialog[open]').getByRole('button',{name:'Перезапустити Claude зараз'}).click();
   await expect(page.locator('#notice')).toContainText('Claude Desktop перезапускається');
   expect(restarts).toEqual([1]);
 
