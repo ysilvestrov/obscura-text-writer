@@ -19,11 +19,11 @@ def card(source_id=None, quote='Іва-Швидка', id=None):
     return {'schema_version': 2, **({'id': id} if id else {}), 'name': 'Іва', 'entries': [entry]}
 
 
-def setup(tmp_path):
+def setup(tmp_path, kind='manual'):
     repo = Repository(tmp_path)
     story = repo.create_story(StoryCreate(title='Ферма'))
     scene = repo.create_scene(story.id, SceneCreate(title='Ворота', beats='Іва приходить.'))
-    prose = repo.save_version(story.id, scene.id, 'manual', PROSE, [])
+    prose = repo.save_version(story.id, scene.id, kind, PROSE, [])
     return repo, story, scene, prose
 
 
@@ -34,8 +34,9 @@ def test_model_entry_needs_no_sources():
 
 
 @pytest.mark.req('CHARACTER-EXTRACT')
-def test_prose_quote_source_saves(tmp_path):
-    repo, story, scene, prose = setup(tmp_path)
+@pytest.mark.parametrize('kind', ['manual', 'edited'])
+def test_prose_quote_source_saves(tmp_path, kind):
+    repo, story, scene, prose = setup(tmp_path, kind)
     result = save_character_material(repo, story.id, [card(prose.id)], repo.get_story(story.id).revision)
     saved = repo.get_version(result['version_id'])
     assert saved.kind == 'character_cards' and prose.id not in saved.input_refs
@@ -87,3 +88,14 @@ def test_old_version_without_model_loads():
     raw = json.dumps([{'schema_version': 2, 'id': 'c', 'name': 'Іва', 'entries': [
         {'id': 'e', 'text': 'Вік: 30', 'origin': 'author'}]}])
     assert load_characters(raw)[0].entries[0].origin == 'author'
+
+
+@pytest.mark.req('CHARACTER-EXTRACT')
+def test_plan_source_stays_a_ref_next_to_prose(tmp_path):
+    repo, story, scene, prose = setup(tmp_path)
+    plan = repo.save_version(story.id, None, 'source_plan', 'Іва — героїня.', [])
+    payload = card(prose.id)
+    payload['entries'].append({'text': 'Героїня', 'origin': 'imported', 'availability': 'timeless',
+                               'sources': [{'version_id': plan.id, 'quote': 'героїня'}]})
+    result = save_character_material(repo, story.id, [payload], repo.get_story(story.id).revision)
+    assert repo.get_version(result['version_id']).input_refs == [plan.id]
