@@ -106,15 +106,33 @@ def test_publish_removes_files_when_write_fails(tmp_path, monkeypatch):
     assert version_files(tmp_path) == []
 
 
-def test_publish_lock_time_is_bounded(tmp_path):
-    import time
-    repo = Repository(tmp_path / 'data')
-    # MAX_SCENES (500) scenes: the whole publish, files included, stays under the 5 s other writers wait (busy_timeout).
-    scenes = [ManuscriptSceneData(f'Сцена {n}', 'Слово ' * 200, 'markdown', None, 200) for n in range(500)]
-    started = time.perf_counter()
-    story, created = publish_manuscript(repo, StoryCreate(title='Книга'), scenes, ORIGIN, False)
-    elapsed = time.perf_counter() - started
-    assert len(created) == 500
-    assert elapsed < 4, elapsed
-    view = repo.context_view(story.id)
-    assert not view.get_version(created[-1].heads['prose']).stale
+def test_publish_lock_time_is_bounded(tmp_path, monkeypatch):
+    """The snapshot loop runs under the write lock; per scene it must neither deep-copy the book's scenes
+    (ContextView.list_scenes / get_story) nor rebuild the lineage map, or the transaction grows as O(n²) copies.
+    Counted, not timed: the counts must not grow with the number of scenes."""
+    from storygen.book import lineage
+    from storygen.storage.context_view import ContextView
+    counts = {}
+
+    def counted(name, original):
+        def wrapper(*args, **kwargs):
+            counts[name] = counts.get(name, 0) + 1
+            return original(*args, **kwargs)
+        return wrapper
+    monkeypatch.setattr(ContextView, 'list_scenes', counted('list_scenes', ContextView.list_scenes))
+    monkeypatch.setattr(ContextView, 'get_story', counted('get_story', ContextView.get_story))
+    monkeypatch.setattr(lineage, '_build_map', counted('lineage_map', lineage._build_map))
+
+    def calls(size):
+        counts.clear()
+        repo = Repository(tmp_path / f'data{size}')
+        scenes = [ManuscriptSceneData(f'Сцена {n}', 'Слово ' * 20, 'markdown', None, 20) for n in range(size)]
+        story, created = publish_manuscript(repo, StoryCreate(title='Книга'), scenes, ORIGIN, False)
+        assert len(created) == size
+        result = dict(counts)
+        view = repo.context_view(story.id)
+        assert not view.get_version(created[-1].heads['prose']).stale
+        return result
+    small, large = calls(20), calls(200)
+    assert small == large, (small, large)
+    assert large.get('list_scenes', 0) == 0 and large.get('lineage_map', 0) <= 1, large
