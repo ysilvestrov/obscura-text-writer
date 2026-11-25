@@ -131,7 +131,7 @@ def test_unknown_mcp_tool_is_reported(tmp_path):
     real=set().union(*(tool_mentions(raw.decode()) for raw in clean.files.values()))
     assert {'get_story','get_stage_task','save_draft'} <= real
     assert real <= set(TOOLS)
-    assert len(TOOLS) == 29 and 'get_guide' in TOOLS
+    assert len(TOOLS) == 30 and 'get_guide' in TOOLS
     assert all(b'get_guide' not in raw for raw in clean.files.values())
 
 
