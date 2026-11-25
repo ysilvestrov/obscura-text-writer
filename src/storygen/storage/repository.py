@@ -1,3 +1,4 @@
+from contextlib import contextmanager
 import hashlib
 import json
 from pathlib import Path
@@ -479,6 +480,37 @@ class Repository:
             self._active_story(db,story_id)
             if scene_id:self._active_scene(db,scene_id)
             self._insert_version_row(db,version)
+        return version
+
+    @contextmanager
+    def write_transaction(self):
+        """One `BEGIN IMMEDIATE` write transaction; the yielded handle goes to the `*_in_transaction` methods only."""
+        with self.db.connection() as db:
+            db.execute('BEGIN IMMEDIATE')
+            yield db
+
+    def story_in_transaction(self,db,story_id: str) -> Story:
+        return self._active_story(db,story_id)
+
+    def view_in_transaction(self,db,story_id: str):
+        from .context_view import ContextView
+        return ContextView(self,db,story_id)
+
+    def publish_story_material_in_transaction(self,db,story_id,field,version_id,expected_revision):
+        from .authoring import publish_story_material_in_transaction
+        return publish_story_material_in_transaction(self,db,story_id,field,version_id,expected_revision)
+
+    def save_version_in_transaction(self,db,story_id: str,kind: str,text: str,input_refs: list[str]) -> VersionRef:
+        """A plain (scene-less) JSON-or-text version written on the caller's open write transaction; the file goes in first."""
+        story=self._active_story(db,story_id)
+        if any(self._get(db,'versions',id,VersionRef).story_id!=story.id for id in input_refs):
+            raise ValueError("Джерела належать іншому твору")
+        id=new_id()
+        data=text.encode("utf-8")
+        version=VersionRef(id=id,story_id=story_id,scene_id=None,kind=kind,format="json" if kind=="character_cards" else "text",sha256=hashlib.sha256(data).hexdigest(),
+            relative_path=f"stories/{story_id}/versions/{id}.{'json' if kind=='character_cards' else 'txt'}",input_refs=input_refs)
+        self.files.write(version.relative_path,data)
+        self._insert_version_row(db,version)
         return version
 
     def _insert_version_row(self,db,version):

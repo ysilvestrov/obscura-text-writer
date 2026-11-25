@@ -6,6 +6,10 @@ from .models import load_characters
 from .projection import project_characters,TEMPORAL_WARNING
 from .names import name_warnings
 
+# CHARACTER-EXTRACT: scene prose (`manual`, `edited`) is a quotable source of a card entry, but never a dependency of the cards.
+PROSE_SOURCE_KINDS=frozenset({'manual','edited'})
+CARD_SOURCE_KINDS=frozenset({'source_characters','source_plan','character_cards'})|PROSE_SOURCE_KINDS
+
 
 def _cards(view,story):
     return load_characters(view.read_text(story.characters_version_id)) if story.characters_version_id else []
@@ -36,10 +40,10 @@ def _normalize(view,story,payload):
             for citation in entry.sources:
                 try:source=view.get_version(citation.version_id)
                 except KeyError:raise ValueError('Джерело відомості недоступне або належить іншому твору') from None
-                if source.story_id!=story.id or source.kind not in {'source_characters','source_plan','character_cards'} or not source.complete:
+                if source.story_id!=story.id or source.kind not in CARD_SOURCE_KINDS or not source.complete:
                     raise ValueError('Невірне джерело відомості персонажа')
                 if citation.quote not in view.read_text(source.id):raise ValueError('Цитата відомості відсутня у джерелі')
-                refs.append(source.id)
+                if source.kind not in PROSE_SOURCE_KINDS:refs.append(source.id)  # a prose edit must not stale the cards
     return cards,list(dict.fromkeys(refs))
 
 
@@ -65,14 +69,27 @@ def preview_character_material(repo,story_id,cards,scene_id):
     return {'text':projection.text,'warnings':projection.warnings+name_warnings(normalized),'excluded_count':projection.excluded_count,'revision':story.revision}
 
 
-def save_character_material(repo,story_id,cards,expected_revision):
-    view=repo.context_view(story_id);story=view.get_story(story_id)
+def _save_cards(repo,db,story_id,cards,expected_revision):
+    """Validate, write and publish the cards on the caller's open write transaction; returns (version, changed, dependent)."""
+    story=repo.story_in_transaction(db,story_id)
     if story.revision!=expected_revision:raise RevisionConflict('Твір змінено. Перезавантажте картки після збереження власних правок окремо.')
+    view=repo.view_in_transaction(db,story_id)
     normalized,refs=_normalize(view,story,cards)
     changed=changed_character_ids(_cards(view,story),normalized)
     dependent=dependent_scene_ids(view.list_scenes(story_id),changed)  # casts before the save: a removed card still counts
-    version=repo.save_version(story_id,None,'character_cards',json.dumps([c.model_dump() for c in normalized],ensure_ascii=False),refs)
-    repo.publish_story_material(story_id,'characters_version_id',version.id,expected_revision)
+    version=repo.save_version_in_transaction(db,story_id,'character_cards',json.dumps([c.model_dump() for c in normalized],ensure_ascii=False),refs)
+    repo.publish_story_material_in_transaction(db,story_id,'characters_version_id',version.id,expected_revision)
+    return version,changed,dependent
+
+
+def save_cards_in_transaction(repo,db,story_id,cards_payload,expected_revision):
+    """The transactional core of `save_character_material` for a caller that already holds `BEGIN IMMEDIATE` on `db`."""
+    return _save_cards(repo,db,story_id,cards_payload,expected_revision)[0]
+
+
+def save_character_material(repo,story_id,cards,expected_revision):
+    with repo.write_transaction() as db:
+        _,changed,dependent=_save_cards(repo,db,story_id,cards,expected_revision)
     # VALID-LINKS rule (г): the editor asks the author whether to uncheck these scenes; saving alone changes no link.
     return {**read_character_material(repo,story_id),'changed_character_ids':changed,'dependent_scene_ids':dependent}
 

@@ -318,27 +318,31 @@ def _material(repo, db, story_id, version_id, kind):
 
 
 def publish_story_material(repo, story_id, field, version_id, expected_revision):
+    with repo.db.connection() as db:
+        db.execute('BEGIN IMMEDIATE')
+        return publish_story_material_in_transaction(repo, db, story_id, field, version_id, expected_revision)
+
+
+def publish_story_material_in_transaction(repo, db, story_id, field, version_id, expected_revision):
     kinds = {'style_version_id': 'style','characters_version_id':'character_cards'}
     if field not in kinds:
         raise ValueError('Непідтримуваний матеріал твору')
-    with repo.db.connection() as db:
-        db.execute('BEGIN IMMEDIATE')
-        story = repo._active_story(db, story_id)
-        _revision(story, expected_revision)
-        _material(repo, db, story_id, version_id, kinds[field])
-        previous = getattr(story, field)
-        setattr(story, field, version_id)
-        story.revision += 1
-        repo._save_story(db, story)
-        from .invalidation import invalidate_in_transaction, invalidate_story_materials
-        if previous:
-            invalidate_in_transaction(repo, db, [previous],exclude=[version_id])
-        else:
-            invalidate_story_materials(repo, db, story_id)
-        if field=='characters_version_id':
-            from .scene_metadata import sync_story_cast
-            sync_story_cast(repo,db,story_id)
-        return story
+    story = repo._active_story(db, story_id)
+    _revision(story, expected_revision)
+    _material(repo, db, story_id, version_id, kinds[field])
+    previous = getattr(story, field)
+    setattr(story, field, version_id)
+    story.revision += 1
+    repo._save_story(db, story)
+    from .invalidation import invalidate_in_transaction, invalidate_story_materials
+    if previous:
+        invalidate_in_transaction(repo, db, [previous],exclude=[version_id])
+    else:
+        invalidate_story_materials(repo, db, story_id)
+    if field=='characters_version_id':
+        from .scene_metadata import sync_story_cast
+        sync_story_cast(repo,db,story_id)
+    return story
 
 
 def publish_blueprint(repo, story_id, canon_id, character_cards_id, scenes, expected_revision):

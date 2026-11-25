@@ -21,7 +21,7 @@ class CharacterEntry(DomainModel):
     text: str = Field(min_length=1)
     availability: Literal['unclassified','timeless','from_scene'] = 'unclassified'
     available_from_scene_id: str | None = None
-    origin: Literal['imported','author']
+    origin: Literal['imported','author','model']
     sources: list[CharacterCitation] = Field(default_factory=list)
 
     @model_validator(mode='after')
