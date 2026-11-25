@@ -131,7 +131,7 @@ def load(repo, import_id: str) -> tuple[bytes, str]:
     name = stored.with_suffix('.name')
     try:
         file_name = name.read_text(encoding='utf-8') or stored.name
-    except OSError:
+    except (OSError, UnicodeError):
         file_name = stored.name
     return content, file_name
 
@@ -178,6 +178,8 @@ def preview(repo, content: bytes, file_name: str, settings: ParseSettings, impor
         content, file_name = load(repo, import_id)
     elif len(content) > MAX_FILE:
         raise ManuscriptTooLarge()
+    else:  # as in `origin_file_name`: an uploaded name may carry lone surrogates that UTF-8 (and JSON) cannot hold
+        file_name = file_name.encode('utf-8', 'ignore').decode('utf-8')
     settings = effective_settings(settings)
     manuscript = read_manuscript(content, file_name)  # raises ManuscriptError before anything is kept
     structure = detect(manuscript.paragraphs, settings, fits=memory_fits(repo, role))
@@ -189,6 +191,9 @@ def preview(repo, content: bytes, file_name: str, settings: ParseSettings, impor
     # The import re-parses the file with the settings of the latest preview: its body names only the fingerprint.
     repo.files.write(f'{TEMP_DIR}/{import_id}{SETTINGS_SUFFIX}', json.dumps(asdict(settings), ensure_ascii=False).encode('utf-8'))
     long_prose = build_edition.current().long_prose
+    warnings = list(structure.warnings) + list(manuscript.warnings)
+    if len(structure.scenes) > MAX_SCENES:
+        warnings.append(TOO_MANY_PROPOSED.format(count=len(structure.scenes), limit=MAX_SCENES))
     return ManuscriptPreview(
         import_id=import_id, fingerprint=_fingerprint(content, settings), file_name=file_name,
         title_suggestion=structure.title_suggestion, chapter_source=structure.chapter_source,
@@ -196,18 +201,24 @@ def preview(repo, content: bytes, file_name: str, settings: ParseSettings, impor
         parts=[{'index': position, 'paragraph': index, 'title': name} for position, (index, name) in enumerate(structure.parts)],
         front_matter=list(structure.front_matter),
         dropped=[{'index': index, 'text': text, 'reason': reason} for index, text, reason in structure.dropped],
-        warnings=list(structure.warnings) + list(manuscript.warnings), tracked_changes=manuscript.tracked_changes,
+        warnings=warnings, tracked_changes=manuscript.tracked_changes,
         edition={'parts_allowed': long_prose, 'series_allowed': long_prose})
 
 
 def paragraphs(repo, import_id: str, start: int, end: int) -> list[dict]:
-    """Short descriptions of the paragraphs with index in [start, end] (inclusive, like scene ranges), at most 2 000."""
+    """Short descriptions of the paragraphs with index in [start, end] (inclusive, like scene ranges), at most 2 000.
+
+    `role` is the paragraph's place in the structure of the latest preview (`manuscript_structure.ROLES`);
+    `boundary_allowed` marks the indices the import accepts as a scene start: prose, and front matter, which is a valid
+    start only with `include_front_matter`."""
     content, file_name = load(repo, import_id)
     if start < 0 or end < start:
         raise ValueError('Некоректний діапазон абзаців')
     manuscript = read_manuscript(content, file_name)
+    structure = detect(manuscript.paragraphs, _stored_settings(repo, import_id))  # as the import validates boundaries
     return [{'index': p.index, 'text_head': p.text[:HEAD_CHARS], 'words': words(p.text), 'heading_level': p.heading_level,
-             'after_break': p.after_break}
+             'after_break': p.after_break, 'role': structure.roles[p.index],
+             'boundary_allowed': structure.roles[p.index] in ('prose', 'front_matter')}
             for p in manuscript.paragraphs[start:min(end + 1, start + MAX_PARAGRAPHS)]]
 
 
@@ -227,6 +238,7 @@ ORIGIN_NAME_FALLBACK = 'manuscript'
 APPLYING = 'Цей імпорт уже виконується або виконаний'
 MAX_SCENES = 500
 TOO_MANY_SCENES = 'Забагато сцен: до {limit} за один імпорт'
+TOO_MANY_PROPOSED = 'Перегляд пропонує сцен: {count}, а за один імпорт можна до {limit}: об’єднайте сцени або розділіть рукопис на кілька файлів'
 STORY_MIN_WORDS = 5000  # StoryCreate.target_words lower bound
 
 
@@ -246,7 +258,7 @@ class ManuscriptApplyPart(BaseModel):
 class ManuscriptApplySeries(BaseModel):
     model_config = ConfigDict(extra='forbid')
     series_id: str = Field(min_length=1, max_length=64)
-    number: int = Field(ge=1)
+    number: int = Field(ge=1, le=1000000)  # the bound of Story.series_number
 
 
 class ManuscriptApply(BaseModel):

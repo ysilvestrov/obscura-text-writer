@@ -80,7 +80,7 @@ def test_paragraphs_range_and_cap(tmp_path):
     import_id = service.preview(repo, text, 'long.txt', SETTINGS).import_id
     rows = service.paragraphs(repo, import_id, 2, 4)
     assert [row['index'] for row in rows] == [2, 3, 4]
-    assert set(rows[0]) == {'index', 'text_head', 'words', 'heading_level', 'after_break'}
+    assert set(rows[0]) == {'index', 'text_head', 'words', 'heading_level', 'after_break', 'role', 'boundary_allowed'}
     assert len(rows[0]['text_head']) <= 160 and rows[0]['words'] == 42
     assert len(service.paragraphs(repo, import_id, 0, 100000)) == 2000
     assert service.paragraphs(repo, import_id, 2490, 100000)[-1]['index'] == 2499
@@ -149,3 +149,36 @@ def test_scene_that_does_not_fit_the_memory_role_is_split(tmp_path):
     plain = service.preview(repo, paragraphs, 'one.txt', SETTINGS)
     small = service.preview(repo, paragraphs, 'one.txt', SETTINGS, role=small_memory_role())
     assert len(plain.scenes) == 1 and len(small.scenes) > 1
+
+
+ROLES_BOOK = '\n\n'.join(['# Книга', 'Присвята.', 'Частина перша', '## Глава перша', 'Текст першої глави. ' * 5, '***',
+                          'Ще текст першої. ' * 5, '## Глава друга', 'Текст другої глави. ' * 5]).encode()
+
+
+def test_paragraphs_carry_role_and_allowed_boundary(tmp_path):
+    repo = repo_for(tmp_path)
+    preview = service.preview(repo, ROLES_BOOK, 'book.md', SETTINGS)
+    rows = service.paragraphs(repo, preview.import_id, 0, 100)
+    assert [row['role'] for row in rows] == ['title', 'front_matter', 'part_heading', 'chapter_heading', 'prose', 'separator',
+                                             'prose', 'chapter_heading', 'prose']
+    assert [row['index'] for row in rows if row['boundary_allowed']] == [1, 4, 6, 8]
+    for start in (5, 7):  # a separator or a chapter heading is never a scene boundary
+        scenes = [{'start': 4, 'title': 'А'}, {'start': start, 'title': 'Б'}]
+        with pytest.raises(ValueError, match=service.BAD_BOUNDARY):
+            service.apply_import(repo, preview.import_id, {'fingerprint': preview.fingerprint, 'title': 'К', 'scenes': scenes})
+
+
+def test_preview_warns_when_more_scenes_than_one_import_takes(tmp_path, monkeypatch):
+    monkeypatch.setattr(service, 'MAX_SCENES', 1)
+    preview = service.preview(repo_for(tmp_path), BOOK, 'book.md', SETTINGS)
+    assert service.TOO_MANY_PROPOSED.format(count=2, limit=1) in preview.warnings
+
+
+def test_file_name_with_lone_surrogate_is_kept_without_it(tmp_path):
+    repo = repo_for(tmp_path)
+    preview = service.preview(repo, BOOK, 'кни\udc80га.md', SETTINGS)
+    assert preview.file_name == 'книга.md'
+    json.dumps(preview.file_name, ensure_ascii=False).encode('utf-8')
+    assert service.load(repo, preview.import_id) == (BOOK, 'книга.md')
+    (tmp_path / 'data' / 'manuscript-import' / f'{preview.import_id}.name').write_bytes(b'\xff\xfe')
+    assert service.load(repo, preview.import_id)[1] == f'{preview.import_id}.md'

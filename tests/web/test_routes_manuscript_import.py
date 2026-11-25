@@ -131,3 +131,34 @@ def test_apply_creates_book_and_maps_errors(tmp_path):
         assert [story['id'] for story in client.get('/api/stories').json()] == [result['story_id']]
         assert list((tmp_path / 'manuscript-import').glob('*')) == []
         assert client.post(url, json=body).status_code == 404
+
+
+def test_scene_warnings_and_new_messages_have_english_text():
+    from storygen.publication.manuscript_read import COMMENTS
+    from storygen.web.localization import diagnostic
+    assert diagnostic('Розділ 3 (2): довгий абзац без меж', 'en') == 'Розділ 3 (2): a long paragraph with no breaks'
+    assert diagnostic("Глава: вступ: Частина сцени не вміститься в ліміти пам'яті навіть після поділу", 'en') == \
+        'Глава: вступ: A part of the scene will not fit the memory limits even after splitting'
+    assert diagnostic('Розділ 3: щось інше', 'en') == 'Розділ 3: щось інше'  # only the known scene warnings
+    for text in (COMMENTS.format(count=3), manuscript_import.TOO_MANY_PROPOSED.format(count=600, limit=500)):
+        assert not any('А' <= char <= 'я' for char in diagnostic(text, 'en')), text
+
+
+def test_language_sets_single_chapter_title(tmp_path):
+    text = ('Просто текст без заголовків. ' * 20).encode()
+    with client_for(tmp_path) as client:
+        uk = upload(client, text, 'a.txt').json()
+        en = upload(client, text, 'a.txt', language='en').json()
+    assert [scene['title'] for scene in uk['scenes']] == ['Рукопис']
+    assert [scene['title'] for scene in en['scenes']] == ['Manuscript']
+
+
+def test_too_large_series_number_is_a_validation_error(tmp_path):
+    with client_for(tmp_path) as client:
+        preview = upload(client).json()
+        scenes = [{'start': scene['start'], 'title': scene['title']} for scene in preview['scenes']]
+        body = {'fingerprint': preview['fingerprint'], 'title': 'Книга', 'scenes': scenes,
+                'series': {'series_id': 'a' * 32, 'number': 1000001}}
+        response = client.post(f'/api/manuscript-import/{preview["import_id"]}', json=body)
+        assert response.status_code == 422, response.text  # the app's answer to any invalid request body
+        assert client.get('/api/stories').json() == []

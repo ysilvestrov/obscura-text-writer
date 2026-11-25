@@ -15,6 +15,7 @@ _IMPORT_ID = re.compile('[0-9a-f]{32}')
 MAX_MARKERS = 20
 MAX_MARKER_LENGTH = 40
 PROLOGUE = {'uk': 'Пролог', 'en': 'Prologue'}
+SINGLE_CHAPTER = {'uk': 'Рукопис', 'en': 'Manuscript'}
 
 
 def _checked(import_id: str) -> str:
@@ -48,7 +49,8 @@ def _settings(form) -> ParseSettings:
     language = str(form.get('language') or '')
     return ParseSettings(chapter_markers=_markers(form, 'chapter_markers', defaults.chapter_markers),
                          part_markers=_markers(form, 'part_markers', defaults.part_markers), chapter_source=chapter_source,
-                         prologue_title=PROLOGUE.get(language, defaults.prologue_title))
+                         prologue_title=PROLOGUE.get(language, defaults.prologue_title),
+                         single_chapter_title=SINGLE_CHAPTER.get(language, defaults.single_chapter_title))
 
 
 @router.post('/api/manuscript-import/preview')

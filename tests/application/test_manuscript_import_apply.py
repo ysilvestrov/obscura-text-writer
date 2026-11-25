@@ -324,3 +324,19 @@ def test_scene_without_letters_imports(tmp_path):
     result = service.apply_import(repo, preview.import_id, body(preview))
     scene = repo.get_scene(result['scene_ids'][-1])
     assert scene.target_words >= 1 and prose(repo, scene.id)[1]
+
+
+def test_long_heading_title_applies_with_the_preview_proposal(tmp_path):
+    long = 'Дуже довгий абзац ' * 20  # a 360-character Heading 1
+    content = '\n\n'.join(['# ' + long, 'Текст глави один. ' * 30, '# Глава друга', 'Текст глави два. ' * 30]).encode()
+    repo, preview = setup(tmp_path, content)
+    assert [len(scene.title) <= 200 for scene in preview.scenes] == [True, True] and preview.scenes[0].title.endswith('…')
+    result = service.apply_import(repo, preview.import_id, body(preview))
+    assert [s.title for s in repo.list_scenes(result['story_id'])] == [s.title for s in preview.scenes]
+
+
+def test_series_number_has_an_upper_bound():
+    from pydantic import ValidationError
+    with pytest.raises(ValidationError):
+        service.ManuscriptApplySeries(series_id='a' * 32, number=1000001)
+    assert service.ManuscriptApplySeries(series_id='a' * 32, number=1000000).number == 1000000

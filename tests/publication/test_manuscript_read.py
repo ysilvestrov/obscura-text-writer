@@ -157,13 +157,13 @@ def test_docx_edge_tabs_and_nbsp_trimmed():
 
 
 def test_markdown_backslash_escapes_decoded():
-    text = '\- Привіт, — сказав він.\n\nЗ \*зірочкою\* і *курсивом \* теж*.\n\n\# Не заголовок \_так\_\.'
+    text = '\n\n'.join([r'\- Привіт, — сказав він.', r'З \*зірочкою\* і *курсивом \* теж*.', r'\# Не заголовок \_так\_\.'])
     result = read_manuscript(markdown(text), 'b.md').paragraphs
     assert [p.text for p in result] == ['- Привіт, — сказав він.', 'З *зірочкою* і курсивом * теж.', '# Не заголовок _так_.']
     assert result[1].runs == (Run('З *зірочкою* і '), Run('курсивом * теж', False, True), Run('.'))
     assert result[2].heading_level is None
     # Obscura's own Markdown export escapes a leading dash; the import keeps it as the same text, not `\-`.
-    assert serialize([result[0].runs], 'markdown').text == '\- Привіт, — сказав він.'
+    assert serialize([result[0].runs], 'markdown').text == r'\- Привіт, — сказав він.'
 
 
 def test_markdown_thematic_breaks_are_scene_separators():
