@@ -86,6 +86,11 @@ def test_copyedit_storage_recheck_receives_split(tmp_path):
     p = copyedit_review.copyedit_preview(repo, scene.id, attempt.id)
     copyedit_review.select_copyedits(repo, scene.id, attempt.id, [1], p['expected_revision'], p['proposal_fingerprint'], [0])
     assert seen == [[0]]
+    scene_after = repo.get_scene(scene.id)
+    assert repo.read_text(scene_after.heads['prose']) == PARTIAL
+    decision = repo.get_attempt(attempt.id).context['copyedit_decisions'][-1]
+    assert decision['selected_indices'] == [1] and decision['split_groups'] == [0]
+    assert decision['result_version_id'] == scene_after.heads['prose']
 
 
 def test_copyedit_storage_rejects_partial_group_without_split(tmp_path):

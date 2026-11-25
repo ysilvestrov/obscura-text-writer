@@ -92,6 +92,6 @@ test.describe('english interface',()=>{
     if(!await panel.evaluate(e=>e.open))await panel.locator('summary').click();
     await panel.getByRole('button',{name:'Accept separately (2)',exact:true}).click();
     await expect(panel.getByRole('button',{name:'Together',exact:true})).toBeVisible();
-    await expect(panel.locator('[data-split-result]')).toContainText('Result: ');
+    await expect(panel.locator('[data-split-result]')).toHaveText('Result: '+ORIGINAL);
   });
 });

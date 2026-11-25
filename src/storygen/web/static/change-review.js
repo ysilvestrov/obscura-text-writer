@@ -43,6 +43,7 @@ export function mountChangeReview({host,state,api,json,notice,onApplied,onQueued
   selectAll.onclick=()=>{
     if(!rewrite||reason().trim()||!choices.length)return;
     for(const input of choices){input.checked=true;input.indeterminate=false;}
+    for(const refresh of new Set(choices.map(c=>c.refreshSplit).filter(Boolean)))refresh();
     clearSelection();uiText(selectedText,'textContent',()=>t('m_94bbf9a6cf09'));updateAvailability();
   };
   function render(data,preserved=null){
@@ -75,7 +76,7 @@ export function mountChangeReview({host,state,api,json,notice,onApplied,onQueued
         const refresh=()=>{const picked=new Set(parts.flatMap(c=>c.checked?c.editIndices:[]));const text=edit.before_parts.map((part,i)=>part.changed&&picked.has(part.index)?edit.after_parts[i].text:part.text).join('');uiText(result,'textContent',()=>t('edit_split.split_result',{p0:text}))};
         for(const unit of edit.units){
           const item=document.createElement('label');item.className='copyedit-item';
-          const input=document.createElement('input');input.type='checkbox';input.editIndices=unit;input.partial=[];input.checked=unit.every(index=>selected.has(index));input.onchange=()=>{refresh();selectionChanged()};choices.push(input);parts.push(input);
+          const input=document.createElement('input');input.type='checkbox';input.editIndices=unit;input.partial=[];input.checked=unit.every(index=>selected.has(index));input.refreshSplit=refresh;input.onchange=()=>{refresh();selectionChanged()};choices.push(input);parts.push(input);
           const content=document.createElement('span'),sentence=document.createElement('p');sentence.className='copyedit-sentence';
           edit.before_parts.forEach((part,i)=>{
             if(part.changed&&unit.includes(part.index)){const del=document.createElement('del'),ins=document.createElement('ins');uiText(del,'textContent',()=>part.text);uiText(ins,'textContent',()=>edit.after_parts[i].text);sentence.append(del,ins)}
