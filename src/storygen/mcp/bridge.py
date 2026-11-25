@@ -13,6 +13,7 @@ import os
 import re
 import stat
 import sys
+import threading
 import uuid
 from pathlib import Path
 from typing import Any, Literal
@@ -51,10 +52,13 @@ LINK_REPARSE_TAGS = (0xA000000C, 0xA0000003)
 MANUSCRIPT_EXTENSIONS = ('.docx', '.md', '.txt')
 MANUSCRIPT_MAX_BYTES = 20 * 1024 * 1024
 MANUSCRIPT_BASE64_MAX = 2 * 1024 * 1024
-MANUSCRIPT_PREVIEW_KEYS = ('import_id', 'fingerprint', 'file_name', 'title_suggestion', 'chapter_source', 'scenes', 'parts', 'warnings',
-                           'tracked_changes', 'edition')
+MANUSCRIPT_PREVIEW_KEYS = ('import_id', 'fingerprint', 'file_name', 'title_suggestion', 'chapter_source', 'scenes', 'parts',
+                           'front_matter', 'warnings', 'tracked_changes', 'edition')
 MANUSCRIPT_REPEAT = 'Перегляд рукопису застарів або втрачений: викличте import_manuscript без confirm ще раз'
 MANUSCRIPT_CACHE = 8
+MEMORY_SERIES_HINT = ('Попередня книга серії вже має пам’ять, а ця ще не взяла з неї знімок початку. Оновлення робить автор у вікні '
+                      'Obscura («Оновити з попередньої книги» в діалозі побудови пам’яті); запропонуйте це до запуску. Без оновлення '
+                      'пам’ять не враховуватиме попередню книгу')
 MEMORY_APPROVAL = 'Попередня пам’ять потребує вашого підтвердження в Obscura: відкрийте сцену й підтвердьте використання пам’яті'
 LANGUAGES = ('uk', 'en')
 PUBLICATION_FIELDS = tuple(PublicationData.model_fields)
@@ -462,14 +466,22 @@ def build_server(http: httpx.Client | None, client_name: str | None = None, *, c
         return request('POST', f'/api/stories/{identifier(story_id)}/sources', files=files)
 
     previews: dict[str, dict] = {}
+    # Tools may run concurrently: every read-modify-write of `previews` holds this lock (review M-11).
+    previews_lock = threading.Lock()
 
     def remember_preview(data: dict, language: str) -> None:
         # The server keeps no list of scenes for a confirm without `scenes`, and a new preview would overwrite the parse
         # settings (and the fingerprint): the bridge keeps the proposal of the preview the author was shown.
-        previews.pop(data['import_id'], None)
-        previews[data['import_id']] = {'fingerprint': data['fingerprint'], 'language': language, 'scenes': data['scenes'], 'parts': data['parts']}
-        while len(previews) > MANUSCRIPT_CACHE:
-            previews.pop(next(iter(previews)))
+        with previews_lock:
+            previews.pop(data['import_id'], None)
+            previews[data['import_id']] = {'fingerprint': data['fingerprint'], 'language': language, 'scenes': data['scenes'],
+                                           'parts': data['parts']}
+            while len(previews) > MANUSCRIPT_CACHE:
+                previews.pop(next(iter(previews)))
+
+    def kept_preview(import_id: str) -> dict | None:
+        with previews_lock:
+            return previews.get(import_id)
 
     def manuscript_source(file_path: str | None, file_name: str | None, content_base64: str | None) -> tuple[str, bytes]:
         if file_path is not None and content_base64 is not None:
@@ -518,9 +530,10 @@ def build_server(http: httpx.Client | None, client_name: str | None = None, *, c
         """Імпорт готового рукопису (.docx, .md, .txt) у НОВУ книгу; наявних книг не змінює, моделей не викликає, грошей не коштує.
         Без confirm — перегляд: файл читається або з file_path (повний шлях до локального файла до 20 MiB, не посилання), або з
         file_name + content_base64 (до 2 MiB); з import_id і новими маркерами (chapter_markers, part_markers, chapter_source: auto,
-        markers, 1, 2 чи 3) той самий файл розбирається знову. Повертає import_id, fingerprint, title_suggestion, chapter_source,
-        scenes (start, end — індекси абзаців, title, words, part_index, proposed, warnings), parts, warnings, tracked_changes і
-        edition. Покажіть сцени авторові й дочекайтеся згоди. З confirm=true потрібні import_id, fingerprint і title з показаного
+        markers, 1, 2 чи 3) той самий файл розбирається знову, мовою попереднього перегляду, якщо language не передано. Повертає
+        import_id, fingerprint, title_suggestion, chapter_source, scenes (start, end — індекси абзаців, title, words, part_index,
+        proposed, warnings), parts, front_matter (індекси абзаців вступного тексту: присвята, епіграф; у сцени він потрапляє лише з
+        include_front_matter=true), warnings, tracked_changes і edition. Покажіть сцени авторові й дочекайтеся згоди. З confirm=true потрібні import_id, fingerprint і title з показаного
         перегляду: без scenes створюються запропоновані сцени, або передайте свої межі scenes[{start, title, part_index}] та
         parts[{index, title}] (частини й серії — лише в повній збірці). content_rating — {sexual, violence, themes}. Повертає
         story_id, scene_ids, warnings і next_steps. Мова книги — мова перегляду (інша мова в confirm відхиляється). Пам'ять побудуйте окремо: start_run(action='rebuild_memory')."""
@@ -534,6 +547,9 @@ def build_server(http: httpx.Client | None, client_name: str | None = None, *, c
                 raise ToolError('Передайте file_path, або file_name з content_base64, або import_id попереднього перегляду')
             else:
                 name, content = manuscript_source(file_path, file_name, content_base64)
+            if language is None and import_id is not None:
+                # Review M-7: a re-preview by import_id keeps the language of the preview the author was shown.
+                language = (kept_preview(import_id) or {}).get('language')
             files = manuscript_fields(language or 'uk', chapter_markers, part_markers, chapter_source)
             files.append(('import_id', (None, import_id)) if import_id is not None else ('file', (name, content, 'application/octet-stream')))
             response = send('POST', '/api/manuscript-import/preview', files=files)
@@ -546,7 +562,7 @@ def build_server(http: httpx.Client | None, client_name: str | None = None, *, c
         if not (import_id and fingerprint and title and title.strip()):
             raise ToolError('Для confirm потрібні import_id, fingerprint і title із показаного авторові перегляду')
         identifier(import_id)
-        kept = previews.get(import_id)
+        kept = kept_preview(import_id)
         fresh = kept is not None and kept['fingerprint'] == fingerprint
         if language is not None and fresh and language != kept['language']:
             raise ToolError(f"Мова книги ({language}) відрізняється від мови перегляду ({kept['language']}): "
@@ -573,7 +589,8 @@ def build_server(http: httpx.Client | None, client_name: str | None = None, *, c
         if response.status_code >= 400:
             raise manuscript_refusal(response)
         created = response.json()
-        previews.pop(import_id, None)
+        with previews_lock:
+            previews.pop(import_id, None)
         story = identifier(created['story_id'])
         return {'story_id': story, 'scene_ids': created['scene_ids'], 'warnings': created.get('warnings') or [],
                 'next_steps': (f"Книгу створено без пам'яті. Відкрийте її в Obscura: {base()}/stories/{story}?build_memory=1\n"
@@ -1087,7 +1104,8 @@ def build_server(http: httpx.Client | None, client_name: str | None = None, *, c
         (publication_suggest, без scene_id) або перевірку зв'язків Ревізором (audit: зі scene_id — одна сцена, без нього —
         валідація всієї книги). Етапи й пропозиція — лише у творі з режимом «пише Obscura»; audit — у будь-якому режимі, бо
         Ревізор не пише тексту твору. rebuild_memory будує пам'ять сцен підряд від scene_id (без нього — від першої сцени без
-        чинної пам'яті, див. scenes_count): її перегляд має cost (верхня межа), unfit_scenes, series_refresh, cast і plan_fingerprint;
+        чинної пам'яті, див. scenes_count): її перегляд має cost (верхня межа), unfit_scenes, series_refresh (з
+        series_refresh_hint: оновлення з попередньої книги робить автор в Obscura), cast і plan_fingerprint;
         запуск — лише з plan_fingerprint із показаного перегляду, а склад сцен за іменами в прозі Obscura проставляє перед стартом.
         Якщо відповідь каже, що план змінився, покажіть новий перегляд (start_run без confirm). КОШТУЄ ГРОШЕЙ за тарифами моделей ролей.
         Без confirm нічого не запускає й повертає перегляд: готовність, моделі, кількість викликів, попередження й бюджет твору;
@@ -1098,7 +1116,8 @@ def build_server(http: httpx.Client | None, client_name: str | None = None, *, c
         вміщається повністю, модель прочитає ідею й сцени 1–included із total (попередження — у warnings); покажіть це авторові
         й передайте selection_key = selection.key з показаного перегляду, тоді змінений відбір Obscura відхилить. budget_limit_usd — ліміт цього запуску в доларах (рядок, напр.
         "0.50"). Запуск іде у фоні: стан і результат — get_run(run_id); результат етапу читайте get_scene_text, пропозиції
-        картки — у get_run. Кожен виклик з confirm=true створює новий запуск."""
+        картки — у get_run. Кожен виклик з confirm=true створює новий запуск; другу побудову пам'яті, поки перша в черзі,
+        виконується чи призупинена, Obscura відхиляє (409): стан першої — get_run."""
         if action not in RUN_ACTIONS:
             raise ToolError('Невідома дія; можливі: ' + ', '.join(RUN_ACTIONS))
         story = identifier(story_id)
@@ -1144,6 +1163,8 @@ def build_server(http: httpx.Client | None, client_name: str | None = None, *, c
                             'cost': ready.get('cost'), 'unfit_scenes': ready.get('unfit_scenes') or [],
                             'series_refresh': ready.get('series_refresh'), 'cast': ready.get('cast'),
                             'plan_fingerprint': ready.get('plan_fingerprint')})
+            if ready.get('series_refresh'):
+                preview['series_refresh_hint'] = MEMORY_SERIES_HINT
         if audit_scope is not None:
             cost = ready.get('cost') or {}
             preview.update({'links': ready.get('links') or [], 'invalid_scenes': ready.get('invalid_scenes'),

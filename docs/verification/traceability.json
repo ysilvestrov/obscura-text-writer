@@ -8910,7 +8910,7 @@
     {
       "id": "MANUSCRIPT-IMPORT-S14",
       "requirement": "MANUSCRIPT-IMPORT",
-      "scope": "MCP import_manuscript: перегляд зі шляху й base64, підтвердження з запропонованими й власними межами, мова перегляду, перевірки файла (посилання й точка монтування, заглушка OneDrive, короткі й довгі шляхи, мережеві шляхи, підміна файла, розмір), давній перегляд; start_run(rebuild_memory): перегляд з вартістю й відбитком, обов'язковий і свіжий відбиток, режим «пише чат», нема що будувати, явна сцена, 409 від enqueue; серверна вимога відбитка від моста. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "scope": "MCP import_manuscript: перегляд зі шляху й base64, підтвердження з запропонованими й власними межами, мова перегляду, перевірки файла (посилання й точка монтування, заглушка OneDrive, короткі й довгі шляхи, мережеві шляхи, підміна файла, розмір), давній перегляд; start_run(rebuild_memory): перегляд з вартістю й відбитком, обов'язковий і свіжий відбиток, режим «пише чат», нема що будувати, явна сцена, 409 від enqueue; серверна вимога відбитка від моста; повторне підтвердження — один запуск і 409; `front_matter` перегляду, підказка `series_refresh_hint`, мова повторного перегляду, замок словника переглядів. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
       "tests": [
         "tests/mcp/test_bridge_manuscript.py::test_tools_list_includes_import_manuscript",
         "tests/mcp/test_bridge_manuscript.py::test_import_manuscript_preview_from_path",
@@ -8937,7 +8937,12 @@
         "tests/mcp/test_bridge_manuscript.py::test_rebuild_memory_with_nothing_to_build",
         "tests/mcp/test_bridge_manuscript.py::test_rebuild_memory_with_an_explicit_scene_id",
         "tests/mcp/test_bridge_manuscript.py::test_enqueue_conflict_asks_for_a_new_preview",
-        "tests/web/test_bridge_run_routes.py::test_bridge_rebuild_memory_follows_the_stage_rule"
+        "tests/web/test_bridge_run_routes.py::test_bridge_rebuild_memory_follows_the_stage_rule",
+        "tests/mcp/test_bridge_manuscript.py::test_two_confirms_of_one_preview_start_one_build",
+        "tests/mcp/test_bridge_manuscript.py::test_preview_returns_front_matter",
+        "tests/mcp/test_bridge_manuscript.py::test_series_refresh_carries_the_author_hint",
+        "tests/mcp/test_bridge_manuscript.py::test_re_preview_by_import_id_keeps_the_language",
+        "tests/mcp/test_bridge_manuscript.py::test_previews_are_changed_under_a_lock"
       ]
     },
     {

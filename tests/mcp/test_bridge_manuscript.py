@@ -52,8 +52,8 @@ def preview(server, **arguments):
 def test_import_manuscript_preview_from_path(tmp_path):
     app, http, server = bridge(tmp_path / 'data')
     data = preview(server, file_path=manuscript(tmp_path))
-    assert set(data) == {'import_id', 'fingerprint', 'file_name', 'title_suggestion', 'chapter_source', 'scenes', 'parts', 'warnings',
-                         'tracked_changes', 'edition'}
+    assert set(data) == {'import_id', 'fingerprint', 'file_name', 'title_suggestion', 'chapter_source', 'scenes', 'parts', 'front_matter',
+                         'warnings', 'tracked_changes', 'edition'}
     assert data['file_name'] == 'book.md' and data['edition'] == {'parts_allowed': True, 'series_allowed': True}
     assert [scene['title'] for scene in data['scenes']] == ['Глава перша', 'Глава друга']
     assert set(data['scenes'][0]) == {'start', 'end', 'title', 'words', 'part_index', 'proposed', 'warnings'}
@@ -372,3 +372,87 @@ def test_enqueue_conflict_asks_for_a_new_preview(tmp_path, monkeypatch):
     result = call(server, 'start_run', {'story_id': story.id, 'action': 'rebuild_memory', 'confirm': True,
                                         'plan_fingerprint': shown['plan_fingerprint']})
     assert result.is_error and MEMORY_PLAN_STALE in text(result)
+
+
+# --- final fix wave: duplicate build, front matter, series hint, re-preview language, previews lock ---
+
+def test_two_confirms_of_one_preview_start_one_build(tmp_path):
+    # Review I-1: a chat that retries start_run(confirm=True) does not pay twice; the refusal reaches the chat as is.
+    from storygen.generation.memory_build import MEMORY_BUILD_RUNNING
+    app, http, server, story, scenes = obscura_book(tmp_path, ['Перша.', 'Друга.'])
+    shown = ok(call(server, 'start_run', {'story_id': story.id, 'action': 'rebuild_memory'}))['preview']
+    confirm = {'story_id': story.id, 'action': 'rebuild_memory', 'confirm': True, 'plan_fingerprint': shown['plan_fingerprint']}
+    assert ok(call(server, 'start_run', confirm))['started'] is True
+    again = call(server, 'start_run', confirm)
+    assert again.is_error and MEMORY_BUILD_RUNNING in text(again) and '409' in text(again)
+    assert MEMORY_PLAN_STALE not in text(again)
+    assert len(app.state.coordinator.list_runs()) == 1
+
+
+def test_preview_returns_front_matter(tmp_path):
+    # Review M-6: confirm accepts include_front_matter, so the preview says which paragraphs are front matter.
+    content = '\n\n'.join(['# Книга', 'Присвята мамі.', '## Глава перша', 'Текст першої глави. ' * 5, '## Глава друга',
+                            'Текст другої глави. ' * 5])
+    app, http, server = bridge(tmp_path / 'data')
+    data = preview(server, file_path=manuscript(tmp_path, content=content))
+    assert data['front_matter'] and all(isinstance(index, int) for index in data['front_matter'])
+    plain = preview(server, file_path=manuscript(tmp_path, name='plain.md'))
+    assert plain['front_matter'] == []
+
+
+def test_series_refresh_carries_the_author_hint(tmp_path, monkeypatch):
+    # Review M-6: the refresh from the previous book is the author's action in Obscura; the preview says so.
+    from storygen.generation import memory_build
+    from storygen.mcp.bridge import MEMORY_SERIES_HINT
+    app, http, server, story, scenes = obscura_book(tmp_path, ['Перша.'])
+    assert 'series_refresh_hint' not in ok(call(server, 'start_run', {'story_id': story.id, 'action': 'rebuild_memory'}))['preview']
+    monkeypatch.setattr(memory_build, 'series_refresh', lambda *_: True)
+    shown = ok(call(server, 'start_run', {'story_id': story.id, 'action': 'rebuild_memory'}))['preview']
+    assert shown['series_refresh'] is True and shown['series_refresh_hint'] == MEMORY_SERIES_HINT
+    assert 'Оновити з попередньої книги' in MEMORY_SERIES_HINT
+
+
+def test_re_preview_by_import_id_keeps_the_language(tmp_path):
+    # Review M-7: a re-preview by import_id without language keeps the language of the preview the author was shown.
+    app, http, server = bridge(tmp_path / 'data')
+    sent = []
+    real = http.request
+
+    def spy(method, url, *args, **kwargs):
+        if url.endswith('/api/manuscript-import/preview'):
+            sent.append(dict((name, value[1]) for name, value in kwargs.get('files') or [] if name == 'language'))
+        return real(method, url, *args, **kwargs)
+    http.request = spy
+    data = preview(server, file_path=manuscript(tmp_path), language='en')
+    again = preview(server, import_id=data['import_id'], chapter_markers=['Розділ'])
+    assert [entry['language'] for entry in sent] == ['en', 'en']
+    created = ok(call(server, 'import_manuscript', {'confirm': True, 'import_id': again['import_id'],
+                                                     'fingerprint': again['fingerprint'], 'title': 'English book'}))
+    assert app.state.repo.get_story(created['story_id']).language == 'en'
+
+
+def test_previews_are_changed_under_a_lock(tmp_path, monkeypatch):
+    # Review M-11: tools may run concurrently; the kept previews are changed only while the bridge's lock is held.
+    import threading
+    held = []
+    real_lock = threading.Lock
+
+    class Recording:
+        def __init__(self):
+            self.lock = real_lock()
+
+        def __enter__(self):
+            self.lock.acquire()
+            held.append(True)
+            return self
+
+        def __exit__(self, *exc):
+            held.append(False)
+            self.lock.release()
+    from types import SimpleNamespace
+    monkeypatch.setattr(bridge_module, 'threading', SimpleNamespace(Lock=Recording))
+    app, http, server = bridge(tmp_path / 'data')
+    data = preview(server, file_path=manuscript(tmp_path))
+    ok(call(server, 'import_manuscript', {'confirm': True, 'import_id': data['import_id'], 'fingerprint': data['fingerprint'],
+                                          'title': 'Книга'}))
+    assert held.count(True) >= 3 and held.count(True) == held.count(False)
