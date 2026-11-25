@@ -1,0 +1,705 @@
+[
+ {
+  "model": "deepseek/deepseek-v4-flash",
+  "group_words": 10000,
+  "scenes": 17,
+  "groups": 2,
+  "errors": 0,
+  "cost_usd": 0.01456,
+  "protagonist": [
+   [
+    "c1",
+    1.9
+   ],
+   [
+    "c5",
+    0.8
+   ],
+   [
+    "c2",
+    0.6
+   ]
+  ],
+  "quotes_total": 30,
+  "quotes_verbatim": 12,
+  "file": "out-deepse-10000.json",
+  "card_names": [
+   "Іван",
+   "Марічка",
+   "Ватаг",
+   "Микола",
+   "Палагна",
+   "Мати",
+   "Тато",
+   "Щезник",
+   "Юра",
+   "Семен",
+   "Гафія",
+   "Чугайстир",
+   "Анничка",
+   "Мельник",
+   "Бог"
+  ]
+ },
+ {
+  "model": "deepseek/deepseek-v4-flash",
+  "group_words": 2500,
+  "scenes": 17,
+  "groups": 8,
+  "errors": 1,
+  "cost_usd": 0.00713,
+  "protagonist": [
+   [
+    "c2",
+    5.7
+   ],
+   [
+    "c8",
+    0.9
+   ],
+   [
+    "c1",
+    0.5
+   ]
+  ],
+  "quotes_total": 29,
+  "quotes_verbatim": 21,
+  "file": "out-deepse-2500.json",
+  "card_names": [
+   "Марічка",
+   "Іван",
+   "Ватаг",
+   "Микола",
+   "Козар",
+   "Бовгар",
+   "Гонінник",
+   "Палагна",
+   "Хима",
+   "Юра",
+   "Семен",
+   "Гафія",
+   "Чугайстир"
+  ]
+ },
+ {
+  "model": "deepseek/deepseek-v4-flash",
+  "group_words": 5000,
+  "scenes": 17,
+  "groups": 4,
+  "errors": 1,
+  "cost_usd": 0.00518,
+  "protagonist": [
+   [
+    "c1",
+    2.9
+   ]
+  ],
+  "quotes_total": 32,
+  "quotes_verbatim": 24,
+  "file": "out-deepse-5000.json",
+  "card_names": [
+   "Іван",
+   "ватаг",
+   "Микола",
+   "Марічка",
+   "козар",
+   "гонінник",
+   "бовгар",
+   "Палагна",
+   "Юра",
+   "Хима",
+   "Семен",
+   "Чугайстир",
+   "Анничка"
+  ]
+ },
+ {
+  "model": "deepseek/deepseek-v4-flash",
+  "group_words": 5000,
+  "scenes": 17,
+  "groups": 4,
+  "errors": 0,
+  "cost_usd": 0.00567,
+  "protagonist": [
+   [
+    "c1",
+    3.75
+   ]
+  ],
+  "quotes_total": 32,
+  "quotes_verbatim": 25,
+  "file": "out-ds-5000.json",
+  "card_names": [
+   "Іван",
+   "Марічка",
+   "Анничка",
+   "Олекса",
+   "Василь",
+   "старий Палійчук",
+   "мати",
+   "щезник",
+   "ватаг",
+   "Микола",
+   "гонінник",
+   "козар",
+   "бовгар",
+   "Палагна",
+   "Юра",
+   "Хима",
+   "Семен",
+   "Чугайстир"
+  ]
+ },
+ {
+  "model": "google/gemma-4-31b-it",
+  "group_words": 10000,
+  "scenes": 17,
+  "groups": 2,
+  "errors": 0,
+  "cost_usd": 0.00585,
+  "protagonist": [
+   [
+    "c1",
+    2.0
+   ]
+  ],
+  "quotes_total": 24,
+  "quotes_verbatim": 23,
+  "file": "out-gemma--10000.json",
+  "card_names": [
+   "Іван",
+   "Анничка",
+   "Мати Івана",
+   "Олекса",
+   "Василь",
+   "Батько Івана",
+   "Марічка",
+   "Федір",
+   "Палагна",
+   "Хима",
+   "Юра",
+   "Ватаг",
+   "Микола",
+   "Щезник",
+   "Семен",
+   "Чугайстир"
+  ]
+ },
+ {
+  "model": "google/gemma-4-31b-it",
+  "group_words": 2500,
+  "scenes": 17,
+  "groups": 8,
+  "errors": 0,
+  "cost_usd": 0.00641,
+  "protagonist": [
+   [
+    "c1",
+    6.9
+   ],
+   [
+    "c3",
+    0.7
+   ],
+   [
+    "c8",
+    0.7
+   ]
+  ],
+  "quotes_total": 24,
+  "quotes_verbatim": 21,
+  "file": "out-gemma--2500.json",
+  "card_names": [
+   "Іван",
+   "Анничка",
+   "Марічка",
+   "Ватаг",
+   "Микола",
+   "Бовгар",
+   "Спузар",
+   "Палагна",
+   "Юра",
+   "Хима",
+   "Семен",
+   "Чугайстир"
+  ]
+ },
+ {
+  "model": "google/gemma-4-31b-it",
+  "group_words": 5000,
+  "scenes": 17,
+  "groups": 4,
+  "errors": 0,
+  "cost_usd": 0.00684,
+  "protagonist": [
+   [
+    "c1",
+    4.0
+   ]
+  ],
+  "quotes_total": 32,
+  "quotes_verbatim": 26,
+  "file": "out-gemma--5000.json",
+  "card_names": [
+   "Іван",
+   "Анничка",
+   "мати Івана",
+   "щезник",
+   "Олекса",
+   "Василь",
+   "батько Івана",
+   "Марічка",
+   "Федір",
+   "Марцинова",
+   "Андрій",
+   "Параска",
+   "ватаг",
+   "Микола",
+   "Палагна",
+   "Юра",
+   "Семен",
+   "Чугайстир"
+  ]
+ },
+ {
+  "model": "qwen/qwen3.8-flash",
+  "group_words": 5000,
+  "scenes": 17,
+  "groups": 4,
+  "errors": 3,
+  "cost_usd": 0.0077,
+  "protagonist": [
+   [
+    "c1",
+    0.95
+   ],
+   [
+    "c2",
+    0.75
+   ]
+  ],
+  "quotes_total": 15,
+  "quotes_verbatim": 15,
+  "file": "out-qwen3.-5000.json",
+  "card_names": [
+   "Іван",
+   "Марічка",
+   "Тато",
+   "Мати",
+   "Щезник",
+   "Ватаг"
+  ]
+ },
+ {
+  "model": "deepseek/deepseek-v4-flash",
+  "group_words": 5000,
+  "max_tokens": 16000,
+  "scenes": 13,
+  "groups": 3,
+  "errors": 0,
+  "retries": 0,
+  "cost_usd": 0.00419,
+  "max_completion_tokens": 1087,
+  "quotes": "29/29",
+  "aliases_grounded": "37/43",
+  "bad_scene_ids": 0,
+  "scenes_with_cast": "13/13",
+  "protagonist": [
+   [
+    "Устина",
+    2.9
+   ]
+  ],
+  "file": "out2-deeps-inst-16k.json",
+  "card_names": [
+   "Устина",
+   "Стара пані",
+   "Панночка",
+   "Катря",
+   "Полковий лікар",
+   "Пан молодий",
+   "Назар",
+   "Прокіп",
+   "Бабуся",
+   "Катря",
+   "Москаль-куховар",
+   "Полковник",
+   "Хазяйка",
+   "Дядько-москаль",
+   "Син пані"
+  ]
+ },
+ {
+  "model": "deepseek/deepseek-v4-flash",
+  "group_words": 5000,
+  "max_tokens": 4096,
+  "scenes": 13,
+  "groups": 3,
+  "errors": 1,
+  "retries": 2,
+  "cost_usd": 0.00376,
+  "max_completion_tokens": 1193,
+  "quotes": "24/26",
+  "aliases_grounded": "6/7",
+  "bad_scene_ids": 0,
+  "scenes_with_cast": "9/13",
+  "protagonist": [
+   [
+    "Устина",
+    1.0
+   ],
+   [
+    "Оповідач",
+    1.0
+   ],
+   [
+    "Прокіп",
+    0.5
+   ]
+  ],
+  "file": "out2-deeps-inst-a.json",
+  "card_names": [
+   "Устина",
+   "Стара пані",
+   "Панночка",
+   "Катря",
+   "Лікар",
+   "Оповідач",
+   "Прокіп",
+   "Назар",
+   "Москаль",
+   "Пан",
+   "Полковник",
+   "Хазяйка",
+   "Дядько"
+  ]
+ },
+ {
+  "model": "deepseek/deepseek-v4-flash",
+  "group_words": 5000,
+  "max_tokens": 4096,
+  "scenes": 13,
+  "groups": 3,
+  "errors": 1,
+  "retries": 2,
+  "cost_usd": 0.00326,
+  "max_completion_tokens": 804,
+  "quotes": "19/20",
+  "aliases_grounded": "19/21",
+  "bad_scene_ids": 0,
+  "scenes_with_cast": "9/13",
+  "protagonist": [
+   [
+    "Устина",
+    1.9
+   ]
+  ],
+  "file": "out2-deeps-inst-b.json",
+  "card_names": [
+   "Устина",
+   "Панночка",
+   "Пан",
+   "Бабуся",
+   "Назар",
+   "Катря",
+   "Прокіп",
+   "Москаль",
+   "Хазяйка",
+   "Полковник"
+  ]
+ },
+ {
+  "model": "deepseek/deepseek-v4-flash",
+  "group_words": 5000,
+  "max_tokens": 16000,
+  "scenes": 17,
+  "groups": 4,
+  "errors": 0,
+  "retries": 0,
+  "cost_usd": 0.01268,
+  "max_completion_tokens": 11786,
+  "quotes": "28/29",
+  "aliases_grounded": "6/10",
+  "bad_scene_ids": 0,
+  "scenes_with_cast": "17/17",
+  "protagonist": [
+   [
+    "Іван",
+    3.9
+   ],
+   [
+    "Марічка",
+    0.6
+   ],
+   [
+    "Палагна",
+    0.5
+   ]
+  ],
+  "file": "out2-deeps-tini2-16k.json",
+  "card_names": [
+   "Іван",
+   "Марічка",
+   "Анничка",
+   "Мати",
+   "Тато",
+   "Олекса",
+   "Василь",
+   "Щезник",
+   "Ватаг",
+   "Федір",
+   "Марцинова",
+   "Неня",
+   "Микола",
+   "Палагна",
+   "Юра",
+   "Хима",
+   "Семен",
+   "Гафія",
+   "Чугайстир",
+   "Анничка"
+  ]
+ },
+ {
+  "model": "deepseek/deepseek-v4-flash",
+  "group_words": 5000,
+  "max_tokens": 4096,
+  "scenes": 17,
+  "groups": 4,
+  "errors": 2,
+  "retries": 3,
+  "cost_usd": 0.00292,
+  "max_completion_tokens": 662,
+  "quotes": "16/16",
+  "aliases_grounded": "6/7",
+  "bad_scene_ids": 0,
+  "scenes_with_cast": "9/17",
+  "protagonist": [
+   [
+    "Іван",
+    2.0
+   ]
+  ],
+  "file": "out2-deeps-tini2-a.json",
+  "card_names": [
+   "Іван",
+   "Марічка",
+   "Палагна",
+   "Хима",
+   "Юра",
+   "Семен",
+   "Чугайстир",
+   "Анничка"
+  ]
+ },
+ {
+  "model": "deepseek/deepseek-v4-flash",
+  "group_words": 5000,
+  "max_tokens": 4096,
+  "scenes": 17,
+  "groups": 4,
+  "errors": 1,
+  "retries": 1,
+  "cost_usd": 0.00374,
+  "max_completion_tokens": 3806,
+  "quotes": "22/22",
+  "aliases_grounded": "9/10",
+  "bad_scene_ids": 0,
+  "scenes_with_cast": "13/17",
+  "protagonist": [
+   [
+    "Іван",
+    3.0
+   ]
+  ],
+  "file": "out2-deeps-tini2-b.json",
+  "card_names": [
+   "Іван",
+   "Анничка",
+   "Марічка",
+   "Палійчук (старий)",
+   "Олекса",
+   "Василь",
+   "Федір",
+   "Марцинова",
+   "Ватаг",
+   "Микола",
+   "Палагна",
+   "Юра",
+   "Семен",
+   "Чугайстир"
+  ]
+ },
+ {
+  "model": "google/gemma-4-31b-it",
+  "group_words": 5000,
+  "max_tokens": 4096,
+  "scenes": 13,
+  "groups": 3,
+  "errors": 0,
+  "retries": 0,
+  "cost_usd": 0.00527,
+  "max_completion_tokens": 500,
+  "quotes": "24/26",
+  "aliases_grounded": "12/15",
+  "bad_scene_ids": 0,
+  "scenes_with_cast": "13/13",
+  "protagonist": [
+   [
+    "Устина",
+    2.9
+   ],
+   [
+    "Панночка",
+    1.4
+   ]
+  ],
+  "file": "out2-googl-inst-a.json",
+  "card_names": [
+   "Устина",
+   "Стара пані",
+   "Панночка",
+   "Ганна",
+   "Варка",
+   "Домаха",
+   "Катря",
+   "Параска",
+   "Полковий лікар",
+   "Назар",
+   "Прокіп",
+   "Пан",
+   "Москаль-куховар",
+   "Полковник",
+   "Дядько-москаль",
+   "Хазяйка"
+  ]
+ },
+ {
+  "model": "google/gemma-4-31b-it",
+  "group_words": 5000,
+  "max_tokens": 4096,
+  "scenes": 13,
+  "groups": 3,
+  "errors": 0,
+  "retries": 0,
+  "cost_usd": 0.00469,
+  "max_completion_tokens": 475,
+  "quotes": "19/19",
+  "aliases_grounded": "7/9",
+  "bad_scene_ids": 10,
+  "scenes_with_cast": "13/13",
+  "protagonist": [
+   [
+    "Устина",
+    3.0
+   ],
+   [
+    "Прокіп",
+    0.8
+   ]
+  ],
+  "file": "out2-googl-inst-b.json",
+  "card_names": [
+   "Устина",
+   "Стара пані",
+   "Панночка",
+   "Жених",
+   "Назар",
+   "Катря",
+   "Прокіп",
+   "Візник",
+   "Москаль-куховар",
+   "Полковник",
+   "Дядько-москаль",
+   "Хазяйка"
+  ]
+ },
+ {
+  "model": "google/gemma-4-31b-it",
+  "group_words": 5000,
+  "max_tokens": 4096,
+  "scenes": 17,
+  "groups": 4,
+  "errors": 0,
+  "retries": 0,
+  "cost_usd": 0.0056,
+  "max_completion_tokens": 565,
+  "quotes": "24/26",
+  "aliases_grounded": "6/9",
+  "bad_scene_ids": 0,
+  "scenes_with_cast": "17/17",
+  "protagonist": [
+   [
+    "Іван",
+    3.8
+   ],
+   [
+    "Марічка",
+    0.7
+   ],
+   [
+    "Палагна",
+    0.6
+   ]
+  ],
+  "file": "out2-googl-tini2-a.json",
+  "card_names": [
+   "Іван",
+   "Анничка",
+   "Мати",
+   "Щезник",
+   "Марічка",
+   "Олекса",
+   "Василь",
+   "Батько",
+   "Федір",
+   "Ватаг",
+   "Микола",
+   "Палагна",
+   "Юра",
+   "Хима",
+   "Семен",
+   "Гафія",
+   "Чугайстир"
+  ]
+ },
+ {
+  "model": "google/gemma-4-31b-it",
+  "group_words": 5000,
+  "max_tokens": 4096,
+  "scenes": 17,
+  "groups": 4,
+  "errors": 0,
+  "retries": 0,
+  "cost_usd": 0.0059,
+  "max_completion_tokens": 503,
+  "quotes": "19/20",
+  "aliases_grounded": "6/8",
+  "bad_scene_ids": 0,
+  "scenes_with_cast": "15/17",
+  "protagonist": [
+   [
+    "Іван",
+    4.0
+   ]
+  ],
+  "file": "out2-googl-tini2-b.json",
+  "card_names": [
+   "Іван",
+   "Анничка",
+   "Мати",
+   "Щезник",
+   "Олекса",
+   "Василь",
+   "Батько",
+   "Марічка",
+   "Федір",
+   "Ватаг",
+   "Микола",
+   "Палагна",
+   "Юра",
+   "Семен",
+   "Чугайстир"
+  ]
+ }
+]
