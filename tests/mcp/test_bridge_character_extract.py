@@ -17,8 +17,6 @@ from tests.mcp.test_bridge import call, text  # noqa: E402
 from tests.mcp.test_bridge_manuscript import author_mode  # noqa: E402
 from tests.mcp.test_bridge_settings import ok  # noqa: E402
 
-pytestmark = pytest.mark.req('CHARACTER-EXTRACT')
-
 
 def bridge(tmp_path):
     app = create_app(AppSettings(data_dir=tmp_path))
@@ -43,6 +41,7 @@ def preview(server, story, **extra):
     return ok(call(server, 'start_run', {'story_id': story.id, 'action': 'character_extract', **extra}))
 
 
+@pytest.mark.req('CHARACTER-EXTRACT')
 def test_start_run_preview_then_confirm(tmp_path):
     app, http, server, story, scenes = setup(tmp_path, 'obscura')
     data = preview(server, story, group_words=1000)
@@ -62,6 +61,7 @@ def test_start_run_preview_then_confirm(tmp_path):
     assert ok(call(server, 'get_run', {'run_id': run.id}))['action'] == 'character_extract'
 
 
+@pytest.mark.req('CHARACTER-EXTRACT')
 def test_confirm_without_fingerprint_refused(tmp_path):
     app, http, server, story, scenes = setup(tmp_path)
     refused = call(server, 'start_run', {'story_id': story.id, 'action': 'character_extract', 'confirm': True})
@@ -71,12 +71,14 @@ def test_confirm_without_fingerprint_refused(tmp_path):
     assert runs(app) == []
 
 
+@pytest.mark.req('CHARACTER-EXTRACT')
 def test_scene_id_is_refused(tmp_path):
     app, http, server, story, scenes = setup(tmp_path)
     refused = call(server, 'start_run', {'story_id': story.id, 'action': 'character_extract', 'scene_id': scenes[0].id})
     assert refused.is_error and 'scene_id' in text(refused)
 
 
+@pytest.mark.req('CHARACTER-EXTRACT')
 def test_chat_mode_story_allowed(tmp_path):
     app, http, server, story, scenes = setup(tmp_path, 'chat')
     assert app.state.repo.get_story(story.id).writing_mode == 'chat'
@@ -87,6 +89,7 @@ def test_chat_mode_story_allowed(tmp_path):
     assert started['started'] is True and len(runs(app)) == 1
 
 
+@pytest.mark.req('CHARACTER-EXTRACT')
 def test_server_guard_requires_the_fingerprint_from_the_bridge(tmp_path):
     app, http, server, story, scenes = setup(tmp_path, 'chat')
     body = {'request_id': 'mcp-x', 'request': {'story_id': story.id, 'mode': 'character_extract'}}
@@ -96,6 +99,7 @@ def test_server_guard_requires_the_fingerprint_from_the_bridge(tmp_path):
     assert author.status_code == 200, author.text
 
 
+@pytest.mark.req('CHARACTER-EXTRACT')
 def test_get_run_reports_proposal(tmp_path):
     app, http, server, story, scenes = setup(tmp_path)
     s1 = scenes[0]
@@ -110,6 +114,7 @@ def test_get_run_reports_proposal(tmp_path):
     assert ok(call(server, 'get_run', {'run_id': older.id}))['character_extract']['proposal']['fingerprint']
 
 
+@pytest.mark.req('CHARACTER-EXTRACT')
 def test_accept_tool_preview_then_confirm(tmp_path):
     app, http, server, story, scenes = setup(tmp_path)
     s1 = scenes[0]
@@ -128,6 +133,7 @@ def test_accept_tool_preview_then_confirm(tmp_path):
     assert again.is_error
 
 
+@pytest.mark.req('CHARACTER-EXTRACT')
 def test_accept_tool_wrong_fingerprint_is_refused(tmp_path):
     app, http, server, story, scenes = setup(tmp_path)
     run = finished_run(app.state.repo, story, scenes)
@@ -135,6 +141,7 @@ def test_accept_tool_wrong_fingerprint_is_refused(tmp_path):
     assert refused.is_error
 
 
+@pytest.mark.req('CHARACTER-EXTRACT')
 def test_tools_list_includes_accept_character_proposal(tmp_path):
     app, http, server = bridge(tmp_path)
 
