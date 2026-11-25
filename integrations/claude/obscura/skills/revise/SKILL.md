@@ -1,6 +1,6 @@
 ---
 name: revise
-description: Use when the author wants to change something in an already written Obscura story: move the setting, change a date or an event's format, fix a character, or make a scene funnier, slower, shorter. Triggers include "перенеси дію", "виправ у творі", "зміни факт у книжці", "цей персонаж не такий", "зроби сцену смішнішою", "change a fact in the story", "move the story to another city", "make scene 3 funnier".
+description: Use when the author wants to change something in an already written Obscura story: move the setting, change a date or an event's format, fix a character, or make a scene funnier, slower, shorter. Triggers include "перенеси дію", "виправ у творі", "зміни факт у книжці", "цей персонаж не такий", "зроби сцену смішнішою", "change a fact in the story", "move the story to another city", "make scene 3 funnier", "this character is wrong".
 ---
 
 # Revise a written story: change a fact or rework a scene

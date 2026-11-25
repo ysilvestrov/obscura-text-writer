@@ -12,7 +12,13 @@ The author asks for a change of quality or tone in one scene ("funnier", "slower
    - plus «лишити як є» (leave as is).
 
    A variant never changes a fact of the scene: names, numbers, events. If the instruction needs a fact to change, say so and offer the fact-change route.
-5. **Apply** after the last choice, and only what the author chose. The choices are the consent for these replacements.
-   - **`chat` mode, editor `prose`** (`result_format` of `get_stage_task(scene_id, 'edit')`): the chain from the draft for this one scene — draft → prose → memory — as steps 3–5 of §6 in `${CLAUDE_PLUGIN_ROOT}/skills/revise/references/fact-change.md`. Every sentence you were not asked to change stays byte for byte. Then the next scene's links become unchecked: handle it as §7 there.
+5. **Summary and consent.** After the last choice, show a short summary of what will be written:
+   - the scene and the chosen replacements;
+   - the entities to be saved: draft → prose → memory, or a replacement table in the cases below;
+   - the consequences: the next scene's links become unchecked and wait for the Auditor or «Я перевірив сам».
+
+   Wait for the author's explicit «ок» before any write. The choices alone are not consent. A changed choice needs a new summary and new consent.
+6. **Apply** only what the summary showed.
+   - **`chat` mode, editor `prose`** (`result_format` of `get_stage_task(scene_id, 'edit')`; if the server refuses that task, `roles.editor.edit_mode` from `get_settings(story_id)`): the chain from the draft for this one scene — draft → prose → memory — as steps 3–5 of §6 in `${CLAUDE_PLUGIN_ROOT}/skills/revise/references/fact-change.md`. Every sentence you were not asked to change stays byte for byte. Then the next scene's links become unchecked: handle it as §7 there.
    - **`obscura` mode, or editor `patches`/`diff`:** write nothing. Give the table of chosen replacements «знайти — замінити на» for the author to make in Obscura, and finish as §10 there.
-6. **Summary:** what changed, the variants you invented as your decisions, and the reminder to read and approve the prose in Obscura (`next_steps(scene_id)`).
+7. **Final summary:** what changed, the variants you invented as your decisions, and the reminder to read and approve the prose in Obscura (`next_steps(scene_id)`).
