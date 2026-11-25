@@ -77,6 +77,55 @@ def save_character_material(repo,story_id,cards,expected_revision):
     return {**read_character_material(repo,story_id),'changed_character_ids':changed,'dependent_scene_ids':dependent}
 
 
+def check_character_material(repo,story_id,cards,expected_revision):
+    """R-52: the save checks of `save_character_material` without a write, plus the places where a card name would stop
+    resolving (MCP-BRIDGE `update_characters` preview and its confirm)."""
+    view=repo.context_view(story_id);story=view.get_story(story_id)
+    if story.revision!=expected_revision:raise RevisionConflict('Твір змінено. Перезавантажте картки після збереження власних правок окремо.')
+    normalized,_=_normalize(view,story,cards)
+    previous=_cards(view,story);scenes=view.list_scenes(story_id)
+    changed=changed_character_ids(previous,normalized)
+    return {'revision':story.revision,'cards':[c.model_dump() for c in normalized],'changed_character_ids':changed,
+            'dependent_scene_ids':dependent_scene_ids(scenes,changed),'warnings':name_warnings(normalized),
+            'unresolved_scenes':unresolved_names(previous,normalized,scenes)}
+
+
+def _name_problems(cards,scenes):
+    """{place: [problems]} for every place a card name resolves: the plan cast and narrator lines of an active scene
+    (`scene.beats`, as `validate_scene_participants` reads it) and the «Знайомий з:» lines of a card."""
+    from ..scene_description import parse_scene_description,resolve_participants
+    from ..narration import narrator_line,parse_narrator
+    from .acquaintance import known_names_line
+    places={}
+    for scene in sorted((s for s in scenes if not s.trashed_at),key=lambda s:s.position):
+        problems=[]
+        names=parse_scene_description(scene.beats or '').participants
+        if names:problems+=resolve_participants(names,cards)[1]
+        value=narrator_line(scene.beats)
+        if value is not None:
+            problem=parse_narrator(value,cards)[1]
+            if problem:problems.append(problem)
+        places[('scene',scene.id)]=(scene.title,problems)
+    for card in cards:
+        problems=[]
+        for entry in card.entries:
+            for line in entry.text.splitlines():
+                names=known_names_line(line)
+                if names:problems+=resolve_participants(names,cards)[1]
+        places[('card',card.id)]=(card.name,problems)
+    return places
+
+
+def unresolved_names(previous,current,scenes) -> list[dict]:
+    """Places whose names resolve with the previous cards but not with the new ones; problems that exist already are
+    not this change's doing and are left out."""
+    before=_name_problems(previous,scenes);result=[]
+    for (kind,id),(title,problems) in _name_problems(current,scenes).items():
+        new=[problem for problem in problems if problem not in before.get((kind,id),('',[]))[1]]
+        if new:result.append({('scene_id' if kind=='scene' else 'character_id'):id,'title':title,'problems':list(dict.fromkeys(new))[:5]})
+    return result
+
+
 def changed_character_ids(previous,current) -> list[str]:
     """Cards compared by ID: any field changed, added (new cards first, in their order), removed."""
     before={card.id:card.model_dump() for card in previous}

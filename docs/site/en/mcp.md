@@ -6,7 +6,7 @@ The link is `storygen-mcp`, a small program the chat client starts by itself. It
 
 ## What the chat can do
 
-The chat gets thirty tools:
+The chat gets thirty-two tools:
 
 - **story list** and **story overview**: scenes, their order and their state, in the same words as the scene list, plus the story's rating, target length and characters;
 - **new story**: a title, a language, a target length, the story mode and, optionally, an age rating;
@@ -18,6 +18,7 @@ The chat gets thirty tools:
 - **scene context**: the plan, the brief, the cast's cards, the scene's locations with descriptions, the memory of earlier scenes, the age rating, the language and the target length;
 - **scene text**: the scene's current plan, brief, draft, prose or memory together with the ID of the current version; the chat reads a long text in parts;
 - **import a plan and characters**: the same as the [import](imports.md) form;
+- **character cards**: reading all cards and, with your consent in the chat, renaming, new cards and entries, changing and removing entries (see [Character cards from the chat](#character-cards-from-the-chat));
 - **import a manuscript**: a new book from a finished DOCX, Markdown or TXT file — a scene preview first, the book is created only after your consent (see [Importing a manuscript from the chat](#importing-a-manuscript-from-the-chat));
 - **save a draft**: a new version of the scene's draft, only over the draft the chat has read;
 - **link to rewriting from memory**: a link that opens [Ghost Mode](ghost-mode.md) for the scene's current draft;
@@ -228,6 +229,16 @@ The chat can fill in the publication card, add an author signature, set a cover 
 - The chat can ask Obscura to draw a [text cover](publication.md#publication-card) from the saved card. It likewise becomes part of the card only when the chat writes it to the card.
 - Export returns a link to the file in Obscura. The chat exports an unfinished story only with your explicit permission, and FB2 needs an author and a genre in the card.
 - If the card page is open, you will see the chat's changes when you return to it. Unsaved edits in the form stay, and the page says the card was changed elsewhere.
+
+## Character cards from the chat
+
+The chat can read the [character cards](characters.md) and change them: rename a character, add a card or an entry, change the text or availability of an entry ("Starting from a scene" and so on), remove an entry.
+
+- First the chat shows what will change: the name before → after and which entries are added, changed or removed. It writes only after your consent. If the cards or the story were changed after the chat read them, the write is refused with code 409, and the chat has to read the cards again.
+- When a character is renamed, the old name stays in an "Other name:" line, so scene plans with the old name keep working. The chat can remove it later, once it has rewritten the plans. While a plan ("Who takes part:", "Narrator:") or a card ("Knows:") still uses the old name, the chat cannot write that change and names those places.
+- If a change affects scenes with a brief, the chat asks whether to mark them unchecked, like the dialog on the Characters page. The mark is set only after your "yes".
+- An entry the chat changed is marked as the author's. The chat does not change the source quotes of imported entries.
+- The chat does not delete a whole card: you do that on the Characters page.
 
 ## Settings from the chat
 
