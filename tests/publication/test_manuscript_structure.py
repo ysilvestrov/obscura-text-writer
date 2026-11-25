@@ -142,7 +142,39 @@ def test_fits_false_triggers_split():
 
 def test_fits_never_true_keeps_split_with_warning():
     structure = detect(doc(prose(10), prose(10)), ParseSettings(), fits=lambda text: False)
+    assert len(structure.scenes) == 1  # the word-count baseline for 20 words: one scene, never a forced split
     assert any(s.warnings for s in structure.scenes)
+
+
+def test_split_search_checks_smaller_k_after_bisection():
+    # Fitting is not monotone in k (boundaries snap to paragraphs): the search also tries the three smaller k.
+    sizes = [26, 14, 1, 12, 15, 9, 3, 14]
+    paras = [ManuscriptParagraph(i, prose(n, f'п{i}х'), (), None, i in (0, 4, 6, 7), False)
+             for i, n in enumerate(sizes)]
+    assert [words(p.text) for p in paras] == sizes
+    structure = detect(paras, ParseSettings(), fits=lambda text: words(text) <= 26)
+    assert len(structure.scenes) == 5
+    assert all(s.words <= 26 and not s.warnings for s in structure.scenes)
+
+
+def test_parts_without_chapters_become_scenes():
+    paras = doc('Part One', 'First text.', 'Part Two', 'Second text.')
+    structure = detect(paras, ParseSettings())
+    assert structure.parts == ((0, 'Part One'), (2, 'Part Two'))
+    assert titles(structure) == ['Part One', 'Part Two']
+    assert [(s.start, s.end, s.part_index) for s in structure.scenes] == [(1, 1, 0), (3, 3, 1)]
+    assert structure.prose_indices == (1, 3)
+    assert not any('без тексту' in w for w in structure.warnings)
+
+
+def test_parts_without_chapters_dropped_in_free_edition():
+    paras = doc('Part One', 'First text.', 'Part Two', 'Second text.')
+    structure = detect(paras, ParseSettings(parts_allowed=False))
+    assert structure.parts == ()
+    assert structure.dropped == ((0, 'Part One', 'part_heading'), (2, 'Part Two', 'part_heading'))
+    assert 'частини доступні у виданні з довгою прозою' in structure.warnings
+    assert structure.prose_indices == (1, 3)  # no part heading text inside prose
+    assert all(s.part_index is None for s in structure.scenes)
 
 
 def test_chapter_source_override():

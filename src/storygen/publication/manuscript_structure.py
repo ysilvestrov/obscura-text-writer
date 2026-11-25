@@ -253,17 +253,19 @@ def _pieces(segment: list[ManuscriptParagraph], fits: Callable[[str], bool]):
     if base == 1 and fits(_joined(segment)):
         groups = [segment]
     else:
-        # More parts only make parts smaller, so fitting is treated as monotone: double, then bisect for the minimum.
+        # Fitting is not monotone in k (boundaries snap to paragraph edges), so the search is bounded, not exhaustive:
+        # double from the word-count baseline, bisect between the last k that failed and the first that fit, then try
+        # the three smaller k and keep the smallest that fits. Absolute minimality is not guaranteed.
         def ok(parts: int) -> bool:
             return all(fits(_joined(g)) for g in cut(parts))
 
         low = max(base, 2)
-        groups = cut(low)  # fallback when nothing fits: the plain word-count split
+        good = None
         if low <= cap:
             if ok(low):
-                pass
+                good = low
             else:
-                bad, good = low, None
+                bad = low
                 while good is None and bad < cap:
                     step = min(bad * 2, cap)
                     if ok(step):
@@ -274,7 +276,11 @@ def _pieces(segment: list[ManuscriptParagraph], fits: Callable[[str], bool]):
                     while good - bad > 1:
                         mid = (bad + good) // 2
                         bad, good = (bad, mid) if ok(mid) else (mid, good)
-                    groups = cut(good)
+                    for parts in range(good - 1, max(good - 4, low - 1), -1):
+                        if ok(parts):
+                            good = parts
+        # Nothing fits: the word-count baseline (one scene up to the threshold), never a forced split into paragraphs.
+        groups = cut(good) if good is not None else ([segment] if base == 1 else cut(base))
     result = []
     for number, group in enumerate(groups):
         warnings = []
@@ -331,16 +337,16 @@ def detect(paragraphs: Sequence[ManuscriptParagraph], settings: ParseSettings = 
             if paras[i].heading_level == level and i not in part_marks:
                 chapters[i] = _marker_title(paras[i].text, settings.chapter_markers, False) or paras[i].text.strip()
     if not chapters:
-        warnings.append(NO_HEADINGS)
+        if not part_marks:  # with part markers each part becomes its own scene, not one chapter
+            warnings.append(NO_HEADINGS)
         chapter_source = 'none'
     else:
         chapter_source = 'markers' if source == 'markers' else f'level:{level + 1}'
 
-    part_heads: dict[int, str] = {}
+    part_heads = dict(part_marks)  # parts come only from marker paragraphs, with or without chapters
     title_suggestion = next((paras[i].text.strip() for i in sorted(titles)), None)
     title_positions = set(titles)
     if chapters:
-        part_heads = dict(part_marks)  # parts come only from marker paragraphs
         first_chapter = min(chapters)
         higher = ([i for i in headings if i not in chapters and i not in part_marks and paras[i].heading_level < level]
                   if source == 'level' else [])
@@ -358,8 +364,9 @@ def detect(paragraphs: Sequence[ManuscriptParagraph], settings: ParseSettings = 
     dropped: list[tuple[int, str]] = []
     if chapters:
         current = _Section('front', settings.prologue_title, None, [])
-    else:
-        current = _Section('chapter', title_suggestion or settings.single_chapter_title, None, [])
+    else:  # before the first part marker, if any: a 'loose' section makes no "chapter without text" warning
+        current = _Section('loose' if part_heads else 'chapter', title_suggestion or settings.single_chapter_title,
+                           None, [])
     sections = [current]
     part_index: int | None = None
     roles: list[str] = [''] * len(paras)

@@ -147,8 +147,14 @@ def test_scene_that_does_not_fit_the_memory_role_is_split(tmp_path):
     repo = repo_for(tmp_path)
     paragraphs = '\n\n'.join(' '.join(['слово'] * 100) + '.' for _ in range(20)).encode()
     plain = service.preview(repo, paragraphs, 'one.txt', SETTINGS)
-    small = service.preview(repo, paragraphs, 'one.txt', SETTINGS, role=small_memory_role())
+    chars_only = RoleSettings(provider=ProviderSettings(model='wide'), context_tokens=2 ** 20, max_output_tokens=1024,
+                              max_input_chars=20000)
+    small = service.preview(repo, paragraphs, 'one.txt', SETTINGS, role=chars_only)
     assert len(plain.scenes) == 1 and len(small.scenes) > 1
+    assert not any(scene.warnings for scene in small.scenes)
+    # No split fits the 4 096-token role: the word-count baseline stays (one scene up to 2 500 words) with a warning.
+    never = service.preview(repo, paragraphs, 'one.txt', SETTINGS, role=small_memory_role())
+    assert len(never.scenes) == 1 and never.scenes[0].warnings
 
 
 ROLES_BOOK = '\n\n'.join(['# Книга', 'Присвята.', 'Частина перша', '## Глава перша', 'Текст першої глави. ' * 5, '***',

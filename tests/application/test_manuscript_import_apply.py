@@ -1,11 +1,13 @@
 """MANUSCRIPT-IMPORT: applying a previewed manuscript as a new book (spec §4.1–4.3, §8)."""
 import hashlib
+import json
 
 import pytest
 
 from storygen.application import manuscript_import as service
 from storygen.book.guard import NO_LONG_PROSE
 from storygen.domain import RevisionConflict
+from storygen.memory.service import save_scene_memory
 from storygen.publication.manuscript_structure import ParseSettings
 from storygen.storage.integrity import check_integrity
 from storygen.storage.links import scene_links
@@ -206,9 +208,16 @@ def test_first_book_of_series_has_no_start_warning(tmp_path):
 def test_plan_written_later_does_not_stale_prose_or_memory(tmp_path):
     repo, preview = setup(tmp_path)
     result = service.apply_import(repo, preview.import_id, body(preview))
-    scene_id = result['scene_ids'][1]
+    scene_id = result['scene_ids'][0]
+    # Memory of the imported scene, saved by hand (no provider): an empty journal over its prose.
+    prose_id = repo.get_scene(scene_id).heads['prose']
+    journal = json.dumps({'schema_version': 2, 'source_prose_ids': [prose_id], 'events': []})
+    save_scene_memory(repo, scene_id, journal, repo.get_scene(scene_id).revision)
+    memory_id = repo.get_scene(scene_id).heads['memory']
     heads = {id: repo.get_scene(id).heads['prose'] for id in result['scene_ids']}
     view = repo.context_view(result['story_id'])
+    assert scene_links(view, scene_id)['memory'].status == 'valid'
+    assert not view.get_version(memory_id).stale
     before = {id: scene_links(view, id)['memory'].status for id in result['scene_ids']}
     scene = repo.get_scene(scene_id)
     repo.update_scene_plan(scene_id, 'Новий план сцени: герой іде додому.', scene.revision)
@@ -218,6 +227,8 @@ def test_plan_written_later_does_not_stale_prose_or_memory(tmp_path):
         assert scene.heads['prose'] == heads[id] and not view.get_version(heads[id]).stale
         assert scene_links(view, id)['memory'].status == before[id]
     assert view.get_scene(scene_id).heads.get('plan')
+    assert view.get_scene(scene_id).heads['memory'] == memory_id and not view.get_version(memory_id).stale
+    assert scene_links(view, scene_id)['memory'].status == 'valid'
 
 
 def test_temp_file_removed_after_apply(tmp_path):

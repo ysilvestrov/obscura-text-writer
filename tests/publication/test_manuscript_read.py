@@ -185,3 +185,18 @@ def test_docx_comments_warning():
 def test_markdown_private_use_characters_are_kept():
     text = 'Знак ' + chr(0xE02A) + ' лишається, ' + chr(0xE000) + r' і \* теж.'
     assert read_manuscript(markdown(text), 'b.md').paragraphs[0].text == 'Знак ' + chr(0xE02A) + ' лишається, ' + chr(0xE000) + ' і * теж.'
+
+
+@pytest.mark.parametrize('source, runs', [
+    ('**жирний *курсив***', [Run('жирний ', True), Run('курсив', True, True)]),
+    ('*курсив **жирний***', [Run('курсив ', False, True), Run('жирний', True, True)]),
+    ('***обидва***', [Run('обидва', True, True)]),
+    ('**жирний *курсив* далі**', [Run('жирний ', True), Run('курсив', True, True), Run(' далі', True)]),
+    ('*курсив **жирний** далі*', [Run('курсив ', False, True), Run('жирний', True, True), Run(' далі', False, True)]),
+    ('Текст **жирний *курсив*** і кінець.', [Run('Текст '), Run('жирний ', True), Run('курсив', True, True),
+                                             Run(' і кінець.')]),
+])
+def test_markdown_nested_emphasis_roundtrips(source, runs):
+    paragraph = read_manuscript(markdown(source), 'b.md').paragraphs[0]
+    assert list(paragraph.runs) == runs
+    assert serialize([paragraph.runs], 'markdown').text == source

@@ -8,20 +8,20 @@ whitespace (spaces, tabs, NBSP) of every paragraph is trimmed. Every error text 
 import re
 from dataclasses import dataclass
 
+from markdown_it import MarkdownIt
+
 from .docx_import import Run, _merge, read_docx
 
 BAD_EXTENSION = 'Непідтримуваний формат файла: потрібен .docx, .md або .txt'
 BAD_ENCODING = 'Файл не в кодуванні UTF-8: збережіть його як UTF-8 і спробуйте ще раз'
 _HEADING = re.compile(r'^\s{0,3}(#{1,6})[ \t]+(.*?)(?:[ \t]+#+)?[ \t]*$')
-_EMPHASIS = re.compile(r'\*\*\*(.+?)\*\*\*|\*\*(.+?)\*\*|\*(.+?)\*|(?<!\w)___(.+?)___(?!\w)|(?<!\w)__(.+?)__(?!\w)|(?<!\w)_(.+?)_(?!\w)')
-_FLAGS = ((True, True), (True, False), (False, True), (True, True), (True, False), (False, True))
+# CommonMark inline parsing restricted to emphasis and backslash escapes: the same delimiter rules as the editor's
+# Markdown reader (`markdown_document.parse_markdown`), so nested bold and italic (`**жирний *курсив***`) read back as
+# `docx_text.serialize` writes them; code, links, HTML and entities are not enabled and stay literal text.
+_INLINE = MarkdownIt('zero').enable(['emphasis', 'escape'])
 # A CommonMark thematic break (`---`, `***`, `___`, spaces allowed) or `# # #`: a scene separator, never a heading.
 _THEMATIC_BREAK = re.compile(r' {0,3}(?:([-*_])(?:[ \t]*\1){2,}|#(?:[ \t]+#){2,})[ \t]*')
 SEPARATOR_TEXT = '***'
-# A backslash before ASCII punctuation is a CommonMark escape: masked with a private-use character while emphasis is parsed
-# (one absent from the text, so the author's own private-use characters stay as they are).
-_ESCAPE = re.compile(r'\\([!-/:-@\[-`{-~])')
-_MASK = 0xE000
 COMMENTS = 'Коментарі Word не імпортуються: {count}'
 
 
@@ -171,29 +171,18 @@ def _plain(text):
     return result
 
 
-def _emphasis(text, bold=False, italic=False):
-    runs, position = [], 0
-    for match in _EMPHASIS.finditer(text):
-        runs.append(Run(text[position:match.start()], bold, italic))
-        group = next(i for i, value in enumerate(match.groups()) if value is not None)
-        b, i = _FLAGS[group]
-        runs.extend(_emphasis(match.group(group + 1), bold or b, italic or i))
-        position = match.end()
-    runs.append(Run(text[position:], bold, italic))
-    return runs
-
-
 def _inline(text):
-    """Markdown inline text as runs: a backslash escape (before `*`, `-`, ...) is the literal character, never a mark.
-
-    Each escape is masked with one private-use character absent from the text and restored in order after emphasis."""
-    if not _ESCAPE.search(text):
-        return _merge(_emphasis(text))
-    sentinel = next(char for char in map(chr, range(_MASK, 0xF900)) if char not in text)
-    escaped = iter(match[1] for match in _ESCAPE.finditer(text))
-    runs = _emphasis(_ESCAPE.sub(sentinel, text))
-    return _merge(Run(''.join(next(escaped) if char == sentinel else char for char in run.text), run.bold, run.italic)
-                  for run in runs)
+    """Markdown inline text as runs: CommonMark emphasis (`*`, `_`, nested bold and italic) sets the flags, a backslash
+    escape (before `*`, `-`, ...) is the literal character, never a mark."""
+    runs, bold, italic = [], 0, 0
+    for token in _INLINE.parseInline(text)[0].children or ():
+        if token.type in ('strong_open', 'strong_close'):
+            bold += token.nesting
+        elif token.type in ('em_open', 'em_close'):
+            italic += token.nesting
+        else:
+            runs.append(Run(token.content, bold > 0, italic > 0))
+    return _merge(runs)
 
 
 def _markdown(text):
