@@ -267,7 +267,7 @@ def test_confirm_refuses_another_language_than_the_preview(tmp_path):
     assert refused.is_error and 'мови перегляду' in text(refused) and app.state.repo.list_stories() == []
 
 
-def fake_lstat(monkeypatch, target, mode, attributes=0):
+def fake_lstat(monkeypatch, target, mode, tag=0):
     real = os.lstat
 
     def lstat(path, *a, **k):
@@ -275,28 +275,42 @@ def fake_lstat(monkeypatch, target, mode, attributes=0):
         if str(path) != target:
             return info
         return type('Info', (), {'st_mode': mode, 'st_size': info.st_size, 'st_ino': info.st_ino, 'st_dev': info.st_dev,
-                                 'st_file_attributes': attributes})()
+                                 'st_file_attributes': 0x400 if tag else 0, 'st_reparse_tag': tag})()
     monkeypatch.setattr(bridge_module.os, 'lstat', lstat)
 
 
-def test_symlink_and_reparse_point_are_refused_without_privileges(tmp_path, monkeypatch):
+def test_symlink_and_mount_point_are_refused_without_privileges(tmp_path, monkeypatch):
     import stat as st
     app, http, server = bridge(tmp_path / 'data')
     path = manuscript(tmp_path)
-    fake_lstat(monkeypatch, path, st.S_IFLNK | 0o777)
-    result = call(server, 'import_manuscript', {'file_path': path})
-    assert result.is_error and 'посиланням' in text(result)
-    fake_lstat(monkeypatch, path, st.S_IFREG | 0o644, 0x400)
-    result = call(server, 'import_manuscript', {'file_path': path})
-    assert result.is_error and 'посиланням' in text(result)
+    for mode, tag in ((st.S_IFLNK | 0o777, 0), (st.S_IFREG | 0o644, 0xA000000C), (st.S_IFREG | 0o644, 0xA0000003)):
+        fake_lstat(monkeypatch, path, mode, tag)
+        result = call(server, 'import_manuscript', {'file_path': path})
+        assert result.is_error and 'посиланням' in text(result), (mode, tag)
 
 
-def test_a_link_in_the_parent_path_is_refused(tmp_path, monkeypatch):
+def test_cloud_placeholder_reparse_tag_is_accepted(tmp_path, monkeypatch):
+    import stat as st
     app, http, server = bridge(tmp_path / 'data')
     path = manuscript(tmp_path)
-    monkeypatch.setattr(bridge_module.os.path, 'realpath', lambda value: str(value) + '-elsewhere')
-    result = call(server, 'import_manuscript', {'file_path': path})
-    assert result.is_error and 'проходить через посилання' in text(result)
+    fake_lstat(monkeypatch, path, st.S_IFREG | 0o644, 0x9000001A)  # OneDrive Files On-Demand
+    assert len(preview(server, file_path=path)['scenes']) == 2
+
+
+def test_short_and_long_paths_are_both_accepted(tmp_path):
+    import ctypes
+    if os.name != 'nt':
+        pytest.skip('8.3 names exist on Windows only')
+    folder = tmp_path / 'Long Folder Name For Short Path'
+    folder.mkdir()
+    long_path = folder / 'book.md'
+    long_path.write_text(BOOK, encoding='utf-8')
+    buffer = ctypes.create_unicode_buffer(1024)
+    if not ctypes.windll.kernel32.GetShortPathNameW(str(long_path), buffer, 1024) or buffer.value.lower() == str(long_path).lower():
+        pytest.skip('8.3 names are disabled on this volume')
+    app, http, server = bridge(tmp_path / 'data')
+    assert len(preview(server, file_path=str(long_path))['scenes']) == 2
+    assert len(preview(server, file_path=buffer.value)['scenes']) == 2
 
 
 def test_network_paths_are_refused(tmp_path):

@@ -46,6 +46,8 @@ MEMORY_PLAN_STALE = 'План побудови пам’яті змінився 
 MEMORY_NOTHING = 'Усі сцени вже мають чинну пам’ять: будувати нічого'
 MEMORY_CHAT_PATH = ('Твір у режимі «пише чат»: Obscura не запускає побудову пам’яті. Проходьте сцени по черзі з чату: '
                     'get_stage_task(stage=memory) і save_stage_result; або автор перемикає режим твору в налаштуваннях Obscura')
+# IO_REPARSE_TAG_SYMLINK and IO_REPARSE_TAG_MOUNT_POINT; other tags (OneDrive, dedup) are ordinary files for the reader.
+LINK_REPARSE_TAGS = (0xA000000C, 0xA0000003)
 MANUSCRIPT_EXTENSIONS = ('.docx', '.md', '.txt')
 MANUSCRIPT_MAX_BYTES = 20 * 1024 * 1024
 MANUSCRIPT_BASE64_MAX = 2 * 1024 * 1024
@@ -183,9 +185,10 @@ def local_cover_path(file_path: str) -> str:
 
 def local_manuscript_path(file_path: str) -> tuple[str, os.stat_result]:
     """R-48 §6: a manuscript is read only from a local disk: a regular .docx, .md or .txt file of at most 20 MiB, not a link.
-    Every check runs before the file is opened. The last component must not be a symbolic link or a reparse point, and no
-    parent may be one: the path must equal its resolved form (`realpath`), compared case-insensitively. Returns the path
-    and its `lstat`, which the reader compares with the opened handle (the file cannot be swapped between check and read)."""
+    Every check runs before the file is opened. ONLY the last path component is checked for being a symbolic link or a
+    junction (reparse tag symlink or mount point; cloud placeholders such as OneDrive are accepted); parent components are
+    not checked, so 8.3 short names and subst drives work. Returns the path and its `lstat`, which the reader compares
+    with the opened handle (the file cannot be swapped between check and read)."""
     raw = file_path if isinstance(file_path, str) else ''
     if raw.replace('/', '\\').startswith('\\\\'):
         raise ToolError('Рукопис має лежати на локальному диску: мережеві шляхи й шляхи пристроїв не приймаються')
@@ -197,16 +200,14 @@ def local_manuscript_path(file_path: str) -> tuple[str, os.stat_result]:
         info = os.lstat(raw)
     except OSError as error:
         raise ToolError(f'Файл рукопису не знайдено: {raw}') from error
-    if Path(raw).is_symlink() or stat.S_ISLNK(info.st_mode) or getattr(info, 'st_file_attributes', 0) & 0x400:
+    if Path(raw).is_symlink() or stat.S_ISLNK(info.st_mode) or getattr(info, 'st_reparse_tag', 0) in LINK_REPARSE_TAGS:
         raise ToolError(f'Рукопис не може бути посиланням: вкажіть сам файл: {raw}')
-    if os.path.normcase(os.path.realpath(raw)) != os.path.normcase(os.path.abspath(raw)):
-        raise ToolError(f'Шлях до рукопису проходить через посилання: вкажіть справжній шлях до файла: {raw}')
     if not stat.S_ISREG(info.st_mode):
         raise ToolError(f'Рукопис має бути звичайним файлом, а не каталогом чи пристроєм: {raw}')
     if info.st_size > MANUSCRIPT_MAX_BYTES:
         raise ToolError('Рукопис має бути до 20 MiB')
     if _remote_drive(os.path.realpath(raw)):
-        raise ToolError('Рукопис має лежати на локальному диску: мережеві шляхи й шляхи пристроїв не приймаються')
+        raise ToolError('Рукопис лежить на мережевому диску: скопіюйте його на локальний диск')
     return raw, info
 
 
