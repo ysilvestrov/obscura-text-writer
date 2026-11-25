@@ -71,6 +71,8 @@ def test_parts_follow_part_index_not_title(tmp_path):
     assert [part.title for part in structure.parts] == ['Частина', 'Частина']
     arcs = repo.get_story(story.id).scene_arcs
     assert arcs[created[1].id] == arcs[created[2].id] != arcs[created[0].id]
+    view = repo.context_view(story.id)
+    assert not any(view.get_version(view.get_scene(s.id).heads['prose']).stale for s in created)
     assert check_integrity(repo.root).ok
 
 

@@ -335,9 +335,10 @@ def _series_start(repo, story) -> list[str]:
     Without the previous book's memory there is no snapshot; the author takes it later («Оновити з попередньої книги»)."""
     from ..book.series import snapshot_sources
     from ..storage import series as series_store
+    if not snapshot_sources(repo.list_stories(include_trashed=True), story):
+        return []  # the first book of a series has nothing to start from
     try:
-        if snapshot_sources(repo.list_stories(include_trashed=True), story):
-            series_store.take_snapshot_if_ready(repo, story.id)
+        series_store.take_snapshot_if_ready(repo, story.id)
     except Exception:  # the book exists already: a failed snapshot is a warning, never a failed import
         logger.exception('Не вдалося зробити знімок початку серії для імпортованої книги')
     return [] if repo.get_story(story.id).series_start_version_id else [NO_START_SNAPSHOT]

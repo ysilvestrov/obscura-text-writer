@@ -180,6 +180,29 @@ def test_series_number_and_start(tmp_path, monkeypatch):
     assert check_integrity(repo.root).ok
 
 
+def test_series_start_snapshot_from_previous_book(tmp_path):
+    from storygen.storage import series as series_store
+    from tests.series.helpers import finished_book, into_series
+    repo, preview = setup(tmp_path)
+    series = series_store.create_series(repo, 'Серія')
+    first, _, _ = finished_book(repo)
+    into_series(repo, first, series.id, 1)
+    result = service.apply_import(repo, preview.import_id, body(preview, series={'series_id': series.id, 'number': 2}))
+    story = repo.get_story(result['story_id'])
+    assert story.series_start_version_id and result['warnings'] == []
+    view = repo.context_view(story.id)
+    assert not any(view.get_version(view.get_scene(id).heads['prose']).stale for id in result['scene_ids'])
+    assert check_integrity(repo.root).ok
+
+
+def test_first_book_of_series_has_no_start_warning(tmp_path):
+    from storygen.storage import series as series_store
+    repo, preview = setup(tmp_path)
+    series = series_store.create_series(repo, 'Серія')
+    result = service.apply_import(repo, preview.import_id, body(preview, series={'series_id': series.id, 'number': 1}))
+    assert repo.get_story(result['story_id']).series_number == 1 and result['warnings'] == []
+
+
 def test_plan_written_later_does_not_stale_prose_or_memory(tmp_path):
     repo, preview = setup(tmp_path)
     result = service.apply_import(repo, preview.import_id, body(preview))
