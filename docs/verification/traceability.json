@@ -8587,6 +8587,173 @@
         "procedure": "docs/verification/manual.md#book-validation-browser",
         "reason": "Playwright запускається окремим runner; check_docs.py індексує лише pytest IDs."
       }
+    },
+    {
+      "id": "MANUSCRIPT-IMPORT-S01",
+      "requirement": "MANUSCRIPT-IMPORT",
+      "scope": "Читання DOCX, Markdown і TXT: рівні заголовків (outlineLvl, basedOn, локалізований styleId), абзаци, жорсткий перенос TXT, кодування й розширення. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/publication/test_manuscript_read.py::test_docx_heading_by_name_when_style_id_localized",
+        "tests/publication/test_manuscript_read.py::test_docx_heading_by_outline_level",
+        "tests/publication/test_manuscript_read.py::test_docx_heading_by_outline_level_through_based_on",
+        "tests/publication/test_manuscript_read.py::test_docx_paragraph_outline_level_wins_over_style",
+        "tests/publication/test_manuscript_read.py::test_docx_title_style",
+        "tests/publication/test_manuscript_read.py::test_docx_tracked_changes_counted",
+        "tests/publication/test_manuscript_read.py::test_docx_empty_paragraphs_become_after_break_and_reindexed",
+        "tests/publication/test_manuscript_read.py::test_docx_runs_keep_italic",
+        "tests/publication/test_manuscript_read.py::test_docx_broken_file_is_manuscript_error",
+        "tests/publication/test_manuscript_read.py::test_markdown_headings_and_emphasis",
+        "tests/publication/test_manuscript_read.py::test_markdown_heading_without_blank_line_splits_paragraph",
+        "tests/publication/test_manuscript_read.py::test_txt_paragraphs_by_blank_lines",
+        "tests/publication/test_manuscript_read.py::test_txt_lines_when_no_blank_lines",
+        "tests/publication/test_manuscript_read.py::test_after_break_marks_blank_line",
+        "tests/publication/test_manuscript_read.py::test_bom_accepted_and_non_utf8_rejected",
+        "tests/publication/test_manuscript_read.py::test_unknown_extension_rejected",
+        "tests/publication/test_manuscript_read.py::test_extension_is_case_insensitive",
+        "tests/publication/test_manuscript_read.py::test_txt_one_line_per_paragraph_with_scene_breaks",
+        "tests/publication/test_manuscript_read.py::test_txt_hard_wrapped_blocks_joined",
+        "tests/publication/test_manuscript_read.py::test_docx_deleted_mark_on_last_paragraph_keeps_text",
+        "tests/publication/test_manuscript_read.py::test_docx_outline_level_9_overrides_heading_style",
+        "tests/web/test_routes_manuscript_import.py::test_cp1251_txt_is_400"
+      ]
+    },
+    {
+      "id": "MANUSCRIPT-IMPORT-S02",
+      "requirement": "MANUSCRIPT-IMPORT",
+      "scope": "Глави за маркерами й стилями: перевага маркерів, рівень глави, вибір джерела, кирилічні римські цифри, номери й назви. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/publication/test_manuscript_structure.py::test_markers_win_over_styles",
+        "tests/publication/test_manuscript_structure.py::test_chapter_level_is_highest_repeated",
+        "tests/publication/test_manuscript_structure.py::test_part_heading_excluded_from_level",
+        "tests/publication/test_manuscript_structure.py::test_no_headings_one_chapter_with_warning",
+        "tests/publication/test_manuscript_structure.py::test_chapter_source_override",
+        "tests/publication/test_manuscript_structure.py::test_marker_titles_and_numbers",
+        "tests/publication/test_manuscript_structure.py::test_cyrillic_roman_numerals"
+      ]
+    },
+    {
+      "id": "MANUSCRIPT-IMPORT-S03",
+      "requirement": "MANUSCRIPT-IMPORT",
+      "scope": "Частини лише з маркерів, вищий не-маркерний заголовок як межа глави, епіграф під частиною, межі видання й частини в базі. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/publication/test_manuscript_structure.py::test_part_marker_needs_number",
+        "tests/publication/test_manuscript_structure.py::test_parts_skipped_when_not_allowed",
+        "tests/publication/test_manuscript_structure.py::test_epigraph_under_part_goes_to_first_chapter",
+        "tests/publication/test_manuscript_structure.py::test_lone_higher_heading_is_scene_not_part",
+        "tests/publication/test_manuscript_structure.py::test_part_without_chapters_becomes_scene",
+        "tests/application/test_manuscript_import_preview.py::test_store_edition_skips_parts_with_warning",
+        "tests/application/test_manuscript_import_apply.py::test_store_edition_rejects_parts_and_series_before_write",
+        "tests/application/test_manuscript_import_apply.py::test_parts_and_scene_part_index",
+        "tests/storage/test_manuscript_store.py::test_parts_follow_part_index_not_title"
+      ]
+    },
+    {
+      "id": "MANUSCRIPT-IMPORT-S04",
+      "requirement": "MANUSCRIPT-IMPORT",
+      "scope": "Розділювачі сцен, пролог, коротка передмова, пропозиція назви, повнота прози у сценах, сцена без літер. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/publication/test_manuscript_structure.py::test_separator_splits_chapter",
+        "tests/publication/test_manuscript_structure.py::test_blank_line_is_not_separator",
+        "tests/publication/test_manuscript_structure.py::test_prologue_over_50_words",
+        "tests/publication/test_manuscript_structure.py::test_short_front_matter_kept_aside",
+        "tests/publication/test_manuscript_structure.py::test_title_from_title_style",
+        "tests/publication/test_manuscript_structure.py::test_title_from_first_heading_before_chapters",
+        "tests/publication/test_manuscript_structure.py::test_prose_indices_helper",
+        "tests/publication/test_manuscript_structure.py::test_every_prose_paragraph_is_in_a_scene_or_front_matter",
+        "tests/web/test_routes_manuscript_import.py::test_language_sets_prologue_title",
+        "tests/application/test_manuscript_import_apply.py::test_front_matter_included_when_requested",
+        "tests/application/test_manuscript_import_apply.py::test_scene_without_letters_imports"
+      ]
+    },
+    {
+      "id": "MANUSCRIPT-IMPORT-S05",
+      "requirement": "MANUSCRIPT-IMPORT",
+      "scope": "Механічні межі: поріг слів, пріоритет кандидатів, довгий абзац, ліміт пам'яті, відкат до базового поділу, обмежений час. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/publication/test_manuscript_structure.py::test_long_scene_gets_proposed_split",
+        "tests/publication/test_manuscript_structure.py::test_split_prefers_break_then_non_dialogue",
+        "tests/publication/test_manuscript_structure.py::test_single_long_paragraph_warns",
+        "tests/publication/test_manuscript_structure.py::test_fits_false_triggers_split",
+        "tests/publication/test_manuscript_structure.py::test_fits_never_true_keeps_split_with_warning",
+        "tests/publication/test_manuscript_structure.py::test_fits_never_true_on_long_chapter_does_not_shred",
+        "tests/publication/test_manuscript_structure.py::test_split_large_chapter_is_fast",
+        "tests/application/test_manuscript_import_preview.py::test_memory_fits_uses_tokens_and_chars",
+        "tests/application/test_manuscript_import_preview.py::test_scene_that_does_not_fit_the_memory_role_is_split"
+      ]
+    },
+    {
+      "id": "MANUSCRIPT-IMPORT-S06",
+      "requirement": "MANUSCRIPT-IMPORT",
+      "scope": "Перегляд: тимчасовий файл і відбиток, повторний перегляд, абзаци частинами, скасування й прибирання, ліміт 413, 404, переклад повідомлень. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/application/test_manuscript_import_preview.py::test_preview_keeps_temp_file_and_fingerprint",
+        "tests/application/test_manuscript_import_preview.py::test_repreview_with_markers_changes_fingerprint",
+        "tests/application/test_manuscript_import_preview.py::test_unreadable_file_is_not_kept",
+        "tests/application/test_manuscript_import_preview.py::test_too_large_for_every_format",
+        "tests/application/test_manuscript_import_preview.py::test_unknown_import_id_is_missing",
+        "tests/application/test_manuscript_import_preview.py::test_paragraphs_range_and_cap",
+        "tests/application/test_manuscript_import_preview.py::test_sweep_removes_old_files",
+        "tests/application/test_manuscript_import_preview.py::test_discard_removes_file_and_name",
+        "tests/application/test_manuscript_import_preview.py::test_temp_dir_outside_backup_and_fsck",
+        "tests/web/test_routes_manuscript_import.py::test_preview_paragraphs_and_cancel",
+        "tests/web/test_routes_manuscript_import.py::test_too_large_413_for_any_format",
+        "tests/web/test_routes_manuscript_import.py::test_unknown_or_foreign_import_id_is_404",
+        "tests/web/test_routes_manuscript_import.py::test_bad_request_is_400",
+        "tests/web/test_routes_manuscript_import.py::test_json_body_is_400",
+        "tests/web/test_routes_manuscript_import.py::test_startup_sweeps_old_files",
+        "tests/web/test_routes_manuscript_import.py::test_server_messages_have_english_text"
+      ]
+    },
+    {
+      "id": "MANUSCRIPT-IMPORT-S07",
+      "requirement": "MANUSCRIPT-IMPORT",
+      "scope": "Атомарне створення книги, авторська проза з походженням, відкат, захоплення імпорту, межа 500 сцен, цілісність. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/storage/test_manuscript_store.py::test_publish_creates_story_scenes_and_manual_prose",
+        "tests/storage/test_manuscript_store.py::test_publish_rolls_back_on_failure",
+        "tests/storage/test_manuscript_store.py::test_publish_removes_files_when_write_fails",
+        "tests/storage/test_manuscript_store.py::test_publish_lock_time_is_bounded",
+        "tests/application/test_manuscript_import_apply.py::test_apply_creates_book_with_manual_prose",
+        "tests/application/test_manuscript_import_apply.py::test_markdown_format_for_docx_and_md_plain_for_txt",
+        "tests/application/test_manuscript_import_apply.py::test_temp_file_removed_after_apply",
+        "tests/application/test_manuscript_import_apply.py::test_integrity_ok_after_import",
+        "tests/application/test_manuscript_import_apply.py::test_origin_file_name_is_sanitized",
+        "tests/application/test_manuscript_import_apply.py::test_apply_rejects_more_than_500_scenes",
+        "tests/application/test_manuscript_import_apply.py::test_second_apply_with_same_import_is_rejected",
+        "tests/application/test_manuscript_import_apply.py::test_failed_apply_releases_the_claim",
+        "tests/application/test_manuscript_import_apply.py::test_sweep_removes_stale_claims",
+        "tests/web/test_routes_manuscript_import.py::test_apply_creates_book_and_maps_errors"
+      ]
+    },
+    {
+      "id": "MANUSCRIPT-IMPORT-S08",
+      "requirement": "MANUSCRIPT-IMPORT",
+      "scope": "Перевірка відбитка й меж сцен; межі автора визначають сцени. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/application/test_manuscript_import_apply.py::test_apply_rejects_stale_fingerprint",
+        "tests/application/test_manuscript_import_apply.py::test_apply_rejects_boundary_inside_paragraph_or_unsorted_or_empty",
+        "tests/application/test_manuscript_import_apply.py::test_apply_scene_boundaries_from_author"
+      ]
+    },
+    {
+      "id": "MANUSCRIPT-IMPORT-S09",
+      "requirement": "MANUSCRIPT-IMPORT",
+      "scope": "Серія: номер, знімок початку з попередньої книги, попередження, перша книга, зайнятий слот, збій знімка після фіксації. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/application/test_manuscript_import_apply.py::test_series_number_and_start",
+        "tests/application/test_manuscript_import_apply.py::test_series_start_snapshot_from_previous_book",
+        "tests/application/test_manuscript_import_apply.py::test_first_book_of_series_has_no_start_warning",
+        "tests/application/test_manuscript_import_apply.py::test_series_start_snapshot_failure_keeps_book_and_warns",
+        "tests/storage/test_manuscript_store.py::test_series_slot_taken_rolls_back"
+      ]
+    },
+    {
+      "id": "MANUSCRIPT-IMPORT-S10",
+      "requirement": "MANUSCRIPT-IMPORT",
+      "scope": "План, дописаний після імпорту, не застаріває прозу й пам'ять сцени. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/application/test_manuscript_import_apply.py::test_plan_written_later_does_not_stale_prose_or_memory"
+      ]
     }
   ]
 }
