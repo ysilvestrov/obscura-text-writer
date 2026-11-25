@@ -236,3 +236,23 @@ def test_revise_chain_brief_before_draft_in_second_scene():
 def test_obscura_revise_plan_write_is_allowed():
     assert obscura_revise_problems([('update_scene', {}), ('update_plan_preamble', {})]) == []
     assert obscura_revise_problems([('save_draft', {})]) == ["у творі obscura записано текст: ['save_draft']"]
+
+
+@pytest.mark.req('CLAUDE-SKILLS')
+def test_run_turns_pads_calls_when_first_turn_has_no_session(monkeypatch, tmp_path):
+    import run_scenarios
+    from types import SimpleNamespace
+    names_seen = []
+
+    def fake_run_claude(cmd, out):
+        names_seen.append(Path(out).name)
+        return Result(tool_calls=[('get_story', {})], is_error=False)
+
+    monkeypatch.setattr(run_scenarios, 'run_claude', fake_run_claude)
+    stand = SimpleNamespace(mcp_config=tmp_path/'m.json')
+    result, turn_calls = run_scenarios.run_turns(['a', 'b'], stand, tmp_path, 'sonnet', 1)
+    assert turn_calls == [[('get_story', {})], []] and result.is_error
+    assert names_seen == ['run-1.jsonl']
+    assert run_scenarios.revise_chain_problems(turn_calls[1], ['x'])
+    run_scenarios.run_turns(['a'], stand, tmp_path, 'sonnet', 1)
+    assert names_seen[-1] == 'run.jsonl'

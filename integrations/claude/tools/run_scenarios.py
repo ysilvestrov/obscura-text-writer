@@ -395,7 +395,7 @@ def run_turns(turns, stand, work, model, budget):
     joined, turn_calls, session = None, [], None
     for number, turn in enumerate(turns, 1):
         result = run_claude(claude_command(turn, mcp_config=stand.mcp_config, plugin_dir=PLUGIN, model=model, budget_usd=budget,
-                                           resume=session), work/f'run-{number}.jsonl')
+                                           resume=session), work/(f'run-{number}.jsonl' if len(turns) > 1 else 'run.jsonl'))
         turn_calls.append(result.tool_calls)
         if joined is None:
             joined = result
@@ -410,6 +410,7 @@ def run_turns(turns, stand, work, model, budget):
             joined.is_error = True
             joined.errors.append(('session', f'хід {number} без session_id'))
             break
+    turn_calls += [[] for _ in turns[len(turn_calls):]]
     return joined, turn_calls
 
 
