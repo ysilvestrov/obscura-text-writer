@@ -37,6 +37,21 @@ Go through these gates in this order. At each gate, ask only what the author has
 
 **Series or a world with rules.** If the idea has lore, magic rules, factions or a planned cycle, suggest writing a series bible before the first book. Use the `series-bible` skill for that; if the author prefers to start with the book, note the bible as a later step and go on.
 
+## A ready manuscript
+
+If the author already has the finished text of a book (a Word, Markdown or plain-text file), do not run the interview and do not retell the text. Import the file as it is:
+
+1. Ask for the full path to the file on this computer (or, for a small file under 2 MiB, take its content). Never open the file yourself.
+2. `import_manuscript(file_path)` without `confirm`. It creates nothing and calls no model.
+3. Show the author the proposed scenes: the titles, the words in each, the warnings, and `tracked_changes` if it is not zero (unresolved Word revisions are accepted as they stand, so suggest resolving them in Word first). Ask for the book title (offer `title_suggestion`) and the content rating. To change the chapter markers or the source of chapters, call `import_manuscript` again with the same import_id and the new `chapter_markers`, `part_markers` or `chapter_source`. To move a boundary, pass your own `scenes` on the confirm call. Parts and series are only for the full edition: check `edition` before offering them.
+4. Wait for explicit consent. Then call `import_manuscript` with `confirm=True`, the import_id and `fingerprint` of the preview the author saw, and the `title`. A changed preview means a new `fingerprint` and a new consent.
+5. The imported book has the author's prose and no memory yet. Offer to build it, with the cost named:
+   - **`obscura` mode:** `start_run(action='rebuild_memory')` without `confirm` returns the preview: the number of scenes, the cost (an upper bound, or "unknown" for a local model), the scenes that do not fit the memory model's limits, the series hint and the cast that Obscura will fill in from the names in the prose. Show it to the author. Only after a clear yes call it again with `confirm=True` and the `plan_fingerprint` from that preview. If the answer says the plan changed, show the new preview and ask again. Follow the run with `get_run`.
+   - **`chat` mode:** Obscura does not start the build. Either the author switches the book to `obscura` in the book settings, or you build the memory scene by scene in the chat with the `draft-scene` skill.
+6. Then continue as in "After creating": the author reads the book in the Obscura window, and writing new scenes is a separate request.
+
+Importing never changes an existing book and never costs money; only step 5 does, and only after the author has seen the cost.
+
 ## Summary and consent
 
 Show one summary:

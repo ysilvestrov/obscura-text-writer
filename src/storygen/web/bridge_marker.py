@@ -12,7 +12,7 @@ BRIDGE_HEADER='X-Obscura-Client'
 OBSCURA_WRITES='Твір у режимі «пише Obscura»: запустіть етап через start_run'
 CHAT_WRITES='Твір у режимі «пише чат»: напишіть текст самі (get_stage_task, save_draft)'
 RUN_OWNER_ONLY='Цю дію із запуском виконує лише автор в Obscura'
-BRIDGE_RUN_MODES=frozenset({'stage','publication_suggest','audit'})
+BRIDGE_RUN_MODES=frozenset({'stage','publication_suggest','audit','rebuild_memory'})
 MODE_OWNER_ONLY='Режим твору змінює лише автор в Obscura'
 
 

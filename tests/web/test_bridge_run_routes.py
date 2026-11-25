@@ -53,8 +53,7 @@ def test_chat_mode_refuses_bridge_runs_but_not_the_author(tmp_path, ready):
 @pytest.mark.req('MCP-BRIDGE')
 def test_bridge_may_not_start_other_run_kinds(tmp_path, ready):
     app, repo, story, scene, client = scene_app(tmp_path, 'obscura')
-    for request in ({'story_id': story.id, 'scene_id': scene.id, 'mode': 'scene'}, {'story_id': story.id, 'mode': 'prepare'},
-                    {'story_id': story.id, 'scene_id': scene.id, 'mode': 'rebuild_memory'}):
+    for request in ({'story_id': story.id, 'scene_id': scene.id, 'mode': 'scene'}, {'story_id': story.id, 'mode': 'prepare'}):
         refused = client.post('/api/runs', json={'request_id': 'x-' + request['mode'], 'request': request}, headers=BRIDGE)
         assert refused.status_code == 403 and RUN_OWNER_ONLY in refused.text, request
     for path in (f'/api/stories/{story.id}/prepare', f'/api/stories/{story.id}/evaluate', f'/api/scenes/{scene.id}/rebuild-memory',
@@ -63,6 +62,19 @@ def test_bridge_may_not_start_other_run_kinds(tmp_path, ready):
         response = client.post(path, json={'request_id': 'x'}, headers=BRIDGE)
         assert response.status_code == 403 and RUN_OWNER_ONLY in response.text, (path, response.status_code)
     assert app.state.coordinator.list_runs() == []
+
+
+def test_bridge_rebuild_memory_follows_the_stage_rule(tmp_path, ready):
+    """R-48 PR 2: the bridge may start the memory build, only in a story Obscura writes; the author-only route stays closed."""
+    app, repo, story, scene, client = scene_app(tmp_path, 'chat')
+    request = {'story_id': story.id, 'scene_id': scene.id, 'mode': 'rebuild_memory'}
+    refused = client.post('/api/runs', json={'request_id': 'm1', 'request': request}, headers=BRIDGE)
+    assert refused.status_code == 409 and CHAT_WRITES in refused.text
+    app, repo, story, scene, client = scene_app(tmp_path / 'o', 'obscura')
+    request = {'story_id': story.id, 'scene_id': scene.id, 'mode': 'rebuild_memory'}
+    accepted = client.post('/api/runs', json={'request_id': 'm2', 'request': request}, headers=BRIDGE)
+    assert accepted.status_code == 200, accepted.text
+    assert app.state.coordinator.get_run(accepted.json()['id']).origin == 'mcp'
 
 
 @pytest.mark.req('MCP-BRIDGE')
