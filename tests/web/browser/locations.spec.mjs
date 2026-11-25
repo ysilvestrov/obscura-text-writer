@@ -55,14 +55,15 @@ test('a description is saved and a conflict keeps the typed text',async({page,re
 
 test('a location change does not turn the next memory-kind change into a conflict',async({page,request})=>{
   const {panel}=await openPanel(page,request);
-  const kind=page.locator('select.memory-kind').first();
+  const kind=page.locator('button.memory-kind').first();
   await expect(kind).toBeVisible();
+  const pick=async value=>{await kind.click();await page.locator(`.memory-kind-menu:not([hidden]) [role=menuitemradio][data-kind="${value}"]`).click();};
   const yard=row(panel,'двір');
   await yard.locator('summary').click();
   await yard.locator('textarea').fill('Тісний двір.');
   await yard.getByRole('button',{name:'Зберегти опис'}).click();
   await expect(page.locator('#notice')).toContainText('Опис збережено.');
-  await kind.selectOption('atmosphere');
+  await pick('atmosphere');
   await expect(page.locator('#notice')).toContainText('Тип запису збережено');
   const fact=page.locator('.memory-locations').first();
   await expect(fact).toContainText('Локації: Квартира Джорджа / вітальня');
@@ -75,6 +76,6 @@ test('a location change does not turn the next memory-kind change into a conflic
   await expect(page.locator('#notice')).toContainText('Локації злито.');
   await expect(fact).toContainText('Локації: двір');
   // The table reloaded with the new story revision, so the next type mark is not a conflict.
-  await kind.selectOption('core');
+  await pick('core');
   await expect(page.locator('#notice')).toContainText('Тип запису збережено');
 });

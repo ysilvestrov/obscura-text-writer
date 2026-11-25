@@ -24,10 +24,10 @@ export function installWorkspaceFocus(doc,textEditor){
   }
   button.addEventListener('click',()=>set(!root.classList.contains('focus-mode')));
   // Capture phase: ProseMirror's base keymap binds Escape to selectParentNode and always prevents it.
-  // Dialogs, an open comment popover and Ghost mode keep their own Escape.
+  // Dialogs, an open comment popover, an open menu (the memory table's type mark) and Ghost mode keep their own Escape.
   doc.addEventListener('keydown',event=>{
     if(event.key!=='Escape'||!root.classList.contains('focus-mode'))return;
-    if(doc.querySelector('dialog[open]')||openPopover(doc)||event.target?.closest?.('#ghost-mode'))return;
+    if(doc.querySelector('dialog[open]')||openPopover(doc)||event.target?.closest?.('#ghost-mode,[role="menu"]'))return;
     event.preventDefault();event.stopPropagation();set(false);
   },true);
   return {set,active:()=>root.classList.contains('focus-mode')};

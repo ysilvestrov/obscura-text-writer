@@ -1,6 +1,7 @@
 import {confirmDialog} from './dialogs.js';
 import {createTextEditor} from './text-editor.js';
 import {installCoreReview,confirmUnsaved} from './core-review.js';
+import {kindMenu,kindLegend} from './memory-kind-menu.js';
 import {live,t,msg,labelEntries,getLocale,uiText,uiAttr,uiHTML,diagnostic} from './i18n.js';
 export function installMemoryTable({state,api,json,notice,refresh,loadBuffer}){
   const panel=document.querySelector('#memory-view');
@@ -41,7 +42,8 @@ export function installMemoryTable({state,api,json,notice,refresh,loadBuffer}){
   for(const title of [msg("m_6cf9b3a4b307"),msg("m_461437b0662b"),msg("m_7f3e53d4d224"),msg("m_aca3cc594690"),msg("memory.kind")]){const th=node('th',live(()=>(title)));th.scope='col';header.append(th);}
   head.append(header);const body=node('tbody');table.append(caption,head,body);wrap.append(table);
   const reviewBox=node('section');
-  panel.append(help,actions,info,reviewBox,tools,wrap);
+  const legend=kindLegend();
+  panel.append(help,actions,info,reviewBox,tools,legend,wrap);
   async function reloadAfterReview(){
     // A confirmation with edits publishes a new memory head; reload the clean table buffer to show it.
     const sceneId=state.scene?.id;
@@ -66,23 +68,20 @@ export function installMemoryTable({state,api,json,notice,refresh,loadBuffer}){
   function controls(){
     const visible=state.mode==='memory'&&state.bufferOrigin!=='history';panel.hidden=!visible;
     state.memoryTableActive=visible&&!advanced;editor.visible(!(visible&&!advanced));
-    tools.hidden=advanced;wrap.hidden=advanced;reviewBox.hidden=advanced;
+    tools.hidden=advanced;wrap.hidden=advanced;reviewBox.hidden=advanced;legend.hidden=advanced;
     uiText(toggle,"textContent",()=>(advanced?t("m_7a516601ed73"):t("m_41ebabe287dc")));
     toggle.disabled=state.saving||loading;reload.disabled=state.saving||loading;
     if(visible&&!advanced)saveButton.disabled=loading||state.saving||!data?.can_save||!state.dirty;
     else if(visible&&advanced)saveButton.disabled=loading||state.saving;
   }
-  let kindBusy=false;
+  let kindBusy=false,refocusClaim=null;
   function kindControl(row){
     // MEMORY-SELECT-S08: the author's selection mark, saved at once with CAS on the story revision (not via Save).
     const cell=node('td');
     if(row.slot){cell.append(node('span',msg('memory.kind_slot')));return cell;}
-    const select=node('select');uiAttr(select,'aria-label',()=>t('memory.kind_label',{p0:row.text}));select.className='memory-kind';
-    for(const [value,label] of [['',msg('memory.kind_auto')],['core',msg('memory.kind_core')],['atmosphere',msg('memory.kind_atmosphere')]]){const o=node('option',live(()=>(label)));o.value=value;select.append(o);}
-    select.value=row.kind||'';select.disabled=state.saving||kindBusy||data?.story_revision==null;
-    select.onchange=async()=>{
+    const control=kindMenu({value:row.kind||'',text:row.text,disabled:state.saving||kindBusy||data?.story_revision==null,onPick:async picked=>{
       if(kindBusy||state.saving)return;
-      const snapshot=data,captured=currentKey(),kind=select.value||null;kindBusy=true;draw();
+      const snapshot=data,captured=currentKey(),kind=picked||null;kindBusy=true;refocusClaim=row.claim_id;draw();
       try{
         const story=await api(`/api/stories/${snapshot.scene.story_id}/memory-kind`,json('PUT',{claim_id:row.claim_id,kind,expected_revision:snapshot.story_revision,scene_id:snapshot.scene.id}));
         snapshot.story_revision=story.revision;row.kind=kind;notice(t('memory.kind_saved'));void refresh();
@@ -90,8 +89,11 @@ export function installMemoryTable({state,api,json,notice,refresh,loadBuffer}){
         notice(error.message,'error');
         if(currentKey()===captured&&!state.dirty){kindBusy=false;void load();return;}
       }finally{kindBusy=false;if(data===snapshot)draw();}
-    };
-    cell.append(select);return cell;
+    }});
+    // Keyboard focus comes back to the same entry's button after the table redraws,
+    // unless the author has moved on (for example into the search field) while the type was saving.
+    if(refocusClaim===row.claim_id&&!control.button.disabled){refocusClaim=null;queueMicrotask(()=>{const active=document.activeElement;if(!active||active===document.body||!active.isConnected)control.button.focus();});}
+    cell.append(control.box);return cell;
   }
   function draw(){
     body.replaceChildren();if(!data){controls();return;}

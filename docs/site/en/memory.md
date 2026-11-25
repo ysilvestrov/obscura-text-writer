@@ -24,7 +24,7 @@ An author entry without a quotation is a truth of the world the reader has not s
 
 While the request fits the role limits, memory is passed in full. Otherwise the application selects the most important part and warns you: the protagonist core always in full, then recent protagonist states, open lines involving the scene participants, other participants' states, facts, records about the scene's place, the timeline of the last 20 scenes and "atmosphere". If even the core does not fit, the request is not sent.
 
-The **Type** column guides the selection: **Auto**, **Core** (always shown) or **Atmosphere** (only within a small share). The choice is saved at once and applies to the whole story.
+The **Type** column guides the selection: **Auto**, **Core** (always shown) or **Atmosphere** (only within a small share). In the table the type is a compact icon button, and the “Entry type:” line above the table explains the icons. Click the button or press the down arrow to open the menu and pick a type. The choice is saved at once and applies to the whole story.
 
 ## Locations
 
