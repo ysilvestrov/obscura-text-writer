@@ -120,6 +120,34 @@ test('a run refused after the cast was written can be started again without a fa
   await request.post(`/api/runs/${(await runsOf(request,fixture))[0].id}/cancel`,{data:{}});
 });
 
+test('Cancel while the cast is being written stops the build before the run, and nothing else starts meanwhile',async({page,request})=>{
+  const fixture=await seed(request);
+  let release,inferSeen=false;
+  const held=new Promise(resolve=>{release=resolve});
+  await page.route(/\/scene-cast\/infer$/,async route=>{inferSeen=true;await held;await route.continue()});
+  const runPosts=[];
+  page.on('request',req=>{if(req.method()==='POST'&&/\/api\/runs$/.test(req.url()))runPosts.push(req.url())});
+  await openWorkspace(page,fixture);
+  const dialog=await openDialog(page);
+  await expect(dialog.locator('#memory-build-cost')).toHaveText('Вартість невідома');
+  await dialog.locator('#memory-build-submit').click();
+  await expect.poll(()=>inferSeen).toBe(true);
+  await dialog.locator('#memory-build-cancel').click();
+  await expect(dialog).toBeHidden();
+  // The build is still in flight: the menu cannot open the dialog for a second one.
+  await page.locator('#story-menu-toggle').click();
+  await expect(page.locator('#story-menu-build-memory')).toBeDisabled();
+  await page.locator('#story-menu-toggle').click();
+  const settled=page.waitForResponse(/\/scene-cast\/infer$/);
+  release();
+  await settled;
+  await expect(page.locator('#notice')).toContainText('Побудову пам’яті скасовано: запуск не розпочато');
+  await page.locator('#story-menu-toggle').click();
+  await expect(page.locator('#story-menu-build-memory')).toBeEnabled();
+  expect(runPosts).toEqual([]);
+  expect(await runsOf(request,fixture)).toEqual([]);
+});
+
 test('a known price shows the total; an unknown one shows its reason',async({page,request})=>{
   const fixture=await seed(request);
   let cost={per_call_usd:'0.40',total_usd:'0.75',calls:2,reason:null};

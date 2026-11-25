@@ -95,3 +95,11 @@ def test_story_view_names_the_manuscript_of_the_prose_head(tmp_path):
     assert listed[scenes[0].id]['prose_origin'] == {'kind': 'manuscript_import', 'file_name': 'mayak.docx'}
     assert listed[scenes[1].id]['prose_origin'] is None
     assert listed[plain.id]['prose_origin'] is None
+
+
+def test_prose_origin_tolerates_a_head_on_a_missing_version():
+    from types import SimpleNamespace
+    from storygen.web.routes_stories import prose_origin
+    view = SimpleNamespace(versions={})
+    assert prose_origin(view, SimpleNamespace(heads={'prose': 'missing'})) is None
+    assert prose_origin(view, SimpleNamespace(heads={})) is None

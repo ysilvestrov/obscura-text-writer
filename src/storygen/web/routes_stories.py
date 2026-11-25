@@ -99,6 +99,15 @@ def create_story(data: StoryCreate,request: Request):
     return request.app.state.repo.create_story(data)
 
 
+def prose_origin(view,scene):
+    """R-48 MANUSCRIPT-IMPORT (spec §4.4): where the scene's prose head came from, so the status row names the manuscript
+    file; None for author or model prose, no prose, or a head on a missing version (the view stays readable)."""
+    prose=scene.heads.get("prose")
+    ref=view.versions.get(prose) if prose else None
+    origin=ref.manuscript_import if ref is not None else None
+    return {"kind":"manuscript_import","file_name":origin.file_name} if origin else None
+
+
 @router.get("/api/stories/{id}")
 def story_view(id: str,request: Request):
     view=request.app.state.repo.context_view(id)
@@ -126,12 +135,7 @@ def story_view(id: str,request: Request):
     from ..memory.story_time import flashback_marked
     marks=merge_markers(view,story,listed) if story.book_structure is not None else {}
     from ..narration import narrator_card
-    # R-48 MANUSCRIPT-IMPORT (spec §4.4): where the prose head came from, so the status row names the manuscript file.
-    def prose_origin(scene):
-        prose=scene.heads.get("prose")
-        origin=view.peek_version(prose).manuscript_import if prose else None
-        return {"kind":"manuscript_import","file_name":origin.file_name} if origin else None
-    scenes=[{**view.effective_scene(scene.id).model_dump(),"prose_origin":prose_origin(scene),"arc_id":structure.arc_of.get(scene.id),"arc_ids":list(structure.arcs_of.get(scene.id,())),"memory_merge":marks.get(scene.id),
+    scenes=[{**view.effective_scene(scene.id).model_dump(),"prose_origin":prose_origin(view,scene),"arc_id":structure.arc_of.get(scene.id),"arc_ids":list(structure.arcs_of.get(scene.id,())),"memory_merge":marks.get(scene.id),
         "flashback_marked":flashback_marked(scene.beats),**narrator_card(scene,cards)} for scene in listed]
     from .routes_series import series_block
     # SERIES: the block is present only for a book in a series.

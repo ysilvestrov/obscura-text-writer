@@ -25,7 +25,7 @@ export function installMemoryBuild({api,json,notice,document,state}){
   const summary=part('summary'),cost=part('cost'),unfit=part('unfit'),cast=part('cast'),series=part('series'),seriesButton=part('refresh'),
     reasonNode=part('reason'),seriesWarning=part('series-warning'),status=part('status'),submit=part('submit'),cancel=part('cancel');
   const storyPath=()=>`/api/stories/${encodeURIComponent(state.storyId)}`;
-  let target={scene_id:null,count:0},plan=null,failure='',loading=false,busy=false,epoch=0,keepFocus=false;
+  let target={scene_id:null,count:0},plan=null,failure='',loading=false,busy=false,epoch=0,keepFocus=false,pending=null;
   // Why «Побудувати» is unavailable: a failed preview, an active run, then the preview's own readiness (dirty buffer included).
   const blocked=()=>(failure==='memory_build.ui.nothing'?t(failure):failure)||(!plan?'':ACTIVE_RUN.has(state.workspaceRun?.state)?t('memory_build.ui.run_active'):operationReason(state,plan.preview));
 
@@ -53,6 +53,7 @@ export function installMemoryBuild({api,json,notice,document,state}){
     const reason=blocked();
     submit.disabled=busy||loading||!plan||!!reason;
     seriesButton.disabled=busy||loading;
+    item.disabled=busy;  // a build still in flight (even with the dialog closed) must settle before another can start
     dialog.setAttribute('aria-busy',String(busy||loading));
     reasonNode.hidden=!reason;
     if(reason)uiText(reasonNode,'textContent',()=>diagnostic(blocked()));else reasonNode.textContent='';
@@ -132,22 +133,28 @@ export function installMemoryBuild({api,json,notice,document,state}){
     const current=plan;
     if(blocked()){sync();return}
     busy=true;setStatus(null);sync();
+    // Closing the dialog (Cancel, Escape, the character import) aborts the sequence before the run request; `busy` stays set
+    // until every pending request has settled, so neither a reopened dialog nor the menu can start a second build meanwhile.
+    const build={aborted:false};pending=build;
     let inferred=false;
     try{
       // The cast write bumps the story revision: a retry after a refused run must not be refused as a stale preview.
       const written=await api(`${storyPath()}/scene-cast/infer`,json('POST',{expected_revision:current.revision}));
       inferred=true;
       if(Number.isInteger(written?.story?.revision))current.revision=written.story.revision;
+      if(build.aborted){await refreshWorkspace();notice(t('memory_build.ui.cancelled'));return}
       const request={story_id:state.storyId,scene_id:current.scene_id,mode:'rebuild_memory',stage:null,
         pause_after:document.querySelector('#pause-each')?.checked?['brief','draft','edit','memory']:[],
         memory_plan_fingerprint:current.preview.plan_fingerprint,budget_limit_usd:document.querySelector('#run-budget')?.value||null};
       const run=await api('/api/runs',json('POST',{request_id:crypto.randomUUID(),request}));
-      busy=false;
-      dialog.close();
+      // A run requested before the close exists: it goes to the run panel, where it can be cancelled.
+      busy=false;pending=null;
+      if(dialog.open)dialog.close();
       document.dispatchEvent(new CustomEvent('run-reveal',{detail:run}));
       await refreshWorkspace();
     }catch(error){
-      busy=false;
+      busy=false;pending=null;
+      if(build.aborted){if(inferred)await refreshWorkspace();if(error.status!==409)notice(error.message,'error');return}
       if(error.status===409){
         // A stale preview (the plan or the story changed): read it again; the author decides after checking it.
         await refreshWorkspace();
@@ -157,6 +164,9 @@ export function installMemoryBuild({api,json,notice,document,state}){
       // Scene casts may already be written: the workspace shows the new scene revisions.
       if(inferred)await refreshWorkspace();
       setStatus(()=>diagnostic(error.message));sync();
+    }finally{
+      if(pending===build)pending=null;
+      busy=false;sync();
     }
   }
 
@@ -171,7 +181,7 @@ export function installMemoryBuild({api,json,notice,document,state}){
   }
 
   function open(){
-    if(dialog.open)return;
+    if(dialog.open||busy)return;
     setStatus(null);dialog.showModal();item.setAttribute('aria-expanded','true');
     void load();
   }
@@ -179,10 +189,10 @@ export function installMemoryBuild({api,json,notice,document,state}){
   submit.onclick=()=>void build();
   seriesButton.onclick=()=>void refreshSeries().catch(error=>notice(error.message,'error'));
   cancel.onclick=()=>dialog.close();
-  // While the cast is written or the run starts the dialog stays open: its answer decides what the author sees next.
-  dialog.addEventListener('cancel',event=>{if(busy)event.preventDefault()});
   dialog.addEventListener('close',()=>{
-    epoch++;plan=null;loading=false;busy=false;clear();item.setAttribute('aria-expanded','false');
+    // `busy` is not reset here: the build or the series refresh still in flight resets it when its requests settle.
+    if(pending)pending.aborted=true;
+    epoch++;plan=null;loading=false;clear();sync();item.setAttribute('aria-expanded','false');
     // The character import keeps the focus on its file field; every other exit returns it to the menu button.
     const toggle=document.querySelector('#story-menu-toggle');
     if(keepFocus)keepFocus=false;else if(toggle&&!document.querySelector('dialog[open]'))toggle.focus();
