@@ -11,6 +11,7 @@ import json
 import re
 import sys
 import urllib.request
+from dataclasses import replace
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -398,7 +399,7 @@ def run_turns(turns, stand, work, model, budget):
                                            resume=session), work/(f'run-{number}.jsonl' if len(turns) > 1 else 'run.jsonl'))
         turn_calls.append(result.tool_calls)
         if joined is None:
-            joined = result
+            joined = replace(result, tool_calls=list(result.tool_calls), errors=list(result.errors))
         else:
             joined.tool_calls += result.tool_calls
             joined.errors += result.errors

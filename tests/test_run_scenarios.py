@@ -256,3 +256,18 @@ def test_run_turns_pads_calls_when_first_turn_has_no_session(monkeypatch, tmp_pa
     assert run_scenarios.revise_chain_problems(turn_calls[1], ['x'])
     run_scenarios.run_turns(['a'], stand, tmp_path, 'sonnet', 1)
     assert names_seen[-1] == 'run.jsonl'
+
+
+@pytest.mark.req('CLAUDE-SKILLS')
+def test_run_turns_keeps_each_turn_calls_apart(monkeypatch, tmp_path):
+    import run_scenarios
+    from types import SimpleNamespace
+    turns = iter([Result(tool_calls=[('get_story', {})], errors=[('a', 'x')], session_id='s'),
+                  Result(tool_calls=[('save_draft', {})], errors=[('b', 'y')], session_id='s')])
+    monkeypatch.setattr(run_scenarios, 'run_claude', lambda cmd, out: next(turns))
+    stand = SimpleNamespace(mcp_config=tmp_path/'m.json')
+    result, turn_calls = run_scenarios.run_turns(['a', 'b'], stand, tmp_path, 'sonnet', 1)
+    assert turn_calls == [[('get_story', {})], [('save_draft', {})]]
+    assert result.tool_calls == [('get_story', {}), ('save_draft', {})]
+    assert result.errors == [('a', 'x'), ('b', 'y')]
+    assert run_scenarios.revise_preconsent_problems(turn_calls[0]) == []
