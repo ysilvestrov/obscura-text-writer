@@ -83,7 +83,9 @@ export function mountChangeReview({host,state,api,json,notice,onApplied,onQueued
           });
           content.append(sentence);hints(content,unit);item.append(input,content);block.append(item);
         }
-        refresh();block.append(result);edits.append(block);continue;
+        refresh();block.append(result);
+        if(rewrite){const location=document.createElement('small');location.className='copyedit-split-location';uiText(location,'textContent',()=>t('rewrite.location.'+edit.location));block.append(location)}
+        edits.append(block);continue;
       }
       const item=document.createElement('label');item.className='copyedit-item';
       const input=document.createElement('input');input.type='checkbox';input.editIndices=edit.indices;input.partial=edit.indices.filter(index=>selected.has(index));input.checked=edit.indices.every(index=>selected.has(index));input.indeterminate=!input.checked&&input.partial.length>0;input.onchange=()=>{input.indeterminate=false;selectionChanged()};choices.push(input);

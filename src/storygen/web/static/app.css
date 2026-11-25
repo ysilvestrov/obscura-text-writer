@@ -251,6 +251,7 @@ pre { white-space: pre-wrap; overflow-wrap: anywhere; font: 14px/1.7 var(--font-
 .copyedit-split > .copyedit-item { padding-block: 8px; border-bottom: 0; }
 .copyedit-split del, .copyedit-split ins { white-space: pre-wrap; overflow-wrap: anywhere; }
 .copyedit-split-result { color: var(--text-secondary); }
+.copyedit-split-location { display: block; color: var(--text-secondary); margin-block: 8px; }
 .language-warnings { overflow-wrap: anywhere; }
 .copyedit-item small { display: block; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--text-secondary); margin-block: 8px; }
 .copyedit-selected-text { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 32rem; overflow-y: auto; padding: 16px; border: 1px solid var(--border-color); font: inherit; }
