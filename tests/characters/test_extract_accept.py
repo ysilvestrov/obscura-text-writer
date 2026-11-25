@@ -511,3 +511,25 @@ def test_new_cards_version_alone_keeps_memory_valid(tmp_path):
     result = accept(repo, story, run, cards=[{'key': 'new1', 'names': []}])
     assert result['applied'] == [item('card', key='new1')] and result['stale_memory_scenes'] == []
     assert memory_valid(repo, story, s1) and memory_valid(repo, story, s2)
+
+
+@pytest.mark.req('CHARACTER-EXTRACT')
+def test_new_cards_version_keeps_memory_the_stage_wrote(tmp_path):
+    # The same through memory written by the real memory stage (not a hand-made version): its inputs do not include
+    # the cards version, so a card-only accept on a book that already has cards stales nothing.
+    from storygen.generation.context import build_context
+    from tests.generation.test_memory_v4_pipeline import _run, role
+    from tests.memory.wire_helpers import core_unchanged, v4_response
+    repo, story, (s1, s2, s3) = book(tmp_path)
+    story = with_cards(repo, story, 'Марко')
+    apply_cast(repo, story.id, {s1.id: ['c0']}, repo.get_story(story.id).revision)  # a tracked character in the scene
+    s1 = repo.get_scene(s1.id)
+    attempt = _run(repo, s1, build_context(repo, s1.id, 'memory', role()), v4_response(core_unchanged('c0')))
+    assert attempt.state == 'completed', attempt.error
+    assert memory_valid(repo, story, s1)
+    run = finished_run(repo, story, [repo.get_scene(s.id) for s in (s1, s2, s3)],
+                       cards=[new_card('new1', 'Оля', quote(s1, 'Оля пішла додому'))])
+    preview = accept(repo, story, run, dry_run=True, cards=[{'key': 'new1', 'names': []}])
+    assert preview['stale_memory_scenes'] == []
+    result = accept(repo, story, run, cards=[{'key': 'new1', 'names': []}])
+    assert result['stale_memory_scenes'] == [] and memory_valid(repo, story, s1)

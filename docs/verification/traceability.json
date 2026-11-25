@@ -4098,7 +4098,8 @@
         "tests/characters/test_extract_accept.py::test_dry_run_writes_nothing_counts_stale_memory",
         "tests/characters/test_extract_accept.py::test_first_cards_of_the_book_report_all_stale_memory",
         "tests/characters/test_extract_accept.py::test_cast_change_reports_stale_memory_of_later_scenes",
-        "tests/characters/test_extract_accept.py::test_new_cards_version_alone_keeps_memory_valid"
+        "tests/characters/test_extract_accept.py::test_new_cards_version_alone_keeps_memory_valid",
+        "tests/characters/test_extract_accept.py::test_new_cards_version_keeps_memory_the_stage_wrote"
       ]
     },
     {
