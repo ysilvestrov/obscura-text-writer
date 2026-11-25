@@ -51,6 +51,9 @@ def preview(repo, request, view=None):
         return dict(ready=False,reason=IMPACT_REMOVED,roles={},calls=0,evaluator=None)
     if request.mode=='memory_carry':
         return dict(ready=True,reason=None,roles={},calls=0,evaluator=None,warnings=[])
+    if request.mode=='character_extract':  # R-51: a book-wide model reading, no scene
+        from ..characters.extract_plan import readiness
+        return readiness(repo,request,view=view)
     if request.mode=='audit':  # VALID-LINKS: carry-pending links count (no call), never refuse the run
         from .audit_run import readiness
         return readiness(repo,request,view=view)
@@ -222,6 +225,9 @@ def pending_preview(repo,run):
         return dict(ready=False,reason=IMPACT_REMOVED,roles={},calls=0,evaluator=None)
     if run.request.mode=='memory_carry':
         return dict(ready=True,reason=None,roles={},calls=0,evaluator=None)
+    if run.request.mode=='character_extract':
+        from ..characters.extract_plan import readiness
+        return readiness(repo,run.request)
     if run.request.mode=='audit':
         from .audit_run import readiness
         return readiness(repo,run.request,resume=True)

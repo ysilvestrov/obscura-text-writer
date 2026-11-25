@@ -97,6 +97,8 @@ class RunCoordinator:
             tasks=[{'scene_id':request.scene_id,'stage':'classify'}]
         elif request.mode=='audit':
             tasks=[{'scene_id':request.scene_id,'stage':'audit'}]  # audit_run picks the link (and the scene) on every step
+        elif request.mode=='character_extract':
+            tasks=[]  # the run is a loop of its own over groups of scenes (extract_run), not a list of scene stages
         elif request.mode=='memory_carry':
             start=next(s for s in scenes if s.id==request.scene_id)
             tasks=[{'scene_id':s.id,'stage':'memory_carry'} for s in scenes if s.position>=start.position]
@@ -165,6 +167,11 @@ class RunCoordinator:
                 # is awaited or cancelled in the run panel.
                 from .memory_build import MEMORY_BUILD_RUNNING
                 raise RevisionConflict(MEMORY_BUILD_RUNNING)
+            if request.mode == 'character_extract' and any(
+                r.request.mode == 'character_extract' and r.state in MEMORY_BUILD_ACTIVE for r in self.list_runs(request.story_id)
+            ):
+                from ..characters.extract_plan import EXTRACT_RUNNING
+                raise RevisionConflict(EXTRACT_RUNNING)  # a paused run is not active: it does not block a new one
             readiness=None
             if request.mode == 'evaluate':
                 from ..evaluation.story_adapter import get_evaluation_settings
@@ -186,6 +193,9 @@ class RunCoordinator:
                         request.memory_plan_fingerprint!=readiness.get('plan_fingerprint'):
                     from .memory_build import MEMORY_PLAN_CHANGED
                     raise RevisionConflict(MEMORY_PLAN_CHANGED)
+                if request.mode=='character_extract' and request.extract_plan_fingerprint is not None and                         request.extract_plan_fingerprint!=readiness.get('plan_fingerprint'):
+                    from ..characters.extract_plan import EXTRACT_PLAN_CHANGED
+                    raise RevisionConflict(EXTRACT_PLAN_CHANGED)
             telemetry={'roles':readiness.get('roles',{}),'calls':readiness.get('calls')} if readiness is not None else None
             if telemetry is not None and readiness.get('evaluator'):
                 telemetry['evaluator']=readiness['evaluator']

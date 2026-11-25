@@ -1,4 +1,5 @@
 from fastapi import APIRouter,Request
+from pydantic import Field
 from ..domain import DomainModel
 from ..characters.service import read_character_material,save_character_material,preview_character_material
 
@@ -46,3 +47,14 @@ def brief_link_view(scene_id: str,request: Request):
 def brief_link_confirm(scene_id: str,body: BriefLinkBody,request: Request):
     from ..characters.brief_link import confirm_brief_link
     return confirm_brief_link(request.app.state.repo,scene_id,body)
+
+
+class ExtractPreview(DomainModel):
+    group_words: int = Field(default=5000,ge=1000,le=20000,strict=True)
+
+
+@router.post('/api/stories/{story_id}/character-extract/preview')
+def character_extract_preview(story_id: str,body: ExtractPreview,request: Request):
+    # CHARACTER-EXTRACT (R-51): read-only; the plan of the run — groups, calls bound, cost, fingerprint.
+    from ..characters.extract_plan import extract_plan
+    return extract_plan(request.app.state.repo,story_id,body.group_words)
