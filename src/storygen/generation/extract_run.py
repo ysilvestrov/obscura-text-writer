@@ -24,7 +24,10 @@ from ..characters.extract import (
 from .extract_context import build_extract_context
 
 STAGE = 'character_extract'
-CALL_FAILURES = frozenset({'protocol', 'empty_output', 'output_limit'})  # spec 3.4; any other failure stops the run
+CALL_FAILURES = frozenset({'protocol', 'empty_output', 'output_limit'})  # spec 3.4; repeated once, then halved
+# A refusal in the stream is recorded (stages.record_refusal), so check_refusal would block the same group before the
+# call: it is halved at once. Any other failure (a provider or network error) stops the run.
+REFUSALS = frozenset({'refusal_content', 'refusal_unknown'})
 
 
 def proposal_fingerprint(body: dict) -> str:
@@ -144,6 +147,29 @@ def _cost_nanos(attempt, per_call_usd) -> int:
     return money(per_call_usd) if per_call_usd is not None else 0
 
 
+def _unsent(exc) -> bool:
+    """A model policy block or a budget refusal: raised before the request is sent, so it spends no call."""
+    from ..billing.models import BudgetError
+    from ..providers.policy import ModelPolicyBlocked
+    return isinstance(exc, (ModelPolicyBlocked, BudgetError))
+
+
+def _refused_in_run(repo, run_id, context) -> bool:
+    """check_refusal blocked the group only on refusals this run's own calls recorded: like a refusal in the stream, the
+    group is halved or the scene skipped. A refusal recorded elsewhere stops the run as any policy block."""
+    from ..providers.policy import _args, blocking_refusal, context_rating
+    rating = context_rating(repo, context)
+    stored = repo.model_policy('get_refusal', **_args(context.policy_role, context.settings.provider))
+    blocking = [entry for entry in (stored or {}).get('refusals', []) if blocking_refusal([entry], rating)]
+
+    def own(entry):
+        try:
+            return repo.get_attempt(entry.get('attempt_id')).run_id == run_id
+        except (KeyError, TypeError):
+            return False
+    return bool(blocking) and all(own(entry) for entry in blocking)
+
+
 def _save_checkpoint(coordinator, run_id, checkpoint):
     with coordinator.condition:
         current = coordinator.get_run(run_id)
@@ -223,8 +249,20 @@ def execute(coordinator, run_id: str) -> None:
         except ValidationError:
             raise
         except ValueError as exc:  # a budget refusal, a model policy block: shown as is; resuming reads the group again
+            from ..providers.policy import ModelPolicyBlocked
+            if _unsent(exc):  # nothing was sent: the call is given back to the bound
+                state.calls -= 1
+                checkpoint['state'] = state.model_dump(mode='json')
+            if isinstance(exc, ModelPolicyBlocked) and exc.kind == 'refusal' and not coordinator.cancel_event.is_set()                     and _refused_in_run(repo, run_id, built):
+                if len(ids) > 1:
+                    _halve(checkpoint, ids)
+                else:
+                    _skip(checkpoint, state, ids, SKIP_NO_ANSWER)
+                _save_checkpoint(coordinator, run_id, checkpoint)
+                continue
             with coordinator.condition:
                 current = coordinator.get_run(run_id)
+                current.checkpoint = checkpoint
                 if _cancelling(coordinator, current):
                     return _close(coordinator, current, 'cancelled', True)
                 return _finish(coordinator, current, 'failed', str(exc))
@@ -242,8 +280,8 @@ def execute(coordinator, run_id: str) -> None:
                 checkpoint['state'] = state.model_dump(mode='json')
                 checkpoint['pending'].pop(0)
                 checkpoint['retried'] = False
-            elif (attempt.context.get('extract_failure') or {}).get('category') in CALL_FAILURES:
-                if not checkpoint['retried']:
+            elif (attempt.context.get('extract_failure') or {}).get('category') in CALL_FAILURES | REFUSALS:
+                if not checkpoint['retried'] and attempt.context['extract_failure']['category'] in CALL_FAILURES:
                     checkpoint['retried'] = True
                 elif len(ids) > 1:
                     _halve(checkpoint, ids)

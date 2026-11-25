@@ -4,6 +4,7 @@ import json
 
 import pytest
 
+from storygen.billing.models import BudgetError
 from storygen.characters.extract import SKIP_CALLS_EXHAUSTED, SKIP_INPUT_LIMIT, SKIP_NO_ANSWER
 from storygen.characters.extract_plan import EXTRACT_PLAN_CHANGED, EXTRACT_PROSE_CHANGED, EXTRACT_RUNNING, extract_plan
 from storygen.domain import RevisionConflict
@@ -22,6 +23,8 @@ OLYA = json.dumps({'new_cards': [{'key': 'n1', 'name': 'Оля', 'quotes': ['О�
 EMPTY = '{}'
 BAD = 'не JSON'
 PROVIDER_DOWN = ('error', 'Провайдер недоступний')
+FILTERED = ('content_filter',)  # the provider stops the answer for its content
+REFUSED = ('refusal',)  # the model refuses in words: not JSON, flagged as a refusal
 
 
 def prose(words, opening='Оля пішла додому.'):
@@ -49,6 +52,14 @@ class Script:
             raise reply
         if reply == PROVIDER_DOWN:
             yield GenerationEvent(type='error', message=reply[1], failure={'category': 'technical', 'message': reply[1]})
+            return
+        if reply == FILTERED:
+            yield GenerationEvent(type='delta', text='{')
+            yield GenerationEvent(type='terminal', finish_reason='content_filter')
+            return
+        if reply == REFUSED:
+            yield GenerationEvent(type='delta', text='Не можу допомогти з цим.')
+            yield GenerationEvent(type='terminal', finish_reason='stop', refusal=True)
             return
         yield GenerationEvent(type='delta', text=reply)
         yield GenerationEvent(type='terminal', finish_reason='stop')
@@ -258,11 +269,12 @@ def test_resume_after_unread_prose_change_409(tmp_path):
 @pytest.mark.req('CHARACTER-EXTRACT')
 def test_provider_error_fails_resumable(tmp_path):
     repo, story, scenes = book(tmp_path, 600)
-    gateway = Script(ValueError('Ліміт бюджету вичерпано'), PROVIDER_DOWN, OLYA)
+    gateway = Script(BudgetError('Ліміт бюджету вичерпано'), PROVIDER_DOWN, OLYA)
     worker, run = start(repo, story, gateway)
     run = drive(worker, run.id)
     assert (run.state, run.error) == ('failed', 'Ліміт бюджету вичерпано')
     assert run.checkpoint['phase'] == 'reading' and run.checkpoint['state']['skipped'] == []
+    assert run.checkpoint['state']['calls'] == 0  # refused before sending: the call is given back to the bound
     worker.resume(run.id)
     run = drive(worker, run.id)
     assert (run.state, run.error) == ('failed', 'Провайдер недоступний')  # not a retry: the scene is not skipped
@@ -270,7 +282,42 @@ def test_provider_error_fails_resumable(tmp_path):
     worker.resume(run.id)
     run = drive(worker, run.id)
     assert run.state == 'completed'
-    assert proposal(run)['calls'] == 3 and [card['name'] for card in proposal(run)['cards']] == ['Оля']
+    assert proposal(run)['calls'] == 2 and [card['name'] for card in proposal(run)['cards']] == ['Оля']
+    assert len(gateway.contexts) == 3
+
+
+@pytest.mark.req('CHARACTER-EXTRACT')
+@pytest.mark.parametrize('reply', [FILTERED, REFUSED], ids=['content_filter', 'terminal_refusal'])
+def test_stream_refusal_splits_then_skips(tmp_path, reply):
+    repo, story, scenes = book(tmp_path, 300, 300)  # one group [s1, s2]
+    gateway = Script(reply, OLYA)
+    worker, run = start(repo, story, gateway)
+    run = drive(worker, run.id)
+    a, b = (s.id for s in scenes)
+    assert run.state == 'completed', run.error
+    # The refusal is recorded for this rating: the halves are blocked before the call and spend nothing.
+    assert groups(gateway) == [[a, b]]
+    result = proposal(run)
+    assert result['skipped_scenes'] == [{'scene_id': a, 'reason': SKIP_NO_ANSWER}, {'scene_id': b, 'reason': SKIP_NO_ANSWER}]
+    assert result['calls'] == 1
+
+
+@pytest.mark.req('CHARACTER-EXTRACT')
+def test_policy_block_before_the_call_spends_nothing(tmp_path):
+    from storygen.authoring.blueprints import get_role_settings
+    from storygen.providers.policy import record_refusal
+    repo, story, scenes = book(tmp_path, 600)
+    gateway = Script(OLYA)
+    worker, run = start(repo, story, gateway)
+    record_refusal(repo, 'memory', get_role_settings(repo, story.id)['memory'].provider, (0, 0, 0), story_id=story.id,
+                   scene_id=None, attempt_id='elsewhere', category='refusal_content')  # not a refusal of this run
+    for _ in range(5):  # resuming again and again never spends the bound
+        run = drive(worker, run.id)
+        assert run.state == 'failed' and 'уже відмовила' in run.error
+        assert run.checkpoint['phase'] == 'reading' and run.checkpoint['state']['calls'] == 0
+        assert run.checkpoint['state']['skipped'] == [] and run.checkpoint['pending'] == [[scenes[0].id]]
+        worker.resume(run.id)
+    assert gateway.contexts == []
 
 
 @pytest.mark.req('CHARACTER-EXTRACT')
