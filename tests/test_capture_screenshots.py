@@ -81,3 +81,16 @@ def test_editor_import_docx_gives_a_changed_scene_and_a_comment(tmp_path):
         assert (first.status,first.edits)==('changed',1)
         assert second.status=='comments_only' and second.comments==1
         assert not preview.choice_required and not preview.unmatched
+
+
+@pytest.mark.req('MANUSCRIPT-IMPORT')
+def test_manuscript_sample_gives_chapters_a_separator_and_a_proposed_boundary(tmp_path):
+    from scripts.capture_screenshots import manuscript_sample
+    from storygen.application.manuscript_import import preview
+    from storygen.publication.manuscript_structure import ParseSettings
+    for lang,epilogue in (('uk','Епілог'),('en','Epilogue')):
+        name,content=manuscript_sample(lang)
+        result=preview(Repository(tmp_path/lang),content,name,ParseSettings())
+        titles=[scene.title for scene in result.scenes]
+        assert result.chapter_source=='markers' and len(titles)==5 and titles[-1]==epilogue
+        assert [scene.proposed for scene in result.scenes]==[False,False,False,True,False] and not result.warnings

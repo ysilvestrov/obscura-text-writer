@@ -88,6 +88,20 @@ The scenes after the one where the carry failed wait too: their memory still rel
 
 If you changed the prose but the facts stayed the same, press **Keep the earlier memory** in the panel below the text ([scene status](workspace.md#scene-status-valid-or-unchecked)). The next scene then does not ask for confirmation because of this prose change.
 
+## Building the book memory
+
+When a book already has prose but no memory yet (for example after a [manuscript import](manuscript-import.md)), the memory of all scenes is built with one run. The **Build memory (scenes: N)** item in the **☰ Story actions** menu is visible while the book has scenes without valid memory; N is the number of scenes from the first such scene to the end of the book. Memory is not valid when there is none, when it is stale, or when the scene's participants changed after it.
+
+The item opens a preview, and nothing starts until you press **Build**. The preview shows:
+
+- how many scenes and memory model calls there will be, from which scene, and which model;
+- **Cost: up to $X (upper bound)** for a cloud model with a known price. Without a price (a local model, a provider without prices) it says "Cost unknown" with the reason; this does not block the run. The real amount is usually lower: the estimate does not know what the memory of the next scenes will be;
+- the scenes that do not fit the memory role limits, with links: the run will stop on them, because the text is not truncated. Split such a scene or raise the role limit;
+- how many character cards there are, who the protagonist is and how many scenes get participants from the names in the prose (see [Importing a manuscript](manuscript-import.md#characters-before-memory)). Without cards the preview warns "No character cards: the memory will have no hero state" with links to **Characters** and **Import characters from Markdown**; the run is still possible;
+- in a series book that has not taken its start snapshot from the previous book although that book already has memory, an offer to press **Update from the previous book** first. Without it the memory will not take the previous book into account.
+
+**Build** writes the scene participants and starts an ordinary memory run: pause, resume and cancel are in the run row. The story budget and the run limit apply as for other runs. If the book, the cards or the memory model changed between the preview and the press, Obscura starts nothing and shows a new preview: "The build plan has changed. Check the preview again." While another run is active, **Build** is unavailable. Closing the dialog before the run request is sent cancels the build; scene participants already written stay.
+
 ## Advanced editing
 
 **JSON for advanced editing** opens the memory journal as JSON with all quotation checks. Use it only when the table is not enough.

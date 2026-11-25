@@ -8830,6 +8830,140 @@
       "tests": [
         "tests/application/test_manuscript_import_apply.py::test_plan_written_later_does_not_stale_prose_or_memory"
       ]
+    },
+    {
+      "id": "MANUSCRIPT-IMPORT-S11",
+      "requirement": "MANUSCRIPT-IMPORT",
+      "scope": "Діалог імпорту в бібліотеці: розмітка й поля, серія лише з довгою прозою, ліміти й рядки uk/en, логіка меж і назв нових сцен (JS), готовність серії без пам'яті попередньої книги, нейтральний рукопис знімка сайту. Діалог у браузері — ручна процедура (Playwright). Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/web/test_manuscript_import_ui.py::test_library_has_the_import_entry_and_dialog",
+        "tests/web/test_manuscript_import_ui.py::test_series_fields_only_with_long_prose",
+        "tests/web/test_manuscript_import_ui.py::test_template_wraps_the_series_row_in_long_prose",
+        "tests/web/test_manuscript_import_ui.py::test_strings_and_limits",
+        "tests/web/test_manuscript_import_ui.py::test_js_boundary_logic",
+        "tests/series/test_series_start_readiness.py::test_readiness_names_the_previous_book_without_memory",
+        "tests/series/test_series_start_readiness.py::test_readiness_with_a_finished_previous_book",
+        "tests/series/test_series_start_readiness.py::test_readiness_of_an_unknown_series_or_bad_number",
+        "tests/test_capture_screenshots.py::test_manuscript_sample_gives_chapters_a_separator_and_a_proposed_boundary"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#manuscript-import-browser",
+        "reason": "Playwright запускається окремим runner; check_docs.py індексує лише pytest IDs."
+      }
+    },
+    {
+      "id": "MANUSCRIPT-IMPORT-S12",
+      "requirement": "MANUSCRIPT-IMPORT",
+      "scope": "prose_origin у перегляді твору, зокрема для голови на відсутній версії; мітка «Імпортовано з рукопису» з необов'язковим планом у рядку стану. Рядок у браузері — ручна процедура (Playwright). Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/web/test_memory_build_ui.py::test_story_view_names_the_manuscript_of_the_prose_head",
+        "tests/web/test_memory_build_ui.py::test_prose_origin_tolerates_a_head_on_a_missing_version",
+        "tests/web/test_memory_build_ui.py::test_origin_label_names_the_manuscript"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#memory-build-browser",
+        "reason": "Playwright запускається окремим runner; check_docs.py індексує лише pytest IDs."
+      }
+    },
+    {
+      "id": "MANUSCRIPT-IMPORT-S13",
+      "requirement": "MANUSCRIPT-IMPORT",
+      "scope": "Ціль побудови (перша сцена без чинної пам'яті, застаріла пам'ять, знімок над іншим складом), оцінка вартості (тариф, невідома ціна, локальна модель, відмова бюджету), справжній запит пам'яті в memory_fits, непридатні сцени й кеш, відбиток плану й звірка в enqueue, пропозиція оновити серію, маршрут memory-build, розмітка й правила діалогу. Діалог у браузері — ручна процедура (Playwright). Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/generation/test_memory_build.py::test_target_is_first_scene_without_memory",
+        "tests/generation/test_memory_build.py::test_target_is_first_scene_without_memory_even_without_prose",
+        "tests/generation/test_memory_build.py::test_target_none_when_all_scenes_have_memory",
+        "tests/generation/test_memory_build.py::test_cost_upper_bound_with_tariff",
+        "tests/generation/test_memory_build.py::test_cost_unknown_without_tariff_does_not_block",
+        "tests/generation/test_memory_build.py::test_cost_shown_even_when_the_budget_refuses",
+        "tests/generation/test_memory_build.py::test_cost_local_provider_is_unknown",
+        "tests/generation/test_memory_build.py::test_prose_memory_request_is_the_stage_request",
+        "tests/generation/test_memory_build.py::test_memory_fits_matches_the_stage_check_on_both_sides_of_the_boundary",
+        "tests/generation/test_memory_build.py::test_unfit_scenes_listed_for_small_role",
+        "tests/generation/test_memory_build.py::test_chapter_sized_scene_fits_the_wide_role",
+        "tests/generation/test_memory_build.py::test_series_refresh_suggested_when_previous_book_has_memory",
+        "tests/generation/test_memory_build.py::test_plan_fingerprint_changes_with_prose_and_role",
+        "tests/generation/test_memory_build.py::test_role_limits_change_the_fingerprint_and_the_worker_rejects_the_old_one",
+        "tests/generation/test_memory_build.py::test_stale_memory_fingerprint_rejected_by_worker",
+        "tests/generation/test_memory_build.py::test_memory_fingerprint_only_for_rebuild_memory",
+        "tests/generation/test_memory_build.py::test_unfit_scenes_measure_each_prose_once_across_requests",
+        "tests/generation/test_memory_build.py::test_stale_memory_head_is_the_target",
+        "tests/generation/test_memory_build.py::test_snapshot_memory_of_a_newly_cast_scene_stays_the_target",
+        "tests/web/test_memory_build_route.py::test_memory_build_route_returns_target_and_count",
+        "tests/web/test_memory_build_route.py::test_memory_build_route_survives_unreadable_cards",
+        "tests/web/test_memory_build_ui.py::test_menu_item_and_dialog_markup",
+        "tests/web/test_memory_build_ui.py::test_ui_keys_exist_in_both_languages",
+        "tests/web/test_memory_build_ui.py::test_script_follows_the_cost_and_budget_rules",
+        "tests/application/test_manuscript_import_preview.py::test_memory_fits_uses_tokens_and_chars"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#memory-build-browser",
+        "reason": "Playwright запускається окремим runner; check_docs.py індексує лише pytest IDs."
+      }
+    },
+    {
+      "id": "MANUSCRIPT-IMPORT-S14",
+      "requirement": "MANUSCRIPT-IMPORT",
+      "scope": "MCP import_manuscript: перегляд зі шляху й base64, підтвердження з запропонованими й власними межами, мова перегляду, перевірки файла (посилання й точка монтування, заглушка OneDrive, короткі й довгі шляхи, мережеві шляхи, підміна файла, розмір), давній перегляд; start_run(rebuild_memory): перегляд з вартістю й відбитком, обов'язковий і свіжий відбиток, режим «пише чат», нема що будувати, явна сцена, 409 від enqueue; серверна вимога відбитка від моста. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/mcp/test_bridge_manuscript.py::test_tools_list_includes_import_manuscript",
+        "tests/mcp/test_bridge_manuscript.py::test_import_manuscript_preview_from_path",
+        "tests/mcp/test_bridge_manuscript.py::test_import_manuscript_preview_from_base64",
+        "tests/mcp/test_bridge_manuscript.py::test_import_manuscript_confirm_creates_book_with_proposed_scenes",
+        "tests/mcp/test_bridge_manuscript.py::test_import_manuscript_confirm_needs_the_previewed_values",
+        "tests/mcp/test_bridge_manuscript.py::test_import_manuscript_custom_boundaries",
+        "tests/mcp/test_bridge_manuscript.py::test_import_manuscript_rejects_base64_over_2_mib",
+        "tests/mcp/test_bridge_manuscript.py::test_import_manuscript_rejects_directory_symlink_extension_and_size",
+        "tests/mcp/test_bridge_manuscript.py::test_symlink_and_mount_point_are_refused_without_privileges",
+        "tests/mcp/test_bridge_manuscript.py::test_cloud_placeholder_reparse_tag_is_accepted",
+        "tests/mcp/test_bridge_manuscript.py::test_short_and_long_paths_are_both_accepted",
+        "tests/mcp/test_bridge_manuscript.py::test_network_paths_are_refused",
+        "tests/mcp/test_bridge_manuscript.py::test_file_swapped_between_check_and_read_is_refused",
+        "tests/mcp/test_bridge_manuscript.py::test_confirm_uses_the_language_of_the_preview",
+        "tests/mcp/test_bridge_manuscript.py::test_confirm_refuses_another_language_than_the_preview",
+        "tests/mcp/test_bridge_manuscript.py::test_confirm_without_scenes_after_a_re_preview_refuses_the_old_fingerprint",
+        "tests/mcp/test_bridge_manuscript.py::test_confirm_without_scenes_after_a_bridge_restart_is_refused",
+        "tests/mcp/test_bridge_manuscript.py::test_rebuild_memory_preview_has_cost_and_fingerprint",
+        "tests/mcp/test_bridge_manuscript.py::test_rebuild_memory_confirm_requires_fingerprint",
+        "tests/mcp/test_bridge_manuscript.py::test_rebuild_memory_confirm_starts_run",
+        "tests/mcp/test_bridge_manuscript.py::test_rebuild_memory_stale_fingerprint_changes_nothing",
+        "tests/mcp/test_bridge_manuscript.py::test_rebuild_memory_in_a_chat_story_names_the_chat_path",
+        "tests/mcp/test_bridge_manuscript.py::test_rebuild_memory_with_nothing_to_build",
+        "tests/mcp/test_bridge_manuscript.py::test_rebuild_memory_with_an_explicit_scene_id",
+        "tests/mcp/test_bridge_manuscript.py::test_enqueue_conflict_asks_for_a_new_preview",
+        "tests/web/test_bridge_run_routes.py::test_bridge_rebuild_memory_follows_the_stage_rule"
+      ]
+    },
+    {
+      "id": "MANUSCRIPT-IMPORT-S15",
+      "requirement": "MANUSCRIPT-IMPORT",
+      "scope": "Склад за згадками імен: порядок першої згадки, інше доступне ім'я, рядок учасників і склад автора не змінюються, без карток — попередження, герой за позначкою чи першим учасником, запис під CAS, застарювання пам'яті, без змін — без запису, маршрут infer, кеш; MentionIndex ≡ mentions; склад у readiness і відбитку, ціль, що повертається до сцени зі зміненим складом. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/storage/test_scene_cast.py::test_cast_from_name_mentions_in_order",
+        "tests/storage/test_scene_cast.py::test_other_name_available_in_scene_counts",
+        "tests/storage/test_scene_cast.py::test_scene_with_plan_participants_untouched",
+        "tests/storage/test_scene_cast.py::test_no_cards_gives_warning_and_empty_cast",
+        "tests/storage/test_scene_cast.py::test_no_cards_warning_is_translated",
+        "tests/storage/test_scene_cast.py::test_protagonist_marked_card_reported",
+        "tests/storage/test_scene_cast.py::test_protagonist_defaults_to_first_of_proposed_cast",
+        "tests/storage/test_scene_cast.py::test_apply_cast_stales_existing_memory",
+        "tests/storage/test_scene_cast.py::test_apply_cast_noop_when_unchanged",
+        "tests/storage/test_scene_cast.py::test_apply_cast_rejects_stale_revision",
+        "tests/storage/test_scene_cast.py::test_apply_cast_keeps_a_cast_set_on_the_scene_card",
+        "tests/storage/test_scene_cast.py::test_infer_route_applies_and_returns_changed",
+        "tests/storage/test_scene_cast.py::test_proposal_searches_each_prose_once_across_requests",
+        "tests/memory/test_mention_index.py::test_mention_index_agrees_with_mentions",
+        "tests/memory/test_mention_index.py::test_first_is_the_earliest_word",
+        "tests/generation/test_memory_build.py::test_readiness_reports_the_proposed_cast",
+        "tests/generation/test_memory_build.py::test_no_cards_warning_does_not_block_the_run",
+        "tests/generation/test_memory_build.py::test_memory_fingerprint_changes_with_cards",
+        "tests/generation/test_memory_build.py::test_fingerprint_survives_applying_the_cast",
+        "tests/generation/test_memory_build.py::test_target_moves_back_to_an_earlier_scene_whose_cast_changes"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#memory-build-browser",
+        "reason": "Playwright запускається окремим runner; check_docs.py індексує лише pytest IDs."
+      }
     }
   ]
 }

@@ -12,6 +12,7 @@
     {"slug": "workspace", "title": {"uk": "Робочий простір", "en": "Workspace"}},
     {"slug": "characters", "title": {"uk": "Персонажі", "en": "Characters"}},
     {"slug": "imports", "title": {"uk": "Імпорт матеріалів", "en": "Importing materials"}},
+    {"slug": "manuscript-import", "title": {"uk": "Імпорт рукопису", "en": "Importing a manuscript"}},
     {"slug": "book-structure", "title": {"uk": "Частини й арки", "en": "Parts and arcs"}},
     {"slug": "series", "title": {"uk": "Серії книг", "en": "Book series"}},
     {"slug": "ghost-mode", "title": {"uk": "Переписування по пам’яті", "en": "Rewriting from memory"}},

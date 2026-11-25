@@ -164,6 +164,35 @@ def editor_import_docx(repo,story_id,lang):
     return edit(content,lambda xml:split(split(xml,old,tracked(old,new)),phrase,ranged(7,run(phrase))),[(7,author,note)])
 
 
+# MANUSCRIPT-IMPORT-S11: a neutral manuscript in the same lighthouse world; the long second chapter (over 2 500 words)
+# gets a proposed boundary, a separator splits the first one and the epilogue is a chapter without a number.
+MANUSCRIPTS={
+    'uk':{'name':'lysty-z-maiaka.md','title':'Листи з маяка','chapter':'Глава','chapters':['Ранок на пристані','Шторм'],'epilogue':'Епілог',
+          'paragraphs':['Анна піднялася гвинтовими сходами до ліхтарної й протерла скло. Над морем ще висів туман, а внизу на пристані Петро перевіряв сіті.',
+                        'Вітер змінився ближче до полудня. Хвилі почали бити в каміння біля маяка, і чайки сховалися за дахом старого складу.',
+                        'Петро прив’язав човен подвійним вузлом і гукнув, що ввечері прийде допомогти з ліхтарем. Анна махнула йому рукою з галереї.',
+                        'У скриньці на пристані лежав конверт без підпису. Анна поклала його в кишеню й вирішила прочитати пізніше, коли стихне вітер.',
+                        'До вечора небо потемніло. Анна запалила ліхтар, записала в журнал час і силу вітру й довго дивилася на темну воду.'],
+          'epilogue_text':'Уранці море стихло. Анна відчинила вікно ліхтарної й нарешті розгорнула лист.'},
+    'en':{'name':'lighthouse-letters.md','title':'Letters from the lighthouse','chapter':'Chapter','chapters':['Morning on the pier','The storm'],'epilogue':'Epilogue',
+          'paragraphs':['Anna climbed the spiral stair to the lamp room and wiped the glass. Fog still hung over the sea, and down on the pier Peter was checking his nets.',
+                        'The wind changed closer to noon. Waves began to beat against the rocks by the lighthouse, and the gulls hid behind the roof of the old shed.',
+                        'Peter tied the boat with a double knot and called up that he would come in the evening to help with the lamp. Anna waved to him from the gallery.',
+                        'In the box on the pier lay an envelope with no signature. Anna put it in her pocket and decided to read it later, when the wind dropped.',
+                        'By evening the sky had darkened. Anna lit the lamp, wrote the time and the strength of the wind in the log and watched the dark water for a long time.'],
+          'epilogue_text':'In the morning the sea was calm. Anna opened the window of the lamp room and at last unfolded the letter.'},
+}
+
+
+def manuscript_sample(lang):
+    """(file name, Markdown bytes) of the neutral manuscript for the import dialog shot; no author material."""
+    spec=MANUSCRIPTS[lang];text=spec['paragraphs']
+    first,second=spec['chapters']
+    lines=[f'# {spec["title"]}',f'## {spec["chapter"]} 1. {first}',text[0],text[1],'***',text[2],text[3],
+           f'## {spec["chapter"]} 2. {second}',*[text[i%len(text)] for i in range(140)],f'## {spec["epilogue"]}',spec['epilogue_text']]
+    return spec['name'],'\n\n'.join(lines).encode('utf-8')
+
+
 def free_port():
     with socket.socket() as sock:sock.bind(('127.0.0.1',0));return sock.getsockname()[1]
 
@@ -294,6 +323,27 @@ def capture_editor_import(base,ids,lang,docx):
     return [path]
 
 
+def capture_manuscript_import(base,lang,sample):
+    """MANUSCRIPT-IMPORT-S11: the library dialog on its preview step with the neutral manuscript; nothing is imported."""
+    from playwright.sync_api import sync_playwright
+    folder=OUT/lang;folder.mkdir(parents=True,exist_ok=True);name,content=sample
+    with sync_playwright() as p:
+        browser=p.chromium.launch()
+        try:
+            page=browser.new_page(viewport={'width':1280,'height':900},locale='uk-UA' if lang=='uk' else 'en-US')
+            page.goto(base+'/');page.locator(f'[data-ui-locale={lang}]').click();page.wait_for_load_state('networkidle')
+            page.locator('#manuscript-import-open').click()
+            dialog=page.locator('#manuscript-import-dialog');dialog.wait_for(state='visible')
+            dialog.locator('#manuscript-import-file').set_input_files({'name':name,'buffer':content,'mimeType':'text/markdown'})
+            dialog.locator('#manuscript-import-preview').wait_for(state='visible')
+            # The scenes from the first chapter on: the separator split, the proposed boundary and the epilogue in view.
+            dialog.locator('.manuscript-import-scene').nth(1).evaluate('node=>node.scrollIntoView({block:"start"})')
+            page.mouse.move(0,0);path=folder/'manuscript-import-desktop.png';shot(page,path,[])
+            page.close()
+        finally:browser.close()
+    return [path]
+
+
 def shot(page,path,shots):
     page.wait_for_timeout(300);page.screenshot(path=str(path));shots.append(path)
 
@@ -320,6 +370,7 @@ def main(argv=None):
             shots+=capture_validation(base,ids[lang],lang)
             from storygen.storage.repository import Repository
             shots+=capture_editor_import(base,ids[lang],lang,editor_import_docx(Repository(data),ids[lang]['story_id'],lang))
+            shots+=capture_manuscript_import(base,lang,manuscript_sample(lang))
         finally:
             server.terminate()
             try:server.wait(timeout=10)
