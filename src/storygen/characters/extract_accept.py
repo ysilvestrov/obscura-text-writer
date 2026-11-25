@@ -26,6 +26,7 @@ SKIP_NO_NEW_NAMES = 'картка вже має ці імена'
 SKIP_PROTAGONIST_MARKED = 'позначку героя вже має картка'
 SKIP_PROTAGONIST_NOT_ACCEPTED = 'картку героя не прийнято'
 SKIP_SCENE_TRASHED = 'сцену вилучено'
+SKIP_NO_QUOTES = 'усі цитати картки — з вилучених сцен'
 SKIP_PROSE_CHANGED = 'проза сцени змінилася'
 SKIP_PLANNED = 'план сцени називає учасників'
 SKIP_NOT_AUTHOR_PROSE = 'проза сцени не авторська'
@@ -171,8 +172,6 @@ def _card_payload(view, proposal, chosen_cards, chosen_updates, protagonist, mar
         if name_key(card['name']) in owners:
             outcome.skip(_item('card', key=key), SKIP_NAME_TAKEN)
             continue
-        owners[name_key(card['name'])] = {key}
-        chosen, _ = kept_names(key, chosen_cards[key], lambda name, key=key: _item('name', key=key, name=name))
         entries = []
         for quote in card['quotes']:  # spec 4.3: one entry per quote, available from the scene of that quote
             scene = view.scenes.get(quote['scene_id'])
@@ -181,6 +180,11 @@ def _card_payload(view, proposal, chosen_cards, chosen_updates, protagonist, mar
                 continue
             entries.append(_entry(markers['quote'].format(quote['quote']), scene.id,
                                   [{'version_id': quote['version_id'], 'quote': quote['quote']}]))
+        if not entries:  # a model card always carries a verbatim quote: with none left it is not created
+            outcome.skip(_item('card', key=key), SKIP_NO_QUOTES)
+            continue
+        owners[name_key(card['name'])] = {key}
+        chosen, _ = kept_names(key, chosen_cards[key], lambda name, key=key: _item('name', key=key, name=name))
         if chosen:
             entries.append(_entry(markers['other_names'].format(', '.join(chosen))))
         new[key] = {'name': card['name'], 'entries': entries}

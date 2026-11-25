@@ -244,3 +244,15 @@ def test_resume_preview_without_a_start_price_keeps_the_reason(tmp_path):
     repo, story, _ = written_book(tmp_path / 'local', [WORDS], memory_role=local_role())
     local = pending_preview(repo, reading_run(repo, story, calls=1, bound=4, per_call_usd=None))
     assert local['calls'] == 3 and local['cost'] == {'per_call_usd': None, 'total_usd': None, 'reason': None}
+
+
+@pytest.mark.req('CHARACTER-EXTRACT')
+def test_preview_refuses_a_memory_model_the_policy_blocks(tmp_path):
+    from storygen.providers.policy import record_refusal
+    repo, story, _ = written_book(tmp_path, [WORDS], memory_role=local_role())
+    assert extract_plan(repo, story.id)['ready'] is True
+    record_refusal(repo, 'memory', get_role_settings(repo, story.id)['memory'].provider, (0, 0, 0), story_id=story.id,
+                   scene_id=None, attempt_id='elsewhere', category='refusal_content')
+    plan = extract_plan(repo, story.id)  # the run would stop before its first call (MODEL-003): not ready
+    assert plan['ready'] is False and 'уже відмовила' in plan['reason']
+    assert preview(repo, request(story))['ready'] is False

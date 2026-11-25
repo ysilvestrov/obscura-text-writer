@@ -102,6 +102,14 @@ def extract_plan(repo, story_id: str, group_words: int = DEFAULT_GROUP_WORDS, vi
         result['reason'] = unfit[0][1] if unfit else NO_PROSE
     elif extractor.provider.provider in CLOUD and limit is None:
         result['reason'] = NO_BUDGET_LIMIT
+    else:  # MODEL-003/004: the refusal and consent check every call makes, over the rating of all scenes read
+        from ..generation.readiness import _check_model_policy
+        from ..providers.policy import ModelPolicyBlocked, request_rating
+        try:
+            _check_model_policy(repo, 'memory', extractor.provider,
+                                request_rating(view, story, [scene_id for group in groups for scene_id in group]))
+        except ModelPolicyBlocked as blocked:
+            result['reason'] = str(blocked)
     result['ready'] = result['reason'] is None
     payload = {'group_words': group_words, 'groups': groups, 'skipped': result['skipped'],
                'prose': {item.scene_id: view.peek_version(item.version_id).sha256 for item in prose},

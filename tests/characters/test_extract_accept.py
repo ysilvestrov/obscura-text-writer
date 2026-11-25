@@ -533,3 +533,23 @@ def test_new_cards_version_keeps_memory_the_stage_wrote(tmp_path):
     assert preview['stale_memory_scenes'] == []
     result = accept(repo, story, run, cards=[{'key': 'new1', 'names': []}])
     assert result['stale_memory_scenes'] == [] and memory_valid(repo, story, s1)
+
+
+@pytest.mark.req('CHARACTER-EXTRACT')
+def test_card_whose_every_quote_scene_is_trashed_is_not_created(tmp_path):
+    from storygen.characters.extract_accept import SKIP_NO_QUOTES
+    repo, story, (s1, s2, s3) = book(tmp_path)
+    run = finished_run(repo, story, [s1, s2, s3], cards=[
+        new_card('new1', 'Оля', quote(s1, 'Оля пішла додому')),
+        new_card('new2', 'Петро', quote(s3, 'Петро прокинувся'), other_names=[('Петрик', True)])],
+        casts=[cast(s2, 'new1', 'new2')])
+    repo.set_scene_trashed(story.id, s3.id, repo.get_scene(s3.id).revision, False)
+    result = accept(repo, story, run, cards=[{'key': 'new1', 'names': []}, {'key': 'new2', 'names': ['Петрик']}],
+                    casts=[s2.id])
+    # A model card always carries a verbatim quote: with none left the card and its names are not written.
+    assert set(by_name(repo, story)) == {'Оля'}
+    assert {'item': item('quote', key='new2', scene_id=s3.id), 'reason': SKIP_SCENE_TRASHED} in result['skipped']
+    assert {'item': item('card', key='new2'), 'reason': SKIP_NO_QUOTES} in result['skipped']
+    assert item('card', key='new2') not in result['applied']
+    olya = by_name(repo, story)['Оля']['id']
+    assert repo.get_scene(s2.id).character_ids == [olya]  # the card that was not created is not in the cast

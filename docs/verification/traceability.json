@@ -3953,7 +3953,8 @@
         "tests/generation/test_extract_context.py::test_extractor_borrows_memory_role",
         "tests/generation/test_extract_context.py::test_no_memory_role_is_none",
         "tests/characters/test_extract_plan.py::test_resume_preview_prices_what_is_left_of_the_bound",
-        "tests/characters/test_extract_plan.py::test_resume_preview_without_a_start_price_keeps_the_reason"
+        "tests/characters/test_extract_plan.py::test_resume_preview_without_a_start_price_keeps_the_reason",
+        "tests/characters/test_extract_plan.py::test_preview_refuses_a_memory_model_the_policy_blocks"
       ]
     },
     {
@@ -4081,7 +4082,8 @@
         "tests/web/test_character_extract_routes.py::test_proposal_routes_preview_accept_and_conflicts",
         "tests/authoring/test_blueprints.py::test_blueprint_prose_source_is_not_a_dependency",
         "tests/characters/test_extract_accept.py::test_name_of_another_card_is_skipped",
-        "tests/characters/test_model_origin.py::test_card_editor_shows_the_model_origin"
+        "tests/characters/test_model_origin.py::test_card_editor_shows_the_model_origin",
+        "tests/characters/test_extract_accept.py::test_card_whose_every_quote_scene_is_trashed_is_not_created"
       ]
     },
     {

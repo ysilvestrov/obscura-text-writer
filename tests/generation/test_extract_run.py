@@ -297,29 +297,35 @@ def test_stream_refusal_fails_resumable(tmp_path, reply):
     assert run.checkpoint['phase'] == 'reading' and run.checkpoint['state']['calls'] == 1  # it reached the model
     assert run.checkpoint['pending'] == [[s.id for s in scenes]] and run.checkpoint['state']['skipped'] == []
     started = [e for e in worker.list_events(run.id) if e.type == 'stage_started']
-    worker.resume(run.id)
-    run = drive(worker, run.id)  # the refusal is recorded: the same model is blocked before the call
-    assert run.state == 'failed' and 'уже відмовила' in run.error
-    assert run.checkpoint['state']['calls'] == 1 and len(gateway.contexts) == 1
+    with pytest.raises(ValueError, match='уже відмовила'):  # the refusal is recorded: resuming the same model is refused
+        worker.resume(run.id)
+    run = repo.get_run(run.id)
+    assert run.state == 'failed' and run.checkpoint['state']['calls'] == 1 and len(gateway.contexts) == 1
     assert [e for e in worker.list_events(run.id) if e.type == 'stage_started'] == started  # not shown as started
     assert proposal(worker.cancel(run.id))['partial'] is True  # cancel still publishes what was read
 
 
 @pytest.mark.req('CHARACTER-EXTRACT')
-def test_policy_block_before_the_call_spends_nothing(tmp_path):
+def test_policy_block_before_the_call_spends_nothing(tmp_path, monkeypatch):
     from storygen.authoring.blueprints import get_role_settings
+    from storygen.generation import readiness
     from storygen.providers.policy import record_refusal
     repo, story, scenes = book(tmp_path, 600)
     gateway = Script(OLYA)
     worker, run = start(repo, story, gateway)
     record_refusal(repo, 'memory', get_role_settings(repo, story.id)['memory'].provider, (0, 0, 0), story_id=story.id,
                    scene_id=None, attempt_id='elsewhere', category='refusal_content')  # not a refusal of this run
-    for _ in range(5):  # resuming again and again never spends the bound
-        run = drive(worker, run.id)
-        assert run.state == 'failed' and 'уже відмовила' in run.error
-        assert run.checkpoint['phase'] == 'reading' and run.checkpoint['state']['calls'] == 0
-        assert run.checkpoint['state']['skipped'] == [] and run.checkpoint['pending'] == [[scenes[0].id]]
-        worker.resume(run.id)
+    real_check = readiness._check_model_policy
+    monkeypatch.setattr(readiness, '_check_model_policy', lambda *args: None)  # past the preview, as a race would be
+    run = drive(worker, run.id)  # blocked before the call inside the run: the reserved call is given back
+    assert run.state == 'failed' and 'уже відмовила' in run.error
+    assert run.checkpoint['phase'] == 'reading' and run.checkpoint['state']['calls'] == 0
+    assert run.checkpoint['state']['skipped'] == [] and run.checkpoint['pending'] == [[scenes[0].id]]
+    monkeypatch.setattr(readiness, '_check_model_policy', real_check)
+    for _ in range(3):  # resuming the same model is refused by the preflight and never spends the bound
+        with pytest.raises(ValueError, match='уже відмовила'):
+            worker.resume(run.id)
+        assert repo.get_run(run.id).checkpoint['state']['calls'] == 0
     assert gateway.contexts == []
 
 
