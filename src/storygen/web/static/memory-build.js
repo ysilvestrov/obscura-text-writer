@@ -7,13 +7,16 @@ import {refresh,displaySceneTitle} from './editor.js';
 // bound on cost, the scenes that will not fit, the cast the build fills — and nothing runs without «Побудувати». The press
 // writes the cast (scene-cast/infer, under the story revision read before the preview), then starts the run with the
 // preview's plan fingerprint and hands it to the run panel (pause, cancel and resume live there). A 409 from either call is
-// a stale preview: the dialog reads it again and asks the author to check it; nothing starts on its own.
+// a stale preview: the dialog reads it again and asks the author to check it; nothing starts on its own. While a run is
+// active in the workspace the build waits (a second build would be queued and paid twice).
 
 // The server's rounded-up total is shown as is; a per-call price is never multiplied out. Unknown → the reason, if any.
 export function costText(cost){
   if(cost?.total_usd!=null)return t('memory_build.ui.cost_total',{p0:cost.total_usd});
   return cost?.reason?t('memory_build.ui.cost_unknown_reason',{p0:diagnostic(cost.reason)}):t('memory_build.ui.cost_unknown');
 }
+
+const ACTIVE_RUN=new Set(['queued','running','pause_requested','cancellation_requested']);
 
 export function installMemoryBuild({api,json,notice,document,state}){
   const item=document.querySelector('#story-menu-build-memory'),dialog=document.querySelector('#memory-build-dialog');
@@ -22,7 +25,9 @@ export function installMemoryBuild({api,json,notice,document,state}){
   const summary=part('summary'),cost=part('cost'),unfit=part('unfit'),cast=part('cast'),series=part('series'),seriesButton=part('refresh'),
     reasonNode=part('reason'),status=part('status'),submit=part('submit'),cancel=part('cancel');
   const storyPath=()=>`/api/stories/${encodeURIComponent(state.storyId)}`;
-  let target={scene_id:null,count:0},plan=null,reason='',loading=false,busy=false,epoch=0;
+  let target={scene_id:null,count:0},plan=null,failure='',loading=false,busy=false,epoch=0,keepFocus=false;
+  // Why «Побудувати» is unavailable: a failed preview, an active run, then the preview's own readiness (dirty buffer included).
+  const blocked=()=>(failure==='memory_build.ui.nothing'?t(failure):failure)||(!plan?'':ACTIVE_RUN.has(state.workspaceRun?.state)?t('memory_build.ui.run_active'):operationReason(state,plan.preview));
 
   function renderMenu(){
     item.hidden=!target.count;
@@ -45,11 +50,12 @@ export function installMemoryBuild({api,json,notice,document,state}){
   const sceneOf=id=>state.view?.scenes?.find(scene=>scene.id===id);
   function setStatus(render){if(render)uiText(status,'textContent',render);else status.textContent=''}
   function sync(){
+    const reason=blocked();
     submit.disabled=busy||loading||!plan||!!reason;
     seriesButton.disabled=busy||loading;
     dialog.setAttribute('aria-busy',String(busy||loading));
     reasonNode.hidden=!reason;
-    if(reason)uiText(reasonNode,'textContent',()=>diagnostic(reason));else reasonNode.textContent='';
+    if(reason)uiText(reasonNode,'textContent',()=>diagnostic(blocked()));else reasonNode.textContent='';
   }
   function clear(){
     summary.textContent='';cost.textContent='';cost.hidden=true;cast.replaceChildren();
@@ -68,11 +74,11 @@ export function installMemoryBuild({api,json,notice,document,state}){
     const warning=element('p','warning'),text=element('span'),characters=element('a'),importer=element('button','link-button');
     uiText(text,'textContent',()=>diagnostic(entry.warning)+' ');
     characters.href=`/stories/${encodeURIComponent(state.storyId)}/characters`;
-    uiText(characters,'textContent',()=>t('memory_build.ui.characters'));
+    uiText(characters,'textContent',()=>t('characters.nav'));
     importer.type='button';
     uiText(importer,'textContent',()=>t('memory_build.ui.import_characters'));
     importer.onclick=()=>{
-      dialog.close();
+      keepFocus=true;dialog.close();
       const details=document.querySelector('.importer');if(details){details.dataset.userOpened='true';details.open=true}
       document.querySelector('#import-sources input[name="characters"]')?.focus();
     };
@@ -104,19 +110,18 @@ export function installMemoryBuild({api,json,notice,document,state}){
   // The revision is read before the preview, so a change in between is refused by the cast write (409), never applied.
   async function load(message=null){
     const ask=++epoch;
-    plan=null;reason='';loading=true;clear();
+    plan=null;failure='';loading=true;clear();
     setStatus(message||(()=>t('memory_build.ui.loading')));sync();
     try{
       target=await api(`${storyPath()}/memory-build`);renderMenu();
       if(ask!==epoch)return;
-      if(!target.scene_id){reason=t('memory_build.ui.nothing');return}
+      if(!target.scene_id){failure='memory_build.ui.nothing';return}
       const revision=(await api(storyPath())).story.revision;
       const preview=(await api(`${storyPath()}/readiness?scene_id=${encodeURIComponent(target.scene_id)}&operation=rebuild_memory`)).operations.rebuild_memory;
       if(ask!==epoch)return;
       plan={scene_id:target.scene_id,count:target.count,revision,preview};
-      reason=operationReason(state,preview);
       render();
-    }catch(error){if(ask===epoch)reason=error.message}
+    }catch(error){if(ask===epoch)failure=error.message}
     finally{if(ask===epoch){loading=false;if(!message)setStatus(null);sync()}}
   }
   async function refreshWorkspace(){try{await refresh()}catch(error){notice(error.message,'error')}}
@@ -124,11 +129,14 @@ export function installMemoryBuild({api,json,notice,document,state}){
   async function build(){
     if(busy||loading||!plan)return;
     const current=plan;
-    reason=operationReason(state,current.preview);
-    if(reason){sync();return}
+    if(blocked()){sync();return}
     busy=true;setStatus(null);sync();
+    let inferred=false;
     try{
-      await api(`${storyPath()}/scene-cast/infer`,json('POST',{expected_revision:current.revision}));
+      // The cast write bumps the story revision: a retry after a refused run must not be refused as a stale preview.
+      const written=await api(`${storyPath()}/scene-cast/infer`,json('POST',{expected_revision:current.revision}));
+      inferred=true;
+      if(Number.isInteger(written?.story?.revision))current.revision=written.story.revision;
       const request={story_id:state.storyId,scene_id:current.scene_id,mode:'rebuild_memory',stage:null,
         pause_after:document.querySelector('#pause-each')?.checked?['brief','draft','edit','memory']:[],
         memory_plan_fingerprint:current.preview.plan_fingerprint,budget_limit_usd:document.querySelector('#run-budget')?.value||null};
@@ -142,9 +150,11 @@ export function installMemoryBuild({api,json,notice,document,state}){
       if(error.status===409){
         // A stale preview (the plan or the story changed): read it again; the author decides after checking it.
         await refreshWorkspace();
-        if(dialog.open)await load(()=>diagnostic(error.message)+' '+t('memory_build.ui.stale'));
+        if(dialog.open)await load(()=>t('memory_build.ui.stale'));
         return;
       }
+      // Scene casts may already be written: the workspace shows the new scene revisions.
+      if(inferred)await refreshWorkspace();
       setStatus(()=>diagnostic(error.message));sync();
     }
   }
@@ -172,7 +182,9 @@ export function installMemoryBuild({api,json,notice,document,state}){
   dialog.addEventListener('cancel',event=>{if(busy)event.preventDefault()});
   dialog.addEventListener('close',()=>{
     epoch++;plan=null;loading=false;busy=false;clear();item.setAttribute('aria-expanded','false');
-    const toggle=document.querySelector('#story-menu-toggle');if(toggle&&!document.querySelector('dialog[open]'))toggle.focus();
+    // The character import keeps the focus on its file field; every other exit returns it to the menu button.
+    const toggle=document.querySelector('#story-menu-toggle');
+    if(keepFocus)keepFocus=false;else if(toggle&&!document.querySelector('dialog[open]'))toggle.focus();
   });
 
   // ?build_memory=1 (the manuscript import summary) opens the dialog once the workspace has loaded; the parameter is removed
@@ -188,6 +200,7 @@ export function installMemoryBuild({api,json,notice,document,state}){
     if(openOnLoad){openOnLoad=false;open()}
   }
   document.addEventListener('story-refreshed',loaded);
+  for(const name of ['workspace-run-state','workspace-run-pending'])document.addEventListener(name,()=>{if(dialog.open)sync()});
   if(state.view)loaded();
   renderMenu();
 }

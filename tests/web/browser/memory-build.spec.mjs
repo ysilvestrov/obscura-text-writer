@@ -65,6 +65,13 @@ test('the preview shows scenes, unknown cost and cast; «Побудувати» 
   expect(story.scenes[0].character_ids).toEqual(['A']);
   // The run panel takes over: the run is visible and can be cancelled there.
   await expect.poll(async()=>(await runsOf(request,fixture)).at(-1)?.state).toMatch(/queued|running/);
+  // While it runs, a second build would be queued and paid twice: the dialog says why «Побудувати» waits.
+  await page.locator('#story-menu-toggle').click();
+  await page.locator('#story-menu-build-memory').click();
+  await expect(dialog.locator('#memory-build-reason')).toHaveText('Спершу дочекайтеся завершення поточного запуску або скасуйте його');
+  await expect(dialog.locator('#memory-build-submit')).toBeDisabled();
+  await dialog.locator('#memory-build-cancel').click();
+  expect((await runsOf(request,fixture)).length).toBe(1);
   const cancel=page.locator('#run-actions').getByRole('button',{name:/Скасувати/});
   await cancel.first().click();
   await expect.poll(async()=>(await runsOf(request,fixture)).at(-1)?.state).toMatch(/cancel/);
@@ -82,6 +89,52 @@ test('a plan that changed after the preview is refreshed in the dialog, not star
   await expect(dialog).toBeVisible();
   expect(await runsOf(request,fixture)).toEqual([]);
   await expect(dialog.locator('#memory-build-submit')).toBeEnabled();
+  // The refreshed preview reads the revision and the plan again: the next press starts exactly one run with the new plan.
+  const fresh=(await(await request.get(`/api/stories/${fixture.story_id}/readiness?scene_id=${fixture.scene_ids[0]}&operation=rebuild_memory`)).json()).operations.rebuild_memory;
+  await dialog.locator('#memory-build-submit').click();
+  await expect(dialog).toBeHidden();
+  await expect.poll(async()=>(await runsOf(request,fixture)).length).toBe(1);
+  const run=(await runsOf(request,fixture))[0];
+  expect(run.request.memory_plan_fingerprint).toBe(fresh.plan_fingerprint);
+  await request.post(`/api/runs/${run.id}/cancel`,{data:{}});
+});
+
+test('a run refused after the cast was written can be started again without a false stale preview',async({page,request})=>{
+  const fixture=await seed(request);
+  await openWorkspace(page,fixture);
+  const dialog=await openDialog(page);
+  await expect(dialog.locator('#memory-build-cost')).toHaveText('Вартість невідома');
+  // The first run request is refused (not 409) after infer has written the cast of scene 1 and bumped the story revision.
+  let refused=false;
+  await page.route(/\/api\/runs$/,async route=>{
+    if(refused||route.request().method()!=='POST')return route.continue();
+    refused=true;
+    await route.fulfill({status:400,json:{detail:'Тимчасова відмова'}});
+  });
+  await dialog.locator('#memory-build-submit').click();
+  await expect(dialog.locator('#memory-build-status')).toHaveText('Тимчасова відмова');
+  await expect(dialog.locator('#memory-build-submit')).toBeEnabled();
+  await dialog.locator('#memory-build-submit').click();
+  await expect(dialog).toBeHidden();
+  await expect.poll(async()=>(await runsOf(request,fixture)).length).toBe(1);
+  await request.post(`/api/runs/${(await runsOf(request,fixture))[0].id}/cancel`,{data:{}});
+});
+
+test('a known price shows the total; an unknown one shows its reason',async({page,request})=>{
+  const fixture=await seed(request);
+  let cost={per_call_usd:'0.40',total_usd:'0.75',calls:2,reason:null};
+  await page.route(/\/readiness\?.*operation=rebuild_memory/,async route=>{
+    const response=await route.fetch(),body=await response.json();
+    body.operations.rebuild_memory.cost=cost;
+    await route.fulfill({response,json:body});
+  });
+  await openWorkspace(page,fixture);
+  const dialog=await openDialog(page);
+  await expect(dialog.locator('#memory-build-cost')).toHaveText('Вартість: до 0.75 $ (верхня межа)');
+  await dialog.locator('#memory-build-cancel').click();
+  cost={per_call_usd:null,total_usd:null,calls:2,reason:'Немає ціни моделі'};
+  await openDialog(page);
+  await expect(dialog.locator('#memory-build-cost')).toHaveText('Вартість невідома: Немає ціни моделі');
 });
 
 test('a scene without finished prose: the reason is shown and «Побудувати» is disabled',async({page,request})=>{
@@ -124,6 +177,13 @@ test('a series book with an empty start snapshot offers «Оновити з по
   expect(order[0]).toBeLessThan(order[1]);
   await expect(dialog.locator('#memory-build-cast')).toContainText('Немає карток персонажів');
   await expect(dialog.locator('#memory-build-cast a').first()).toHaveAttribute('href',`/stories/${fixture.story_id}/characters`);
+  // The character import leads to the workspace importer with the focus on its file field.
+  await dialog.locator('#memory-build-cast').getByRole('button',{name:'Імпорт персонажів з Markdown'}).click();
+  await expect(dialog).toBeHidden();
+  await expect(page.locator('#import-sources input[name="characters"]')).toBeFocused();
+  await page.locator('#story-menu-toggle').click();
+  await page.locator('#story-menu-build-memory').click();
+  await expect(refresh).toBeEnabled();
   await refresh.click();
   await page.locator('dialog[open]').filter({hasText:'Знімок візьметься'}).getByRole('button',{name:'Оновити з попередньої книги'}).click();
   await expect(series).toBeHidden();
