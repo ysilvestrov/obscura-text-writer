@@ -57,24 +57,27 @@ def default_memory_role() -> RoleSettings:
                         context_tokens=CHAT_CONTEXT_TOKENS, max_output_tokens=CHAT_MAX_OUTPUT_TOKENS)
 
 
-def memory_fits(repo, role: RoleSettings | None = None):
-    """`fits(text)` for `detect`: does the memory request of a scene with this prose stay within the memory role's limits.
+def memory_fits(repo, role: RoleSettings | None = None, *, language: str = 'uk', system: str | None = None):
+    """`fits(text)` for `detect` and the memory-build preview: does the memory request of a scene with this prose stay within
+    the memory role's limits.
 
-    The request carries the prose twice (directly and as evidence fragments) plus an upper bound for the previous memory and
-    the settings. It must pass both checks `_finish_context` applies: `max_input_chars` and the token budget
-    (`context_tokens - max_output_tokens`), tokens estimated by the existing `token_estimate`."""
+    The request is the one the memory stage builds for a first scene (`memory_build.prose_memory_request`: the memory
+    prompt, the empty catalog, the prose once as numbered fragments) plus a reserve of `max_input_chars // 8` characters for
+    the previous memory. It must pass both checks `context._finish_context` applies before `ContextOverflow`:
+    `max_input_chars` and the token budget (`context_tokens - max_output_tokens`), tokens by the existing `token_estimate`."""
+    from ..generation.memory_build import prose_memory_request
     from ..providers.requests import generation_request
     from ..token_budget.service import token_estimate
     role = role or default_memory_role()
     budget = role.context_tokens - role.max_output_tokens
-    reserve = role.max_input_chars // RESERVE_SHARE
-    filler = 'а' * reserve
+    filler = 'а' * (role.max_input_chars // RESERVE_SHARE)
 
     def fits(text: str) -> bool:
-        if 2 * len(text) + reserve > role.max_input_chars:
+        prompt, user, fragments = prose_memory_request(role, text, language=language, system=system)
+        user = user + '\n\n' + filler
+        if len(prompt) + len(user) > role.max_input_chars:
             return False
-        user = '\n\n'.join((text, text, filler))
-        request = generation_request('memory', role, '', user, {})
+        request = generation_request('memory', role, prompt, user, fragments)
         provider = role.provider
         return token_estimate(repo, provider.provider, provider.base_url, request)['input_tokens'] <= budget
     return fits

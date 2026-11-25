@@ -87,6 +87,28 @@ def mentions(text: str, stems) -> bool:
     return any(word.startswith(stem) for stem in stems for word in words)
 
 
+class MentionIndex:
+    """The words of one text as `mentions` sees them, tokenised once: `first(stems)` is the index of the first word that
+    `mentions` counts for these stems (None without a mention), found by prefix search over the sorted distinct words."""
+
+    def __init__(self, text: str):
+        self._first={}
+        for index,word in enumerate(_WORD.findall(_norm(text))):
+            self._first.setdefault(word,index)
+        self._words=sorted(self._first)
+
+    def first(self, stems) -> int | None:
+        from bisect import bisect_left
+        best=None
+        for stem in stems:
+            index=bisect_left(self._words,stem)
+            while index<len(self._words) and self._words[index].startswith(stem):
+                at=self._first[self._words[index]]
+                if best is None or at<best:best=at
+                index+=1
+        return best
+
+
 def _recent(inp: SelectionInput, item: MemoryItem) -> bool:
     # Fresh = changed on the scene's story day or within the last RECENT_SCENES scenes. The day alone missed half of the
     # updated states in a story whose every scene starts a new date (bench, 10.11.2026).

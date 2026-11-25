@@ -36,6 +36,8 @@ class RunRequest(DomainModel):
     # required for 'story', optional for 'scene' (the scene button of PR 3); Worker.enqueue compares a given one.
     audit_scope: Literal['scene','story'] | None = None
     audit_plan_fingerprint: str | None = Field(default=None,pattern=r'^[a-f0-9]{64}$')
+    # 'rebuild_memory' (R-48 design §5): the memory-build plan the author saw; optional, Worker.enqueue compares a given one.
+    memory_plan_fingerprint: str | None = Field(default=None,pattern=r'^[a-f0-9]{64}$')
     # 'memory_carry': the model-free carry of a new memory into later journals; scene_id is the first scene to carry.
     # 'impact' (R-28) stays readable for saved runs; Worker.enqueue refuses it (IMPACT_REMOVED, R-44 PR 1).
     impact_plan_fingerprint: str | None = Field(default=None,pattern=r'^[a-f0-9]{64}$')
@@ -88,6 +90,8 @@ class RunRequest(DomainModel):
             raise ValueError('Обсяг перевірки задається лише для перевірки Ревізором, і там він обов’язковий')
         if self.audit_plan_fingerprint is not None and self.mode!='audit':
             raise ValueError('Відбиток плану перевірки дозволений лише для перевірки Ревізором')
+        if self.memory_plan_fingerprint is not None and self.mode!='rebuild_memory':
+            raise ValueError('Відбиток плану пам’яті дозволений лише для побудови пам’яті')
         if self.audit_scope=='story':
             if self.scene_id is not None:
                 raise ValueError('Валідація книги належить усьому твору, не окремій сцені')

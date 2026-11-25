@@ -1,4 +1,5 @@
 import {sceneStatus,liveScene} from './workspace-status.js';
+import {sceneOriginLabel} from './external-origin.js';
 import {confirmDialog} from './dialogs.js';
 import {t,msg,labelEntries,getLocale,uiText,uiAttr,uiHTML,diagnostic} from './i18n.js';
 import {state,textEditor,selectScene,refresh,planNumbering} from './editor.js';
@@ -28,6 +29,8 @@ const isActive=()=>activeStates.has(state.workspaceRun?.state)||(state.workspace
 function render(){
   const meta=document.querySelector('#workspace-scene-meta');if(meta&&state.scene)uiText(meta,"textContent",()=>(t("m_2424d27e2118",{p0:(state.scene.position+1),p1:(state.view?.scenes.length||'—'),p2:(state.scene.target_words)})));
   const sceneStatusNode=document.querySelector('#workspace-scene-status');if(sceneStatusNode){sceneStatusNode.hidden=!state.scene;if(state.scene)uiText(sceneStatusNode,'textContent',()=>sceneStatus(liveScene(state.scene,state.view?.scenes),state.view?.material_status).label)}
+  // R-48 (spec §4.4): next to the status, an imported scene names its manuscript; without a plan, the plan is optional.
+  const originNode=document.querySelector('#workspace-scene-origin');if(originNode){const scene=state.scene?liveScene(state.scene,state.view?.scenes):null;originNode.hidden=!sceneOriginLabel(scene);uiText(originNode,'textContent',()=>sceneOriginLabel(scene))}
   const compact=document.querySelector('#workspace-compact-status');if(compact){const labels={get queued(){return t("m_eb3c78969040")},get running(){return t("m_b4232dd37ccb")},get needs_review(){return t("m_66d1a05343f7")},get completed(){return t("m_016bc923f7ff")},get failed(){return t("m_57467fc4b91f")},get paused(){return t("m_03498e395a43")},get cancelled(){return t("m_84b388351ede")},get alternative(){return t("m_e6d278323734")},get interrupted(){return t("m_54e9f1dc0cc0")}};uiText(compact,"textContent",()=>((labels[state.workspaceRun?.state]||t("m_a6150ea8a568"))+' · '+(compactBudgetText(state.workspaceBudgetData||document.querySelector('.budget-panel')?.budgetData))));}
   const activeRun=activeStates.has(state.workspaceRun?.state)?state.workspaceRun:(state.workspaceRuns||[]).find(run=>activeStates.has(run.state));
   const review=state.mode==='review';

@@ -33,16 +33,22 @@ def apply_description(repo,db,scene,text,*,include_title=True,cards=None):
     from .locations import plan_location_ids
     scene.location_ids=plan_location_ids(db,scene.story_id,text)
     if previous!=(scene.title,scene.character_ids,scene.location_ids):
-        roots=[id for head,id in getattr(scene,'heads',{}).items() if head!='plan']
-        for id in roots:
-            ref=repo._get(db,'versions',id,VersionRef)
-            if ref.dependency_snapshot is None and ref.kind in {'brief','draft','edited','memory','evaluation'}:
-                ref.stale=True
-                db.execute('UPDATE versions SET payload=? WHERE id=?',(ref.model_dump_json(),ref.id))
-        if roots:
-            scene.needs_review=True
-            from .invalidation import invalidate_in_transaction
-            invalidate_in_transaction(repo,db,roots)
+        stale_scene_material(repo,db,scene)
+
+
+def stale_scene_material(repo,db,scene):
+    """A changed title, cast or places stale the scene's material built over them and everything downstream; the caller
+    saves the scene afterwards (it carries needs_review)."""
+    roots=[id for head,id in getattr(scene,'heads',{}).items() if head!='plan']
+    for id in roots:
+        ref=repo._get(db,'versions',id,VersionRef)
+        if ref.dependency_snapshot is None and ref.kind in {'brief','draft','edited','memory','evaluation'}:
+            ref.stale=True
+            db.execute('UPDATE versions SET payload=? WHERE id=?',(ref.model_dump_json(),ref.id))
+    if roots:
+        scene.needs_review=True
+        from .invalidation import invalidate_in_transaction
+        invalidate_in_transaction(repo,db,roots)
 
 
 def cast_names(ids,cards):
