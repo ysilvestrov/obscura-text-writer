@@ -21,7 +21,7 @@ If the author answers «вигадай сам» (make it up), invent the item an
 
 Secondary characters need only a name and a role. Invent them yourself and mark them.
 
-If a character goes by another name (a nickname, a real name revealed later), add the line «Інше ім’я: Джон» (English «Other name: John») to their card: plans then recognise the character by either name. If the name changes from some scene on, tell the author to set that entry to «Починаючи зі сцени» (Starting from a scene) on the Characters page after the import; from that scene the models use the new name.
+If a character goes by another name (a nickname, a real name revealed later), add the line «Інше ім’я: Джон» (English «Other name: John») to their card: plans then recognise the character by either name. If the name changes from some scene on, after the import set that entry to start from that scene yourself: `get_characters`, then `update_characters` with `set_entry` (`availability: from_scene`, `available_from_scene_id` of the scene); show the preview to the author and write it with `confirm=true` only after their consent. From that scene the models use the new name.
 
 ## 2. Structure
 

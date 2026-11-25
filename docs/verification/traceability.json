@@ -6832,6 +6832,34 @@
       ]
     },
     {
+      "id": "MCP-BRIDGE-S55",
+      "requirement": "MCP-BRIDGE",
+      "scope": "update_characters rename: перегляд без запису, згода зберігає ID і додає «Інше ім'я:» з origin author; маркер з розміткою дописується. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/mcp/test_bridge_characters.py::test_rename_preview_writes_nothing_and_confirm_keeps_the_old_name",
+        "tests/mcp/test_bridge_characters.py::test_keep_old_name_joins_an_existing_marker_line_with_its_markup"
+      ]
+    },
+    {
+      "id": "MCP-BRIDGE-S56",
+      "requirement": "MCP-BRIDGE",
+      "scope": "update_characters: unresolved_scenes для плану й «Знайомий з:», відмова згоди без запису, давня ревізія, невідомі ID і хибні зміни. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/mcp/test_bridge_characters.py::test_removing_a_name_a_plan_still_uses_is_refused_even_with_confirm",
+        "tests/mcp/test_bridge_characters.py::test_stale_revision_and_unknown_ids_are_refused_without_a_write",
+        "tests/mcp/test_bridge_characters.py::test_set_entry_leaving_from_scene_clears_the_scene_and_bad_changes_name_their_number"
+      ]
+    },
+    {
+      "id": "MCP-BRIDGE-S57",
+      "requirement": "MCP-BRIDGE",
+      "scope": "update_characters: нова картка й відомість from_scene з origin author; вихід із from_scene очищає сцену. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/mcp/test_bridge_characters.py::test_add_character_and_entry_from_scene",
+        "tests/mcp/test_bridge_characters.py::test_set_entry_leaving_from_scene_clears_the_scene_and_bad_changes_name_their_number"
+      ]
+    },
+    {
       "id": "CLAUDE-SKILLS-S01",
       "requirement": "CLAUDE-SKILLS",
       "scope": "Маркетплейс і плагін obscura, відсутність конфігурації MCP, name/description скілів. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
@@ -8193,6 +8221,14 @@
         "tests/storage/test_link_invalidation.py::test_invalidation_unchecks_an_older_auditor_overflow",
         "tests/storage/test_link_invalidation.py::test_invalidation_leaves_an_auditor_memory_verdict",
         "tests/generation/test_audit_run.py::test_check_after_card_invalidation_calls_the_auditor_again"
+      ]
+    },
+    {
+      "id": "VALID-CARDS-S08",
+      "requirement": "VALID-CARDS",
+      "scope": "Позначка залежних сцен з чату: без mark_unchecked відмова без запису, false лишає сцени валідними, true позначає обидві. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/mcp/test_bridge_characters.py::test_dependent_scenes_need_the_authors_answer_and_only_yes_unchecks_them"
       ]
     },
     {
