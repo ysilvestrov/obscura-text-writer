@@ -3,6 +3,8 @@
 Before the memory build each active scene with prose whose plan has no participants line gets as its cast the character
 cards whose name available in that scene (`characters/names.py::scene_match_names`) its prose mentions under the stem
 rule of memory selection, in order of first mention. Scenes whose plan names participants are never changed."""
+import threading
+
 from ..characters.acquaintance import protagonist
 from ..characters.models import load_characters
 from ..characters.names import scene_match_names
@@ -32,16 +34,37 @@ def propose_cast(view, cards) -> dict[str, list[str]]:
         prose_id = scene.heads.get('prose')
         if not prose_id or _planned(scene):
             continue
-        found = []
-        if cards:
+        if not cards:
+            result[scene.id] = []
+            continue
+        names = scene_match_names(cards, scenes, scene)
+        key = (view.peek_version(prose_id).sha256, tuple((card.id, names.get(card.id, '')) for card in cards))
+        cast = _CAST_CACHE.get(key)
+        if cast is None:
             index = MentionIndex(view.read_text(prose_id))
-            names = scene_match_names(cards, scenes, scene)
+            found = []
             for order, card in enumerate(cards):
                 at = index.first(name_stems(names.get(card.id, '')))
                 if at is not None:
                     found.append((at, order, card.id))
-        result[scene.id] = list(dict.fromkeys(id for _, _, id in sorted(found)))
+            cast = tuple(dict.fromkeys(id for _, _, id in sorted(found)))
+            _remember(key, cast)
+        result[scene.id] = list(cast)
     return result
+
+
+# Readiness of `rebuild_memory` is asked on every workspace refresh: the cast of a scene is kept per (prose text, the card
+# names available in it), so only changed scenes are searched again.
+_CAST_CACHE: dict = {}
+_CAST_CACHE_SIZE = 4096
+_CAST_LOCK = threading.Lock()
+
+
+def _remember(key, cast) -> None:
+    with _CAST_LOCK:
+        while len(_CAST_CACHE) >= _CAST_CACHE_SIZE:
+            _CAST_CACHE.pop(next(iter(_CAST_CACHE)), None)
+        _CAST_CACHE[key] = cast
 
 
 def cast_preview(view):

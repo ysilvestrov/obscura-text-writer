@@ -186,3 +186,21 @@ def test_infer_route_applies_and_returns_changed(tmp_path):
     again = client.post(url, json={'expected_revision': data['story']['revision']})
     assert again.status_code == 200 and again.json()['changed_scene_ids'] == []
     assert client.post(url, json={'expected_revision': story.revision}).status_code == 409
+
+
+def test_proposal_searches_each_prose_once_across_requests(tmp_path, monkeypatch):
+    import storygen.storage.scene_cast as scene_cast
+    repo = Repository(tmp_path)
+    story, scenes = book(repo, ['Оля йде.', 'Марко стоїть.'], [card('marko', 'Марко'), card('olia', 'Оля')])
+    searched = []
+    original = scene_cast.MentionIndex
+    monkeypatch.setattr(scene_cast, 'MentionIndex', lambda text: searched.append(text) or original(text))
+    monkeypatch.setattr(scene_cast, '_CAST_CACHE', {})
+    assert proposal(repo, story) == {scenes[0].id: ['olia'], scenes[1].id: ['marko']}
+    assert proposal(repo, story) == {scenes[0].id: ['olia'], scenes[1].id: ['marko']}
+    assert len(searched) == 2  # a later request (a new view) reuses the answers
+    save_manual_prose(repo, scenes[1].id, 'Марко й Оля.', repo.get_scene(scenes[1].id).revision)
+    assert proposal(repo, story)[scenes[1].id] == ['marko', 'olia'] and searched[2:] == ['Марко й Оля.']
+    publish_cards(repo, story.id, [card('marko', 'Марко'), card('olia', 'Оля', 'Інше ім\'я: Ольга')])
+    proposal(repo, story)
+    assert len(searched) == 5  # new names: every scene is searched again
