@@ -10,6 +10,7 @@ def commit_copyedit_selection(
     expected_revision: int,
     fingerprint: str,
     warnings,
+    split=(),
 ) -> dict:
     from .context_view import ContextView
     from .invalidation import invalidate_in_transaction
@@ -52,7 +53,8 @@ def commit_copyedit_selection(
                 raise RevisionConflict('Підсумковий результат циклу ще не готовий до прийняття')
         indices = validate_indices(indices, len(proposal.edits))
         from ..sentence_groups import validate_group_selection
-        validate_group_selection(original,proposal,indices,view.get_version(attempt.context['copyedit_proposal']['draft_id']).content_format)
+        split = sorted(set(split))
+        validate_group_selection(original,proposal,indices,view.get_version(attempt.context['copyedit_proposal']['draft_id']).content_format,split)
         ref = repo._get(db, 'versions', result_ref.id, VersionRef)
         snapshot = DependencySnapshot.model_validate(attempt.context['dependency_snapshot'])
         if (
@@ -74,7 +76,7 @@ def commit_copyedit_selection(
         if previous and previous != ref.id:
             invalidate_in_transaction(repo, db, [previous], exclude=[ref.id])
         repo._touch_story(db, scene.story_id)
-        record_decision(attempt, scene, indices, ref.id, 'manual', warnings)
+        record_decision(attempt, scene, indices, ref.id, 'manual', warnings, split)
         if attempt.context['copyedit_proposal']['protocol_version']==2:
             from ..rewrite_diff import rewrite_warnings
             attempt.context['copyedit_decisions'][-1]['rewrite_warnings']=rewrite_warnings(original,view.read_text(ref.id),[proposal.edits[i] for i in indices])

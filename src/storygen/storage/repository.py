@@ -50,9 +50,9 @@ class Repository:
         from .role_profile_store import operation
         return operation(self,action,**data)
 
-    def commit_copyedit_selection(self,attempt_id,result_ref,indices,expected_revision,fingerprint,warnings):
+    def commit_copyedit_selection(self,attempt_id,result_ref,indices,expected_revision,fingerprint,warnings,split=()):
         from .copyedit_store import commit_copyedit_selection
-        return commit_copyedit_selection(self,attempt_id,result_ref,indices,expected_revision,fingerprint,warnings)
+        return commit_copyedit_selection(self,attempt_id,result_ref,indices,expected_revision,fingerprint,warnings,split)
 
     def update_scene_plan(self, scene_id, text, expected_revision, **read):
         from .authoring import update_scene_plan

@@ -61,6 +61,8 @@ class CopyeditSelection(DomainModel):
     expected_revision: int
     proposal_fingerprint: str
     selected_indices: list[int]
+    # EDIT-SENTENCE-GROUPS-S05: smallest edit indices of the groups the author split; [] keeps whole groups only.
+    split_groups: list[int] = []
 
 
 class ClassifyProposal(DomainModel):
@@ -78,7 +80,7 @@ def classify_copyedits(scene_id: str,attempt_id: str,body: ClassifyProposal,requ
 @router.post('/api/scenes/{scene_id}/copyedits/{attempt_id}/selection-preview')
 def preview_copyedit_selection(scene_id: str,attempt_id: str,body: CopyeditSelection,request: Request):
     from ..generation.copyedit_review import selection_preview
-    return selection_preview(request.app.state.repo,scene_id,attempt_id,body.selected_indices,body.expected_revision,body.proposal_fingerprint)
+    return selection_preview(request.app.state.repo,scene_id,attempt_id,body.selected_indices,body.expected_revision,body.proposal_fingerprint,body.split_groups)
 
 
 @router.get('/api/scenes/{scene_id}/copyedits/{attempt_id}')
@@ -90,7 +92,7 @@ def preview_copyedits(scene_id: str,attempt_id: str,request: Request):
 @router.post('/api/scenes/{scene_id}/copyedits/{attempt_id}')
 def apply_copyedit_selection(scene_id: str,attempt_id: str,body: CopyeditSelection,request: Request):
     from ..generation.copyedit_review import select_copyedits
-    return select_copyedits(request.app.state.repo,scene_id,attempt_id,body.selected_indices,body.expected_revision,body.proposal_fingerprint)
+    return select_copyedits(request.app.state.repo,scene_id,attempt_id,body.selected_indices,body.expected_revision,body.proposal_fingerprint,body.split_groups)
 
 
 @router.get('/api/scenes/{scene_id}/copyedits')
