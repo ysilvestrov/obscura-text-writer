@@ -6,7 +6,6 @@ splits a source paragraph into several manuscript paragraphs: no `ManuscriptPara
 whitespace (spaces, tabs, NBSP) of every paragraph is trimmed. Every error text is for the author.
 """
 import re
-import string
 from dataclasses import dataclass
 
 from .docx_import import Run, _merge, read_docx
@@ -19,7 +18,8 @@ _FLAGS = ((True, True), (True, False), (False, True), (True, True), (True, False
 # A CommonMark thematic break (`---`, `***`, `___`, spaces allowed) or `# # #`: a scene separator, never a heading.
 _THEMATIC_BREAK = re.compile(r' {0,3}(?:([-*_])(?:[ \t]*\1){2,}|#(?:[ \t]+#){2,})[ \t]*')
 SEPARATOR_TEXT = '***'
-# A backslash before ASCII punctuation is a CommonMark escape: masked with a private-use character while emphasis is parsed.
+# A backslash before ASCII punctuation is a CommonMark escape: masked with a private-use character while emphasis is parsed
+# (one absent from the text, so the author's own private-use characters stay as they are).
 _ESCAPE = re.compile(r'\\([!-/:-@\[-`{-~])')
 _MASK = 0xE000
 COMMENTS = 'Коментарі Word не імпортуються: {count}'
@@ -183,13 +183,17 @@ def _emphasis(text, bold=False, italic=False):
     return runs
 
 
-_UNMASK = {_MASK + code: chr(code) for code in map(ord, string.punctuation)}
-
-
 def _inline(text):
-    """Markdown inline text as runs: a backslash escape (before `*`, `-`, ...) is the literal character, never a mark."""
-    masked = _ESCAPE.sub(lambda match: chr(_MASK + ord(match[1])), text)
-    return _merge(Run(run.text.translate(_UNMASK), run.bold, run.italic) for run in _emphasis(masked))
+    """Markdown inline text as runs: a backslash escape (before `*`, `-`, ...) is the literal character, never a mark.
+
+    Each escape is masked with one private-use character absent from the text and restored in order after emphasis."""
+    if not _ESCAPE.search(text):
+        return _merge(_emphasis(text))
+    sentinel = next(char for char in map(chr, range(_MASK, 0xF900)) if char not in text)
+    escaped = iter(match[1] for match in _ESCAPE.finditer(text))
+    runs = _emphasis(_ESCAPE.sub(sentinel, text))
+    return _merge(Run(''.join(next(escaped) if char == sentinel else char for char in run.text), run.bold, run.italic)
+                  for run in runs)
 
 
 def _markdown(text):

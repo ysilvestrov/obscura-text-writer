@@ -162,3 +162,11 @@ def test_too_large_series_number_is_a_validation_error(tmp_path):
         response = client.post(f'/api/manuscript-import/{preview["import_id"]}', json=body)
         assert response.status_code == 422, response.text  # the app's answer to any invalid request body
         assert client.get('/api/stories').json() == []
+
+
+def test_js_diagnostic_translates_scene_warnings():
+    import subprocess
+    from pathlib import Path
+    result = subprocess.run(['node', str(Path(__file__).parent / 'js' / 'manuscript_import_diagnostic.mjs')],
+                            capture_output=True, encoding='utf8', timeout=20)
+    assert result.returncode == 0, result.stderr

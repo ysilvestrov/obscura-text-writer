@@ -8620,7 +8620,8 @@
         "tests/publication/test_manuscript_read.py::test_markdown_backslash_escapes_decoded",
         "tests/publication/test_manuscript_read.py::test_markdown_thematic_breaks_are_scene_separators",
         "tests/publication/test_manuscript_read.py::test_docx_comments_warning",
-        "tests/publication/test_manuscript_structure.py::test_word_table_of_contents_is_dropped"
+        "tests/publication/test_manuscript_structure.py::test_word_table_of_contents_is_dropped",
+        "tests/publication/test_manuscript_read.py::test_markdown_private_use_characters_are_kept"
       ]
     },
     {
@@ -8718,7 +8719,8 @@
         "tests/application/test_manuscript_import_preview.py::test_preview_warns_when_more_scenes_than_one_import_takes",
         "tests/application/test_manuscript_import_preview.py::test_file_name_with_lone_surrogate_is_kept_without_it",
         "tests/web/test_routes_manuscript_import.py::test_scene_warnings_and_new_messages_have_english_text",
-        "tests/web/test_routes_manuscript_import.py::test_language_sets_single_chapter_title"
+        "tests/web/test_routes_manuscript_import.py::test_language_sets_single_chapter_title",
+        "tests/web/test_routes_manuscript_import.py::test_js_diagnostic_translates_scene_warnings"
       ]
     },
     {

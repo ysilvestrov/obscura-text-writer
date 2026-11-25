@@ -180,3 +180,8 @@ def test_docx_comments_warning():
     content = docx(para('Текст.'), parts=comments('Перша примітка', 'Друга'))
     assert 'Коментарі Word не імпортуються: 2' in read_manuscript(content, 'b.docx').warnings
     assert not any('Коментарі' in w for w in read_manuscript(docx(para('Текст.')), 'b.docx').warnings)
+
+
+def test_markdown_private_use_characters_are_kept():
+    text = 'Знак ' + chr(0xE02A) + ' лишається, ' + chr(0xE000) + r' і \* теж.'
+    assert read_manuscript(markdown(text), 'b.md').paragraphs[0].text == 'Знак ' + chr(0xE02A) + ' лишається, ' + chr(0xE000) + ' і * теж.'
