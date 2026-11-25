@@ -199,6 +199,36 @@ test('the English interface leaves only the manuscript text in Ukrainian',async(
   expect(text).not.toMatch(/[А-Яа-яІіЇїЄєҐґ]/);
 });
 
+test('a boundary the server refuses (400) is explained and the accepted boundaries stay',async({page,request})=>{
+  // Review M-10: the server still validates every boundary; its 400 goes through diagnostic() and keeps the preview.
+  const fixture=await seed(request);
+  await page.goto('/');
+  const {dialog}=await preview(page,docxFile(fixture));
+  const scenes=dialog.locator('#manuscript-import-scenes > li');
+  await scenes.nth(2).locator('summary').click();
+  const paragraphs=scenes.nth(2).locator('.manuscript-import-paragraphs > li');
+  await expect(paragraphs).toHaveCount(13);
+  await paragraphs.nth(6).locator('button',{hasText:'Межа тут'}).click();
+  await expect(sceneTitles(dialog)).toHaveCount(5);
+  let sent=null;
+  await page.route(/\/api\/manuscript-import\/[0-9a-f]{32}$/,async route=>{
+    if(route.request().method()!=='POST')return route.continue();
+    sent=route.request().postDataJSON();
+    await route.fulfill({status:400,json:{detail:'Межа сцени має стояти на початку абзацу тексту рукопису',
+                                          detail_original:'Межа сцени має стояти на початку абзацу тексту рукопису'}});
+  });
+  // The English interface shows the catalogue text of the server's Ukrainian refusal: it went through diagnostic().
+  await page.evaluate(async()=>{const i=await import('/static/i18n.js');i.setLocale('en')});
+  await dialog.locator('#manuscript-import-submit').click();
+  await expect(dialog.locator('#manuscript-import-status')).toHaveText('A scene boundary must be at the start of a prose paragraph of the manuscript');
+  expect(sent.scenes.map(scene=>scene.start)).toContain(14);
+  // The preview, the author's boundary and the paragraph list stay for a fix; nothing was created.
+  await expect(sceneTitles(dialog)).toHaveCount(5);
+  await expect(dialog.locator('.manuscript-import-boundary[data-index="14"]')).toHaveCount(1);
+  await expect(dialog.locator('#manuscript-import-submit')).toBeEnabled();
+  await expect(dialog.locator('#manuscript-import-result')).toBeHidden();
+});
+
 test('a book of a series: the number goes with the import; a taken number keeps the preview',async({page,request})=>{
   const fixture=await seed(request);
   // Series titles are unique on the shared fixture server: one per project run.
