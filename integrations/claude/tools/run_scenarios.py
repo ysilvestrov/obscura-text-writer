@@ -311,8 +311,13 @@ def _claim_texts(claims, stem_word):
 
 def revise_memory_problems(old_claims, new_claims, old_stem, new_stem, label):
     """The new memory keeps every text and quote of the old one word for word, the city aside (the stem Одес -> Херсон, any
-    ending on both sides); claim IDs are not compared, and the new memory may add claims."""
-    old = _claim_texts(old_claims, rf'(?i){re.escape(old_stem)}\w*')
+    ending on both sides); claim IDs are not compared, and the new memory may add claims. Never passes on nothing: an old
+    memory without texts or quotes, or a new memory that was not read (None), is a problem of its own."""
+    if new_claims is None:
+        return [f"{label}: нову пам'ять не прочитано"]
+    old = _claim_texts(old_claims or [], rf'(?i){re.escape(old_stem)}\w*')
+    if not old:
+        return [f"{label}: у старій пам'яті немає текстів і цитат для порівняння"]
     new = _claim_texts(new_claims, rf'(?i){re.escape(new_stem)}\w*')
     return [f"{label}: пам'ять не зберегла «{piece.replace(chr(0), new_stem + '…')}»" for piece in sorted(old - new)]
 

@@ -365,7 +365,15 @@ def test_revise_memory_preserved_with_stem_replaced():
     assert revise_memory_problems(old, reworded, 'Одес', 'Херсон', 'сцена 1') == [
         "сцена 1: пам'ять не зберегла «Анна живе на маяку під Херсон….»"]
     assert revise_memory_problems(old, [], 'Одес', 'Херсон', 'сцена 1')
-    assert revise_memory_problems([], [], 'Одес', 'Херсон', 'x') == []
+
+
+@pytest.mark.req('CLAUDE-SKILLS')
+def test_revise_memory_check_never_passes_on_nothing():
+    claim = [{'text': 'Анна живе під Херсоном.', 'quote': 'Біля Херсона.'}]
+    assert revise_memory_problems([], claim, 'Одес', 'Херсон', 'x') == ["x: у старій пам'яті немає текстів і цитат для порівняння"]
+    assert revise_memory_problems([{'claim_id': 'mc_1', 'text': '', 'quote': None}], claim, 'Одес', 'Херсон', 'x') == [
+        "x: у старій пам'яті немає текстів і цитат для порівняння"]
+    assert revise_memory_problems(claim, None, 'Одес', 'Херсон', 'x') == ["x: нову пам'ять не прочитано"]
 
 
 @pytest.mark.req('CLAUDE-SKILLS')

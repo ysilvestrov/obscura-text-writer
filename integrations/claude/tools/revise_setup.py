@@ -21,6 +21,8 @@ OLD_STEM = 'Одес'
 NEW_CITY = 'Херсон'
 NEW_STEM = 'Херсон'
 MEMORY_FACT = 'Анна живе на маяку під Одесою.'
+# Scene 2 gets its own fact: the memory role never repeats an immutable claim, so a repeat would not survive a rebuild.
+MEMORY_FACT_2 = 'З ліхтарної кімнати маяка видно вогні Одеси.'
 BRIEFS = [
     {'objective': 'Анна знаходить лист без підпису з попередженням і вирішує чатувати в четвер.',
      'beats': ['Анна відкриває скриньку й знаходить конверт без марки й підпису.',
@@ -56,13 +58,15 @@ def _core_decisions(task):
 
 
 def _memory_result(task):
-    """One fact about the city, with the evidence of the first fragment that names it (taken from the task material)."""
+    """One new fact about the city, with the evidence of the first fragment that names it (taken from the task material);
+    a fact the memory already holds is not repeated (the second scene gets MEMORY_FACT_2)."""
     fragments = re.findall(r'\[(f\d+)\]([^\[]*)', task['material'])
     evidence = next((fid for fid, text in fragments if OLD_STEM in text), None)
     if evidence is None:
         raise SystemExit('у матеріалі пам’яті немає фрагмента з містом')
     return {'schema_version': 4, 'core': _core_decisions(task), 'threads': {},
-            'facts': {'add': [{'text': MEMORY_FACT, 'evidence_ids': [evidence]}]},
+            'facts': {'add': [{'text': MEMORY_FACT_2 if MEMORY_FACT in task['material'] else MEMORY_FACT,
+                               'evidence_ids': [evidence]}]},
             'timeline': {'add': []}, 'character_states': {'add': [], 'update': [], 'retire': []},
             'open_threads': {'add': []}}
 
