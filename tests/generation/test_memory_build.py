@@ -327,30 +327,62 @@ def test_memory_fingerprint_changes_with_cards(tmp_path):
     assert worker.list_runs() == []
 
 
+def valid_first_memory(repo, story, scene):
+    """A memory of the first scene that a later scene's memory stage accepts as its previous memory."""
+    from storygen.memory.journal import MemoryJournal
+    from tests.link_helpers import approve_links
+    prose = [repo.get_scene(scene.id).heads['prose']]
+    memory = repo.save_version(story.id, scene.id, 'memory',
+                               MemoryJournal(schema_version=3, source_prose_ids=prose).model_dump_json(), prose)
+    repo.set_head(scene.id, 'memory', memory.id, repo.get_scene(scene.id).revision)
+    approve_links(repo, story.id)
+
+
 @pytest.mark.parametrize('earlier_memory', [False, True])
 def test_fingerprint_survives_applying_the_cast(tmp_path, earlier_memory):
     # The UI and MCP apply the proposed cast right before the run: the fingerprint the author saw must still match.
     from storygen.storage.scene_cast import apply_cast, propose_cast, view_cards
     repo, story, scenes = written_book(tmp_path, ['Оля йде.', 'Оля побачила Марка.', 'Марко пішов.'])
     if earlier_memory:  # a valid memory of the first scene: the cast change must stale it, not break the run
-        from storygen.memory.journal import MemoryJournal
-        from tests.link_helpers import approve_links
-        prose = [repo.get_scene(scenes[0].id).heads['prose']]
-        memory = repo.save_version(story.id, scenes[0].id, 'memory',
-                                   MemoryJournal(schema_version=3, source_prose_ids=prose).model_dump_json(), prose)
-        repo.set_head(scenes[0].id, 'memory', memory.id, repo.get_scene(scenes[0].id).revision)
-        approve_links(repo, story.id)
+        valid_first_memory(repo, story, scenes[0])
     story = with_cards(repo, story, 'Марко', 'Оля')
-    target = scenes[1] if earlier_memory else scenes[0]
+    # The first scene's cast changes under the proposal: its memory is not valid, so the build starts there either way.
+    assert memory_build_target(repo.context_view(story.id)) == (scenes[0].id, 3)
+    target = scenes[0]
     seen = preview(repo, rebuild(story, target))
     assert seen['ready'] is True, seen['reason']
     view = repo.context_view(story.id)
     changed = apply_cast(repo, story.id, propose_cast(view, view_cards(view)), repo.get_story(story.id).revision)
     assert changed == [scene.id for scene in scenes]
     story = repo.get_story(story.id)
+    assert memory_build_target(repo.context_view(story.id)) == (scenes[0].id, 3)
     again = preview(repo, rebuild(story, target))
     assert again['ready'] is True, again['reason']
     assert again['plan_fingerprint'] == seen['plan_fingerprint']
     assert again['cast']['scenes_to_fill'] == 0
     run = RunCoordinator(repo).enqueue(rebuild(story, target, memory_plan_fingerprint=seen['plan_fingerprint']), 'go')
-    assert [task['stage'] for task in run.tasks] == ['memory'] * (2 if earlier_memory else 3)
+    assert [task['stage'] for task in run.tasks] == ['memory'] * 3
+
+
+def test_target_moves_back_to_an_earlier_scene_whose_cast_changes(tmp_path):
+    repo, story, scenes = written_book(tmp_path, ['Тиша.', 'Оля йде.', 'Марко пішов.'])
+    story = with_cards(repo, story, 'Марко', 'Оля')
+    valid_first_memory(repo, story, scenes[0])
+    give_memory(repo, story, scenes[1])
+    # Scene 2 has fresh memory, but «Оля» gives it a cast it lacks: the build starts there, not at scene 3 (the first
+    # without memory); scene 1 mentions nobody, so its memory stays valid.
+    assert memory_build_target(repo.context_view(story.id)) == (scenes[1].id, 2)
+    result = preview(repo, rebuild(story, scenes[1]))
+    assert result['ready'] is True, result['reason']
+    assert result['calls'] == 2 and result['cost']['calls'] == 2
+
+
+def test_stale_memory_head_is_the_target(tmp_path):
+    repo, story, scenes = written_book(tmp_path, ['Перша.', 'Друга.', 'Третя.'])
+    for scene in scenes:
+        give_memory(repo, story, scene)
+    assert memory_build_target(repo.context_view(story.id)) == (None, 0)
+    save_manual_prose(repo, scenes[1].id, 'Інша друга.', repo.get_scene(scenes[1].id).revision)
+    memory = repo.get_scene(scenes[1].id).heads['memory']
+    assert repo.context_view(story.id).peek_version(memory).stale  # the head stays, its stored flag is set
+    assert memory_build_target(repo.context_view(story.id)) == (scenes[1].id, 2)

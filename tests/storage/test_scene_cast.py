@@ -121,19 +121,15 @@ def test_protagonist_defaults_to_first_of_proposed_cast(tmp_path):
 
 def test_apply_cast_stales_existing_memory(tmp_path):
     repo = Repository(tmp_path)
+    # Memory built while the scene had no cast (the names were never filled in).
     story, scenes = book(repo, ['Оля йде.', 'Оля бачить Марка.'], [card('marko', 'Марко'), card('olia', 'Оля')])
-    apply_cast(repo, story.id, proposal(repo, story), repo.get_story(story.id).revision)
     memory = give_memory(repo, story, scenes[1])
     assert not stored_stale(repo, memory.id)
-    publish_cards(repo, story.id, [card('marko', 'Марко'), card('olia', 'Оля'), card('bob', 'Боб')])
-    save_manual_prose(repo, scenes[1].id, 'Оля бачить Марка і Боба.', repo.get_scene(scenes[1].id).revision)
-    # The new prose already stales the memory; restore a fresh memory over it so only the cast change is measured.
-    memory = give_memory(repo, story, scenes[1])
     before = repo.get_scene(scenes[1].id)
     changed = apply_cast(repo, story.id, proposal(repo, story), repo.get_story(story.id).revision)
     after = repo.get_scene(scenes[1].id)
-    assert changed == [scenes[1].id]
-    assert after.character_ids == ['olia', 'marko', 'bob'] and after.revision == before.revision + 1
+    assert changed == [scenes[0].id, scenes[1].id]
+    assert after.character_ids == ['olia', 'marko'] and after.revision == before.revision + 1
     assert stored_stale(repo, memory.id)
 
 
@@ -159,15 +155,20 @@ def test_apply_cast_rejects_stale_revision(tmp_path):
     assert repo.get_scene(scenes[0].id).character_ids == []
 
 
-def test_apply_cast_replaces_a_cast_set_on_the_scene_card(tmp_path):
-    # Design §5.1, read literally: only a participants line in the plan protects the cast; a cast set on the scene card
-    # of a scene without that line is replaced by the names mentioned in its prose.
+def test_apply_cast_keeps_a_cast_set_on_the_scene_card(tmp_path):
+    # Coordinator ruling (Task 2): a cast the author set is never overwritten, even without a participants line.
     repo = Repository(tmp_path)
-    story, scenes = book(repo, ['Порожня вулиця.'], [card('olia', 'Оля')])
+    story, scenes = book(repo, ['Порожня вулиця.', 'Оля й Марко.'], [card('olia', 'Оля'), card('marko', 'Марко')])
     repo.update_scene_metadata(scenes[0].id, {'character_ids': ['olia']}, repo.get_scene(scenes[0].id).revision)
-    assert proposal(repo, story) == {scenes[0].id: []}
-    assert apply_cast(repo, story.id, proposal(repo, story), repo.get_story(story.id).revision) == [scenes[0].id]
-    assert repo.get_scene(scenes[0].id).character_ids == []
+    repo.update_scene_metadata(scenes[1].id, {'character_ids': ['marko']}, repo.get_scene(scenes[1].id).revision)
+    assert proposal(repo, story) == {}
+    entry_, _ = cast_preview(repo.context_view(story.id))
+    assert entry_['scenes_to_fill'] == 0
+    revision = repo.get_story(story.id).revision
+    assert apply_cast(repo, story.id, {scenes[0].id: [], scenes[1].id: ['olia', 'marko']}, revision) == []
+    assert repo.get_scene(scenes[0].id).character_ids == ['olia']
+    assert repo.get_scene(scenes[1].id).character_ids == ['marko']
+    assert repo.get_story(story.id).revision == revision
 
 
 def test_infer_route_applies_and_returns_changed(tmp_path):

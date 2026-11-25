@@ -14,13 +14,19 @@ PREVIOUS_MEMORY_SHARE = 8
 MEMORY_PLAN_CHANGED = 'План побудови пам’яті змінився. Перегляньте його ще раз'
 
 
-def memory_build_target(view) -> tuple[str | None, int]:
-    """The first active scene, by position, without a memory head (design §5), and the number of scenes from it to the end
-    of the book — the scenes `rebuild_memory` from it covers. (None, 0) when every scene has memory. A scene without
-    finished prose is still the target: the readiness of the run then names what is missing."""
-    scenes = sorted(view.list_scenes(view.story.id), key=lambda s: s.position)
+def memory_build_target(view, proposal=None) -> tuple[str | None, int]:
+    """The first active scene, by position, without valid memory (design §5, §5.1), and the number of scenes from it to the
+    end of the book — the scenes `rebuild_memory` from it covers. Memory is not valid when there is no memory head, when
+    the head is stale (the stored flag) or when the proposed cast (`scene_cast.propose_cast`, computed when not given)
+    changes the scene's cast. (None, 0) when every scene has valid memory. A scene without finished prose is still the
+    target: the readiness of the run then names what is missing."""
+    if proposal is None:
+        from ..storage.scene_cast import propose_cast, view_cards
+        proposal = propose_cast(view, view_cards(view))
+    scenes = sorted((s for s in view.list_scenes(view.story.id) if not s.trashed_at), key=lambda s: s.position)
     for index, scene in enumerate(scenes):
-        if not scene.heads.get('memory'):
+        memory_id = scene.heads.get('memory')
+        if not memory_id or view.peek_version(memory_id).stale or proposal.get(scene.id, scene.character_ids) != scene.character_ids:
             return scene.id, len(scenes) - index
     return None, 0
 
@@ -133,8 +139,8 @@ def unfit_scenes(repo, view, settings, scene_ids) -> list[str]:
 def plan_fingerprint(scene_id, targets, settings, cast=None) -> str:
     """sha256 of the plan the author saw: the start scene, each target scene with its prose head, the memory role fields
     that decide what the run costs and which scenes fit (model, endpoint, input, output and context limits), and `cast` —
-    the proposed scene casts with the cards they come from (design §5.1). The proposal stays the same once applied, so the
-    fingerprint the author saw still matches after `apply_cast`; new cards in between change it."""
+    every scene's cast with the proposal applied, and the cards it comes from (design §5.1). That cast stays the same once
+    `apply_cast` writes it, so the fingerprint the author saw still matches; new cards in between change it."""
     provider = settings.provider
     payload = {'scene_id': scene_id, 'scenes': [[scene.id, scene.heads.get('prose')] for scene in targets],
                'memory': {'provider': provider.provider, 'model': provider.model, 'base_url': provider.base_url,

@@ -207,7 +207,7 @@ def preview(repo, request, view=None):
             result.update(ready=False,can_confirm=True,reason='Попередня пам’ять потребує авторського підтвердження')
         if request.mode=='rebuild_memory' and result['ready']:
             cast=None if proposal is None else {'cards':view.get_story(story.id).characters_version_id,
-                                                'scenes':sorted(proposal.items())}
+                                                'scenes':sorted([s.id,proposal.get(s.id,s.character_ids)] for s in scenes if not s.trashed_at)}
             result['plan_fingerprint']=memory_build.plan_fingerprint(scene.id,targets,settings['memory'],cast)
     except (ValueError,KeyError) as exc:
         result['reason']=str(exc) if isinstance(exc,ValueError) else 'Матеріал не знайдено; оновіть сторінку'
