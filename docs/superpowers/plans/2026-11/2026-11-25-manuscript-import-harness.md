@@ -6,6 +6,7 @@
 
 **Architecture:** Ядро (PR #314) вже дає API `/api/manuscript-import/*`. Ця обв'язка додає:
 - серверний перегляд побудови пам'яті з вартістю та відбитком;
+- склад сцен за згадками імен із карток перед пам'яттю (поправка 1 специфікації; витяг моделлю — R-51, #315);
 - MCP-інструмент `import_manuscript` і дію `start_run(rebuild_memory)`;
 - діалог бібліотеки з редагуванням меж;
 - кнопку «Побудувати пам'ять (N сцен)» і рядок походження в робочому просторі;
@@ -46,11 +47,11 @@
 
 ## Review Focus
 
-1. **Автор пересуває межу на абзац, де вона заборонена** (розділювач, заголовок глави чи частини, передмова без перемикача). Інтерфейс не пропонує туди межу; якщо запит усе ж піде, 400 сервера показано через `diagnostic()`, а прийняті межі не губляться (Task 3).
-2. **Рукопис змінився між переглядом і збереженням** (повторний перегляд в іншій вкладці, протермінований тимчасовий файл). 409/404 повертає до вибору файла з поясненням, без часткової книги (Task 3).
-3. **Побудова пам'яті з невідомими цінами** (локальна модель, OpenRouter без тарифу). Перегляд показує кількість викликів і «вартість невідома», запуск можливий. Venice/OpenRouter без ліміту бюджету — чинна відмова (Task 1, Task 4).
-4. **Книга серії з порожнім знімком початку, попередня книга вже має пам'ять.** Перегляд пам'яті спершу пропонує «Оновити з попередньої книги» і лише потім будує пам'ять (Task 1, Task 4).
-5. **MCP: шлях до каталогу, посилання, файл понад 20 МіБ, непідтримуване розширення, base64 понад 2 МіБ.** Зрозуміла відмова без читання файла (Task 2).
+1. **Автор пересуває межу на абзац, де вона заборонена** (розділювач, заголовок глави чи частини, передмова без перемикача). Інтерфейс не пропонує туди межу; якщо запит усе ж піде, 400 сервера показано через `diagnostic()`, а прийняті межі не губляться (Task 4).
+2. **Рукопис змінився між переглядом і збереженням** (повторний перегляд в іншій вкладці, протермінований тимчасовий файл). 409/404 повертає до вибору файла з поясненням, без часткової книги (Task 4).
+3. **Побудова пам'яті з невідомими цінами** (локальна модель, OpenRouter без тарифу). Перегляд показує кількість викликів і «вартість невідома», запуск можливий. Venice/OpenRouter без ліміту бюджету — чинна відмова (Task 1, Task 5).
+4. **Книга серії з порожнім знімком початку, попередня книга вже має пам'ять.** Перегляд пам'яті спершу пропонує «Оновити з попередньої книги» і лише потім будує пам'ять (Task 1, Task 5).
+5. **MCP: шлях до каталогу, посилання, файл понад 20 МіБ, непідтримуване розширення, base64 понад 2 МіБ.** Зрозуміла відмова без читання файла (Task 3).
 
 ---
 
@@ -91,7 +92,37 @@
 - [ ] **Step 4: Run** нові тести, а також `tests/generation/` і `tests/web/test_long_prose_guard.py`. Expected: PASS.
 - [ ] **Step 5: Commit** `feat(memory): перегляд побудови пам'яті з оцінкою вартості й відбитком`.
 
-### Task 2: MCP — `import_manuscript` і `start_run(rebuild_memory)`
+### Task 2: Склад сцен за згадками імен (поправка 1 специфікації)
+
+**Files:**
+- Create: `src/storygen/storage/scene_cast.py`
+- Modify: `src/storygen/generation/readiness.py` — запис `rebuild_memory` отримує `cast`, а `plan_fingerprint` враховує запропонований склад
+- Modify: `src/storygen/web/routes_runs.py` (або `routes_versions.py` поруч із `rebuild-memory`) — `POST /api/stories/{id}/scene-cast/infer` `{expected_revision}` → `{story, changed_scene_ids}`; додати до `long_prose_guard.ALLOWED` лише якщо тест обходу вимагає (зміна складу не створює частин чи серії)
+- Test: `tests/storage/test_scene_cast.py`, `tests/generation/test_memory_build.py` (доповнити)
+
+**Interfaces:**
+- Consumes: `characters/names.py::scene_match_names(cards, scenes, scene)`, `memory/selection.py::name_stems`, `mentions`; `storage/scene_metadata.py::story_cards`; `scene_description.parse_scene_description` (наявність рядка «Учасники:» у плані сцени); `characters/acquaintance.py::protagonist`; Task 1 (`memory_build_target`, readiness `rebuild_memory`).
+- Produces:
+  - `propose_cast(view, cards) -> dict[str, list[str]]` — для кожної активної сцени з головою прози, чий план не має рядка «Учасники:» (або плану немає): ID карток, чиє будь-яке доступне в сцені ім'я згадано в прозі, у порядку першої згадки. Сцени з рядком «Учасники:» відсутні в результаті.
+  - `apply_cast(repo, story_id, proposal, expected_revision) -> list[str]` — одна транзакція; оновлює `scene.character_ids` лише там, де склад змінився; зміна складу сцени з наявною пам'яттю застарює її чинним шляхом інвалідації (як `scene_metadata.apply_description`).
+  - Readiness `rebuild_memory`.`cast`: `{cards: int, protagonist: str | None (ім'я), scenes_to_fill: int, warning: str | None}`. `warning` = «Немає карток персонажів: пам'ять не матиме стану героя», коли карток немає.
+  - `plan_fingerprint` (Task 1) додатково хешує запропонований склад; перед стартом запуску (UI і MCP) викликається `apply_cast`, після чого відбиток перерахунку збігається.
+
+- [ ] **Step 1: Write the failing tests:**
+  - `test_cast_from_name_mentions_in_order` — картки «Марко», «Оля»; проза «Оля побачила Марка» → `[оля, марко]` (відмінок через основу);
+  - `test_scene_with_plan_participants_untouched`;
+  - `test_no_cards_gives_warning_and_empty_cast`;
+  - `test_protagonist_marked_card_reported`;
+  - `test_apply_cast_stales_existing_memory` — сцена з пам'яттю, змінений склад → пам'ять застаріла;
+  - `test_apply_cast_noop_when_unchanged` — без змін немає нових записів і інвалідації;
+  - `test_memory_fingerprint_changes_with_cards` — нова картка між переглядом і запуском → застарілий відбиток;
+  - `test_infer_route_applies_and_returns_changed`.
+- [ ] **Step 2: Run** `PYTHONUTF8=1 .venv/Scripts/python -m pytest tests/storage/test_scene_cast.py tests/generation/test_memory_build.py -q -p no:cacheprovider`. Expected: FAIL.
+- [ ] **Step 3: Implement.**
+- [ ] **Step 4: Run** нові тести, `tests/storage/`, `tests/characters/` (якщо є), `tests/web/test_long_prose_guard.py`. Expected: PASS.
+- [ ] **Step 5: Commit** `feat(memory): склад сцен за згадками імен перед побудовою пам'яті`.
+
+### Task 3: MCP — `import_manuscript` і `start_run(rebuild_memory)`
 
 **Files:**
 - Modify: `src/storygen/mcp/bridge.py`:
@@ -110,7 +141,7 @@
     - Без `confirm` повертає `{import_id, fingerprint, file_name, title_suggestion, chapter_source, scenes:[{start,end,title,words,part_index,proposed,warnings}], parts, warnings, tracked_changes, edition}`.
     - З `confirm=True` потрібні `import_id`, `fingerprint`, `title`. Без `scenes` сервер отримує запропоновані перегляд сцени (`start`, `title`, `part_index`). Повертає `{story_id, scene_ids, warnings, next_steps}`.
     - Помилки: шлях не існує, каталог, посилання (`Path.is_symlink()`), розширення не з трійки, понад 20 МіБ, base64 понад 2 МіБ, одночасно `file_path` і `content_base64`.
-  - `start_run(action='rebuild_memory', scene_id=None, …)`. `scene_id` за замовчуванням береться з `GET /api/stories/{id}/memory-build`. Без `confirm` — перегляд із `cost`, `unfit_scenes`, `series_refresh`, `plan_fingerprint`. З `confirm` потрібен `plan_fingerprint`, а `RunRequest` іде з `memory_plan_fingerprint`.
+  - `start_run(action='rebuild_memory', scene_id=None, …)`. `scene_id` за замовчуванням береться з `GET /api/stories/{id}/memory-build`. Без `confirm` — перегляд із `cost`, `unfit_scenes`, `series_refresh`, `plan_fingerprint`. З `confirm` потрібен `plan_fingerprint`; спершу `POST /api/stories/{id}/scene-cast/infer`, потім `RunRequest` з `memory_plan_fingerprint`. Перегляд містить `cast` (Task 2).
 
 - [ ] **Step 1: Write the failing tests** (за зразком `tests/mcp/test_bridge_audit.py`: `build_server(TestClient(create_app(...)))`, `BRIDGE_HEADERS`):
   - `test_import_manuscript_preview_from_path`;
@@ -128,7 +159,7 @@
 - [ ] **Step 4: Run** `tests/mcp/`, `tests/test_claude_plugin.py`, `tests/test_skill_bundles.py`, `tests/test_codex_skills.py`, `tests/web/test_long_prose_guard.py`. Expected: PASS.
 - [ ] **Step 5: Commit** `feat(mcp): import_manuscript і побудова пам'яті через start_run`.
 
-### Task 3: Діалог імпорту в бібліотеці
+### Task 4: Діалог імпорту в бібліотеці
 
 **Files:**
 - Create: `src/storygen/web/static/manuscript-import.js` — `installManuscriptImport({api, json, notice, document, appInfo})`, вхідний модуль і логіка (окремий файл-інжектор не потрібен: бібліотека не має `editor.js`-стану)
@@ -155,7 +186,7 @@
    - Розгортання сцени лінива завантажує абзаци (`paragraphs?start&end`). Біля кожного абзацу з `boundary_allowed` — кнопка «Межа тут» / «Прибрати межу».
    - Поля: назва книги (≤300, з `title_suggestion`), мова, рейтинг (як у формі нової книги), маркери глав і частин (зміна → повторний `preview` з `import_id`, новий `fingerprint`, межі автора скидаються з попередженням), джерело глав, перемикач «Додати передмову на початок першої сцени» (коли `front_matter` непорожній), серія з номером (лише `long_prose`).
    - Попередження й відкинуті абзаци — через `diagnostic()`. Понад 500 сцен — кнопка «Імпортувати» вимкнена з поясненням.
-3. Підсумок: посилання на книгу й кнопка «Побудувати пам'ять (N сцен)». Вона веде в робочий простір книги з відкритим переглядом пам'яті (Task 4): `/stories/{id}?build_memory=1`.
+3. Підсумок: посилання на книгу й кнопка «Побудувати пам'ять (N сцен)». Вона веде в робочий простір книги з відкритим переглядом пам'яті (Task 5): `/stories/{id}?build_memory=1`.
 
 - [ ] **Step 1: Write the failing tests:**
   - JS:
@@ -175,7 +206,7 @@
 - [ ] **Step 4: Run** ті самі команди, а також `tests/web/test_localization.py` і `node tests/web/js/localization.mjs`. Expected: PASS.
 - [ ] **Step 5: Commit** `feat(manuscript): діалог імпорту рукопису в бібліотеці`.
 
-### Task 4: Побудова пам'яті в робочому просторі й позначка імпорту
+### Task 5: Побудова пам'яті в робочому просторі й позначка імпорту
 
 **Files:**
 - Create: `src/storygen/web/static/memory-build.js` — `installMemoryBuild({api, json, notice, document, state})`
@@ -198,7 +229,8 @@
 - Produces: діалог перегляду пам'яті.
   - Кількість сцен (N) і викликів; вартість «до X $» або «вартість невідома»; перелік сцен, що не вміщуються (назви, посилання).
   - Якщо `series_refresh` — спершу кнопка «Оновити з попередньої книги» (чинний `refreshBook` із підтвердженням). Після неї перегляд оновлюється.
-  - «Побудувати пам'ять» стартує запуск, закриває діалог і передає керування чинній панелі запусків (пауза, скасування, продовження вже є).
+  - Блок складу (Task 2 `cast`): кількість карток, головний герой, скільки сцен отримають учасників; без карток — попередження з посиланнями на «Персонажі» (`/stories/{id}/characters`) і на імпорт персонажів з Markdown.
+  - «Побудувати пам'ять» спершу викликає `POST /api/stories/{id}/scene-cast/infer`, потім стартує запуск, закриває діалог і передає керування чинній панелі запусків (пауза, скасування, продовження вже є).
   - `?build_memory=1` у URL відкриває діалог після завантаження.
 
 - [ ] **Step 1: Write the failing tests:**
@@ -214,10 +246,10 @@
 - [ ] **Step 4: Run** ті самі команди, а також `editor-import.spec.mjs` (спільний `#workspace-origin`) і `tests/web/test_localization.py`. Expected: PASS.
 - [ ] **Step 5: Commit** `feat(memory): «Побудувати пам'ять» з переглядом вартості й позначка імпорту`.
 
-### Task 5: Сайт, знімки, SPEC
+### Task 6: Сайт, знімки, SPEC
 
 **Files:**
-- Create: `docs/site/uk/manuscript-import.md`, `docs/site/en/manuscript-import.md` — сторінка «Імпорт рукопису» / «Importing a manuscript»: формати й ліміти, як розпізнаються глави (маркери, стилі, Пролог/Епілог), межі сцен, передмова, видання, побудова пам'яті з вартістю, MCP (шлях до файла), відомі обмеження
+- Create: `docs/site/uk/manuscript-import.md`, `docs/site/en/manuscript-import.md` — сторінка «Імпорт рукопису» / «Importing a manuscript»: формати й ліміти, як розпізнаються глави (маркери, стилі, Пролог/Епілог), межі сцен, передмова, видання, картки персонажів і склад сцен за іменами перед пам'яттю (без карток немає стану героя), побудова пам'яті з вартістю, MCP (шлях до файла), відомі обмеження
 - Modify: `docs/site/site.json` — сторінка `manuscript-import` після `imports`
 - Modify: `docs/site/{uk,en}/first-story.md` (розділ «Вже є рукопис») і `docs/site/{uk,en}/memory.md` (побудова пам'яті для імпортованої книги); за потреби — `docs/site/{uk,en}/mcp.md` (інструмент `import_manuscript`)
 - Modify: `scripts/capture_screenshots.py` — `capture_manuscript_import(base, lang, ...)` (діалог на кроці перегляду, нейтральний рукопис) → `docs/images/site/{uk,en}/manuscript-import-desktop.png`; за потреби `memory-build-desktop.png`
@@ -225,15 +257,16 @@
   - S11 — діалог і межі;
   - S12 — позначка імпорту й необов'язковий план у сцені;
   - S13 — побудова пам'яті з вартістю, відбитком, переліком непридатних сцен і пропозицією оновити серію;
-  - S14 — MCP `import_manuscript` і `start_run(rebuild_memory)`.
+  - S14 — MCP `import_manuscript` і `start_run(rebuild_memory)`;
+  - S15 — склад сцен за згадками імен перед пам'яттю (поправка 1).
 
   Прибрати з відомих обмежень «інтерфейс/MCP — у PR 2». Доповнити опис запуску `rebuild_memory`: `cost`, `memory_plan_fingerprint`.
-- Modify: `docs/verification/traceability.json` (S11–S14 → тести Task 1–4), `docs/superpowers/plans/2026-10-20-remediation-progress.md` (запис R-48 PR 2)
+- Modify: `docs/verification/traceability.json` (S11–S15 → тести Task 1–5), `docs/superpowers/plans/2026-10-20-remediation-progress.md` (запис R-48 PR 2)
 
 - [ ] **Step 1:** Написати сторінки uk і en, оновити `site.json` і згадки.
 - [ ] **Step 2:** Запустити знімки: `PYTHONUTF8=1 .venv/Scripts/python scripts/capture_screenshots.py` (або лише нові сценарії, якщо скрипт це підтримує); перевірити зображення на відсутність приватних даних.
 - [ ] **Step 3:** `PYTHONUTF8=1 .venv/Scripts/python scripts/check_site.py --rehash manuscript-import`; так само для кожної зміненої сторінки (`first-story`, `memory`, `mcp`). Expected: OK.
 - [ ] **Step 4:** SPEC + traceability; `PYTHONUTF8=1 .venv/Scripts/python scripts/check_docs.py`. Expected: OK. Також `tests/test_docs_site.py` і `tests/test_capture_screenshots.py`. Expected: PASS.
-- [ ] **Step 5: Commit** `docs(manuscript): сайт uk/en, знімки й SPEC S11–S14`. У тілі — перелік оновлених сторінок uk/en.
+- [ ] **Step 5: Commit** `docs(manuscript): сайт uk/en, знімки й SPEC S11–S15`. У тілі — перелік оновлених сторінок uk/en.
 
 Повний набір тестів і `scripts/verify.py` запускає контролер після фінального рев'ю з короткого шляху `C:/tmp/<коротка>` (detached worktree, junction на `.venv` і `frontend/node_modules`); результат — у `docs/STATUS.md`. Останній PR задачі несе `Closes #288`.
