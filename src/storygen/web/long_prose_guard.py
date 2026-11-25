@@ -47,6 +47,8 @@ ALLOWED = {
     ('PUT', '/api/model-policy/consent'): 'згода застосунку, не твору',
     ('DELETE', '/api/model-policy/consent'): 'згода застосунку, не твору',
     ('DELETE', '/api/model-policy/refusal'): 'згода застосунку, не твору',
+    ('POST', '/api/manuscript-import/preview'): 'книги ще немає: перегляд лише читає файл і не змінює жодної книги',
+    ('DELETE', '/api/manuscript-import/{import_id}'): 'книги ще немає: прибирає лише тимчасовий файл рукопису',
 }
 GENERATIVE_GET = {'/api/scenes/{scene_id}/writing-context', '/api/scenes/{scene_id}/chat-task/{stage}'}
 
