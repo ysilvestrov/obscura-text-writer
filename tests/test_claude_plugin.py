@@ -36,6 +36,20 @@ def frontmatter(path):
     return fields
 
 
+def strict_yaml_problems(path):
+    """Claude Code reads frontmatter leniently; the Desktop ZIP and claude.ai upload need valid YAML (an unquoted ': '
+    inside the description breaks it)."""
+    import yaml
+    text = path.read_text(encoding='utf-8')
+    if not text.startswith('---\n'):
+        return []
+    try:
+        data = yaml.safe_load(text[4:text.index('\n---', 4)])
+    except yaml.YAMLError as error:
+        return [f'{path.parent.name}: frontmatter is not valid YAML: {str(error).splitlines()[0]}']
+    return [] if isinstance(data, dict) else [f'{path.parent.name}: frontmatter is not a YAML mapping']
+
+
 def tool_mentions(text):
     """Every MCP tool a skill names: `mcp__obscura__x` or a backticked snake_case name with a tool verb prefix,
     bare or in call syntax such as `get_run(run_id)`."""
@@ -52,6 +66,7 @@ def problems(plugin):
     for path in files:
         skill = path.parent.name
         fields = frontmatter(path)
+        result += strict_yaml_problems(path)
         if fields.get('name') != skill:
             result.append(f'{skill}: name must equal the folder name')
         if not fields.get('description'):
@@ -94,6 +109,15 @@ def test_claude_code_only_field_is_reported(tmp_path):
     path = copy/'skills/start-story/SKILL.md'
     path.write_text(path.read_text(encoding='utf-8').replace('---\n', '---\nmodel: opus\n', 1), encoding='utf-8')
     assert any('start-story' in p and 'model' in p for p in problems(copy))
+
+
+@pytest.mark.req('CLAUDE-SKILLS')
+def test_invalid_yaml_frontmatter_is_reported(tmp_path):
+    copy = copy_plugin(tmp_path)
+    path = copy/'skills/revise/SKILL.md'
+    text = path.read_text(encoding='utf-8')
+    path.write_text(text.replace('Obscura story, for example move', 'Obscura story: move', 1), encoding='utf-8')
+    assert any(p.startswith('revise: frontmatter is not valid YAML') for p in problems(copy))
 
 
 @pytest.mark.req('CLAUDE-SKILLS')

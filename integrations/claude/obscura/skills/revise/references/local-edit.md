@@ -5,7 +5,7 @@ The author asks for a change of quality or tone in one scene ("funnier", "slower
 ## Steps
 
 1. **Scene and instruction.** If the author did not name the scene, ask one question.
-2. **Read the scene in full:** `get_scene_text(scene_id, 'prose')` (or `'draft'` if the scene has no prose yet), following `next_offset` until it is null.
+2. **Read the scene in full:** `get_scene_text(scene_id, 'prose')` (or `'draft'` if the scene has no prose yet), following `next_offset` until it is null. In a `chat` story, also read the editor's mode now, as in §3 of `${CLAUDE_PLUGIN_ROOT}/skills/revise/references/fact-change.md`: the summary in step 5 depends on it.
 3. **Pick 3–6 places** where the instruction has the biggest effect. Show them as quotes, numbered.
 4. **One card per place, one at a time**, as the shared rules say:
    - 2–3 replacement variants, the recommended one first;
@@ -19,6 +19,6 @@ The author asks for a change of quality or tone in one scene ("funnier", "slower
 
    Wait for the author's explicit «ок» before any write. The choices alone are not consent. A changed choice needs a new summary and new consent.
 6. **Apply** only what the summary showed.
-   - **`chat` mode, editor `prose`** (`result_format` of `get_stage_task(scene_id, 'edit')`; if the server refuses that task, `roles.editor.edit_mode` from `get_settings(story_id)`): the chain from the draft for this one scene — draft → prose → memory — as steps 3–5 of §6 in `${CLAUDE_PLUGIN_ROOT}/skills/revise/references/fact-change.md`. Every sentence you were not asked to change stays byte for byte. Then the next scene's links become unchecked: handle it as §7 there.
+   - **`chat` mode, editor `prose`** (the mode read in step 2): the chain from the draft for this one scene — draft → prose → memory — as steps 3–5 of §6 in `${CLAUDE_PLUGIN_ROOT}/skills/revise/references/fact-change.md`. Every sentence you were not asked to change stays byte for byte. Then the next scene's links become unchecked: handle it as §7 there.
    - **`obscura` mode, or editor `patches`/`diff`:** write nothing. Give the table of chosen replacements «знайти — замінити на» for the author to make in Obscura, and finish as §10 there.
 7. **Final summary:** what changed, the variants you invented as your decisions, and the reminder to read and approve the prose in Obscura (`next_steps(scene_id)`).

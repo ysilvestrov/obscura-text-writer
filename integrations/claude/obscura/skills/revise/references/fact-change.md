@@ -44,6 +44,8 @@ For every place, one row: scene, quote, kind, proposal. Kinds:
 
 In an `obscura` story you may also offer the Auditor (Ревізор) after the edits are in, as an extra check — never instead of this search.
 
+**The editor's mode** (`chat` story only), read now, before the table: it decides whether the chat writes the text or the author makes the edits by hand (§4, §6). Call `get_stage_task(first_affected_scene_id, 'edit')` once: it only reads and needs no consent. Its `result_format` follows the editor's mode in the story's settings and is the same for every scene. If the server refuses that task (for example, the scene's brief link is unchecked), read the mode from `get_settings(story_id)` instead: `roles.editor.edit_mode` (no editor role configured: the default, `prose`). Do not stop over this refusal. In an `obscura` story skip this: the text edits are made by hand anyway (§9).
+
 ## 4. The table of changes
 
 Show one table for consent, naming every affected scene by its title from `get_story`:
@@ -66,7 +68,7 @@ Show the first affected scene before anything is saved: fragments "was → becom
 
 ## 6. Applying in `chat` mode
 
-Before the first write, call `get_stage_task(first_affected_scene_id, 'edit')` once: it only reads. Its `result_format` follows the editor's mode in the story's settings and is the same for every scene. If the server refuses that task (for example, the scene's brief link is unchecked), read the mode from `get_settings(story_id)` instead: `roles.editor.edit_mode` (no editor role configured: the default, `prose`). Do not stop over this refusal.
+Go by the editor's mode you read in §3:
 - `prose`: go on below.
 - `patches` or `diff`: an empty editor pass is refused, so write no text. Give the replacement table (§9) instead, and finish with §10.
 
@@ -86,7 +88,7 @@ How each entity is built:
    - Change only the agreed places. Every other sentence stays byte for byte.
    - If the draft head is the author's own text (no `external_origin`) and differs from the prose, the server does not say which is newer: ask the author which one to use.
 4. **Prose:** only the edit stage changes prose. `get_stage_task(scene_id, 'edit')` → return prose identical to the draft you just saved, with no copy-editing → `save_stage_result(scene_id, 'edit', task_fingerprint, result)`.
-5. **Memory:** `get_stage_task(scene_id, 'memory')` (read all of it with `offset`, `max_chars` at most 20000) → the scene's memory built again from the current prose, as a first memory stage (`add` only; the scene's own claims are not in the material). Keep everything the previous memory said (`get_scene_text(scene_id, 'memory')`), with the old fact replaced by the new one and every other text and quote word for word → `save_stage_result(scene_id, 'memory', task_fingerprint, result)`. The claim ids will change: they depend on the prose version.
+5. **Memory:** `get_stage_task(scene_id, 'memory')` (read all of it with `offset`, `max_chars` at most 20000) → the scene's memory built again from the current prose, as a first memory stage (`add` only; the scene's own claims are not in the material). Keep everything the previous memory said (`get_scene_text(scene_id, 'memory')`), with the old fact replaced by the new one and every other text and quote word for word. For `core`, repeat the decisions the previous memory shows: a slot with a `character_states` claim there keeps it (`changed`, the same text and quote, the old fact replaced); any other slot keeps the state it had before the scene. Change a decision only where the old fact is replaced or the task's own rules require it, and mark that change as your decision → `save_stage_result(scene_id, 'memory', task_fingerprint, result)`. The claim ids will change when the prose changed: they depend on the prose version. With unchanged prose and the same claims they stay the same (§7).
 
 After each memory save, call `get_story` again:
 - «Пам'ять переноситься» (memory is being carried): read again a little later.
@@ -106,7 +108,7 @@ A scene's brief depends on the previous scene's memory. After new memory for sce
   - `discrepancy` means the scene needs an edit: offer it as a new table row (usually new memory, step 5; changing prose only with the author's consent).
 
   If the preview says «Роль не налаштовано: Ревізор», or the author does not want to pay, the author confirms such scenes with «Я перевірив сам» for the brief and prose links in the «Узгодженість сцени» panel. Do not rebuild an identical chain yourself unless the author asks: it builds new memory and pushes the same check onto scene k+2 and on to the end of the book.
-- **Memory carry:** Obscura carries the new memory of scene k into later scenes by itself, without a model or cost; do not rebuild the book's memory. A scene whose carry failed (`carry_failed`: its events referred to claims of scene k whose ids changed) blocks every scene after it, and neither the Auditor nor the author's decision clears it. If the scene is in the table, the memory step of its own chain covers this. Otherwise give it new memory (step 5) even without a table row: in `chat` mode it is free and covered by the agreed table. Its prose did not change, so the same texts and quotes keep the same claim ids, and the carry goes on. The chain of new memories continues only where a scene's memory really changes.
+- **Memory carry:** Obscura carries the new memory of scene k into later scenes by itself, without a model or cost; do not rebuild the book's memory. A scene whose carry failed (`carry_failed`: its events referred to claims of scene k whose ids changed) blocks every scene after it, and neither the Auditor nor the author's decision clears it. If the scene is in the table, the memory step of its own chain covers this. Otherwise give it new memory (step 5) even without a table row: in `chat` mode it is free and covered by the agreed table. In an `obscura` story it is a paid run: offer `start_run(story_id, action='memory', scene_id)` for that scene, preview without `confirm`, show readiness, models and cost, then `confirm=true` only after the author's yes; watch with `get_run(run_id)` and call `get_story` again after the run. Its prose did not change, so the same texts and quotes keep the same claim ids, and the carry goes on. The chain of new memories continues only where a scene's memory really changes.
 
 ## 8. Plan preamble, cards, series bible
 
@@ -125,5 +127,5 @@ A scene's brief depends on the previous scene's memory. After new memory for sce
 
 Manual edits leave the old fact in memory. When the author says «готово»:
 - **`chat` mode with `patches`/`diff`:** the memory stage of every affected scene in order, as step 5 of §6, without separate consent: it is part of the agreed table.
-- **`obscura` mode:** offer `start_run(story_id, action='memory', scene_id)` for every affected scene in order: preview without `confirm`, show readiness, models and cost, then `confirm=true` only after the author's yes; watch with `get_run(run_id)`.
+- **`obscura` mode:** offer `start_run(story_id, action='memory', scene_id)` for every affected scene in order: preview without `confirm`, show readiness, models and cost, then `confirm=true` only after the author's yes; watch with `get_run(run_id)`. After each run, call `get_story` again: a later scene with memory `carry_failed` gets the same offer, with its own preview and consent (§7).
 - **Both:** offer the Auditor for the whole book (§7) and give the summary, with the scenes waiting for a check of their links.
