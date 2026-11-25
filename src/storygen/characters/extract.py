@@ -15,6 +15,7 @@ from ..model_json import unwrap_model_json
 from ..scene_description import name_key
 
 SKIP_INPUT_LIMIT = "не вміщується в ліміт входу ролі «Пам'ять»"
+SKIP_CONTEXT_LIMIT = "не вміщується в контекст ролі «Пам'ять»"
 PROTAGONIST_THRESHOLD = 1.0
 PROTAGONIST_CANDIDATES = 3
 
