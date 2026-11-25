@@ -58,7 +58,9 @@ WINDOW_PROFILE = '.window'
 # EDITOR-IMPORT-S10: kept DOCX files between an import preview and its save are not story data either; backups and
 # fsck skip this top-level folder (design §4, §9).
 EDITOR_IMPORT_DIR = 'editor-import'
-NOT_DATA = (WINDOW_PROFILE, EDITOR_IMPORT_DIR)
+# MANUSCRIPT-IMPORT: the uploaded manuscript kept between its preview and the import (24 hours) is not story data either.
+MANUSCRIPT_IMPORT_DIR = 'manuscript-import'
+NOT_DATA = (WINDOW_PROFILE, EDITOR_IMPORT_DIR, MANUSCRIPT_IMPORT_DIR)
 
 
 def regular_files(root: Path, skip: tuple[str, ...] = ()) -> list[Path]:

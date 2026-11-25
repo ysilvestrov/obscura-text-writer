@@ -63,6 +63,19 @@ def _nested_params(key):
     return ()
 
 
+# `{p0}: {p1}` keys (too short for the generic patterns): p0 is author text, p1 one of the listed exact diagnostics.
+_SUFFIX_PARAMS={'manuscript_import.server.scene_warning':('manuscript_import.server.long_paragraph','manuscript_import.server.does_not_fit')}
+
+
+def _suffixed(text,locale):
+    for key,inner in _SUFFIX_PARAMS.items():
+        for name in inner:
+            tail=': '+catalogs()['uk'][name]
+            if text.endswith(tail) and len(text)>len(tail):
+                return translate(key,locale,p0=text[:-len(tail)],p1=translate(name,locale))
+    return None
+
+
 # Short list items below the generic pattern length threshold.
 _LIST_ITEMS={'rating.guard.more':re.compile(r'і ще (\d+)')}
 
@@ -97,6 +110,8 @@ def diagnostic(text,locale='uk'):
                 for name in _nested_params(key):
                     params[name]=diagnostic(params[name],locale)
                 return translate(key,locale,**params)
+    suffixed=_suffixed(text,locale) if len(text)<=6000 else None
+    if suffixed is not None:return suffixed
     for prefix,translated in [('Некоректні дані: ','Invalid data: '),('Помилка редактора: ','Editor error: '),('Помилка планувальника: ','Planner error: ')]:
         if text.startswith(prefix):
             return translated+diagnostic(text[len(prefix):],locale)

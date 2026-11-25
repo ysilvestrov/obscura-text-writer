@@ -1,6 +1,7 @@
 """IMPORT-DOCX: a safe reader of an editor's Word file, built on zipfile and ElementTree without new dependencies.
 
-It reads only word/document.xml, word/comments.xml, docProps/custom.xml and [Content_Types].xml. Every paragraph
+It reads only word/document.xml, word/comments.xml, word/styles.xml (optional, for heading levels, the Title
+style and the table-of-contents styles), docProps/custom.xml and [Content_Types].xml. Every paragraph
 carries two views: the editor's (w:ins kept, w:del dropped) and the original (w:del kept, w:ins dropped);
 comment ranges are measured in the original view.
 """
@@ -16,7 +17,7 @@ MAX_FILE = 20 * 1024 * 1024
 MAX_UNPACKED = 100 * 1024 * 1024
 CHUNK = 64 * 1024
 OLE_MAGIC = b'\xd0\xcf\x11\xe0'
-PARTS = ('[Content_Types].xml', 'word/document.xml', 'word/comments.xml', 'docProps/custom.xml')
+PARTS = ('[Content_Types].xml', 'word/document.xml', 'word/comments.xml', 'word/styles.xml', 'docProps/custom.xml')
 _DOCTYPE = re.compile(rb'<!doctype', re.I)
 _OFF = {'0', 'false', 'off', 'none'}
 # Nesting of tracked changes: text inserted and then deleted never was in the original and is not in the result.
@@ -43,6 +44,7 @@ class DocxParagraph:
     # the original view, a deleted mark joins them in the editor's view.
     mark_inserted: bool = False
     mark_deleted: bool = False
+    heading_level: int | None = None  # 0-based: outlineLvl of the paragraph or its style chain, else 'heading N' -> N-1
 
 
 @dataclass(frozen=True)
@@ -67,6 +69,8 @@ class DocxManuscript:
     paragraphs: tuple[DocxParagraph, ...]
     comments: tuple[DocxComment, ...]
     warnings: tuple[DocxWarning, ...]
+    title_paragraphs: tuple[int, ...] = ()  # indexes of paragraphs whose style is named 'title'
+    toc_paragraphs: tuple[int, ...] = ()  # indexes of paragraphs of Word's automatic table of contents ('toc N', 'TOC Heading')
 
 
 def _q(name):
@@ -141,8 +145,81 @@ def _merge(runs):
     return tuple(out)
 
 
+_HEADING_NAME = re.compile(r'heading\s*([1-9])', re.I)
+
+
+def _styles(data):
+    """styleId -> (name, outlineLvl, basedOn) from word/styles.xml."""
+    result = {}
+    if data is None:
+        return result
+    for style in _parse(data, 'word/styles.xml').iter(_q('style')):
+        key = style.get(_q('styleId'))
+        if not key:
+            continue
+        name = style.find(_q('name'))
+        outline = style.find(f'{_q("pPr")}/{_q("outlineLvl")}')
+        based = style.find(_q('basedOn'))
+        result[key] = ((name.get(_q('val')) or '') if name is not None else '', _outline(outline),
+                       based.get(_q('val')) if based is not None else None)
+    return result
+
+
+def _outline(element):
+    """outlineLvl 0..8 is a heading level; 9 is an explicit body text that stops resolution."""
+    try:
+        value = int(element.get(_q('val'))) if element is not None else None
+    except (TypeError, ValueError):
+        return None
+    return value if value is not None and 0 <= value <= 9 else None
+
+
+def _chain(styles, style_id):
+    seen = set()
+    while style_id and style_id in styles and style_id not in seen:
+        seen.add(style_id)
+        yield styles[style_id]
+        style_id = styles[style_id][2]
+
+
+def _heading_level(styles, style_id, direct):
+    if direct is not None:
+        return None if direct == 9 else direct
+    chain = list(_chain(styles, style_id))
+    for _, outline, _ in chain:
+        if outline is not None:
+            return None if outline == 9 else outline
+    for name, _, _ in chain:
+        match = _HEADING_NAME.fullmatch(name.strip())
+        if match:
+            return int(match.group(1)) - 1
+    if not chain and style_id:  # no styles part or an unknown style: fall back to the conventional style id
+        match = _HEADING_NAME.fullmatch(style_id.strip())
+        return int(match.group(1)) - 1 if match else None
+    return None
+
+
+def _is_title(styles, style_id):
+    chain = list(_chain(styles, style_id))
+    if not chain:
+        return (style_id or '').strip().lower() == 'title'
+    return any(name.strip().lower() == 'title' for name, _, _ in chain)
+
+
+_TOC_NAME = re.compile(r'toc\s*(?:[1-9]|heading)', re.I)
+
+
+def _is_toc(styles, style_id):
+    """The paragraph's own style is Word's table of contents; without styles.xml the style id ('TOC1', 'TOCHeading')."""
+    name = styles[style_id][0] if style_id in styles else (style_id or '')
+    return bool(_TOC_NAME.fullmatch(name.strip()))
+
+
 class _Reader:
-    def __init__(self):
+    def __init__(self, styles=None):
+        self.styles = styles or {}
+        self.titles = []
+        self.tocs = []
         self.paragraphs = []
         self.lengths = []
         self.starts = {}
@@ -178,12 +255,19 @@ class _Reader:
                            (('rPrChange', 'pPrChange'), 'зміну форматування проігноровано (імпортується лише текст)')):
             if any(next(element.iter(_q(tag)), None) is not None for tag in tags):
                 self.warn(index, text)
+        style_id = style.get(_q('val')) if style is not None else None
+        direct = _outline(element.find(f'{_q("pPr")}/{_q("outlineLvl")}'))
+        if _is_title(self.styles, style_id):
+            self.titles.append(index)
+        if _is_toc(self.styles, style_id):
+            self.tocs.append(index)
         mark = element.find(f'{_q("pPr")}/{_q("rPr")}')
         # A tracked move is an insertion at its destination (moveTo) and a deletion at its source (moveFrom).
         inserted = mark is not None and any(mark.find(_q(tag)) is not None for tag in ('ins', 'moveTo'))
         deleted = mark is not None and any(mark.find(_q(tag)) is not None for tag in ('del', 'moveFrom'))
         self.paragraphs.append(DocxParagraph(style.get(_q('val')) if style is not None else None, tuple(state['bookmarks']),
-            _merge(state['editor']), _merge(state['original']), state['changed'] or inserted or deleted, inserted, deleted))
+            _merge(state['editor']), _merge(state['original']), state['changed'] or inserted or deleted, inserted, deleted,
+            _heading_level(self.styles, style_id, direct)))
         self.lengths.append(state['length'])
 
     def walk(self, parent, index, state, mode):
@@ -261,8 +345,8 @@ def _read(content):
     body = _parse(parts['word/document.xml'], 'word/document.xml').find(_q('body'))
     if body is None:
         raise ValueError('DOCX: у word/document.xml немає тіла документа')
-    reader = _Reader()
+    reader = _Reader(_styles(parts.get('word/styles.xml')))
     reader.body(body)
     story_id, export_id = _identity(parts.get('docProps/custom.xml'))
     return DocxManuscript(story_id, export_id, tuple(reader.paragraphs), _comments(parts.get('word/comments.xml'), reader),
-        tuple(reader.warnings))
+        tuple(reader.warnings), tuple(reader.titles), tuple(reader.tocs))

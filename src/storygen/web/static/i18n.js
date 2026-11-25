@@ -27,6 +27,15 @@ for(const key of Object.keys(catalogs.uk))for(const value of [catalogs.uk[key],c
 diagnosticPatterns.sort((a,b)=>b.weight-a.weight);
 // Catalog parameters that hold another application diagnostic (a place in the editor DOCX, a scene's failure reason); as in localization.py.
 const nestedParams=key=>key.startsWith('editor_import.server.reader.at.')?['p0']:key==='editor_import.server.scene.not_imported'?['p1']:[];
+// `{p0}: {p1}` keys, too short for the patterns: p0 is author text, p1 one of the listed exact diagnostics; as in localization.py.
+const suffixParams={'manuscript_import.server.scene_warning':['manuscript_import.server.long_paragraph','manuscript_import.server.does_not_fit']};
+function suffixed(text){
+  for(const[key,inner]of Object.entries(suffixParams))for(const name of inner)for(const value of [catalogs.uk[name],catalogs.en[name]]){
+    const tail=': '+value;
+    if(text.endsWith(tail)&&text.length>tail.length)return t(key,{p0:text.slice(0,-tail.length),p1:t(name)});
+  }
+  return null;
+}
 export function diagnostic(text){
   if(typeof text!=='string')return text;
   const http=text.length<=6000&&text.match(/^HTTP (\d{3}): ([\s\S]+) (?:Автоматичного повтору немає|No automatic retry)\.$/);
@@ -35,6 +44,8 @@ export function diagnostic(text){
   if(retry)return t('generation.no_retry',{p0:diagnostic(retry[1])});
   if(exactDiagnostics.has(text))return t(exactDiagnostics.get(text));
   if(text.length<=6000)for(const entry of diagnosticPatterns){const match=entry.pattern.exec(text);if(match){const params=Object.fromEntries(entry.names.map((name,index)=>[name,match[index+1]]));for(const name of nestedParams(entry.key))params[name]=diagnostic(params[name]);return t(entry.key,params)}}
+  const suffix=text.length<=6000?suffixed(text):null;
+  if(suffix!==null)return suffix;
   for(const[uk,en]of [['Некоректні дані: ','Invalid data: '],['Помилка редактора: ','Editor error: '],['Помилка планувальника: ','Planner error: ']])for(const prefix of [uk,en])if(text.startsWith(prefix))return (getLocale()==='en'?en:uk)+diagnostic(text.slice(prefix.length));
   return text;
 }

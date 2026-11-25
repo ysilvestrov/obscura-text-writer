@@ -33,6 +33,12 @@ def create_app(settings: AppSettings, *, gateway_factory=None,evaluator_factory=
         except Exception:
             import logging
             logging.getLogger(__name__).exception('Не вдалося прибрати застарілі файли editor-import')
+        from ..application import manuscript_import
+        try:
+            manuscript_import.sweep_temp(app.state.repo)
+        except Exception:
+            import logging
+            logging.getLogger(__name__).exception('Не вдалося прибрати застарілі файли manuscript-import')
         app.state.coordinator.start()
         try:
             yield
@@ -186,6 +192,8 @@ def create_app(settings: AppSettings, *, gateway_factory=None,evaluator_factory=
     app.include_router(publication_router)
     from .routes_editor_import import router as editor_import_router
     app.include_router(editor_import_router)
+    from .routes_manuscript_import import router as manuscript_import_router
+    app.include_router(manuscript_import_router)
     from .routes_budget import router as budget_router
     app.include_router(budget_router)
     from .routes_statistics import router as statistics_router
