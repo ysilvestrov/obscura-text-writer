@@ -1,7 +1,7 @@
 """IMPORT-DOCX: a safe reader of an editor's Word file, built on zipfile and ElementTree without new dependencies.
 
-It reads only word/document.xml, word/comments.xml, word/styles.xml (optional, for heading levels and the Title
-style), docProps/custom.xml and [Content_Types].xml. Every paragraph
+It reads only word/document.xml, word/comments.xml, word/styles.xml (optional, for heading levels, the Title
+style and the table-of-contents styles), docProps/custom.xml and [Content_Types].xml. Every paragraph
 carries two views: the editor's (w:ins kept, w:del dropped) and the original (w:del kept, w:ins dropped);
 comment ranges are measured in the original view.
 """
@@ -70,6 +70,7 @@ class DocxManuscript:
     comments: tuple[DocxComment, ...]
     warnings: tuple[DocxWarning, ...]
     title_paragraphs: tuple[int, ...] = ()  # indexes of paragraphs whose style is named 'title'
+    toc_paragraphs: tuple[int, ...] = ()  # indexes of paragraphs of Word's automatic table of contents ('toc N', 'TOC Heading')
 
 
 def _q(name):
@@ -205,10 +206,20 @@ def _is_title(styles, style_id):
     return any(name.strip().lower() == 'title' for name, _, _ in chain)
 
 
+_TOC_NAME = re.compile(r'toc\s*(?:[1-9]|heading)', re.I)
+
+
+def _is_toc(styles, style_id):
+    """The paragraph's own style is Word's table of contents; without styles.xml the style id ('TOC1', 'TOCHeading')."""
+    name = styles[style_id][0] if style_id in styles else (style_id or '')
+    return bool(_TOC_NAME.fullmatch(name.strip()))
+
+
 class _Reader:
     def __init__(self, styles=None):
         self.styles = styles or {}
         self.titles = []
+        self.tocs = []
         self.paragraphs = []
         self.lengths = []
         self.starts = {}
@@ -248,6 +259,8 @@ class _Reader:
         direct = _outline(element.find(f'{_q("pPr")}/{_q("outlineLvl")}'))
         if _is_title(self.styles, style_id):
             self.titles.append(index)
+        if _is_toc(self.styles, style_id):
+            self.tocs.append(index)
         mark = element.find(f'{_q("pPr")}/{_q("rPr")}')
         # A tracked move is an insertion at its destination (moveTo) and a deletion at its source (moveFrom).
         inserted = mark is not None and any(mark.find(_q(tag)) is not None for tag in ('ins', 'moveTo'))
@@ -336,4 +349,4 @@ def _read(content):
     reader.body(body)
     story_id, export_id = _identity(parts.get('docProps/custom.xml'))
     return DocxManuscript(story_id, export_id, tuple(reader.paragraphs), _comments(parts.get('word/comments.xml'), reader),
-        tuple(reader.warnings), tuple(reader.titles))
+        tuple(reader.warnings), tuple(reader.titles), tuple(reader.tocs))

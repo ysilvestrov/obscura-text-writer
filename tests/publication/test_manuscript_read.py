@@ -2,7 +2,9 @@ import pytest
 
 from storygen.publication.docx_import import Run
 from storygen.publication.manuscript_read import ManuscriptError, read_manuscript
-from tests.publication.manuscript_fixtures import docx, markdown, para, style, tracked_del, tracked_ins, txt
+from storygen.publication.docx_text import serialize
+from storygen.publication.manuscript_structure import ParseSettings, detect
+from tests.publication.manuscript_fixtures import T, comments, docx, markdown, para, style, tracked_del, tracked_ins, txt
 
 
 def test_docx_heading_by_name_when_style_id_localized():
@@ -129,3 +131,52 @@ def test_docx_outline_level_9_overrides_heading_style():
     content = docx(para('Звичайний', '1', outline=9) + para('Стиль-тіло', 'Body') + para('Глава', '1'),
                    [style('1', 'heading 1'), style('Body', 'Body', outline=9, based_on='1')])
     assert [p.heading_level for p in read_manuscript(content, 'b.docx').paragraphs] == [None, None, 0]
+
+
+def test_docx_soft_line_break_splits_paragraph():
+    poem = f'<w:p><w:r><w:rPr><w:i/></w:rPr>{T}Рядок вірша один</w:t><w:br/>{T}Рядок вірша два</w:t></w:r></w:p>'
+    heading = f'<w:p><w:pPr><w:pStyle w:val="H"/></w:pPr><w:r>{T}Глава 1</w:t><w:br/>{T}Підзаголовок</w:t></w:r></w:p>'
+    content = docx(heading + para('Перший абзац.') + para() + poem + para('Останній абзац.'), [style('H', 'heading 1')])
+    result = read_manuscript(content, 'b.docx').paragraphs
+    assert [(p.index, p.text, p.heading_level, p.after_break) for p in result] == [
+        (0, 'Глава 1', 0, False), (1, 'Підзаголовок', None, False), (2, 'Перший абзац.', None, False),
+        (3, 'Рядок вірша один', None, True), (4, 'Рядок вірша два', None, False), (5, 'Останній абзац.', None, False)]
+    assert not any('\n' in p.text for p in result)
+    assert result[3].runs == (Run('Рядок вірша один', False, True),) and result[4].runs == (Run('Рядок вірша два', False, True),)
+    text = serialize([p.runs for p in result[2:]], 'markdown').text
+    assert text == 'Перший абзац.\n\n*Рядок вірша один*\n\n*Рядок вірша два*\n\nОстанній абзац.'
+
+
+def test_docx_edge_tabs_and_nbsp_trimmed():
+    body = (f'<w:p><w:r><w:tab/>{T}\u00a0Абзац з відступом.\u00a0</w:t><w:tab/></w:r></w:p>'
+            f'<w:p><w:r><w:rPr><w:i/></w:rPr><w:tab/></w:r><w:r>{T}Другий.</w:t></w:r></w:p>')
+    result = read_manuscript(docx(body), 'b.docx').paragraphs
+    assert [p.text for p in result] == ['Абзац з відступом.', 'Другий.']
+    assert result[0].runs == (Run('Абзац з відступом.'),) and result[1].runs == (Run('Другий.'),)
+    assert '&#x9;' not in serialize([p.runs for p in result], 'markdown').text
+
+
+def test_markdown_backslash_escapes_decoded():
+    text = '\- Привіт, — сказав він.\n\nЗ \*зірочкою\* і *курсивом \* теж*.\n\n\# Не заголовок \_так\_\.'
+    result = read_manuscript(markdown(text), 'b.md').paragraphs
+    assert [p.text for p in result] == ['- Привіт, — сказав він.', 'З *зірочкою* і курсивом * теж.', '# Не заголовок _так_.']
+    assert result[1].runs == (Run('З *зірочкою* і '), Run('курсивом * теж', False, True), Run('.'))
+    assert result[2].heading_level is None
+    # Obscura's own Markdown export escapes a leading dash; the import keeps it as the same text, not `\-`.
+    assert serialize([result[0].runs], 'markdown').text == '\- Привіт, — сказав він.'
+
+
+def test_markdown_thematic_breaks_are_scene_separators():
+    text = 'А.\n\n---\n\nБ.\n\n* * *\n\nВ.\n\n___\n\nГ.\n\n# # #\n\nД.\n\n- - -\n\nЕ.'
+    result = read_manuscript(markdown(text), 'b.md').paragraphs
+    assert all(p.heading_level is None for p in result)
+    assert all(not (run.bold or run.italic) for p in result for run in p.runs)
+    structure = detect(result, ParseSettings())
+    assert [structure.prose_indices] == [(0, 2, 4, 6, 8, 10)]
+    assert [(s.start, s.end) for s in structure.scenes] == [(0, 0), (2, 2), (4, 4), (6, 6), (8, 8), (10, 10)]
+
+
+def test_docx_comments_warning():
+    content = docx(para('Текст.'), parts=comments('Перша примітка', 'Друга'))
+    assert 'Коментарі Word не імпортуються: 2' in read_manuscript(content, 'b.docx').warnings
+    assert not any('Коментарі' in w for w in read_manuscript(docx(para('Текст.')), 'b.docx').warnings)

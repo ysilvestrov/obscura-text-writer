@@ -195,7 +195,7 @@ def preview(repo, content: bytes, file_name: str, settings: ParseSettings, impor
         scenes=list(structure.scenes),
         parts=[{'index': position, 'paragraph': index, 'title': name} for position, (index, name) in enumerate(structure.parts)],
         front_matter=list(structure.front_matter),
-        dropped=[{'index': index, 'text': text, 'reason': 'part_heading'} for index, text in structure.dropped],
+        dropped=[{'index': index, 'text': text, 'reason': reason} for index, text, reason in structure.dropped],
         warnings=list(structure.warnings) + list(manuscript.warnings), tracked_changes=manuscript.tracked_changes,
         edition={'parts_allowed': long_prose, 'series_allowed': long_prose})
 

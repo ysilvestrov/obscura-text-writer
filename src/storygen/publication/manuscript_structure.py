@@ -22,6 +22,12 @@ LONG_PARAGRAPH = 'довгий абзац без меж'
 NO_HEADINGS = 'У рукописі немає заголовків і маркерів глав: увесь текст стане однією главою'
 DOES_NOT_FIT = "Частина сцени не вміститься в ліміти пам'яті навіть після поділу"
 SINGLE_CHAPTER_TITLE = 'Рукопис'
+# A paragraph that is only one of these words (any case, optional trailing punctuation) is a chapter boundary in marker
+# mode; the title is the word as the author typed it. Not part of `chapter_markers`: these chapters carry no number.
+STANDALONE_CHAPTERS = ('Пролог', 'Епілог', 'Післямова', 'Інтерлюдія', 'Prologue', 'Epilogue', 'Afterword', 'Interlude')
+MAX_SCENE_TITLE = 200  # ManuscriptApplyScene.title
+MAX_BOOK_TITLE = 300  # StoryCreate.title
+ROLES = ('prose', 'front_matter', 'chapter_heading', 'part_heading', 'separator', 'title', 'dropped')
 
 _WORD = re.compile(r"[^\W_]+(?:['’ʼ][^\W_]+)*")
 _FIRST_WORD = re.compile(r'^\s*([^\W\d_]+)')
@@ -31,6 +37,8 @@ _SEPARATOR_CHARS = set('*#—–~⁂•· \t')
 _TITLE_LEAD = ' \t.:—–-)'
 _DIALOGUE = ('—', '–', '-', '«', '„', '“', '"')
 _SENTENCE_END = re.compile(r'[.!?…]["\'»”’)]*$')
+_STANDALONE = {word.casefold() for word in STANDALONE_CHAPTERS}
+_STANDALONE_TRAIL = '.:!?…;,'
 
 
 def _ordinals() -> dict[str, int]:
@@ -65,6 +73,7 @@ class ParseSettings:
     chapter_source: Literal['auto', 'markers', 1, 2, 3] = 'auto'
     parts_allowed: bool = True
     prologue_title: str = 'Пролог'
+    single_chapter_title: str = SINGLE_CHAPTER_TITLE
 
 
 @dataclass(frozen=True)
@@ -81,16 +90,18 @@ class ProposedScene:
 @dataclass(frozen=True)
 class Structure:
     """`parts` — (index of the heading paragraph, name); `ProposedScene.part_index` is a position in `parts`.
-    `chapter_source` — 'markers', 'level:N' (1–3) or 'none'. `dropped` — (index, text) of part headings not imported.
-    `prose_indices` — every paragraph index inside some scene, in file order."""
+    `chapter_source` — 'markers', 'level:N' (1–3) or 'none'. `dropped` — (index, text, reason) of paragraphs not imported:
+    reason 'part_heading' (parts not allowed) or 'toc' (Word's table of contents). `prose_indices` — every paragraph index
+    inside some scene, in file order. `roles` — one of `ROLES` per paragraph, by position."""
     title_suggestion: str | None
     chapter_source: str
     parts: tuple[tuple[int, str], ...]
     scenes: tuple[ProposedScene, ...]
     front_matter: tuple[int, ...]
-    dropped: tuple[tuple[int, str], ...]
+    dropped: tuple[tuple[int, str, str], ...]
     warnings: tuple[str, ...]
     prose_indices: tuple[int, ...] = ()
+    roles: tuple[str, ...] = ()
 
 
 def words(text: str) -> int:
@@ -133,6 +144,22 @@ def _marker_title(text: str, markers: Sequence[str], need_number: bool) -> str |
         return None
     title = remainder.lstrip(_TITLE_LEAD).strip()
     return title or stripped
+
+
+def _standalone_title(text: str) -> str | None:
+    """The chapter title when `text` is only a standalone chapter word (`STANDALONE_CHAPTERS`), else None."""
+    stripped = text.strip()
+    if len(stripped) > 120:
+        return None
+    word = stripped.rstrip(_STANDALONE_TRAIL).strip()
+    return word if word.casefold() in _STANDALONE else None
+
+
+def _clamped(text: str, limit: int, suffix: str = '') -> str:
+    """`text + suffix` within `limit` characters: a too long `text` is cut and ends with «…», the suffix is kept."""
+    if len(text) + len(suffix) <= limit:
+        return text + suffix
+    return text[:limit - len(suffix) - 1].rstrip() + '…' + suffix
 
 
 def _is_separator(p: ManuscriptParagraph) -> bool:
@@ -271,11 +298,14 @@ def detect(paragraphs: Sequence[ManuscriptParagraph], settings: ParseSettings = 
            fits: Callable[[str], bool] = lambda text: True) -> Structure:
     paras = list(paragraphs)
     warnings: list[str] = []
-    separators = {i for i, p in enumerate(paras) if _is_separator(p)}
-    titles = {i for i, p in enumerate(paras) if p.is_title}
-    plain = [i for i in range(len(paras)) if i not in separators and i not in titles]
+    skipped = {i for i, p in enumerate(paras) if p.skip}
+    separators = {i for i, p in enumerate(paras) if i not in skipped and _is_separator(p)}
+    # Only the first Title-styled paragraph is the book title; any further one is ordinary prose.
+    titles = {next((i for i, p in enumerate(paras) if p.is_title and i not in skipped), None)} - {None}
+    plain = [i for i in range(len(paras)) if i not in separators and i not in titles and i not in skipped]
     chapter_marks = {i: t for i in plain
                      if (t := _marker_title(paras[i].text, settings.chapter_markers, False)) is not None}
+    standalone = {i: t for i in plain if i not in chapter_marks and (t := _standalone_title(paras[i].text)) is not None}
     part_marks = {i: paras[i].text.strip() for i in plain if i not in chapter_marks
                   and _marker_title(paras[i].text, settings.part_markers, True) is not None}
     headings = [i for i in plain if paras[i].heading_level is not None]
@@ -295,7 +325,7 @@ def detect(paragraphs: Sequence[ManuscriptParagraph], settings: ParseSettings = 
         source, level = 'level', source - 1
     chapters: dict[int, str] = {}
     if source == 'markers':
-        chapters = dict(chapter_marks)
+        chapters = {**chapter_marks, **standalone}
     elif source == 'level':
         for i in headings:
             if paras[i].heading_level == level and i not in part_marks:
@@ -312,10 +342,11 @@ def detect(paragraphs: Sequence[ManuscriptParagraph], settings: ParseSettings = 
     if chapters:
         part_heads = dict(part_marks)  # parts come only from marker paragraphs
         first_chapter = min(chapters)
-        higher = [i for i in headings if i not in chapters and i not in part_marks and paras[i].heading_level < level]             if source == 'level' else []
-        if title_suggestion is None:
+        higher = ([i for i in headings if i not in chapters and i not in part_marks and paras[i].heading_level < level]
+                  if source == 'level' else [])
+        if title_suggestion is None:  # a standalone chapter word (Пролог) is never the book's title
             candidates = [i for i in (higher if source == 'level' else headings)
-                          if i < first_chapter and i not in part_marks]
+                          if i < first_chapter and i not in part_marks and i not in standalone]
             if candidates and (not part_marks or candidates[0] < min(part_marks)):
                 title_suggestion = paras[candidates[0]].text.strip()
                 title_positions.add(candidates[0])
@@ -328,27 +359,37 @@ def detect(paragraphs: Sequence[ManuscriptParagraph], settings: ParseSettings = 
     if chapters:
         current = _Section('front', settings.prologue_title, None, [])
     else:
-        current = _Section('chapter', title_suggestion or SINGLE_CHAPTER_TITLE, None, [])
+        current = _Section('chapter', title_suggestion or settings.single_chapter_title, None, [])
     sections = [current]
     part_index: int | None = None
+    roles: list[str] = [''] * len(paras)
     for i, p in enumerate(paras):
+        if i in skipped:
+            roles[i] = 'dropped'
+            dropped.append((p.index, p.text.strip(), p.skip))
+            continue
         if i in title_positions:
+            roles[i] = 'title'
             continue
         if i in part_heads:
             if settings.parts_allowed:
+                roles[i] = 'part_heading'
                 parts.append((p.index, part_heads[i]))
                 part_index = len(parts) - 1
             else:
-                dropped.append((p.index, part_heads[i]))
+                roles[i] = 'dropped'
+                dropped.append((p.index, part_heads[i], 'part_heading'))
             current = _Section('loose', part_heads[i], part_index, [])
             sections.append(current)
         elif i in chapters:
+            roles[i] = 'chapter_heading'
             items = []
             if current.kind == 'loose':  # text between a part heading and its first chapter opens that chapter
                 items, current.items = current.items, []
             current = _Section('chapter', chapters[i], part_index, items)
             sections.append(current)
         elif i in separators:
+            roles[i] = 'separator'
             current.items.append(None)
         else:
             current.items.append(p)
@@ -374,13 +415,19 @@ def detect(paragraphs: Sequence[ManuscriptParagraph], settings: ParseSettings = 
         if not pieces and section.kind == 'chapter' and section.title:
             warnings.append(f'Глава «{section.title}» без тексту: сцену не створено')
         for number, (group, proposed, scene_warnings) in enumerate(pieces, start=1):
-            title = f'{section.title} ({number})' if len(pieces) > 1 else section.title
+            title = _clamped(section.title, MAX_SCENE_TITLE, f' ({number})' if len(pieces) > 1 else '')
             scenes.append(ProposedScene(group[0].index, group[-1].index, title, sum(words(p.text) for p in group),
                                         section.part_index, proposed, scene_warnings))
             prose.extend(p.index for p in group)
             warnings.extend(f'{title}: {w}' for w in scene_warnings)
+    for index in front_matter:
+        roles[index] = 'front_matter'
+    for index in prose:
+        roles[index] = 'prose'
+    if title_suggestion is not None:
+        title_suggestion = _clamped(title_suggestion, MAX_BOOK_TITLE)
     return Structure(title_suggestion, chapter_source, tuple(parts), tuple(scenes), tuple(sorted(front_matter)),
-                     tuple(dropped), tuple(warnings), tuple(sorted(prose)))
+                     tuple(dropped), tuple(warnings), tuple(sorted(prose)), tuple(roles))
 
 
 def prose_indices(paragraphs: Sequence[ManuscriptParagraph], settings: ParseSettings = ParseSettings()) -> list[int]:

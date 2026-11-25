@@ -54,7 +54,7 @@ def test_parts_skipped_when_not_allowed():
     paras = doc(('Частина 1', {'h': 0}), ('Глава 1', {}), 'А.', ('Глава 2', {}), 'Б.')
     structure = detect(paras, ParseSettings(parts_allowed=False))
     assert structure.parts == ()
-    assert structure.dropped == ((0, 'Частина 1'),)
+    assert structure.dropped == ((0, 'Частина 1', 'part_heading'),)
     assert any('частини доступні у виданні з довгою прозою' in w for w in structure.warnings)
     assert all(s.part_index is None for s in structure.scenes)
 
@@ -195,12 +195,15 @@ def test_every_prose_paragraph_is_in_a_scene_or_front_matter():
         doc(('Назва', {'h': 0}), ('Один', {'h': 1}), 'А.', ('Два', {'h': 1}), 'Б.', ('Епілог', {'h': 0}), 'В.', 'Г.'),
         doc('Вступ.', 'Глава 1', 'А.', 'Частина 2', 'Епіграф.', 'Частина 3', 'Х.', 'Глава 2', 'Б.'),
         doc('А.', 'Б.', 'Частина 1', 'В.'),
+        doc(('Назва', {'title': True}), ('Підназва', {'title': True}), 'Глава 1', 'А.', ('Ще назва', {'title': True}),
+            'Глава 2', 'Б.'),
     ]
     for paras in fixtures:
         for settings in (ParseSettings(), ParseSettings(parts_allowed=False)):
             structure = detect(paras, settings)
             accounted = set(structure.prose_indices) | set(structure.front_matter)
-            plain = {p.index for p in paras if p.heading_level is None and not p.is_title
+            first_title = next((p.index for p in paras if p.is_title), None)
+            plain = {p.index for p in paras if p.heading_level is None and p.index != first_title
                      and p.text[0] not in '*' and not p.text.startswith(('Частина', 'Глава'))}
             assert plain <= accounted, (settings, plain - accounted)
             assert not set(structure.prose_indices) & set(structure.front_matter)
@@ -237,3 +240,75 @@ def test_cyrillic_roman_numerals():
     structure = detect(paras, ParseSettings())
     assert titles(structure)[:2] == ['Розділ ІІ', 'Назва']
     assert structure.parts == ((4, 'Частина ХІV'),)
+
+
+def test_word_table_of_contents_is_dropped():
+    from storygen.publication.manuscript_read import read_manuscript
+    from tests.publication.manuscript_fixtures import T, docx, para, style
+    toc = ''.join(f'<w:p><w:pPr><w:pStyle w:val="TOC1"/></w:pPr><w:r>{T}{name}</w:t><w:tab/>{T}{page}</w:t></w:r></w:p>'
+                  for name, page in (('Глава 1', 3), ('Глава 2', 9)))
+    text = 'Звичайний текст абзацу, досить довгий для сцени. ' * 3
+    body = para('Зміст', 'TOCHeading') + toc + para('Глава 1', 'H') + para(text) + para('Глава 2', 'H') + para(text)
+    styles = [style('H', 'heading 1'), style('TOCHeading', 'TOC Heading', based_on='H'), style('TOC1', 'toc 1')]
+    paragraphs = read_manuscript(docx(body, styles), 'b.docx').paragraphs
+    structure = detect(paragraphs, ParseSettings())
+    assert titles(structure) == ['Глава 1', 'Глава 2']
+    assert [(index, reason) for index, _, reason in structure.dropped] == [(0, 'toc'), (1, 'toc'), (2, 'toc')]
+    assert structure.front_matter == () and not any('без тексту' in w for w in structure.warnings)
+    # without styles.xml the conventional style ids still mark the table of contents
+    bare = read_manuscript(docx(body), 'b.docx').paragraphs
+    assert [p.index for p in bare if p.skip == 'toc'] == [0, 1, 2]
+
+
+def test_only_first_title_paragraph_is_the_title():
+    paras = doc(('Назва', {'title': True}), ('Підзаголовок', {'title': True}), ('Автор', {'title': True}),
+                'Глава 1', prose(60), 'Глава 2', ('Ще один титул', {'title': True}), 'Б.')
+    structure = detect(paras, ParseSettings())
+    assert structure.title_suggestion == 'Назва'
+    assert structure.front_matter == (1, 2)
+    assert structure.prose_indices == (4, 6, 7)
+
+
+def test_long_titles_are_clamped():
+    long = 'Дуже довгий заголовок ' * 17  # 374 chars
+    paras = doc((long * 2, {'title': True}), (long, {'h': 0}), prose(1000, 'а'), prose(1000, 'б'), prose(1000, 'в'),
+                ('Глава друга', {'h': 0}), 'Б.')
+    structure = detect(paras, ParseSettings())
+    assert len(structure.title_suggestion) <= 300 and structure.title_suggestion.endswith('…')
+    first, second = structure.scenes[:2]
+    assert first.title.endswith('… (1)') and second.title.endswith('… (2)')
+    assert all(len(s.title) <= 200 for s in structure.scenes)
+    single = detect(doc((long, {'h': 0}), 'А.', (long + 'x', {'h': 0}), 'Б.'), ParseSettings())
+    assert all(190 < len(s.title) <= 200 and s.title.endswith('…') for s in single.scenes)
+
+
+def test_standalone_chapters_in_marker_mode():
+    expected = ['Пролог', 'Глава 1', 'Глава 2', 'Епілог']
+    paras = doc(('Пролог', {'h': 0}), 'А.', ('Глава 1', {'h': 0}), 'Б.', ('Глава 2', {'h': 0}), 'В.', ('Епілог', {'h': 0}), 'Г.')
+    structure = detect(paras, ParseSettings())
+    assert structure.chapter_source == 'markers' and titles(structure) == expected
+    assert structure.title_suggestion is None and structure.prose_indices == (1, 3, 5, 7)
+    under_title = doc(('Назва книги', {'h': 0}), ('Пролог', {'h': 1}), 'А.', ('Глава 1', {'h': 1}), 'Б.',
+                      ('Глава 2', {'h': 1}), 'В.', ('Епілог', {'h': 1}), 'Г.')
+    structure = detect(under_title, ParseSettings())
+    assert titles(structure) == expected and structure.title_suggestion == 'Назва книги'
+    assert structure.prose_indices == (2, 4, 6, 8)
+    plain = detect(doc('ПРОЛОГ.', 'А.', 'Глава 1', 'Б.', 'Глава 2', 'В.', 'Afterword', 'Г.', 'Пролог до всього цього', 'Д.'))
+    assert titles(plain) == ['ПРОЛОГ', 'Глава 1', 'Глава 2', 'Afterword']
+    assert plain.scenes[-1].end == 9  # a longer paragraph that starts with the word is prose
+
+
+def test_standalone_word_is_never_the_title_suggestion():
+    paras = doc(('Пролог', {'h': 0}), 'А.', ('Один', {'h': 1}), 'Б.', ('Два', {'h': 1}), 'В.')
+    structure = detect(paras, ParseSettings())
+    assert structure.title_suggestion is None and titles(structure) == ['Пролог', 'Один', 'Два']
+    assert detect(doc('Пролог', 'А.', 'Глава 1', 'Б.')).chapter_source == 'none'  # the word does not count as a marker
+
+
+def test_roles_cover_every_paragraph():
+    paras = doc(('Назва', {'title': True}), 'Присвята.', 'Частина 1', 'Глава 1', 'А.', '***', 'Б.', 'Глава 2', 'В.')
+    structure = detect(paras, ParseSettings())
+    assert structure.roles == ('title', 'front_matter', 'part_heading', 'chapter_heading', 'prose', 'separator', 'prose',
+                               'chapter_heading', 'prose')
+    free = detect(paras, ParseSettings(parts_allowed=False))
+    assert free.roles[2] == 'dropped'
