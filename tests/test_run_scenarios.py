@@ -9,7 +9,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]/'integrations'/'claud
 from run_scenarios import (author_asked, author_problems, bible_problems, creation_problems, outcome_problems,  # noqa: E402
                            pipeline_problems,
                            publish_problems,
-                           settings_problems, verdict)
+                           settings_problems, verdict, obscura_revise_problems, revise_chain_problems,
+                           revise_preconsent_problems, revise_text_problems)
 from revise_setup import NEW_STEM, OLD_STEM, fixture_text  # noqa: E402
 from scripts.skills_stand import Result  # noqa: E402
 
@@ -198,3 +199,40 @@ def test_revise_fixture_has_old_city_in_plan_and_both_scenes():
         assert text.lower().count('одес') == text.count('Одес')
     for name in ('prose-1.md', 'prose-2.md'):
         assert 2 <= fixture_text(name).count('Одес') <= 3
+
+
+@pytest.mark.req('CLAUDE-SKILLS')
+def test_revise_preconsent_any_write_is_a_problem():
+    assert revise_preconsent_problems([('get_story', {}), ('update_scene', {})]) == ["до згоди записано: ['update_scene']"]
+    assert revise_preconsent_problems([('start_run', {'confirm': True})]) == ["до згоди записано: ['start_run']"]
+    assert revise_preconsent_problems([('start_run', {'action': 'audit'})]) == []
+
+
+@pytest.mark.req('CLAUDE-SKILLS')
+def test_revise_text_old_stem_in_any_case_is_a_problem():
+    assert revise_text_problems('Жила в Одесі.', 'Жила в Одесі.', 'Одес', 'Херсон', 'сцена 1') == [
+        'сцена 1: лишилося «Одес»', 'сцена 1: немає «Херсон»']
+
+
+@pytest.mark.req('CLAUDE-SKILLS')
+def test_revise_text_changed_unrelated_sentence_is_a_problem():
+    original = 'Жила в Одесі. Пила чай.'
+    assert revise_text_problems(original, 'Жила в Херсоні. Пила каву.', 'Одес', 'Херсон', 'сцена 1') == [
+        'сцена 1: змінено речення без старого факту: «Пила чай.»']
+    assert revise_text_problems(original, 'Жила в Херсоні. Пила чай.', 'Одес', 'Херсон', 'сцена 1') == []
+
+
+@pytest.mark.req('CLAUDE-SKILLS')
+def test_revise_chain_brief_before_draft_in_second_scene():
+    s1, s2 = 'a', 'b'
+    ok = [('save_stage_result', {'scene_id': s, 'stage': st}) if st != 'draft' else ('save_draft', {'scene_id': s})
+          for s in (s1, s2) for st in ('brief', 'draft', 'edit', 'memory')]
+    assert revise_chain_problems(ok, [s1, s2]) == []
+    no_brief = [c for c in ok if not (c[1].get('scene_id') == s2 and c[1].get('stage') == 'brief')]
+    assert revise_chain_problems(no_brief, [s1, s2]) == ['сцена 2: draft без нового brief']
+
+
+@pytest.mark.req('CLAUDE-SKILLS')
+def test_obscura_revise_plan_write_is_allowed():
+    assert obscura_revise_problems([('update_scene', {}), ('update_plan_preamble', {})]) == []
+    assert obscura_revise_problems([('save_draft', {})]) == ["у творі obscura записано текст: ['save_draft']"]

@@ -8,6 +8,7 @@ part of the check (one question at a time, progress lines). See docs/verificatio
 """
 import argparse
 import json
+import re
 import sys
 import urllib.request
 from pathlib import Path
@@ -16,6 +17,7 @@ ROOT = Path(__file__).resolve().parents[3]
 sys.path[:0] = [str(ROOT), str(ROOT/'src'), str(Path(__file__).resolve().parent)]
 
 from measure_models import prepare  # noqa: E402
+from revise_setup import NEW_STEM, OLD_STEM, REVISE_TITLE, prepare_revise  # noqa: E402
 from scripts.skills_stand import PLUGIN, claude_command, obscura_call, run_claude, start_stand  # noqa: E402
 
 PIPELINE_ORDER = ['brief', 'draft', 'edit', 'memory']
@@ -256,6 +258,91 @@ def setup_patches(base, story):
                                                       'context_tokens': 128000}})
 
 
+REVISE_WRITES = {'save_draft', 'save_stage_result', 'update_scene', 'update_plan_preamble'}
+
+
+def revise_preconsent_problems(calls):
+    """revise: until the author agrees to the table of changes nothing is written; start_run counts only with confirm."""
+    writes = [n for n, args in calls if n in REVISE_WRITES or (n == 'start_run' and args.get('confirm'))]
+    return [f'до згоди записано: {writes}'] * bool(writes)
+
+
+def _sentences(text):
+    return [s for s in re.split(r'(?<=[.!?…])\s+', ' '.join(text.split())) if s]
+
+
+def revise_text_problems(original, revised, old_stem, new_stem, label):
+    """A fact replaced everywhere (any case), the new one present, every sentence without the old fact untouched."""
+    problems = [f'{label}: лишилося «{old_stem}»'] * (old_stem.lower() in revised.lower())
+    problems += [f'{label}: немає «{new_stem}»'] * (new_stem.lower() not in revised.lower())
+    kept = set(_sentences(revised))
+    problems += [f'{label}: змінено речення без старого факту: «{s}»' for s in _sentences(original)
+                 if old_stem.lower() not in s.lower() and s not in kept]
+    return problems
+
+
+def revise_chain_problems(calls, scene_ids):
+    """Per scene the saved stages go brief -> draft -> edit -> memory; the second scene needs a new brief before its draft
+    (the first scene's brief is optional when its plan did not change)."""
+    problems = []
+    for number, scene in enumerate(scene_ids, 1):
+        saves = [('draft' if n == 'save_draft' else args.get('stage')) for n, args in calls
+                 if n in ('save_draft', 'save_stage_result') and args.get('scene_id') == scene]
+        present = [s for s in PIPELINE_ORDER if s in saves]
+        if number > 1 and 'draft' in saves and ('brief' not in saves or saves.index('brief') > saves.index('draft')):
+            problems.append(f'сцена {number}: draft без нового brief')
+        firsts = [saves.index(s) for s in present]
+        if firsts != sorted(firsts):
+            problems.append(f'сцена {number}: порядок етапів: {saves}')
+        problems += [f'сцена {number}: не збережено {s}' for s in PIPELINE_ORDER[1:] if s not in present]
+    return problems
+
+
+def obscura_revise_problems(calls):
+    """In a story of writing_mode obscura the chat writes no text: only the plan and the card (update_scene, preamble)."""
+    texts = [n for n in names(calls) if n in ('save_draft', 'save_stage_result')]
+    return [f'у творі obscura записано текст: {texts}'] * bool(texts)
+
+
+def scene_text(base, scene, material):
+    return obscura_call(base, 'get_scene_text', {'scene_id': scene, 'material': material})
+
+
+def check_s12(stand, calls, text, ctx):
+    scenes = obscura_call(stand.base, 'get_story', {'story_id': ctx['story']})['scenes']
+    return revise_preconsent_problems(calls) + [f'у тексті немає назви сцени: {s["title"]}' for s in scenes
+                                                if s['title'] not in text]
+
+
+def check_s13(stand, calls, text, ctx):
+    base, scenes = stand.base, ctx['scenes']
+    problems = revise_preconsent_problems(ctx['turn_calls'][0])
+    for number, scene in enumerate(scenes, 1):
+        original = ctx['originals'][scene]
+        for material in ('prose', 'plan'):
+            revised = scene_text(base, scene, material).get('text') or ''
+            problems += revise_text_problems(original[material] or '', revised, OLD_STEM, NEW_STEM, f'сцена {number} {material}')
+        memory = scene_text(base, scene, 'memory')
+        dumped = json.dumps(memory, ensure_ascii=False).lower()
+        if memory.get('version_id') == original['memory_version_id']:
+            problems.append(f"сцена {number}: пам'ять не оновлено")
+        if OLD_STEM.lower() in dumped or NEW_STEM.lower() not in dumped:
+            problems.append(f"сцена {number}: пам'ять без «{NEW_STEM}» або з «{OLD_STEM}»")
+    problems += revise_chain_problems(ctx['turn_calls'][1], scenes)
+    states = {s['id']: s['state'] for s in obscura_call(base, 'get_story', {'story_id': ctx['story']})['scenes']}
+    return problems + [f'сцена {n}: стан {states.get(s)}' for n, s in enumerate(scenes, 1) if states.get(s) != 'prose']
+
+
+def check_s14(stand, calls, text, ctx):
+    return obscura_revise_problems(calls) + [f'у тексті немає «{NEW_STEM}»'] * (NEW_STEM.lower() not in text.lower())
+
+
+def check_s15(stand, calls, text, ctx):
+    return revise_preconsent_problems(calls) + ['немає питання до автора'] * (not asked(calls, text))
+
+
+REVISE_PROMPT = f'Перенеси дію твору «{REVISE_TITLE}» з Одеси в Херсон.'
+
 SCENARIOS = {
     'S04-a': {'setup': None, 'check': check_s04a,
               'prompt': 'Хочу написати оповідання про друзів, але не знаю, з чого почати.'},
@@ -293,7 +380,37 @@ SCENARIOS = {
                          'гасять маяки. Статті, по 800 слів: 1. Узбережжя й маяки; 2. Магія світла та її межі; 3. Гільдія '
                          '«Варта вогнів»; 4. Контрабандисти й темні ліхтарі; 5. Хронологія узбережжя. Персонажів циклу поки '
                          'немає. Я погоджуюсь із цим переліком — створюй одразу, без додаткових питань.')},
+    'S12': {'setup': 'revise', 'check': check_s12, 'prompt': REVISE_PROMPT},
+    'S13': {'setup': 'revise', 'check': check_s13,
+            'turns': [REVISE_PROMPT + ' Змінюється лише назва міста, нових деталей не шукай і не питай. '
+                      'Покажи таблицю правок і першу сцену.', 'Ок, застосовуй усю таблицю.']},
+    'S14': {'setup': 'revise-obscura', 'check': check_s14, 'prompt': REVISE_PROMPT + ' Я погоджуюсь із таблицею.'},
+    'S15': {'setup': 'revise', 'check': check_s15, 'prompt': f'Зроби першу сцену твору «{REVISE_TITLE}» смішнішою.'},
 }
+
+
+def run_turns(turns, stand, work, model, budget):
+    """One claude session of several turns (--resume of the previous turn's session). Calls, errors and text of all turns are
+    joined into one result; the calls of each turn stay apart. A turn without a session id fails the scenario."""
+    joined, turn_calls, session = None, [], None
+    for number, turn in enumerate(turns, 1):
+        result = run_claude(claude_command(turn, mcp_config=stand.mcp_config, plugin_dir=PLUGIN, model=model, budget_usd=budget,
+                                           resume=session), work/f'run-{number}.jsonl')
+        turn_calls.append(result.tool_calls)
+        if joined is None:
+            joined = result
+        else:
+            joined.tool_calls += result.tool_calls
+            joined.errors += result.errors
+            joined.text += '\n' + result.text
+            joined.is_error = joined.is_error or result.is_error
+            joined.cost_usd = (joined.cost_usd or 0) + (result.cost_usd or 0)
+        session = result.session_id
+        if session is None:
+            joined.is_error = True
+            joined.errors.append(('session', f'хід {number} без session_id'))
+            break
+    return joined, turn_calls
 
 
 def run(scenario, work, model, budget):
@@ -301,7 +418,13 @@ def run(scenario, work, model, budget):
     work = Path(work)/scenario
     with start_stand(work, spec.get('env')) as stand:
         ctx = {}
-        if spec['setup']:
+        if spec['setup'] in ('revise', 'revise-obscura'):
+            ctx['story'], ctx['scenes'] = prepare_revise(stand.base, 'obscura' if spec['setup'] == 'revise-obscura' else 'chat')
+            ctx['originals'] = {scene: {'prose': scene_text(stand.base, scene, 'prose').get('text'),
+                                        'plan': scene_text(stand.base, scene, 'plan').get('text'),
+                                        'memory_version_id': scene_text(stand.base, scene, 'memory').get('version_id')}
+                                for scene in ctx['scenes']}
+        elif spec['setup']:
             stage = 'memory' if spec['setup'] == 'memory' else 'brief'
             ctx['story'], ctx['scene'] = prepare(stand.base, stage, 'obscura' if spec['setup'] == 'obscura' else 'chat')
             if spec.get('signature'):
@@ -309,8 +432,7 @@ def run(scenario, work, model, budget):
             if spec['setup'] == 'patches':
                 setup_patches(stand.base, ctx['story'])
                 ctx['patches'] = True
-        result = run_claude(claude_command(spec['prompt'], mcp_config=stand.mcp_config, plugin_dir=PLUGIN, model=model,
-                                           budget_usd=budget), work/'run.jsonl')
+        result, ctx['turn_calls'] = run_turns(spec.get('turns') or [spec['prompt']], stand, work, model, budget)
         ctx['errors'] = result.errors
         problems = verdict(spec['check'](stand, result.tool_calls, result.text, ctx), result)
     (work/'text.md').write_text(result.text, encoding='utf-8')

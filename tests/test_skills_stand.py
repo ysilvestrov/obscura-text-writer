@@ -88,3 +88,17 @@ def test_fake_key_reaches_only_the_stand_env(monkeypatch):
 def test_scenario_env_cannot_reopen_the_keyring():
     env = stand_env({'PYTHON_KEYRING_BACKEND': 'keyring.backends.Windows.WinVaultKeyring'})
     assert env['PYTHON_KEYRING_BACKEND'] == 'keyring.backends.fail.Keyring'
+
+
+@pytest.mark.req('CLAUDE-SKILLS')
+def test_session_id_from_init_event():
+    lines = [json.dumps({'type': 'system', 'subtype': 'init', 'session_id': 'abc-1'}),
+             json.dumps({'type': 'result', 'is_error': False, 'result': 'ok'})]
+    assert parse_result(lines).session_id == 'abc-1'
+
+
+@pytest.mark.req('CLAUDE-SKILLS')
+def test_claude_command_resume(tmp_path):
+    cmd = claude_command('далі', mcp_config=tmp_path/'m.json', plugin_dir=tmp_path, model='sonnet', budget_usd=1, resume='abc-1')
+    assert cmd[cmd.index('--resume') + 1] == 'abc-1'
+    assert '--resume' not in claude_command('x', mcp_config=tmp_path/'m.json', plugin_dir=tmp_path, model='sonnet', budget_usd=1)
