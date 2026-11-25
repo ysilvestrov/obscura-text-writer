@@ -38,6 +38,13 @@ def _books(db, series_id) -> list[Story]:
     return sorted((s for s in stories if s.series_id == series_id), key=lambda s: s.series_number or 0)
 
 
+def require_book_slot(db, series_id: str, number: int, story_id: str | None = None) -> None:
+    """On an open transaction: the series exists and no other book of it has this number."""
+    _get(db, series_id)
+    if any(b.series_number == number and b.id != story_id for b in _books(db, series_id)):
+        raise ValueError(SERIES_NUMBER_TAKEN.format(number=number))
+
+
 def list_series(repo) -> list[Series]:
     with repo.db.connection() as db:
         return _rows(db)
@@ -108,12 +115,12 @@ def set_story_series(repo, story_id: str, series_id: str | None, number: int | N
             raise RevisionConflict(STORY_CONFLICT)
         # A bible that becomes a book enters the series as a book: it takes its snapshot (SERIES-BIBLE).
         entering = series_id is not None and (story.series_id != series_id or story.series_bible != bible)
-        if series_id is not None:
+        if series_id is not None and bible:
             _get(db, series_id)
-            if bible and any(b.series_bible and b.id != story_id for b in _books(db, series_id)):
+            if any(b.series_bible and b.id != story_id for b in _books(db, series_id)):
                 raise ValueError(SERIES_BIBLE_TAKEN)
-            if not bible and any(b.series_number == number and b.id != story_id for b in _books(db, series_id)):
-                raise ValueError(SERIES_NUMBER_TAKEN.format(number=number))
+        elif series_id is not None:
+            require_book_slot(db, series_id, number, story_id)
         update = {'series_id': series_id, 'series_number': number, 'series_start': start, 'series_bible': bible,
                   'revision': story.revision + 1}
         if series_id is None or entering or bible:

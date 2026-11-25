@@ -1,4 +1,5 @@
-"""MANUSCRIPT-IMPORT: preview, paragraph descriptions and cancel of a manuscript import; no book exists yet (spec §4.1)."""
+"""MANUSCRIPT-IMPORT: preview, paragraph descriptions, import and cancel of a manuscript import (spec §4.1); the import creates
+a new book and never changes an existing one."""
 import re
 
 from fastapi import APIRouter, HTTPException, Request, Response
@@ -98,6 +99,12 @@ async def preview(request: Request):
 @router.get('/api/manuscript-import/{import_id}/paragraphs')
 async def paragraphs(import_id: str, start: int, end: int, request: Request):
     return await run_in_threadpool(manuscript_import.paragraphs, request.app.state.repo, _checked(import_id), start, end)
+
+
+@router.post('/api/manuscript-import/{import_id}')
+async def apply(import_id: str, body: manuscript_import.ManuscriptApply, request: Request):
+    """A new book from the previewed manuscript (spec §4.1): 409 for an older preview, 400 for boundaries or edition limits."""
+    return await run_in_threadpool(manuscript_import.apply_import, request.app.state.repo, _checked(import_id), body)
 
 
 @router.delete('/api/manuscript-import/{import_id}', status_code=204)

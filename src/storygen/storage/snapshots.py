@@ -706,3 +706,52 @@ def build_author_baseline(view, scene_id: str) -> DependencySnapshot:
         include(previous_memory_selector(view,story,scene,select,lambda item,name:select('head',item.id,name,item.heads.get(name))))
     return DependencySnapshot(scope='author_text',selectors=selectors,refs=refs,scene_order=order,
         ref_baselines={id:view.acceptances[id].id if id in view.acceptances else None for id in refs})
+
+
+def author_text_snapshot(view,scene,*,day_selectors=False):
+    """The author_text snapshot of a manual save of the scene's text, read through `view` (also inside an open
+    transaction: MANUSCRIPT-IMPORT gives every imported prose version the snapshot save_manual_prose would give it)."""
+    story=view.story
+    from ..book.lineage import earlier_scenes
+    previous=earlier_scenes(view,scene)
+    selectors=[];refs={};baselines={}
+    def select(kind,owner,field,value):
+        selectors.append(DependencySelector(kind=kind,owner_id=owner,field=field,expected=value))
+    def source(id):
+        if id:
+            refs[id]=view.versions[id].sha256
+            baselines[id]=view.acceptances[id].id if id in view.acceptances else None
+    for field in ['canon_version_id','style_version_id','characters_version_id']:
+        id=getattr(story,field);select('story',story.id,field,id);source(id)
+    for field in ['title','target_words','character_ids']:
+        select('scene',scene.id,field,getattr(scene,field))
+    select('order',scene.id,'prefix',[s.id for s in previous]+[scene.id])
+    select('head',scene.id,'plan',scene.heads.get('plan'));source(scene.heads.get('plan'))
+    if not scene.heads.get('plan'):select('scene',scene.id,'beats',scene.beats)
+    from ..memory.forwarding import projection_policy
+    select('scene',scene.id,'memory_projection_policy',projection_policy(view,scene.id))
+    for item in previous:
+        id=item.heads.get('prose');select('head',item.id,'prose',id);source(id)
+    if previous:
+        source(previous_memory_selector(view,story,scene,select,lambda item,name:select('head',item.id,name,item.heads.get(name))))
+    from ..memory.series_start import scene_series_start
+    start=scene_series_start(story,view.list_scenes(scene.story_id),scene)
+    if start:
+        # SERIES: a first scene's text was written against the start snapshot (written only when there is one).
+        select('scene',scene.id,'series_start',start);source(start)
+    from ..memory.story_time import is_flashback
+    if is_flashback(scene):
+        # STORY-TIME: author_text is a flashback scope; without the selector a flashback's own text was stale at once.
+        select('scene',scene.id,'flashback',True)
+    # MEMORY-LOCATIONS: the same neighbourhood selector as the author baseline; an MCP draft also saw the descriptions.
+    location_selectors(view,scene,'draft' if day_selectors else 'author_text',select)
+    if day_selectors:
+        # An MCP draft was written from writing-context with its day_change note; the author's own text was not.
+        memory_core_selectors(view,story,scene,view.list_scenes(scene.story_id),select)
+        # CONTEXT-002-S08: writing-context also showed the clothing worn earlier the same day.
+        same_day_selectors(view,story,scene,view.list_scenes(scene.story_id),select,selectors)
+        # SCENE-NARRATOR: writing-context showed the narrator section; the author's own text does not depend on it.
+        narrator_selector(view,story,scene,select)
+        # VALID-LINKS: writing-context gave the brief; the chat draft is the writer's draft of the prose link (Z2).
+        select('head',scene.id,'brief',scene.heads.get('brief'));source(scene.heads.get('brief'))
+    return DependencySnapshot(scope='author_text',selectors=selectors,refs=refs,ref_baselines=baselines,scene_order=[s.id for s in previous]+[scene.id])

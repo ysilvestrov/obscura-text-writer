@@ -110,3 +110,24 @@ def test_server_messages_have_english_text(tmp_path, monkeypatch):
                                files={'file': ('old.txt', 'Привіт'.encode('cp1251'), 'text/plain')})
         assert response.status_code == 400 and 'UTF-8' in response.json()['detail'] and 'Файл' not in response.json()['detail']
         assert client.get('/api/manuscript-import/' + 'a' * 32 + '/paragraphs', params={'start': 0, 'end': 1}).status_code == 404
+
+
+def test_apply_creates_book_and_maps_errors(tmp_path):
+    english = {'Accept-Language': 'en'}
+    with client_for(tmp_path) as client:
+        preview = upload(client).json()
+        scenes = [{'start': scene['start'], 'title': scene['title']} for scene in preview['scenes']]
+        body = {'fingerprint': preview['fingerprint'], 'title': 'Книга', 'language': 'uk', 'scenes': scenes, 'parts': []}
+        url = f'/api/manuscript-import/{preview["import_id"]}'
+        stale = client.post(url, json={**body, 'fingerprint': '0' * 64}, headers=english)
+        assert stale.status_code == 409 and 'out of date' in stale.json()['detail']
+        unsorted = client.post(url, json={**body, 'scenes': scenes[::-1]}, headers=english)
+        assert unsorted.status_code == 400 and 'ascending' in unsorted.json()['detail']
+        assert client.get('/api/stories').json() == []
+        created = client.post(url, json=body)
+        assert created.status_code == 200, created.text
+        result = created.json()
+        assert len(result['scene_ids']) == 2 and result['warnings'] == []
+        assert [story['id'] for story in client.get('/api/stories').json()] == [result['story_id']]
+        assert list((tmp_path / 'manuscript-import').glob('*')) == []
+        assert client.post(url, json=body).status_code == 404

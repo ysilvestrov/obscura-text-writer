@@ -180,6 +180,14 @@ class EditorImportOrigin(DomainModel):
     export_id: str | None = Field(default=None,pattern=r'^[0-9a-f]{32}$')
 
 
+class ManuscriptImportOrigin(DomainModel):
+    """MANUSCRIPT-IMPORT: the prose came from the author's own manuscript file (spec §4.3). Metadata only: not in sha256,
+    dependencies or the link state; the raw file is not kept, its name and sha256 record where the text came from."""
+    file_name: str = Field(min_length=1,max_length=255)
+    file_sha256: str = Field(pattern=r'^[0-9a-f]{64}$')
+    imported_at: datetime
+
+
 class GhostRewriteStats(DomainModel):
     """Ghost Mode rewrite of an AI draft (#55). Metadata only: not in sha256, dependencies or request hashes.
 
@@ -217,6 +225,7 @@ class VersionRef(DomainModel):
     ghost_rewrite: GhostRewriteStats | None = None
     external_origin: ExternalOrigin | None = None
     editor_import: EditorImportOrigin | None = None
+    manuscript_import: ManuscriptImportOrigin | None = None
     # MEMORY-CARRY: the memory version this one carries onto a new previous journal (same own events and digest).
     memory_carry_of: str | None = None
     created_at: str = Field(default_factory=now)
