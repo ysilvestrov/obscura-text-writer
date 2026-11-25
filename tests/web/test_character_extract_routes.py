@@ -19,7 +19,7 @@ def tables(app):
 @pytest.mark.req('CHARACTER-EXTRACT')
 def test_preview_route_writes_nothing(tmp_path):
     repo, story, scenes = written_book(tmp_path, [WORDS] * 2, memory_role=RoleSettings(
-        provider=ProviderSettings(model='memory'), context_tokens=100000))
+        provider=ProviderSettings(model='memory'), context_tokens=32768))
     app = create_app(AppSettings(data_dir=tmp_path))
     before = tables(app)
     with TestClient(app, base_url='http://127.0.0.1:8765') as client:

@@ -10,7 +10,7 @@ from .acquaintance import is_protagonist_line
 from .extract import ExtractState, SceneProse, plan_groups, short_ids
 
 DEFAULT_GROUP_WORDS = 5000
-CATALOGUE_RESERVE_CAP = 16000
+CATALOGUE_RESERVE_CAP = 4000  # chars; catalogue_reserve = min(5 % of max_input_chars, 4000)
 EXTRACT_PLAN_CHANGED = 'План змінився; перегляньте знову'
 EXTRACT_RUNNING = 'Пошук персонажів уже виконується'
 NO_PROSE = 'Немає сцен із завершеною прозою: пошуку персонажів нічого читати'
@@ -77,16 +77,21 @@ def extract_plan(repo, story_id: str, group_words: int = DEFAULT_GROUP_WORDS, vi
             skipped.append((scene.id, UNREADABLE_PROSE))
     by_id = {item.scene_id: item for item in prose}
     state = ExtractState(scene_order=[item.scene_id for item in prose])
-    reserve = min(int(0.2 * extractor.max_input_chars), CATALOGUE_RESERVE_CAP)
+    reserve = min(int(0.05 * extractor.max_input_chars), CATALOGUE_RESERVE_CAP)
+
+    why = {}  # a single scene that does not fit: input limit or context, as build_extract_context names it
 
     def fits(ids: list[str]) -> bool:
         group = [by_id[scene_id] for scene_id in ids]
         card_numbers, scene_numbers = short_ids(state, ids)
-        return not isinstance(build_extract_context(repo, story_id, extractor, state, group, scene_numbers, card_numbers,
-                                                    reserve_chars=reserve), str)
+        built = build_extract_context(repo, story_id, extractor, state, group, scene_numbers, card_numbers, reserve_chars=reserve)
+        if isinstance(built, str) and len(ids) == 1:
+            why[ids[0]] = built
+        return not isinstance(built, str)
 
     groups, unfit = plan_groups([(item.scene_id, len(item.text.split()), len(item.text)) for item in prose],
                                 group_words, fits)
+    unfit = [(scene_id, why.get(scene_id, reason)) for scene_id, reason in unfit]
     skipped += unfit
     reading = sum(len(group) for group in groups)
     result.update(groups=groups, scenes_count=reading,

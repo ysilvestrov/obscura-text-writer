@@ -14,7 +14,7 @@
 
 - Шляхи коду — від `src/storygen/` (далі без префікса); тести — `tests/`.
 - `group_words`: ціле 1000–20000, типово 5000.
-- `catalogue_reserve = min(20 % max_input_chars, 16 000)` символів.
+- `catalogue_reserve = min(5 % max_input_chars, 4 000)` символів.
 - `extract_output_tokens = min(max(role.max_output_tokens, 16000), context_tokens − input_tokens)`, де `input_tokens` — `token_budget.service.token_estimate(...)['input_tokens']` справжнього запиту; менше за `role.max_output_tokens` → поділ групи / пропуск сцени. Межа вартості рахує `max(role.max_output_tokens, 16000)`.
 - Температура виконавця 0,2; провайдер, `max_input_chars`, `context_tokens` — ролі «Пам'ять»; без ролі «Пам'ять» — відмова «Налаштуйте роль «Пам'ять»: пошук персонажів читає прозу її моделлю».
 - `calls_bound = 2 × groups + 2`; запуск ніколи не робить більше викликів, і після продовження теж.

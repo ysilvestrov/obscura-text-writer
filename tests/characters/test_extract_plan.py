@@ -22,11 +22,11 @@ WORDS = ' '.join(['слово'] * 600) + '.'
 
 
 def local_role(**limits):
-    return RoleSettings(provider=ProviderSettings(model='memory'), context_tokens=100000, **limits)
+    return RoleSettings(provider=ProviderSettings(model='memory'), context_tokens=32768, **limits)
 
 
 def cloud_role(**limits):
-    return RoleSettings(provider=ProviderSettings(provider='openrouter', model='cloud-model'), context_tokens=100000,
+    return RoleSettings(provider=ProviderSettings(provider='openrouter', model='cloud-model'), context_tokens=32768,
                         max_input_chars=limits.pop('max_input_chars', 20000), max_output_tokens=1000, **limits)
 
 
@@ -77,6 +77,19 @@ def test_unfit_scene_is_skipped_with_the_reason(tmp_path):
     plan = extract_plan(repo, story.id)
     assert plan['groups'] == [[scenes[1].id]]
     assert plan['skipped'] == [{'scene_id': scenes[0].id, 'reason': "не вміщується в ліміт входу ролі «Пам'ять»"}]
+
+
+@pytest.mark.req('CHARACTER-EXTRACT')
+def test_realistic_context_fits_one_ukrainian_scene(tmp_path):
+    role = lambda tokens: RoleSettings(provider=ProviderSettings(model='memory'), context_tokens=tokens)
+    repo, story, scenes = written_book(tmp_path, [WORDS], memory_role=role(32768))
+    plan = extract_plan(repo, story.id)
+    assert plan['ready'] is True and plan['groups'] == [[scenes[0].id]]
+    repo, story, scenes = written_book(tmp_path / 'small', [WORDS], memory_role=role(8192))
+    small = extract_plan(repo, story.id)
+    assert small['ready'] is False and small['groups'] == []
+    context_reason = "не вміщується в контекст ролі «Пам'ять»"
+    assert small['skipped'] == [{'scene_id': scenes[0].id, 'reason': context_reason}] and small['reason'] == context_reason
 
 
 @pytest.mark.req('CHARACTER-EXTRACT')

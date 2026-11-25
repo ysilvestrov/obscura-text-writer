@@ -193,7 +193,8 @@ class RunCoordinator:
                         request.memory_plan_fingerprint!=readiness.get('plan_fingerprint'):
                     from .memory_build import MEMORY_PLAN_CHANGED
                     raise RevisionConflict(MEMORY_PLAN_CHANGED)
-                if request.mode=='character_extract' and request.extract_plan_fingerprint is not None and                         request.extract_plan_fingerprint!=readiness.get('plan_fingerprint'):
+                if request.mode=='character_extract' and request.extract_plan_fingerprint is not None and \
+                        request.extract_plan_fingerprint!=readiness.get('plan_fingerprint'):
                     from ..characters.extract_plan import EXTRACT_PLAN_CHANGED
                     raise RevisionConflict(EXTRACT_PLAN_CHANGED)
             telemetry={'roles':readiness.get('roles',{}),'calls':readiness.get('calls')} if readiness is not None else None
