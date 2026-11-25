@@ -95,7 +95,7 @@ When a book already has prose but no memory yet (for example after a [manuscript
 The item opens a preview, and nothing starts until you press **Build**. The preview shows:
 
 - how many scenes and memory model calls there will be, from which scene, and which model;
-- **Cost: up to $X (upper bound)** for a cloud model with a known price. Without a price (a local model, a provider without prices) it says "Cost unknown" with the reason; this does not block the run. The real amount is usually lower: the estimate does not know what the memory of the next scenes will be;
+- **Cost: up to $X (upper bound)** for a cloud model with a known price. Without a price (a local model, a provider without prices) it says "Cost unknown" with the reason; this does not block the run. The estimate is approximate: it does not know what the memory of the next scenes and the length of the model's answer will be;
 - the scenes that do not fit the memory role limits, with links: the run will stop on them, because the text is not truncated. Split such a scene or raise the role limit;
 - how many character cards there are, who the protagonist is and how many scenes get participants from the names in the prose (see [Importing a manuscript](manuscript-import.md#characters-before-memory)). Without cards the preview warns "No character cards: the memory will have no hero state" with links to **Characters** and **Import characters from Markdown**; the run is still possible;
 - in a series book that has not taken its start snapshot from the previous book although that book already has memory, an offer to press **Update from the previous book** first. Without it the memory will not take the previous book into account.
