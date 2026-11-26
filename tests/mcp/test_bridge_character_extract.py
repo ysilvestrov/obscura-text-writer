@@ -150,7 +150,7 @@ def test_tools_list_includes_accept_character_proposal(tmp_path):
             return {tool.name: tool for tool in (await client.list_tools()).tools}
     tools = anyio.run(listing)
     assert len(TOOLS) == 33 and 'accept_character_proposal' in TOOLS and 'accept_character_proposal' in tools
-    assert {'run_id', 'fingerprint', 'cards', 'name_updates', 'protagonist', 'casts', 'confirm'} <= set(
+    assert {'run_id', 'fingerprint', 'cards', 'name_updates', 'protagonist', 'casts', 'locations', 'confirm'} <= set(
         tools['accept_character_proposal'].input_schema['properties'])
 
 
@@ -164,3 +164,21 @@ def test_get_run_calls_made_after_done(tmp_path):
     finished_run(app.state.repo, story, scenes, request_id='extract-2')
     block = ok(call(server, 'get_run', {'run_id': run.id}))['character_extract']
     assert block['proposal'] is None and block['calls_made'] == 3
+
+
+@pytest.mark.req('CHARACTER-EXTRACT')
+def test_places_through_get_run_and_the_accept_tool(tmp_path):
+    from tests.characters.test_extract_accept_locations import lid, place, places
+    app, http, server, story, scenes = setup(tmp_path)
+    s1 = scenes[0]
+    run = finished_run(app.state.repo, story, scenes, locations=[places(s1, place('Село / Двір'))])
+    block = ok(call(server, 'get_run', {'run_id': run.id}))['character_extract']
+    assert block['proposal']['locations'] == run.checkpoint['proposal']['locations']
+    arguments = {'story_id': story.id, 'run_id': run.id, 'fingerprint': block['proposal']['fingerprint'],
+                 'locations': [{'scene_id': s1.id, 'places': ['Село / Двір']}]}
+    shown = ok(call(server, 'accept_character_proposal', arguments))
+    assert shown['preview']['changed_location_ids'] == [lid(story, 'Село'), lid(story, 'Село / Двір')]
+    assert app.state.repo.get_scene(s1.id).location_ids == []
+    done = ok(call(server, 'accept_character_proposal', {**arguments, 'confirm': True}))
+    assert done['result']['changed_scene_ids'] == [s1.id]
+    assert app.state.repo.get_scene(s1.id).location_ids == [lid(story, 'Село / Двір')]

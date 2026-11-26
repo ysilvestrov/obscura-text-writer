@@ -31,7 +31,12 @@ def apply_description(repo,db,scene,text,*,include_title=True,cards=None):
         if cards is None:cards=story_cards(repo,db,scene.story_id)
         scene.character_ids=resolve_participants(parsed.participants,cards)[0]
     from .locations import plan_location_ids
-    scene.location_ids=plan_location_ids(db,scene.story_id,text)
+    from ..scene_plan_template import plan_fields
+    # MEMORY-LOCATIONS: a non-empty «Локація:» value always wins; without one, places accepted from the model stay.
+    if plan_fields(text).get('location'):
+        scene.location_ids=plan_location_ids(db,scene.story_id,text);scene.location_source='plan'
+    elif scene.location_source=='plan':
+        scene.location_ids=[]
     if previous!=(scene.title,scene.character_ids,scene.location_ids):
         stale_scene_material(repo,db,scene)
 

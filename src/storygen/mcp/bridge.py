@@ -1398,7 +1398,7 @@ def build_server(http: httpx.Client | None, client_name: str | None = None, *, c
     def get_run(run_id: str, cancel: bool = False) -> dict[str, Any]:
         """Стан запуску Obscura: state (queued, running, completed, failed, cancelled…), помилка, спроби (state, error,
         result_version_id), для character_extract — блок character_extract (phase, calls_made, groups_pending і пропозиція
-        персонажів, поки її можна прийняти), для publication_suggest — актуальні пропозиції картки, для audit — область (audit_scope) і
+        персонажів і місць сцен, поки її можна прийняти), для publication_suggest — актуальні пропозиції картки, для audit — область (audit_scope) і
         checkpoint зупинки: state=needs_review і checkpoint.scene_id — сцена, де Ревізор знайшов розбіжність чи не зміг
         перевірити зв'язок; рішення ухвалює й перевірку продовжує автор у вікні Obscura. Грошей не коштує. Довгий запуск не
         чекайте в одному виклику: перевіряйте стан повторно. cancel=true спершу скасовує запуск — лише той, що почав чат."""
@@ -1437,17 +1437,20 @@ def build_server(http: httpx.Client | None, client_name: str | None = None, *, c
     @server.tool()
     def accept_character_proposal(story_id: str, run_id: str, fingerprint: str, cards: list[dict[str, Any]] | None = None,
                                   name_updates: list[dict[str, Any]] | None = None, protagonist: bool = False,
-                                  casts: list[str] | None = None, confirm: bool = False) -> dict[str, Any]:
-        """Прийняти вибране з пропозиції персонажів завершеного запуску character_extract (run_id і proposal.fingerprint — з get_run).
-        cards — [{key, names}]: нові картки за key із пропозиції, names — імена, які автор лишає; name_updates — [{card_id, names}]:
-        нові імена наявних карток; protagonist=true — позначити головного героя; casts — scene_id сцен, чий склад із пропозиції
-        приймаємо. Усе, що не вибрано, лишається не прийнятим. Без confirm нічого не пише: повертає, що буде застосовано й
-        пропущено (applied, skipped, changed_card_ids, changed_scene_ids, stale_memory_scenes) — покажіть це авторові; запис —
-        лише після його згоди, викликом з confirm=true. Прийняття одне, однією транзакцією; пам'ять сцен зі зміненим складом
-        (stale_memory_scenes) після цього варто перебудувати. Грошей не коштує."""
+                                  casts: list[str] | None = None, locations: list[dict[str, Any]] | None = None,
+                                  confirm: bool = False) -> dict[str, Any]:
+        """Прийняти вибране з пропозиції персонажів і місць завершеного запуску character_extract (run_id і
+        proposal.fingerprint — з get_run). cards — [{key, names}]: нові картки за key із пропозиції, names — імена, які автор
+        лишає; name_updates — [{card_id, names}]: нові імена наявних карток; protagonist=true — позначити головного героя;
+        casts — scene_id сцен, чий склад із пропозиції приймаємо; locations — [{scene_id, places}]: місця сцени за шляхами
+        (path) з пункту proposal.locations цієї сцени. Усе, що не вибрано, лишається не прийнятим. Без confirm нічого не пише:
+        повертає, що буде застосовано й пропущено (applied, skipped, changed_card_ids, changed_scene_ids,
+        changed_location_ids, stale_memory_scenes) — покажіть це авторові; запис — лише після його згоди, викликом з
+        confirm=true. Прийняття одне, однією транзакцією; пам'ять сцен зі зміненим складом чи місцями (stale_memory_scenes)
+        після цього варто перебудувати. Грошей не коштує."""
         story = identifier(story_id)
         body = {'run_id': identifier(run_id), 'fingerprint': fingerprint, 'cards': cards or [], 'name_updates': name_updates or [],
-                'protagonist': protagonist, 'casts': casts or []}
+                'protagonist': protagonist, 'casts': casts or [], 'locations': locations or []}
         result = request('POST', f'/api/stories/{story}/character-proposal/accept', json={**body, 'dry_run': not confirm})
         if not confirm:
             return {'accepted': False, 'preview': result,

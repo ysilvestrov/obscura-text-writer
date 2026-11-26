@@ -7,15 +7,17 @@ import hashlib
 import json
 from collections.abc import Mapping
 
-from ..characters.extract import SKIP_CONTEXT_LIMIT, SKIP_INPUT_LIMIT, ExtractState, SceneProse, catalogue_text
+from ..characters.extract import (
+    CATALOGUE_LABELS, SKIP_CONTEXT_LIMIT, SKIP_INPUT_LIMIT, ExtractState, SceneProse, catalogue_text, location_text)
 from ..providers.models import RoleSettings
 from .context import ContextBundle
 
 EXTRACT_TEMPERATURE = 0.2
-EXTRACT_MIN_OUTPUT_TOKENS = 16000
+EXTRACT_MIN_OUTPUT_TOKENS = 24000  # spec 2, 3.2: probe 3 spent up to 14 231 of 16 000 with places
 NO_MEMORY_ROLE = "Налаштуйте роль «Пам'ять»: пошук персонажів читає прозу її моделлю"
 RESERVE_FILLERS = {'uk': 'а', 'en': 'a'}  # the catalogue is in the language of the book: the estimator counts bytes
-LABELS = {'uk': ('Каталог персонажів:', 'Сцени:'), 'en': ('Character catalogue:', 'Scenes:')}
+LABELS = {'uk': ('Каталог персонажів:', 'Каталог локацій:', 'Сцени:'),
+          'en': ('Character catalogue:', 'Location catalogue:', 'Scenes:')}
 
 
 def resolve_extractor(roles: Mapping[str, RoleSettings]) -> RoleSettings | None:
@@ -28,9 +30,10 @@ def resolve_extractor(roles: Mapping[str, RoleSettings]) -> RoleSettings | None:
                                    'max_output_tokens': max(role.max_output_tokens, EXTRACT_MIN_OUTPUT_TOKENS)})
 
 
-def _user_text(language: str, catalogue: str, group: list[SceneProse], short_by_scene: Mapping[str, str]) -> str:
-    head, scenes = LABELS[language]
-    parts = [head, catalogue, '', scenes]
+def _user_text(language: str, catalogue: str, locations: str, group: list[SceneProse],
+               short_by_scene: Mapping[str, str]) -> str:
+    head, places, scenes = LABELS[language]
+    parts = [head, catalogue, '', places, locations, '', scenes]
     for scene in group:
         parts += [f'[{short_by_scene[scene.scene_id]}]', scene.text, '']
     return '\n'.join(parts).rstrip('\n')
@@ -42,17 +45,22 @@ def build_extract_context(repo, story_id: str, settings: RoleSettings, state: Ex
     """The request for one group, or the reason it does not fit the role's input limit or context.
 
     `scene_numbers` maps `s<N>` to scene ids and `card_numbers` maps `c<N>` to card refs (see `characters.extract.short_ids`;
-    the catalogue text shows the same `c<N>`). With `reserve_chars` the catalogue is replaced by that many filler
-    characters: the preview measures the fit with the catalogue reserve instead of a real catalogue."""
+    the catalogue text shows the same `c<N>`; locations are `l<N>` in the order of `state.locations`). With
+    `reserve_chars` both catalogues are replaced by that many filler characters (the reserve is shared, spec 2, 3.1): the
+    preview measures the fit with the catalogue reserve instead of real catalogues."""
     from ..authoring.blueprints import get_role_settings
     from ..language import load_prompt
     from ..providers.requests import generation_request
     from ..token_budget.service import token_estimate
     story = repo.get_story(story_id)
     short_by_scene = {scene_id: short for short, scene_id in scene_numbers.items()}
-    catalogue = RESERVE_FILLERS.get(story.language, 'a') * reserve_chars if reserve_chars is not None else catalogue_text(state, story.language)
-    system = load_prompt('character_extract_v1', story.language)
-    user = _user_text(story.language, catalogue, group, short_by_scene)
+    if reserve_chars is not None:
+        catalogue = RESERVE_FILLERS.get(story.language, 'a') * reserve_chars
+        locations = CATALOGUE_LABELS.get(story.language, CATALOGUE_LABELS['uk'])[1]
+    else:
+        catalogue, locations = catalogue_text(state, story.language), location_text(state, story.language)
+    system = load_prompt('character_extract_v2', story.language)
+    user = _user_text(story.language, catalogue, locations, group, short_by_scene)
     body = generation_request('character_extract', settings, system, user, {})
     if len(json.dumps(body, ensure_ascii=False, separators=(',', ':'))) > settings.max_input_chars:
         return SKIP_INPUT_LIMIT

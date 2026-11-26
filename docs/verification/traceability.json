@@ -4151,6 +4151,47 @@
       }
     },
     {
+      "id": "CHARACTER-EXTRACT-S12",
+      "requirement": "CHARACTER-EXTRACT",
+      "scope": "Місця сцен: каталог l<N>, розгортання l<N> у шляху, повтор частини, невідомий ID, понад 3 місця, перевірка згадки з межею чотирилітерного слова, пропозиція set/add за канонічною карткою, каталог локацій і промпт v2 у запиті, ліміт 24 000, відбиток плану від карток локацій, продовження старої контрольної точки. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/characters/test_extract_locations.py::test_catalogue_id_and_new_nested_path",
+        "tests/characters/test_extract_locations.py::test_catalogue_id_inside_a_path_expands_and_a_repeated_parent_part_drops",
+        "tests/characters/test_extract_locations.py::test_unknown_catalogue_id_is_dropped",
+        "tests/characters/test_extract_locations.py::test_over_three_places_are_trimmed_not_rejected",
+        "tests/characters/test_extract_locations.py::test_a_place_absent_from_the_scene_prose_is_unsuggested",
+        "tests/characters/test_extract_locations.py::test_four_letter_words_match_only_close_forms",
+        "tests/characters/test_extract_locations.py::test_answer_without_locations_stays_valid",
+        "tests/characters/test_extract_locations.py::test_finalize_set_add_and_ineligible",
+        "tests/characters/test_extract_locations.py::test_finalize_compares_places_by_canonical_card",
+        "tests/generation/test_extract_context.py::test_bundle_carries_the_location_catalogue_and_prompt_v2",
+        "tests/generation/test_extract_context.py::test_output_limit_capped_by_context",
+        "tests/characters/test_extract_plan.py::test_fingerprint_changes_with_location_cards_and_merges",
+        "tests/generation/test_extract_run.py::test_run_proposes_places_with_a_growing_location_catalogue",
+        "tests/generation/test_extract_run.py::test_old_checkpoint_without_locations_resumes_with_the_book_catalogue",
+        "tests/characters/test_extract_locations.py::test_a_part_repeating_any_part_before_it_drops",
+        "tests/characters/test_extract_locations.py::test_a_five_letter_word_matches_its_locative_form",
+        "tests/generation/test_extract_run.py::test_a_path_of_a_merged_card_is_not_shown_as_new",
+        "tests/characters/test_extract_locations.py::test_a_catalogue_path_keeps_its_repeated_parts"
+      ]
+    },
+    {
+      "id": "CHARACTER-EXTRACT-S13",
+      "requirement": "CHARACTER-EXTRACT",
+      "scope": "Прийняття місць: set/add, картки з префіксами, причини пропуску, проза не manual, шлях злитої картки й повтор шляху, склад і місця однієї сцени, dry_run, шлях чи сцена не з пропозиції (400), стара пропозиція без locations, MCP get_run і accept_character_proposal з locations. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/characters/test_extract_accept_locations.py::test_accept_sets_and_adds_places",
+        "tests/characters/test_extract_accept_locations.py::test_place_skips_name_their_reason",
+        "tests/characters/test_extract_accept_locations.py::test_place_skipped_when_prose_head_is_not_author_text",
+        "tests/characters/test_extract_accept_locations.py::test_merged_and_repeated_paths_reuse_cards",
+        "tests/characters/test_extract_accept_locations.py::test_cast_and_places_of_one_scene_in_one_accept",
+        "tests/characters/test_extract_accept_locations.py::test_dry_run_of_places_writes_nothing",
+        "tests/characters/test_extract_accept_locations.py::test_places_not_offered_are_refused",
+        "tests/characters/test_extract_accept_locations.py::test_old_proposal_without_locations_is_accepted",
+        "tests/mcp/test_bridge_character_extract.py::test_places_through_get_run_and_the_accept_tool"
+      ]
+    },
+    {
       "id": "CHARACTER-NAMES-S01",
       "requirement": "CHARACTER-NAMES",
       "scope": "Позначка інших імен двома мовами; розпізнавання в плані, «Знайомий з:», оповідачі й «Протагоніст:» за будь-яким ім’ям.",
@@ -5782,7 +5823,7 @@
     {
       "id": "MEMORY-LOCATIONS-S02",
       "requirement": "MEMORY-LOCATIONS",
-      "scope": "Картки й Scene.location_ids зі збереження і створення плану, перше написання, рядок прибрано, авторське завдання-голова не застаріває (VALID-LINKS), міграція 6→7 зі сценою в кошику, цілісність; застарілість версії пам’яті через селектор location_ids.",
+      "scope": "Картки й Scene.location_ids зі збереження і створення плану, перше написання, рядок прибрано, авторське завдання-голова не застаріває (VALID-LINKS), міграція 6→7 зі сценою в кошику, цілісність; застарілість версії пам’яті через селектор location_ids. Правило плану з location_source: plan/model × рядок відсутній/порожній/непорожній, синхронізація складу, стара сцена читається як plan.",
       "tests": [
         "tests/storage/test_story_locations.py::test_plan_save_creates_cards_with_parents_and_scene_location_ids",
         "tests/storage/test_story_locations.py::test_the_first_spelling_stays_the_shown_path",
@@ -5791,7 +5832,11 @@
         "tests/storage/test_story_locations.py::test_a_changed_location_line_stales_legacy_versions_like_a_changed_cast",
         "tests/storage/test_story_locations.py::test_migration_from_6_backfills_every_scene_without_new_revisions",
         "tests/storage/test_story_locations.py::test_integrity_flags_a_scene_with_a_missing_location_card",
-        "tests/generation/test_location_context.py::test_location_line_change_stales_memory"
+        "tests/generation/test_location_context.py::test_location_line_change_stales_memory",
+        "tests/storage/test_story_locations.py::test_plan_rule_keeps_model_places",
+        "tests/storage/test_story_locations.py::test_cards_sync_keeps_model_places",
+        "tests/storage/test_story_locations.py::test_an_old_scene_reads_as_plan_source",
+        "tests/storage/test_story_locations.py::test_plan_source_stays_out_of_the_payload"
       ]
     },
     {

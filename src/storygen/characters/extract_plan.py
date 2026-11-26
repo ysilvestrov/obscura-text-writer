@@ -46,6 +46,7 @@ def _has_author_protagonist(cards) -> bool:
 def extract_plan(repo, story_id: str, group_words: int = DEFAULT_GROUP_WORDS, view=None) -> dict:
     from ..generation.audit_cost import CLOUD, upper_bound
     from ..generation.extract_context import NO_MEMORY_ROLE, build_extract_context, resolve_extractor
+    from ..storage.locations import cards_digest
     from ..storage.scene_cast import view_cards
     story = repo.get_story(story_id)
     view = view if view is not None else repo.context_view(story_id)
@@ -113,7 +114,7 @@ def extract_plan(repo, story_id: str, group_words: int = DEFAULT_GROUP_WORDS, vi
     result['ready'] = result['reason'] is None
     payload = {'group_words': group_words, 'groups': groups, 'skipped': result['skipped'],
                'prose': {item.scene_id: view.peek_version(item.version_id).sha256 for item in prose},
-               'cards': view.get_story(story_id).characters_version_id,
+               'cards': view.get_story(story_id).characters_version_id, 'locations': cards_digest(view.locations),
                'executor': {'provider': extractor.provider.provider, 'model': extractor.provider.model,
                             'base_url': extractor.provider.base_url, 'max_input_chars': extractor.max_input_chars,
                             'max_output_tokens': extractor.max_output_tokens, 'context_tokens': extractor.context_tokens},
