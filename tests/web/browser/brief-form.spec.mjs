@@ -125,6 +125,27 @@ test.describe('brief form',()=>{
     await expect(page.locator('#save-text')).toBeEnabled();
   });
 
+  test('BRIEF-FORM fields grow and shrink to fit their text, without inner scroll',async({page,request})=>{
+    const long='Довгий біт, який займає кілька рядків. '.repeat(12);
+    await openBrief(page,request,{...sample,objective:long,beats:['Коротко',long,'Прощання']});
+    // No field may hide part of its text behind an inner scrollbar.
+    const clipped=page=>page.locator('#brief-form textarea').evaluateAll(areas=>areas.map(area=>area.scrollHeight-area.clientHeight));
+    await expect.poll(async()=>Math.max(...await clipped(page))).toBeLessThanOrEqual(1);
+    const height=index=>beats(page).nth(index).evaluate(area=>area.getBoundingClientRect().height);
+    expect(await height(1)).toBeGreaterThan(await height(0)*2);
+    // Typing grows the field, deleting shrinks it back.
+    const short=await height(0);
+    await beats(page).nth(0).fill(long);
+    await expect.poll(async()=>Math.max(...await clipped(page))).toBeLessThanOrEqual(1);
+    expect(await height(0)).toBeGreaterThan(short*2);
+    await beats(page).nth(0).fill('Коротко');
+    await expect.poll(async()=>Math.abs(await height(0)-short)).toBeLessThanOrEqual(1);
+    expect(Math.max(...await clipped(page))).toBeLessThanOrEqual(1);
+    // A narrower window wraps the text into more lines; the field follows.
+    await page.setViewportSize({width:420,height:800});
+    await expect.poll(async()=>Math.max(...await clipped(page))).toBeLessThanOrEqual(1);
+  });
+
   test('BRIEF-FORM narrow screen has no horizontal scroll',async({page,request})=>{
     await page.setViewportSize({width:375,height:800});
     await openBrief(page,request,sample);

@@ -258,7 +258,7 @@ pre { white-space: pre-wrap; overflow-wrap: anywhere; font: 14px/1.7 var(--font-
 
 .memory-filters { display: flex; gap: 12px; margin-block: 16px; }
 .brief-form h3 { font-size: 1rem; margin: 16px 0 8px; }
-.editor-panel .brief-form textarea { width: 100%; min-height: 0; box-sizing: border-box; padding: 8px 12px; line-height: 1.5; font-size: 16px; resize: vertical; }
+.editor-panel .brief-form textarea { width: 100%; min-height: 0; box-sizing: border-box; padding: 8px 12px; line-height: 1.5; font-size: 16px; resize: none; overflow-y: hidden; }
 .brief-form-problem { color: var(--error); }
 .brief-items { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
 .brief-item { display: flex; gap: 8px; align-items: flex-start; }

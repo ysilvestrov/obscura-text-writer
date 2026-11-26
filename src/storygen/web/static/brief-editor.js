@@ -22,9 +22,19 @@ export function installBriefEditor({state,textEditor}){
     // Every form edit goes into the buffer, so "unsaved", CAS and the unsaved-text guard work as for the JSON text.
     const text=serializeBrief(model);lastText=text;textEditor.replaceText(text);
   }
+  // Every field is as tall as its text: no inner scrollbar, rows is only the empty minimum.
+  function fit(area){
+    const page=document.scrollingElement,top=page?.scrollTop;
+    area.style.height='auto';area.style.height=`${area.scrollHeight+area.offsetHeight-area.clientHeight}px`;
+    if(page&&page.scrollTop!==top)page.scrollTop=top;
+  }
+  const fitAll=()=>{if(!body.hidden)body.querySelectorAll('textarea').forEach(fit);};
+  // Width changes rewrap the text; a hidden form has no width, so showing it fits the fields too.
+  let fittedWidth=-1;
+  if(typeof ResizeObserver==='function')new ResizeObserver(()=>{const width=body.clientWidth;if(width!==fittedWidth){fittedWidth=width;fitAll();}}).observe(body);
   function field(value,label,onChange,rows=2){
     const area=node('textarea');area.value=value;area.rows=rows;area.readOnly=readOnly();uiAttr(area,'aria-label',()=>label());
-    area.oninput=()=>{if(readOnly())return;onChange(area.value);write();controls();};
+    area.oninput=()=>{fit(area);if(readOnly())return;onChange(area.value);write();controls();};
     return area;
   }
   function iconButton(key,text,onClick,disabled){
@@ -69,7 +79,7 @@ export function installBriefEditor({state,textEditor}){
       list('constraints',false,'brief_form.constraints','brief_form.add_constraint'),
       list('proposed_changes',false,'brief_form.proposed_changes','brief_form.add_change'));
     if(focusList!==null&&focusIndex>=0)body.querySelector(`[data-list="${focusList}"] textarea[data-index="${focusIndex}"]`)?.focus();
-    controls();
+    controls();fitAll();
   }
   function fromBuffer(){
     const text=textEditor.read(),parsed=parseBrief(text);lastText=text;
