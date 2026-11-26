@@ -112,7 +112,7 @@ INSTRUCTIONS = ('Obscura — локальний редактор історій.
                 'Режим твору (writing_mode у get_story): «chat» — тексти пише чат; «obscura» — тексти пишуть моделі Obscura, '
                 'і save_draft та етапи з чату відхиляються, а етап чи пропозицію картки запускає start_run (спершу перегляд без confirm, '
                 'запуск — лише після згоди автора; стан — get_run). Перевірку зв’язків Ревізором (start_run з action=audit: сцена зі '
-                'scene_id або вся книга без нього) можна запускати в обох режимах, бо Ревізор не пише тексту твору. '
+                'scene_id або вся книга без нього) можна запускати в будь-якому режимі, бо Ревізор не пише тексту твору. '
                 '«author» («Пишу сам») — прозу пише автор: чат читає контекст, проходить з чату завдання й пам’ять сцени '
                 '(get_stage_task і save_stage_result для brief і memory) і запускає перевірку зв’язків і пошук персонажів, '
                 'але save_draft, редактура й інші запуски start_run відхиляються. '
@@ -121,7 +121,7 @@ INSTRUCTIONS = ('Obscura — локальний редактор історій.
                 '(створює нову книгу без моделей і без пам’яті); далі start_run(action=rebuild_memory): перегляд вартості, згода автора, '
                 'запуск із plan_fingerprint (лише у творі «obscura»). '
                 'Якщо в імпортованої книги ще немає карток персонажів, перед побудовою пам’яті запропонуйте пошук персонажів: '
-                'start_run(action=character_extract) — перегляд без confirm, згода автора, запуск із plan_fingerprint (в обох режимах); '
+                'start_run(action=character_extract) — перегляд без confirm, згода автора, запуск із plan_fingerprint (у будь-якому режимі); '
                 'коли запуск завершено, перегляньте пропозицію в get_run і прийміть вибране через accept_character_proposal '
                 '(спершу без confirm, потім з confirm=true). '
                 'Після сцени чи твору дайте людині посилання з next_steps, щоб читати й правити твір у вікні Obscura. '
@@ -425,7 +425,7 @@ def build_server(http: httpx.Client | None, client_name: str | None = None, *, c
 
     @server.tool()
     def list_stories() -> list[dict[str, Any]]:
-        """Історії в Obscura (без кошика): id, назва, мова, рейтинг, режим твору (writing_mode: chat чи obscura), кількість сцен."""
+        """Історії в Obscura (без кошика): id, назва, мова, рейтинг, режим твору (writing_mode: chat, obscura чи author), кількість сцен."""
         return request('GET', '/api/stories')
 
     @server.tool()
@@ -1292,7 +1292,7 @@ def build_server(http: httpx.Client | None, client_name: str | None = None, *, c
         "0.50"). Запуск іде у фоні: стан і результат — get_run(run_id); результат етапу читайте get_scene_text, пропозиції
         картки — у get_run. Кожен виклик з confirm=true створює новий запуск; другу побудову пам'яті, поки перша в черзі,
         виконується чи призупинена, Obscura відхиляє (409): стан першої — get_run.
-        character_extract (без scene_id; в обох режимах твору, бо пропозиція нічого не пише в книгу, доки автор її не прийме):
+        character_extract (без scene_id; у будь-якому режимі твору, бо пропозиція нічого не пише в книгу, доки автор її не прийме):
         модель читає прозу книги групами й пропонує картки персонажів, імена та склад сцен. Перегляд має groups_count,
         scenes_count, skipped, calls_bound, cost, cards_count, has_protagonist, pending_proposal і plan_fingerprint; запуск —
         лише з plan_fingerprint (і тим самим group_words, 1000–20000 слів на групу, якщо його задано) із показаного перегляду.

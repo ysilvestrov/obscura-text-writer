@@ -162,3 +162,18 @@ def test_author_mode_refusals_in_english(tmp_path):
                           headers=en)
     assert refused.json()['detail'] == ('The story is in the "I write myself" mode: models do not write prose. '
                                         'Change the mode in the story settings')
+
+
+@pytest.mark.req('WRITING-MODE')
+def test_every_stage_of_a_stage_run_has_a_prose_decision():
+    from storygen.writing_mode import PROSE_STAGES
+    stages = set(get_args(get_args(RunRequest.model_fields['stage'].annotation)[0]))
+    assert stages - PROSE_STAGES == {'brief', 'memory'} and stages & PROSE_STAGES == {'draft', 'edit'}
+
+
+@pytest.mark.req('WRITING-MODE')
+def test_bridge_run_in_author_mode_names_the_author(tmp_path):
+    app, repo, story, scene, client = author_scene(tmp_path)
+    request = {'story_id': story.id, 'scene_id': scene.id, 'mode': 'stage', 'stage': 'memory'}
+    refused = client.post('/api/runs', json={'request_id': 'b1', 'request': request}, headers=BRIDGE)
+    assert refused.status_code == 409 and AUTHOR_CHAT in refused.text, refused.text

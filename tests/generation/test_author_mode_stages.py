@@ -71,3 +71,31 @@ def test_run_failure_shows_the_mode_reason(tmp_path):
     run = Run.model_construct(id='r', story_id='s', tasks=[{'scene_id': 'x', 'stage': 'draft'}], cursor=0,
                               request=RunRequest.model_construct(story_id='s', mode='stage', stage='draft'))
     assert RunCoordinator._failure_message(None, run, AuthorWritesBlocked(AUTHOR_WRITES)) == AUTHOR_WRITES
+
+
+@pytest.mark.req('WRITING-MODE')
+def test_queued_draft_run_stops_after_the_switch_without_a_version(tmp_path, monkeypatch):
+    from storygen.generation import readiness
+    from storygen.generation.worker import RunCoordinator
+    monkeypatch.setattr(readiness, 'preview', lambda *_args, **_kw: {'ready': True})  # queueing is not under test
+    from storygen.run_models import RunRequest
+    repo, (scene,) = setup(tmp_path)
+    gateway = FakeGateway()
+    worker = RunCoordinator(repo, lambda _: gateway)
+    run = worker.enqueue(RunRequest(story_id=scene.story_id, scene_id=scene.id, mode='stage', stage='draft', budget_limit_usd='1'),
+                         'queued-draft')
+    switch(repo, scene.story_id, 'author')
+    with pytest.raises(AuthorWritesBlocked):
+        worker._execute(run.id)
+    assert gateway.calls == [] and drafts(repo, scene) == []
+
+
+@pytest.mark.req('WRITING-MODE')
+def test_queued_edit_loop_stops_before_copying_the_source(tmp_path):
+    from tests.generation.test_editor_loop import seeded
+    repo, scene, draft_ref, worker, run, calls = seeded(tmp_path, ['unused'])
+    switch(repo, scene.story_id, 'author')
+    worker._execute(run.id)
+    current = worker.get_run(run.id)
+    assert current.state == 'failed' and current.error == AUTHOR_WRITES and calls == []
+    assert [v.id for v in repo.list_versions(scene.story_id, scene.id, 'draft')] == [draft_ref.id]

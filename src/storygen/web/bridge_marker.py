@@ -41,14 +41,20 @@ def guard_bridge_run(request,run_request) -> None:
         # R-51: the search writes no text of the book (a proposal the author accepts later), so either mode; the plan is the consent.
         if run_request.extract_plan_fingerprint is None:raise RevisionConflict(EXTRACT_PLAN_REQUIRED)
         return
-    if request.app.state.repo.get_story(run_request.story_id).writing_mode!='obscura':raise RevisionConflict(CHAT_WRITES)
+    if request.app.state.repo.get_story(run_request.story_id).writing_mode!='obscura':raise RevisionConflict(_not_obscura(request,run_request.story_id))
     if run_request.mode=='rebuild_memory' and run_request.memory_plan_fingerprint is None:raise RevisionConflict(MEMORY_PLAN_REQUIRED)
 
 
 def guard_bridge_cast(request,story_id: str) -> None:
     """R-48 review M-9: the scene casts from the names in the prose are written only as the first step of a memory build,
     so the bridge may write them in the same stories it may start that build in (`guard_bridge_run`)."""
-    if from_bridge(request) and request.app.state.repo.get_story(story_id).writing_mode!='obscura':raise RevisionConflict(CHAT_WRITES)
+    if from_bridge(request) and request.app.state.repo.get_story(story_id).writing_mode!='obscura':raise RevisionConflict(_not_obscura(request,story_id))
+
+
+def _not_obscura(request,story_id: str) -> str:
+    """The refusal for a bridge run outside «пише Obscura»: the chat writes in «пише чат», nobody but the author in «Пишу сам»."""
+    from ..writing_mode import AUTHOR_CHAT
+    return AUTHOR_CHAT if request.app.state.repo.get_story(story_id).writing_mode=='author' else CHAT_WRITES
 
 
 def guard_bridge_cancel(request,run) -> None:

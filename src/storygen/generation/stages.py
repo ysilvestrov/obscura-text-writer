@@ -91,7 +91,9 @@ def execute_stage(
         raise
     if stage in PROSE_STAGES and is_author(repo,context.story_id):
         # The author switched while the response streamed: the call is paid, but no prose version is created (І1).
-        attempt.state='failed'
+        if terminal:attempt.usage,attempt.finish_reason=terminal.usage,terminal.finish_reason
+        if getattr(gateway,'accounting',None):attempt.context['accounting']=gateway.accounting.result
+        attempt.state='cancelled' if cancel.is_set() else 'failed'
         attempt.error=AUTHOR_WRITES
         repo.save_attempt(attempt)
         raise AuthorWritesBlocked(AUTHOR_WRITES)

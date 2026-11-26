@@ -7432,7 +7432,8 @@
         "tests/web/test_author_mode.py::test_writes_prose_by_mode_and_stage",
         "tests/web/test_author_mode.py::test_author_mode_refuses_prose_runs_before_the_queue",
         "tests/web/test_author_mode.py::test_author_mode_allows_memory_brief_and_audit_runs",
-        "tests/web/test_author_mode.py::test_same_request_id_after_switch_returns_the_existing_run"
+        "tests/web/test_author_mode.py::test_same_request_id_after_switch_returns_the_existing_run",
+        "tests/web/test_author_mode.py::test_every_stage_of_a_stage_run_has_a_prose_decision"
       ]
     },
     {
@@ -7443,7 +7444,9 @@
         "tests/generation/test_author_mode_stages.py::test_execute_stage_refuses_prose_stage_before_the_call",
         "tests/generation/test_author_mode_stages.py::test_switch_during_the_response_saves_no_version",
         "tests/generation/test_author_mode_stages.py::test_brief_stage_is_not_refused_in_author_mode",
-        "tests/generation/test_author_mode_stages.py::test_run_failure_shows_the_mode_reason"
+        "tests/generation/test_author_mode_stages.py::test_run_failure_shows_the_mode_reason",
+        "tests/generation/test_author_mode_stages.py::test_queued_draft_run_stops_after_the_switch_without_a_version",
+        "tests/generation/test_author_mode_stages.py::test_queued_edit_loop_stops_before_copying_the_source"
       ]
     },
     {
@@ -7459,7 +7462,8 @@
         "tests/mcp/test_bridge_writing_mode.py::test_save_draft_in_author_mode_is_refused",
         "tests/mcp/test_bridge_writing_mode.py::test_start_run_in_author_mode_names_the_mode",
         "tests/mcp/test_bridge_writing_mode.py::test_next_steps_in_author_mode_offers_memory_not_drafting",
-        "tests/mcp/test_bridge_writing_mode.py::test_server_instructions_describe_author_mode"
+        "tests/mcp/test_bridge_writing_mode.py::test_server_instructions_describe_author_mode",
+        "tests/web/test_author_mode.py::test_bridge_run_in_author_mode_names_the_author"
       ]
     },
     {
