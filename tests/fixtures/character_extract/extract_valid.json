@@ -1,0 +1,7 @@
+{"new_cards": [
+  {"key": "n1", "name": "Іванка", "other_names": ["Галина"], "quotes": ["Іванка йшла лісом і насвистувала"]},
+  {"key": "n2", "name": "Анничка", "other_names": [], "quotes": ["ходімо додому - вже пізно, мамо"]},
+  {"key": "n3", "name": "Мирон", "other_names": [], "quotes": ["Мирон приніс воду з колодязя"]}],
+ "card_updates": [],
+ "scenes": [{"scene": "s1", "participants": ["n1", "n2", "n1"]}, {"scene": "s2", "participants": ["n1", "n3"]}],
+ "protagonist_candidates": [{"id": "n1", "score": 0.7}, {"id": "n2", "score": 0.2}]}

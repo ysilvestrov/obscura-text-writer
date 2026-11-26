@@ -1,5 +1,6 @@
 import json
 
+from ..characters.service import CARD_SOURCE_KINDS, PROSE_SOURCE_KINDS
 from ..domain import RevisionConflict, Story
 from ..generation.models import StoryBlueprint, StyleProfile, complete_style_profile, default_style_profile
 from ..providers.models import RoleSettings
@@ -61,9 +62,9 @@ def apply_blueprint(repo,story_id: str,proposal: StoryBlueprint,expected_revisio
     for card in proposal.characters:
         for source in card.sources:
             ref=repo.get_version(source.version_id)
-            if ref.story_id!=story_id or ref.kind not in {'source_plan','source_characters','character_cards'} or source.quote not in repo.read_text(ref.id):
+            if ref.story_id!=story_id or ref.kind not in CARD_SOURCE_KINDS or source.quote not in repo.read_text(ref.id):
                 raise ValueError('Картка персонажа не має підтвердженого джерела')
-            source_ids.append(ref.id)
+            if ref.kind not in PROSE_SOURCE_KINDS:source_ids.append(ref.id)  # prose is quotable but never a dependency
     canon=repo.save_version(story_id,None,'canon',proposal.canon,source_ids)
     characters=repo.save_version(story_id,None,'character_cards',json.dumps([c.model_dump() for c in proposal.characters],ensure_ascii=False),source_ids)
     # Existing scenes remain under author control; proposals never overwrite their plans.

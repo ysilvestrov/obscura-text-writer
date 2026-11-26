@@ -12,9 +12,9 @@ POLICY_ROLES = ROLES
 
 # Scene stages from the registry (including the per-scene audit_* stages of the auditor) plus stages outside the scene pipeline.
 STAGE_POLICY_ROLE = {**STAGE_ROLE, 'publication_suggest': 'writer', 'timeline_summary': 'memory',
-    'rewrite': 'writer', 'classify': 'editor'}
+    'rewrite': 'writer', 'classify': 'editor', 'character_extract': 'memory'}
 # Stages whose material spans several scenes: the request rating also counts the scenes behind `input_refs`.
-MULTI_SCENE_STAGES = frozenset({'publication_suggest', 'timeline_summary'})
+MULTI_SCENE_STAGES = frozenset({'publication_suggest', 'timeline_summary', 'character_extract'})
 
 CONSENT_REQUIRED = ('Модель «{model}» не має позначки Uncensored, а рейтинг цього запиту {rating}. '
     'Підтвердьте в налаштуваннях ролі «{role}», що погоджуєтеся на виклики цієї моделі для дорослого змісту, або виберіть іншу модель.')

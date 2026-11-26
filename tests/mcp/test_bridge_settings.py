@@ -289,7 +289,7 @@ def test_model_list_carries_the_provider_retirement_notice(tmp_path, monkeypatch
 
 def test_start_run_lists_the_audit_action(tmp_path):
     from storygen.mcp.bridge import RUN_ACTIONS
-    assert RUN_ACTIONS == ('brief', 'draft', 'edit', 'memory', 'publication_suggest', 'audit', 'rebuild_memory')
+    assert RUN_ACTIONS == ('brief', 'draft', 'edit', 'memory', 'publication_suggest', 'audit', 'rebuild_memory', 'character_extract')
     app, http = obscura(tmp_path)
     unknown = call(build_server(http), 'start_run', {'story_id': story(app).id, 'action': 'scene'})
     assert unknown.is_error and ', '.join(RUN_ACTIONS) in text(unknown)

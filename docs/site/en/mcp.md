@@ -6,7 +6,7 @@ The link is `storygen-mcp`, a small program the chat client starts by itself. It
 
 ## What the chat can do
 
-The chat gets thirty-two tools:
+The chat gets thirty-three tools:
 
 - **story list** and **story overview**: scenes, their order and their state, in the same words as the scene list, plus the story's rating, target length and characters;
 - **new story**: a title, a language, a target length, the story mode and, optionally, an age rating;
@@ -33,8 +33,9 @@ The chat gets thirty-two tools:
 - **role preset**: a preview and, with your consent in the chat, applying a saved preset;
 - **stage task**: the instructions and material for the scene brief, editing or memory — the same as an Obscura model would get;
 - **stage result**: the chat's answer to a stage task, which Obscura checks the same way as its own model's answer;
-- **run**: in an "Obscura writes" story, a preview and, with your consent in the chat, an Obscura model run of one scene stage, the book memory build or a publication card suggestion; in any story, an auditor check of a scene or of the whole book the same way;
+- **run**: in an "Obscura writes" story, a preview and, with your consent in the chat, an Obscura model run of one scene stage, the book memory build or a publication card suggestion; in any story, an auditor check of a scene or of the whole book and a character search in the book's prose the same way;
 - **keep a scene's memory**: with your consent, the same as **Keep the earlier memory** in the panel below the text, when the prose changed but the memory's facts stayed the same; only for the prose and memory the chat has read;
+- **accepting a character proposal**: a preview and, with your consent in the chat, the write of what was selected from a character search proposal;
 - **run status**: what is happening with a run now, its result, and cancelling a run the chat started;
 - **guide**: the steps of the Obscura skills for chat clients that do not have the skills installed (see [Obscura skills](#obscura-skills)).
 
@@ -284,6 +285,15 @@ In either mode the chat can also start an [auditor check](workspace.md#validatin
 - The preview shows which scenes and links will be checked, the maximum number of calls and the upper bound on the cost (for a cloud model with a current price). The chat starts the check only after your consent in the chat and only with the plan you were shown. If the book changed in the meantime, Obscura refuses with “The check plan has changed. Review it again”, and the chat has to show you the new preview.
 - When the auditor stops at a discrepancy, the chat sees in which scene. You make the decision and continue the check in Obscura.
 - A new book check from the chat cancels only stopped checks the chat started; it does not touch yours.
+
+In either mode the chat can also start a **character search in the prose**: the model of the “Memory” role reads the book's prose in groups of scenes and proposes character cards with verbatim quotes, new names for existing cards, the main character and the cast of each scene. This is useful for a book imported from a manuscript that has no cards yet.
+
+- The preview (`start_run` with the action `character_extract`, without `confirm`) shows the number of scenes and groups, the scenes that have no finished prose or do not fit the limits of the “Memory” role, the maximum number of calls and the upper bound on the cost (for a cloud model with a current price), the number of cards and an unaccepted proposal, if there is one. You can change the group size (5,000 words by default). A cloud model needs a story budget limit.
+- The chat starts the search only after your consent in the chat and only with the plan you were shown: if the prose, the cards or the model changed in the meantime, Obscura refuses the old plan (“The plan has changed; review it again”), and the chat has to show you the new preview. **The search costs money** at the price of the “Memory” role's model, although in practice it is cents per book.
+- A search can be paused, resumed and cancelled. A cancelled search gives a partial proposal from the groups already read; if the model refused to answer or the provider failed, the search stops and can be resumed (for example after changing the “Memory” model).
+- The proposal writes nothing into the book. The chat sees it in the run status and shows it to you; a new search makes the previous unaccepted proposal unacceptable.
+- Accepting is a separate tool, `accept_character_proposal`: without `confirm` it only shows what will be applied and skipped and how many scenes with built memory will have to build their memory again; the write comes after your consent, with `confirm`. Only what you selected is accepted, in one transaction, once. Entries added by the model carry the origin “from model” in the cards, and you edit them like any other. This changes the data files so that the previous version of Obscura will not read such cards.
+- The search is allowed in either story mode, because it writes no text of the book until you accept the proposal.
 
 ## Scene stages from the chat
 

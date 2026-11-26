@@ -47,7 +47,7 @@ def test_tool_list_is_exactly_the_twenty_seven_tools(tmp_path):
                                                     'create_story', 'get_templates', 'update_story', 'update_plan_preamble', 'add_scene', 'update_scene', 'open_ghost_mode',
                                                     'get_publication', 'update_publication', 'add_signature', 'upload_cover', 'generate_cover', 'export_book',
                                                     'get_settings', 'update_settings', 'apply_role_preset', 'get_stage_task', 'save_stage_result', 'start_run', 'get_run', 'get_guide', 'import_manuscript', 'keep_scene_memory',
-                                                    'get_characters', 'update_characters'])
+                                                    'get_characters', 'update_characters', 'accept_character_proposal'])
     assert not [name for name in names if any(word in name for word in ('delete', 'trash', 'order', 'move'))]
 
 
