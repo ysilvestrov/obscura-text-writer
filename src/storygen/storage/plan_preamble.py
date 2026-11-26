@@ -19,9 +19,9 @@ def read_plan_preamble(repo,story_id):
     return {'text':preamble_text(text),'plan_version_id':ref.id,'editable':editable,'reason':None if editable else 'no_scenes'}
 
 
-def _series_lines(text):
-    from .. import build_edition
-    if not build_edition.current().long_prose:return False
+def _series_lines(repo,story_id,text):
+    from ..book import guard
+    if not guard.story_long_prose(repo,story_id):return False
     from ..plan_sections import cut_series_lines
     kept,lines,unusable=cut_series_lines(text)
     return lines is not None or unusable
@@ -35,7 +35,7 @@ def replace_plan_preamble(repo,story_id,expected_plan_version_id,text):
     old=split_plan(raw)[0]
     if _lf(old).strip()==_lf(text).strip():
         return {'changed':False,'plan_version_id':previous.id,'revision':repo.get_story(story_id).revision}
-    if _series_lines(text):raise ValueError('Серію змінюють у налаштуваннях твору, розділ «Серія», а не у вступі плану.')
+    if _series_lines(repo,story_id,text):raise ValueError('Серію змінюють у налаштуваннях твору, розділ «Серія», а не у вступі плану.')
     candidate,_=replace_preamble(raw,text)
     version=repo.save_version(story_id,None,'source_plan',candidate,[previous.id])
     from .invalidation import invalidate_in_transaction

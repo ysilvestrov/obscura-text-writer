@@ -122,3 +122,18 @@ def test_store_exports_a_level_two_story(tmp_path, request):
     assert response.status_code == 200, response.text
     manifest = json.loads(client.get(response.json()['manifest_url']).content)
     assert manifest['age_rating'] == '18+'
+
+
+@pytest.mark.req('BUILD-EDITION-001')
+def test_guards_ask_the_book_predicate(tmp_path, store_edition, monkeypatch):
+    """R-47 PR 1: a predicate that says yes for this book lets its writes through; PR 2 makes the trial say yes."""
+    client, app, repo, story, scene = setup(tmp_path)
+    from storygen.book import guard
+    monkeypatch.setattr(guard, 'long_prose_for', lambda repo, item: item.id == story.id)
+    monkeypatch.setattr(guard, 'story_long_prose', lambda repo, story_id: story_id == story.id)
+    response = client.put(f'/api/stories/{story.id}/structure',
+                          json={'parts': PARTS, 'scene_arcs': story.scene_arcs, 'expected_revision': story.revision})
+    assert response.status_code == 200, response.text
+    story = repo.get_story(story.id)
+    response = client.patch(f'/api/stories/{story.id}', json={'title': 'Нова', 'expected_revision': story.revision})
+    assert response.status_code == 200, response.text

@@ -2,6 +2,7 @@
 from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import Field
 
+from ..book import guard
 from ..book.guard import require_long_prose
 from ..domain import DomainModel, RevisionConflict, SeriesStart
 from ..storage import series as store
@@ -90,7 +91,8 @@ def series_index_page(request: Request):
 
 @router.get('/series/{series_id}')
 def series_page(series_id: str, request: Request):
-    _long_prose_page()
+    if not guard.series_long_prose(request.app.state.repo, series_id):
+        raise HTTPException(404)
     store.get_series(request.app.state.repo, series_id)
     return request.app.state.templates.TemplateResponse(request=request, name='series.html', context={'series_id': series_id})
 
@@ -103,20 +105,20 @@ def series_create(data: SeriesIn, request: Request):
 
 @router.patch('/api/series/{series_id}')
 def series_rename(series_id: str, data: SeriesRename, request: Request):
-    require_long_prose()
+    guard.require_series_long_prose(request.app.state.repo, series_id)
     return store.rename_series(request.app.state.repo, series_id, data.title, data.expected_revision)
 
 
 @router.delete('/api/series/{series_id}')
 def series_delete(series_id: str, expected_revision: int, request: Request):
-    require_long_prose()
+    guard.require_series_long_prose(request.app.state.repo, series_id)
     store.delete_series(request.app.state.repo, series_id, expected_revision)
     return {'deleted': series_id}
 
 
 @router.post('/api/series/{series_id}/books')
 def series_new_book(series_id: str, data: SeriesIn, request: Request):
-    require_long_prose()
+    guard.require_series_long_prose(request.app.state.repo, series_id)
     store.get_series(request.app.state.repo, series_id)
     return store.create_book(request.app.state.repo, series_id, data.title)
 
@@ -124,14 +126,14 @@ def series_new_book(series_id: str, data: SeriesIn, request: Request):
 @router.post('/api/series/{series_id}/bible')
 def series_new_bible(series_id: str, data: SeriesIn, request: Request):
     """«Нова біблія світу»: a second bible of the series is refused (SERIES-BIBLE)."""
-    require_long_prose()
+    guard.require_series_long_prose(request.app.state.repo, series_id)
     store.get_series(request.app.state.repo, series_id)
     return store.create_bible(request.app.state.repo, series_id, data.title)
 
 
 @router.patch('/api/stories/{story_id}/series')
 def story_series(story_id: str, data: StorySeries, request: Request):
-    require_long_prose()
+    guard.require_long_prose_for(request.app.state.repo, story_id)
     start = data.start
     if data.start_text and data.start_text.strip():
         from ..plan_sections import parse_series_start
@@ -145,7 +147,7 @@ def story_series(story_id: str, data: StorySeries, request: Request):
 @router.post('/api/stories/{story_id}/series/refresh')
 def story_series_refresh(story_id: str, data: SeriesRefresh, request: Request):
     """«Оновити з попередньої книги»: stales the memory of the book's first scenes, so it runs only with confirm."""
-    require_long_prose()
+    guard.require_long_prose_for(request.app.state.repo, story_id)
     if not data.confirm:
         raise HTTPException(422, REFRESH_CONFIRM)
     story, warnings = store.refresh_snapshot(request.app.state.repo, story_id, data.expected_revision)
@@ -155,7 +157,7 @@ def story_series_refresh(story_id: str, data: SeriesRefresh, request: Request):
 @router.get('/api/stories/{story_id}/series/facts')
 def story_series_facts(story_id: str, request: Request):
     """The records of the book's start memory with their source book and decision (SERIES-S09). Long prose only."""
-    require_long_prose()
+    guard.require_long_prose_for(request.app.state.repo, story_id)
     try:
         return {'facts': store.start_facts(request.app.state.repo, story_id)}
     except ValueError as error:
@@ -165,7 +167,7 @@ def story_series_facts(story_id: str, request: Request):
 @router.put('/api/stories/{story_id}/series/decisions')
 def story_series_decisions(story_id: str, data: SeriesDecisions, request: Request):
     """Past and future decisions of a prequel: stale the memory of the first scenes, so they run only with confirm."""
-    require_long_prose()
+    guard.require_long_prose_for(request.app.state.repo, story_id)
     if not data.confirm:
         raise HTTPException(422, DECISIONS_CONFIRM)
     try:

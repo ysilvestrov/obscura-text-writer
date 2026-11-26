@@ -113,6 +113,9 @@ async def blocked(app, request) -> str | None:
     from ..book.structure import structure_kind
     from ..storage.book_structure import structured_story
     found = structured_story(app.state.repo, **target)
+    from ..book import guard
+    if found and guard.long_prose_for(app.state.repo, found[0]):  # R-47: a book can have long prose in this edition
+        return None
     if found and found[0].series_id:
         return READ_ONLY_SERIES
     return READ_ONLY if found and structure_kind(*found) == 'structured' else None

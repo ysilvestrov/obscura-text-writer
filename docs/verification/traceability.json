@@ -5339,6 +5339,9 @@
       "requirement": "BUILD-EDITION-001",
       "scope": "Обхід таблиці маршрутів: кожен маршрут запису під запобіжником або в списку дозволених; пласка книга й видання з довгою прозою працюють; читання й експорт дозволені.",
       "tests": [
+        "tests/book/test_long_prose_for.py::test_full_edition_answers_without_the_database",
+        "tests/book/test_long_prose_for.py::test_store_edition_refuses_with_the_same_text",
+        "tests/web/test_long_prose_guard.py::test_guards_ask_the_book_predicate",
         "tests/web/test_long_prose_guard.py::test_every_write_route_is_guarded_or_allowed_with_a_reason",
         "tests/web/test_long_prose_guard.py::test_allowed_list_names_only_existing_routes",
         "tests/web/test_long_prose_guard.py::test_flat_book_is_writable_in_store",
