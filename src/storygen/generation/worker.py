@@ -73,7 +73,10 @@ class RunCoordinator:
             if existing.request!=request:
                 raise RevisionConflict('request_id уже використано для іншого запиту')
             return existing
-        self.repo.get_story(request.story_id)
+        from ..writing_mode import AUTHOR_WRITES, writes_prose
+        # WRITING-MODE-S05 (R-49): after the idempotent branch, so a run created before the switch is still returned.
+        if self.repo.get_story(request.story_id).writing_mode=='author' and writes_prose(request):
+            raise RevisionConflict(AUTHOR_WRITES)
         scenes=self.repo.list_scenes(request.story_id)
         if request.scene_id and request.scene_id not in {s.id for s in scenes}:
             raise ValueError('Сцена не належить цьому твору')
