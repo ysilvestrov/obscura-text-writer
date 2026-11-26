@@ -6845,7 +6845,7 @@
     {
       "id": "CLAUDE-SKILLS-S02",
       "requirement": "CLAUDE-SKILLS",
-      "scope": "Поле frontmatter поза переносним набором і відсутнє посилання на спільні правила. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "scope": "Поле frontmatter поза переносним набором, frontmatter, що не є коректною YAML-мапою (yaml.safe_load), і відсутнє посилання на спільні правила. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
       "tests": [
         "tests/test_claude_plugin.py::test_claude_code_only_field_is_reported",
         "tests/test_claude_plugin.py::test_invalid_yaml_frontmatter_is_reported",
@@ -7645,7 +7645,7 @@
     {
       "id": "CODEX-SKILLS-S01",
       "requirement": "CODEX-SKILLS",
-      "scope": "Детерміновані переносні тексти, адаптація клієнта й звірка MCP-контракту; не поведінка моделей.",
+      "scope": "Детерміновані переносні тексти, інвентар NAMES ∪ CHAT_ONLY (невідома тека скіла відхиляється), адаптація клієнта й звірка MCP-контракту; не поведінка моделей.",
       "tests": [
         "tests/test_codex_skills.py::test_real_sources_generate_five_self_contained_skills",
         "tests/test_codex_skills.py::test_generation_does_not_change_sources",
