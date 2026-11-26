@@ -57,6 +57,9 @@ EXTRACT_FINGERPRINT = 'Для запуску character_extract передайт�
 EXTRACT_PLAN_STALE = ('План пошуку персонажів змінився після перегляду: викличте start_run без confirm, покажіть авторові новий '
                       'перегляд і дочекайтеся згоди')
 MEMORY_NOTHING = 'Усі сцени вже мають чинну пам’ять: будувати нічого'
+AUTHOR_RUNS = ('Твір у режимі «Пишу сам»: прозу пише автор, а з чату Obscura запускає лише перевірку зв’язків і пошук '
+               'персонажів. Завдання й пам’ять сцени проходьте з чату: get_stage_task(stage=brief) чи get_stage_task(stage=memory) '
+               'і save_stage_result; або автор перемикає режим твору в налаштуваннях Obscura')
 MEMORY_CHAT_PATH = ('Твір у режимі «пише чат»: Obscura не запускає побудову пам’яті. Проходьте сцени по черзі з чату: '
                     'get_stage_task(stage=memory) і save_stage_result; або автор перемикає режим твору в налаштуваннях Obscura')
 # IO_REPARSE_TAG_SYMLINK and IO_REPARSE_TAG_MOUNT_POINT; other tags (OneDrive, dedup) are ordinary files for the reader.
@@ -110,6 +113,9 @@ INSTRUCTIONS = ('Obscura — локальний редактор історій.
                 'і save_draft та етапи з чату відхиляються, а етап чи пропозицію картки запускає start_run (спершу перегляд без confirm, '
                 'запуск — лише після згоди автора; стан — get_run). Перевірку зв’язків Ревізором (start_run з action=audit: сцена зі '
                 'scene_id або вся книга без нього) можна запускати в обох режимах, бо Ревізор не пише тексту твору. '
+                '«author» («Пишу сам») — прозу пише автор: чат читає контекст, проходить з чату завдання й пам’ять сцени '
+                '(get_stage_task і save_stage_result для brief і memory) і запускає перевірку зв’язків і пошук персонажів, '
+                'але save_draft, редактура й інші запуски start_run відхиляються. '
                 'Режим змінює лише автор у налаштуваннях твору. '
                 'Готовий рукопис (.docx, .md, .txt): import_manuscript без confirm — перегляд сцен, показати авторові, потім з confirm=true '
                 '(створює нову книгу без моделей і без пам’яті); далі start_run(action=rebuild_memory): перегляд вартості, згода автора, '
@@ -718,7 +724,8 @@ def build_server(http: httpx.Client | None, client_name: str | None = None, *, c
         """Створити новий твір в Obscura. Грошей не коштує; видалити твір можна лише в Obscura. language — uk або en
         (мову можна змінити до першого тексту від моделі чи чату); content_rating — {sexual, violence, themes} з рівнями 0–2.
         Якщо рейтинг перевищує межу цього видання Obscura, твір не створюється. writing_mode — хто пише тексти: chat (типово,
-        чат) або obscura (моделі Obscura; тоді чат не зберігає чернеток і етапів)."""
+        чат), obscura (моделі Obscura; тоді чат не зберігає чернеток і етапів) або author («Пишу сам»: прозу пише автор,
+        моделі й чат не пишуть і не переписують її)."""
         body: dict[str, Any] = {'title': title, 'language': language, 'target_words': target_words, 'writing_mode': writing_mode}
         if content_rating is not None:
             body['content_rating'] = content_rating
@@ -1303,7 +1310,10 @@ def build_server(http: httpx.Client | None, client_name: str | None = None, *, c
         scene = identifier(scene_id) if scene_id is not None else None
         audit_scope = ('scene' if scene else 'story') if action == 'audit' else None
         # R-44 PR 4: the auditor writes no story text, so the writing mode limits only the stages and the card suggestion.
-        if audit_scope is None and request('GET', f'/api/stories/{story}')['story'].get('writing_mode', 'chat') != 'obscura':
+        mode = request('GET', f'/api/stories/{story}')['story'].get('writing_mode', 'chat') if audit_scope is None else None
+        if mode == 'author':
+            raise ToolError(AUTHOR_RUNS)  # R-49: the author writes the prose; the chat runs no model from here
+        if audit_scope is None and mode != 'obscura':
             raise ToolError(MEMORY_CHAT_PATH if action == 'rebuild_memory' else CHAT_WRITES)
         build = None
         if action == 'rebuild_memory':
@@ -1463,7 +1473,13 @@ def build_server(http: httpx.Client | None, client_name: str | None = None, *, c
         context = request('GET', f'/api/scenes/{identifier(scene_id)}/writing-context')
         story_id = identifier(context['story_id'])
         url = f"{base()}/stories/{story_id}?scene={scene_id}&material=draft"
-        obscura_writes = request('GET', f'/api/stories/{story_id}')['story'].get('writing_mode') == 'obscura'
+        mode = request('GET', f'/api/stories/{story_id}')['story'].get('writing_mode')
+        obscura_writes = mode == 'obscura'
+        if mode == 'author':
+            return (f'Відкрийте сцену в Obscura: {url}\n'
+                    '1. Твір у режимі «Пишу сам»: прозу пише автор у редакторі Obscura або в режимі Ghost Mode (open_ghost_mode).\n'
+                    '2. Коли проза готова, пам’ять сцени можна пройти з чату: get_stage_task(stage=\'memory\') і save_stage_result; '
+                    'або автор будує її в Obscura.')
         stages = ("4. Твір у режимі «пише Obscura»: етапи запускає start_run(action='brief'|'draft'|'edit'|'memory') — спершу "
                   "перегляд без confirm, запуск лише після згоди автора (коштує грошей); стан і результат — get_run.") if obscura_writes else (
                   "4. Етапи можна пройти й з чату: get_stage_task(stage='brief') — завдання, get_stage_task(stage='edit') — редактура "
