@@ -989,6 +989,19 @@
       ]
     },
     {
+      "id": "MEMORY-003-S09",
+      "requirement": "MEMORY-003",
+      "scope": "ID твердження прив'язаний до сцени, а не до версії прози: та сама пам'ять із нової прози зберігає ID, П₀ наступної сцени й перенос; ID форми v2 зберігаються при повторному збереженні й перебудові ядра.",
+      "tests": [
+        "tests/memory/test_claim_identity.py::test_claim_id_names_the_scene_not_the_prose_version",
+        "tests/memory/test_claim_identity.py::test_new_prose_with_the_same_claims_carries_later_updates",
+        "tests/memory/test_claim_identity.py::test_manual_resave_keeps_v2_ids_of_older_claims",
+        "tests/memory/test_core_review_apply.py::test_rebuilt_head_keeps_claim_ids_of_its_form",
+        "tests/storage/test_links.py::test_new_prose_with_same_own_events_keeps_next_scene_valid",
+        "tests/mcp/test_bridge_chat_stages.py::test_chat_memory_claims_are_bound_to_the_scene"
+      ]
+    },
+    {
       "id": "MEMORY-003-S06",
       "requirement": "MEMORY-003",
       "scope": "Перехід дня з рядка Початок; проміжна сцена без героя. Перевірка зазначеного сценарію.",
@@ -6274,7 +6287,7 @@
     {
       "id": "MCP-BRIDGE-S06",
       "requirement": "MCP-BRIDGE",
-      "scope": "Рівно двадцять дев'ять інструментів; стан сцен тим самим словником, що список сцен; посилання на сцену в next_steps. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "scope": "Рівно тридцять інструментів; стан сцен тим самим словником, що список сцен; посилання на сцену в next_steps. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
       "tests": [
         "tests/mcp/test_bridge.py::test_tool_list_is_exactly_the_twenty_seven_tools",
         "tests/mcp/test_bridge.py::test_get_story_reports_scene_states_with_the_ui_vocabulary",
@@ -8100,6 +8113,7 @@
       "tests": [
         "tests/storage/test_links.py::test_manual_memory_keeps_scene_and_unchecks_next",
         "tests/storage/test_links.py::test_same_own_events_keep_next_scene_valid",
+        "tests/storage/test_links.py::test_new_prose_with_same_own_events_keeps_next_scene_valid",
         "tests/storage/test_links.py::test_scene_that_becomes_first_loses_construction",
         "tests/storage/test_link_freshness.py::test_generated_brief_after_previous_memory_change_is_stale_with_link_reason",
         "tests/storage/test_link_freshness.py::test_previous_memory_change_does_not_stale_next_memory_head"
@@ -8330,6 +8344,18 @@
         "procedure": "docs/verification/manual.md#link-decision-browser",
         "reason": "check_docs.py індексує лише pytest; другий і третій Playwright cases tests/web/browser/link-decision.spec.mjs («Залишити попередню пам’ять» розблоковує наступну сцену; «Створити пам’ять» відкриває попередню сцену й питає згоди) виконуються окремим runner, цей зв’язок не є доказом виконання."
       }
+    },
+    {
+      "id": "VALID-MEMORY-S09",
+      "requirement": "VALID-MEMORY",
+      "scope": "MCP keep_scene_memory: рішення З3 і рівноцінність прози з чату лише для прочитаних голів прози й пам'яті.",
+      "tests": [
+        "tests/mcp/test_bridge_keep_memory.py::test_keep_scene_memory_records_the_author_decision_and_equivalence",
+        "tests/mcp/test_bridge_keep_memory.py::test_keep_scene_memory_refuses_a_prose_read_before_a_change",
+        "tests/mcp/test_bridge_keep_memory.py::test_keep_scene_memory_leaves_an_auditor_discrepancy_to_the_author",
+        "tests/mcp/test_bridge_keep_memory.py::test_keep_scene_memory_twice_and_for_another_story",
+        "tests/mcp/test_bridge_keep_memory.py::test_keep_scene_memory_explains_a_link_it_cannot_keep"
+      ]
     },
     {
       "id": "VALID-CARDS-S01",

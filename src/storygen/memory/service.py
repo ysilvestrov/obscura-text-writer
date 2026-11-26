@@ -104,7 +104,7 @@ def save_scene_memory(repo,scene_id,text,expected_revision):
     unchanged=repo.unchanged_scene_text(scene_id,'memory',text,expected_revision)
     if unchanged:return unchanged[1]
     ctx=manual_memory_context(repo,scene_id,expected_revision)
-    journal=normalize_manual_memory(text,ctx.previous,ctx.prose_id,ctx.sources[ctx.prose_id],ctx.scene.character_ids,tracked=ctx.tracked)
+    journal=normalize_manual_memory(text,ctx.previous,ctx.prose_id,ctx.sources[ctx.prose_id],ctx.scene.character_ids,tracked=ctx.tracked,scene_id=ctx.scene.id)
     return save_memory_journal(repo,scene_id,journal,expected_revision,ctx)
 
 

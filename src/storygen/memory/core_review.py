@@ -238,14 +238,14 @@ def _evidence(edit,ctx,allowed):
     return edit.quote,(None if version_id==ctx.prose_id else version_id)
 
 
-def _author_events(base,edits,ctx,allowed):
+def _author_events(base,edits,ctx,allowed,scene_id=None):
     active=replay_memory(base);claims={e.claim_id for e in base.events};event_ids={e.event_id for e in base.events};events=[]
     slots={(c.character_ids[0],c.slot):c for c in active.values() if c.slot}
     prose_id=ctx.prose_id
     def add(category,text,quote,characters=(),**extra):
         occurrence=0
         while True:
-            event=_add_event(category,text,prose_id,quote,occurrence,characters,source_kind='author',**extra)
+            event=_add_event(category,text,prose_id,quote,occurrence,characters,source_kind='author',scene_id=scene_id,**extra)
             if event.claim_id not in claims:break
             occurrence+=1
         claims.add(event.claim_id);events.append(event)
@@ -295,13 +295,18 @@ def apply_core_review(repo, scene_id: str, body: CoreReviewBody, locale: str = '
     captured=captured_wire(repo,body.memory_version_id)
     if captured:
         wire,bounds=captured
-        base=wire_v4_events(_neutral_wire(wire,bounds,body.edits),previous,ctx.prose_id,ctx.sources[ctx.prose_id],bounds)
+        neutral=_neutral_wire(wire,bounds,body.edits)
+        base=wire_v4_events(neutral,previous,ctx.prose_id,ctx.sources[ctx.prose_id],bounds,scene_id=scene_id)
+        # MEMORY-003: a head made before scene-bound claim IDs keeps its v2-form IDs, so later scenes still find them.
+        legacy=wire_v4_events(neutral,previous,ctx.prose_id,ctx.sources[ctx.prose_id],bounds)
+        known={e.claim_id for e in head.events}
+        if len(known&{e.claim_id for e in legacy.events})>len(known&{e.claim_id for e in base.events}):base=legacy
     else:
         if any(e.action=='keep' for e in body.edits):raise ValueError(KEEP_UNAVAILABLE)
         base=head
     # A quote may come only from the selected prose of this scene or an earlier one that the journal is built on.
     allowed={s.heads['prose'] for s in _prefix(ctx.view,scene_id)}&set(ctx.sources)
-    events=_author_events(base,body.edits,ctx,allowed)
+    events=_author_events(base,body.edits,ctx,allowed,scene_id)
     journal=MemoryJournal(schema_version=3,source_prose_ids=base.source_prose_ids,events=[*base.events,*events])
     version,published=publish_memory_journal(repo,scene_id,journal,body.expected_revision,ctx)
     # Publishing bumps the scene revision; the confirmation CAS uses the revision set_head returned.

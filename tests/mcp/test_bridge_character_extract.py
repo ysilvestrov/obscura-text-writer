@@ -149,7 +149,7 @@ def test_tools_list_includes_accept_character_proposal(tmp_path):
         async with Client(server) as client:
             return {tool.name: tool for tool in (await client.list_tools()).tools}
     tools = anyio.run(listing)
-    assert len(TOOLS) == 32 and 'accept_character_proposal' in TOOLS and 'accept_character_proposal' in tools
+    assert len(TOOLS) == 33 and 'accept_character_proposal' in TOOLS and 'accept_character_proposal' in tools
     assert {'run_id', 'fingerprint', 'cards', 'name_updates', 'protagonist', 'casts', 'confirm'} <= set(
         tools['accept_character_proposal'].input_schema['properties'])
 
