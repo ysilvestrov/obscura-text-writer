@@ -245,6 +245,12 @@ def is_local_provider(provider) -> bool:
 
 def memory_sends(repo, provider, targets, context) -> dict:
     found = {SECTION_CATEGORIES[key] for key in request_sections(context) if key in SECTION_CATEGORIES}
+    # The sections come from the first request; a later target with places sends its place paths too (as `build_context`).
+    from ..storage.locations import scene_cards, view_locations
+    if 'places' not in found and any(target.location_ids for target in targets):
+        cards = view_locations(repo)
+        if any(scene_cards(cards, target.location_ids) for target in targets):
+            found.add('places')
     words = sum(len(repo.read_text(target.heads['prose']).split()) for target in targets if target.heads.get('prose'))
     items = [{'key': 'prose', 'scenes': len(targets), 'words': words}] + [{'key': key} for key in _SEND_ORDER if key in found]
     return {'items': items, 'local': is_local_provider(provider)}

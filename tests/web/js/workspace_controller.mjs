@@ -34,6 +34,8 @@ code=code.replace(/^import .* from '\.\/editor.js';$/m,'const {state,textEditor,
 await import('data:text/javascript;base64,'+Buffer.from(code).toString('base64'));
 const primary=element('#workspace-primary');
 assert.equal(primary.disabled,false);
+// R-49 review: «Взяти як прозу» stays inactive while the draft has unsaved edits (normal mode keeps its guard).
+assert.equal(element('#workspace-use-draft').hidden,false);assert.equal(element('#workspace-use-draft').disabled,true,'dirty draft disables use-draft');
 state.workspaceRuns=[{state:'running',request:{mode:'stage',stage:'draft'}}];
 assert.doesNotThrow(()=>document.dispatchEvent(new CustomEvent('workspace-readiness')));
 assert.equal(primary.disabled,true);state.workspaceRuns=[];document.dispatchEvent(new CustomEvent('workspace-readiness'));

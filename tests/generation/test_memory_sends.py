@@ -60,3 +60,16 @@ def test_memory_build_preview_says_what_the_model_receives(tmp_path):
     assert result['ready'] is True, result['reason']
     assert result['sends']['local'] is False
     assert result['sends']['items'][0] == {'key': 'prose', 'scenes': 2, 'words': 4}
+
+
+@pytest.mark.req('MANUSCRIPT-IMPORT')
+def test_places_count_for_any_target_not_only_the_first_request(tmp_path):
+    """Final review: the first scene's request may carry no places while a later target sends its place paths."""
+    from types import SimpleNamespace
+    repo, story, scene = rated(tmp_path, 'Локація: Дім / кухня')
+    context = build_context(repo, scene.id, 'memory', role())
+    first_without_places = SimpleNamespace(user_text='\n\n'.join(
+        part for part in context.user_text.split('\n\n') if not part.lstrip().startswith('ДОЗВОЛЕНІ LOCATION_IDS')))
+    assert 'places' not in request_sections(first_without_places) and scene.location_ids
+    keys = [item['key'] for item in memory_sends(repo.context_view(story.id), ProviderSettings(model='m'), [scene], first_without_places)['items']]
+    assert 'places' in keys

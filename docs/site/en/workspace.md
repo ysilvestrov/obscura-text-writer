@@ -112,7 +112,7 @@ To check the whole book, open the **☰ Story actions → Book validation (N)** 
 
 ## The "I write myself" mode
 
-In a story with the **I write myself** mode you write the prose. Models can draft the scene brief, keep the memory and check consistency with the auditor, but never write or rewrite the text. You choose the mode in the new story form (**Who writes the texts**) or change it at any time in the story settings; texts already written do not change.
+In a story with the **I write myself** mode you write the prose. Models can draft the scene brief, keep the memory and check consistency with the auditor, but never write or rewrite the prose. You choose the mode in the new story form (**Who writes the texts**) or change it at any time in the story settings; texts already written do not change.
 
 ![The workspace of a story in the "I write myself" mode: the main button "Write the prose"](../../images/site/en/workspace-author-desktop.png)
 

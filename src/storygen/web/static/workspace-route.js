@@ -68,7 +68,7 @@ function render(){
   if(author&&state.mode==='review')uiText(hintInfo,"textContent",()=>t('workspace.author_proposal'));
   const repeat=document.querySelector('#workspace-edit-prose');repeat.hidden=state.mode!=='prose'||author;repeat.disabled=busy||isActive()||state.saving;
   const renumberPlan=document.querySelector('#plan-renumber');if(renumberPlan){renumberPlan.hidden=state.mode!=='plan'||!state.scene;renumberPlan.disabled=state.saving||state.bufferOrigin==='history'||!!textEditor.isReadOnly?.();}
-  const take=document.querySelector('#workspace-use-draft');take.hidden=state.mode!=='draft'||!state.scene?.heads.draft||state.bufferOrigin==='history'||author;  // R-49: the primary action itselftake.disabled=busy||isActive()||state.saving||state.dirty;
+  const take=document.querySelector('#workspace-use-draft');take.hidden=state.mode!=='draft'||!state.scene?.heads.draft||state.bufferOrigin==='history'||author;take.disabled=busy||isActive()||state.saving||state.dirty;  // R-49: in author mode the primary action itself
   // #105: tab statuses follow the refreshed view even while the buffer keeps the author's text and revision.
   const live=liveScene(state.scene,state.view?.scenes);
   for(const b of document.querySelectorAll('#mode-tabs button')){
