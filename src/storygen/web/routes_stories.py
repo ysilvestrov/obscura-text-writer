@@ -40,7 +40,7 @@ class StoryLanguageChange(DomainModel):
 
 
 class StoryWritingModeChange(DomainModel):
-    writing_mode: Literal['chat','obscura']
+    writing_mode: Literal['chat','obscura','author']
     expected_revision: int
 
 
@@ -146,7 +146,8 @@ def story_view(id: str,request: Request):
 
 @router.get("/api/stories/{id}/scene-revisions")
 def scene_revisions(id: str,request: Request):
-    return {"scenes":request.app.state.repo.scene_revisions(id)}
+    # R-49: the mode rides along, so an open workspace notices a mode switch made in another window.
+    return {"scenes":request.app.state.repo.scene_revisions(id),"writing_mode":request.app.state.repo.get_story(id).writing_mode}
 
 
 @router.patch('/api/stories/{id}')

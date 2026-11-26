@@ -62,3 +62,54 @@ def test_stage_tools_in_obscura_mode_are_refused(tmp_path):
     saved = call(server, 'save_stage_result', {'scene_id': scene.id, 'stage': 'brief', 'task_fingerprint': 'a' * 64, 'result': '{}'})
     assert saved.is_error and OBSCURA_WRITES in text(saved)
     assert app.state.repo.list_versions(story['id'], scene.id) == []
+
+
+from storygen.writing_mode import AUTHOR_CHAT  # noqa: E402
+
+
+def author_story(tmp_path):
+    app, http, server = bridge(tmp_path)
+    story = ok(call(server, 'create_story', {'title': 'Сад', 'writing_mode': 'author'}))
+    from storygen.domain import SceneCreate
+    scene = app.state.repo.create_scene(story['id'], SceneCreate(title='Ранок', beats='Анна відчиняє скриньку.'))
+    return app, server, story, scene
+
+
+@pytest.mark.req('WRITING-MODE')
+def test_create_story_in_author_mode(tmp_path):
+    app, server, story, scene = author_story(tmp_path)
+    assert story['writing_mode'] == 'author'
+    assert ok(call(server, 'get_story', {'story_id': story['id']}))['writing_mode'] == 'author'
+
+
+@pytest.mark.req('WRITING-MODE')
+def test_save_draft_in_author_mode_is_refused(tmp_path):
+    app, server, story, scene = author_story(tmp_path)
+    context = ok(call(server, 'get_scene_context', {'scene_id': scene.id}))
+    result = call(server, 'save_draft', {'scene_id': scene.id, 'text': 'Анна відчинила скриньку.', 'expected_revision': context['revision'],
+                                         'context_fingerprint': context['context_fingerprint'], 'draft_version_id': None})
+    assert result.is_error and AUTHOR_CHAT in text(result)
+    assert app.state.repo.get_scene(scene.id).heads.get('draft') is None
+
+
+@pytest.mark.req('WRITING-MODE')
+def test_start_run_in_author_mode_names_the_mode(tmp_path):
+    app, server, story, scene = author_story(tmp_path)
+    for action in ('draft', 'edit', 'brief'):
+        refused = call(server, 'start_run', {'story_id': story['id'], 'action': action, 'scene_id': scene.id})
+        assert refused.is_error and 'Пишу сам' in text(refused), action
+    refused = call(server, 'start_run', {'story_id': story['id'], 'action': 'rebuild_memory'})
+    assert refused.is_error and 'Пишу сам' in text(refused) and 'get_stage_task(stage=memory)' in text(refused)
+
+
+@pytest.mark.req('WRITING-MODE')
+def test_next_steps_in_author_mode_offers_memory_not_drafting(tmp_path):
+    app, server, story, scene = author_story(tmp_path)
+    steps = text(call(server, 'next_steps', {'scene_id': scene.id}))
+    assert 'Пишу сам' in steps and "get_stage_task(stage='memory')" in steps
+    assert "stage='edit'" not in steps and 'start_run' not in steps
+
+
+def test_server_instructions_describe_author_mode():
+    from storygen.mcp.bridge import INSTRUCTIONS
+    assert '«author»' in INSTRUCTIONS

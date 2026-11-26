@@ -294,6 +294,19 @@ def main():
             save_role_settings(repo,story.id,'writer',RoleSettings(provider=ProviderSettings(model='synthetic-writer'),context_tokens=32768),repo.get_story(story.id).revision)
             return {'story_id':story.id,'scene_id':scene.id}
 
+        @app.post('/test-author-mode')
+        def author_mode_fixture(mode: str = 'author'):
+            """R-49: a scene with a brief and a draft, in the given writing mode. Neutral text about a park walk."""
+            import json
+            story=rated_story('Вечірній парк')
+            scene=repo.create_scene(story.id,SceneCreate(title='Ліхтарі',beats='Лєра йде парком.'))
+            brief=repo.save_version(story.id,scene.id,'brief',json.dumps(dict(objective='Прогулянка',beats=['Лєра йде алеєю.'],constraints=[],proposed_changes=[]),ensure_ascii=False),[])
+            repo.set_head(scene.id,'brief',brief.id,repo.get_scene(scene.id).revision)
+            draft=repo.save_version(story.id,scene.id,'draft','Лєра йшла алеєю повз ліхтарі.',[brief.id])
+            repo.set_head(scene.id,'draft',draft.id,repo.get_scene(scene.id).revision)
+            if mode!='chat':repo.update_writing_mode(story.id,mode,repo.get_story(story.id).revision)
+            return {'story_id':story.id,'scene_id':scene.id}
+
         @app.post('/test-editor-no-changes')
         def editor_no_changes():
             from storygen.authoring.blueprints import save_role_settings

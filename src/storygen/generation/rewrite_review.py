@@ -13,6 +13,8 @@ def rewrite_preview(repo,scene_id,attempt_id):
     latest=repo.get_comment_set(scene.id);reason=None
     try:ensure_current(view,attempt,scene,source,notes,latest)
     except ValueError as exc:reason=str(exc)
+    from ..writing_mode import proposal_refusal
+    reason=reason or proposal_refusal(view.story,attempt)
     ranges=[dict(id=c.id,start=c.anchor.start,end=c.anchor.end) for c in notes.comments]
     edits=[]
     for edit in proposal.edits:

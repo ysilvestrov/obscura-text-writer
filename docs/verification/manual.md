@@ -692,3 +692,13 @@ EDIT-SENTENCE-GROUPS-S04. Автоматична частина — Playwright `
 4. Прийняття надсилає `selected_indices: [1]`, `split_groups: [0]`; нова проза — речення з «Boris» і другою правкою. Після перезавантаження група відкривається розділеною з тим самим вибором.
 5. Англійська локаль: «Accept separately (2)», «Together», «Result: …».
 Запуск: `cd frontend; ./node_modules/.bin/playwright test -c playwright.config.mjs ../tests/web/browser/edit-split.spec.mjs`. Цей зв’язок не є доказом виконання; фактичний запуск фіксується окремо.
+
+<a id="author-mode-browser"></a>
+## R-49: робочий простір у режимі «Пишу сам»
+
+WRITING-MODE-S09. Автоматична частина — Playwright `tests/web/browser/author-mode.spec.mjs` (desktop і mobile: основна дія «Писати прозу» на плані й завданні, прихована редактура прози й запуски, що пишуть прозу; «Взяти як прозу» на вкладці чернетки; перемикання режиму в іншому вікні змінює дії після повернення): `cd frontend; node node_modules/@playwright/test/cli.js test ../tests/web/browser/author-mode.spec.mjs -c playwright.config.mjs`. Цей зв’язок не є доказом виконання; фактичний запуск фіксується окремо.
+
+<a id="memory-sends-browser"></a>
+## R-49: що отримає модель пам'яті
+
+MANUSCRIPT-IMPORT-S16. Pytest перевіряє `sends` у перегляді; Playwright `tests/web/browser/memory-build.spec.mjs` (рядок «отримає: прозу 2 сцен…» і речення про локальну адресу в діалозі «Побудувати пам’ять») і `tests/web/browser/workspace-telemetry.spec.mjs` (той самий рядок у картці деталей вкладки прози): `cd frontend; node node_modules/@playwright/test/cli.js test ../tests/web/browser/memory-build.spec.mjs ../tests/web/browser/workspace-telemetry.spec.mjs -c playwright.config.mjs`. Цей зв’язок не є доказом виконання; фактичний запуск фіксується окремо.

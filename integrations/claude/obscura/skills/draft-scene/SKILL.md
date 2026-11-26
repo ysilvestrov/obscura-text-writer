@@ -22,8 +22,9 @@ Read `${CLAUDE_PLUGIN_ROOT}/shared/rules.md` first and follow it throughout. It 
 3. `writing_mode` decides the branch:
    - **`chat`**: you write the texts. Follow `${CLAUDE_PLUGIN_ROOT}/skills/draft-scene/references/chat-pipeline.md`.
    - **`obscura`**: Obscura's models write them; you start and watch the runs. Follow `${CLAUDE_PLUGIN_ROOT}/skills/draft-scene/references/obscura-runs.md`.
+   - **`author`** («Пишу сам»): the author writes the prose. Do not write or rewrite a draft, an edit or prose, and do not start runs that write prose: the server refuses them. You may still do the brief and the memory stages from the chat (`get_stage_task` + `save_stage_result`), with the author's consent, and the auditor check. Tell the author in one line that the prose is theirs to write in the Obscura window.
 
-Only the author changes the mode, in the story's settings in Obscura. Never work around it: in `obscura` mode the server refuses texts from chat.
+Only the author changes the mode, in the story's settings in Obscura. Never work around it: in `obscura` mode the server refuses texts from chat, and in `author` mode it refuses prose from chat and from models.
 
 ## What the author's request covers
 

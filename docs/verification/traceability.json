@@ -7387,7 +7387,8 @@
         "tests/web/test_writing_mode.py::test_story_mode_defaults_to_chat_and_is_set_at_creation",
         "tests/web/test_writing_mode.py::test_stored_story_without_the_field_reads_as_chat",
         "tests/web/test_writing_mode.py::test_new_story_form_offers_mode_with_obscura_by_default",
-        "tests/mcp/test_bridge_writing_mode.py::test_create_story_defaults_to_chat_and_story_tools_show_mode"
+        "tests/mcp/test_bridge_writing_mode.py::test_create_story_defaults_to_chat_and_story_tools_show_mode",
+        "tests/web/test_author_mode.py::test_author_mode_is_accepted_at_creation_and_switch"
       ]
     },
     {
@@ -7421,6 +7422,75 @@
       "tests": [
         "tests/web/test_writing_mode.py::test_switching_mode_keeps_texts_and_running_runs"
       ]
+    },
+    {
+      "id": "WRITING-MODE-S05",
+      "requirement": "WRITING-MODE",
+      "scope": "Перелік запусків, що пишуть прозу, його повнота, відмова enqueue до черги, дозволені brief/memory/audit, ідемпотентний повтор після перемикання. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/web/test_author_mode.py::test_every_run_mode_has_a_prose_decision",
+        "tests/web/test_author_mode.py::test_writes_prose_by_mode_and_stage",
+        "tests/web/test_author_mode.py::test_author_mode_refuses_prose_runs_before_the_queue",
+        "tests/web/test_author_mode.py::test_author_mode_allows_memory_brief_and_audit_runs",
+        "tests/web/test_author_mode.py::test_same_request_id_after_switch_returns_the_existing_run",
+        "tests/web/test_author_mode.py::test_every_stage_of_a_stage_run_has_a_prose_decision"
+      ]
+    },
+    {
+      "id": "WRITING-MODE-S06",
+      "requirement": "WRITING-MODE",
+      "scope": "Відмова execute_stage до виклику, відповідь під час перемикання без версії, brief без відмови, причина запуску. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/generation/test_author_mode_stages.py::test_execute_stage_refuses_prose_stage_before_the_call",
+        "tests/generation/test_author_mode_stages.py::test_switch_during_the_response_saves_no_version",
+        "tests/generation/test_author_mode_stages.py::test_brief_stage_is_not_refused_in_author_mode",
+        "tests/generation/test_author_mode_stages.py::test_run_failure_shows_the_mode_reason",
+        "tests/generation/test_author_mode_stages.py::test_queued_draft_run_stops_after_the_switch_without_a_version",
+        "tests/generation/test_author_mode_stages.py::test_queued_edit_loop_stops_before_copying_the_source"
+      ]
+    },
+    {
+      "id": "WRITING-MODE-S07",
+      "requirement": "WRITING-MODE",
+      "scope": "Зовнішня чернетка з позначкою й без, ручна чернетка, етапи чату, міст (create_story, save_draft, start_run, next_steps, інструкції), переклад. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/web/test_author_mode.py::test_author_mode_refuses_external_draft_with_and_without_bridge_header",
+        "tests/web/test_author_mode.py::test_author_mode_keeps_manual_draft",
+        "tests/web/test_author_mode.py::test_author_mode_chat_stages",
+        "tests/web/test_author_mode.py::test_author_mode_refusals_in_english",
+        "tests/mcp/test_bridge_writing_mode.py::test_create_story_in_author_mode",
+        "tests/mcp/test_bridge_writing_mode.py::test_save_draft_in_author_mode_is_refused",
+        "tests/mcp/test_bridge_writing_mode.py::test_start_run_in_author_mode_names_the_mode",
+        "tests/mcp/test_bridge_writing_mode.py::test_next_steps_in_author_mode_offers_memory_not_drafting",
+        "tests/mcp/test_bridge_writing_mode.py::test_server_instructions_describe_author_mode",
+        "tests/web/test_author_mode.py::test_bridge_run_in_author_mode_names_the_author"
+      ]
+    },
+    {
+      "id": "WRITING-MODE-S08",
+      "requirement": "WRITING-MODE",
+      "scope": "Відмова застосування коректури й переписування моделі без змін сцени; пропозиція editor_import проходить. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/web/test_author_mode.py::test_author_mode_refuses_applying_model_proposals",
+        "tests/web/test_author_mode.py::test_author_mode_lets_editor_import_proposals_through",
+        "tests/web/test_author_mode.py::test_author_mode_model_proposal_preview_cannot_be_applied"
+      ]
+    },
+    {
+      "id": "WRITING-MODE-S09",
+      "requirement": "WRITING-MODE",
+      "scope": "Інтерфейс режиму «Пишу сам»: основна дія «Писати прозу» / «Взяти як прозу», приховані дії, що пишуть прозу, перечитування простору після перемикання в іншому вікні, варіант режиму у формі й налаштуваннях. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/web/test_workspace_route.py::test_workspace_route_save_and_source_regressions",
+        "tests/web/test_scene_revisions_api.py::test_scene_revisions_carry_the_writing_mode",
+        "tests/web/test_writing_mode.py::test_new_story_form_offers_author_mode",
+        "tests/web/test_writing_mode.py::test_settings_page_offers_author_mode",
+        "tests/web/test_writing_mode.py::test_library_intro_names_writing_yourself"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#author-mode-browser",
+        "reason": "check_docs.py індексує лише pytest; Playwright cases tests/web/browser/author-mode.spec.mjs виконуються окремим runner, цей зв’язок не є доказом виконання."
+      }
     },
     {
       "id": "STORY-TIME-S01",
@@ -9403,6 +9473,25 @@
       "manual": {
         "procedure": "docs/verification/manual.md#memory-build-browser",
         "reason": "Playwright запускається окремим runner; check_docs.py індексує лише pytest IDs."
+      }
+    },
+    {
+      "id": "MANUSCRIPT-IMPORT-S16",
+      "requirement": "MANUSCRIPT-IMPORT",
+      "scope": "Перегляд пам'яті: проза (сцени й слова) і лише наявні категорії розділів першого запиту; позначка локальної адреси без обіцянки, що текст не покидає комп'ютер. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/generation/test_memory_sends.py::test_sends_cover_every_section_of_the_memory_request",
+        "tests/generation/test_memory_sends.py::test_sends_words_sum_the_prose_of_target_scenes",
+        "tests/generation/test_memory_sends.py::test_sends_omit_places_and_series_when_absent",
+        "tests/generation/test_memory_sends.py::test_local_endpoint_is_flagged",
+        "tests/generation/test_memory_sends.py::test_memory_build_preview_says_what_the_model_receives",
+        "tests/generation/test_memory_sends.py::test_places_count_for_any_target_not_only_the_first_request",
+        "tests/generation/test_memory_sends.py::test_bible_memory_request_maps_its_sections",
+        "tests/web/test_memory_build_ui.py::test_ui_keys_exist_in_both_languages"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#memory-sends-browser",
+        "reason": "check_docs.py індексує лише pytest; Playwright cases tests/web/browser/memory-build.spec.mjs і workspace-telemetry.spec.mjs виконуються окремим runner, цей зв’язок не є доказом виконання."
       }
     }
   ]

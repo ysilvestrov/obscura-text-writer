@@ -379,3 +379,15 @@ test('?build_memory=1 opens the dialog once after the page loads',async({page,re
   await expect(page.locator('#scene-title')).toHaveText('Пірс');
   await expect(dialog).toBeHidden();
 });
+
+test('the preview says what the memory model receives and where the text goes',async({page,request})=>{
+  // R-49 (MANUSCRIPT-IMPORT-S16): categories from the request sections; the fixture's model is local, so no privacy promise either.
+  const fixture=await seed(request);
+  await openWorkspace(page,fixture);
+  const dialog=await openDialog(page);
+  const sends=dialog.locator('#memory-build-sends');
+  await expect(sends).toContainText('отримає: прозу 2 сцен');
+  await expect(sends).toContainText('пам’ять попередніх сцен');
+  await expect(sends).toContainText('лише на адресу на цьому комп’ютері');
+  await expect(sends).not.toContainText('не залишає');
+});

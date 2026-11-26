@@ -3,6 +3,7 @@ import {operationReason} from './run-readiness.js';
 import {refreshBook} from './series-status.js';
 import {refresh,displaySceneTitle} from './editor.js';
 import {appInfo} from './app-info.js';
+import {sendsText} from './memory-sends.js';
 // R-48 «Побудувати пам'ять» (spec §5, §5.1): the story-menu item counts the scenes from the first one without valid memory
 // to the end of the book (GET /memory-build). Its dialog reads the rebuild_memory preview of that scene — calls, the upper
 // bound on cost, the scenes that will not fit, the cast the build fills — and nothing runs without «Побудувати». The press
@@ -31,7 +32,7 @@ export function installMemoryBuild({api,json,notice,document,state}){
   const item=document.querySelector('#story-menu-build-memory'),dialog=document.querySelector('#memory-build-dialog');
   if(!item||!dialog||!state.storyId)return;
   const part=name=>dialog.querySelector('#memory-build-'+name);
-  const summary=part('summary'),cost=part('cost'),unfit=part('unfit'),cast=part('cast'),series=part('series'),seriesButton=part('refresh'),
+  const summary=part('summary'),sends=part('sends'),cost=part('cost'),unfit=part('unfit'),cast=part('cast'),series=part('series'),seriesButton=part('refresh'),
     reasonNode=part('reason'),seriesWarning=part('series-warning'),status=part('status'),submit=part('submit'),cancel=part('cancel');
   const storyPath=()=>`/api/stories/${encodeURIComponent(state.storyId)}`;
   let target={scene_id:null,count:0,buildable:false},plan=null,failure='',loading=false,busy=false,epoch=0,keepFocus=false,pending=null;
@@ -85,7 +86,7 @@ export function installMemoryBuild({api,json,notice,document,state}){
     }
   }
   function clear(){
-    summary.textContent='';cost.textContent='';cost.hidden=true;cast.replaceChildren();
+    summary.textContent='';sends.textContent='';sends.hidden=true;cost.textContent='';cost.hidden=true;cast.replaceChildren();
     unfit.hidden=true;unfit.querySelector('ul').replaceChildren();series.hidden=true;seriesWarning.hidden=true;
   }
   function renderCast(entry){
@@ -123,6 +124,8 @@ export function installMemoryBuild({api,json,notice,document,state}){
     const number=scene?scene.position+1:'—';
     uiText(summary,'textContent',()=>t('memory_build.ui.summary',{p0:plan.count,p1:number,p2:preview.calls})+
       (memory?' · '+t('memory_build.ui.model',{p0:`${memory.provider} / ${memory.model}`}):''));
+    // R-49 (MANUSCRIPT-IMPORT-S16): what the memory model receives; for a model on this computer, only where Obscura sends it.
+    if(preview.sends&&memory){sends.hidden=false;uiText(sends,'textContent',()=>sendsText(preview.sends,`${memory.provider} / ${memory.model}`))}
     if(preview.cost){cost.hidden=false;uiText(cost,'textContent',()=>costText(preview.cost))}
     const list=unfit.querySelector('ul');
     for(const id of preview.unfit_scenes||[]){

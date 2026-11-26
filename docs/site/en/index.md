@@ -2,6 +2,8 @@
 
 Obscura is a local application for writing prose from your own outline. You work through the story scene by scene, and four model roles (planner, writer, editor and memory) help you draft a brief, write a draft, edit it and remember what happened, and a fifth, the auditor, checks on request that these texts still match.
 
+There are three ways to work. **I write myself**: you write the prose, and models keep the book memory and check consistency without touching the text ([the "I write myself" mode](workspace.md#the-i-write-myself-mode)). **Obscura writes**: the models of your roles write the draft and the edit, and you revise and accept. **The chat writes**: Claude or Codex writes the texts over [MCP](mcp.md). You can change the mode at any time in the story settings.
+
 The application runs on your computer. Stories are stored locally; a cloud provider, if you choose one, receives only the context of the action you start.
 
 ## Where to start

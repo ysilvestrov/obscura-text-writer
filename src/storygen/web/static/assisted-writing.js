@@ -16,7 +16,8 @@ if(host&&reviewHost){
   uiText(noteTitle,'textContent',()=>t('rewrite.instructions'));noteHistory.append(noteTitle,noteText);reviewHost.append(noteHistory);
   let busy=false,current=null,writer=null,rewriteWarnings=[],settingsEpoch=0;
   async function loadWriter(){const epoch=++settingsEpoch;writer=null;sync();try{const settings=await api(`/api/stories/${state.storyId}/settings`);if(epoch===settingsEpoch)writer=settings.roles?.writer?.provider||null;}catch{}if(epoch===settingsEpoch)sync();}
-  const active=()=>state.mode==='draft'&&state.bufferOrigin!=='history'&&!!state.scene;
+  // R-49: a «Пишу сам» story has no rewrite by the writer model (the server refuses it, WRITING-MODE-S05).
+  const active=()=>state.mode==='draft'&&state.bufferOrigin!=='history'&&!!state.scene&&state.view?.story?.writing_mode!=='author';
   function sync(){
     host.hidden=reviewHost.hidden=!active();
     const warnings=rewriteWarnings;

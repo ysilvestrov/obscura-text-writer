@@ -208,3 +208,49 @@ def series_refresh(repo, story) -> bool:
     except (ValueError, KeyError, OSError):  # an unreadable source is no hint, not a refused preview
         return False
     return status is not None and status.state == 'source_finished'
+
+
+# R-49 (MANUSCRIPT-IMPORT-S16): what the memory model receives, named by the sections of its request. A new labelled section of
+# the memory request without a category here fails test_sends_cover_every_section_of_the_memory_request.
+SECTION_CATEGORIES = {
+    'current_prose': 'prose', 'prose_fragments': 'prose',
+    'memory_core': 'memory_catalog', 'memory_threads': 'memory_catalog', 'memory_claims': 'memory_catalog',
+    'day_changed': 'memory_catalog', 'allowed_ids': 'memory_catalog',
+    'allowed_location_ids': 'places', 'bible_facts': 'series_facts',
+}
+_SEND_ORDER = ('memory_catalog', 'places', 'series_facts')
+
+
+def request_sections(context) -> set[str]:
+    """The label keys whose heading starts a paragraph of the request text (headings are in either language)."""
+    from .context_labels import LABELS
+    paragraphs = [part.lstrip() for part in (context.user_text or '').split('\n\n')]
+    found = set()
+    for key, texts in LABELS.items():
+        for text in texts.values():
+            head = text.split('{')[0].strip()
+            if head and any(part.startswith(head) for part in paragraphs):
+                found.add(key)
+    # «ПОТОЧНА ПРОЗА» is also the start of the fragments heading: one prose section, not two.
+    if 'prose_fragments' in found:
+        found.discard('current_prose')
+    return found
+
+
+def is_local_provider(provider) -> bool:
+    """Obscura sends the text only to an address on this computer; where that server sends it next is not Obscura's claim."""
+    from urllib.parse import urlsplit
+    return urlsplit(provider.base_url or '').hostname in {'localhost', '127.0.0.1', '::1'}
+
+
+def memory_sends(repo, provider, targets, context) -> dict:
+    found = {SECTION_CATEGORIES[key] for key in request_sections(context) if key in SECTION_CATEGORIES}
+    # The sections come from the first request; a later target with places sends its place paths too (as `build_context`).
+    from ..storage.locations import scene_cards, view_locations
+    if 'places' not in found and any(target.location_ids for target in targets):
+        cards = view_locations(repo)
+        if any(scene_cards(cards, target.location_ids) for target in targets):
+            found.add('places')
+    words = sum(len(repo.read_text(target.heads['prose']).split()) for target in targets if target.heads.get('prose'))
+    items = [{'key': 'prose', 'scenes': len(targets), 'words': words}] + [{'key': key} for key in _SEND_ORDER if key in found]
+    return {'items': items, 'local': is_local_provider(provider)}

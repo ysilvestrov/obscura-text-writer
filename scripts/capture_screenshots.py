@@ -419,6 +419,23 @@ def capture_character_proposal(base,story,lang):
     return [path]
 
 
+def capture_author_mode(base,ids,lang):
+    """WRITING-MODE-S09 (R-49): the workspace of a «Пишу сам» story offers «Писати прозу» instead of a model run."""
+    from playwright.sync_api import sync_playwright
+    story,scene=ids['story_id'],ids['scene_id'];folder=OUT/lang;shots=[]
+    with sync_playwright() as p:
+        browser=p.chromium.launch()
+        try:
+            page=browser.new_page(viewport={'width':1280,'height':800},locale='uk-UA' if lang=='uk' else 'en-US')
+            page.goto(base+'/');page.locator(f'[data-ui-locale={lang}]').click();page.wait_for_load_state('networkidle')
+            revision=page.request.get(f'{base}/api/stories/{story}').json()['story']['revision']
+            page.request.put(f'{base}/api/stories/{story}/writing-mode',data={'writing_mode':'author','expected_revision':revision})
+            page.goto(f'{base}/stories/{story}?scene={scene}&material=plan');page.wait_for_load_state('networkidle')
+            page.locator('#workspace-scene-status').wait_for();shot(page,folder/'workspace-author-desktop.png',shots)
+        finally:browser.close()
+    return shots
+
+
 def shot(page,path,shots):
     page.wait_for_timeout(300);page.screenshot(path=str(path));shots.append(path)
 
@@ -447,6 +464,7 @@ def main(argv=None):
             shots+=capture_editor_import(base,ids[lang],lang,editor_import_docx(Repository(data),ids[lang]['story_id'],lang))
             shots+=capture_manuscript_import(base,lang,manuscript_sample(lang))
             shots+=capture_character_proposal(base,seed_character_proposal(data,lang),lang)
+            shots+=capture_author_mode(base,ids[lang],lang)  # last: it switches the story to «Пишу сам»
         finally:
             server.terminate()
             try:server.wait(timeout=10)

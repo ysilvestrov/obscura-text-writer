@@ -41,14 +41,20 @@ def guard_bridge_run(request,run_request) -> None:
         # R-51: the search writes no text of the book (a proposal the author accepts later), so either mode; the plan is the consent.
         if run_request.extract_plan_fingerprint is None:raise RevisionConflict(EXTRACT_PLAN_REQUIRED)
         return
-    if request.app.state.repo.get_story(run_request.story_id).writing_mode!='obscura':raise RevisionConflict(CHAT_WRITES)
+    if request.app.state.repo.get_story(run_request.story_id).writing_mode!='obscura':raise RevisionConflict(_not_obscura(request,run_request.story_id))
     if run_request.mode=='rebuild_memory' and run_request.memory_plan_fingerprint is None:raise RevisionConflict(MEMORY_PLAN_REQUIRED)
 
 
 def guard_bridge_cast(request,story_id: str) -> None:
     """R-48 review M-9: the scene casts from the names in the prose are written only as the first step of a memory build,
     so the bridge may write them in the same stories it may start that build in (`guard_bridge_run`)."""
-    if from_bridge(request) and request.app.state.repo.get_story(story_id).writing_mode!='obscura':raise RevisionConflict(CHAT_WRITES)
+    if from_bridge(request) and request.app.state.repo.get_story(story_id).writing_mode!='obscura':raise RevisionConflict(_not_obscura(request,story_id))
+
+
+def _not_obscura(request,story_id: str) -> str:
+    """The refusal for a bridge run outside «пише Obscura»: the chat writes in «пише чат», nobody but the author in «Пишу сам»."""
+    from ..writing_mode import AUTHOR_CHAT
+    return AUTHOR_CHAT if request.app.state.repo.get_story(story_id).writing_mode=='author' else CHAT_WRITES
 
 
 def guard_bridge_cancel(request,run) -> None:
@@ -60,8 +66,22 @@ def require_writable_by_chat(repo,story_id: str) -> None:
         raise RevisionConflict(OBSCURA_WRITES)
 
 
-def guard_scene_write(request,scene_id: str) -> None:
-    """Only bridge requests are checked: the author writes in any mode."""
+def guard_scene_write(request,scene_id: str,stage: str) -> None:
+    """Chat text for `stage` (a chat task or result, or a draft with `external_origin`). The «пише Obscura» check reads the
+    bridge header; the «Пишу сам» check (R-49, WRITING-MODE-S07) does not: the request itself says the text is external."""
+    from ..writing_mode import AUTHOR_CHAT
+    repo=request.app.state.repo
+    story_id=repo.active_scene_story_id(scene_id)
     if from_bridge(request):
-        repo=request.app.state.repo
-        require_writable_by_chat(repo,repo.active_scene_story_id(scene_id))
+        require_writable_by_chat(repo,story_id)
+    if stage in {'draft','edit'} and repo.get_story(story_id).writing_mode=='author':
+        raise RevisionConflict(AUTHOR_CHAT)
+
+
+def refuse_model_proposal(repo,attempt_id: str) -> None:
+    """R-49 (WRITING-MODE-S08): a model's copyedit or rewrite proposal is not applied in a «Пишу сам» story; a human
+    editor's imported proposal (`editor_import`) is."""
+    from ..writing_mode import AUTHOR_WRITES
+    attempt=repo.get_attempt(attempt_id)
+    if not attempt.context.get('editor_import') and repo.get_story(attempt.story_id).writing_mode=='author':
+        raise RevisionConflict(AUTHOR_WRITES)

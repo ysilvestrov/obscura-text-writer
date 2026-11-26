@@ -13,7 +13,7 @@ The rule that matters most: **nothing is written until the author agrees to the 
 
 1. Find the story (`list_stories` if the author did not name it). Then call `get_story(story_id)`.
 2. Note:
-   - `writing_mode` (`chat` or `obscura`);
+   - `writing_mode` (`chat`, `obscura` or `author`); in `author` mode you do not write or rewrite prose: point the author to the places to change and let them edit in Obscura;
    - `series` (only `title`, `number` and `bible`; not null means the book belongs to a series, which may have a bible: find it as §3 of the fact-change route says);
    - `plan_preamble` and its `plan_version_id`;
    - the scenes in order: id, title, state.

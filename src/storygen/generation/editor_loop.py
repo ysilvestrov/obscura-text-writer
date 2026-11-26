@@ -275,6 +275,9 @@ def _execute(worker,id):
     from .stages import execute_stage
     repo=worker.repo
     run=worker.get_run(id)
+    from ..writing_mode import AUTHOR_WRITES, AuthorWritesBlocked, is_author
+    # WRITING-MODE-S06 (R-49): before initialize() copies the source into a run-attributed draft.
+    if is_author(repo,run.story_id):raise AuthorWritesBlocked(AUTHOR_WRITES)
     if not progress(run):initialize(worker,run)
     while True:
         with worker.condition:

@@ -40,4 +40,6 @@ def preview_selection(scene_id:str,attempt_id:str,body:Selection,request:Request
 @router.post('/api/scenes/{scene_id}/rewrites/{attempt_id}')
 @router.post('/api/scenes/{scene_id}/rewrites/{attempt_id}/apply')
 def apply(scene_id:str,attempt_id:str,body:Selection,request:Request):
+    from .bridge_marker import refuse_model_proposal
+    refuse_model_proposal(request.app.state.repo,attempt_id)
     return apply_selection(request.app.state.repo,scene_id,attempt_id,body.selected_indices,body.expected_revision,body.proposal_fingerprint,body.expected_comments_revision,body.split_groups)

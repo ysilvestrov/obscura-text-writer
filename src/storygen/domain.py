@@ -40,7 +40,7 @@ class StoryCreate(DomainModel):
     # MCP-BRIDGE-S17: optional rating at creation, checked against the edition limit before the insert.
     content_rating: ContentRating | None = None
     # WRITING-MODE: who writes texts — the chat over the MCP bridge or Obscura's own models; stored stories read as 'chat'.
-    writing_mode: Literal['chat','obscura'] = 'chat'
+    writing_mode: Literal['chat','obscura','author'] = 'chat'
 
 
 class Arc(DomainModel):

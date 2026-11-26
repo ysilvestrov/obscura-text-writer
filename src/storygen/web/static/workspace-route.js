@@ -5,7 +5,8 @@ import {t,msg,labelEntries,getLocale,uiText,uiAttr,uiHTML,diagnostic} from './i1
 import {state,textEditor,selectScene,refresh,planNumbering} from './editor.js';
 import {api,json,notice} from './api.js';
 import {invokeWorkspaceCommand} from './workspace-commands.js';
-import {performPrimary,primaryAction} from './workspace-state.js';
+import {performPrimary,primaryAction,authorMode} from './workspace-state.js';
+import {sendsText} from './memory-sends.js';
 import {compactBudgetText} from './workspace-links.js';
 import {editorLoopOperation} from './run-readiness.js';
 import {installRunJump} from './run-jump.js';
@@ -52,7 +53,7 @@ function render(){
     const models=roles.map(([role,value])=>`${role}: ${value.provider} / ${value.model}`).join(', ');
     const summary=roles.map(([,value])=>`${value.provider} / ${value.model}`).join(', ');
     uiText(telemetry,'textContent',()=>summary?t('workspace.telemetry',{p0:summary,p1:info.calls})+(warnings.length?' ⚠':''):t('workspace.telemetry_unknown'));
-    uiText(detailsCard,'textContent',()=>[t('workspace.model',{p0:models||t('workspace.unknown')}),t('workspace.volume',{p0:info?.calls??'—',p1:t(({plan:'m_3146141c9367',brief:'m_5a2ec5eaf0a1',draft:'m_e9d875d4120b',prose:'m_9c685577453c'})[state.mode])}),...(warnings.length?[t('workspace.warnings',{p0:warnings.map(diagnostic).join('; ')})]:[]),...(state.mode==='draft'?[t('workspace.copy_note')]:[])].join('\n'));
+    uiText(detailsCard,'textContent',()=>[t('workspace.model',{p0:models||t('workspace.unknown')}),t('workspace.volume',{p0:info?.calls??'—',p1:t(({plan:'m_3146141c9367',brief:'m_5a2ec5eaf0a1',draft:'m_e9d875d4120b',prose:'m_9c685577453c'})[state.mode])}),...(warnings.length?[t('workspace.warnings',{p0:warnings.map(diagnostic).join('; ')})]:[]),...(state.mode==='draft'?[t('workspace.copy_note')]:[]),...(state.mode==='prose'&&info?.sends&&summary?[sendsText(info.sends,summary)]:[])].join('\n'));
   }
   if(!reason&&!state.dirty&&action.mode)reason=operation?.ready||operation?.can_confirm?'':operation?.reason||t("m_a8900573fc3e");
   const canStop=!!primaryController||!!state.workspacePending||(primaryRun&&activeStates.has(state.workspaceRun?.state)&&state.workspaceRun?.id===primaryRun);
@@ -63,9 +64,11 @@ function render(){
   hint.hidden=!diagnostic(reason);uiText(hint,"textContent",()=>(diagnostic(reason)));
   uiText(hintInfo,"textContent",()=>(action.target&&state.scene?.heads[action.target]?t("m_44df09bb6ff6"):state.mode==='review'?t("m_34c3cc998162"):state.mode==='memory'?t("m_e310e34e8865"):t("m_93abd76dba4c")));
   uiText(primary,"title",()=>(diagnostic(reason)));
-  const repeat=document.querySelector('#workspace-edit-prose');repeat.hidden=state.mode!=='prose';repeat.disabled=busy||isActive()||state.saving;
+  const author=authorMode(state);
+  if(author&&state.mode==='review')uiText(hintInfo,"textContent",()=>t('workspace.author_proposal'));
+  const repeat=document.querySelector('#workspace-edit-prose');repeat.hidden=state.mode!=='prose'||author;repeat.disabled=busy||isActive()||state.saving;
   const renumberPlan=document.querySelector('#plan-renumber');if(renumberPlan){renumberPlan.hidden=state.mode!=='plan'||!state.scene;renumberPlan.disabled=state.saving||state.bufferOrigin==='history'||!!textEditor.isReadOnly?.();}
-  const take=document.querySelector('#workspace-use-draft');take.hidden=state.mode!=='draft'||!state.scene?.heads.draft||state.bufferOrigin==='history';take.disabled=busy||isActive()||state.saving||state.dirty;
+  const take=document.querySelector('#workspace-use-draft');take.hidden=state.mode!=='draft'||!state.scene?.heads.draft||state.bufferOrigin==='history'||author;take.disabled=busy||isActive()||state.saving||state.dirty;  // R-49: in author mode the primary action itself
   // #105: tab statuses follow the refreshed view even while the buffer keeps the author's text and revision.
   const live=liveScene(state.scene,state.view?.scenes);
   for(const b of document.querySelectorAll('#mode-tabs button')){
@@ -120,7 +123,7 @@ primary.onclick=async()=>{
   if(busy||primary.disabled)return;busy=true;render();
   primaryController=primaryAction(state).mode?new AbortController():null;cancelRequested=false;render();
   try{await performPrimary({state,save:async()=>{await invokeWorkspaceCommand('save');if(primaryController?.signal.aborted)throw new DOMException('Cancelled','AbortError')},run:options=>launch(options,true),
-    show:mode=>invokeWorkspaceCommand('show',mode),accept:()=>invokeWorkspaceCommand('accept-review'),next:nextScene})}
+    show:mode=>invokeWorkspaceCommand('show',mode),accept:()=>invokeWorkspaceCommand('accept-review'),next:nextScene,useDraft:takeDraft})}
   catch(error){if(error.name!=='AbortError')notice(error.message,'error')}finally{busy=false;primaryController=null;if(!primaryRun)cancelRequested=false;render()}
 };
 document.querySelector('#workspace-edit-prose').onclick=async()=>{
@@ -133,8 +136,8 @@ document.querySelector('#workspace-edit-prose').onclick=async()=>{
   }catch(error){notice(error.message,'error')}finally{busy=false;render()}
 };
 document.querySelector('#plan-renumber')?.addEventListener('click',()=>{textEditor.focus();planNumbering.renumberAll();});
-document.querySelector('#workspace-use-draft').onclick=async()=>{
-  if(state.dirty||state.saving||busy||isActive())return;
+async function takeDraft(){
+  if(state.dirty||state.saving||isActive())return;
   const scene=state.scene,id=scene?.heads.draft,epoch=state.bufferEpoch;
   if(!id){notice(msg("m_a5921f6925b0"),'warning');return}
   if(!await confirmDialog(t("m_05e4fd1b757f")))return;
@@ -143,7 +146,8 @@ document.querySelector('#workspace-use-draft').onclick=async()=>{
     if(state.scene?.id!==scene.id||state.bufferEpoch!==epoch||state.dirty)throw new Error(t("m_7d8d43f3fed7"));
     await api(`/api/scenes/${scene.id}/prose`,json('POST',{text:source.text,expected_revision:scene.revision,content_format:source.version.content_format||'plain'}));await refresh();await invokeWorkspaceCommand('show','prose');
   }catch(error){notice(error.message,'error')}finally{busy=false;render()}
-};
+}
+document.querySelector('#workspace-use-draft').onclick=()=>{if(!busy)void takeDraft()};
 for(const event of ['editor-state-changed','scene-selected','story-refreshed','workspace-readiness','workspace-review-state','workspace-statistics','brief-review-state','workspace-pending-state'])document.addEventListener(event,render);
 document.addEventListener('workspace-run-pending',()=>render());
 document.addEventListener('workspace-run-state',event=>{if(event.detail.id===primaryRun&&!activeStates.has(event.detail.state)){primaryRun=null;setActiveId(null);cancelRequested=false}render();void complete(event.detail).catch(e=>notice(e.message,'error'))});
