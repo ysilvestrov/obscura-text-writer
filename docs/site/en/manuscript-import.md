@@ -55,7 +55,7 @@ Every scene has your prose as an author's version, and the scene plans are empty
 
 ## Characters before memory
 
-Memory keeps the protagonist's state (clothes, things at hand, place, body, who they are with) only for a character from a card who takes part in the scene. So add character cards before you build memory: on the [Characters](characters.md) page or by [importing a characters file](imports.md). Mark the protagonist in their card; without a mark the first participant of the first scene becomes the protagonist.
+Memory keeps the protagonist's state (clothes, things at hand, place, body, who they are with) only for a character from a card who takes part in the scene. So add character cards before you build memory: on the [Characters](characters.md) page, by [importing a characters file](imports.md) or with the model's [character search in the prose](characters.md#character-search-in-the-prose). Search for characters before building memory: the first accepted cards make the already built memory of every scene stale. Mark the protagonist in their card; without a mark the first participant of the first scene becomes the protagonist.
 
 Obscura fills the participants of imported scenes itself, without a model, before the memory build starts. Only scenes with your prose (imported or written by you) are filled; a scene whose prose a model wrote is left as it is:
 

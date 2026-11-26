@@ -94,3 +94,19 @@ def test_manuscript_sample_gives_chapters_a_separator_and_a_proposed_boundary(tm
         titles=[scene.title for scene in result.scenes]
         assert result.chapter_source=='markers' and len(titles)==5 and titles[-1]==epilogue
         assert [scene.proposed for scene in result.scenes]==[False,False,False,True,False] and not result.warnings
+
+
+def test_character_proposal_seed_is_acceptable_and_quotes_are_verbatim(tmp_path):
+    """CHARACTER-EXTRACT-S11: the site shot's neutral proposal is one the server accepts (fingerprint, run, verbatim quotes)."""
+    from scripts.capture_screenshots import seed_character_proposal
+    from storygen.characters.extract_accept import AcceptRequest, accept_proposal, current_proposal
+    for lang in ('uk','en'):
+        repo=Repository(tmp_path/lang)
+        story=seed_character_proposal(tmp_path/lang,lang)
+        found=current_proposal(repo,story)
+        proposal=found['proposal']
+        for quote in proposal['cards'][0]['quotes']:
+            assert quote['quote'] in repo.read_text(quote['version_id'])
+        result=accept_proposal(repo,story,AcceptRequest(run_id=found['run_id'],fingerprint=proposal['fingerprint'],
+                                                        cards=[{'key':'n1','names':[]}],protagonist=True,dry_run=True))
+        assert {item['kind'] for item in result['applied']}=={'card','protagonist'} and not result['skipped']

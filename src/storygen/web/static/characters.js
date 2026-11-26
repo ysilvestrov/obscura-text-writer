@@ -4,6 +4,7 @@ import {api,json,notice} from './api.js';
 import {returnLink} from './workspace-links.js';
 import {CharacterBuffer,cardMatches,findTarget} from './characters-state.js';
 import {offerInvalidation} from './link-invalidation.js';
+import {installCharacterExtract} from './character-extract.js';
 
 const host=document.querySelector('#characters-page');
 if(host){
@@ -33,6 +34,7 @@ if(host){
     save.disabled=buffer.saving||!buffer.dirty||buffer.revision===null;add.disabled=buffer.saving||buffer.revision===null;
     reload.disabled=buffer.saving;preview.disabled=buffer.saving||previewBusy||!previewScene.value||buffer.revision===null;
     list.querySelectorAll('fieldset').forEach(field=>field.disabled=buffer.saving);
+    extract?.syncAccept();
 
   }
   const cardGroups=()=>[...list.querySelectorAll(':scope > fieldset')];
@@ -141,6 +143,8 @@ if(host){
     finally{previewBusy=false;update()}
   }
   previewScene.onchange=()=>{buffer.previewToken++;uiText(previewText,"textContent",()=>(''));uiText(previewInfo,"textContent",()=>(t("m_733e7d9098f5")))};
+  // CHARACTER-EXTRACT (R-51): accepting a proposal writes the cards, so it waits for unsaved edits and reloads the cards after.
+  const extract=installCharacterExtract({storyId,api,json,notice,onAccepted:()=>load(true),isDirty:()=>buffer.dirty||buffer.saving});
   globalThis.addEventListener('beforeunload',event=>{if(buffer.dirty||buffer.saving){event.preventDefault();event.returnValue=''}});
   load();
 }

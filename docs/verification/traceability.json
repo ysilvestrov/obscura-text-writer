@@ -4135,6 +4135,22 @@
       ]
     },
     {
+      "id": "CHARACTER-EXTRACT-S11",
+      "requirement": "CHARACTER-EXTRACT",
+      "scope": "Інтерфейс сторінки «Персонажі»: розмітка розділу й діалогу, ключі uk/en, переклад відмов і причин пропуску сервера, правила ціни й запису, вибір за замовчуванням і тіло прийняття (JS), посилання з діалогу побудови пам'яті, нейтральна пропозиція знімка сайту. Поведінка в браузері — ручна процедура (Playwright). Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/web/test_character_extract_ui.py::test_section_and_dialog_markup",
+        "tests/web/test_character_extract_ui.py::test_ui_keys_exist_and_server_refusals_are_translated",
+        "tests/web/test_character_extract_ui.py::test_script_follows_the_cost_and_write_rules",
+        "tests/web/test_character_extract_ui.py::test_selection_helpers",
+        "tests/test_capture_screenshots.py::test_character_proposal_seed_is_acceptable_and_quotes_are_verbatim"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#character-extract-browser",
+        "reason": "Playwright запускається окремим runner; check_docs.py індексує лише pytest IDs."
+      }
+    },
+    {
       "id": "CHARACTER-NAMES-S01",
       "requirement": "CHARACTER-NAMES",
       "scope": "Позначка інших імен двома мовами; розпізнавання в плані, «Знайомий з:», оповідачі й «Протагоніст:» за будь-яким ім’ям.",

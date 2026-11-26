@@ -19,6 +19,26 @@
 .characters-page textarea { min-height: 20rem; resize: vertical; font-family: var(--font-writing); line-height: 1.65; }
 .characters-page label, .characters-page select { min-width: 0; }
 .characters-page .character-preview { padding: 16px; background: var(--bg-surface); }
+/* CHARACTER-EXTRACT (R-51): the character search and its proposal. */
+.characters-page .character-extract { margin-block: 0 32px; padding-block: 16px 24px; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); }
+.characters-page .character-extract > p { max-width: 75ch; }
+.characters-page .character-extract h2 { font-size: 22px; margin-bottom: 8px; }
+.characters-page .character-extract-run { margin-block: 12px; }
+.characters-page .character-proposal { margin-top: 16px; display: grid; gap: 16px; }
+.characters-page .character-proposal h3 { font-size: 17px; margin: 0; }
+.characters-page .character-proposal-group { display: grid; gap: 8px; }
+.characters-page .character-proposal-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 16px; }
+.characters-page .character-proposal ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.characters-page .character-proposal-check { display: flex; align-items: baseline; gap: 10px; min-width: 0; font-size: 15px; color: var(--text-primary); overflow-wrap: anywhere; }
+.characters-page .character-proposal-check input[type="checkbox"] { width: 1.1rem; height: 1.1rem; flex: 0 0 1.1rem; margin: 0; padding: 0; align-self: center; }
+.characters-page .character-proposal-name { font-weight: 600; }
+.characters-page .character-proposal-card { display: grid; gap: 6px; }
+.characters-page .character-proposal-card > :not(:first-child) { margin-left: calc(1.1rem + 10px); }
+.characters-page .character-proposal-names { display: flex; flex-wrap: wrap; gap: 6px 20px; }
+.characters-page .character-proposal-names .character-proposal-check { font-size: 14px; }
+.characters-page ul.character-proposal-quotes { gap: 4px; font-family: var(--font-writing); overflow-wrap: anywhere; }
+.characters-page .character-proposal-result ul { list-style: disc; padding-left: 1.25rem; }
+.characters-page .character-extract-dialog ul { padding-left: 1.25rem; }
 @media (max-width: 760px) {
   .characters-page { padding-top: 20px; }
   .characters-page .character-entry { display: flex; flex-direction: column; gap: 12px; }

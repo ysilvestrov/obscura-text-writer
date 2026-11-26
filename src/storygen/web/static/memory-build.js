@@ -109,7 +109,11 @@ export function installMemoryBuild({api,json,notice,document,state}){
       const details=document.querySelector('.importer');if(details){details.dataset.userOpened='true';details.open=true}
       document.querySelector('#import-sources input[name="characters"]')?.focus();
     };
-    warning.append(text,characters,document.createTextNode(' · '),importer);
+    // R-51 (CHARACTER-EXTRACT §6): the same warning leads to the character search in the prose.
+    const extract=element('a');extract.id='memory-build-extract';
+    extract.href=`/stories/${encodeURIComponent(state.storyId)}/characters?extract=1`;
+    uiText(extract,'textContent',()=>t('memory_build.ui.find_characters'));
+    warning.append(text,characters,document.createTextNode(' · '),importer,document.createTextNode(' · '),extract);
     cast.append(warning);
   }
   function render(){
