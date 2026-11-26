@@ -47,6 +47,25 @@ def claim(db, kind: Literal['story', 'series'], id: str, books: list[str], now: 
     return item
 
 
+def claim_target(repo, *, story_id: str | None, series_id: str | None, now: datetime) -> Trial:
+    """The author's choice (POST /api/long-prose-trial): a book outside any series, or a series of at most two books
+    whose books and bible are remembered. One transaction."""
+    from ..book.guard import TRIAL_IN_SERIES
+    from .series import _books, _get
+    with repo.db.connection() as db:
+        db.execute('BEGIN IMMEDIATE')
+        if story_id is not None:
+            story = repo._active_story(db, story_id)
+            if story.series_id:
+                raise ValueError(TRIAL_IN_SERIES)
+            return claim(db, 'story', story.id, [], now)
+        _get(db, series_id)
+        members = _books(db, series_id)
+        books = [book.id for book in members if not book.series_bible]
+        bible = next((book.id for book in members if book.series_bible), None)
+        return claim(db, 'series', series_id, books, now, bible)
+
+
 def admit(db, series_id: str, story_id: str) -> None:
     """On an open transaction: a book entering the trial series takes a place in `books`; a full list refuses it.
     Nothing to do with long prose in the edition, or for any other series."""
