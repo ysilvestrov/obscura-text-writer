@@ -6781,7 +6781,7 @@
     {
       "id": "STORE-MCP-S17",
       "requirement": "STORE-MCP-001",
-      "scope": "Плагін Claude у пакеті: лише відстежувані файли USER_FILES, відмова без plugin.json і на посиланні між скілами, всі п'ять скілів репозиторію, перевірка моста вимагає guide: ok.",
+      "scope": "Плагін Claude у пакеті: лише відстежувані файли USER_FILES, відмова без plugin.json і на посиланні між скілами, всі шість скілів репозиторію, перевірка моста вимагає guide: ok.",
       "tests": [
         "tests/test_packaging.py::test_plugin_files_are_tracked_user_files_only",
         "tests/test_packaging.py::test_plugin_files_refuse_a_plugin_without_manifest",
@@ -7019,12 +7019,13 @@
     {
       "id": "CLAUDE-SKILLS-S12",
       "requirement": "CLAUDE-SKILLS",
-      "scope": "revise, зміна факту (integrations/claude/obscura/evals/revise.json, S12): до згоди жодного запису моста, start_run — лише з confirm; таблиця називає обидві сцени; без пошуку чат питає, а не вигадує (вручну). Автоматично перевіряються фікстура й правило «до згоди нічого не записано». Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "scope": "revise, зміна факту (integrations/claude/obscura/evals/revise.json, S12): до згоди жодного запису моста, start_run, update_characters і import_manuscript — лише з confirm; таблиця називає обидві сцени; без пошуку чат питає, а не вигадує (вручну). Автоматично перевіряються фікстура й правило «до згоди нічого не записано». Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
       "tests": [
         "tests/test_skills_stand.py::test_claude_command_is_isolated",
         "tests/test_run_scenarios.py::test_revise_fixture_has_old_city_in_plan_and_both_scenes",
         "tests/test_run_scenarios.py::test_revise_preconsent_any_write_is_a_problem",
-        "tests/test_run_scenarios.py::test_revise_preconsent_flags_any_bridge_write"
+        "tests/test_run_scenarios.py::test_revise_preconsent_flags_any_bridge_write",
+        "tests/test_run_scenarios.py::test_revise_preconsent_card_and_import_writes_count_only_with_confirm"
       ],
       "manual": {
         "procedure": "docs/verification/manual.md#claude-skills",
@@ -7076,11 +7077,12 @@
     {
       "id": "CLAUDE-SKILLS-S15",
       "requirement": "CLAUDE-SKILLS",
-      "scope": "revise, локальна правка (evals/revise.json, S15): до вибору автора нічого не записано, чат питає; зміст питання й варіантів (перше місце, 2–4 варіанти, без зміни фактів) — вручну. Автоматично перевіряються ізоляція стенда й правило «до згоди нічого не записано». Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "scope": "revise, локальна правка (evals/revise.json, S15): до вибору автора нічого не записано, чат питає; зміст питання й варіантів (перше місце, 2–3 варіанти й «лишити як є», без зміни фактів) — вручну. Автоматично перевіряються ізоляція стенда й правило «до згоди нічого не записано». Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
       "tests": [
         "tests/test_skills_stand.py::test_claude_command_is_isolated",
         "tests/test_run_scenarios.py::test_revise_preconsent_any_write_is_a_problem",
-        "tests/test_run_scenarios.py::test_revise_preconsent_flags_any_bridge_write"
+        "tests/test_run_scenarios.py::test_revise_preconsent_flags_any_bridge_write",
+        "tests/test_run_scenarios.py::test_revise_preconsent_card_and_import_writes_count_only_with_confirm"
       ],
       "manual": {
         "procedure": "docs/verification/manual.md#claude-skills",

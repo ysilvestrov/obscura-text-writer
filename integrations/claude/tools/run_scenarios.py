@@ -260,13 +260,16 @@ def setup_patches(base, story):
                                                       'context_tokens': 128000}})
 
 
-# Every bridge write; start_run counts only with confirm (a preview without it writes nothing).
-REVISE_WRITES = WRITES - {'start_run'}
+# Bridge tools that write only with confirm: without it they return a preview and write nothing.
+CONFIRMED_WRITES = {'start_run', 'update_characters', 'import_manuscript'}
+# Every other bridge write.
+REVISE_WRITES = WRITES - CONFIRMED_WRITES
 
 
 def revise_preconsent_problems(calls):
-    """revise: until the author agrees to the table of changes nothing is written; start_run counts only with confirm."""
-    writes = [n for n, args in calls if n in REVISE_WRITES or (n == 'start_run' and args.get('confirm'))]
+    """revise: until the author agrees to the table of changes nothing is written; start_run, update_characters and
+    import_manuscript count only with confirm."""
+    writes = [n for n, args in calls if n in REVISE_WRITES or (n in CONFIRMED_WRITES and args.get('confirm'))]
     return [f'до згоди записано: {writes}'] * bool(writes)
 
 

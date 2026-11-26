@@ -211,6 +211,16 @@ def test_revise_preconsent_any_write_is_a_problem():
 
 
 @pytest.mark.req('CLAUDE-SKILLS')
+def test_revise_preconsent_card_and_import_writes_count_only_with_confirm():
+    # update_characters and import_manuscript without confirm are previews: the card rows of the table are built from one.
+    assert revise_preconsent_problems([('get_characters', {}), ('update_characters', {'changes': []})]) == []
+    assert revise_preconsent_problems([('update_characters', {'changes': [], 'confirm': True})]) == [
+        "до згоди записано: ['update_characters']"]
+    assert revise_preconsent_problems([('import_manuscript', {})]) == []
+    assert revise_preconsent_problems([('import_manuscript', {'confirm': True})]) == ["до згоди записано: ['import_manuscript']"]
+
+
+@pytest.mark.req('CLAUDE-SKILLS')
 def test_revise_text_old_stem_in_any_case_is_a_problem():
     assert revise_text_problems('Жила в Одесі.', 'Жила в Одесі.', 'Одес', 'Херсон', 'сцена 1') == [
         'сцена 1: лишилося «Одес»', 'сцена 1: немає «Херсон»']

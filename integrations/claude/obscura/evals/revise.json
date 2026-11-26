@@ -59,7 +59,7 @@
       "assertions": [
         "nothing is written before the author chooses",
         "the reply asks the author a question",
-        "the question is about the first place, with 2–4 options (manual)",
+        "the question is about the first place, with 2–3 options plus \"leave as is\" (manual)",
         "the variants change no facts of the scene (manual)"
       ],
       "files": []
