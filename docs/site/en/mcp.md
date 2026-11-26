@@ -135,9 +135,11 @@ Skills are ready-made instructions for Claude that lead the conversation step by
 - `setup-models` — models for the four roles by genre and budget, checked against the provider's list;
 - `revise` — changing a finished story: a fact across the whole book (for example, "move the action from Odesa to Kherson") or a local edit ("make the scene funnier").
 
-**The `revise` skill.** For a fact change, the chat checks the facts on the web when the client has search, and shows the sources. It then shows a table of all the places that will have to change (plan, scenes, bible) and the first scene as "was → becomes". Nothing is written until you say "ok". The chat changes the minimum set of places; deeper changes it only proposes. For a local edit ("make the scene funnier") the chat asks about specific places one at a time, with two to four variants, shows a summary and waits for your "ok".
+**The `revise` skill.** For a fact change, the chat checks the facts on the web when the client has search, and shows the sources. It then shows a table of all the places that will have to change (plan, scenes, bible) and the first scene as "was → becomes". Nothing is written until you say "ok". The chat changes the minimum set of places; deeper changes it only proposes. For a local edit ("make the scene funnier") the chat asks about specific places one at a time, with two to three variants and a "leave as is" option, shows a summary and waits for your "ok".
 
-In a story where Obscura writes ("Obscura writes"), the chat only prepares the replacement table. You make the replacements yourself in the "Prose" tab, after which the skill offers paid memory or check runs with a cost preview.
+Character cards (for example, a rename) you change yourself on the "Characters" page: the chat gives the ready edits.
+
+In a story where Obscura writes ("Obscura writes"), after your consent to the table the chat writes the plan preamble and the scene plans. You make the prose replacements yourself in the "Prose" tab. The same applies to a story where the chat writes but the editor works in patches (patches/diff mode). Memory and check runs are paid: each has its own cost preview and needs your consent.
 
 **Claude Code.** The “Connect Claude Code” button in the library installs the skills together with the bridge (see [The button in the library](#the-button-in-the-library)). Obscura copies them into the stories folder, under `claude\marketplace`, so an Obscura update does not break them. Do not put your own files in that folder: a folder without Obscura's marker is left unchanged, and Obscura shows its path.
 
