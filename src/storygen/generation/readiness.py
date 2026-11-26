@@ -192,6 +192,10 @@ def preview(repo, request, view=None):
                 context=build_context(repo,scene.id,'memory',settings['memory'],memory_approval=approval.review['fingerprint'],view=view)
                 result['memory_review']=approval.review
             result['warnings']=context.context_warnings.copy()
+            if stages[0]=='memory':
+                # R-49 (MEMORY-BUILD): what the memory model receives, from the sections of the first request.
+                from .memory_build import memory_sends
+                result['sends']=memory_sends(view,settings['memory'].provider,targets,context)
             literary=any(stage in {'brief','draft'} or stage=='edit' and settings['editor'].edit_mode=='prose' for stage in stages)
             if literary:
                 from ..characters.context import character_material

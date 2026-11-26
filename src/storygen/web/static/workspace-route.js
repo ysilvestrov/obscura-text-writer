@@ -6,6 +6,7 @@ import {state,textEditor,selectScene,refresh,planNumbering} from './editor.js';
 import {api,json,notice} from './api.js';
 import {invokeWorkspaceCommand} from './workspace-commands.js';
 import {performPrimary,primaryAction,authorMode} from './workspace-state.js';
+import {sendsText} from './memory-sends.js';
 import {compactBudgetText} from './workspace-links.js';
 import {editorLoopOperation} from './run-readiness.js';
 import {installRunJump} from './run-jump.js';
@@ -52,7 +53,7 @@ function render(){
     const models=roles.map(([role,value])=>`${role}: ${value.provider} / ${value.model}`).join(', ');
     const summary=roles.map(([,value])=>`${value.provider} / ${value.model}`).join(', ');
     uiText(telemetry,'textContent',()=>summary?t('workspace.telemetry',{p0:summary,p1:info.calls})+(warnings.length?' ⚠':''):t('workspace.telemetry_unknown'));
-    uiText(detailsCard,'textContent',()=>[t('workspace.model',{p0:models||t('workspace.unknown')}),t('workspace.volume',{p0:info?.calls??'—',p1:t(({plan:'m_3146141c9367',brief:'m_5a2ec5eaf0a1',draft:'m_e9d875d4120b',prose:'m_9c685577453c'})[state.mode])}),...(warnings.length?[t('workspace.warnings',{p0:warnings.map(diagnostic).join('; ')})]:[]),...(state.mode==='draft'?[t('workspace.copy_note')]:[])].join('\n'));
+    uiText(detailsCard,'textContent',()=>[t('workspace.model',{p0:models||t('workspace.unknown')}),t('workspace.volume',{p0:info?.calls??'—',p1:t(({plan:'m_3146141c9367',brief:'m_5a2ec5eaf0a1',draft:'m_e9d875d4120b',prose:'m_9c685577453c'})[state.mode])}),...(warnings.length?[t('workspace.warnings',{p0:warnings.map(diagnostic).join('; ')})]:[]),...(state.mode==='draft'?[t('workspace.copy_note')]:[]),...(state.mode==='prose'&&info?.sends&&summary?[sendsText(info.sends,summary)]:[])].join('\n'));
   }
   if(!reason&&!state.dirty&&action.mode)reason=operation?.ready||operation?.can_confirm?'':operation?.reason||t("m_a8900573fc3e");
   const canStop=!!primaryController||!!state.workspacePending||(primaryRun&&activeStates.has(state.workspaceRun?.state)&&state.workspaceRun?.id===primaryRun);
