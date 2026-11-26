@@ -20,6 +20,7 @@ class Trial(DomainModel):
     id: str
     claimed_at: str
     books: list[str] = []
+    bible: str | None = None  # the one bible of a series trial, remembered like its books (never a rotation slot)
 
 
 def read_trial(db) -> Trial | None:
@@ -32,12 +33,13 @@ def trial(repo) -> Trial | None:
         return read_trial(db)
 
 
-def claim(db, kind: Literal['story', 'series'], id: str, books: list[str], now: datetime) -> Trial:
+def claim(db, kind: Literal['story', 'series'], id: str, books: list[str], now: datetime, bible: str | None = None) -> Trial:
     """On an open transaction: write the marker, or ValueError(TRIAL_USED) when there already is one."""
     from ..book.guard import TRIAL_SERIES_FULL, TRIAL_USED
     if len(books) > MAX_BOOKS:
         raise ValueError(TRIAL_SERIES_FULL)
-    item = Trial(kind=kind, id=id, claimed_at=now.isoformat(), books=list(books) if kind == 'series' else [])
+    item = Trial(kind=kind, id=id, claimed_at=now.isoformat(), books=list(books) if kind == 'series' else [],
+                 bible=bible if kind == 'series' else None)
     cursor = db.execute('INSERT INTO app_settings(key,payload) VALUES(?,?) ON CONFLICT(key) DO NOTHING',
                         (KEY, item.model_dump_json()))
     if cursor.rowcount != 1:
@@ -58,6 +60,29 @@ def admit(db, series_id: str, story_id: str) -> None:
         raise ValueError(TRIAL_SERIES_FULL)
     item = item.model_copy(update={'books': [*item.books, story_id]})
     db.execute('UPDATE app_settings SET payload=? WHERE key=?', (item.model_dump_json(), KEY))
+
+
+def admit_bible(db, series_id: str, story_id: str) -> None:
+    """On an open transaction: the first bible of the trial series is remembered; another one is refused."""
+    if build_edition.current().long_prose:
+        return
+    item = read_trial(db)
+    if item is None or item.kind != 'series' or item.id != series_id or item.bible == story_id:
+        return
+    from ..book.guard import TRIAL_BIBLE_USED
+    if item.bible is not None:
+        raise ValueError(TRIAL_BIBLE_USED)
+    db.execute('UPDATE app_settings SET payload=? WHERE key=?',
+               (item.model_copy(update={'bible': story_id}).model_dump_json(), KEY))
+
+
+def covers(item: Trial | None, story_id: str) -> bool:
+    """The story is the trial book, a listed book of the trial series or its remembered bible."""
+    if item is None:
+        return False
+    if item.kind == 'story':
+        return item.id == story_id
+    return story_id in item.books or story_id == item.bible
 
 
 def trial_state(repo) -> dict:

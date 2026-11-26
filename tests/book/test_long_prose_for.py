@@ -27,12 +27,12 @@ def test_store_edition_refuses_with_the_same_text(tmp_path, store_edition):
             call()
 
 
-def _claimed(repo, kind, id, books=()):
+def _claimed(repo, kind, id, books=(), bible=None):
     from datetime import datetime, timezone
     from storygen.storage import long_prose_trial as trials
     with repo.db.connection() as db:
         db.execute('BEGIN IMMEDIATE')
-        trials.claim(db, kind, id, list(books), datetime(2026, 11, 26, tzinfo=timezone.utc))
+        trials.claim(db, kind, id, list(books), datetime(2026, 11, 26, tzinfo=timezone.utc), bible)
 
 
 @pytest.mark.req('LONG-PROSE-TRIAL')
@@ -52,8 +52,10 @@ def test_series_trial_covers_listed_books_and_the_bible(tmp_path, store_edition)
     listed = listed.model_copy(update={'series_id': 'ser'})
     outside = outside.model_copy(update={'series_id': 'ser'})
     bible = bible.model_copy(update={'series_id': 'ser', 'series_bible': True})
-    _claimed(repo, 'series', 'ser', [listed.id])
+    other_bible = outside.model_copy(update={'id': 'x', 'series_bible': True})
+    _claimed(repo, 'series', 'ser', [listed.id], bible.id)
     assert long_prose_for(repo, listed) and long_prose_for(repo, bible) and not long_prose_for(repo, outside)
+    assert not long_prose_for(repo, other_bible)  # final review C1: only the remembered bible, not any bible of the series
     assert series_long_prose(repo, 'ser') and not series_long_prose(repo, 'other')
 
 

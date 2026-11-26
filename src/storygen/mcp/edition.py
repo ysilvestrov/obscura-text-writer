@@ -5,7 +5,7 @@ Ukrainian and English together: the refusal arrives on any request, where the br
 """
 import re
 
-from ..book.guard import NO_LONG_PROSE, READ_ONLY, READ_ONLY_SERIES, TRIAL_BOOK_ALONE, TRIAL_IN_SERIES, TRIAL_SERIES_FULL, TRIAL_USED
+from ..book.guard import NO_LONG_PROSE, READ_ONLY, READ_ONLY_SERIES, TRIAL_BIBLE_USED, TRIAL_BOOK_ALONE, TRIAL_IN_SERIES, TRIAL_SERIES_FULL, TRIAL_USED
 from ..rating.guard import EDITION_LIMIT
 
 PAID_TEXT = ('Це можливість платної версії Obscura: довга проза (книги, частини, арки), серії й сцени без обмеження рейтингу.\n'
@@ -17,7 +17,7 @@ TRIAL_AVAILABLE_TEXT = ('Одну книгу з частинами або одн
                         'One book with parts or one series of two books can be tried for free in the Obscura window.')
 TRIAL_USED_TEXT = 'Безкоштовну пробу вже використано.\nThe free trial has been used.'
 INVALID_PREFIX = 'Некоректні дані: '
-_EXACT = frozenset({NO_LONG_PROSE, READ_ONLY, READ_ONLY_SERIES, TRIAL_USED, TRIAL_SERIES_FULL, TRIAL_IN_SERIES, TRIAL_BOOK_ALONE})
+_EXACT = frozenset({NO_LONG_PROSE, READ_ONLY, READ_ONLY_SERIES, TRIAL_USED, TRIAL_SERIES_FULL, TRIAL_IN_SERIES, TRIAL_BOOK_ALONE, TRIAL_BIBLE_USED})
 
 
 def _template(text: str) -> re.Pattern:

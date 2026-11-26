@@ -124,12 +124,15 @@ def set_story_series(repo, story_id: str, series_id: str | None, number: int | N
             raise RevisionConflict(STORY_CONFLICT)
         # A bible that becomes a book enters the series as a book: it takes its snapshot (SERIES-BIBLE).
         entering = series_id is not None and (story.series_id != series_id or story.series_bible != bible)
+        if series_id is not None:
+            _require_not_trial_book(db, story_id, series_id)
         if series_id is not None and bible:
             _get(db, series_id)
             if any(b.series_bible and b.id != story_id for b in _books(db, series_id)):
                 raise ValueError(SERIES_BIBLE_TAKEN)
+            from .long_prose_trial import admit_bible
+            admit_bible(db, series_id, story_id)
         elif series_id is not None:
-            _require_not_trial_book(db, story_id)
             require_book_slot(db, series_id, number, story_id)
         update = {'series_id': series_id, 'series_number': number, 'series_start': start, 'series_bible': bible,
                   'revision': story.revision + 1}
@@ -437,15 +440,16 @@ def create_book(repo, series_id: str, title: str) -> Story:
     return set_story_series(repo, story.id, series_id, number, None, story.revision)
 
 
-def _require_not_trial_book(db, story_id: str) -> None:
-    """LONG-PROSE-TRIAL: the trial book stays alone, so one trial never becomes two."""
+def _require_not_trial_book(db, story_id: str, series_id: str) -> None:
+    """LONG-PROSE-TRIAL: a book the trial covers enters no other series (as a book or a bible), so one trial never
+    carries long prose into a second series; the trial book of `kind=story` stays alone."""
     from .. import build_edition
     if build_edition.current().long_prose:
         return
     from ..book.guard import TRIAL_BOOK_ALONE
-    from .long_prose_trial import read_trial
+    from .long_prose_trial import covers, read_trial
     item = read_trial(db)
-    if item is not None and item.kind == 'story' and item.id == story_id:
+    if covers(item, story_id) and not (item.kind == 'series' and item.id == series_id):
         raise ValueError(TRIAL_BOOK_ALONE)
 
 

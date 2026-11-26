@@ -17,7 +17,7 @@ ALLOWED = {
     ('POST', '/api/stories/{id}/restore'): 'специфікація дозволяє відновити твір',
     ('POST', '/api/stories/{id}/export'): 'експорт дозволено',
     ('POST', '/api/long-prose-trial'): 'вмикає пробу (LONG-PROSE-TRIAL); маршрут сам перевіряє книгу чи серію',
-    ('POST', '/api/series'): 'маршрути серії відмовляють у будь-якому виданні без довгої прози власною перевіркою',
+    ('POST', '/api/series'): 'створення серії відмовляє без довгої прози власною перевіркою, крім пробної серії (LONG-PROSE-TRIAL)',
     ('PATCH', '/api/series/{series_id}'): 'маршрути серії відмовляють у будь-якому виданні без довгої прози власною перевіркою',
     ('POST', '/api/stories/{story_id}/series/refresh'): 'маршрути серії відмовляють у будь-якому виданні без довгої прози власною перевіркою',
     ('PUT', '/api/stories/{story_id}/series/decisions'): 'маршрути серії відмовляють у будь-якому виданні без довгої прози власною перевіркою',
@@ -50,7 +50,7 @@ ALLOWED = {
     ('DELETE', '/api/model-policy/refusal'): 'згода застосунку, не твору',
     ('POST', '/api/manuscript-import/preview'): 'книги ще немає: перегляд лише читає файл і не змінює жодної книги',
     ('DELETE', '/api/manuscript-import/{import_id}'): 'книги ще немає: прибирає лише тимчасовий файл рукопису',
-    ('POST', '/api/manuscript-import/{import_id}'): 'створює нову книгу, наявних не змінює; частини й серію відхиляє власною перевіркою require_long_prose',
+    ('POST', '/api/manuscript-import/{import_id}'): 'створює нову книгу, наявних не змінює; частини й серію перевіряє сам (require_long_prose, проба LONG-PROSE-TRIAL)',
 }
 GENERATIVE_GET = {'/api/scenes/{scene_id}/writing-context', '/api/scenes/{scene_id}/chat-task/{stage}'}
 
@@ -109,7 +109,7 @@ async def blocked(app, request) -> str | None:
         except ValueError:
             wanted = None
         from ..book import guard
-        if isinstance(wanted, dict) and isinstance(wanted.get('series_id'), str) and                 guard.series_long_prose(app.state.repo, wanted['series_id']):
+        if isinstance(wanted, dict) and isinstance(wanted.get('series_id'), str) and guard.series_long_prose(app.state.repo, wanted['series_id']):
             return None
     if not params and 'json' in request.headers.get('content-type', ''):
         try:

@@ -13,6 +13,7 @@ TRIAL_IN_SERIES = 'Ця книга входить у серію; оберіть 
 TRIAL_CONFIRM = 'Проба одна на всі твори: підтвердьте вибір книги чи серії'
 TRIAL_NOT_NEEDED = 'Довга проза вже є в цій збірці'
 TRIAL_BOOK_ALONE = 'Пробна книга не входить у серію: проба одна'
+TRIAL_BIBLE_USED = 'Проба серії має одну біблію світу; інша — у платній версії'
 
 
 def require_long_prose() -> None:
@@ -21,13 +22,10 @@ def require_long_prose() -> None:
 
 
 # R-47: the checks ask about a book or a series. An edition with long prose never reads the database here; one without
-# it answers yes only for the trial (LONG-PROSE-TRIAL): its book, the listed books of its series and that series' bible.
+# it answers yes only for the trial (LONG-PROSE-TRIAL): its book, the listed books of its series and its remembered bible.
 def _covered(item, story) -> bool:
-    if item is None:
-        return False
-    if item.kind == 'story':
-        return item.id == story.id
-    return story.id in item.books or (bool(story.series_bible) and story.series_id == item.id)
+    from ..storage.long_prose_trial import covers
+    return covers(item, story.id)
 
 
 def long_prose_for(repo, story) -> bool:

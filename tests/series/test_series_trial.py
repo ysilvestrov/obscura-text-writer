@@ -126,3 +126,61 @@ def test_trial_book_does_not_join_a_series(tmp_path, store_edition):
     saga = store.create_series(repo, 'Сага')
     response = move(client, repo, story.id, saga.id, 1)
     assert response.status_code == 400 and TRIAL_BOOK_ALONE in detail(response)
+
+
+def make_bible(client, repo, story_id, series_id):
+    story = repo.get_story(story_id)
+    return client.patch(f'/api/stories/{story_id}/series',
+                        json={'series_id': series_id, 'bible': True, 'expected_revision': story.revision})
+
+
+@pytest.mark.req('LONG-PROSE-TRIAL')
+def test_bible_place_is_one_and_cannot_rotate_books(tmp_path, store_edition):
+    """Final review C1: the bible of the trial series is remembered like its books, so it is no rotation slot."""
+    from storygen.book.guard import TRIAL_BIBLE_USED
+    client, app, repo, story, scene = setup(tmp_path)
+    series_id = trial_series(client)
+    new_book(client, series_id, 'Перша')
+    new_book(client, series_id, 'Друга')
+    assert make_bible(client, repo, story.id, series_id).status_code == 200
+    assert trial(repo).bible == story.id
+    assert move(client, repo, story.id, None, None).status_code == 200
+    assert structure_put(client, repo.get_story(story.id)).status_code == 200  # the remembered bible keeps long prose
+    other = structured_book(repo, 'Інша')
+    refused = make_bible(client, repo, other.id, series_id)
+    assert refused.status_code == 400 and TRIAL_BIBLE_USED in detail(refused)
+    assert structure_put(client, repo.get_story(other.id)).status_code == 400
+
+
+@pytest.mark.req('LONG-PROSE-TRIAL')
+def test_book_of_the_trial_series_does_not_carry_it_to_another_series(tmp_path, store_edition, monkeypatch):
+    """Final review I1: a listed book may leave the trial series only to stand alone."""
+    client, app, repo, story, scene = setup(tmp_path)
+    series_id = trial_series(client)
+    move(client, repo, story.id, series_id, 1)
+    monkeypatch.setattr(build_edition, 'current', lambda: build_edition.BuildEdition())
+    other = store.create_series(repo, 'Чужа')
+    monkeypatch.setattr(build_edition, 'current', lambda: store_edition)
+    refused = move(client, repo, story.id, other.id, 1)
+    assert refused.status_code == 400 and TRIAL_BOOK_ALONE in detail(refused)
+    refused = make_bible(client, repo, story.id, other.id)
+    assert refused.status_code == 400 and TRIAL_BOOK_ALONE in detail(refused)
+
+
+@pytest.mark.req('LONG-PROSE-TRIAL')
+def test_trial_book_does_not_become_a_bible_of_another_series(tmp_path, store_edition):
+    """Final review I2."""
+    client, app, repo, story, scene = setup(tmp_path)
+    client.post('/api/long-prose-trial', json={'story_id': story.id, 'confirm': True})
+    saga = store.create_series(repo, 'Сага')
+    response = make_bible(client, repo, story.id, saga.id)
+    assert response.status_code == 400 and TRIAL_BOOK_ALONE in detail(response)
+
+
+@pytest.mark.req('LONG-PROSE-TRIAL')
+def test_existing_bible_is_remembered_at_claim(tmp_path, store_edition):
+    client, app, repo, story, scene = setup(tmp_path)
+    item = store.create_series(repo, 'Сага')
+    bible = store.create_bible(repo, item.id, 'Світ')
+    assert client.post('/api/long-prose-trial', json={'series_id': item.id, 'confirm': True}).status_code == 200
+    assert trial(repo).bible == bible.id and trial(repo).books == []

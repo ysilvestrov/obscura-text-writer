@@ -173,8 +173,10 @@ def _edition(repo) -> dict:
     from ..storage.long_prose_trial import trial_state
     long_prose = build_edition.current().long_prose
     state = trial_state(repo)
-    return {'parts_allowed': long_prose or state['state'] == 'available',
-            'series_allowed': long_prose or (state['state'] == 'used' and state['kind'] == 'series'), 'trial': state}
+    series_trial = state['state'] == 'used' and state['kind'] == 'series'
+    # A series trial keeps parts for the books imported into it; apply refuses parts outside that series.
+    return {'parts_allowed': long_prose or state['state'] == 'available' or series_trial,
+            'series_allowed': long_prose or series_trial, 'trial': state}
 
 
 def effective_settings(settings: ParseSettings, repo=None) -> ParseSettings:
@@ -289,7 +291,8 @@ class ManuscriptApply(BaseModel):
     @model_validator(mode='after')
     def trial_alone(self):
         if self.trial and self.series is not None:
-            raise ValueError('Пробна книга не входить у серію: проба одна')
+            from ..book.guard import TRIAL_BOOK_ALONE
+            raise ValueError(TRIAL_BOOK_ALONE)
         return self
 
 

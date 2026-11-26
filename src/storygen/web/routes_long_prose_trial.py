@@ -42,6 +42,8 @@ def claim_trial(data: TrialIn, request: Request):
             trials.claim(db, 'story', story.id, [], now)
         else:
             _get(db, data.series_id)
-            books = [book.id for book in _books(db, data.series_id) if not book.series_bible]
-            trials.claim(db, 'series', data.series_id, books, now)
+            members = _books(db, data.series_id)
+            books = [book.id for book in members if not book.series_bible]
+            bible = next((book.id for book in members if book.series_bible), None)
+            trials.claim(db, 'series', data.series_id, books, now, bible)
     return trials.trial_state(repo)

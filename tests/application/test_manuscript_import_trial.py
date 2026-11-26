@@ -91,3 +91,15 @@ def test_full_edition_ignores_the_trial_flag(tmp_path):
     assert 'trial' in preview.edition and preview.edition['trial']['state'] == 'none'
     service.apply_import(repo, preview.import_id, body(preview, parted(preview), parts=PARTS, trial=True))
     assert trial(repo) is None
+
+
+@pytest.mark.req('LONG-PROSE-TRIAL')
+def test_series_trial_keeps_parts_for_its_books(tmp_path, store_edition):
+    """Final review I3: with a series trial, a book imported into it keeps its parts."""
+    repo = repo_for(tmp_path)
+    item = store.create_series(repo, 'Сага', trial=True)
+    preview = service.preview(repo, BOOK, 'book.md', SETTINGS)
+    assert preview.edition['parts_allowed'] is True and preview.parts
+    result = service.apply_import(repo, preview.import_id,
+                                  body(preview, parted(preview), parts=PARTS, series={'series_id': item.id, 'number': 1}))
+    assert repo.get_story(result['story_id']).book_structure is not None

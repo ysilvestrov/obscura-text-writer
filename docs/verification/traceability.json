@@ -5403,6 +5403,10 @@
       "requirement": "LONG-PROSE-TRIAL",
       "scope": "Серія проби: дві книги в переліку через усі шляхи, третя відхиляється, вихід і повернення, книга з іншого видання, біблія, пробна книга поза серією. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
       "tests": [
+        "tests/series/test_series_trial.py::test_bible_place_is_one_and_cannot_rotate_books",
+        "tests/series/test_series_trial.py::test_book_of_the_trial_series_does_not_carry_it_to_another_series",
+        "tests/series/test_series_trial.py::test_trial_book_does_not_become_a_bible_of_another_series",
+        "tests/series/test_series_trial.py::test_existing_bible_is_remembered_at_claim",
         "tests/storage/test_long_prose_trial.py::test_admit_fills_two_books_then_refuses",
         "tests/book/test_long_prose_for.py::test_series_trial_covers_listed_books_and_the_bible",
         "tests/series/test_series_trial.py::test_two_new_books_then_the_third_is_refused",
@@ -5418,6 +5422,7 @@
       "requirement": "LONG-PROSE-TRIAL",
       "scope": "Імпорт рукопису як пробна книга й у серію проби; відмови до запису. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
       "tests": [
+        "tests/application/test_manuscript_import_trial.py::test_series_trial_keeps_parts_for_its_books",
         "tests/application/test_manuscript_import_trial.py::test_preview_offers_parts_while_the_trial_is_free",
         "tests/application/test_manuscript_import_trial.py::test_parts_need_the_trial_flag",
         "tests/application/test_manuscript_import_trial.py::test_used_trial_refuses_before_any_write",

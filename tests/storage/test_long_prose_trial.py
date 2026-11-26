@@ -51,6 +51,8 @@ def test_concurrent_claims_leave_one(tmp_path, store_edition):
     for thread in threads:
         thread.join()
     assert sorted(results) == sorted(['ok', TRIAL_USED])
+    winner = trials.trial(repo)
+    assert winner is not None and winner.id in ('a', 'b')  # the stored marker is the winner's, not overwritten
 
 
 @pytest.mark.req('LONG-PROSE-TRIAL')
