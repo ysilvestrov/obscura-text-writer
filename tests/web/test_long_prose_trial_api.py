@@ -97,3 +97,13 @@ def test_edition_with_long_prose_needs_no_trial(tmp_path):
     client, app, repo, story, scene = setup(tmp_path)
     response = client.post('/api/long-prose-trial', json={'story_id': story.id, 'confirm': True})
     assert response.status_code == 400 and TRIAL_NOT_NEEDED in detail(response)
+
+
+@pytest.mark.req('LONG-PROSE-TRIAL')
+def test_trial_book_keeps_the_store_rating_limit(tmp_path, store_edition):
+    client, app, repo, story, scene = setup(tmp_path)
+    client.post('/api/long-prose-trial', json={'story_id': story.id, 'confirm': True})
+    story = repo.get_story(story.id)
+    response = client.put(f'/api/stories/{story.id}/content-rating',
+                          json={'content_rating': {'sexual': 2, 'violence': 0, 'themes': 0}, 'expected_revision': story.revision})
+    assert response.status_code == 400 and repo.get_story(story.id).revision == story.revision
