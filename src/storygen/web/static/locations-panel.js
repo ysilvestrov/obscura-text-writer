@@ -1,7 +1,8 @@
 // MEMORY-LOCATIONS-S07: the «Locations» section of the memory panel (story-level, like timeline summaries; the right
 // side panel holds only scene sections, WORKSPACE-TOOLS). Cards come from «Локація:» lines of scene plans;
-// the author merges look-alikes, splits them back, hides a suggestion and writes a description for the planner and the
-// writer. Every change is CAS on the story revision; a refused save keeps the typed description.
+// the author merges look-alikes, splits them back, hides a suggestion, writes a description for the planner and the
+// writer and removes a place a model gave a scene (R-51). Every change is CAS on the story revision; a refused save
+// keeps the typed description.
 import {t,msg,uiText,uiAttr,diagnostic} from './i18n.js';
 import {api,json,notice} from './api.js';
 import {state,refresh} from './editor.js';
@@ -69,6 +70,11 @@ function draw(){
     const head=node('p');head.append(node('strong',()=>row.path));
     if(row.merged)head.append(document.createTextNode(' '),node('span',()=>t('locations.merged',{p0:row.targetPath}),'hint'));
     item.append(head,node('p',()=>row.scenes?t('locations.scenes',{p0:row.scenes}):t('locations.no_scenes'),'hint'));
+    if(row.modelScenes.length){
+      const places=node('div',null,'actions location-model-scenes');
+      for(const scene of row.modelScenes)places.append(button(()=>t('locations.remove_from_scene',{p0:scene.label}),()=>removeFromScene(row,scene)));
+      item.append(places);
+    }
     if(row.editable)item.append(description(row));
     if(choosing===row.id)item.append(chooser(row));
     else{
@@ -109,6 +115,13 @@ async function merge(id,path,into,intoPath){
   if(!into||!await confirmDialog(t('locations.merge_confirm',{p0:path,p1:intoPath||''}),{accept:t('locations.merge_do')}))return;
   choosing=null;
   await change(`/${id}/merge`,'POST',{into},'locations.merged_notice',{ids:[id,into],names:[path,intoPath||'']});
+}
+
+// R-51: a place a model gave the scene goes after a confirmation; then, as for any card change, the author decides on
+// the dependent scenes.
+async function removeFromScene(row,scene){
+  if(!await confirmDialog(t('locations.remove_confirm',{p0:row.path,p1:scene.label}),{accept:t('locations.remove_do')}))return;
+  await change(`/${row.id}/remove-from-scene`,'POST',{scene_id:scene.id},'locations.removed',{ids:[row.id],names:[row.path]});
 }
 
 async function save(row,text){

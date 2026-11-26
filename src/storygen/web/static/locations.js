@@ -1,6 +1,8 @@
 // MEMORY-LOCATIONS-S07: rows of the «Locations» panel from GET /api/stories/{id}/locations (pure).
 // Nested cards follow their parent; a merged card is shown under its final target and can only be split back.
 // Parents and targets are followed through merges, so a chain А→Б→В or a parent merged into its own child keeps the tree.
+const label=scene=>`${scene.position+1}. ${scene.title}`;
+
 export function locationRows(data){
   const cards=data?.locations||[],byId=new Map(cards.map(c=>[c.id,c])),rows=[],seen=new Set();
   const canonical=id=>{const chain=new Set();while(id&&byId.get(id)?.merged_into&&!chain.has(id)){chain.add(id);id=byId.get(id).merged_into}return id};
@@ -17,7 +19,9 @@ export function locationRows(data){
     if(seen.has(card.id))return;seen.add(card.id);
     const merged=!!card.merged_into;
     rows.push({id:card.id,path:card.path,depth,merged,targetPath:card.target_path||null,description:card.description||'',
-      scenes:(card.scenes||[]).map(s=>`${s.position+1}. ${s.title}`).join(', '),
+      scenes:(card.scenes||[]).map(label).join(', '),
+      // R-51: places a model gave a scene can be removed here; a plan's place is changed in the plan.
+      modelScenes:merged?[]:(card.scenes||[]).filter(s=>s.source==='model').map(s=>({id:s.id,label:label(s)})),
       canMerge:!merged,canSplit:merged,editable:!merged});
     for(const child of under(card.id))visit(child,depth+1);
   };

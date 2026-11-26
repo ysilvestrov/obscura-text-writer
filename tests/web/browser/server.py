@@ -318,9 +318,11 @@ def main():
             return {'story_id': story.id, 'scene_id': scenes[21].id}
 
         @app.post('/test-locations')
-        def locations_fixture():
+        def locations_fixture(model: bool = False):
             # MEMORY-LOCATIONS-S07: two scenes with a typo look-alike («Квартира Джорджа» / «Квартира Джоржа») and a nested
             # room; scene 1 has prose and a memory fact, so the memory table can change an entry type (neutral text).
+            # `model` (MEMORY-LOCATIONS-S08): a third scene «Ніч» without a plan place holds «двір», a place a prose
+            # search gave it (`location_source='model'`).
             from storygen.domain import SceneCreate, StoryCreate
             from storygen.memory.journal import MemoryJournal, _add_event
             story = repo.create_story(StoryCreate(title='Пристань'))
@@ -333,6 +335,15 @@ def main():
                                                        location_ids=repo.get_scene(first.id).location_ids)])
             memory = repo.save_version(story.id, first.id, 'memory', journal.model_dump_json(), [prose.id])
             repo.set_head(first.id, 'memory', memory.id, repo.get_scene(first.id).revision)
+            if model:
+                import json as _json
+                from storygen.locations import location_id, normalize
+                night = repo.create_scene(story.id, SceneCreate(title='Ніч', beats='Дії: тиша.', character_ids=[]))
+                with repo.db.connection() as db:
+                    row = _json.loads(db.execute('SELECT payload FROM scenes WHERE id=?', (night.id,)).fetchone()[0])
+                    row.update(location_ids=[location_id(story.id, normalize(('двір',)))], location_source='model')
+                    db.execute('UPDATE scenes SET payload=? WHERE id=?', (_json.dumps(row, ensure_ascii=False), night.id))
+                repo.db.bump_generation()
             return {'story_id': story.id, 'scene_id': first.id}
 
         @app.post('/test-memory-merge')

@@ -37,3 +37,12 @@ assert.deepEqual(inverted.map(r=>[r.id,r.depth]),[['b',0],['a',1]]);
 const chain=m.locationRows({locations:[card('x','А',{merged_into:'y',target_path:'В'}),card('y','Б',{merged_into:'z',target_path:'В'}),card('z','В'),card('k','Б / кухня',{parent_id:'y'})]});
 assert.deepEqual(chain.map(r=>[r.id,r.depth]),[['z',0],['k',1],['x',1],['y',1]]);
 console.log('merge tree ok');
+
+// R-51 (MEMORY-LOCATIONS-S08): an unmerged card offers to remove itself from scenes whose places a model gave.
+const model=m.locationRows({locations:[
+  card('pier','Пірс',{scenes:[{id:'s1',position:0,title:'Ранок',source:'plan'},{id:'s3',position:2,title:'Ніч',source:'model'}]}),
+  card('typo','Пiрс',{merged_into:'pier',target_path:'Пірс',scenes:[{id:'s4',position:3,title:'Світанок',source:'model'}]}),
+]});
+assert.deepEqual(model.map(r=>[r.id,r.modelScenes]),[['pier',[{id:'s3',label:'3. Ніч'}]],['typo',[]]]);
+assert.equal(model[0].scenes,'1. Ранок, 3. Ніч');
+console.log('model places ok');

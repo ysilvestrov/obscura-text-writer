@@ -79,3 +79,21 @@ test('a location change does not turn the next memory-kind change into a conflic
   await pick('core');
   await expect(page.locator('#notice')).toContainText('Тип запису збережено');
 });
+
+test('a place a prose search gave a scene is removed from it; a plan place has no such button',async({page,request})=>{
+  // MEMORY-LOCATIONS-S08: «двір» is named by the plan of «Вечір» and was given to «Ніч» by a search.
+  const fixture=await(await request.post('/test-locations?model=true')).json();
+  await page.goto(`/stories/${fixture.story_id}?scene=${fixture.scene_id}&material=memory`);
+  const panel=page.locator('#memory-view #story-locations');
+  const yard=row(panel,'двір');
+  await expect(yard).toContainText('Сцени: 2. Вечір, 3. Ніч');
+  await expect(panel.getByRole('button',{name:/^Прибрати з/})).toHaveCount(1);
+  await yard.getByRole('button',{name:'Прибрати з «3. Ніч»'}).click();
+  const dialog=page.locator('.app-dialog');
+  await expect(dialog).toContainText('Прибрати «двір» зі сцени «3. Ніч»?');
+  await dialog.getByRole('button',{name:'Прибрати'}).click();
+  await expect(page.locator('#notice')).toContainText('Місце прибрано зі сцени.');
+  await expect(row(panel,'двір')).toContainText('Сцени: 2. Вечір');
+  await expect(row(panel,'двір')).not.toContainText('Ніч');
+  await expect(panel.getByRole('button',{name:/^Прибрати з/})).toHaveCount(0);
+});
