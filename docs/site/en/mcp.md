@@ -6,7 +6,7 @@ The link is `storygen-mcp`, a small program the chat client starts by itself. It
 
 ## What the chat can do
 
-The chat gets thirty-one tools:
+The chat gets thirty-two tools:
 
 - **story list** and **story overview**: scenes, their order and their state, in the same words as the scene list, plus the story's rating, target length and characters;
 - **new story**: a title, a language, a target length, the story mode and, optionally, an age rating;
@@ -34,6 +34,7 @@ The chat gets thirty-one tools:
 - **stage task**: the instructions and material for the scene brief, editing or memory — the same as an Obscura model would get;
 - **stage result**: the chat's answer to a stage task, which Obscura checks the same way as its own model's answer;
 - **run**: in an "Obscura writes" story, a preview and, with your consent in the chat, an Obscura model run of one scene stage, the book memory build or a publication card suggestion; in any story, an auditor check of a scene or of the whole book the same way;
+- **keep a scene's memory**: with your consent, the same as **Keep the earlier memory** in the panel below the text, when the prose changed but the memory's facts stayed the same; only for the prose and memory the chat has read;
 - **run status**: what is happening with a run now, its result, and cancelling a run the chat started;
 - **guide**: the steps of the Obscura skills for chat clients that do not have the skills installed (see [Obscura skills](#obscura-skills)).
 

@@ -80,3 +80,25 @@ def test_next_steps_suggests_memory_after_prose(tmp_path):
     steps = text(call(build_server(http), 'next_steps', {'scene_id': scene.id}))
     assert "get_stage_task(stage='memory')" in steps
     assert writes == []
+
+
+@pytest.mark.req('MEMORY-003')
+def test_chat_memory_claims_are_bound_to_the_scene(tmp_path):
+    """MEMORY-003-S09: the same chat memory from a new prose version of the scene keeps the claim IDs."""
+    from storygen.memory.journal import load_memory
+    EXTRA = chr(10) * 2 + 'За вікном стемніло.'  # a new paragraph after the quoted fragments
+    app, http, repo, story, scene = scene_with_prose(tmp_path)
+    server = build_server(http)
+
+    def memory_ids():
+        task = ok(call(server, 'get_stage_task', {'scene_id': scene.id, 'stage': 'memory'}))
+        saved = ok(call(server, 'save_stage_result', {'scene_id': scene.id, 'stage': 'memory',
+                                                      'task_fingerprint': task['task_fingerprint'], 'result': MEMORY}))
+        journal = load_memory(repo.read_text(saved['version_id']))
+        return journal.source_prose_ids[-1], [e.claim_id for e in journal.events if e.operation == 'add']
+    first_prose, first = memory_ids()
+    version = repo.save_version(story.id, scene.id, 'manual', PROSE + EXTRA, [])
+    repo.set_head(scene.id, 'prose', version.id, repo.get_scene(scene.id).revision)
+    second_prose, second = memory_ids()
+    assert first and (first_prose, second_prose) == (scene.heads['prose'], version.id)
+    assert second == first

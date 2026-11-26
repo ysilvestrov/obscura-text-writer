@@ -37,7 +37,14 @@ TOOLS = ('list_stories', 'get_story', 'get_scene_context', 'get_scene_text', 'im
          'create_story', 'get_templates', 'update_story', 'update_plan_preamble', 'add_scene', 'update_scene', 'open_ghost_mode',
          'get_publication', 'update_publication', 'add_signature', 'upload_cover', 'generate_cover', 'export_book',
          'get_settings', 'update_settings', 'apply_role_preset', 'get_stage_task', 'save_stage_result', 'start_run', 'get_run', 'get_guide',
-         'import_manuscript', 'get_characters', 'update_characters')
+         'import_manuscript', 'keep_scene_memory', 'get_characters', 'update_characters')
+# VALID-MEMORY: a memory link without a fingerprint has nothing to keep; the reason names the author's next step.
+KEEP_REFUSALS = {
+    'carry_pending': 'Пам’ять сцени переноситься на нову пам’ять попередньої сцени — дочекайтеся завершення переносу (get_story)',
+    'carry_failed': 'Пам’ять сцени не перенесено на нову пам’ять попередньої сцени, і рішення її не залишить — створіть нову пам’ять цієї сцени',
+    'discrepancy': 'Ревізор знайшов можливу розбіжність пам’яті з прозою: рішення ухвалює автор в Obscura (панель «Узгодженість сцени»)',
+    None: 'У сцени немає пам’яті й прози, яку можна залишити: спершу створіть пам’ять сцени',
+}
 MATERIALS = ('plan', 'brief', 'draft', 'prose', 'memory')
 STAGES = ('brief', 'edit', 'memory')
 RUN_ACTIONS = ('brief', 'draft', 'edit', 'memory', 'publication_suggest', 'audit', 'rebuild_memory')
@@ -845,6 +852,34 @@ def build_server(http: httpx.Client | None, client_name: str | None = None, *, c
             raise ToolError('Чернетку змінено після того, як її прочитали — прочитайте її знову (get_scene_text)')
         suffix = f'&draft={draft_version_id}' if draft_version_id else ''
         return {'url': f'{base()}/stories/{story_id}?scene={scene_id}&material=draft&ghost=1{suffix}', 'draft_version_id': head}
+
+    @server.tool()
+    def keep_scene_memory(story_id: str, scene_id: str, prose_version_id: str, memory_version_id: str) -> dict[str, Any]:
+        """Залишити чинну пам'ять сцени після зміни її прози — як «Залишити попередню пам'ять» у панелі «Узгодженість
+        сцени». Викликайте лише після згоди автора, коли ви звірили прозу з пам'яттю й записи пам'яті далі правдиві: рішення
+        записується як рішення автора. Пам'ять не перебудовується, тож наступна сцена не потребує перевірки цієї зміни.
+        prose_version_id і memory_version_id — version_id прочитаних прози й пам'яті (get_scene_text); якщо котрусь уже
+        змінено, нічого не записується. Грошей не коштує й працює в обох режимах твору. 409 — пам'ять переноситься або перенос
+        не зійшовся (тоді потрібна нова пам'ять сцени) чи зв'язок змінився: прочитайте сцену знову."""
+        identifier(story_id), identifier(scene_id), identifier(prose_version_id), identifier(memory_version_id)
+        data = request('GET', f'/api/stories/{story_id}')
+        scene = next((item for item in data.get('scenes') or [] if item.get('id') == scene_id), None)
+        if scene is None:
+            raise ToolError('Сцени немає в цьому творі: перевірте story_id і scene_id (get_story)')
+        heads = scene.get('heads') or {}
+        if heads.get('prose') != prose_version_id or heads.get('memory') != memory_version_id:
+            raise ToolError('Прозу чи пам’ять сцени змінено після того, як їх прочитали — прочитайте їх знову (get_scene_text)')
+        link = (((data.get('material_status') or {}).get(scene_id) or {}).get('links') or {}).get('memory') or {}
+        if link.get('status') == 'valid':
+            return {'memory': 'valid', 'validity': ((data.get('material_status') or {}).get(scene_id) or {}).get('validity')}
+        if link.get('status') == 'discrepancy':
+            # An auditor's discrepancy stays the author's decision in Obscura, like the stops of book validation.
+            raise ToolError(KEEP_REFUSALS['discrepancy'])
+        if not link.get('fingerprint') or link.get('status') != 'unchecked':
+            raise ToolError(KEEP_REFUSALS.get(link.get('reason'), KEEP_REFUSALS[None]))
+        result = request('POST', f'/api/scenes/{scene_id}/links/memory/decision',
+                         json={'action': 'approve', 'fingerprint': link['fingerprint']})
+        return {'memory': result['link']['status'], 'validity': result['validity']}
 
     def publication_view(card_response: dict, signatures: list[dict]) -> dict[str, Any]:
         card = {name: card_response['card'].get(name) for name in PUBLICATION_FIELDS}
