@@ -1,0 +1,833 @@
+[
+ {
+  "model": "deepseek/deepseek-v4-flash",
+  "book": "tini2",
+  "group_words": 5000,
+  "max_tokens": 16000,
+  "scenes": 17,
+  "groups": 4,
+  "errors": 0,
+  "retries": 0,
+  "cost_usd": 0.0183,
+  "max_completion_tokens": 14231,
+  "quotes": "23/29",
+  "bad_scene_ids": 0,
+  "bad_location_ids": 0,
+  "scenes_over_3_places": 0,
+  "scenes_with_places": "17/17",
+  "places_per_scene": 2.53,
+  "pairs_named": "38/43",
+  "locations": 18,
+  "locations_used": 18,
+  "protagonist": [
+   [
+    "Іван",
+    4.0
+   ],
+   [
+    "Палагна",
+    0.8
+   ]
+  ],
+  "places": {
+   "s1": [
+    {
+     "path": "Хата Палійчуків на кичері",
+     "suggested": true
+    },
+    {
+     "path": "Ліс",
+     "suggested": true
+    },
+    {
+     "path": "Грунь (верх гори)",
+     "suggested": true
+    }
+   ],
+   "s2": [
+    {
+     "path": "Ліс",
+     "suggested": true
+    },
+    {
+     "path": "Дорога між скелею і Черемошем",
+     "suggested": true
+    },
+    {
+     "path": "Біля воза",
+     "suggested": true
+    }
+   ],
+   "s3": [
+    {
+     "path": "Ліс",
+     "suggested": true
+    },
+    {
+     "path": "Потік",
+     "suggested": true
+    },
+    {
+     "path": "Царинка",
+     "suggested": true
+    }
+   ],
+   "s4": [
+    {
+     "path": "Ліс",
+     "suggested": true
+    },
+    {
+     "path": "Полонина",
+     "suggested": true
+    },
+    {
+     "path": "Стая",
+     "suggested": true
+    }
+   ],
+   "s5": [
+    {
+     "path": "Стая",
+     "suggested": true
+    },
+    {
+     "path": "Полонина",
+     "suggested": true
+    }
+   ],
+   "s6": [
+    {
+     "path": "Полонина",
+     "suggested": true
+    },
+    {
+     "path": "Ліс",
+     "suggested": true
+    },
+    {
+     "path": "Полонина / Кошари / Струнка",
+     "suggested": true
+    }
+   ],
+   "s7": [
+    {
+     "path": "Стая",
+     "suggested": true
+    },
+    {
+     "path": "Полонина",
+     "suggested": true
+    }
+   ],
+   "s8": [
+    {
+     "path": "Стая",
+     "suggested": true
+    },
+    {
+     "path": "Полонина",
+     "suggested": true
+    }
+   ],
+   "s9": [
+    {
+     "path": "Стая",
+     "suggested": true
+    },
+    {
+     "path": "Село на Черемоші",
+     "suggested": true
+    },
+    {
+     "path": "Іванова хата / Загорода",
+     "suggested": true
+    }
+   ],
+   "s10": [
+    {
+     "path": "Іванова хата / Загорода",
+     "suggested": true
+    },
+    {
+     "path": "Царинка",
+     "suggested": true
+    },
+    {
+     "path": "Полонина / Кошари / Струнка",
+     "suggested": false
+    }
+   ],
+   "s11": [
+    {
+     "path": "Іванова хата",
+     "suggested": true
+    },
+    {
+     "path": "Царинка",
+     "suggested": true
+    },
+    {
+     "path": "Ріка Черемош / Берег",
+     "suggested": false
+    }
+   ],
+   "s12": [
+    {
+     "path": "Іванова хата",
+     "suggested": false
+    },
+    {
+     "path": "Царинка / Ліс",
+     "suggested": true
+    },
+    {
+     "path": "Грунь / Чорногора",
+     "suggested": true
+    }
+   ],
+   "s13": [
+    {
+     "path": "Село на Черемоші",
+     "suggested": true
+    },
+    {
+     "path": "Ріка Черемош / Берег",
+     "suggested": false
+    },
+    {
+     "path": "Царинка / Ліс",
+     "suggested": true
+    }
+   ],
+   "s14": [
+    {
+     "path": "l2 / Полянка",
+     "suggested": true
+    }
+   ],
+   "s15": [
+    {
+     "path": "l2 / Полянка",
+     "suggested": true
+    },
+    {
+     "path": "Ліс",
+     "suggested": true
+    }
+   ],
+   "s16": [
+    {
+     "path": "Ліс",
+     "suggested": false
+    },
+    {
+     "path": "Іванова хата",
+     "suggested": true
+    }
+   ],
+   "s17": [
+    {
+     "path": "Іванова хата",
+     "suggested": true
+    },
+    {
+     "path": "l13 / Подвір'е",
+     "suggested": true
+    }
+   ]
+  },
+  "catalogue": {
+   "l1": "Хата Палійчуків на кичері",
+   "l2": "Ліс",
+   "l3": "Грунь (верх гори)",
+   "l4": "Дорога між скелею і Черемошем",
+   "l5": "Біля воза",
+   "l6": "Потік",
+   "l7": "Царинка",
+   "l8": "Полонина",
+   "l9": "Стая",
+   "l10": "Полонина / Кошари / Струнка",
+   "l11": "Село на Черемоші",
+   "l12": "Іванова хата / Загорода",
+   "l13": "Іванова хата",
+   "l14": "Ріка Черемош / Берег",
+   "l15": "Царинка / Ліс",
+   "l16": "Грунь / Чорногора",
+   "l17": "l2 / Полянка",
+   "l18": "l13 / Подвір'е"
+  },
+  "file": "out3-ds-tini.json"
+ },
+ {
+  "model": "google/gemma-4-31b-it",
+  "book": "tini2",
+  "group_words": 5000,
+  "max_tokens": 4096,
+  "scenes": 17,
+  "groups": 4,
+  "errors": 0,
+  "retries": 0,
+  "cost_usd": 0.00681,
+  "max_completion_tokens": 916,
+  "quotes": "24/26",
+  "bad_scene_ids": 0,
+  "bad_location_ids": 0,
+  "scenes_over_3_places": 1,
+  "scenes_with_places": "17/17",
+  "places_per_scene": 2.41,
+  "pairs_named": "36/41",
+  "locations": 19,
+  "locations_used": 19,
+  "protagonist": [
+   [
+    "Іван",
+    3.9
+   ],
+   [
+    "Марічка",
+    0.6
+   ],
+   [
+    "Палагна",
+    0.6
+   ]
+  ],
+  "places": {
+   "s1": [
+    {
+     "path": "Хата / Висока кичера",
+     "suggested": true
+    },
+    {
+     "path": "Ліс",
+     "suggested": true
+    },
+    {
+     "path": "Гори / Грунь",
+     "suggested": true
+    }
+   ],
+   "s2": [
+    {
+     "path": "Гори / Скелі",
+     "suggested": true
+    },
+    {
+     "path": "Ліс / Полянка",
+     "suggested": true
+    },
+    {
+     "path": "Дорога / Між скелею і Черемошем",
+     "suggested": true
+    }
+   ],
+   "s3": [
+    {
+     "path": "Ліс",
+     "suggested": true
+    },
+    {
+     "path": "Потік",
+     "suggested": true
+    }
+   ],
+   "s4": [
+    {
+     "path": "Ліс",
+     "suggested": true
+    },
+    {
+     "path": "Полонина / Стая",
+     "suggested": true
+    }
+   ],
+   "s5": [
+    {
+     "path": "l8 / Стая",
+     "suggested": true
+    },
+    {
+     "path": "l8 / Полонина",
+     "suggested": true
+    }
+   ],
+   "s6": [
+    {
+     "path": "l8 / Полонина",
+     "suggested": true
+    },
+    {
+     "path": "l8 / Долинка",
+     "suggested": true
+    },
+    {
+     "path": "Ліс",
+     "suggested": true
+    }
+   ],
+   "s7": [
+    {
+     "path": "l8 / Стая",
+     "suggested": true
+    },
+    {
+     "path": "l8 / Полонина",
+     "suggested": true
+    }
+   ],
+   "s8": [
+    {
+     "path": "l8 / Полонина",
+     "suggested": true
+    },
+    {
+     "path": "l8 / Стая",
+     "suggested": true
+    }
+   ],
+   "s9": [
+    {
+     "path": "l8 / Стая",
+     "suggested": true
+    },
+    {
+     "path": "l8 / Полонина",
+     "suggested": true
+    },
+    {
+     "path": "Дорога / Між скелею і Черемошем",
+     "suggested": true
+    }
+   ],
+   "s10": [
+    {
+     "path": "Хата / Висока кичера",
+     "suggested": true
+    },
+    {
+     "path": "l8 / Полонина",
+     "suggested": true
+    },
+    {
+     "path": "Ліс",
+     "suggested": true
+    }
+   ],
+   "s11": [
+    {
+     "path": "Хата / Висока кичера",
+     "suggested": false
+    },
+    {
+     "path": "l8 / Полонина",
+     "suggested": false
+    }
+   ],
+   "s12": [
+    {
+     "path": "Гори / Грунь",
+     "suggested": true
+    },
+    {
+     "path": "Ліс",
+     "suggested": true
+    },
+    {
+     "path": "l3 / Грунь",
+     "suggested": true
+    }
+   ],
+   "s13": [
+    {
+     "path": "Хата / Висока кичера",
+     "suggested": false
+    },
+    {
+     "path": "Коршма",
+     "suggested": true
+    },
+    {
+     "path": "l1 / Двір",
+     "suggested": true
+    }
+   ],
+   "s14": [
+    {
+     "path": "l2 / Царинка",
+     "suggested": false
+    },
+    {
+     "path": "l2 / Смеречки",
+     "suggested": false
+    },
+    {
+     "path": "Ліс / Полянка",
+     "suggested": true
+    }
+   ],
+   "s15": [
+    {
+     "path": "Ліс / Полянка",
+     "suggested": true
+    }
+   ],
+   "s16": [
+    {
+     "path": "l4 / Скелі",
+     "suggested": true
+    },
+    {
+     "path": "l1 / Хата",
+     "suggested": true
+    }
+   ],
+   "s17": [
+    {
+     "path": "l1 / Подвір'я",
+     "suggested": true
+    },
+    {
+     "path": "l1 / Хата",
+     "suggested": true
+    }
+   ]
+  },
+  "catalogue": {
+   "l1": "Хата / Висока кичера",
+   "l2": "Ліс",
+   "l3": "Гори / Грунь",
+   "l4": "Гори / Скелі",
+   "l5": "Ліс / Полянка",
+   "l6": "Дорога / Між скелею і Черемошем",
+   "l7": "Потік",
+   "l8": "Полонина / Стая",
+   "l9": "l8 / Стая",
+   "l10": "l8 / Полонина",
+   "l11": "l8 / Долинка",
+   "l12": "l3 / Грунь",
+   "l13": "Коршма",
+   "l14": "l1 / Двір",
+   "l15": "l2 / Царинка",
+   "l16": "l2 / Смеречки",
+   "l17": "l4 / Скелі",
+   "l18": "l1 / Хата",
+   "l19": "l1 / Подвір'я"
+  },
+  "file": "out3-gm-tini.json"
+ },
+ {
+  "model": "deepseek/deepseek-v4-flash",
+  "book": "inst",
+  "group_words": 5000,
+  "max_tokens": 16000,
+  "scenes": 13,
+  "groups": 3,
+  "errors": 1,
+  "retries": 1,
+  "cost_usd": 0.00575,
+  "max_completion_tokens": 972,
+  "quotes": "23/23",
+  "bad_scene_ids": 0,
+  "bad_location_ids": 0,
+  "scenes_over_3_places": 0,
+  "scenes_with_places": "9/13",
+  "places_per_scene": 1.67,
+  "pairs_named": "10/15",
+  "locations": 7,
+  "locations_used": 7,
+  "protagonist": [
+   [
+    "Устина",
+    2.0
+   ]
+  ],
+  "places": {
+   "s5": [
+    {
+     "path": "Дубці / Будинок",
+     "suggested": true
+    }
+   ],
+   "s6": [
+    {
+     "path": "Село / Дорога",
+     "suggested": true
+    },
+    {
+     "path": "Місто / Заїздний двір",
+     "suggested": true
+    },
+    {
+     "path": "Хутір / Будинок",
+     "suggested": true
+    }
+   ],
+   "s7": [
+    {
+     "path": "Хутір / Будинок",
+     "suggested": false
+    },
+    {
+     "path": "Хутір / Хата",
+     "suggested": true
+    }
+   ],
+   "s8": [
+    {
+     "path": "Хутір / Хата",
+     "suggested": true
+    },
+    {
+     "path": "Хутір / Будинок / Дівоча",
+     "suggested": true
+    }
+   ],
+   "s9": [
+    {
+     "path": "Дубці / Будинок",
+     "suggested": false
+    },
+    {
+     "path": "Село / Дорога",
+     "suggested": true
+    }
+   ],
+   "s10": [
+    {
+     "path": "Дубці / Будинок",
+     "suggested": false
+    }
+   ],
+   "s11": [
+    {
+     "path": "Дубці / Будинок",
+     "suggested": true
+    }
+   ],
+   "s12": [
+    {
+     "path": "Місто / Хата",
+     "suggested": true
+    }
+   ],
+   "s13": [
+    {
+     "path": "Хутір / Будинок",
+     "suggested": false
+    },
+    {
+     "path": "Місто / Хата",
+     "suggested": false
+    }
+   ]
+  },
+  "catalogue": {
+   "l1": "Дубці / Будинок",
+   "l2": "Село / Дорога",
+   "l3": "Місто / Заїздний двір",
+   "l4": "Хутір / Будинок",
+   "l5": "Хутір / Хата",
+   "l6": "Хутір / Будинок / Дівоча",
+   "l7": "Місто / Хата"
+  },
+  "file": "out3-ds-inst.json"
+ },
+ {
+  "model": "google/gemma-4-31b-it",
+  "book": "inst",
+  "group_words": 5000,
+  "max_tokens": 4096,
+  "scenes": 13,
+  "groups": 3,
+  "errors": 0,
+  "retries": 0,
+  "cost_usd": 0.0049,
+  "max_completion_tokens": 671,
+  "quotes": "26/26",
+  "bad_scene_ids": 5,
+  "bad_location_ids": 0,
+  "scenes_over_3_places": 0,
+  "scenes_with_places": "13/13",
+  "places_per_scene": 2.31,
+  "pairs_named": "18/30",
+  "locations": 11,
+  "locations_used": 11,
+  "protagonist": [
+   [
+    "Устина",
+    3.0
+   ],
+   [
+    "Панночка",
+    1.5
+   ],
+   [
+    "Прокіп",
+    0.8
+   ]
+  ],
+  "places": {
+   "s1": [
+    {
+     "path": "Двір / Дівоча",
+     "suggested": true
+    },
+    {
+     "path": "Степ / Поля",
+     "suggested": true
+    }
+   ],
+   "s2": [
+    {
+     "path": "Двір / Кімната",
+     "suggested": false
+    },
+    {
+     "path": "Двір / Куток",
+     "suggested": true
+    }
+   ],
+   "s3": [
+    {
+     "path": "Двір / Кімната",
+     "suggested": true
+    },
+    {
+     "path": "Двір / Сад",
+     "suggested": true
+    },
+    {
+     "path": "Хата",
+     "suggested": true
+    }
+   ],
+   "s4": [
+    {
+     "path": "Двір / Будинок",
+     "suggested": false
+    },
+    {
+     "path": "Двір / Кімната",
+     "suggested": false
+    }
+   ],
+   "s5": [
+    {
+     "path": "Двір / Кімната",
+     "suggested": true
+    },
+    {
+     "path": "Двір / Сад",
+     "suggested": true
+    }
+   ],
+   "s6": [
+    {
+     "path": "Степ / Поля",
+     "suggested": false
+    },
+    {
+     "path": "Місто / Заїздний двір",
+     "suggested": true
+    },
+    {
+     "path": "l7 / Будинок",
+     "suggested": true
+    }
+   ],
+   "s7": [
+    {
+     "path": "l7 / Будинок",
+     "suggested": false
+    },
+    {
+     "path": "l7 / Дівоча",
+     "suggested": true
+    },
+    {
+     "path": "Хата",
+     "suggested": true
+    }
+   ],
+   "s8": [
+    {
+     "path": "Хата",
+     "suggested": true
+    },
+    {
+     "path": "l7 / Дівоча",
+     "suggested": true
+    },
+    {
+     "path": "l7 / Двір",
+     "suggested": true
+    }
+   ],
+   "s9": [
+    {
+     "path": "l7 / Двір",
+     "suggested": false
+    },
+    {
+     "path": "l7 / Дівоча",
+     "suggested": false
+    }
+   ],
+   "s10": [
+    {
+     "path": "l7 / Двір",
+     "suggested": true
+    }
+   ],
+   "s11": [
+    {
+     "path": "l7 / Будинок",
+     "suggested": true
+    },
+    {
+     "path": "Двір / Кімната",
+     "suggested": false
+    }
+   ],
+   "s12": [
+    {
+     "path": "l7 / Двір",
+     "suggested": true
+    },
+    {
+     "path": "Двір / Кімната",
+     "suggested": false
+    }
+   ],
+   "s13": [
+    {
+     "path": "Двір / Сад",
+     "suggested": false
+    },
+    {
+     "path": "l7 / Двір",
+     "suggested": false
+    },
+    {
+     "path": "Хата",
+     "suggested": false
+    }
+   ]
+  },
+  "catalogue": {
+   "l1": "Двір / Дівоча",
+   "l2": "Степ / Поля",
+   "l3": "Двір / Кімната",
+   "l4": "Двір / Куток",
+   "l5": "Двір / Сад",
+   "l6": "Хата",
+   "l7": "Двір / Будинок",
+   "l8": "Місто / Заїздний двір",
+   "l9": "l7 / Будинок",
+   "l10": "l7 / Дівоча",
+   "l11": "l7 / Двір"
+  },
+  "file": "out3-gm-inst.json"
+ }
+]
