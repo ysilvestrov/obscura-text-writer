@@ -526,7 +526,8 @@ class RunCoordinator:
 
     def _failure_message(self,run,exc):
         from ..providers.policy import ModelPolicyBlocked
-        if isinstance(exc,(ContextOverflow,ModelPolicyBlocked)):  # MODEL-003/MODEL-004: the author sees why the call is blocked.
+        from ..writing_mode import AuthorWritesBlocked
+        if isinstance(exc,(ContextOverflow,ModelPolicyBlocked,AuthorWritesBlocked)):  # MODEL-003/MODEL-004: the author sees why the call is blocked.
             return str(exc)
         task=run.tasks[run.cursor] if run.cursor<len(run.tasks) else None
         if task and task.get('stage') in {'publication_suggest','timeline_summary'}:

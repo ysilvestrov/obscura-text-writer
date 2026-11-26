@@ -32,6 +32,10 @@ def execute_stage(
         check_refusal(repo,policy_role,provider,policy_rating)
         if provider.provider!='venice':  # Venice checks consent against its catalog in the gateway.
             check_consent(repo,policy_role,provider,policy_rating,None)
+    from ..writing_mode import AUTHOR_WRITES, PROSE_STAGES, AuthorWritesBlocked, is_author
+    # WRITING-MODE-S06 (R-49): no model and no chat answer writes prose in a «Пишу сам» story — whatever the bridge header.
+    if stage in PROSE_STAGES and is_author(repo,context.story_id):
+        raise AuthorWritesBlocked(AUTHOR_WRITES)
     id=new_id()
     attempt=StageAttempt(
         id=id,
@@ -85,6 +89,12 @@ def execute_stage(
             attempt.context['publication_failure']={'category':attempt.state if cancel.is_set() else 'technical','message':attempt.error}
         repo.save_attempt(attempt)
         raise
+    if stage in PROSE_STAGES and is_author(repo,context.story_id):
+        # The author switched while the response streamed: the call is paid, but no prose version is created (І1).
+        attempt.state='failed'
+        attempt.error=AUTHOR_WRITES
+        repo.save_attempt(attempt)
+        raise AuthorWritesBlocked(AUTHOR_WRITES)
     text=''.join(parts)
     from . import broken_text
     guard=broken_text.stage_category(stage,context.settings.edit_mode)
