@@ -4168,7 +4168,10 @@
         "tests/generation/test_extract_context.py::test_output_limit_capped_by_context",
         "tests/characters/test_extract_plan.py::test_fingerprint_changes_with_location_cards_and_merges",
         "tests/generation/test_extract_run.py::test_run_proposes_places_with_a_growing_location_catalogue",
-        "tests/generation/test_extract_run.py::test_old_checkpoint_without_locations_resumes_with_the_book_catalogue"
+        "tests/generation/test_extract_run.py::test_old_checkpoint_without_locations_resumes_with_the_book_catalogue",
+        "tests/characters/test_extract_locations.py::test_a_part_repeating_any_part_before_it_drops",
+        "tests/characters/test_extract_locations.py::test_a_five_letter_word_matches_its_locative_form",
+        "tests/generation/test_extract_run.py::test_a_path_of_a_merged_card_is_not_shown_as_new"
       ]
     },
     {
@@ -5831,7 +5834,8 @@
         "tests/generation/test_location_context.py::test_location_line_change_stales_memory",
         "tests/storage/test_story_locations.py::test_plan_rule_keeps_model_places",
         "tests/storage/test_story_locations.py::test_cards_sync_keeps_model_places",
-        "tests/storage/test_story_locations.py::test_an_old_scene_reads_as_plan_source"
+        "tests/storage/test_story_locations.py::test_an_old_scene_reads_as_plan_source",
+        "tests/storage/test_story_locations.py::test_plan_source_stays_out_of_the_payload"
       ]
     },
     {

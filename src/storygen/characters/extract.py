@@ -359,8 +359,9 @@ def _key(path: str) -> str:
 
 
 def _paths(item: str, numbers: Mapping[str, CatalogueLocation]) -> list[tuple[str, ...]]:
-    """The places one answer element names (spec 2, 3.3): a part that is a catalogue id becomes that card's path, a part
-    repeating the last part before it is dropped, and a path with an unknown id is dropped whole."""
+    """The places one answer element names (spec 2, 3.3, amendment 1): a part that is a catalogue id becomes that card's
+    path, a part repeating any part before it is dropped («l8 / Полонина» with l8 «Полонина / Стая» is l8), and a path
+    with an unknown id is dropped whole."""
     found = []
     for parts in parse_locations(item):
         expanded: list[str] = []
@@ -371,23 +372,28 @@ def _paths(item: str, numbers: Mapping[str, CatalogueLocation]) -> list[tuple[st
                 if location is None:
                     expanded = []
                     break
-                expanded += [piece.strip() for piece in location.path.split('/') if piece.strip()]
-            elif not expanded or normalize([part]) != normalize([expanded[-1]]):
-                expanded.append(part)
+                pieces = [piece.strip() for piece in location.path.split('/') if piece.strip()]
+            else:
+                pieces = [part]
+            for piece in pieces:
+                if all(normalize([piece]) != normalize([known]) for known in expanded):
+                    expanded.append(piece)
         if expanded:
             found.append(tuple(expanded))
     return found
 
 
 def _named(path: str, words: set[str]) -> bool:
-    """Spec 2, 3.3: a word of the last part of the path is in the prose by the mention rule; a four-letter word also by
-    its stem without the last letter, only against words at most two letters longer than that stem."""
+    """Spec 2, 3.3 (amendment 1, as probe 3 measured): a word of the last part of the path is in the prose by the mention
+    rule; a four-letter stem (a word of four or five letters) also without its last letter, only against words at most
+    two letters longer than that shorter stem («Річка» finds «річці», «Стая» does not find «стариня»)."""
     last = path.split('/')[-1]
-    if any(word.startswith(stem) for stem in name_stems(last) for word in words):
+    stems = name_stems(last)
+    if any(word.startswith(stem) for stem in stems for word in words):
         return True
-    for word in _norm(last).replace(',', ' ').split():
-        if len(word) == 4:
-            short = word[:-1]
+    for stem in stems:
+        if len(stem) == 4:
+            short = stem[:-1]
             if any(known.startswith(short) and len(known) <= len(short) + 2 for known in words):
                 return True
     return False

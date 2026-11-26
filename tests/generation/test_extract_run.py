@@ -463,3 +463,16 @@ def test_old_checkpoint_without_locations_resumes_with_the_book_catalogue(tmp_pa
     assert run.state == 'completed', run.error
     assert 'Каталог локацій:\nl1: Хата' in gateway.contexts[1].user_text
     assert proposal(run)['locations'] == []
+
+
+@pytest.mark.req('CHARACTER-EXTRACT')
+def test_a_path_of_a_merged_card_is_not_shown_as_new(tmp_path):
+    repo, story, scenes = written_book(tmp_path, [prose(600, 'Оля сиділа в хатині.')], memory_role=local_role())
+    with repo.write_transaction() as db:
+        hut, hovel = store.ensure_locations(db, story.id, [('Хата',), ('Хатина',)])
+        store.merge_location(db, story.id, hovel, hut)
+    gateway = Script(json.dumps({'scenes': [{'scene': 's1', 'locations': ['Хатина']}]}, ensure_ascii=False))
+    worker, run = start(repo, story, gateway)
+    result = proposal(drive(worker, run.id))
+    assert 'Хатина' not in gateway.contexts[0].user_text  # a merged card is not in the catalogue
+    assert result['locations'][0]['places'] == [{'ref': 'newloc1', 'path': 'Хатина', 'new': False, 'suggested': True}]

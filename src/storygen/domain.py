@@ -138,7 +138,9 @@ class Scene(SceneCreate):
     # MEMORY-LOCATIONS: the scene's location cards, in order. `plan`: the «Локація:» line of the plan, set by
     # apply_description; `model`: places accepted from a CHARACTER-EXTRACT proposal, kept while the plan names no place.
     location_ids: list[str] = Field(default_factory=list)
-    location_source: Literal['plan','model'] = 'plan'
+    # The default stays out of the payload: an older build forbids unknown fields and still reads every scene without
+    # model places.
+    location_source: Literal['plan','model'] = Field(default='plan', exclude_if=lambda value: value=='plan')
 
 
 VersionKind = Literal["source_plan","source_characters","character_cards","scene_plan","canon","style","prompt","brief","draft","edited","manual","memory","evaluation","timeline_summary","memory_merge","series_start"]

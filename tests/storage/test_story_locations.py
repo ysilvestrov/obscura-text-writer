@@ -179,3 +179,16 @@ def test_an_old_scene_reads_as_plan_source(tmp_path):
         db.execute('UPDATE scenes SET payload=? WHERE id=?',(json.dumps(row,ensure_ascii=False),scene.id))
     repo.db.bump_generation()
     assert repo.get_scene(scene.id).location_source=='plan'
+
+
+@pytest.mark.req('MEMORY-LOCATIONS')
+def test_plan_source_stays_out_of_the_payload(tmp_path):
+    # An older build forbids unknown scene fields: only a scene with model places carries the new field.
+    repo,story,scene=make(tmp_path)
+    with repo.db.connection() as db:
+        row=json.loads(db.execute('SELECT payload FROM scenes WHERE id=?',(scene.id,)).fetchone()[0])
+    assert 'location_source' not in row
+    with repo.db.connection() as db:store.ensure_locations(db,story.id,[('Дім',)])
+    set_model_places(repo,scene.id,[lid(story,'Дім')])
+    saved=repo.update_scene_plan(scene.id,'Дії: тиша.',repo.get_scene(scene.id).revision)
+    assert json.loads(saved.model_dump_json())['location_source']=='model'

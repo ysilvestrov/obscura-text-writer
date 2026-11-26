@@ -108,3 +108,19 @@ def test_finalize_compares_places_by_canonical_card():
     result = finalize(st, {'sc1': meta('sc1', locations=['loc_m'])}, False, place_ids=ids)
     assert result['locations'] == [{'scene_id': 'sc1', 'mode': 'add', 'places': [
         {'ref': 'newloc2', 'path': 'Ліс', 'new': True, 'suggested': True}]}]
+
+
+@pytest.mark.req('CHARACTER-EXTRACT')
+def test_a_part_repeating_any_part_before_it_drops():
+    st = run(state(POLONYNA, STAIA), '[{"scene":"s1","locations":["l2 / Полонина","Полонина / l2"]}]')
+    assert places(st, 'sc1') == [('Полонина / Стая', True)]  # probe 3: gemma wrote «l8 / Полонина»
+    assert len(st.locations) == 2
+
+
+@pytest.mark.req('CHARACTER-EXTRACT')
+def test_a_five_letter_word_matches_its_locative_form():
+    prose = [SceneProse('sc1', 'v1', 'Вони сиділи біля річці, а в хатці світилося.')]
+    card_numbers, scene_numbers = short_ids(state(), ['sc1'])
+    st = apply_group(state(), parse_extract('{"scenes":[{"scene":"s1","locations":["Річка","Хатка"]}]}'), prose,
+                     scene_numbers=scene_numbers, card_numbers=card_numbers)
+    assert places(st, 'sc1') == [('Річка', True), ('Хатка', True)]  # stems of four letters, as probe 3 measured

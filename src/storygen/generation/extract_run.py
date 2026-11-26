@@ -148,6 +148,12 @@ def publish(repo, run, partial: bool, exhausted: bool = False) -> dict:
     except (ValueError, KeyError, OSError):
         cards = []
     proposal = finalize(state, meta, _has_author_protagonist(cards), place_ids)
+    # «new»: accepting the place creates a card; a path of a merged card or of a card made during the run creates none.
+    card_of = {item.ref: item.ref if item.existing else location_id(run.story_id, normalize(item.path.split('/')))
+               for item in state.locations}
+    for item in proposal['locations']:
+        for place in item['places']:
+            place['new'] = card_of[place['ref']] not in view.locations
     proposal.update(
         source={'scenes': {scene_id: checkpoint['source'][scene_id] for scene_id in read},
                 'start_cards_version_id': checkpoint['start_cards_version_id'], 'group_words': checkpoint['group_words'],
