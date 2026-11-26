@@ -1,8 +1,11 @@
-"""CHARACTER-EXTRACT (R-51): pure logic of finding characters in prose by a model; no IO, no provider calls.
+"""CHARACTER-EXTRACT (R-51): pure logic of finding characters and places of scenes in prose by a model; no IO, no
+provider calls.
 
-The runner (a later task) reads scenes in groups, shows the model short ids (`s<N>` scenes, `c<N>` catalogue cards) and
-feeds every answer through `parse_extract` and `apply_group`; `finalize` turns the running state into the proposal."""
+The runner reads scenes in groups, shows the model short ids (`s<N>` scenes, `c<N>` catalogue cards, `l<N>` catalogue
+locations) and feeds every answer through `parse_extract` and `apply_group`; `finalize` turns the running state into the
+proposal."""
 import json
+import re
 import unicodedata
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
@@ -10,7 +13,8 @@ from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, field_validator
 
-from ..memory.selection import MentionIndex, name_stems
+from ..locations import normalize, parse_locations
+from ..memory.selection import _WORD, _norm, MentionIndex, name_stems
 from ..model_json import unwrap_model_json
 from ..scene_description import name_key
 
@@ -22,6 +26,8 @@ EXTRACT_REFUSED = ("Модель ролі «Пам'ять» відмовилас
                    'пошук персонажів')
 PROTAGONIST_THRESHOLD = 1.0
 PROTAGONIST_CANDIDATES = 3
+SCENE_PLACES = 3  # spec 2, 3.2: at most three places a scene, in the order of the action
+PLACE_CHARS = 120
 
 _DASHES = frozenset('‐‑‒–—―−')
 _APOSTROPHES = frozenset("’ʼ'`")
@@ -152,6 +158,12 @@ class CardUpdate(_Part):
 class SceneCast(_Part):
     scene: str
     participants: list[str] = Field(default_factory=list)
+    locations: list[str] = Field(default_factory=list)  # `l<N>` or a new path; optional, so older answers stay valid
+
+    @field_validator('locations', mode='before')
+    @classmethod
+    def _trim_locations(cls, value):
+        return _fitting(value, 1, PLACE_CHARS, SCENE_PLACES)
 
 
 class Candidate(_Part):
@@ -251,8 +263,21 @@ class CatalogueCard(BaseModel):
     first_scene_id: str | None = None
 
 
+class CatalogueLocation(BaseModel):
+    ref: str  # the id of a location card, or `newloc<N>` of a place found in this run
+    path: str
+    existing: bool = False
+
+
+class SceneLocation(BaseModel):
+    ref: str
+    suggested: bool = True  # the last part of the path is named in the prose of this scene
+
+
 class ExtractState(BaseModel):
     catalogue: list[CatalogueCard] = Field(default_factory=list)
+    locations: list[CatalogueLocation] = Field(default_factory=list)
+    scene_locations: dict[str, list[SceneLocation]] = Field(default_factory=dict)  # the last places of every scene read
     casts: dict[str, list[str]] = Field(default_factory=dict)
     scores: dict[str, float] = Field(default_factory=dict)
     skipped: list[tuple[str, str]] = Field(default_factory=list)
@@ -266,6 +291,9 @@ class SceneMeta:
     scene_id: str
     cast_eligible: bool  # manual prose and no participants line in the plan
     cast: list[str]  # card ids in the scene cast now
+    # Spec 2, 4.1: manual prose, no place in the plan, and places from the model or none at all.
+    location_eligible: bool = False
+    locations: tuple[str, ...] | list[str] = ()  # canonical location card ids of the scene now
 
 
 def _others(card: CatalogueCard) -> list[str]:
@@ -277,6 +305,12 @@ def _others(card: CatalogueCard) -> list[str]:
 
 
 CATALOGUE_LABELS = {'uk': ('інші імена', '(порожньо)'), 'en': ('other names', '(empty)')}
+
+
+def location_text(state: ExtractState, language: str) -> str:
+    """The location catalogue the model sees: `l<N>: path` in catalogue order."""
+    empty = CATALOGUE_LABELS.get(language, CATALOGUE_LABELS['uk'])[1]
+    return '\n'.join(f'l{number}: {location.path}' for number, location in enumerate(state.locations, 1)) or empty
 
 
 def catalogue_text(state: ExtractState, language: str) -> str:
@@ -315,6 +349,77 @@ def _add_names(state: ExtractState, card: CatalogueCard, names, index: MentionIn
             continue  # known to a card (this one included) or absent from the prose of the group
         card.names.append(name)
         card.added_names.append(NameChoice(name=name, suggested=not name[:1].islower()))
+
+
+_CATALOGUE_ID = re.compile(r'l(\d+)', re.IGNORECASE)
+
+
+def _key(path: str) -> str:
+    return normalize(path.split('/'))
+
+
+def _paths(item: str, numbers: Mapping[str, CatalogueLocation]) -> list[tuple[str, ...]]:
+    """The places one answer element names (spec 2, 3.3): a part that is a catalogue id becomes that card's path, a part
+    repeating the last part before it is dropped, and a path with an unknown id is dropped whole."""
+    found = []
+    for parts in parse_locations(item):
+        expanded: list[str] = []
+        for part in parts:
+            match = _CATALOGUE_ID.fullmatch(part)
+            if match:
+                location = numbers.get(f'l{int(match.group(1))}')
+                if location is None:
+                    expanded = []
+                    break
+                expanded += [piece.strip() for piece in location.path.split('/') if piece.strip()]
+            elif not expanded or normalize([part]) != normalize([expanded[-1]]):
+                expanded.append(part)
+        if expanded:
+            found.append(tuple(expanded))
+    return found
+
+
+def _named(path: str, words: set[str]) -> bool:
+    """Spec 2, 3.3: a word of the last part of the path is in the prose by the mention rule; a four-letter word also by
+    its stem without the last letter, only against words at most two letters longer than that stem."""
+    last = path.split('/')[-1]
+    if any(word.startswith(stem) for stem in name_stems(last) for word in words):
+        return True
+    for word in _norm(last).replace(',', ' ').split():
+        if len(word) == 4:
+            short = word[:-1]
+            if any(known.startswith(short) and len(known) <= len(short) + 2 for known in words):
+                return True
+    return False
+
+
+def _apply_locations(state: ExtractState, response: ExtractResponse, group: list[SceneProse],
+                     scene_numbers: Mapping[str, str]) -> None:
+    numbers = {f'l{number}': location for number, location in enumerate(state.locations, 1)}  # as the model saw them
+    by_key = {_key(location.path): location for location in state.locations}
+    words = {scene.scene_id: set(_WORD.findall(_norm(scene.text))) for scene in group}
+    seen: set[str] = set()
+    for item in response.scenes:
+        scene_id = scene_numbers.get(item.scene)
+        if scene_id not in words:
+            continue
+        if scene_id not in seen:  # the answer's places replace what an earlier reading left
+            seen.add(scene_id)
+            state.scene_locations[scene_id] = []
+        chosen = state.scene_locations[scene_id]
+        for element in item.locations:
+            for parts in _paths(element, numbers):
+                if len(chosen) >= SCENE_PLACES:
+                    break
+                key = normalize(parts)
+                location = by_key.get(key)
+                if location is None:
+                    location = CatalogueLocation(ref=f'newloc{1 + sum(not known.existing for known in state.locations)}',
+                                                 path=' / '.join(parts))
+                    state.locations.append(location)
+                    by_key[key] = location
+                if all(known.ref != location.ref for known in chosen):
+                    chosen.append(SceneLocation(ref=location.ref, suggested=_named(location.path, words[scene_id])))
 
 
 def apply_group(state: ExtractState, response: ExtractResponse, group: list[SceneProse], *,
@@ -374,14 +479,39 @@ def apply_group(state: ExtractState, response: ExtractResponse, group: list[Scen
             best[ref] = max(best.get(ref, 0.0), candidate.score)
     for ref, score in best.items():
         result.scores[ref] = result.scores.get(ref, 0.0) + score
+    _apply_locations(result, response, group, scene_numbers)
     result.groups_done += 1
     return result
 
 
 # ---------------------------------------------------------------- proposal
 
-def finalize(state: ExtractState, scenes_meta: Mapping[str, SceneMeta], has_author_protagonist: bool) -> dict:
-    """The proposal of CHARACTER-EXTRACT (spec 4.1) without `source`, `fingerprint`, `partial` and `cost_usd`."""
+def _locations(state: ExtractState, scenes_meta: Mapping[str, SceneMeta], place_ids: Mapping[str, str]) -> list[dict]:
+    """Spec 2, 4.1: the places of every eligible scene that it does not hold yet, compared by canonical card."""
+    by_ref = {location.ref: location for location in state.locations}
+    result = []
+    for scene_id in state.scene_order:
+        meta = scenes_meta.get(scene_id)
+        if meta is None or not meta.location_eligible:
+            continue
+        held, places = set(meta.locations), []
+        for item in state.scene_locations.get(scene_id, []):
+            location = by_ref.get(item.ref)
+            card = place_ids.get(item.ref, item.ref)
+            if location is None or card in held:
+                continue
+            held.add(card)
+            places.append({'ref': location.ref, 'path': location.path, 'new': not location.existing,
+                           'suggested': item.suggested})
+        if places:
+            result.append({'scene_id': scene_id, 'mode': 'add' if meta.locations else 'set', 'places': places})
+    return result
+
+
+def finalize(state: ExtractState, scenes_meta: Mapping[str, SceneMeta], has_author_protagonist: bool,
+             place_ids: Mapping[str, str] | None = None) -> dict:
+    """The proposal of CHARACTER-EXTRACT (spec 4.1) without `source`, `fingerprint`, `partial` and `cost_usd`.
+    `place_ids` maps a catalogue location ref to the canonical card it stands for (the ref itself by default)."""
     names = lambda card: [item.model_dump() for item in card.added_names]
     cards = [{'key': card.ref, 'name': card.name, 'other_names': names(card),
               'quotes': [quote.model_dump() for quote in card.quotes], 'first_scene_id': card.first_scene_id}
@@ -404,5 +534,6 @@ def finalize(state: ExtractState, scenes_meta: Mapping[str, SceneMeta], has_auth
         if missing:
             casts.append({'scene_id': scene_id, 'mode': 'add' if meta.cast else 'set', 'participants': missing})
     return {'cards': cards, 'name_updates': name_updates, 'protagonist': protagonist, 'casts': casts,
+            'locations': _locations(state, scenes_meta, place_ids or {}),
             'skipped_scenes': [{'scene_id': scene_id, 'reason': reason} for scene_id, reason in state.skipped],
             'calls': state.calls}
