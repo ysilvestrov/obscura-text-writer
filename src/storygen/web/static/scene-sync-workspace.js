@@ -13,7 +13,9 @@ let lastKind=null;
 
 async function check(){
   if(!state.view||!state.storyId)return;
-  const {scenes}=await api(`/api/stories/${encodeURIComponent(state.storyId)}/scene-revisions`,{fresh:true});
+  const {scenes,writing_mode}=await api(`/api/stories/${encodeURIComponent(state.storyId)}/scene-revisions`,{fresh:true});
+  // R-49: a mode switch changes only the story revision; the workspace redraws its actions for the new mode.
+  if(writing_mode&&writing_mode!==state.view.story?.writing_mode){await refresh({fresh:true});return}
   const result=revisionsChanged(state.view.scenes,scenes,state.scene);
   // A view refreshed by the author's own action can be current while the buffer is still behind: notice that once.
   if(!result.changed&&(state.externalChange||!(result.currentChanged||result.currentGone)))return;

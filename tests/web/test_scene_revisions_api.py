@@ -16,7 +16,7 @@ def test_scene_revisions_follow_the_story_view(tmp_path):
     with TestClient(app, base_url='http://127.0.0.1:8765') as client:
         story = client.post('/api/stories', json={'title': 'Твір'}).json()
         url = f'/api/stories/{story["id"]}/scene-revisions'
-        assert client.get(url).json() == {'scenes': {}}
+        assert client.get(url).json() == {'scenes': {}, 'writing_mode': 'chat'}
         first = client.post(f'/api/stories/{story["id"]}/scenes', json={'title': 'Перша'}).json()
         second = client.post(f'/api/stories/{story["id"]}/scenes', json={'title': 'Друга'}).json()
         assert client.get(url).json()['scenes'] == _view_revisions(client, story['id'])
@@ -49,3 +49,13 @@ def test_scene_revisions_read_old_payloads_without_revision_as_zero(tmp_path):
         with app.state.repo.db.connection() as db:
             db.execute("UPDATE scenes SET payload=json_remove(payload,'$.revision') WHERE id=?", (scene['id'],))
         assert client.get(f'/api/stories/{story["id"]}/scene-revisions').json()['scenes'] == _view_revisions(client, story['id']) == {scene['id']: 0}
+
+
+@pytest.mark.req('WRITING-MODE')
+def test_scene_revisions_carry_the_writing_mode(tmp_path):
+    """R-49: a mode switch changes only the story revision; the workspace learns it from the same light poll."""
+    app = create_app(AppSettings(data_dir=tmp_path))
+    with TestClient(app, base_url='http://127.0.0.1:8765') as client:
+        story = client.post('/api/stories', json={'title': 'Твір'}).json()
+        client.put(f'/api/stories/{story["id"]}/writing-mode', json={'writing_mode': 'author', 'expected_revision': story['revision']})
+        assert client.get(f'/api/stories/{story["id"]}/scene-revisions').json()['writing_mode'] == 'author'
