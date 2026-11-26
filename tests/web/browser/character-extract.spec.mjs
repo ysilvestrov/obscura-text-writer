@@ -1,6 +1,6 @@
 import {test,expect} from '../../../frontend/browser-test.mjs';
 
-// R-51 «Знайти персонажів у прозі» on the characters page (CHARACTER-EXTRACT §6): the dialog previews the plan and starts
+// R-51 «Знайти персонажів і місця у прозі» on the characters page (CHARACTER-EXTRACT §6): the dialog previews the plan and starts
 // the search with its fingerprint; the run row pauses, resumes and stops it; a finished search leaves a proposal whose
 // items are chosen one by one, the stale memory is asked with a dry run, and only «Прийняти вибране» writes.
 // Neutral pier-lighthouse book.
@@ -134,6 +134,19 @@ test('the proposal is chosen item by item; the dry run says what goes stale; «�
   await expect(proposal.getByRole('checkbox',{name:'Оленка'})).toBeChecked();
   await expect(proposal.getByRole('checkbox',{name:'Позначити «Олена» головним героєм'})).toBeChecked();
   await expect(proposal).toContainText('«Марко махнув їй з човна» — 1. Пірс');
+  // A new card in a cast reads by its name, not by its proposal key.
+  await expect(proposal).toContainText('1. Пірс — склад: Олена, Марко');
+  // Scene places (spec 2 §5): after the casts, new ones marked «нова»; a place the prose does not name starts unchosen.
+  const places=proposal.locator('.character-proposal-group').last();
+  await expect(places.locator('h3')).toHaveText('Місця сцен (2)');
+  await expect(places.getByRole('checkbox',{name:'Пірс нова',exact:true})).toBeChecked();
+  await expect(places.getByRole('checkbox',{name:'Маяк / ліхтарна нова',exact:true})).not.toBeChecked();
+  await expect(places.getByRole('checkbox',{name:'Маяк нова',exact:true})).toBeChecked();
+  await places.getByRole('button',{name:/^Зняти все: Місця сцен/}).click();
+  await expect(places.getByRole('checkbox',{name:'Пірс нова',exact:true})).not.toBeChecked();
+  await proposal.getByRole('button',{name:/^Вибрати все: Місця сцен/}).click();
+  await expect(places.getByRole('checkbox',{name:'Маяк / ліхтарна нова',exact:true})).toBeChecked();
+  await places.getByRole('checkbox',{name:'Маяк / ліхтарна нова',exact:true}).uncheck();
   await expect(page.locator('#character-proposal-stale')).toHaveText('Пам\'ять жодної сцени не застаріє');
   await noHorizontalScroll(page);
   const none=proposal.getByRole('button',{name:/^Зняти все: Нові імена/});
@@ -174,15 +187,33 @@ test('the proposal is chosen item by item; the dry run says what goes stale; «�
   await page.unroute(/character-proposal\/accept$/);
   await page.locator('#character-proposal-accept').click();
   const result=page.locator('#character-proposal-result');
-  await expect(result).toContainText('Прийнято пунктів: 3, пропущено: 1');
+  await expect(result).toContainText('Прийнято пунктів: 5, пропущено: 1');
   await expect(result).toContainText('2. Шторм — немає кого додати до складу');
   await expect(page.locator('#character-proposal-accept')).toHaveCount(0);
   const cards=(await(await request.get(`/api/stories/${fixture.story_id}/characters`)).json()).cards;
   expect(cards.map(card=>card.name)).toEqual(['Олена']);
   expect(cards[0].entries.map(entry=>entry.text)).toEqual(expect.arrayContaining(['Інше ім\'я: Оленка','Головний герой']));
   expect((await request.get(`/api/stories/${fixture.story_id}/character-proposal`)).status()).toBe(404);
+  // The chosen places became location cards of their scenes; the unchosen one did not.
+  const locations=(await(await request.get(`/api/stories/${fixture.story_id}/locations`)).json()).locations;
+  expect(locations.map(card=>[card.path,card.scenes.map(scene=>[scene.title,scene.source])])).toEqual([['Пірс',[['Пірс','model']]],['Маяк',[['Шторм','model']]]]);
   // The card editor shows the written entries with the model's origin.
   await expect.poll(()=>page.locator('.character-editor fieldset textarea').evaluateAll(nodes=>nodes.map(node=>node.value))).toContain('Головний герой');
+});
+
+test('a proposal with only places is shown and accepted',async({page,request})=>{
+  // CHARACTER-EXTRACT-S14: no cards, names, main character or casts — the places alone are a proposal.
+  const fixture=await seed(request,'?proposal=true&places_only=true');
+  await page.goto(`/stories/${fixture.story_id}/characters`);
+  const proposal=page.locator('#character-proposal');
+  await expect(proposal.locator('.character-proposal-group')).toHaveCount(1);
+  await expect(proposal.locator('h3').last()).toHaveText('Місця сцен (2)');
+  await expect(proposal).not.toContainText('Пошук нічого не запропонував');
+  await expect(page.locator('#character-proposal-accept')).toBeEnabled();
+  await page.locator('#character-proposal-accept').click();
+  await expect(page.locator('#character-proposal-result')).toContainText('Прийнято пунктів: 2, пропущено: 0');
+  const locations=(await(await request.get(`/api/stories/${fixture.story_id}/locations`)).json()).locations;
+  expect(locations.map(card=>card.path)).toEqual(['Пірс','Маяк']);
 });
 
 test('a proposal superseded meanwhile is refused (409) and nothing is written',async({page,request})=>{

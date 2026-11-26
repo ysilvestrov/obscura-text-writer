@@ -100,6 +100,29 @@ def apply_places_in_transaction(repo, db, story_id: str, items) -> tuple[dict[st
     return outcome,[id for id in load_locations(db,story_id) if id not in before]
 
 
+def remove_scene_place(repo, db, story_id: str, id: str, scene_id: str):
+    """MEMORY-LOCATIONS-S08: the author removes a place a model gave the scene (R-51, spec 2, amendment 2), on the
+    transaction of `change_locations`, which moves the story revision. Every scene id whose card leads to the same
+    canonical card goes; a scene left without places reads as `plan` again. A place from the plan line is changed in
+    the plan."""
+    from ..domain import Scene
+    from .scene_metadata import stale_scene_material
+    cards=load_locations(db,story_id)
+    if id not in cards:raise ValueError('Невідома локація')
+    row=db.execute('SELECT payload FROM scenes WHERE id=? AND story_id=?',(scene_id,story_id)).fetchone()
+    scene=Scene.model_validate_json(row[0]) if row is not None else None
+    if scene is None or scene.trashed_at:raise ValueError('Невідома сцена')
+    if scene.location_source!='model':raise ValueError('Місце сцени з плану: змініть рядок «Локація:»')
+    merged={card.id:card.merged_into for card in cards.values()};target=canonical(merged,id)
+    kept=[item for item in scene.location_ids if canonical(merged,item)!=target]
+    if len(kept)==len(scene.location_ids):raise ValueError('Сцена не має цього місця')
+    scene.location_ids=kept
+    if not kept:scene.location_source='plan'
+    stale_scene_material(repo,db,scene)
+    scene.revision+=1
+    repo._save_scene(db,scene)
+
+
 def plan_location_ids(db, story_id: str, text: str) -> list[str]:
     from ..scene_plan_template import plan_fields
     return ensure_locations(db,story_id,parse_locations(plan_fields(text).get('location','')))
@@ -196,14 +219,16 @@ def backfill(db):
 
 def locations_view(repo, story_id: str) -> dict:
     """MEMORY-LOCATIONS-S07: cards of a story with the active scenes that name each card (merged names count for the
-    target) and the open suggestions; the story revision guards every change."""
+    target; `source` says whether the scene's places come from its plan or a model) and the open suggestions; the story
+    revision guards every change."""
     view=repo.context_view(story_id)
     story=view.get_story(story_id);cards=view_locations(view)
     merged={c.id:c.merged_into for c in cards.values()}
     scenes={id:[] for id in cards}
     for scene in sorted(view.list_scenes(story_id),key=lambda s:s.position):
         for id in dict.fromkeys(canonical(merged,id) for id in scene.location_ids):
-            if id in scenes:scenes[id].append({'id':scene.id,'position':scene.position,'title':scene.title})
+            if id in scenes:scenes[id].append({'id':scene.id,'position':scene.position,'title':scene.title,
+                                               'source':scene.location_source})
     with repo.db.connection() as db:
         pairs=suggestions(db,story_id)
     return {'story_revision':story.revision,

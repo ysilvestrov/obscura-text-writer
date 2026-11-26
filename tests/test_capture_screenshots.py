@@ -97,7 +97,8 @@ def test_manuscript_sample_gives_chapters_a_separator_and_a_proposed_boundary(tm
 
 
 def test_character_proposal_seed_is_acceptable_and_quotes_are_verbatim(tmp_path):
-    """CHARACTER-EXTRACT-S11: the site shot's neutral proposal is one the server accepts (fingerprint, run, verbatim quotes)."""
+    """CHARACTER-EXTRACT-S11, S14: the site shot's neutral proposal is one the server accepts (fingerprint, run, verbatim
+    quotes, places of the author's prose)."""
     from scripts.capture_screenshots import seed_character_proposal
     from storygen.characters.extract_accept import AcceptRequest, accept_proposal, current_proposal
     for lang in ('uk','en'):
@@ -107,6 +108,8 @@ def test_character_proposal_seed_is_acceptable_and_quotes_are_verbatim(tmp_path)
         proposal=found['proposal']
         for quote in proposal['cards'][0]['quotes']:
             assert quote['quote'] in repo.read_text(quote['version_id'])
+        places=[{'scene_id':item['scene_id'],'places':[place['path'] for place in item['places']]} for item in proposal['locations']]
         result=accept_proposal(repo,story,AcceptRequest(run_id=found['run_id'],fingerprint=proposal['fingerprint'],
-                                                        cards=[{'key':'n1','names':[]}],protagonist=True,dry_run=True))
-        assert {item['kind'] for item in result['applied']}=={'card','protagonist'} and not result['skipped']
+                                                        cards=[{'key':'n1','names':[]}],protagonist=True,locations=places,dry_run=True))
+        assert [item['kind'] for item in result['applied']].count('location')==2 and not result['skipped']
+        assert {item['kind'] for item in result['applied']}=={'card','protagonist','location'}

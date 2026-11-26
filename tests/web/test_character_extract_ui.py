@@ -93,6 +93,10 @@ def test_selection_helpers():
     assert result.returncode == 0, result.stderr
     data = json.loads(result.stdout)
     # Not-suggested names start unchosen; an unchosen card sends nothing; an update with no chosen names is dropped.
+    # A not-suggested place starts unchosen; a scene with no chosen place is not sent; places keep the proposal's order.
     assert data['default'] == {'cards': [{'key': 'n1', 'names': ['Марк']}],
-                               'name_updates': [{'card_id': 'A', 'names': ['Оленка']}], 'protagonist': True, 'casts': ['s1']}
-    assert data['without_card'] == {'cards': [], 'name_updates': [], 'protagonist': False, 'casts': []}
+                               'name_updates': [{'card_id': 'A', 'names': ['Оленка']}], 'protagonist': True, 'casts': ['s1'],
+                               'locations': [{'scene_id': 's1', 'places': ['Пірс']}, {'scene_id': 's2', 'places': ['Маяк']}]}
+    assert data['without_card'] == {'cards': [], 'name_updates': [], 'protagonist': False, 'casts': [],
+                                    'locations': [{'scene_id': 's1', 'places': ['Пірс', 'Маяк / ліхтарна']}]}
+    assert data['old'] == []

@@ -36,6 +36,7 @@
 .characters-page .character-proposal-card > :not(:first-child) { margin-left: calc(1.1rem + 10px); }
 .characters-page .character-proposal-names { display: flex; flex-wrap: wrap; gap: 6px 20px; }
 .characters-page .character-proposal-names .character-proposal-check { font-size: 14px; }
+.characters-page .character-proposal-badge { font-size: 12px; padding: 0 6px; border-radius: 999px; border: 1px solid var(--border-color, currentColor); color: var(--text-secondary, inherit); white-space: nowrap; }
 .characters-page ul.character-proposal-quotes { gap: 4px; font-family: var(--font-writing); overflow-wrap: anywhere; }
 .characters-page .character-proposal-result ul { list-style: disc; padding-left: 1.25rem; }
 .characters-page .character-extract-dialog ul { padding-left: 1.25rem; }

@@ -1,4 +1,5 @@
-"""MEMORY-LOCATIONS API (#67): location cards of a story, merge, split, dismissed suggestions and the author's description."""
+"""MEMORY-LOCATIONS API (#67): location cards of a story, merge, split, dismissed suggestions, the author's description
+and removing a model's place from a scene (R-51)."""
 from fastapi import APIRouter, Request
 from pydantic import Field
 
@@ -21,6 +22,10 @@ class Merge(Change):
 class Dismiss(Change):
     a: str = Field(**ID)
     b: str = Field(**ID)
+
+
+class SceneChange(Change):
+    scene_id: str = Field(**ID)
 
 
 class Description(Change):
@@ -54,6 +59,12 @@ def merge(story_id: str, location_id: str, body: Merge, request: Request):
 @router.post('/api/stories/{story_id}/locations/{location_id}/split')
 def split(story_id: str, location_id: str, body: Change, request: Request):
     return change(request, story_id, body, lambda db: store.split_location(db, story_id, location_id))
+
+
+@router.post('/api/stories/{story_id}/locations/{location_id}/remove-from-scene')
+def remove_from_scene(story_id: str, location_id: str, body: SceneChange, request: Request):
+    repo = request.app.state.repo
+    return change(request, story_id, body, lambda db: store.remove_scene_place(repo, db, story_id, location_id, body.scene_id))
 
 
 @router.put('/api/stories/{story_id}/locations/{location_id}')
