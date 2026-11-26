@@ -62,9 +62,9 @@ def test_extractor_borrows_memory_role():
     extractor = resolve_extractor(roles)
     assert extractor.provider == role.provider
     assert (extractor.context_tokens, extractor.max_input_chars) == (32768, 50000)
-    assert extractor.temperature == 0.2 and extractor.max_output_tokens == 16000
+    assert extractor.temperature == 0.2 and extractor.max_output_tokens == 24000
     assert roles['memory'].temperature == 0.9 and roles['memory'].max_output_tokens == 2048  # the role is not changed
-    assert resolve_extractor({'memory': memory_role(max_output_tokens=20000, context_tokens=60000)}).max_output_tokens == 20000
+    assert resolve_extractor({'memory': memory_role(max_output_tokens=30000, context_tokens=60000)}).max_output_tokens == 30000
 
 
 @pytest.mark.req('CHARACTER-EXTRACT')
@@ -91,6 +91,24 @@ def test_bundle_carries_prompt_catalogue_and_prose(tmp_path):
 
 
 @pytest.mark.req('CHARACTER-EXTRACT')
+def test_bundle_carries_the_location_catalogue_and_prompt_v2(tmp_path):
+    from storygen.characters.extract import CatalogueLocation, location_text
+    from storygen.language import load_prompt
+    c = case(tmp_path, memory_role())
+    c[3].locations = [CatalogueLocation(ref='loc_a', path='Полонина', existing=True),
+                      CatalogueLocation(ref='newloc1', path='Полонина / Стая')]
+    bundle = build(c)
+    assert 'Каталог локацій:\nl1: Полонина\nl2: Полонина / Стая' in bundle.user_text
+    assert location_text(c[3], 'uk') in bundle.user_text
+    assert bundle.system_text == load_prompt('character_extract_v2', 'uk')
+    assert '"locations"' in bundle.system_text and 'l8 / ' in bundle.system_text
+    reserved = build(c, reserve_chars=500)  # the reserve is shared by both catalogues
+    assert 'l1: Полонина' not in reserved.user_text
+    english = build(case(tmp_path / 'en', memory_role(), language='en'))
+    assert 'Location catalogue:\n(empty)' in english.user_text and '"locations"' in english.system_text
+
+
+@pytest.mark.req('CHARACTER-EXTRACT')
 def test_prompt_follows_story_language(tmp_path):
     bundle = build(case(tmp_path, memory_role(), language='en'))
     assert 'VERBATIM' in bundle.system_text and 'ДОСЛІВН' not in bundle.system_text
@@ -101,9 +119,9 @@ def test_prompt_follows_story_language(tmp_path):
 def test_output_limit_capped_by_context(tmp_path):
     bundle = build(case(tmp_path, memory_role(context_tokens=16500, max_output_tokens=2048)))
     expected = 16500 - bundle.token_estimate['input_tokens']
-    assert 2048 <= expected < 16000
+    assert 2048 <= expected < 24000
     assert bundle.settings.max_output_tokens == expected == bundle.api_request['max_tokens']
-    assert build(case(tmp_path / 'roomy', memory_role())).settings.max_output_tokens == 16000
+    assert build(case(tmp_path / 'roomy', memory_role())).settings.max_output_tokens == 24000
 
 
 @pytest.mark.req('CHARACTER-EXTRACT')

@@ -13,6 +13,8 @@ from storygen.generation.dependencies import save_manual_prose
 from storygen.generation.worker import RunCoordinator
 from storygen.providers.streaming import GenerationEvent
 from storygen.run_models import RunRequest
+from storygen.storage import locations as store
+from storygen.storage.locations import cards_digest
 from tests.characters.test_extract_plan import local_role
 from tests.generation.test_audit_run import drive
 from tests.generation.test_memory_build import written_book
@@ -108,7 +110,7 @@ def test_reads_groups_in_order_with_catalogue(tmp_path):
     sha = {s.id: repo.get_version(s.heads['prose']).sha256 for s in scenes}
     assert result['source'] == {
         'scenes': {s.id: {'version_id': s.heads['prose'], 'sha256': sha[s.id]} for s in scenes},
-        'start_cards_version_id': None, 'group_words': 1000}
+        'start_cards_version_id': None, 'group_words': 1000, 'locations': cards_digest({})}
 
 
 @pytest.mark.req('CHARACTER-EXTRACT')
@@ -422,3 +424,42 @@ def test_missing_key_in_the_real_gateway_spends_nothing(tmp_path, secret_store, 
         assert run.checkpoint['phase'] == 'reading' and run.checkpoint['state']['calls'] == 0
         assert run.checkpoint['state']['skipped'] == [] and run.checkpoint['pending'] == [[scenes[0].id]]
         worker.resume(run.id)
+
+
+@pytest.mark.req('CHARACTER-EXTRACT')
+def test_run_proposes_places_with_a_growing_location_catalogue(tmp_path):
+    repo, story, scenes = written_book(tmp_path, [prose(600, 'Оля сиділа в хаті.'), prose(600, 'Тиша.')],
+                                       memory_role=local_role())
+    with repo.write_transaction() as db:
+        (hut,) = store.ensure_locations(db, story.id, [('Хата',)])
+    repo.update_scene_plan(scenes[1].id, 'Локація: Сад', repo.get_scene(scenes[1].id).revision)
+    digest = cards_digest(repo.context_view(story.id).locations)  # the plan line made the card «Сад»
+    first = json.dumps({'scenes': [{'scene': 's1', 'locations': ['l1', 'Двір']}]}, ensure_ascii=False)
+    second = json.dumps({'scenes': [{'scene': 's2', 'locations': ['l3']}]}, ensure_ascii=False)
+    gateway = Script(first, second)
+    worker, run = start(repo, story, gateway)
+    result = proposal(drive(worker, run.id))
+    assert 'Каталог локацій:\nl1: Хата\nl2: Сад' in gateway.contexts[0].user_text
+    assert 'l3: Двір' in gateway.contexts[1].user_text  # a place found in the first group is in the catalogue
+    assert result['locations'] == [{'scene_id': scenes[0].id, 'mode': 'set', 'places': [
+        {'ref': hut, 'path': 'Хата', 'new': False, 'suggested': True},
+        {'ref': 'newloc1', 'path': 'Двір', 'new': True, 'suggested': False}]}]  # the second scene's plan names a place
+    assert result['source']['locations'] == digest
+
+
+@pytest.mark.req('CHARACTER-EXTRACT')
+def test_old_checkpoint_without_locations_resumes_with_the_book_catalogue(tmp_path):
+    repo, worker, run, scenes, gateway = paused_after_first_group(tmp_path)
+    with worker.condition:
+        current = worker.get_run(run.id)
+        for key in ('locations', 'scene_locations'):
+            current.checkpoint['state'].pop(key)
+        worker._save(current)
+    story_id = current.story_id
+    with repo.write_transaction() as db:
+        store.ensure_locations(db, story_id, [('Хата',)])
+    worker.resume(run.id)
+    run = drive(worker, run.id)
+    assert run.state == 'completed', run.error
+    assert 'Каталог локацій:\nl1: Хата' in gateway.contexts[1].user_text
+    assert proposal(run)['locations'] == []

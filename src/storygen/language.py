@@ -27,6 +27,7 @@ PROMPTS: dict[str, tuple[str, str, frozenset]] = {
     'publication_metadata_v1': ('storygen.generation', 'publication_metadata', BOTH),
     'publication_metadata_v2': ('storygen.generation', 'publication_metadata', BOTH),
     'character_extract_v1': ('storygen.generation', 'character_extract', BOTH),
+    'character_extract_v2': ('storygen.generation', 'character_extract', BOTH),
     'timeline_summary_v1': ('storygen.generation', 'timeline_summary', BOTH),
     # Calibrated on Ukrainian only (EVAL-002): English prose is not evaluated.
     'evaluator_v1': ('storygen.evaluation', 'evaluator', UK_ONLY),

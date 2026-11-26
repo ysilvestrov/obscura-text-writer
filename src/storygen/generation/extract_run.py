@@ -16,15 +16,16 @@ checkpoint before it is sent, so the run never makes more than `calls_bound` cal
 - The bound spent with groups left completes the run with a partial proposal; the rest is skipped.
 - Cancel completes the run with a partial proposal; pause leaves it `paused` with its checkpoint.
 
-The proposal is published as phase `done` in the checkpoint (`publish`)."""
+The proposal is published as phase `done` in the checkpoint (`publish`). The location catalogue (spec 2, 3.1) starts as the
+canonical location cards of the book; a checkpoint written before places existed gets that catalogue on resume (3.4)."""
 import hashlib
 import json
 
 from pydantic import ValidationError
 
 from ..characters.extract import (
-    SKIP_CALLS_EXHAUSTED, SKIP_NO_ANSWER, CatalogueCard, ExtractResponse, ExtractState, SceneMeta, SceneProse,
-    apply_group, finalize, short_ids)
+    SKIP_CALLS_EXHAUSTED, SKIP_NO_ANSWER, CatalogueCard, CatalogueLocation, ExtractResponse, ExtractState, SceneMeta,
+    SceneProse, apply_group, finalize, short_ids)
 from .extract_context import build_extract_context
 
 STAGE = 'character_extract'
@@ -74,10 +75,16 @@ def unread_prose_changed(repo, run) -> bool:
                for group in checkpoint['pending'] for scene_id in group)
 
 
+def _book_locations(view) -> list[CatalogueLocation]:
+    from ..storage.locations import catalogue_cards
+    return [CatalogueLocation(ref=card.id, path=card.path, existing=True) for card in catalogue_cards(view.locations)]
+
+
 def _start(repo, run) -> dict | str:
     """The checkpoint of a fresh plan, or the reason the run cannot start."""
     from ..characters.extract_plan import DEFAULT_GROUP_WORDS, EXTRACT_PLAN_CHANGED, extract_plan
     from ..characters.names import card_names
+    from ..storage.locations import cards_digest
     from ..storage.scene_cast import view_cards
     from .audit_cost import CLOUD, upper_bound
     from .extract_context import resolve_extractor
@@ -94,12 +101,13 @@ def _start(repo, run) -> dict | str:
     order = [scene_id for group in plan['groups'] for scene_id in group]
     state = ExtractState(
         catalogue=[CatalogueCard(ref=card.id, name=card.name, names=card_names(card), existing=True) for card in cards],
-        skipped=[(item['scene_id'], item['reason']) for item in plan['skipped']], scene_order=order)
+        locations=_book_locations(view), skipped=[(item['scene_id'], item['reason']) for item in plan['skipped']], scene_order=order)
     extractor = resolve_extractor(get_role_settings(repo, run.story_id))
     per_call = upper_bound(repo, extractor, 1)['per_call_usd'] if extractor.provider.provider in CLOUD else None
     return {'phase': 'reading', 'state': state.model_dump(mode='json'), 'pending': plan['groups'], 'retried': False,
             'source': {scene_id: _source(view, scene_id) for scene_id in order},
             'start_cards_version_id': view.get_story(run.story_id).characters_version_id, 'group_words': group_words,
+            'start_locations': cards_digest(view.locations),
             'calls_bound': plan['calls_bound'], 'cost_nanos': 0, 'per_call_usd': per_call}
 
 
@@ -107,6 +115,8 @@ def publish(repo, run, partial: bool, exhausted: bool = False) -> dict:
     """The phase `done` checkpoint with the proposal of the groups read so far (spec 4.1). `exhausted`: the calls bound
     is spent, and the scenes still to read are skipped with that reason; on cancel they are simply not read."""
     from ..characters.extract_plan import _has_author_protagonist
+    from ..locations import canonical, location_id, normalize
+    from ..scene_plan_template import plan_fields
     from ..storage.scene_cast import AUTHOR_PROSE, _planned, view_cards
     from .audit_cost import usd
     checkpoint = run.checkpoint
@@ -117,6 +127,7 @@ def publish(repo, run, partial: bool, exhausted: bool = False) -> dict:
     unread = set(pending) | {scene_id for scene_id, _ in state.skipped}
     read = [scene_id for scene_id in state.scene_order if scene_id not in unread]
     view = repo.context_view(run.story_id)
+    merged = {card.id: card.merged_into for card in view.locations.values()}
     meta = {}
     for scene_id in read:
         scene = view.scenes.get(scene_id)
@@ -124,15 +135,23 @@ def publish(repo, run, partial: bool, exhausted: bool = False) -> dict:
             continue
         prose_id = scene.heads.get('prose')
         manual = bool(prose_id) and view.peek_version(prose_id).kind == AUTHOR_PROSE
-        meta[scene_id] = SceneMeta(scene_id, manual and not _planned(scene), list(scene.character_ids))
+        # Spec 2, 4.1: places only for author prose whose plan names no place, over model places or none.
+        places = manual and not plan_fields(scene.beats).get('location') and (
+            scene.location_source == 'model' or not scene.location_ids)
+        held = list(dict.fromkeys(canonical(merged, id) for id in scene.location_ids))
+        meta[scene_id] = SceneMeta(scene_id, manual and not _planned(scene), list(scene.character_ids), places, held)
+    # A new path that names a merged card stands for its target, as `ensure_locations` and `canonical` would make it.
+    place_ids = {item.ref: canonical(merged, item.ref if item.existing else
+                                     location_id(run.story_id, normalize(item.path.split('/')))) for item in state.locations}
     try:
         cards = view_cards(view)
     except (ValueError, KeyError, OSError):
         cards = []
-    proposal = finalize(state, meta, _has_author_protagonist(cards))
+    proposal = finalize(state, meta, _has_author_protagonist(cards), place_ids)
     proposal.update(
         source={'scenes': {scene_id: checkpoint['source'][scene_id] for scene_id in read},
-                'start_cards_version_id': checkpoint['start_cards_version_id'], 'group_words': checkpoint['group_words']},
+                'start_cards_version_id': checkpoint['start_cards_version_id'], 'group_words': checkpoint['group_words'],
+                'locations': checkpoint.get('start_locations')},
         partial=partial, calls=state.calls, cost_usd=usd(checkpoint['cost_nanos']))
     proposal['fingerprint'] = proposal_fingerprint(proposal)
     return {'phase': 'done', 'proposal': proposal}
@@ -214,6 +233,12 @@ def execute(coordinator, run_id: str) -> None:
             if isinstance(started, str):
                 return _finish(coordinator, current, 'failed', started)
             current.checkpoint = started
+            coordinator._save(current)
+    elif 'locations' not in run.checkpoint['state']:  # spec 2, 3.4: a checkpoint from before places
+        catalogue = [item.model_dump(mode='json') for item in _book_locations(repo.context_view(run.story_id))]
+        with coordinator.condition:
+            current = coordinator.get_run(run_id)
+            current.checkpoint['state'].update(locations=catalogue, scene_locations={})
             coordinator._save(current)
     while True:
         with coordinator.condition:

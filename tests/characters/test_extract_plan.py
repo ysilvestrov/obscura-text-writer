@@ -256,3 +256,17 @@ def test_preview_refuses_a_memory_model_the_policy_blocks(tmp_path):
     plan = extract_plan(repo, story.id)  # the run would stop before its first call (MODEL-003): not ready
     assert plan['ready'] is False and 'уже відмовила' in plan['reason']
     assert preview(repo, request(story))['ready'] is False
+
+
+@pytest.mark.req('CHARACTER-EXTRACT')
+def test_fingerprint_changes_with_location_cards_and_merges(tmp_path):
+    from storygen.storage import locations as store
+    repo, story, _ = written_book(tmp_path, [WORDS], memory_role=local_role())
+    seen = [extract_plan(repo, story.id)['plan_fingerprint']]
+    with repo.write_transaction() as db:
+        a, b = store.ensure_locations(db, story.id, [('Хата',), ('Хатина',)])
+    seen.append(extract_plan(repo, story.id)['plan_fingerprint'])
+    with repo.write_transaction() as db:
+        store.merge_location(db, story.id, b, a)
+    seen.append(extract_plan(repo, story.id)['plan_fingerprint'])
+    assert len(set(seen)) == len(seen)

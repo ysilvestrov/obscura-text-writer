@@ -48,6 +48,18 @@ def ensure_locations(db, story_id: str, paths) -> list[str]:
     return leaves
 
 
+def catalogue_cards(cards: dict[str,StoryLocation]) -> list[StoryLocation]:
+    """Canonical (unmerged) cards in creation order: the location catalogue of CHARACTER-EXTRACT (R-51, spec 2, 3.1)."""
+    return [card for card in cards.values() if not card.merged_into]
+
+
+def cards_digest(cards: dict[str,StoryLocation]) -> str:
+    """sha256 of every card's id, path and merge target: a new card, a merge or a split changes it."""
+    import hashlib
+    rows=[[card.id,card.path,card.merged_into] for card in cards.values()]
+    return hashlib.sha256(json.dumps(rows,ensure_ascii=False,separators=(',',':')).encode('utf-8')).hexdigest()
+
+
 def plan_location_ids(db, story_id: str, text: str) -> list[str]:
     from ..scene_plan_template import plan_fields
     return ensure_locations(db,story_id,parse_locations(plan_fields(text).get('location','')))
