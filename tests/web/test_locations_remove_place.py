@@ -91,6 +91,20 @@ def test_refusals_change_nothing(tmp_path, case, message):
 
 
 @pytest.mark.req('MEMORY-LOCATIONS')
+def test_removal_stales_the_scene_material_and_names_the_scene_as_dependent(tmp_path):
+    """As accepting places: material built before snapshots goes stale; the scene with a brief
+    is offered to the author for the link decision (VALID-LINKS, rule (г))."""
+    client, repo, story, first, night = model_book(tmp_path)
+    brief = repo.save_version(story.id, night.id, 'brief', '{}', [])
+    repo.set_head(night.id, 'brief', brief.id, repo.get_scene(night.id).revision)
+    story = repo.get_story(story.id)
+    data = remove(client, story, lid(story, 'Маяк'), night.id, story.revision).json()
+    assert data['dependent_scene_ids'] == [night.id]
+    with repo.db.connection() as db:  # the stored flag; a head's shown mark comes from its link (VALID-LINKS)
+        assert json.loads(db.execute('SELECT payload FROM versions WHERE id=?', (brief.id,)).fetchone()[0])['stale'] is True
+
+
+@pytest.mark.req('MEMORY-LOCATIONS')
 def test_a_stale_revision_is_a_conflict(tmp_path):
     client, repo, story, first, night = model_book(tmp_path)
     assert remove(client, story, lid(story, 'Маяк'), night.id, story.revision - 1).status_code == 409

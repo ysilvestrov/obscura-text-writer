@@ -5952,6 +5952,7 @@
         "tests/web/test_locations_remove_place.py::test_removing_a_model_place_drops_every_id_of_that_card",
         "tests/web/test_locations_remove_place.py::test_removing_the_last_place_returns_the_scene_to_the_plan_source",
         "tests/web/test_locations_remove_place.py::test_refusals_change_nothing",
+        "tests/web/test_locations_remove_place.py::test_removal_stales_the_scene_material_and_names_the_scene_as_dependent",
         "tests/web/test_locations_remove_place.py::test_a_stale_revision_is_a_conflict",
         "tests/web/test_locations_ui.py::test_panel_rows",
         "tests/web/test_locations_ui.py::test_server_messages_match_the_catalog"

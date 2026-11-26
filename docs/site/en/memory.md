@@ -39,7 +39,7 @@ The cards are in the **Locations** section at the bottom of the **Memory** tab o
 - **Location description** is optional text of up to 2000 characters. The planner and the writer see it (also through MCP); the memory model does not. Changing it makes the drafts of scenes in that place and the places inside it outdated.
 - **Similar names** suggests possible duplicates, such as the typo "Pier" / "Peir". **Merge** makes the later card part of the first one; **Not alike** hides the suggestion for good.
 - **Merge into…** merges a card with any other. Plan texts stay as they are; drafts of the scenes the merge affects become outdated. **Split** undoes the merge.
-- **Remove from «N. Title»** is offered only for a scene whose place the prose search proposed. After you confirm, the place is removed from the scene, and its brief and prose become outdated. A new search or a `Location:` line in the plan brings the place back. Change a place from a `Location:` line in the scene plan.
+- **Remove from «N. Title»** is offered only for a scene whose place the prose search proposed. After you confirm, the place is removed from the scene; material built with it (brief, memory) may become outdated, and your prose is not changed. A new search or a `Location:` line in the plan brings the place back. Change a place from a `Location:` line in the scene plan.
 
 After you save a description, merge, split or remove a place, Obscura asks: “Locations changed: … Mark the dependent scenes as unchecked? Scenes: N.” Dependent scenes are the scenes with a brief whose shown places or memory of nearby places changed. **Yes** makes the brief and prose of these scenes “Unchecked” until you approve or regenerate them; **No** changes nothing.
 
