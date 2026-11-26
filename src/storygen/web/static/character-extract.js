@@ -1,5 +1,6 @@
 import {t,uiText,uiAttr,diagnostic,getLocale} from './i18n.js';
-// CHARACTER-EXTRACT (R-51, spec §6): the characters page searches the book's prose for characters. The dialog reads the
+// CHARACTER-EXTRACT (R-51, spec §6; places — spec 2 §5): the characters page searches the book's prose for characters and
+// the places of scenes without a plan place. The dialog reads the
 // read-only plan (scenes, groups, calls bound, upper bound on cost, skipped scenes) and nothing runs without «Запустити»;
 // the run is started with the plan fingerprint of the preview shown, and a 409 for a changed plan reads the preview again.
 // The run row follows the book's latest character search (pause, resume and stop are the run's own actions). A finished
@@ -23,15 +24,23 @@ export function acceptBody(proposal,selection,runId,dryRun){
   const name_updates=proposal.name_updates.map(update=>({card_id:update.card_id,
     names:update.names.map(item=>item.name).filter(name=>selection.names.has(`u:${update.card_id}:${name}`))})).filter(update=>update.names.length);
   const casts=proposal.casts.map(cast=>cast.scene_id).filter(id=>selection.casts.has(id));
-  return {run_id:runId,fingerprint:proposal.fingerprint,cards,name_updates,protagonist:!!proposal.protagonist&&selection.protagonist,casts,dry_run:dryRun};
+  // A proposal from before places has none; a scene with no chosen place is not sent (it would come back as nothing to add).
+  const locations=(proposal.locations||[]).map(item=>({scene_id:item.scene_id,
+    places:item.places.map(place=>place.path).filter(path=>selection.places.has(placeKey(item.scene_id,path)))})).filter(item=>item.places.length);
+  return {run_id:runId,fingerprint:proposal.fingerprint,cards,name_updates,protagonist:!!proposal.protagonist&&selection.protagonist,casts,locations,dry_run:dryRun};
 }
 
-// Everything is chosen except the names the server marks as not suggested (descriptions written in lower case).
+const placeKey=(sceneId,path)=>`${sceneId}\n${path}`;
+
+// Everything is chosen except the names the server marks as not suggested (descriptions written in lower case) and the
+// places the scene's prose does not name.
 export function defaultSelection(proposal){
   const names=new Set();
   for(const card of proposal.cards)for(const item of card.other_names)if(item.suggested)names.add(`n:${card.key}:${item.name}`);
   for(const update of proposal.name_updates)for(const item of update.names)if(item.suggested)names.add(`u:${update.card_id}:${item.name}`);
-  return {cards:new Set(proposal.cards.map(card=>card.key)),names,protagonist:!!proposal.protagonist,casts:new Set(proposal.casts.map(cast=>cast.scene_id))};
+  const places=new Set();
+  for(const item of proposal.locations||[])for(const place of item.places)if(place.suggested)places.add(placeKey(item.scene_id,place.path));
+  return {cards:new Set(proposal.cards.map(card=>card.key)),names,protagonist:!!proposal.protagonist,casts:new Set(proposal.casts.map(cast=>cast.scene_id)),places};
 }
 
 export function installCharacterExtract({storyId,api,json,notice,onAccepted,isDirty,document=globalThis.document}){
@@ -231,7 +240,8 @@ export function installCharacterExtract({storyId,api,json,notice,onAccepted,isDi
     const heading=element('h3');
     uiText(heading,'textContent',()=>proposal.partial?t('character_extract.ui.proposal_partial'):t('character_extract.ui.proposal'));
     proposalNode.append(heading);
-    const empty=!proposal.cards.length&&!proposal.name_updates.length&&!proposal.protagonist&&!proposal.casts.length;
+    const placeItems=proposal.locations||[];
+    const empty=!proposal.cards.length&&!proposal.name_updates.length&&!proposal.protagonist&&!proposal.casts.length&&!placeItems.length;
     const unread=proposal.skipped_scenes||[];
     if(unread.length){
       const box=element('div','character-proposal-unread'),label=element('p'),list=element('ul');box.id='character-proposal-unread';
@@ -260,11 +270,25 @@ export function installCharacterExtract({storyId,api,json,notice,onAccepted,isDi
       proposalNode.append(group('character_extract.ui.protagonist',[checkbox(selection.protagonist,label,on=>{selection.protagonist=on})],on=>{selection.protagonist=on}));
     }
     if(proposal.casts.length)proposalNode.append(group('character_extract.ui.casts',proposal.casts.map(cast=>{
-      const label=element('span'),scene=text(sceneLabel(cast.scene_id),'character-proposal-name'),who=cast.participants.map(refName).join(', ');
+      const label=element('span'),scene=text(sceneLabel(cast.scene_id),'character-proposal-name'),who=cast.participants.map(ref=>refName(ref)).join(', ');
       const mode=element('small','muted');uiText(mode,'textContent',()=>' '+t(cast.mode==='set'?'character_extract.ui.cast_set':'character_extract.ui.cast_add',{p0:who}));
       label.append(scene,mode);
       return checkbox(selection.casts.has(cast.scene_id),label,on=>{if(on)selection.casts.add(cast.scene_id);else selection.casts.delete(cast.scene_id)});
     }),on=>{selection.casts=new Set(on?proposal.casts.map(cast=>cast.scene_id):[])}));
+    if(placeItems.length)proposalNode.append(group('character_extract.ui.places',placeItems.map(item=>{
+      const body=element('div','character-proposal-card'),row=element('div','character-proposal-names');
+      body.append(text(sceneLabel(item.scene_id),'character-proposal-name'));
+      for(const place of item.places){
+        const key=placeKey(item.scene_id,place.path),label=element('span');label.append(text(place.path));
+        if(place.new){
+          const badge=element('small','character-proposal-badge');uiText(badge,'textContent',()=>t('character_extract.ui.place_new'));
+          uiAttr(badge,'title',()=>t('character_extract.ui.place_new_label'));label.append(' ',badge);
+        }
+        row.append(checkbox(selection.places.has(key),label,on=>{if(on)selection.places.add(key);else selection.places.delete(key)}));
+      }
+      body.append(row);
+      return body;
+    }),on=>{selection.places=new Set(on?placeItems.flatMap(item=>item.places.map(place=>placeKey(item.scene_id,place.path))):[])}));
     const stale=element('p','character-proposal-stale');stale.id='character-proposal-stale';stale.setAttribute('role','status');
     const actions=element('div','actions'),accept=element('button');accept.type='button';accept.id='character-proposal-accept';
     uiText(accept,'textContent',()=>t('character_extract.ui.accept'));
@@ -305,7 +329,7 @@ export function installCharacterExtract({storyId,api,json,notice,onAccepted,isDi
     if(item.kind==='name')return `${item.key?refName(item.key,from):cards.get(item.card_id)||item.card_id}: ${item.name}`;
     if(item.kind==='name_update')return cards.get(item.card_id)||item.card_id;
     if(item.kind==='protagonist')return refName(item.ref,from);
-    if(item.kind==='cast')return sceneLabel(item.scene_id);
+    if(item.kind==='cast'||item.kind==='location')return sceneLabel(item.scene_id);
     return item.kind;
   }
   async function acceptSelected(){

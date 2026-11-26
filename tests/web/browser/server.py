@@ -638,11 +638,12 @@ def main():
 
         @app.post('/test-character-extract')
         def character_extract_fixture(proposal: bool = False):
-            """R-51 «Знайти персонажів у прозі» (spec §6): a book imported from a manuscript (two scenes of prose, no
+            """R-51 «Знайти персонажів і місця у прозі» (spec §6): a book imported from a manuscript (two scenes of prose, no
             memory) with card «Олена»; the memory role is local (the cost is unknown) and slow, so a started search waits
             until it is cancelled. `proposal`: a finished search left a proposal — new card «Марко» (other names «Марк»,
             suggested, and «сторож», not suggested), the name «Оленка» for «Олена», «Олена» as the main character and
-            both scene casts. Neutral text about a pier lighthouse."""
+            both scene casts; places (spec 2 §5): «Пірс» (new) and «Маяк / ліхтарна» (new, not named in the prose, not
+            suggested) for scene 1, «Маяк» (new) for scene 2. Neutral text about a pier lighthouse."""
             from datetime import datetime, timezone
             from storygen.authoring.blueprints import save_role_settings
             from storygen.domain import ContentRating, ManuscriptImportOrigin, new_id
@@ -669,6 +670,11 @@ def main():
                         'protagonist': {'ref': 'A', 'scores': [1.0]},
                         'casts': [{'scene_id': scenes[0].id, 'mode': 'set', 'participants': ['A', 'n1']},
                                   {'scene_id': scenes[1].id, 'mode': 'set', 'participants': ['n1']}],
+                        'locations': [{'scene_id': scenes[0].id, 'mode': 'set', 'places': [
+                                          {'ref': 'l1', 'path': 'Пірс', 'new': True, 'suggested': True},
+                                          {'ref': 'l2', 'path': 'Маяк / ліхтарна', 'new': True, 'suggested': False}]},
+                                      {'scene_id': scenes[1].id, 'mode': 'set', 'places': [
+                                          {'ref': 'l3', 'path': 'Маяк', 'new': True, 'suggested': True}]}],
                         'skipped_scenes': [], 'calls': 1, 'partial': False, 'cost_usd': None,
                         'source': {'scenes': {s.id: {'version_id': s.heads['prose'], 'sha256': repo.get_version(s.heads['prose']).sha256} for s in scenes},
                                    'start_cards_version_id': repo.get_story(story.id).characters_version_id, 'group_words': 5000}}

@@ -347,8 +347,8 @@ test('a series book with an empty start snapshot offers «Оновити з по
   expect(order[0]).toBeLessThan(order[1]);
   await expect(dialog.locator('#memory-build-cast')).toContainText('Немає карток персонажів');
   await expect(dialog.locator('#memory-build-cast a').first()).toHaveAttribute('href',`/stories/${fixture.story_id}/characters`);
-  // R-51: the same warning leads to the character search in the prose, which opens its dialog on arrival.
-  await expect(dialog.locator('#memory-build-extract')).toHaveText('Знайти персонажів у прозі…');
+  // R-51: the same warning leads to the character and place search in the prose, which opens its dialog on arrival.
+  await expect(dialog.locator('#memory-build-extract')).toHaveText('Знайти персонажів і місця у прозі…');
   await expect(dialog.locator('#memory-build-extract')).toHaveAttribute('href',`/stories/${fixture.story_id}/characters?extract=1`);
   // The character import leads to the workspace importer with the focus on its file field.
   await dialog.locator('#memory-build-cast').getByRole('button',{name:'Імпорт персонажів з Markdown'}).click();
