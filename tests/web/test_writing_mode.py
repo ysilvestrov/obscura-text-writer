@@ -132,3 +132,21 @@ def test_switching_mode_keeps_texts_and_running_runs(tmp_path):
     assert set_mode(client, repo.get_story(story.id), 'obscura').status_code == 200
     assert repo.get_scene(scene.id).heads == heads and len(repo.list_versions(story.id, scene.id)) == versions
     assert repo.get_run(run.id).state == 'running'
+
+
+def test_new_story_form_offers_author_mode(tmp_path):
+    app, repo, story, scene, client = app_with_scene(tmp_path, prose=False)
+    page = client.get('/').text
+    assert '<option value="author"' in page and '<option value="obscura" selected' in page
+
+
+def test_settings_page_offers_author_mode(tmp_path):
+    app, repo, story, scene, client = app_with_scene(tmp_path, prose=False)
+    form = client.get(f'/stories/{story.id}/settings').text.split('id="story-mode-form"')[1].split('</form>')[0]
+    assert '<option value="author"' in form
+
+
+def test_library_intro_names_writing_yourself(tmp_path):
+    app, repo, story, scene, client = app_with_scene(tmp_path, prose=False)
+    assert 'Пишіть самі' in client.get('/').text
+    assert 'Write it yourself' in client.get('/', headers={'Accept-Language': 'en'}).text
