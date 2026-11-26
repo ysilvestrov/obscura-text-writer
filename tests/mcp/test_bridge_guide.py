@@ -73,10 +73,17 @@ def test_instructions_name_get_guide():
 def test_get_guide_serves_revise_skill_and_references():
     data = payload(call(server(), {'task': 'revise'}))
     assert data['text'].startswith('---\nname: revise')
-    assert {'fact-change', 'local-edit', 'rules'} <= set(data['references'])
+    assert data['references'] == ['fact-change', 'local-edit', 'rules']
 
 
 @pytest.mark.req('MCP-BRIDGE')
 def test_get_guide_revise_reference():
     data = payload(call(server(), {'task': 'revise', 'reference': 'fact-change'}))
     assert data['text'] == (PLUGIN/'skills/revise/references/fact-change.md').read_text(encoding='utf-8')
+
+
+@pytest.mark.req('MCP-BRIDGE')
+def test_get_guide_revise_local_edit_points_to_fact_change_through_guide():
+    data = payload(call(server(), {'task': 'revise', 'reference': 'local-edit'}))
+    assert 'get_guide(task="revise", reference="fact-change")' in data['text']
+    assert '${CLAUDE_PLUGIN_ROOT}' not in data['text']

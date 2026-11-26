@@ -6816,7 +6816,8 @@
         "tests/mcp/test_bridge_guide.py::test_get_guide_without_plugin",
         "tests/mcp/test_bridge_guide.py::test_instructions_name_get_guide",
         "tests/mcp/test_bridge_guide.py::test_get_guide_serves_revise_skill_and_references",
-        "tests/mcp/test_bridge_guide.py::test_get_guide_revise_reference"
+        "tests/mcp/test_bridge_guide.py::test_get_guide_revise_reference",
+        "tests/mcp/test_bridge_guide.py::test_get_guide_revise_local_edit_points_to_fact_change_through_guide"
       ]
     },
     {
