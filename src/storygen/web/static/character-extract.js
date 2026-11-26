@@ -46,7 +46,7 @@ export function installCharacterExtract({storyId,api,json,notice,onAccepted,isDi
   const element=(tag,className='')=>{const node=document.createElement(tag);if(className)node.className=className;return node};
   const say=(node,render)=>{if(render)uiText(node,'textContent',render);else node.textContent=''};
   let scenes=new Map(),cards=new Map(),plan=null,previewEpoch=0,loading=false,starting=false,run=null,pollTimer=null,runEpoch=0;
-  let pollFailed=false,proposal=null,selection=null,dryEpoch=0,accepting=false,acceptedSummary=null;
+  let pollFailed=false,proposal=null,selection=null,dryEpoch=0,dryReady=false,accepting=false,acceptedSummary=null;
   const sceneLabel=id=>{const scene=scenes.get(id);return scene?`${scene.position+1}. ${scene.title}`:id};  // author text, never localized
   const runActive=()=>!!run&&ACTIVE.has(run.state);
 
@@ -173,9 +173,10 @@ export function installCharacterExtract({storyId,api,json,notice,onAccepted,isDi
   async function findRun(){
     const {runs}=await api(`${storyPath}/runs`);
     const latest=(runs||[]).filter(item=>item.request?.mode==='character_extract').sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at)))[0];
-    runEpoch++;run=null;renderRun();
+    const ask=++runEpoch;run=null;renderRun();
     if(!latest)return;
     const data=await api(`/api/runs/${encodeURIComponent(latest.id)}`,{fresh:true});
+    if(ask!==runEpoch)return;  // a search started meanwhile is the one to follow
     run=data.run;renderRun();
   }
   async function action(path,body){
@@ -193,7 +194,7 @@ export function installCharacterExtract({storyId,api,json,notice,onAccepted,isDi
   stopButton.addEventListener('click',()=>void action('cancel'));
 
   // ---- the proposal ----
-  const refName=ref=>proposal.cards.find(card=>card.key===ref)?.name||cards.get(ref)||ref;
+  const refName=(ref,from=proposal)=>(from?.cards||[]).find(card=>card.key===ref)?.name||cards.get(ref)||ref;
   function checkbox(checked,label,onchange){
     const wrap=element('label','character-proposal-check'),input=element('input');
     input.type='checkbox';input.checked=checked;input.addEventListener('change',()=>{onchange(input.checked);void dryRun()});
@@ -276,20 +277,22 @@ export function installCharacterExtract({storyId,api,json,notice,onAccepted,isDi
     const accept=document.querySelector('#character-proposal-accept'),blocked=document.querySelector('#character-proposal-blocked');
     if(!accept)return;
     const dirty=isDirty();
-    accept.disabled=accepting||dirty;
+    accept.disabled=accepting||dirty||!dryReady;
     say(blocked,dirty?()=>t('character_extract.ui.unsaved_cards'):null);
+    for(const control of proposalNode.querySelectorAll('input[type=checkbox],.character-proposal-head button'))control.disabled=accepting;
   }
   async function dryRun(){
     if(!proposal)return;
     const ask=++dryEpoch,stale=document.querySelector('#character-proposal-stale');
     if(!stale)return;
-    say(stale,()=>t('character_extract.ui.checking'));
+    say(stale,()=>t('character_extract.ui.checking'));dryReady=false;syncAccept();
     try{
       const result=await api(`${storyPath}/character-proposal/accept`,json('POST',acceptBody(proposal,selection,proposal.run_id,true)));
       const line=document.querySelector('#character-proposal-stale');
       if(ask!==dryEpoch||!line)return;
       const count=result.stale_memory_scenes.length;
       say(line,()=>count?t('character_extract.ui.stale_memory',{p0:count}):t('character_extract.ui.no_stale_memory'));
+      dryReady=true;syncAccept();
     }catch(error){
       const line=document.querySelector('#character-proposal-stale');
       if(ask!==dryEpoch||!line)return;
@@ -297,11 +300,11 @@ export function installCharacterExtract({storyId,api,json,notice,onAccepted,isDi
       say(line,()=>diagnostic(error.message));
     }
   }
-  function itemLabel(item){
-    if(item.kind==='card'||item.kind==='quote')return refName(item.key)+(item.scene_id?` (${sceneLabel(item.scene_id)})`:'');
-    if(item.kind==='name')return `${item.key?refName(item.key):cards.get(item.card_id)||item.card_id}: ${item.name}`;
+  function itemLabel(item,from){
+    if(item.kind==='card'||item.kind==='quote')return refName(item.key,from)+(item.scene_id?` (${sceneLabel(item.scene_id)})`:'');
+    if(item.kind==='name')return `${item.key?refName(item.key,from):cards.get(item.card_id)||item.card_id}: ${item.name}`;
     if(item.kind==='name_update')return cards.get(item.card_id)||item.card_id;
-    if(item.kind==='protagonist')return refName(item.ref);
+    if(item.kind==='protagonist')return refName(item.ref,from);
     if(item.kind==='cast')return sceneLabel(item.scene_id);
     return item.kind;
   }
@@ -312,7 +315,7 @@ export function installCharacterExtract({storyId,api,json,notice,onAccepted,isDi
     try{
       const result=await api(`${storyPath}/character-proposal/accept`,json('POST',acceptBody(current,selection,current.run_id,false)));
       // Names of the accepted cards are read from the proposal before it is dropped.
-      const labels=result.skipped.map(entry=>({label:itemLabel(entry.item),reason:entry.reason}));
+      const labels=result.skipped.map(entry=>({label:itemLabel(entry.item,current),reason:entry.reason}));
       const box=element('div','character-proposal-result'),line=element('p');box.id='character-proposal-result';box.setAttribute('role','status');
       const applied=result.applied.length,skippedCount=labels.length;
       uiText(line,'textContent',()=>t('character_extract.ui.accepted',{p0:applied,p1:skippedCount}));box.append(line);

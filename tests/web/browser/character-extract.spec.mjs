@@ -150,10 +150,28 @@ test('the proposal is chosen item by item; the dry run says what goes stale; «�
   page.once('dialog',dialog=>dialog.accept());
   await page.reload();
   await expect(page.locator('#character-proposal-accept')).toBeEnabled();
+  // The stale-memory line follows the current selection (the dry run's answer, here made to depend on the choice),
+  // and «Прийняти вибране» waits for it.
+  let hold=null;
+  await page.route(/character-proposal\/accept$/,async route=>{
+    const body=route.request().postDataJSON();
+    if(!body.dry_run)return route.continue();
+    if(hold)await hold;
+    const result=await(await route.fetch()).json();
+    await route.fulfill({json:{...result,stale_memory_scenes:body.cards.length?[fixture.scene_ids[0],fixture.scene_ids[1]]:[fixture.scene_ids[1]]}});
+  });
+  let release;hold=new Promise(resolve=>{release=resolve});
+  await proposal.getByRole('checkbox',{name:'Марк',exact:true}).uncheck();
+  await expect(page.locator('#character-proposal-stale')).toHaveText('Перевіряю вибране…');
+  await expect(page.locator('#character-proposal-accept')).toBeDisabled();
+  release();hold=null;
+  await expect(page.locator('#character-proposal-stale')).toHaveText('Пам\'ять 2 сцен стане застарілою');
+  await expect(page.locator('#character-proposal-accept')).toBeEnabled();
+  await proposal.getByRole('checkbox',{name:'Марк',exact:true}).check();
   // Leaving the new card out: its scene in a cast is skipped by the server with the reason.
-  const dry=page.waitForResponse(res=>/character-proposal\/accept$/.test(res.url())&&res.request().postDataJSON().dry_run===true&&res.request().postDataJSON().cards.length===0);
   await proposal.getByRole('checkbox',{name:'Марко',exact:true}).uncheck();
-  await dry;
+  await expect(page.locator('#character-proposal-stale')).toHaveText('Пам\'ять 1 сцен стане застарілою');
+  await page.unroute(/character-proposal\/accept$/);
   await page.locator('#character-proposal-accept').click();
   const result=page.locator('#character-proposal-result');
   await expect(result).toContainText('Прийнято пунктів: 3, пропущено: 1');
@@ -175,9 +193,11 @@ test('a proposal superseded meanwhile is refused (409) and nothing is written',a
     if(route.request().postDataJSON().dry_run)return route.continue();
     await route.fulfill({status:409,json:{detail:'Є новіша пропозиція',detail_original:'Є новіша пропозиція'}});
   });
+  // The refusal re-reads the proposal: here it is gone, so nothing is left to accept.
+  await page.route(new RegExp(`/api/stories/${fixture.story_id}/character-proposal$`),route=>route.fulfill({status:404,json:{detail:'Немає пропозиції'}}));
   await page.locator('#character-proposal-accept').click();
   await expect(page.locator('#notice')).toContainText('Є новіша пропозиція');
-  await expect(page.locator('#character-proposal-accept')).toBeEnabled();
+  await expect(page.locator('#character-proposal-accept')).toHaveCount(0);
   const cards=(await(await request.get(`/api/stories/${fixture.story_id}/characters`)).json()).cards;
   expect(cards.map(card=>card.name)).toEqual(['Олена']);
   expect(cards[0].entries).toHaveLength(0);
