@@ -102,6 +102,15 @@ async def blocked(app, request) -> str | None:
     if request.method == 'GET' and route.path not in GENERATIVE_GET:
         return None
     body = None
+    if (request.method, route.path) == ('PATCH', '/api/stories/{story_id}/series'):
+        # LONG-PROSE-TRIAL: entering the trial series is decided by the destination; the route checks the rest itself.
+        try:
+            wanted = json.loads(await request.body() or b'null')
+        except ValueError:
+            wanted = None
+        from ..book import guard
+        if isinstance(wanted, dict) and isinstance(wanted.get('series_id'), str) and                 guard.series_long_prose(app.state.repo, wanted['series_id']):
+            return None
     if not params and 'json' in request.headers.get('content-type', ''):
         try:
             body = json.loads(await request.body() or b'null')

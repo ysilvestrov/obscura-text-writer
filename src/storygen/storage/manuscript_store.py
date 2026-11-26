@@ -60,7 +60,7 @@ def publish_manuscript(repo, story: StoryCreate, scenes, origin: ManuscriptImpor
             db.execute('BEGIN IMMEDIATE')
             if series is not None:
                 from .series import require_book_slot
-                require_book_slot(db, *series)
+                require_book_slot(db, *series, created.id)
             db.execute('INSERT INTO stories VALUES(?,?)', (created.id, created.model_dump_json()))
             from .scene_metadata import apply_description
             active = [scene for scene, _, _ in prepared]

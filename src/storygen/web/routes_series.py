@@ -16,6 +16,7 @@ DECISIONS_CONFIRM = 'Нові позначки роблять застаріли
 
 class SeriesIn(DomainModel):
     title: str = Field(min_length=1, max_length=300)
+    trial: bool = False  # LONG-PROSE-TRIAL: create the series as the one trial (an edition without long prose only)
 
 
 class SeriesRename(SeriesIn):
@@ -77,15 +78,17 @@ def series_start_readiness(series_id: str, request: Request, number: int = Query
             'source_title': source.title if source else None, 'source_number': status.source_number}
 
 
-def _long_prose_page():
-    from .. import build_edition
-    if not build_edition.current().long_prose:
+def _long_prose_page(repo):
+    """The series index: long prose, a free trial (to create the trial series) or the trial series itself."""
+    from ..storage.long_prose_trial import trial_state
+    state = trial_state(repo)
+    if state['state'] == 'used' and state['kind'] != 'series':
         raise HTTPException(404)
 
 
 @router.get('/series')
 def series_index_page(request: Request):
-    _long_prose_page()
+    _long_prose_page(request.app.state.repo)
     return request.app.state.templates.TemplateResponse(request=request, name='series.html', context={'series_id': None})
 
 
@@ -99,8 +102,11 @@ def series_page(series_id: str, request: Request):
 
 @router.post('/api/series')
 def series_create(data: SeriesIn, request: Request):
-    require_long_prose()
-    return store.create_series(request.app.state.repo, data.title)
+    from .. import build_edition
+    long_prose = build_edition.current().long_prose
+    if not long_prose and not data.trial:
+        require_long_prose()
+    return store.create_series(request.app.state.repo, data.title, trial=data.trial and not long_prose)
 
 
 @router.patch('/api/series/{series_id}')
@@ -133,7 +139,10 @@ def series_new_bible(series_id: str, data: SeriesIn, request: Request):
 
 @router.patch('/api/stories/{story_id}/series')
 def story_series(story_id: str, data: StorySeries, request: Request):
-    guard.require_long_prose_for(request.app.state.repo, story_id)
+    repo = request.app.state.repo
+    # LONG-PROSE-TRIAL: entering is decided by the destination series; leaving or renumbering by the book itself.
+    if not (data.series_id is not None and guard.series_long_prose(repo, data.series_id)):
+        guard.require_long_prose_for(repo, story_id)
     start = data.start
     if data.start_text and data.start_text.strip():
         from ..plan_sections import parse_series_start
