@@ -92,6 +92,8 @@ def preview_copyedits(scene_id: str,attempt_id: str,request: Request):
 @router.post('/api/scenes/{scene_id}/copyedits/{attempt_id}')
 def apply_copyedit_selection(scene_id: str,attempt_id: str,body: CopyeditSelection,request: Request):
     from ..generation.copyedit_review import select_copyedits
+    from .bridge_marker import refuse_model_proposal
+    refuse_model_proposal(request.app.state.repo,attempt_id)
     return select_copyedits(request.app.state.repo,scene_id,attempt_id,body.selected_indices,body.expected_revision,body.proposal_fingerprint,body.split_groups)
 
 
@@ -175,7 +177,7 @@ def chat_stage_task(scene_id: str,stage: Literal['brief','edit','memory'],reques
     """MCP-BRIDGE-S40: a stage's instructions and material as the model sees them, for a chat client."""
     from ..application.chat_stages import stage_task
     from .bridge_marker import guard_scene_write
-    guard_scene_write(request,scene_id)
+    guard_scene_write(request,scene_id,stage)
     return stage_task(request.app.state.repo,scene_id,stage,offset,max_chars)
 
 
@@ -185,7 +187,7 @@ def chat_stage_result(scene_id: str,stage: Literal['brief','edit','memory'],body
     from fastapi.responses import JSONResponse
     from ..application.chat_stages import ChatStageRejected, stage_result
     from .bridge_marker import guard_scene_write
-    guard_scene_write(request,scene_id)
+    guard_scene_write(request,scene_id,stage)
     try:
         return stage_result(request.app.state.repo,scene_id,stage,body.task_fingerprint,body.text,body.external_origin)
     except ChatStageRejected as exc:
@@ -196,7 +198,7 @@ def chat_stage_result(scene_id: str,stage: Literal['brief','edit','memory'],body
 def manual_draft(scene_id: str,body: DraftChange,request: Request):
     if body.external_origin is not None:
         from .bridge_marker import guard_scene_write
-        guard_scene_write(request,scene_id)
+        guard_scene_write(request,scene_id,'draft')
         from ..memory.carry import require_not_carrying
         require_not_carrying(request.app.state.repo,scene_id)  # MEMORY-CARRY: a chat draft waits like a model stage
     if body.comment_set is not None:

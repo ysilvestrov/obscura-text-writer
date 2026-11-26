@@ -5,7 +5,7 @@ import pytest
 
 from storygen.run_models import RunRequest
 from storygen.writing_mode import RUN_MODE_WRITES, writes_prose
-from tests.web.test_chat_stage_routes import app_with_scene
+from tests.web.test_chat_stage_routes import ORIGIN, app_with_scene
 
 
 @pytest.mark.req('WRITING-MODE')
@@ -83,3 +83,82 @@ def test_same_request_id_after_switch_returns_the_existing_run(tmp_path, ready):
     client.put(f'/api/stories/{story.id}/writing-mode', json={'writing_mode': 'author', 'expected_revision': story.revision})
     again = run(client, request)
     assert again.status_code == 200 and again.json()['id'] == first.json()['id']
+
+
+from storygen.domain import StageAttempt  # noqa: E402
+from storygen.writing_mode import AUTHOR_CHAT  # noqa: E402
+from tests.web.test_writing_mode import BRIDGE, draft  # noqa: E402
+
+
+def author_scene(tmp_path, prose=True):
+    app, repo, story, scene, client = app_with_scene(tmp_path, prose=prose)
+    story = repo.get_story(story.id)
+    assert client.put(f'/api/stories/{story.id}/writing-mode', json={'writing_mode': 'author', 'expected_revision': story.revision}).status_code == 200
+    return app, repo, repo.get_story(story.id), repo.get_scene(scene.id), client
+
+
+@pytest.mark.req('WRITING-MODE')
+def test_author_mode_refuses_external_draft_with_and_without_bridge_header(tmp_path):
+    app, repo, story, scene, client = author_scene(tmp_path)
+    for headers in (BRIDGE, {}):
+        refused = draft(client, repo.get_scene(scene.id), headers)
+        assert refused.status_code == 409 and AUTHOR_CHAT in refused.text, refused.text
+    assert repo.list_versions(story.id, scene.id, 'draft') == []
+
+
+@pytest.mark.req('WRITING-MODE')
+def test_author_mode_keeps_manual_draft(tmp_path):
+    app, repo, story, scene, client = author_scene(tmp_path)
+    saved = draft(client, scene, origin=False)
+    assert saved.status_code == 200, saved.text
+
+
+@pytest.mark.req('WRITING-MODE')
+def test_author_mode_chat_stages(tmp_path):
+    app, repo, story, scene, client = author_scene(tmp_path)
+    refused = client.get(f'/api/scenes/{scene.id}/chat-task/edit', headers=BRIDGE)
+    assert refused.status_code == 409 and AUTHOR_CHAT in refused.text
+    for stage in ('memory', 'brief'):
+        assert AUTHOR_CHAT not in client.get(f'/api/scenes/{scene.id}/chat-task/{stage}', headers=BRIDGE).text, stage
+    body = {'task_fingerprint': 'a' * 64, 'text': 'Текст', 'external_origin': ORIGIN}
+    refused = client.post(f'/api/scenes/{scene.id}/chat-result/edit', json=body)
+    assert refused.status_code == 409 and AUTHOR_CHAT in refused.text, refused.text
+
+
+def model_proposal(repo, story, scene, **context):
+    attempt = StageAttempt(id='p1', story_id=story.id, scene_id=scene.id, stage='edit', state='needs_review',
+                           context=context, partial_path='p')
+    repo.save_attempt(attempt)
+    return attempt
+
+
+@pytest.mark.req('WRITING-MODE')
+def test_author_mode_refuses_applying_model_proposals(tmp_path):
+    app, repo, story, scene, client = author_scene(tmp_path)
+    model_proposal(repo, story, scene)
+    body = {'selected_indices': [0], 'expected_revision': scene.revision, 'proposal_fingerprint': 'a' * 64}
+    for path, extra in ((f'/api/scenes/{scene.id}/copyedits/p1', {}),
+                        (f'/api/scenes/{scene.id}/rewrites/p1/apply', {'expected_comments_revision': 0})):
+        refused = client.post(path, json={**body, **extra})
+        assert refused.status_code == 409 and AUTHOR_WRITES in refused.text, (path, refused.text)
+    assert repo.get_scene(scene.id).revision == scene.revision and repo.get_scene(scene.id).heads == scene.heads
+
+
+@pytest.mark.req('WRITING-MODE')
+def test_author_mode_lets_editor_import_proposals_through(tmp_path):
+    app, repo, story, scene, client = author_scene(tmp_path)
+    model_proposal(repo, story, scene, editor_import={'import_id': 'i', 'export_id': 'e', 'scene_index': 0})
+    body = {'selected_indices': [0], 'expected_revision': scene.revision, 'proposal_fingerprint': 'a' * 64}
+    assert AUTHOR_WRITES not in client.post(f'/api/scenes/{scene.id}/copyedits/p1', json=body).text
+
+
+@pytest.mark.req('WRITING-MODE')
+def test_author_mode_refusals_in_english(tmp_path):
+    app, repo, story, scene, client = author_scene(tmp_path)
+    en = {'Accept-Language': 'en'}
+    refused = draft(client, scene, {**BRIDGE, **en})
+    assert refused.json()['detail'] == 'The story is in the "I write myself" mode: the author writes the prose'
+    refused = client.post('/api/runs', json={'request_id': 'e1', 'request': {'story_id': story.id, 'scene_id': scene.id, 'mode': 'scene'}},
+                          headers=en)
+    assert refused.json()['detail'] == ('The story is in the "I write myself" mode: models do not write prose. '
+                                        'Change the mode in the story settings')
