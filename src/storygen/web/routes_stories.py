@@ -40,7 +40,7 @@ class StoryLanguageChange(DomainModel):
 
 
 class StoryWritingModeChange(DomainModel):
-    writing_mode: Literal['chat','obscura']
+    writing_mode: Literal['chat','obscura','author']
     expected_revision: int
 
 

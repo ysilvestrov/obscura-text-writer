@@ -714,7 +714,7 @@ def build_server(http: httpx.Client | None, client_name: str | None = None, *, c
 
     @server.tool()
     def create_story(title: str, language: str = 'uk', target_words: int = 7000, content_rating: dict[str, int] | None = None,
-                     writing_mode: Literal['chat', 'obscura'] = 'chat') -> dict[str, Any]:
+                     writing_mode: Literal['chat', 'obscura', 'author'] = 'chat') -> dict[str, Any]:
         """Створити новий твір в Obscura. Грошей не коштує; видалити твір можна лише в Obscura. language — uk або en
         (мову можна змінити до першого тексту від моделі чи чату); content_rating — {sexual, violence, themes} з рівнями 0–2.
         Якщо рейтинг перевищує межу цього видання Obscura, твір не створюється. writing_mode — хто пише тексти: chat (типово,
