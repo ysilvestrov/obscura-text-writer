@@ -3,7 +3,8 @@
 Plan amendment: the proposal lives in `Run.checkpoint['proposal']` of the finished `character_extract` run and is named by
 `run_id`; the accept marks it with `Run.checkpoint['accepted_at']`. One write transaction holds the new version of the
 cards (`save_cards_in_transaction`, CAS on the story revision read in it), the casts (`apply_cast_in_transaction`, mode
-`add`) and the mark, so an accept is all or nothing. A dry run is the same transaction rolled back."""
+`add`), the places of scenes with their location cards (spec 2, 4.3) and the mark, so an accept is all or nothing. A dry
+run is the same transaction rolled back."""
 from pydantic import Field
 
 from ..domain import DomainModel, RevisionConflict, now
@@ -31,6 +32,8 @@ SKIP_PROSE_CHANGED = 'проза сцени змінилася'
 SKIP_PLANNED = 'план сцени називає учасників'
 SKIP_NOT_AUTHOR_PROSE = 'проза сцени не авторська'
 SKIP_NOTHING_TO_ADD = 'немає кого додати до складу'
+SKIP_PLAN_PLACE = 'план сцени називає місце'
+SKIP_PLACE_NOTHING_TO_ADD = 'немає чого додати'
 
 # The marker lines the readers of cards recognise (characters.acquaintance.PROTAGONIST, characters.names.OTHER_NAMES).
 MARKERS = {'uk': {'quote': '«{}»', 'other_names': "Інше ім'я: {}", 'protagonist': 'Головний герой'},
@@ -47,6 +50,11 @@ class NameUpdateChoice(DomainModel):
     names: list[str] = Field(default_factory=list)
 
 
+class LocationChoice(DomainModel):
+    scene_id: str = Field(min_length=1)
+    places: list[str] = Field(default_factory=list)  # paths from the scene's item of the proposal
+
+
 class AcceptRequest(DomainModel):
     run_id: str = Field(min_length=1)
     fingerprint: str = Field(min_length=1)
@@ -54,6 +62,7 @@ class AcceptRequest(DomainModel):
     name_updates: list[NameUpdateChoice] = Field(default_factory=list)
     protagonist: bool = False
     casts: list[str] = Field(default_factory=list)
+    locations: list[LocationChoice] = Field(default_factory=list)
     dry_run: bool = False
 
 
@@ -96,6 +105,20 @@ def _offered(chosen, offered, what):
     if set(names) - {item['name'] for item in offered}:
         raise ValueError(f'{what}: ім\'я не з пропозиції')
     return names
+
+
+def _location_choice(proposal, request) -> dict[str, set[str]]:
+    """{scene id: chosen paths}; a scene or a path the proposal does not offer is an invalid request. A proposal written
+    before places existed has none to offer."""
+    offered = {item['scene_id']: {place['path'] for place in item['places']} for item in proposal.get('locations') or []}
+    chosen = {}
+    for choice in request.locations:
+        if choice.scene_id not in offered or choice.scene_id in chosen:
+            raise ValueError('Невідома або повторена сцена місць пропозиції')
+        if set(choice.places) - offered[choice.scene_id]:
+            raise ValueError('Місце сцени не з пропозиції')
+        chosen[choice.scene_id] = set(choice.places)
+    return chosen
 
 
 def _choice(proposal, request) -> tuple[dict, dict, set]:
@@ -262,6 +285,63 @@ def _cast_plan(view, proposal, chosen_casts, refs, outcome):
     return plan
 
 
+def _apply_places(repo, db, story_id, proposal, chosen, outcome) -> tuple[list[str], list[str]]:
+    """(scenes whose places changed, location cards created) — spec 2, 4.3. Scenes are read from the transaction: a cast
+    written just before has raised their revision. A place whose canonical card the scene already holds is dropped;
+    the rest get their cards from `ensure_locations` (a merged card's path gives that card, which leads to its target)."""
+    from ..domain import Scene, VersionRef
+    from ..locations import canonical, location_id, normalize
+    from ..scene_plan_template import plan_fields
+    from ..storage.locations import ensure_locations, load_locations
+    from ..storage.scene_cast import AUTHOR_PROSE
+    from ..storage.scene_metadata import stale_scene_material
+    source = proposal['source']['scenes']
+    before = set(load_locations(db, story_id))
+    changed = []
+    for item in proposal.get('locations') or []:
+        scene_id = item['scene_id']
+        if scene_id not in chosen:
+            continue
+        row = db.execute('SELECT payload FROM scenes WHERE id=? AND story_id=?', (scene_id, story_id)).fetchone()
+        scene = Scene.model_validate_json(row[0]) if row is not None else None
+        prose_id = scene.heads.get('prose') if scene is not None else None
+        reason, paths = None, []
+        if scene is None or scene.trashed_at:
+            reason = SKIP_SCENE_TRASHED
+        elif not prose_id or prose_id != (source.get(scene_id) or {}).get('version_id'):
+            reason = SKIP_PROSE_CHANGED
+        elif repo._get(db, 'versions', prose_id, VersionRef).kind != AUTHOR_PROSE:
+            reason = SKIP_NOT_AUTHOR_PROSE
+        elif plan_fields(scene.beats).get('location'):  # the plan line always wins over places from the model
+            reason = SKIP_PLAN_PLACE
+        else:
+            merged = {card.id: card.merged_into for card in load_locations(db, story_id).values()}
+            held = {canonical(merged, id) for id in scene.location_ids}
+            for place in item['places']:  # in the order of the proposal
+                if place['path'] not in chosen[scene_id]:
+                    continue
+                parts = tuple(part.strip() for part in place['path'].split('/') if part.strip())
+                card = canonical(merged, location_id(story_id, normalize(parts)))
+                if card not in held:
+                    held.add(card)
+                    paths.append(parts)
+            if not paths:
+                reason = SKIP_PLACE_NOTHING_TO_ADD
+        if reason:
+            outcome.skip(_item('location', scene_id=scene_id), reason)
+            continue
+        scene.location_ids = list(dict.fromkeys([*scene.location_ids, *ensure_locations(db, story_id, paths)]))
+        scene.location_source = 'model'
+        stale_scene_material(repo, db, scene)
+        scene.revision += 1
+        repo._save_scene(db, scene)
+        changed.append(scene_id)
+        outcome.apply(_item('location', scene_id=scene_id))
+    if changed:
+        repo._touch_story(db, story_id)
+    return changed, [id for id in load_locations(db, story_id) if id not in before]
+
+
 def _accept(repo, db, story_id, request, written):
     from ..storage.scene_cast import apply_cast_in_transaction, view_cards
     from .service import changed_character_ids, save_cards_in_transaction
@@ -269,6 +349,7 @@ def _accept(repo, db, story_id, request, written):
     run = _proposal_run(repo.story_runs_in_transaction(db, story_id), request)
     proposal = run.checkpoint['proposal']
     chosen_cards, chosen_updates, chosen_casts = _choice(proposal, request)
+    chosen_places = _location_choice(proposal, request)
     view = repo.view_in_transaction(db, story_id)
     current = view_cards(view)
     valid_memory = _valid_memory_scenes(view)
@@ -285,13 +366,18 @@ def _accept(repo, db, story_id, request, written):
     cast_outcome = _Outcome()
     plan = _cast_plan(view, proposal, chosen_casts, refs, cast_outcome)
     changed_scenes = apply_cast_in_transaction(repo, db, story_id, plan, 'add') if plan else []
+    place_outcome = _Outcome()
+    changed_places, created_places = _apply_places(repo, db, story_id, proposal, chosen_places, place_outcome)
     # Measured, not predicted: the new cards version (the first one of a book stales all its material), a changed cast
     # and everything downstream of the invalidation, read back from the transaction.
     still_valid = set(_valid_memory_scenes(repo.view_in_transaction(db, story_id)))
     run.checkpoint = {**run.checkpoint, 'accepted_at': now()}
     repo.save_run_in_transaction(db, run)
-    return {'applied': outcome.applied + cast_outcome.applied, 'skipped': outcome.skipped + cast_outcome.skipped,
-            'changed_card_ids': changed_character_ids(current, saved), 'changed_scene_ids': changed_scenes,
+    return {'applied': outcome.applied + cast_outcome.applied + place_outcome.applied,
+            'skipped': outcome.skipped + cast_outcome.skipped + place_outcome.skipped,
+            'changed_card_ids': changed_character_ids(current, saved),
+            'changed_scene_ids': list(dict.fromkeys(changed_scenes + changed_places)),
+            'changed_location_ids': created_places,
             'stale_memory_scenes': [scene_id for scene_id in valid_memory if scene_id not in still_valid]}
 
 
@@ -302,8 +388,9 @@ class _DryRun(Exception):
 
 
 def accept_proposal(repo, story_id: str, request: AcceptRequest) -> dict:
-    """{applied, skipped [{item, reason}], changed_card_ids, changed_scene_ids, stale_memory_scenes}. A dry run answers
-    the same and rolls the transaction back; the cards file it wrote is removed (an unlisted file fails fsck)."""
+    """{applied, skipped [{item, reason}], changed_card_ids, changed_scene_ids, changed_location_ids, stale_memory_scenes}.
+    A dry run answers the same and rolls the transaction back; the cards file it wrote is removed (an unlisted file fails
+    fsck)."""
     written = []
     try:
         with repo.write_transaction() as db:
