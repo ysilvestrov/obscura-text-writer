@@ -9,6 +9,8 @@ class Element{
   addEventListener(name,handler){(this.handlers[name]??=[]).push(handler)}
   trigger(name){for(const handler of this.handlers[name]||[])handler({type:name,inputType:'insertText'})}
   replaceChildren(){this.children=[]}
+  querySelector(){return null}
+  querySelectorAll(){return []}
   append(...items){this.children.push(...items)}
 }
 function element(id){if(!elements.has(id))elements.set(id,new Element());return elements.get(id)}
