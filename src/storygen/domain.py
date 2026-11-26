@@ -135,8 +135,10 @@ class Scene(SceneCreate):
     head_revisions: dict[str,int] = Field(default_factory=dict)
     needs_review: bool = False
     content_rating: ContentRating | None = None
-    # MEMORY-LOCATIONS: cards of the «Локація:» line of the plan, in order; set by apply_description only.
+    # MEMORY-LOCATIONS: the scene's location cards, in order. `plan`: the «Локація:» line of the plan, set by
+    # apply_description; `model`: places accepted from a CHARACTER-EXTRACT proposal, kept while the plan names no place.
     location_ids: list[str] = Field(default_factory=list)
+    location_source: Literal['plan','model'] = 'plan'
 
 
 VersionKind = Literal["source_plan","source_characters","character_cards","scene_plan","canon","style","prompt","brief","draft","edited","manual","memory","evaluation","timeline_summary","memory_merge","series_start"]

@@ -129,3 +129,53 @@ def test_integrity_flags_a_scene_with_a_missing_location_card(tmp_path):
     assert check_integrity(repo.root).ok
     with repo.db.connection() as db:db.execute('DELETE FROM story_locations')
     assert any(i.code=='location_unknown' for i in check_integrity(repo.root).issues)
+
+
+def set_model_places(repo,scene_id,ids):
+    """Places as an accepted proposal leaves them (CHARACTER-EXTRACT): source `model`."""
+    with repo.db.connection() as db:
+        row=json.loads(db.execute('SELECT payload FROM scenes WHERE id=?',(scene_id,)).fetchone()[0])
+        row.update(location_ids=ids,location_source='model')
+        db.execute('UPDATE scenes SET payload=? WHERE id=?',(json.dumps(row,ensure_ascii=False),scene_id))
+    repo.db.bump_generation()
+    return repo.get_scene(scene_id)
+
+
+@pytest.mark.req('MEMORY-LOCATIONS')
+@pytest.mark.parametrize('source',['plan','model'])
+@pytest.mark.parametrize('line',[None,'','Ліс'])
+def test_plan_rule_keeps_model_places(tmp_path,source,line):
+    repo,story,scene=make(tmp_path)
+    with repo.db.connection() as db:store.ensure_locations(db,story.id,[('Дім',)])
+    before=[lid(story,'Дім')]
+    scene=set_model_places(repo,scene.id,before) if source=='model' else repo.update_scene_plan(scene.id,'Локація: Дім',scene.revision)
+    assert scene.location_source==source
+    plan='Дії: тиша.' if line is None else f'Локація: {line}\nДії: тиша.'
+    saved=repo.update_scene_plan(scene.id,plan,scene.revision)
+    if line:  # a non-empty plan line always wins
+        assert (saved.location_ids,saved.location_source)==([lid(story,'Ліс')],'plan')
+    elif source=='model':
+        assert (saved.location_ids,saved.location_source)==(before,'model')
+    else:
+        assert (saved.location_ids,saved.location_source)==([],'plan')
+
+
+@pytest.mark.req('MEMORY-LOCATIONS')
+def test_cards_sync_keeps_model_places(tmp_path):
+    from storygen.storage.scene_metadata import sync_story_cast
+    repo,story,scene=make(tmp_path)
+    with repo.db.connection() as db:store.ensure_locations(db,story.id,[('Дім',)])
+    set_model_places(repo,scene.id,[lid(story,'Дім')])
+    with repo.write_transaction() as db:sync_story_cast(repo,db,story.id)
+    assert repo.get_scene(scene.id).location_ids==[lid(story,'Дім')]
+
+
+@pytest.mark.req('MEMORY-LOCATIONS')
+def test_an_old_scene_reads_as_plan_source(tmp_path):
+    repo,story,scene=make(tmp_path)
+    with repo.db.connection() as db:
+        row=json.loads(db.execute('SELECT payload FROM scenes WHERE id=?',(scene.id,)).fetchone()[0])
+        row.pop('location_source',None)
+        db.execute('UPDATE scenes SET payload=? WHERE id=?',(json.dumps(row,ensure_ascii=False),scene.id))
+    repo.db.bump_generation()
+    assert repo.get_scene(scene.id).location_source=='plan'
