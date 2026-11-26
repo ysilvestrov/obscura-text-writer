@@ -5339,6 +5339,7 @@
       "requirement": "BUILD-EDITION-001",
       "scope": "Обхід таблиці маршрутів: кожен маршрут запису під запобіжником або в списку дозволених; пласка книга й видання з довгою прозою працюють; читання й експорт дозволені.",
       "tests": [
+        "tests/book/test_long_prose_for.py::test_unknown_story_in_store_is_refused_with_400",
         "tests/book/test_long_prose_for.py::test_full_edition_answers_without_the_database",
         "tests/book/test_long_prose_for.py::test_store_edition_refuses_with_the_same_text",
         "tests/web/test_long_prose_guard.py::test_guards_ask_the_book_predicate",
@@ -5368,6 +5369,90 @@
       "scope": "Твір із сексуальним рівнем 2, записаний поза виданням store, експортується в ньому з позначкою 18+.",
       "tests": [
         "tests/web/test_long_prose_guard.py::test_store_exports_a_level_two_story"
+      ]
+    },
+    {
+      "id": "LONG-PROSE-TRIAL-S01",
+      "requirement": "LONG-PROSE-TRIAL",
+      "scope": "Вмикання проби для книги чи серії з підтвердженням; відмови без підтвердження, для книги серії й серії з трьома книгами; сторінка серій за станом проби. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/web/test_long_prose_trial_api.py::test_trial_on_a_book_opens_it_and_only_it",
+        "tests/web/test_long_prose_trial_api.py::test_trial_needs_confirmation_and_is_single",
+        "tests/web/test_long_prose_trial_api.py::test_trial_takes_exactly_one_target",
+        "tests/web/test_long_prose_trial_api.py::test_book_of_a_series_points_to_the_series",
+        "tests/web/test_long_prose_trial_api.py::test_series_trial_lists_its_books",
+        "tests/web/test_long_prose_trial_api.py::test_series_with_three_books_is_refused",
+        "tests/series/test_series_trial.py::test_trial_series_is_created_with_the_trial_only",
+        "tests/series/test_series_trial.py::test_series_page_is_open_while_the_trial_is_free"
+      ]
+    },
+    {
+      "id": "LONG-PROSE-TRIAL-S02",
+      "requirement": "LONG-PROSE-TRIAL",
+      "scope": "Одна проба: друге й паралельне вмикання, кошик не повертає пробу, інша книга лишається лише для читання. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/storage/test_long_prose_trial.py::test_claim_is_written_once",
+        "tests/storage/test_long_prose_trial.py::test_concurrent_claims_leave_one",
+        "tests/storage/test_long_prose_trial.py::test_trial_state_available_then_used",
+        "tests/storage/test_long_prose_trial.py::test_trashed_trial_story_is_still_used",
+        "tests/book/test_long_prose_for.py::test_trial_story_has_long_prose_and_others_do_not"
+      ]
+    },
+    {
+      "id": "LONG-PROSE-TRIAL-S03",
+      "requirement": "LONG-PROSE-TRIAL",
+      "scope": "Серія проби: дві книги в переліку через усі шляхи, третя відхиляється, вихід і повернення, книга з іншого видання, біблія, пробна книга поза серією. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/series/test_series_trial.py::test_refused_new_bible_leaves_no_story",
+        "tests/series/test_series_trial.py::test_book_refused_inside_the_transaction_leaves_no_story",
+        "tests/series/test_series_trial.py::test_bible_place_is_one_and_cannot_rotate_books",
+        "tests/series/test_series_trial.py::test_book_of_the_trial_series_does_not_carry_it_to_another_series",
+        "tests/series/test_series_trial.py::test_trial_book_does_not_become_a_bible_of_another_series",
+        "tests/series/test_series_trial.py::test_existing_bible_is_remembered_at_claim",
+        "tests/storage/test_long_prose_trial.py::test_admit_fills_two_books_then_refuses",
+        "tests/book/test_long_prose_for.py::test_series_trial_covers_listed_books_and_the_bible",
+        "tests/series/test_series_trial.py::test_two_new_books_then_the_third_is_refused",
+        "tests/series/test_series_trial.py::test_structured_book_moves_into_the_trial_series_only",
+        "tests/series/test_series_trial.py::test_a_book_that_left_keeps_its_place_and_its_parts",
+        "tests/series/test_series_trial.py::test_book_added_in_another_edition_is_read_only_in_store",
+        "tests/series/test_series_trial.py::test_bible_of_the_trial_series_is_free_and_editable",
+        "tests/series/test_series_trial.py::test_trial_book_does_not_join_a_series"
+      ]
+    },
+    {
+      "id": "LONG-PROSE-TRIAL-S04",
+      "requirement": "LONG-PROSE-TRIAL",
+      "scope": "Імпорт рукопису як пробна книга й у серію проби; відмови до запису. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/application/test_manuscript_import_trial.py::test_series_trial_keeps_parts_for_its_books",
+        "tests/application/test_manuscript_import_trial.py::test_preview_offers_parts_while_the_trial_is_free",
+        "tests/application/test_manuscript_import_trial.py::test_parts_need_the_trial_flag",
+        "tests/application/test_manuscript_import_trial.py::test_used_trial_refuses_before_any_write",
+        "tests/application/test_manuscript_import_trial.py::test_import_into_the_trial_series_takes_a_place",
+        "tests/application/test_manuscript_import_trial.py::test_trial_with_a_series_is_invalid"
+      ]
+    },
+    {
+      "id": "LONG-PROSE-TRIAL-S05",
+      "requirement": "LONG-PROSE-TRIAL",
+      "scope": "Видання з довгою прозою ігнорує пробу без читання бази; межа рейтингу store для книги проби. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/storage/test_long_prose_trial.py::test_trial_state_for_full_reads_nothing",
+        "tests/web/test_long_prose_trial_api.py::test_edition_with_long_prose_needs_no_trial",
+        "tests/application/test_manuscript_import_trial.py::test_full_edition_ignores_the_trial_flag",
+        "tests/web/test_long_prose_trial_api.py::test_trial_book_keeps_the_store_rating_limit"
+      ]
+    },
+    {
+      "id": "LONG-PROSE-TRIAL-S06",
+      "requirement": "LONG-PROSE-TRIAL",
+      "scope": "Стан проби в app-info і реченні підказки моста; відмови проби як відмови видання. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/mcp/test_bridge_edition.py::test_trial_refusals_are_edition_refusals",
+        "tests/mcp/test_bridge_edition.py::test_hint_names_the_trial_by_its_state",
+        "tests/mcp/test_bridge_edition.py::test_bridge_reads_the_trial_state_with_the_refusal",
+        "tests/web/test_app_info.py::test_app_info_full_edition",
+        "tests/web/test_app_info.py::test_app_info_store_edition"
       ]
     },
     {

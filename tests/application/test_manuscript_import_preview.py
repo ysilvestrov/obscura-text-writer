@@ -33,7 +33,8 @@ def test_preview_keeps_temp_file_and_fingerprint(tmp_path):
     assert (tmp_path / 'data' / 'manuscript-import' / f'{first.import_id}.md').read_bytes() == BOOK
     assert len(first.fingerprint) == 64 and first.file_name == 'book.md'
     assert [scene.title for scene in first.scenes] == ['Глава перша', 'Глава друга']
-    assert first.edition == {'parts_allowed': True, 'series_allowed': True}
+    assert first.edition == {'parts_allowed': True, 'series_allowed': True,
+                             'trial': {'state': 'none', 'kind': None, 'id': None, 'title': None}}  # LONG-PROSE-TRIAL
     assert first.parts and first.parts[0]['title']
     again = service.preview(repo, b'', '', SETTINGS, first.import_id)  # the kept file is parsed, content is ignored
     assert again.import_id == first.import_id and again.fingerprint == first.fingerprint and again.file_name == 'book.md'
@@ -121,9 +122,16 @@ def test_temp_dir_outside_backup_and_fsck(tmp_path):
 
 
 def test_store_edition_skips_parts_with_warning(tmp_path, store_edition):
+    # LONG-PROSE-TRIAL: a free trial allows parts (test_manuscript_import_trial.py); a trial used on a book does not.
     repo = repo_for(tmp_path)
+    from datetime import datetime, timezone
+    from storygen.storage.long_prose_trial import claim
+    with repo.db.connection() as db:
+        db.execute('BEGIN IMMEDIATE')
+        claim(db, 'story', 'other', [], datetime.now(timezone.utc))
     preview = service.preview(repo, BOOK, 'book.md', SETTINGS)
-    assert preview.edition == {'parts_allowed': False, 'series_allowed': False}
+    assert {key: preview.edition[key] for key in ('parts_allowed', 'series_allowed')} == {'parts_allowed': False, 'series_allowed': False}
+    assert preview.edition['trial']['state'] == 'used'
     assert preview.parts == [] and any('частини доступні' in warning for warning in preview.warnings)
     assert [scene.title for scene in preview.scenes] == ['Глава перша', 'Глава друга']
 

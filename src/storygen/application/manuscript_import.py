@@ -14,7 +14,7 @@ from dataclasses import asdict, dataclass, replace
 from datetime import datetime, timedelta, timezone
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import model_validator, BaseModel, ConfigDict, Field
 
 from .. import build_edition
 from ..book.structure import MAX_PARTS, MAX_TITLE
@@ -168,9 +168,21 @@ def _fingerprint(content: bytes, settings: ParseSettings) -> str:
     return hashlib.sha256(hashlib.sha256(content).digest() + canonical.encode('utf-8')).hexdigest()
 
 
-def effective_settings(settings: ParseSettings) -> ParseSettings:
+def _edition(repo) -> dict:
+    """What the edition lets this import do; a free trial (LONG-PROSE-TRIAL) allows parts, a trial series a series."""
+    from ..storage.long_prose_trial import trial_state
+    long_prose = build_edition.current().long_prose
+    state = trial_state(repo)
+    series_trial = state['state'] == 'used' and state['kind'] == 'series'
+    # A series trial keeps parts for the books imported into it; apply refuses parts outside that series.
+    return {'parts_allowed': long_prose or state['state'] == 'available' or series_trial,
+            'series_allowed': long_prose or series_trial, 'trial': state}
+
+
+def effective_settings(settings: ParseSettings, repo=None) -> ParseSettings:
     """The edition decides whether parts exist; the request cannot widen it."""
-    return replace(settings, parts_allowed=settings.parts_allowed and build_edition.current().long_prose)
+    allowed = build_edition.current().long_prose or (repo is not None and _edition(repo)['parts_allowed'])
+    return replace(settings, parts_allowed=settings.parts_allowed and allowed)
 
 
 def preview(repo, content: bytes, file_name: str, settings: ParseSettings, import_id: str | None = None, *,
@@ -183,7 +195,7 @@ def preview(repo, content: bytes, file_name: str, settings: ParseSettings, impor
         raise ManuscriptTooLarge()
     else:  # as in `origin_file_name`: an uploaded name may carry lone surrogates that UTF-8 (and JSON) cannot hold
         file_name = file_name.encode('utf-8', 'ignore').decode('utf-8')
-    settings = effective_settings(settings)
+    settings = effective_settings(settings, repo)
     manuscript = read_manuscript(content, file_name)  # raises ManuscriptError before anything is kept
     structure = detect(manuscript.paragraphs, settings, fits=memory_fits(repo, role))
     if import_id is None:
@@ -193,7 +205,7 @@ def preview(repo, content: bytes, file_name: str, settings: ParseSettings, impor
         repo.files.write(f'{TEMP_DIR}/{import_id}.name', file_name.encode('utf-8'))
     # The import re-parses the file with the settings of the latest preview: its body names only the fingerprint.
     repo.files.write(f'{TEMP_DIR}/{import_id}{SETTINGS_SUFFIX}', json.dumps(asdict(settings), ensure_ascii=False).encode('utf-8'))
-    long_prose = build_edition.current().long_prose
+    edition = _edition(repo)
     warnings = list(structure.warnings) + list(manuscript.warnings)
     if len(structure.scenes) > MAX_SCENES:
         warnings.append(TOO_MANY_PROPOSED.format(count=len(structure.scenes), limit=MAX_SCENES))
@@ -205,7 +217,7 @@ def preview(repo, content: bytes, file_name: str, settings: ParseSettings, impor
         front_matter=list(structure.front_matter),
         dropped=[{'index': index, 'text': text, 'reason': reason} for index, text, reason in structure.dropped],
         warnings=warnings, tracked_changes=manuscript.tracked_changes,
-        edition={'parts_allowed': long_prose, 'series_allowed': long_prose})
+        edition=edition)
 
 
 def paragraphs(repo, import_id: str, start: int, end: int) -> list[dict]:
@@ -274,6 +286,14 @@ class ManuscriptApply(BaseModel):
     parts: list[ManuscriptApplyPart] = Field(default_factory=list, max_length=MAX_PARTS)
     include_front_matter: bool = False
     series: ManuscriptApplySeries | None = None
+    trial: bool = False  # LONG-PROSE-TRIAL: the new book becomes the one trial (an edition without long prose only)
+
+    @model_validator(mode='after')
+    def trial_alone(self):
+        if self.trial and self.series is not None:
+            from ..book.guard import TRIAL_BOOK_ALONE
+            raise ValueError(TRIAL_BOOK_ALONE)
+        return self
 
 
 def origin_file_name(file_name: str) -> str:
@@ -320,6 +340,28 @@ def _check_parts(body: ManuscriptApply) -> dict[int, str]:
     return titles
 
 
+def _require_import_edition(repo, body) -> bool:
+    """Parts and a series need long prose; without it a series import goes only into the trial series and parts need
+    the trial flag with the trial free (LONG-PROSE-TRIAL). True when the new book claims the trial."""
+    from ..book import guard
+    from ..book.guard import TRIAL_USED, require_long_prose
+    from ..storage.long_prose_trial import trial
+    if build_edition.current().long_prose:
+        return False
+    parts = bool(body.parts) or any(scene.part_index is not None for scene in body.scenes)
+    if body.series is not None:
+        if not guard.series_long_prose(repo, body.series.series_id):
+            require_long_prose()
+        return False
+    if body.trial:
+        if trial(repo) is not None:
+            raise ValueError(TRIAL_USED)
+        return True
+    if parts:
+        require_long_prose()
+    return False
+
+
 def apply_import(repo, import_id: str, body) -> dict:
     """Create a new book from the kept manuscript: {story_id, scene_ids, warnings}. The file is parsed again with the
     settings of the latest preview; a fingerprint from an older preview is a conflict. The temp file is removed only
@@ -329,8 +371,7 @@ def apply_import(repo, import_id: str, body) -> dict:
     body = ManuscriptApply.model_validate(body)
     if len(body.scenes) > MAX_SCENES:
         raise ValueError(TOO_MANY_SCENES.format(limit=MAX_SCENES))
-    if body.parts or body.series or any(scene.part_index is not None for scene in body.scenes):
-        require_long_prose()  # §4.2: before any file or database write
+    trial = _require_import_edition(repo, body)  # §4.2: before any file or database write
     if any(path.suffix == CLAIM_SUFFIX for path in _files(repo, _checked(import_id))):
         raise RevisionConflict(APPLYING)
     content, file_name = load(repo, import_id)
@@ -361,7 +402,7 @@ def apply_import(repo, import_id: str, body) -> dict:
     structured = any(scene.part_index is not None for scene in body.scenes)
     claimed = _claim(repo, import_id)
     try:
-        created, created_scenes = publish_manuscript(repo, story, scenes, origin, structured, series=series)
+        created, created_scenes = publish_manuscript(repo, story, scenes, origin, structured, series=series, trial=trial)
     except BaseException:
         _release(claimed)  # nothing was created: the author can retry the same import
         raise

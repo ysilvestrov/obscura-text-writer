@@ -89,7 +89,11 @@ def test_series_pages(tmp_path):
 
 
 def test_series_pages_absent_in_store(tmp_path, store_edition):
+    # LONG-PROSE-TRIAL: while the trial is free the page opens to create the trial series; a trial on a book closes it.
     client, repo = client_for(tmp_path)
+    from storygen.domain import StoryCreate
+    story = repo.create_story(StoryCreate(title='Пробна'))
+    assert client.post('/api/long-prose-trial', json={'story_id': story.id, 'confirm': True}).status_code == 200
     assert client.get('/series').status_code == 404
     assert 'href="/series"' not in client.get('/').text
 

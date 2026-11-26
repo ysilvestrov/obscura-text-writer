@@ -27,7 +27,7 @@ class ManuscriptSceneData(NamedTuple):
 
 
 def publish_manuscript(repo, story: StoryCreate, scenes, origin: ManuscriptImportOrigin, structured: bool, *,
-                       series: tuple[str, int] | None = None) -> tuple[Story, list[Scene]]:
+                       series: tuple[str, int] | None = None, trial: bool = False) -> tuple[Story, list[Scene]]:
     """Create the book; `series` is (series_id, number), its slot checked in the same transaction. The series start
     snapshot is not taken here: it needs committed books (`set_story_series` takes it after its transaction too)."""
     from .authoring import _require_edition_limit
@@ -60,8 +60,12 @@ def publish_manuscript(repo, story: StoryCreate, scenes, origin: ManuscriptImpor
             db.execute('BEGIN IMMEDIATE')
             if series is not None:
                 from .series import require_book_slot
-                require_book_slot(db, *series)
+                require_book_slot(db, *series, created.id)
             db.execute('INSERT INTO stories VALUES(?,?)', (created.id, created.model_dump_json()))
+            if trial:  # LONG-PROSE-TRIAL: the book and the trial marker commit together
+                from datetime import datetime, timezone
+                from .long_prose_trial import claim
+                claim(db, 'story', created.id, [], datetime.now(timezone.utc))
             from .scene_metadata import apply_description
             active = [scene for scene, _, _ in prepared]
             for scene in active:

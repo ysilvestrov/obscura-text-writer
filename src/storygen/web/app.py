@@ -156,6 +156,8 @@ def create_app(settings: AppSettings, *, gateway_factory=None,evaluator_factory=
     app.include_router(structure_router)
     from .routes_series import router as series_router
     app.include_router(series_router)
+    from .routes_long_prose_trial import router as long_prose_trial_router
+    app.include_router(long_prose_trial_router)
     from .routes_timeline_summaries import router as timeline_summaries_router
     app.include_router(timeline_summaries_router)
     from .routes_locations import router as locations_router

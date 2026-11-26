@@ -1,5 +1,6 @@
 """SERIES storage: the series table (CAS on its revision) and the series fields of a book (CAS on the story revision)."""
 import json
+from contextlib import contextmanager
 
 from ..domain import RevisionConflict, SeriesStart, Story, new_id
 from ..scene_description import name_key
@@ -39,10 +40,14 @@ def _books(db, series_id) -> list[Story]:
 
 
 def require_book_slot(db, series_id: str, number: int, story_id: str | None = None) -> None:
-    """On an open transaction: the series exists and no other book of it has this number."""
+    """On an open transaction: the series exists and no other book of it has this number. A book entering the trial
+    series takes a place of the trial there (LONG-PROSE-TRIAL), or the list being full refuses it."""
     _get(db, series_id)
     if any(b.series_number == number and b.id != story_id for b in _books(db, series_id)):
         raise ValueError(SERIES_NUMBER_TAKEN.format(number=number))
+    if story_id is not None:
+        from .long_prose_trial import admit
+        admit(db, series_id, story_id)
 
 
 def list_series(repo) -> list[Series]:
@@ -66,12 +71,17 @@ def series_books(repo, id) -> list[Story]:
         return _books(db, id)
 
 
-def create_series(repo, title: str) -> Series:
+def create_series(repo, title: str, *, trial: bool = False) -> Series:
+    """`trial=True` makes the new series the one trial of long prose in the same transaction (LONG-PROSE-TRIAL)."""
     item = Series(id=new_id(), title=title)
     with repo.db.connection() as db:
         db.execute('BEGIN IMMEDIATE')
         _require_title(db, item.title)
         db.execute('INSERT INTO series(id,revision,payload) VALUES(?,?,?)', (item.id, item.revision, item.model_dump_json()))
+        if trial:
+            from datetime import datetime, timezone
+            from .long_prose_trial import claim
+            claim(db, 'series', item.id, [], datetime.now(timezone.utc))
     return item
 
 
@@ -115,10 +125,14 @@ def set_story_series(repo, story_id: str, series_id: str | None, number: int | N
             raise RevisionConflict(STORY_CONFLICT)
         # A bible that becomes a book enters the series as a book: it takes its snapshot (SERIES-BIBLE).
         entering = series_id is not None and (story.series_id != series_id or story.series_bible != bible)
+        if series_id is not None:
+            _require_not_trial_book(db, story_id, series_id)
         if series_id is not None and bible:
             _get(db, series_id)
             if any(b.series_bible and b.id != story_id for b in _books(db, series_id)):
                 raise ValueError(SERIES_BIBLE_TAKEN)
+            from .long_prose_trial import admit_bible
+            admit_bible(db, series_id, story_id)
         elif series_id is not None:
             require_book_slot(db, series_id, number, story_id)
         update = {'series_id': series_id, 'series_number': number, 'series_start': start, 'series_bible': bible,
@@ -414,13 +428,55 @@ def create_bible(repo, series_id: str, title: str) -> Story:
     if any(b.series_bible for b in series_books(repo, series_id)):
         raise ValueError(SERIES_BIBLE_TAKEN)
     story = repo.create_story(StoryCreate(title=title))
-    return set_story_series(repo, story.id, series_id, None, None, story.revision, bible=True)
+    with _no_orphan(repo, story.id):
+        return set_story_series(repo, story.id, series_id, None, None, story.revision, bible=True)
 
 
 def create_book(repo, series_id: str, title: str) -> Story:
     """«Нова книга серії»: a new story with the next free number; the snapshot follows when the source has a summary."""
     from ..domain import StoryCreate
     books = series_books(repo, series_id)
+    _require_trial_place(repo, series_id)  # before the story exists: a refused book leaves no orphan
     number = max((b.series_number or 0 for b in books), default=0) + 1
     story = repo.create_story(StoryCreate(title=title))
-    return set_story_series(repo, story.id, series_id, number, None, story.revision)
+    with _no_orphan(repo, story.id):
+        return set_story_series(repo, story.id, series_id, number, None, story.revision)
+
+
+@contextmanager
+def _no_orphan(repo, story_id: str):
+    """A new story the series refused in its transaction (a concurrent book took the place, the trial bible is taken)
+    is removed again: it is an empty row no one has seen, and a refusal must leave no orphan (LONG-PROSE-TRIAL)."""
+    try:
+        yield
+    except BaseException:
+        with repo.db.connection() as db:
+            db.execute('BEGIN IMMEDIATE')
+            row = db.execute('SELECT payload FROM stories WHERE id=?', (story_id,)).fetchone()
+            if row is not None and Story.model_validate_json(row[0]).series_id is None and                     db.execute('SELECT 1 FROM scenes WHERE story_id=? LIMIT 1', (story_id,)).fetchone() is None:
+                db.execute('DELETE FROM stories WHERE id=?', (story_id,))
+        raise
+
+
+def _require_not_trial_book(db, story_id: str, series_id: str) -> None:
+    """LONG-PROSE-TRIAL: a book the trial covers enters no other series (as a book or a bible), so one trial never
+    carries long prose into a second series; the trial book of `kind=story` stays alone."""
+    from .. import build_edition
+    if build_edition.current().long_prose:
+        return
+    from ..book.guard import TRIAL_BOOK_ALONE
+    from .long_prose_trial import covers, read_trial
+    item = read_trial(db)
+    if covers(item, story_id) and not (item.kind == 'series' and item.id == series_id):
+        raise ValueError(TRIAL_BOOK_ALONE)
+
+
+def _require_trial_place(repo, series_id: str) -> None:
+    from .. import build_edition
+    if build_edition.current().long_prose:
+        return
+    from ..book.guard import TRIAL_SERIES_FULL
+    from .long_prose_trial import MAX_BOOKS, trial
+    item = trial(repo)
+    if item is not None and item.kind == 'series' and item.id == series_id and len(item.books) >= MAX_BOOKS:
+        raise ValueError(TRIAL_SERIES_FULL)

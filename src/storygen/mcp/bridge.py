@@ -388,25 +388,25 @@ def build_server(http: httpx.Client | None, client_name: str | None = None, *, c
         except httpx.TransportError as error:
             raise ToolError(f'Obscura не запущено за адресою {base()}: запустіть її і повторіть ({type(error).__name__})') from error
 
-    waitlist: list[str] = []
-
-    def waitlist_url() -> str:
-        # STORE-MCP-001 S05: read once from the running Obscura; the build marker is not inside the bridge folder.
-        if not waitlist:
-            try:
-                answer = raw('GET', '/api/app-info')
-                value = answer.json().get('waitlist_url', '') if answer.status_code == 200 else ''
-            except (httpx.HTTPError, ToolError, ValueError, AttributeError):
-                value = ''
-            waitlist.append(value if isinstance(value, str) else '')
-        return waitlist[0]
+    def edition_hint(detail: str) -> str:
+        """STORE-MCP-001 S05: the hint for an edition refusal. `/api/app-info` of the running Obscura is read with each
+        refusal (rare), so the trial state (LONG-PROSE-TRIAL) is current; the build marker is not inside the bridge folder."""
+        try:
+            answer = raw('GET', '/api/app-info')
+            info = answer.json() if answer.status_code == 200 else {}
+        except (httpx.HTTPError, ToolError, ValueError, AttributeError):
+            info = {}
+        info = info if isinstance(info, dict) else {}
+        url = info.get('waitlist_url', '')
+        trial = info.get('long_prose_trial')
+        return edition_refusal(detail, url if isinstance(url, str) else '', trial if isinstance(trial, dict) else None)
 
     def edition_check(response: httpx.Response) -> None:
         """An edition refusal becomes a hint about the paid version; any other refusal is left to the caller."""
         if response.status_code in (400, 403, 409, 422):
             original = _original(response)
             if edition_refusal(original, '') is not None:
-                raise ToolError(edition_refusal(original, waitlist_url()))
+                raise ToolError(edition_hint(original))
 
     def request(method: str, path: str, **kwargs):
         response = send(method, path, **kwargs)
@@ -1236,7 +1236,7 @@ def build_server(http: httpx.Client | None, client_name: str | None = None, *, c
         budget = request('GET', f'/api/stories/{story}/budget')
         policy = budget.get('policy') or {}
         reason = ready.get('reason')
-        hint = edition_refusal(reason, waitlist_url()) if isinstance(reason, str) and edition_refusal(reason, '') else None
+        hint = edition_hint(reason) if isinstance(reason, str) and edition_refusal(reason, '') else None
         preview = {'ready': ready.get('ready'), 'reason': hint or reason, 'roles': ready.get('roles') or {},
                    'warnings': ready.get('warnings') or [], 'groups_count': len(ready.get('groups') or []),
                    'scenes_count': ready.get('scenes_count'), 'skipped': ready.get('skipped') or [],
@@ -1334,7 +1334,7 @@ def build_server(http: httpx.Client | None, client_name: str | None = None, *, c
         policy = budget.get('policy') or {}
         # STORE-MCP-001 S05: readiness answers 200 with the edition limit as its reason.
         reason = ready.get('reason')
-        hint = edition_refusal(reason, waitlist_url()) if isinstance(reason, str) and edition_refusal(reason, '') else None
+        hint = edition_hint(reason) if isinstance(reason, str) and edition_refusal(reason, '') else None
         preview = {'ready': ready.get('ready'), 'reason': hint or reason, 'roles': ready.get('roles') or {},
                    'calls': ready.get('calls'), 'warnings': ready.get('warnings') or [],
                    'budget': {'limit_usd': usd(budget.get('limit_nanos')), 'spent_usd': usd(budget.get('exposure_nanos')),
