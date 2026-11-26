@@ -131,9 +131,13 @@ def test_guards_ask_the_book_predicate(tmp_path, store_edition, monkeypatch):
     from storygen.book import guard
     monkeypatch.setattr(guard, 'long_prose_for', lambda repo, item: item.id == story.id)
     monkeypatch.setattr(guard, 'story_long_prose', lambda repo, story_id: story_id == story.id)
+    titled = [{'id': 'p1', 'title': 'Початок', 'arcs': [{'id': 'a1'}]}, {'id': 'p2', 'arcs': [{'id': 'b1'}]}]
     response = client.put(f'/api/stories/{story.id}/structure',
-                          json={'parts': PARTS, 'scene_arcs': story.scene_arcs, 'expected_revision': story.revision})
+                          json={'parts': titled, 'scene_arcs': story.scene_arcs, 'expected_revision': story.revision})
     assert response.status_code == 200, response.text
-    story = repo.get_story(story.id)
-    response = client.patch(f'/api/stories/{story.id}', json={'title': 'Нова', 'expected_revision': story.revision})
+    saved = repo.get_story(story.id)
+    assert saved.book_structure.parts[0].title == 'Початок' and saved.revision == story.revision + 1
+    response = client.patch(f'/api/stories/{story.id}', json={'title': 'Нова', 'expected_revision': saved.revision})
     assert response.status_code == 200, response.text
+    renamed = repo.get_story(story.id)
+    assert renamed.title == 'Нова' and renamed.revision == saved.revision + 1
