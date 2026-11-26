@@ -139,7 +139,7 @@ Skills are ready-made instructions for Claude that lead the conversation step by
 
 Character cards (for example, a rename) you change yourself on the "Characters" page: the chat gives the ready edits.
 
-In a story where Obscura writes ("Obscura writes"), after your consent to the table the chat writes the plan preamble and the scene plans. You make the prose replacements yourself in the "Prose" tab. The same applies to a story where the chat writes but the editor works in patches (patches/diff mode). Memory and check runs are paid: each has its own cost preview and needs your consent.
+In a story where Obscura writes ("Obscura writes"), after your consent to the table the chat writes the plan preamble and the scene plans. You make the prose replacements yourself in the "Prose" tab. The same applies to a story where the chat writes but the editor works in patches (patches/diff mode). In "Obscura writes" mode, memory and check runs are paid: each has its own cost preview and needs your consent. In a story where the chat writes (including patches/diff mode), the chat saves the memory itself after your "done".
 
 **Claude Code.** The “Connect Claude Code” button in the library installs the skills together with the bridge (see [The button in the library](#the-button-in-the-library)). Obscura copies them into the stories folder, under `claude\marketplace`, so an Obscura update does not break them. Do not put your own files in that folder: a folder without Obscura's marker is left unchanged, and Obscura shows its path.
 
