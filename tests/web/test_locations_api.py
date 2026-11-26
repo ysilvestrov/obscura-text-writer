@@ -37,7 +37,7 @@ def test_list_has_cards_with_their_scenes_and_suggestions(tmp_path):
     assert [c['path'] for c in data['locations']] == ['Квартира Джорджа', 'Квартира Джорджа / вітальня', 'Квартира Джоржа', 'двір']
     room = card(data, lid(story, 'Квартира Джорджа', 'вітальня'))
     assert room['parent_id'] == lid(story, 'Квартира Джорджа') and room['description'] == '' and room['merged_into'] is None
-    assert room['scenes'] == [{'id': first.id, 'position': 0, 'title': 'Ранок'}]
+    assert room['scenes'] == [{'id': first.id, 'position': 0, 'title': 'Ранок', 'source': 'plan'}]
     assert card(data, lid(story, 'Квартира Джорджа'))['scenes'] == []  # only scenes that name the card itself
     assert data['suggestions'] == [{'a': lid(story, 'Квартира Джорджа'), 'b': lid(story, 'Квартира Джоржа'),
                                     'a_path': 'Квартира Джорджа', 'b_path': 'Квартира Джоржа'}]
@@ -58,7 +58,7 @@ def test_merge_redirects_scenes_and_split_returns_them(tmp_path):
     assert data['story_revision'] == story.revision + 1
     merged = card(data, typo)
     assert (merged['merged_into'], merged['target_path']) == (right, 'Квартира Джорджа')
-    assert card(data, right)['scenes'] == [{'id': second.id, 'position': 1, 'title': 'Вечір'}]
+    assert card(data, right)['scenes'] == [{'id': second.id, 'position': 1, 'title': 'Вечір', 'source': 'plan'}]
     assert data['suggestions'] == []
     assert repo.get_scene(second.id).beats == 'Локація: Квартира Джоржа, двір'  # the plan text stays
     data = client.post(f'{base(story)}/{typo}/split', json={'expected_revision': data['story_revision']}).json()
