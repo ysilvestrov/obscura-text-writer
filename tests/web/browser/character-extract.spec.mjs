@@ -201,6 +201,21 @@ test('the proposal is chosen item by item; the dry run says what goes stale; «�
   await expect.poll(()=>page.locator('.character-editor fieldset textarea').evaluateAll(nodes=>nodes.map(node=>node.value))).toContain('Головний герой');
 });
 
+test('a proposal with only places is shown and accepted',async({page,request})=>{
+  // CHARACTER-EXTRACT-S14: no cards, names, main character or casts — the places alone are a proposal.
+  const fixture=await seed(request,'?proposal=true&places_only=true');
+  await page.goto(`/stories/${fixture.story_id}/characters`);
+  const proposal=page.locator('#character-proposal');
+  await expect(proposal.locator('.character-proposal-group')).toHaveCount(1);
+  await expect(proposal.locator('h3').last()).toHaveText('Місця сцен (2)');
+  await expect(proposal).not.toContainText('Пошук нічого не запропонував');
+  await expect(page.locator('#character-proposal-accept')).toBeEnabled();
+  await page.locator('#character-proposal-accept').click();
+  await expect(page.locator('#character-proposal-result')).toContainText('Прийнято пунктів: 2, пропущено: 0');
+  const locations=(await(await request.get(`/api/stories/${fixture.story_id}/locations`)).json()).locations;
+  expect(locations.map(card=>card.path)).toEqual(['Пірс','Маяк']);
+});
+
 test('a proposal superseded meanwhile is refused (409) and nothing is written',async({page,request})=>{
   const fixture=await seed(request,'?proposal=true');
   await page.goto(`/stories/${fixture.story_id}/characters`);

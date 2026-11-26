@@ -23,6 +23,13 @@ def model_book(tmp_path):
     return client, repo, repo.get_story(story.id), first, repo.get_scene(night.id)
 
 
+def stored(repo, story):
+    """Every stored scene and version payload of the story: a refusal must leave all of them byte for byte."""
+    with repo.db.connection() as db:
+        return {table: dict(db.execute(f'SELECT id, payload FROM {table} WHERE story_id=?', (story.id,)).fetchall())
+                for table in ('scenes', 'versions')}
+
+
 def remove(client, story, location, scene, revision):
     return client.post(f'{base(story)}/{location}/remove-from-scene', json={'scene_id': scene, 'expected_revision': revision})
 
@@ -82,12 +89,10 @@ def test_refusals_change_nothing(tmp_path, case, message):
     else:
         repo.set_scene_trashed(story.id, night.id, night.revision, False)
     story = repo.get_story(story.id)
-    before = repo.get_scene(scene) if case not in {'unknown_scene', 'trashed'} else None  # a trashed scene is not read
+    before = stored(repo, story)
     response = remove(client, story, location, scene, story.revision)
     assert response.status_code == 400 and message in response.text
-    assert repo.get_story(story.id).revision == story.revision
-    if before is not None:
-        assert repo.get_scene(scene).location_ids == before.location_ids
+    assert repo.get_story(story.id).revision == story.revision and stored(repo, story) == before
 
 
 @pytest.mark.req('MEMORY-LOCATIONS')
@@ -107,5 +112,6 @@ def test_removal_stales_the_scene_material_and_names_the_scene_as_dependent(tmp_
 @pytest.mark.req('MEMORY-LOCATIONS')
 def test_a_stale_revision_is_a_conflict(tmp_path):
     client, repo, story, first, night = model_book(tmp_path)
+    before = stored(repo, story)
     assert remove(client, story, lid(story, 'Маяк'), night.id, story.revision - 1).status_code == 409
-    assert repo.get_scene(night.id).location_ids == night.location_ids
+    assert stored(repo, story) == before

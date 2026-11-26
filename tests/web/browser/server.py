@@ -637,13 +637,14 @@ def main():
                     'md_base64':base64.b64encode(md.encode('utf-8')).decode('ascii')}
 
         @app.post('/test-character-extract')
-        def character_extract_fixture(proposal: bool = False):
+        def character_extract_fixture(proposal: bool = False, places_only: bool = False):
             """R-51 «Знайти персонажів і місця у прозі» (spec §6): a book imported from a manuscript (two scenes of prose, no
             memory) with card «Олена»; the memory role is local (the cost is unknown) and slow, so a started search waits
             until it is cancelled. `proposal`: a finished search left a proposal — new card «Марко» (other names «Марк»,
             suggested, and «сторож», not suggested), the name «Оленка» for «Олена», «Олена» as the main character and
             both scene casts; places (spec 2 §5): «Пірс» (new) and «Маяк / ліхтарна» (new, not named in the prose, not
-            suggested) for scene 1, «Маяк» (new) for scene 2. Neutral text about a pier lighthouse."""
+            suggested) for scene 1, «Маяк» (new) for scene 2. `places_only`: the same proposal with places and nothing
+            else. Neutral text about a pier lighthouse."""
             from datetime import datetime, timezone
             from storygen.authoring.blueprints import save_role_settings
             from storygen.domain import ContentRating, ManuscriptImportOrigin, new_id
@@ -678,6 +679,8 @@ def main():
                         'skipped_scenes': [], 'calls': 1, 'partial': False, 'cost_usd': None,
                         'source': {'scenes': {s.id: {'version_id': s.heads['prose'], 'sha256': repo.get_version(s.heads['prose']).sha256} for s in scenes},
                                    'start_cards_version_id': repo.get_story(story.id).characters_version_id, 'group_words': 5000}}
+                if places_only:
+                    body.update(cards=[], name_updates=[], protagonist=None, casts=[])
                 body['fingerprint'] = proposal_fingerprint(body)
                 repo.enqueue_run(Run(id=new_id(), story_id=story.id, request_id='extract-'+new_id(), state='completed', tasks=[],
                                      request=RunRequest(story_id=story.id, mode='character_extract', group_words=5000),
