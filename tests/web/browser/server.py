@@ -625,6 +625,48 @@ def main():
             return {'docx_base64':base64.b64encode(docx(body,[style('Title','title')])).decode('ascii'),
                     'md_base64':base64.b64encode(md.encode('utf-8')).decode('ascii')}
 
+        @app.post('/test-character-extract')
+        def character_extract_fixture(proposal: bool = False):
+            """R-51 «Знайти персонажів у прозі» (spec §6): a book imported from a manuscript (two scenes of prose, no
+            memory) with card «Олена»; the memory role is local (the cost is unknown) and slow, so a started search waits
+            until it is cancelled. `proposal`: a finished search left a proposal — new card «Марко» (other names «Марк»,
+            suggested, and «сторож», not suggested), the name «Оленка» for «Олена», «Олена» as the main character and
+            both scene casts. Neutral text about a pier lighthouse."""
+            from datetime import datetime, timezone
+            from storygen.authoring.blueprints import save_role_settings
+            from storygen.domain import ContentRating, ManuscriptImportOrigin, new_id
+            from storygen.generation.extract_run import proposal_fingerprint
+            from storygen.providers.models import RoleSettings, ProviderSettings
+            from storygen.run_models import Run, RunRequest
+            from storygen.storage.manuscript_store import publish_manuscript
+            from tests.series.helpers import card, publish_cards
+            origin = ManuscriptImportOrigin(file_name='mayak.docx', file_sha256='b'*64, imported_at=datetime.now(timezone.utc))
+            story, scenes = publish_manuscript(repo, StoryCreate(title='Маяк і човен', content_rating=ContentRating(sexual=0, violence=0, themes=0)),
+                                               [('Пірс', 'Олена стояла на пірсі. Марко махнув їй з човна.', 'markdown', None, 8),
+                                                ('Шторм', 'Уночі Марко запалив маяк, і той світив до ранку.', 'markdown', None, 9)],
+                                               origin, False)
+            publish_cards(repo, story, [card('A', 'Олена')])
+            save_role_settings(repo, story.id, 'memory', RoleSettings(provider=ProviderSettings(model='synthetic-slow'), context_tokens=131072),
+                               repo.get_story(story.id).revision)
+            scenes = [repo.get_scene(scene.id) for scene in scenes]
+            if proposal:
+                quote = lambda scene, text: {'version_id': scene.heads['prose'], 'scene_id': scene.id, 'quote': text}
+                body = {'cards': [{'key': 'n1', 'name': 'Марко', 'other_names': [{'name': 'Марк', 'suggested': True}, {'name': 'сторож', 'suggested': False}],
+                                   'quotes': [quote(scenes[0], 'Марко махнув їй з човна'), quote(scenes[1], 'Уночі Марко запалив маяк')],
+                                   'first_scene_id': scenes[0].id}],
+                        'name_updates': [{'card_id': 'A', 'names': [{'name': 'Оленка', 'suggested': True}]}],
+                        'protagonist': {'ref': 'A', 'scores': [1.0]},
+                        'casts': [{'scene_id': scenes[0].id, 'mode': 'set', 'participants': ['A', 'n1']},
+                                  {'scene_id': scenes[1].id, 'mode': 'set', 'participants': ['n1']}],
+                        'skipped_scenes': [], 'calls': 1, 'partial': False, 'cost_usd': None,
+                        'source': {'scenes': {s.id: {'version_id': s.heads['prose'], 'sha256': repo.get_version(s.heads['prose']).sha256} for s in scenes},
+                                   'start_cards_version_id': repo.get_story(story.id).characters_version_id, 'group_words': 5000}}
+                body['fingerprint'] = proposal_fingerprint(body)
+                repo.enqueue_run(Run(id=new_id(), story_id=story.id, request_id='extract-'+new_id(), state='completed', tasks=[],
+                                     request=RunRequest(story_id=story.id, mode='character_extract', group_words=5000),
+                                     checkpoint={'phase': 'done', 'proposal': body}))
+            return {'story_id': story.id, 'scene_ids': [scene.id for scene in scenes]}
+
         @app.post('/test-memory-build')
         def memory_build_fixture(series: bool = False, narrow: bool = False):
             """R-48 «Побудувати пам'ять» (spec §5): a book imported from a manuscript (two scenes of prose, no plan, no

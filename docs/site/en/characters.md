@@ -12,6 +12,27 @@ After you save changed cards, Obscura asks: “Cards changed: … Mark the depen
 
 The **Find a character** field next to the buttons keeps only the cards whose title or [other name](#other-names) contains the text you type, and shows how many cards are visible. Enter or picking a name from the suggestions moves to that card and puts the cursor in its name field. Cards are only hidden: your edits are kept, and **Save details** saves every card. If a hidden card has an empty required field, the filter is cleared so you can see it. **Add character** clears the filter too.
 
+## Character search in the prose
+
+If the book is already written, for example [imported from a manuscript](manuscript-import.md), you do not have to write the cards by hand: the Memory role model reads the prose and proposes them. The **Character search in the prose** section is shown once some scene has prose.
+
+**Find characters in the prose…** opens a preview, and nothing starts until you press **Start**. The model reads the book in groups of whole scenes and sees the characters found so far, so it understands better who the main character is. **Group size, words** is from 1,000 to 20,000, 5,000 by default. The preview shows how many scenes and groups will be read, the largest number of model calls, the upper bound on cost (for a local model, "Cost unknown") and the scenes the search will not read, with reasons. The real price is usually cents per book. If the previous proposal is not accepted yet, the preview warns that after a new search it can no longer be accepted.
+
+While the search runs, the row under the button shows how many groups are left and how many calls were made; **Pause**, **Resume** and **Cancel the search** are there too. You can close the page: the search goes on, and the row comes back when you open the page again. A cancelled search proposes what it managed to read and names the scenes it did not read. If the model refused to answer because of the content, the search stops: choose another Memory role model and press **Resume**.
+
+![Character search proposal with checkboxes](../../images/site/en/character-proposal-desktop.png)
+
+After the search a proposal appears. Nothing is written automatically:
+
+- **New cards** — the name, other names and one or two verbatim quotes with the scene title;
+- **New names** — names the existing cards do not have yet;
+- **Main character** — if no card has the main character mark yet;
+- **Scene casts** — the participants of a scene. An empty cast gets a full one, and a filled one only gets new participants added: nobody is removed.
+
+Every item has a checkbox, and every group has **Select all** and **Clear all**. Names in lower case (descriptions and forms of address such as "the old woman" or "fisherman") start unselected. Below the list you see how many scenes with built memory will become stale. In a book without cards the very first accepted cards make the memory of every scene stale, so search for characters before building memory.
+
+**Accept selected** writes the selected items. While the cards have unsaved edits the button is unavailable: save or discard them first. An item that went stale (the scene was removed, the prose changed or a card with that name was added) is skipped, and the summary lists what was skipped with reasons. Quotes become entries marked "From model", available from the scene of the quote; you can edit them like any other. A proposal is accepted once: what you did not select is dropped, and a new selection needs a new search.
+
 ## When a character appears
 
 For each entry choose:

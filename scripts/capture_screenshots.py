@@ -344,6 +344,75 @@ def capture_manuscript_import(base,lang,sample):
     return [path]
 
 
+EXTRACT={
+    'uk':{'title':'Човен біля маяка','scenes':[('Пірс','Олена стояла на пірсі. Марко махнув їй з човна й гукнув: «Оленко, я повернуся до ночі!»'),
+                                              ('Шторм','Уночі Марко запалив маяк, і той світив до ранку. Олена бачила світло з вікна.')],
+          'hero':'Олена','new':'Марко','other':[('Марк',True),('рибалка',False)],'alias':'Оленка',
+          'quotes':['Марко махнув їй з човна','Уночі Марко запалив маяк']},
+    'en':{'title':'A boat by the lighthouse','scenes':[('The pier','Helen stood on the pier. Mark waved to her from the boat and called: "Nell, I will be back by night!"'),
+                                                      ('The storm','At night Mark lit the lighthouse, and it shone until morning. Helen saw the light from her window.')],
+          'hero':'Helen','new':'Mark','other':[('Marky',True),('fisherman',False)],'alias':'Nell',
+          'quotes':['Mark waved to her from the boat','At night Mark lit the lighthouse']},
+}
+
+
+def seed_character_proposal(data_dir,lang):
+    """CHARACTER-EXTRACT (R-51, spec §6): a second neutral book with the author's prose of two scenes, card of the heroine
+    and a finished character search whose proposal is waiting: a new card with two quotes and other names (one not
+    suggested), a new name for the heroine, the heroine as the main character and both casts. No model calls."""
+    from storygen.domain import ContentRating, SceneCreate, StoryCreate, new_id
+    from storygen.generation.dependencies import save_manual_prose
+    from storygen.generation.extract_run import proposal_fingerprint
+    from storygen.run_models import Run, RunRequest
+    from storygen.storage.repository import Repository
+    repo=Repository(Path(data_dir));spec=EXTRACT[lang]
+    story=repo.create_story(StoryCreate(title=spec['title'],language=lang))
+    story=repo.update_story_rating(story.id,ContentRating(sexual=0,violence=0,themes=0),story.revision)
+    scenes=[]
+    for title,text in spec['scenes']:
+        scene=repo.create_scene(story.id,SceneCreate(title=title))
+        save_manual_prose(repo,scene.id,text,repo.get_scene(scene.id).revision);scenes.append(repo.get_scene(scene.id))
+    from storygen.characters.service import save_character_material
+    save_character_material(repo,story.id,[{'id':None,'schema_version':2,'name':spec['hero'],'entries':[]}],repo.get_story(story.id).revision)
+    from storygen.characters.models import load_characters
+    story=repo.get_story(story.id);hero=load_characters(repo.read_text(story.characters_version_id))[0].id
+    scenes=[repo.get_scene(scene.id) for scene in scenes]
+    quote=lambda scene,text:{'version_id':scene.heads['prose'],'scene_id':scene.id,'quote':text}
+    body={'cards':[{'key':'n1','name':spec['new'],'other_names':[{'name':name,'suggested':flag} for name,flag in spec['other']],
+                    'quotes':[quote(scene,text) for scene,text in zip(scenes,spec['quotes'])],'first_scene_id':scenes[0].id}],
+          'name_updates':[{'card_id':hero,'names':[{'name':spec['alias'],'suggested':True}]}],
+          'protagonist':{'ref':hero,'scores':[1.0,1.0]},
+          'casts':[{'scene_id':scenes[0].id,'mode':'set','participants':[hero,'n1']},{'scene_id':scenes[1].id,'mode':'set','participants':[hero,'n1']}],
+          'skipped_scenes':[],'calls':2,'partial':False,'cost_usd':'0.0040',
+          'source':{'scenes':{s.id:{'version_id':s.heads['prose'],'sha256':repo.get_version(s.heads['prose']).sha256} for s in scenes},
+                    'start_cards_version_id':story.characters_version_id,'group_words':5000}}
+    body['fingerprint']=proposal_fingerprint(body)
+    repo.enqueue_run(Run(id=new_id(),story_id=story.id,request_id='extract-'+new_id(),state='completed',tasks=[],
+                         request=RunRequest(story_id=story.id,mode='character_extract',group_words=5000),checkpoint={'phase':'done','proposal':body}))
+    return story.id
+
+
+def capture_character_proposal(base,story,lang):
+    """CHARACTER-EXTRACT (R-51): the «Пошук персонажів у прозі» section of the characters page with the waiting proposal;
+    nothing is accepted."""
+    from playwright.sync_api import sync_playwright
+    folder=OUT/lang;folder.mkdir(parents=True,exist_ok=True)
+    with sync_playwright() as p:
+        browser=p.chromium.launch()
+        try:
+            page=browser.new_page(viewport={'width':1280,'height':1600},locale='uk-UA' if lang=='uk' else 'en-US')
+            page.goto(base+'/');page.locator(f'[data-ui-locale={lang}]').click();page.wait_for_load_state('networkidle')
+            page.goto(f'{base}/stories/{story}/characters');page.wait_for_load_state('networkidle')
+            section=page.locator('#character-extract');page.locator('#character-proposal-accept').wait_for(state='visible')
+            # The dry-run line settles from «Перевіряю вибране…» to the count of the memory that would go stale.
+            page.wait_for_function("()=>!(document.querySelector('#character-proposal-stale')?.textContent||'…').includes('…')")
+            page.mouse.move(0,0);page.wait_for_timeout(300)
+            path=folder/'character-proposal-desktop.png';section.screenshot(path=str(path))
+            page.close()
+        finally:browser.close()
+    return [path]
+
+
 def shot(page,path,shots):
     page.wait_for_timeout(300);page.screenshot(path=str(path));shots.append(path)
 
@@ -371,6 +440,7 @@ def main(argv=None):
             from storygen.storage.repository import Repository
             shots+=capture_editor_import(base,ids[lang],lang,editor_import_docx(Repository(data),ids[lang]['story_id'],lang))
             shots+=capture_manuscript_import(base,lang,manuscript_sample(lang))
+            shots+=capture_character_proposal(base,seed_character_proposal(data,lang),lang)
         finally:
             server.terminate()
             try:server.wait(timeout=10)
