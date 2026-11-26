@@ -1,0 +1,4 @@
+{"new_cards": [],
+ "card_updates": [{"id": "c9", "other_names": ["Мирон"]}],
+ "scenes": [{"scene": "s9", "participants": ["c1"]}, {"scene": "s1", "participants": ["c1", "c7"]}],
+ "protagonist_candidates": [{"id": "c7", "score": 0.9}]}

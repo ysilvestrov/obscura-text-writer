@@ -84,7 +84,7 @@ if(host){
         mode.onchange=()=>{entry.availability=mode.value;entry.available_from_scene_id=mode.value==='from_scene'?(sceneSelect.value||null):null;scopeVisibility();changed()};
         sceneSelect.onchange=()=>{entry.available_from_scene_id=sceneSelect.value||null;changed()};
         const originLabel=document.createElement('label');uiText(originLabel,"textContent",()=>(t("m_ad3ce05697e9")));const origin=document.createElement('select');
-        for(const [value,text]of labelEntries({get author(){return t("m_7ac9375dd3a8")},get imported(){return t("m_444226b67869")}})){const opt=document.createElement('option');opt.value=value;uiText(opt,"textContent",()=>(text));opt.disabled=value==='imported'&&!entry.sources?.length;origin.append(opt)}
+        for(const [value,text]of labelEntries({get author(){return t("m_7ac9375dd3a8")},get imported(){return t("m_444226b67869")},get model(){return t("characters.origin_model")}})){const opt=document.createElement('option');opt.value=value;uiText(opt,"textContent",()=>(text));opt.disabled=value==='imported'&&!entry.sources?.length||value==='model'&&entry.origin!=='model';origin.append(opt)}
         origin.value=entry.origin;origin.onchange=()=>{entry.origin=origin.value;changed()};originLabel.append(origin);row.append(originLabel);
         const evidence=document.createElement('small');uiText(evidence,"textContent",()=>(entry.sources?.length?t("m_5ad645c41ab8",{p0:(entry.sources.length)}):t("m_d79944f68a86")));row.append(evidence);
         const actions=document.createElement('div');actions.className='actions';

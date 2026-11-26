@@ -24,6 +24,7 @@ from mcp.server.mcpserver import Context, MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 
 from .. import skill_bundles
+from ..characters.extract_plan import EXTRACT_PLAN_CHANGED
 from ..generation.memory_build import MEMORY_PLAN_CHANGED
 from ..publication_models import PublicationData
 from . import character_changes
@@ -37,14 +38,24 @@ TOOLS = ('list_stories', 'get_story', 'get_scene_context', 'get_scene_text', 'im
          'create_story', 'get_templates', 'update_story', 'update_plan_preamble', 'add_scene', 'update_scene', 'open_ghost_mode',
          'get_publication', 'update_publication', 'add_signature', 'upload_cover', 'generate_cover', 'export_book',
          'get_settings', 'update_settings', 'apply_role_preset', 'get_stage_task', 'save_stage_result', 'start_run', 'get_run', 'get_guide',
-         'import_manuscript', 'get_characters', 'update_characters')
+         'import_manuscript', 'keep_scene_memory', 'get_characters', 'update_characters', 'accept_character_proposal')
+# VALID-MEMORY: a memory link without a fingerprint has nothing to keep; the reason names the author's next step.
+KEEP_REFUSALS = {
+    'carry_pending': 'Пам’ять сцени переноситься на нову пам’ять попередньої сцени — дочекайтеся завершення переносу (get_story)',
+    'carry_failed': 'Пам’ять сцени не перенесено на нову пам’ять попередньої сцени, і рішення її не залишить — створіть нову пам’ять цієї сцени',
+    'discrepancy': 'Ревізор знайшов можливу розбіжність пам’яті з прозою: рішення ухвалює автор в Obscura (панель «Узгодженість сцени»)',
+    None: 'У сцени немає пам’яті й прози, яку можна залишити: спершу створіть пам’ять сцени',
+}
 MATERIALS = ('plan', 'brief', 'draft', 'prose', 'memory')
 STAGES = ('brief', 'edit', 'memory')
-RUN_ACTIONS = ('brief', 'draft', 'edit', 'memory', 'publication_suggest', 'audit', 'rebuild_memory')
+RUN_ACTIONS = ('brief', 'draft', 'edit', 'memory', 'publication_suggest', 'audit', 'rebuild_memory', 'character_extract')
 CHAT_WRITES = 'Твір у режимі «пише чат»: напишіть текст самі (get_stage_task, save_draft)'
 AUDIT_FINGERPRINT = 'Для запуску audit передайте plan_fingerprint із показаного авторові перегляду (start_run без confirm)'
 MEMORY_FINGERPRINT = 'Для запуску rebuild_memory передайте plan_fingerprint із показаного авторові перегляду (start_run без confirm)'
 MEMORY_PLAN_STALE = 'План побудови пам’яті змінився після перегляду: викличте start_run без confirm, покажіть авторові новий перегляд і дочекайтеся згоди'
+EXTRACT_FINGERPRINT = 'Для запуску character_extract передайте plan_fingerprint із показаного авторові перегляду (start_run без confirm)'
+EXTRACT_PLAN_STALE = ('План пошуку персонажів змінився після перегляду: викличте start_run без confirm, покажіть авторові новий '
+                      'перегляд і дочекайтеся згоди')
 MEMORY_NOTHING = 'Усі сцени вже мають чинну пам’ять: будувати нічого'
 MEMORY_CHAT_PATH = ('Твір у режимі «пише чат»: Obscura не запускає побудову пам’яті. Проходьте сцени по черзі з чату: '
                     'get_stage_task(stage=memory) і save_stage_result; або автор перемикає режим твору в налаштуваннях Obscura')
@@ -103,6 +114,10 @@ INSTRUCTIONS = ('Obscura — локальний редактор історій.
                 'Готовий рукопис (.docx, .md, .txt): import_manuscript без confirm — перегляд сцен, показати авторові, потім з confirm=true '
                 '(створює нову книгу без моделей і без пам’яті); далі start_run(action=rebuild_memory): перегляд вартості, згода автора, '
                 'запуск із plan_fingerprint (лише у творі «obscura»). '
+                'Якщо в імпортованої книги ще немає карток персонажів, перед побудовою пам’яті запропонуйте пошук персонажів: '
+                'start_run(action=character_extract) — перегляд без confirm, згода автора, запуск із plan_fingerprint (в обох режимах); '
+                'коли запуск завершено, перегляньте пропозицію в get_run і прийміть вибране через accept_character_proposal '
+                '(спершу без confirm, потім з confirm=true). '
                 'Після сцени чи твору дайте людині посилання з next_steps, щоб читати й правити твір у вікні Obscura. '
                 'Якщо скіл Obscura (start-story, draft-scene, publish, revise, series-bible, setup-models) у вас не підключено, спершу '
                 'викличте get_guide з назвою задачі й дотримуйтеся отриманих кроків; якщо підключено — не викликайте. Скіл revise — правка вже написаного твору (зміна факту, локальна правка).')
@@ -846,6 +861,34 @@ def build_server(http: httpx.Client | None, client_name: str | None = None, *, c
         suffix = f'&draft={draft_version_id}' if draft_version_id else ''
         return {'url': f'{base()}/stories/{story_id}?scene={scene_id}&material=draft&ghost=1{suffix}', 'draft_version_id': head}
 
+    @server.tool()
+    def keep_scene_memory(story_id: str, scene_id: str, prose_version_id: str, memory_version_id: str) -> dict[str, Any]:
+        """Залишити чинну пам'ять сцени після зміни її прози — як «Залишити попередню пам'ять» у панелі «Узгодженість
+        сцени». Викликайте лише після згоди автора, коли ви звірили прозу з пам'яттю й записи пам'яті далі правдиві: рішення
+        записується як рішення автора. Пам'ять не перебудовується, тож наступна сцена не потребує перевірки цієї зміни.
+        prose_version_id і memory_version_id — version_id прочитаних прози й пам'яті (get_scene_text); якщо котрусь уже
+        змінено, нічого не записується. Грошей не коштує й працює в обох режимах твору. 409 — пам'ять переноситься або перенос
+        не зійшовся (тоді потрібна нова пам'ять сцени) чи зв'язок змінився: прочитайте сцену знову."""
+        identifier(story_id), identifier(scene_id), identifier(prose_version_id), identifier(memory_version_id)
+        data = request('GET', f'/api/stories/{story_id}')
+        scene = next((item for item in data.get('scenes') or [] if item.get('id') == scene_id), None)
+        if scene is None:
+            raise ToolError('Сцени немає в цьому творі: перевірте story_id і scene_id (get_story)')
+        heads = scene.get('heads') or {}
+        if heads.get('prose') != prose_version_id or heads.get('memory') != memory_version_id:
+            raise ToolError('Прозу чи пам’ять сцени змінено після того, як їх прочитали — прочитайте їх знову (get_scene_text)')
+        link = (((data.get('material_status') or {}).get(scene_id) or {}).get('links') or {}).get('memory') or {}
+        if link.get('status') == 'valid':
+            return {'memory': 'valid', 'validity': ((data.get('material_status') or {}).get(scene_id) or {}).get('validity')}
+        if link.get('status') == 'discrepancy':
+            # An auditor's discrepancy stays the author's decision in Obscura, like the stops of book validation.
+            raise ToolError(KEEP_REFUSALS['discrepancy'])
+        if not link.get('fingerprint') or link.get('status') != 'unchecked':
+            raise ToolError(KEEP_REFUSALS.get(link.get('reason'), KEEP_REFUSALS[None]))
+        result = request('POST', f'/api/scenes/{scene_id}/links/memory/decision',
+                         json={'action': 'approve', 'fingerprint': link['fingerprint']})
+        return {'memory': result['link']['status'], 'validity': result['validity']}
+
     def publication_view(card_response: dict, signatures: list[dict]) -> dict[str, Any]:
         card = {name: card_response['card'].get(name) for name in PUBLICATION_FIELDS}
         card['revision'] = card_response['card']['revision']
@@ -1176,10 +1219,53 @@ def build_server(http: httpx.Client | None, client_name: str | None = None, *, c
     def usd(nanos: Any) -> str | None:
         return None if nanos is None else f'{int(nanos) / 1_000_000_000:.4f}'
 
+    def extract_run(story: str, scene_id: str | None, confirm: bool, budget_limit_usd: str | None, plan_fingerprint: str | None,
+                    group_words: int | None) -> dict[str, Any]:
+        """R-51: the preview of a character search and, with consent, its launch; the plan fingerprint is the consent."""
+        if scene_id is not None:
+            raise ToolError('character_extract стосується твору: не передавайте scene_id')
+        ready = request('POST', f'/api/stories/{story}/character-extract/preview',
+                        json={} if group_words is None else {'group_words': group_words})
+        budget = request('GET', f'/api/stories/{story}/budget')
+        policy = budget.get('policy') or {}
+        reason = ready.get('reason')
+        hint = edition_refusal(reason, waitlist_url()) if isinstance(reason, str) and edition_refusal(reason, '') else None
+        preview = {'ready': ready.get('ready'), 'reason': hint or reason, 'roles': ready.get('roles') or {},
+                   'warnings': ready.get('warnings') or [], 'groups_count': len(ready.get('groups') or []),
+                   'scenes_count': ready.get('scenes_count'), 'skipped': ready.get('skipped') or [],
+                   'calls_bound': ready.get('calls_bound'), 'cost': ready.get('cost'), 'cards_count': ready.get('cards_count'),
+                   'has_protagonist': ready.get('has_protagonist'), 'pending_proposal': ready.get('pending_proposal'),
+                   'plan_fingerprint': ready.get('plan_fingerprint'),
+                   'budget': {'limit_usd': usd(budget.get('limit_nanos')), 'spent_usd': usd(budget.get('exposure_nanos')),
+                              'available_usd': usd(budget.get('available_nanos')),
+                              'default_run_limit_usd': usd(policy.get('default_run_limit_nanos'))}}
+        if not confirm:
+            return {'started': False, 'preview': preview,
+                    'message': 'Покажіть перегляд авторові; запуск — лише після його згоди, викликом з confirm=true і plan_fingerprint'}
+        if not ready.get('ready'):
+            raise ToolError(hint or f"Запуск не готовий: {ready.get('reason')}")
+        if not plan_fingerprint:
+            raise ToolError(EXTRACT_FINGERPRINT)
+        if plan_fingerprint != ready.get('plan_fingerprint'):
+            raise ToolError(EXTRACT_PLAN_STALE)
+        body: dict[str, Any] = {'story_id': story, 'mode': 'character_extract', 'extract_plan_fingerprint': plan_fingerprint}
+        if group_words is not None:
+            body['group_words'] = group_words
+        if budget_limit_usd is not None:
+            body['budget_limit_usd'] = budget_limit_usd
+        queued = send('POST', '/api/runs', json={'request_id': 'mcp-' + uuid.uuid4().hex, 'request': body})
+        if queued.status_code == 409 and EXTRACT_PLAN_CHANGED in _original(queued):
+            raise ToolError(EXTRACT_PLAN_STALE)
+        if queued.status_code >= 400:
+            edition_check(queued)
+            raise ToolError(f'Obscura відповіла {queued.status_code}: {_detail(queued)}')
+        run = queued.json()
+        return {'started': True, 'run_id': run['id'], 'state': run['state'], 'preview': preview}
+
     @server.tool()
     def start_run(story_id: str, action: str, scene_id: str | None = None, confirm: bool = False,
                   budget_limit_usd: str | None = None, plan_fingerprint: str | None = None,
-                  selection_key: str | None = None) -> dict[str, Any]:
+                  selection_key: str | None = None, group_words: int | None = None) -> dict[str, Any]:
         """Запустити моделлю Obscura один етап сцени (brief, draft, edit, memory), побудову пам'яті книги (rebuild_memory),
         пропозицію картки публікації
         (publication_suggest, без scene_id) або перевірку зв'язків Ревізором (audit: зі scene_id — одна сцена, без нього —
@@ -1198,10 +1284,17 @@ def build_server(http: httpx.Client | None, client_name: str | None = None, *, c
         й передайте selection_key = selection.key з показаного перегляду, тоді змінений відбір Obscura відхилить. budget_limit_usd — ліміт цього запуску в доларах (рядок, напр.
         "0.50"). Запуск іде у фоні: стан і результат — get_run(run_id); результат етапу читайте get_scene_text, пропозиції
         картки — у get_run. Кожен виклик з confirm=true створює новий запуск; другу побудову пам'яті, поки перша в черзі,
-        виконується чи призупинена, Obscura відхиляє (409): стан першої — get_run."""
+        виконується чи призупинена, Obscura відхиляє (409): стан першої — get_run.
+        character_extract (без scene_id; в обох режимах твору, бо пропозиція нічого не пише в книгу, доки автор її не прийме):
+        модель читає прозу книги групами й пропонує картки персонажів, імена та склад сцен. Перегляд має groups_count,
+        scenes_count, skipped, calls_bound, cost, cards_count, has_protagonist, pending_proposal і plan_fingerprint; запуск —
+        лише з plan_fingerprint (і тим самим group_words, 1000–20000 слів на групу, якщо його задано) із показаного перегляду.
+        Результат — get_run, прийняття — accept_character_proposal."""
         if action not in RUN_ACTIONS:
             raise ToolError('Невідома дія; можливі: ' + ', '.join(RUN_ACTIONS))
         story = identifier(story_id)
+        if action == 'character_extract':
+            return extract_run(story, scene_id, confirm, budget_limit_usd, plan_fingerprint, group_words)
         if action == 'publication_suggest':
             if scene_id is not None:
                 raise ToolError('publication_suggest стосується твору: не передавайте scene_id')
@@ -1304,7 +1397,8 @@ def build_server(http: httpx.Client | None, client_name: str | None = None, *, c
     @server.tool()
     def get_run(run_id: str, cancel: bool = False) -> dict[str, Any]:
         """Стан запуску Obscura: state (queued, running, completed, failed, cancelled…), помилка, спроби (state, error,
-        result_version_id), для publication_suggest — актуальні пропозиції картки, для audit — область (audit_scope) і
+        result_version_id), для character_extract — блок character_extract (phase, calls_made, groups_pending і пропозиція
+        персонажів, поки її можна прийняти), для publication_suggest — актуальні пропозиції картки, для audit — область (audit_scope) і
         checkpoint зупинки: state=needs_review і checkpoint.scene_id — сцена, де Ревізор знайшов розбіжність чи не зміг
         перевірити зв'язок; рішення ухвалює й перевірку продовжує автор у вікні Obscura. Грошей не коштує. Довгий запуск не
         чекайте в одному виклику: перевіряйте стан повторно. cancel=true спершу скасовує запуск — лише той, що почав чат."""
@@ -1323,10 +1417,42 @@ def build_server(http: httpx.Client | None, client_name: str | None = None, *, c
         if mode == 'audit':
             result['audit_scope'] = run['request'].get('audit_scope')
             result['checkpoint'] = run.get('checkpoint')
+        if mode == 'character_extract':
+            # R-51: the proposal belongs to this run only while it is the book's current one; a newer run supersedes it.
+            checkpoint = run.get('checkpoint') or {}
+            proposal = None
+            found = send('GET', f"/api/stories/{identifier(run['story_id'])}/character-proposal")
+            if found.status_code == 200 and found.json().get('run_id') == run['id']:
+                proposal = found.json().get('proposal')
+            # Phase `done` keeps no running state: the calls are those of the published proposal.
+            calls_made = (checkpoint.get('state') or checkpoint.get('proposal') or {}).get('calls')
+            result['character_extract'] = {'phase': checkpoint.get('phase'), 'calls_made': calls_made,
+                                           'groups_pending': len(checkpoint['pending']) if 'pending' in checkpoint else None,
+                                           'proposal': proposal}
         if mode == 'publication_suggest':
             suggestions = request('GET', f"/api/stories/{identifier(run['story_id'])}/publication/suggestions")
             result['suggestions'] = {'proposals': suggestions.get('proposals') or [], 'history': suggestions.get('history') or []}
         return result
+
+    @server.tool()
+    def accept_character_proposal(story_id: str, run_id: str, fingerprint: str, cards: list[dict[str, Any]] | None = None,
+                                  name_updates: list[dict[str, Any]] | None = None, protagonist: bool = False,
+                                  casts: list[str] | None = None, confirm: bool = False) -> dict[str, Any]:
+        """Прийняти вибране з пропозиції персонажів завершеного запуску character_extract (run_id і proposal.fingerprint — з get_run).
+        cards — [{key, names}]: нові картки за key із пропозиції, names — імена, які автор лишає; name_updates — [{card_id, names}]:
+        нові імена наявних карток; protagonist=true — позначити головного героя; casts — scene_id сцен, чий склад із пропозиції
+        приймаємо. Усе, що не вибрано, лишається не прийнятим. Без confirm нічого не пише: повертає, що буде застосовано й
+        пропущено (applied, skipped, changed_card_ids, changed_scene_ids, stale_memory_scenes) — покажіть це авторові; запис —
+        лише після його згоди, викликом з confirm=true. Прийняття одне, однією транзакцією; пам'ять сцен зі зміненим складом
+        (stale_memory_scenes) після цього варто перебудувати. Грошей не коштує."""
+        story = identifier(story_id)
+        body = {'run_id': identifier(run_id), 'fingerprint': fingerprint, 'cards': cards or [], 'name_updates': name_updates or [],
+                'protagonist': protagonist, 'casts': casts or []}
+        result = request('POST', f'/api/stories/{story}/character-proposal/accept', json={**body, 'dry_run': not confirm})
+        if not confirm:
+            return {'accepted': False, 'preview': result,
+                    'message': 'Покажіть авторові, що буде застосовано; запис — лише після його згоди, викликом з confirm=true'}
+        return {'accepted': True, 'result': result}
 
     @server.tool()
     def next_steps(scene_id: str) -> str:

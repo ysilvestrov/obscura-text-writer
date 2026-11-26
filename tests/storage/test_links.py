@@ -164,6 +164,29 @@ def test_same_own_events_keep_next_scene_valid(tmp_path):
 
 
 @pytest.mark.req('VALID-LINKS')
+@pytest.mark.req('MEMORY-003')
+def test_new_prose_with_same_own_events_keeps_next_scene_valid(tmp_path):
+    # MEMORY-003-S09: a new prose version of the first scene whose memory keeps the same records keeps P0 of the next one.
+    repo, story, scenes = book(tmp_path, 2)
+    old_memory = repo.get_scene(scenes[0].id).heads['memory']
+    before = memory_digest(repo.context_view(story.id), old_memory)
+    old_prose = repo.get_scene(scenes[0].id).heads['prose']
+    text = repo.read_text(old_prose) + '\n\nЗа вікном стемніло.'
+    prose = save_manual_prose(repo, scenes[0].id, text, repo.get_scene(scenes[0].id).revision)
+    journal = json.loads(memory_text(repo, scenes[0]))
+    journal['source_prose_ids'][-1] = prose.id
+    for event in journal['events']:
+        if event['source_version_id'] == old_prose:
+            event['source_version_id'] = prose.id
+    save_scene_memory(repo, scenes[0].id, json.dumps(journal, ensure_ascii=False), repo.get_scene(scenes[0].id).revision)
+    view = repo.context_view(story.id)
+    assert repo.get_scene(scenes[0].id).heads['memory'] != old_memory
+    assert memory_digest(view, repo.get_scene(scenes[0].id).heads['memory']) == before
+    after = statuses(repo, story, scenes[1])
+    assert after['brief'] == ('valid', 'construction', None) and after['prose'] == ('valid', 'construction', None)
+
+
+@pytest.mark.req('VALID-LINKS')
 def test_draft_change_keeps_validity(tmp_path):
     repo, story, (scene,) = book(tmp_path)
     save_manual_draft(repo, scene.id, 'Ручна чернетка.', repo.get_scene(scene.id).revision)

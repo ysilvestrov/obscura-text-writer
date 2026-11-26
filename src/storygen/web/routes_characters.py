@@ -1,4 +1,5 @@
 from fastapi import APIRouter,Request
+from pydantic import Field
 from ..domain import DomainModel
 from ..characters.service import read_character_material,save_character_material,preview_character_material,check_character_material
 
@@ -52,3 +53,37 @@ def brief_link_view(scene_id: str,request: Request):
 def brief_link_confirm(scene_id: str,body: BriefLinkBody,request: Request):
     from ..characters.brief_link import confirm_brief_link
     return confirm_brief_link(request.app.state.repo,scene_id,body)
+
+
+class ExtractPreview(DomainModel):
+    group_words: int = Field(default=5000,ge=1000,le=20000,strict=True)
+
+
+@router.post('/api/stories/{story_id}/character-extract/preview')
+def character_extract_preview(story_id: str,body: ExtractPreview,request: Request):
+    # CHARACTER-EXTRACT (R-51): read-only; the plan of the run — groups, calls bound, cost, fingerprint.
+    from ..characters.extract_plan import extract_plan
+    return extract_plan(request.app.state.repo,story_id,body.group_words)
+
+
+from ..characters.extract_accept import AcceptRequest
+
+
+@router.get('/api/stories/{story_id}/character-proposal')
+def character_proposal(story_id: str,request: Request):
+    # CHARACTER-EXTRACT (R-51): the proposal of the latest finished run while it can be accepted, with its run_id.
+    from fastapi import HTTPException
+    from ..characters.extract_accept import NO_PROPOSAL,current_proposal
+    repo=request.app.state.repo
+    repo.get_story(story_id)
+    proposal=current_proposal(repo,story_id)
+    if proposal is None:
+        raise HTTPException(404,NO_PROPOSAL)
+    return proposal
+
+
+@router.post('/api/stories/{story_id}/character-proposal/accept')
+def character_proposal_accept(story_id: str,body: AcceptRequest,request: Request):
+    # One transaction: cards, casts and the accepted mark; `dry_run` answers the same and writes nothing.
+    from ..characters.extract_accept import accept_proposal
+    return accept_proposal(request.app.state.repo,story_id,body)

@@ -30,7 +30,7 @@ IMPACT_REMOVED = 'Перевірку впливу вилучено; скорис
 class RunRequest(DomainModel):
     story_id: str
     scene_id: str | None = None
-    mode: Literal['stage','scene','remaining','prepare','rebuild_memory','evaluate','classify','edit_loop','publication_suggest','rewrite','impact','timeline_summary','memory_carry','audit'] = 'scene'
+    mode: Literal['stage','scene','remaining','prepare','rebuild_memory','evaluate','classify','edit_loop','publication_suggest','rewrite','impact','timeline_summary','memory_carry','audit','character_extract'] = 'scene'
     # 'audit' (VALID-LINKS): the auditor checks the links of scene_id ('scene', R-44 PR 3) or of the whole book in
     # reading order ('story', R-44 PR 4, scene_id None). The plan fingerprint is that of the preview the author saw:
     # required for 'story', optional for 'scene' (the scene button of PR 3); Worker.enqueue compares a given one.
@@ -38,6 +38,10 @@ class RunRequest(DomainModel):
     audit_plan_fingerprint: str | None = Field(default=None,pattern=r'^[a-f0-9]{64}$')
     # 'rebuild_memory' (R-48 design §5): the memory-build plan the author saw; optional, Worker.enqueue compares a given one.
     memory_plan_fingerprint: str | None = Field(default=None,pattern=r'^[a-f0-9]{64}$')
+    # 'character_extract' (R-51): the model reads the prose of the book for characters; scene_id None. `group_words` is the
+    # reading group budget (None: 5000), `extract_plan_fingerprint` the plan the author saw (Worker.enqueue compares a given one).
+    group_words: int | None = Field(default=None,ge=1000,le=20000,strict=True)
+    extract_plan_fingerprint: str | None = Field(default=None,pattern=r'^[a-f0-9]{64}$')
     # 'memory_carry': the model-free carry of a new memory into later journals; scene_id is the first scene to carry.
     # 'impact' (R-28) stays readable for saved runs; Worker.enqueue refuses it (IMPACT_REMOVED, R-44 PR 1).
     impact_plan_fingerprint: str | None = Field(default=None,pattern=r'^[a-f0-9]{64}$')
@@ -92,6 +96,10 @@ class RunRequest(DomainModel):
             raise ValueError('Відбиток плану перевірки дозволений лише для перевірки Ревізором')
         if self.memory_plan_fingerprint is not None and self.mode!='rebuild_memory':
             raise ValueError('Відбиток плану пам’яті дозволений лише для побудови пам’яті')
+        if (self.group_words is not None or self.extract_plan_fingerprint is not None) and self.mode!='character_extract':
+            raise ValueError('Бюджет групи й відбиток плану дозволені лише для пошуку персонажів')
+        if self.mode=='character_extract' and self.scene_id is not None:
+            raise ValueError('Пошук персонажів належить усьому твору, не окремій сцені')
         if self.audit_scope=='story':
             if self.scene_id is not None:
                 raise ValueError('Валідація книги належить усьому твору, не окремій сцені')

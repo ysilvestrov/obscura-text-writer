@@ -184,6 +184,17 @@ def execute_stage(
                 (terminal.failure.get('category','technical') if terminal else 'incomplete'))
             attempt.error=attempt.error or {'empty_output':'Планувальник повернув порожню відповідь','output_limit':'Вичерпано ліміт відповіді'}.get(category,'Пропозицію не завершено')
             attempt.context['publication_failure']={**(terminal.failure if terminal else {}),'category':category,'message':attempt.error}
+        if stage=='character_extract':
+            category=('cancelled' if attempt.state=='cancelled' else
+                'output_limit' if attempt.finish_reason=='length' else
+                'refusal_content' if attempt.finish_reason=='content_filter' else
+                'refusal_unknown' if terminal and terminal.refusal else
+                'empty_output' if terminal and terminal.finish_reason=='stop' and not text.strip() else
+                (terminal.failure.get('category','technical') if terminal else 'incomplete'))
+            from ..characters.extract import EXTRACT_REFUSED
+            attempt.error=attempt.error or {'empty_output':'Модель не дала відповіді','output_limit':'Вичерпано ліміт відповіді',
+                'refusal_content':EXTRACT_REFUSED,'refusal_unknown':EXTRACT_REFUSED}.get(category,'Пошук персонажів не завершено')
+            attempt.context['extract_failure']={**(terminal.failure if terminal else {}),'category':category,'message':attempt.error}
         if stage=='timeline_summary':
             attempt.error=attempt.error or ('Модель пам’яті повернула порожній підсумок' if attempt.state=='failed' and not text.strip() else 'Підсумок не завершено; автоматичного повтору немає')
             attempt.context['summary_failure']={'category':attempt.state,'message':attempt.error}
@@ -198,6 +209,12 @@ def execute_stage(
         if stage=='timeline_summary':
             from .timeline_summary import finish_summary
             return finish_summary(repo,attempt,context,text,run_id)
+        if stage=='character_extract':
+            # CHARACTER-EXTRACT: the run (generation/extract_run) applies the answer; no version is written here.
+            from ..characters.extract import parse_extract
+            attempt.context['extract_response']=parse_extract(text).model_dump()
+            attempt.state='completed'
+            return repo.save_attempt(attempt)
         if stage in AUDIT_STAGES:
             # VALID-LINKS: the auditor reads, it does not write a version; audit.commit_audit_verdict writes the verdict.
             from .audit_output import outcome, parse_audit, verdict_discrepancies
@@ -285,7 +302,8 @@ def execute_stage(
                 json.loads(context.fragments.get('memory_allowed_character_ids','[]')),warnings=memory_warnings,
                 # Attempts captured before wire v3 have no key and keep the v2 parser; v4 checks against captured bounds.
                 wire_version=int(context.fragments.get('memory_wire_version','2')),
-                bounds=json.loads(context.fragments['memory_schema_bounds']) if context.fragments.get('memory_wire_version')=='4' else None)
+                bounds=json.loads(context.fragments['memory_schema_bounds']) if context.fragments.get('memory_wire_version')=='4' else None,
+                scene_id=scene_id)
             validate_memory_journal(snapshot,sources,previous)
             text=snapshot.model_dump_json()
         elif stage=='edit' and context.settings.edit_mode=='prose' and context.fragments.get('edit_loop_run_id'):
@@ -409,6 +427,14 @@ def execute_stage(
             if context.fragments.get('edit_loop_run_id') and failure['category']!='publication':
                 attempt.context['edit_loop_failure_origin']='model_response'
             attempt.error='Помилка редактора: '+failure['message']+'. Оригінальну відповідь збережено; автоматичного повтору немає.'
+        elif stage=='character_extract':
+            if terminal and terminal.refusal:  # a refusal in words is not a malformed answer: the run stops on it
+                from ..characters.extract import EXTRACT_REFUSED
+                attempt.error=EXTRACT_REFUSED
+                attempt.context['extract_failure']={'category':'refusal_unknown','message':attempt.error}
+            else:
+                attempt.error=str(exc)  # Only trusted parse_extract messages reach this branch.
+                attempt.context['extract_failure']={'category':'protocol','message':attempt.error}
         elif stage in AUDIT_STAGES:
             attempt.error=str(exc)+'. Висновку немає; автоматичного повтору немає.'  # trusted parse_audit message
             attempt.context['audit_failure']={'category':'protocol','message':attempt.error}

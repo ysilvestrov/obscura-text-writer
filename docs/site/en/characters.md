@@ -6,7 +6,7 @@ Open **Characters** in the story's top row. The separate page has wide descripti
 
 ## Cards and entries
 
-The buttons at the top save the cards, add a character or reload what is saved. Each card consists of entries; a solid imported description can be split into entries at blank paragraphs. Entries written by hand are marked "Author statement", and imported ones keep their source quotations.
+The buttons at the top save the cards, add a character or reload what is saved. Each card consists of entries; a solid imported description can be split into entries at blank paragraphs. Entries written by hand are marked "Author statement", imported ones keep their source quotations, and entries accepted from the model's character search are marked "From model".
 
 After you save changed cards, Obscura asks: “Cards changed: … Mark the dependent scenes as unchecked? Scenes: N.” Dependent scenes are the scenes with a brief where the character is a participant or the narrator, including for a removed card. **Yes** makes the brief and prose of these scenes “Unchecked” until you approve or regenerate them ([scene status](workspace.md#scene-status-valid-or-unchecked)); **No** changes nothing. Cards changed through a chat client (MCP) do not change scene status.
 

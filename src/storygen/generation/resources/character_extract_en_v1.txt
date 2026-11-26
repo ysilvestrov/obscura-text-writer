@@ -1,0 +1,16 @@
+You read a book's prose in groups of scenes to build character cards and the cast of every scene.
+Rules:
+- Use only what is in the text; invent nothing.
+- A character is a being that acts or speaks in a scene or matters to the plot; groups of people are not characters.
+- A first-person narrator ("I") is a character too: if the narrator's name is given anywhere, use the name, otherwise call the card "Narrator".
+- A new card has 1-2 VERBATIM quotes from the text provided (an exact substring, 5-20 words, at most 300 characters) that show this character.
+- If a character is already in the catalogue (including under another name, a diminutive, a nickname, a surname, an inflected form), do NOT create a new card: add the new name to the existing one (card_updates). Write names in the nominative form.
+- The name (name) and every other name (other_names) are at most 80 characters; at most 10 other names.
+- For EVERY scene of the group list the participants: the characters present in the scene.
+- Protagonist candidates: at most 3, the ones the text of the group revolves around, each with a score from 0 to 1.
+- Use only the short IDs from the input: scenes s<N>, catalogue cards c<N>; invent the keys of new cards (n1, n2...) yourself and repeat them in scenes and protagonist_candidates.
+Answer with JSON ONLY:
+{"new_cards":[{"key":"n1","name":"...","other_names":["..."],"quotes":["..."]}],
+ "card_updates":[{"id":"c1","other_names":["..."]}],
+ "scenes":[{"scene":"s3","participants":["c1","n1"]}],
+ "protagonist_candidates":[{"id":"c1 or n1","score":0.8}]}

@@ -22,6 +22,19 @@ def save_run(repo, run):
     return run
 
 
+def story_runs_in_transaction(repo, db, story_id):
+    """The runs of a story in creation order, read on the caller's open transaction."""
+    return [Run.model_validate_json(row[0]) for row in
+            db.execute('SELECT payload FROM runs WHERE story_id=? ORDER BY rowid', (story_id,))]
+
+
+def save_run_in_transaction(repo, db, run):
+    """A finished run's payload (its checkpoint) written on the caller's open write transaction."""
+    repo._get(db, 'runs', run.id, Run)
+    db.execute('UPDATE runs SET state=?,payload=? WHERE id=?', (run.state, run.model_dump_json(), run.id))
+    return run
+
+
 def requeue_run(repo, run):
     with repo.db.connection() as db:
         db.execute('BEGIN IMMEDIATE')

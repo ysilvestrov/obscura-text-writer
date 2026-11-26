@@ -6,6 +6,7 @@ whose plan has no participants line gets as its cast the character cards whose n
 mention. Scenes whose plan names participants and scenes whose prose a model derived (`edited`) are never changed, so the
 cast write never stales model prose (review M-2)."""
 import threading
+from typing import Literal
 
 from ..characters.acquaintance import protagonist
 from ..characters.models import load_characters
@@ -89,38 +90,51 @@ def cast_preview(view):
     return entry, proposal
 
 
-def apply_cast(repo, story_id, proposal, expected_revision) -> list[str]:
+def apply_cast(repo, story_id, proposal, expected_revision, mode: Literal['set', 'add'] = 'set') -> list[str]:
     """Writes the proposed casts in one transaction under CAS on the story revision; returns the IDs of the scenes whose
-    cast changed. A scene whose plan now names participants or which already has a cast, whose prose head is not author
-    text (`manual`), a trashed scene or one of another story is skipped; an empty proposal for an empty cast writes
-    nothing. A changed cast stales the scene's material as a changed participants line does (`stale_scene_material`); nothing changes →
-    nothing is written and the story revision stays."""
+    cast changed (`apply_cast_in_transaction`)."""
+    with repo.write_transaction() as db:
+        if repo.story_in_transaction(db, story_id).revision != expected_revision:
+            raise RevisionConflict(CAST_CONFLICT)
+        return apply_cast_in_transaction(repo, db, story_id, proposal, mode)
+
+
+def apply_cast_in_transaction(repo, db, story_id, proposal, mode: Literal['set', 'add'] = 'set') -> list[str]:
+    """The casts of `proposal` ({scene id: card IDs}) on the caller's open write transaction; returns the IDs of the scenes
+    whose cast changed. A scene whose plan now names participants, whose prose head is not author text (`manual`), a
+    trashed scene or one of another story is skipped. `set` fills only an empty cast (a cast already set is skipped);
+    `add` (CHARACTER-EXTRACT) appends the participants missing from the cast at its end, so a cast never loses anyone.
+    A changed cast stales the scene's material as a changed participants line does (`stale_scene_material`); nothing
+    changes → nothing is written and the story revision stays."""
     from ..domain import VersionRef
     from .scene_metadata import stale_scene_material, story_cards
-    with repo.db.connection() as db:
-        db.execute('BEGIN IMMEDIATE')
-        story = repo._active_story(db, story_id)
-        if story.revision != expected_revision:
-            raise RevisionConflict(CAST_CONFLICT)
-        known = {card.id for card in story_cards(repo, db, story_id)}
-        changed = []
-        for scene_id, ids in proposal.items():
-            if set(ids) - known:
-                raise ValueError('Учасник сцени не має картки персонажа')
-            # Read inside the transaction: the invalidation of an earlier scene may have marked this one for review.
-            row = db.execute('SELECT payload FROM scenes WHERE id=? AND story_id=?', (scene_id, story_id)).fetchone()
-            if row is None:
-                continue
-            scene = Scene.model_validate_json(row[0])
-            if not ids or scene.trashed_at or _planned(scene) or scene.character_ids or not scene.heads.get('prose'):
-                continue
-            if repo._get(db, 'versions', scene.heads['prose'], VersionRef).kind != AUTHOR_PROSE:
-                continue
-            scene.character_ids = list(ids)
-            stale_scene_material(repo, db, scene)
-            scene.revision += 1
-            repo._save_scene(db, scene)
-            changed.append(scene.id)
-        if changed:
-            repo._touch_story(db, story_id)
+    if mode not in ('set', 'add'):
+        raise ValueError('Невідомий режим складу сцени')
+    repo._active_story(db, story_id)
+    known = {card.id for card in story_cards(repo, db, story_id)}
+    changed = []
+    for scene_id, ids in proposal.items():
+        if set(ids) - known:
+            raise ValueError('Учасник сцени не має картки персонажа')
+        # Read inside the transaction: the invalidation of an earlier scene may have marked this one for review.
+        row = db.execute('SELECT payload FROM scenes WHERE id=? AND story_id=?', (scene_id, story_id)).fetchone()
+        if row is None:
+            continue
+        scene = Scene.model_validate_json(row[0])
+        if not ids or scene.trashed_at or _planned(scene) or not scene.heads.get('prose'):
+            continue
+        if mode == 'set' and scene.character_ids:
+            continue
+        if repo._get(db, 'versions', scene.heads['prose'], VersionRef).kind != AUTHOR_PROSE:
+            continue
+        cast = list(dict.fromkeys([*scene.character_ids, *ids]))
+        if cast == scene.character_ids:
+            continue
+        scene.character_ids = cast
+        stale_scene_material(repo, db, scene)
+        scene.revision += 1
+        repo._save_scene(db, scene)
+        changed.append(scene.id)
+    if changed:
+        repo._touch_story(db, story_id)
     return changed

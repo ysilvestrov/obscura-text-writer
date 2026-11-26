@@ -51,6 +51,9 @@ def preview(repo, request, view=None):
         return dict(ready=False,reason=IMPACT_REMOVED,roles={},calls=0,evaluator=None)
     if request.mode=='memory_carry':
         return dict(ready=True,reason=None,roles={},calls=0,evaluator=None,warnings=[])
+    if request.mode=='character_extract':  # R-51: a book-wide model reading, no scene
+        from ..characters.extract_plan import readiness
+        return readiness(repo,request,view=view)
     if request.mode=='audit':  # VALID-LINKS: carry-pending links count (no call), never refuse the run
         from .audit_run import readiness
         return readiness(repo,request,view=view)
@@ -222,6 +225,21 @@ def pending_preview(repo,run):
         return dict(ready=False,reason=IMPACT_REMOVED,roles={},calls=0,evaluator=None)
     if run.request.mode=='memory_carry':
         return dict(ready=True,reason=None,roles={},calls=0,evaluator=None)
+    if run.request.mode=='character_extract':
+        from ..characters.extract_plan import readiness
+        result=readiness(repo,run.request)
+        checkpoint=run.checkpoint or {}
+        if checkpoint.get('phase')=='reading':  # a resume calls at most what is left of the bound priced at start
+            from .audit_cost import usd
+            from ..billing.models import money
+            left=max(checkpoint['calls_bound']-checkpoint['state']['calls'],0)
+            per_call=checkpoint.get('per_call_usd')
+            # The price the run counts unsettled calls at, not today's fresh plan; local or no price at start: no USD,
+            # and the price reason of the fresh plan stays.
+            total=usd(money(per_call)*left) if per_call is not None else None
+            result.update(calls=left,cost={'per_call_usd':per_call,'total_usd':total,
+                                           'reason':None if total is not None else result['cost']['reason']})
+        return result
     if run.request.mode=='audit':
         from .audit_run import readiness
         return readiness(repo,run.request,resume=True)

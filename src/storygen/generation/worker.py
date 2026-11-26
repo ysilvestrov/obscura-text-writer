@@ -97,6 +97,8 @@ class RunCoordinator:
             tasks=[{'scene_id':request.scene_id,'stage':'classify'}]
         elif request.mode=='audit':
             tasks=[{'scene_id':request.scene_id,'stage':'audit'}]  # audit_run picks the link (and the scene) on every step
+        elif request.mode=='character_extract':
+            tasks=[]  # the run is a loop of its own over groups of scenes (extract_run), not a list of scene stages
         elif request.mode=='memory_carry':
             start=next(s for s in scenes if s.id==request.scene_id)
             tasks=[{'scene_id':s.id,'stage':'memory_carry'} for s in scenes if s.position>=start.position]
@@ -165,6 +167,11 @@ class RunCoordinator:
                 # is awaited or cancelled in the run panel.
                 from .memory_build import MEMORY_BUILD_RUNNING
                 raise RevisionConflict(MEMORY_BUILD_RUNNING)
+            if request.mode == 'character_extract' and any(
+                r.request.mode == 'character_extract' and r.state in MEMORY_BUILD_ACTIVE for r in self.list_runs(request.story_id)
+            ):
+                from ..characters.extract_plan import EXTRACT_RUNNING
+                raise RevisionConflict(EXTRACT_RUNNING)  # a paused run is not active: it does not block a new one
             readiness=None
             if request.mode == 'evaluate':
                 from ..evaluation.story_adapter import get_evaluation_settings
@@ -186,6 +193,10 @@ class RunCoordinator:
                         request.memory_plan_fingerprint!=readiness.get('plan_fingerprint'):
                     from .memory_build import MEMORY_PLAN_CHANGED
                     raise RevisionConflict(MEMORY_PLAN_CHANGED)
+                if request.mode=='character_extract' and request.extract_plan_fingerprint is not None and \
+                        request.extract_plan_fingerprint!=readiness.get('plan_fingerprint'):
+                    from ..characters.extract_plan import EXTRACT_PLAN_CHANGED
+                    raise RevisionConflict(EXTRACT_PLAN_CHANGED)
             telemetry={'roles':readiness.get('roles',{}),'calls':readiness.get('calls')} if readiness is not None else None
             if telemetry is not None and readiness.get('evaluator'):
                 telemetry['evaluator']=readiness['evaluator']
@@ -284,8 +295,15 @@ class RunCoordinator:
             target = CANCEL_TRANSITIONS.get(run.state)
             if run.request.mode == 'memory_carry' and run.state == 'failed':
                 target = 'cancelled'  # MEMORY-CARRY: a failed carry keeps later scenes waiting until it is cancelled
+            extracting = run.request.mode == 'character_extract' and (run.checkpoint or {}).get('phase') == 'reading'
+            if extracting and run.state == 'failed':
+                target = 'cancelled'  # CHARACTER-EXTRACT: a failed run is resumable; cancelling it publishes what was read
             if target is None:
                 return run
+            if extracting and target == 'cancelled':
+                # CHARACTER-EXTRACT spec 3.7: a cancelled run publishes the partial proposal of the groups read so far.
+                from .extract_run import publish
+                run.checkpoint = publish(self.repo, run, partial=True)
             run.state = target
             if target == 'cancellation_requested':
                 self.cancel_event.set()
@@ -323,6 +341,19 @@ class RunCoordinator:
                 # would run over the same scenes; the duplicate guard of enqueue applies here too.
                 from .memory_build import MEMORY_BUILD_RESUME_BLOCKED
                 raise RevisionConflict(MEMORY_BUILD_RESUME_BLOCKED)
+            if run.request.mode == 'character_extract':
+                # CHARACTER-EXTRACT spec 3.7: one active run per book; a published proposal ends the run; the prose of a
+                # scene still to read must be the prose the plan priced. The interrupted group is simply read again
+                # within the calls bound, so no explicit repeat decision is asked (tasks are empty).
+                from ..characters.extract_plan import EXTRACT_PROSE_CHANGED, EXTRACT_RUNNING
+                from .extract_run import unread_prose_changed
+                if (run.checkpoint or {}).get('phase') == 'done':
+                    raise ValueError('Пошук персонажів завершено; запустіть новий')
+                if any(r.id != run.id and r.request.mode == 'character_extract' and r.state in MEMORY_BUILD_ACTIVE
+                       for r in self.list_runs(run.story_id)):
+                    raise RevisionConflict(EXTRACT_RUNNING)
+                if unread_prose_changed(self.repo, run):
+                    raise RevisionConflict(EXTRACT_PROSE_CHANGED)
             attempts=self.repo.list_attempts(run.story_id,run.id)
             task=run.tasks[run.cursor] if run.cursor<len(run.tasks) else None
             latest={}
@@ -557,6 +588,9 @@ class RunCoordinator:
             return execute(self,id)
         if self.get_run(id).request.mode=='audit':
             from .audit_run import execute
+            return execute(self,id)
+        if self.get_run(id).request.mode=='character_extract':
+            from .extract_run import execute
             return execute(self,id)
         while True:
             with self.condition:
