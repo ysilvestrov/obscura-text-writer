@@ -1,5 +1,6 @@
 """SERIES storage: the series table (CAS on its revision) and the series fields of a book (CAS on the story revision)."""
 import json
+from contextlib import contextmanager
 
 from ..domain import RevisionConflict, SeriesStart, Story, new_id
 from ..scene_description import name_key
@@ -427,7 +428,8 @@ def create_bible(repo, series_id: str, title: str) -> Story:
     if any(b.series_bible for b in series_books(repo, series_id)):
         raise ValueError(SERIES_BIBLE_TAKEN)
     story = repo.create_story(StoryCreate(title=title))
-    return set_story_series(repo, story.id, series_id, None, None, story.revision, bible=True)
+    with _no_orphan(repo, story.id):
+        return set_story_series(repo, story.id, series_id, None, None, story.revision, bible=True)
 
 
 def create_book(repo, series_id: str, title: str) -> Story:
@@ -437,7 +439,23 @@ def create_book(repo, series_id: str, title: str) -> Story:
     _require_trial_place(repo, series_id)  # before the story exists: a refused book leaves no orphan
     number = max((b.series_number or 0 for b in books), default=0) + 1
     story = repo.create_story(StoryCreate(title=title))
-    return set_story_series(repo, story.id, series_id, number, None, story.revision)
+    with _no_orphan(repo, story.id):
+        return set_story_series(repo, story.id, series_id, number, None, story.revision)
+
+
+@contextmanager
+def _no_orphan(repo, story_id: str):
+    """A new story the series refused in its transaction (a concurrent book took the place, the trial bible is taken)
+    is removed again: it is an empty row no one has seen, and a refusal must leave no orphan (LONG-PROSE-TRIAL)."""
+    try:
+        yield
+    except BaseException:
+        with repo.db.connection() as db:
+            db.execute('BEGIN IMMEDIATE')
+            row = db.execute('SELECT payload FROM stories WHERE id=?', (story_id,)).fetchone()
+            if row is not None and Story.model_validate_json(row[0]).series_id is None and                     db.execute('SELECT 1 FROM scenes WHERE story_id=? LIMIT 1', (story_id,)).fetchone() is None:
+                db.execute('DELETE FROM stories WHERE id=?', (story_id,))
+        raise
 
 
 def _require_not_trial_book(db, story_id: str, series_id: str) -> None:

@@ -184,3 +184,31 @@ def test_existing_bible_is_remembered_at_claim(tmp_path, store_edition):
     bible = store.create_bible(repo, item.id, 'Світ')
     assert client.post('/api/long-prose-trial', json={'series_id': item.id, 'confirm': True}).status_code == 200
     assert trial(repo).bible == bible.id and trial(repo).books == []
+
+
+@pytest.mark.req('LONG-PROSE-TRIAL')
+def test_refused_new_bible_leaves_no_story(tmp_path, store_edition):
+    """Cross-review 1: a refused replacement bible is not left in the library."""
+    from storygen.book.guard import TRIAL_BIBLE_USED
+    client, app, repo, story, scene = setup(tmp_path)
+    series_id = trial_series(client)
+    bible = client.post(f'/api/series/{series_id}/bible', json={'title': 'Світ'}).json()['id']
+    assert move(client, repo, bible, None, None).status_code == 200
+    count = len(repo.list_stories(include_trashed=True))
+    refused = client.post(f'/api/series/{series_id}/bible', json={'title': 'Новий світ'})
+    assert refused.status_code == 400 and TRIAL_BIBLE_USED in detail(refused)
+    assert len(repo.list_stories(include_trashed=True)) == count
+
+
+@pytest.mark.req('LONG-PROSE-TRIAL')
+def test_book_refused_inside_the_transaction_leaves_no_story(tmp_path, store_edition, monkeypatch):
+    """Cross-review 2: a concurrent request that passed the early check is refused in the transaction without an orphan."""
+    client, app, repo, story, scene = setup(tmp_path)
+    series_id = trial_series(client)
+    new_book(client, series_id, 'Перша')
+    new_book(client, series_id, 'Друга')
+    monkeypatch.setattr(store, '_require_trial_place', lambda repo, series_id: None)  # as if the race passed it
+    count = len(repo.list_stories(include_trashed=True))
+    refused = new_book(client, series_id, 'Третя')
+    assert refused.status_code == 400 and TRIAL_SERIES_FULL in detail(refused)
+    assert len(repo.list_stories(include_trashed=True)) == count

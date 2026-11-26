@@ -5403,6 +5403,8 @@
       "requirement": "LONG-PROSE-TRIAL",
       "scope": "Серія проби: дві книги в переліку через усі шляхи, третя відхиляється, вихід і повернення, книга з іншого видання, біблія, пробна книга поза серією. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
       "tests": [
+        "tests/series/test_series_trial.py::test_refused_new_bible_leaves_no_story",
+        "tests/series/test_series_trial.py::test_book_refused_inside_the_transaction_leaves_no_story",
         "tests/series/test_series_trial.py::test_bible_place_is_one_and_cannot_rotate_books",
         "tests/series/test_series_trial.py::test_book_of_the_trial_series_does_not_carry_it_to_another_series",
         "tests/series/test_series_trial.py::test_trial_book_does_not_become_a_bible_of_another_series",
