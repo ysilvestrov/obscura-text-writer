@@ -7476,6 +7476,22 @@
       ]
     },
     {
+      "id": "WRITING-MODE-S09",
+      "requirement": "WRITING-MODE",
+      "scope": "Інтерфейс режиму «Пишу сам»: основна дія «Писати прозу» / «Взяти як прозу», приховані дії, що пишуть прозу, перечитування простору після перемикання в іншому вікні, варіант режиму у формі й налаштуваннях. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/web/test_workspace_route.py::test_workspace_route_save_and_source_regressions",
+        "tests/web/test_scene_revisions_api.py::test_scene_revisions_carry_the_writing_mode",
+        "tests/web/test_writing_mode.py::test_new_story_form_offers_author_mode",
+        "tests/web/test_writing_mode.py::test_settings_page_offers_author_mode",
+        "tests/web/test_writing_mode.py::test_library_intro_names_writing_yourself"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#author-mode-browser",
+        "reason": "check_docs.py індексує лише pytest; Playwright cases tests/web/browser/author-mode.spec.mjs виконуються окремим runner, цей зв’язок не є доказом виконання."
+      }
+    },
+    {
       "id": "STORY-TIME-S01",
       "requirement": "STORY-TIME",
       "scope": "Розбір позначок: старі ключі незмінні, відносні форми в будь-якому порядку, «невідомо», позначка спогаду, неправильні рядки.",
@@ -9456,6 +9472,23 @@
       "manual": {
         "procedure": "docs/verification/manual.md#memory-build-browser",
         "reason": "Playwright запускається окремим runner; check_docs.py індексує лише pytest IDs."
+      }
+    },
+    {
+      "id": "MANUSCRIPT-IMPORT-S16",
+      "requirement": "MANUSCRIPT-IMPORT",
+      "scope": "Перегляд пам'яті: проза (сцени й слова) і лише наявні категорії розділів першого запиту; позначка локальної адреси без обіцянки, що текст не покидає комп'ютер. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/generation/test_memory_sends.py::test_sends_cover_every_section_of_the_memory_request",
+        "tests/generation/test_memory_sends.py::test_sends_words_sum_the_prose_of_target_scenes",
+        "tests/generation/test_memory_sends.py::test_sends_omit_places_and_series_when_absent",
+        "tests/generation/test_memory_sends.py::test_local_endpoint_is_flagged",
+        "tests/generation/test_memory_sends.py::test_memory_build_preview_says_what_the_model_receives",
+        "tests/web/test_memory_build_ui.py::test_ui_keys_exist_in_both_languages"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#memory-sends-browser",
+        "reason": "check_docs.py індексує лише pytest; Playwright cases tests/web/browser/memory-build.spec.mjs і workspace-telemetry.spec.mjs виконуються окремим runner, цей зв’язок не є доказом виконання."
       }
     }
   ]

@@ -1,4 +1,4 @@
-"""R-49 (MEMORY-BUILD): the memory build says what the memory model receives, derived from the sections of the request."""
+"""R-49 (MANUSCRIPT-IMPORT-S16): the memory build says what the memory model receives, derived from the sections of the request."""
 import pytest
 
 from storygen.domain import ContentRating
@@ -16,7 +16,7 @@ def rated(tmp_path, beats):
     return repo, repo.get_story(story.id), repo.get_scene(scene.id)
 
 
-@pytest.mark.req('MEMORY-BUILD')
+@pytest.mark.req('MANUSCRIPT-IMPORT')
 def test_sends_cover_every_section_of_the_memory_request(tmp_path):
     repo, story, scene = rated(tmp_path, 'Локація: Дім / кухня')
     context = build_context(repo, scene.id, 'memory', role())
@@ -26,7 +26,7 @@ def test_sends_cover_every_section_of_the_memory_request(tmp_path):
     assert keys == ['prose', 'memory_catalog', 'places']
 
 
-@pytest.mark.req('MEMORY-BUILD')
+@pytest.mark.req('MANUSCRIPT-IMPORT')
 def test_sends_words_sum_the_prose_of_target_scenes(tmp_path):
     repo, story, scene = rated(tmp_path, 'Вдома')
     context = build_context(repo, scene.id, 'memory', role())
@@ -34,7 +34,7 @@ def test_sends_words_sum_the_prose_of_target_scenes(tmp_path):
     assert prose == {'key': 'prose', 'scenes': 1, 'words': 2}  # «Анна вдома.»
 
 
-@pytest.mark.req('MEMORY-BUILD')
+@pytest.mark.req('MANUSCRIPT-IMPORT')
 def test_sends_omit_places_and_series_when_absent(tmp_path):
     repo, story, scene = rated(tmp_path, 'Вдома')
     context = build_context(repo, scene.id, 'memory', role())
@@ -42,14 +42,14 @@ def test_sends_omit_places_and_series_when_absent(tmp_path):
     assert 'places' not in keys and 'series_facts' not in keys
 
 
-@pytest.mark.req('MEMORY-BUILD')
+@pytest.mark.req('MANUSCRIPT-IMPORT')
 def test_local_endpoint_is_flagged():
     for url in ('http://localhost:1234/v1', 'http://127.0.0.1:11434/v1', 'http://[::1]:8080/v1'):
         assert is_local_provider(ProviderSettings(provider='local', model='m', base_url=url)), url
     assert not is_local_provider(ProviderSettings(provider='openrouter', model='m'))
 
 
-@pytest.mark.req('MEMORY-BUILD')
+@pytest.mark.req('MANUSCRIPT-IMPORT')
 def test_memory_build_preview_says_what_the_model_receives(tmp_path):
     from storygen.billing.service import set_limit
     from storygen.generation.readiness import preview

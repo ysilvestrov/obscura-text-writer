@@ -1,5 +1,5 @@
 import {t} from './i18n.js';
-// R-49 (MEMORY-BUILD): «what the memory model receives» from the preview's `sends` (categories of the request sections).
+// R-49 (MANUSCRIPT-IMPORT-S16): «what the memory model receives» from the preview's `sends` (categories of the request sections).
 // A light module: the workspace telemetry card and the memory dialog share it without importing each other.
 const LABELS={memory_catalog:()=>t('memory_build.sends.memory_catalog'),places:()=>t('memory_build.sends.places'),series_facts:()=>t('memory_build.sends.series_facts')};
 export function sendsText(sends,model){

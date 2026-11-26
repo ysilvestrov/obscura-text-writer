@@ -94,7 +94,7 @@ test('changing modes while readiness is pending does not overlap or show stale t
 });
 
 test('the prose tab says what the memory model receives',async({page,request})=>{
-  // R-49 (MEMORY-BUILD): the same «receives» line as the memory build, for the one scene of the primary action.
+  // R-49 (MANUSCRIPT-IMPORT-S16): the same «receives» line as the memory build, for the one scene of the primary action.
   const fixture=await(await request.post('/test-editor-no-changes')).json();
   await page.route('**/api/stories/*/readiness*',async route=>{const response=await route.fetch(),data=await response.json();data.operations.memory={...data.operations.memory,ready:true,roles:{memory:{provider:'local',model:'synthetic-memory'}},calls:1,warnings:[],sends:{items:[{key:'prose',scenes:1,words:7},{key:'memory_catalog'}],local:true}};await route.fulfill({response,json:data})});
   await page.goto(`/stories/${fixture.story_id}?scene=${fixture.scene_id}&material=prose`);

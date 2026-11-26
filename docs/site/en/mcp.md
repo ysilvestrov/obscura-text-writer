@@ -261,11 +261,12 @@ The chat can change the genre, tone, point of view, style rules and story length
 
 ## Who writes the texts
 
-Each story has a mode: **The chat writes** or **Obscura writes**. A story created by the chat has the **The chat writes** mode by default; the new story form in Obscura has **Obscura writes** selected by default. The story list and the story details in the chat show the mode.
+Each story has a mode: **The chat writes**, **Obscura writes** or **I write myself**. A story created by the chat has the **The chat writes** mode by default; the new story form in Obscura has **Obscura writes** selected by default. The story list and the story details in the chat show the mode.
 
 - **The chat writes**: the chat writes drafts and goes through the scene stages itself, as described below.
 - **Obscura writes**: Obscura models write the texts. The chat still reads the story, imports the plan and characters, changes the settings and the publication, but Obscura refuses a draft or a stage result from it with the message: The story is in the "Obscura writes" mode: start the stage with start_run. Instead, the chat can start the stage with an Obscura model (see below).
 - In the **The chat writes** mode it is the other way round: the chat does not start stages with Obscura models, it writes itself. The exception is the auditor check (see below): it writes no text, so it is available in both modes.
+- **I write myself**: you write the prose ([the "I write myself" mode](workspace.md#the-i-write-myself-mode)). The chat can produce the scene brief and memory (stages from the chat) and start an auditor check, but Obscura refuses a draft, an edit or an Obscura model run that writes prose with the message: The story is in the "I write myself" mode: the author writes the prose. The next steps the chat suggests contain no draft or edit either.
 - Only you change the mode: in the story settings, **Writing** section, the **Who writes the texts** field. The chat cannot change it. Changing the mode does not touch texts already written or stages already started.
 
 ## Obscura runs from the chat

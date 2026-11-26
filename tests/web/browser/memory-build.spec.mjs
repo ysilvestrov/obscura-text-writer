@@ -381,7 +381,7 @@ test('?build_memory=1 opens the dialog once after the page loads',async({page,re
 });
 
 test('the preview says what the memory model receives and where the text goes',async({page,request})=>{
-  // R-49 (MEMORY-BUILD): categories from the request sections; the fixture's model is local, so no privacy promise either.
+  // R-49 (MANUSCRIPT-IMPORT-S16): categories from the request sections; the fixture's model is local, so no privacy promise either.
   const fixture=await seed(request);
   await openWorkspace(page,fixture);
   const dialog=await openDialog(page);

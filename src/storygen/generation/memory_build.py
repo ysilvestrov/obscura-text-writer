@@ -210,7 +210,7 @@ def series_refresh(repo, story) -> bool:
     return status is not None and status.state == 'source_finished'
 
 
-# R-49 (MEMORY-BUILD): what the memory model receives, named by the sections of its request. A new labelled section of
+# R-49 (MANUSCRIPT-IMPORT-S16): what the memory model receives, named by the sections of its request. A new labelled section of
 # the memory request without a category here fails test_sends_cover_every_section_of_the_memory_request.
 SECTION_CATEGORIES = {
     'current_prose': 'prose', 'prose_fragments': 'prose',

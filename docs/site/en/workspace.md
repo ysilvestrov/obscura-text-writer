@@ -110,6 +110,21 @@ To check the whole book, open the **☰ Story actions → Book validation (N)** 
 - A new book validation cancels the stopped checks of this story (of a scene or of the book), so an old plan is not continued. The dialog does not warn about this.
 - Pause, cancel, failure and repeat work the same as for a scene check.
 
+## The "I write myself" mode
+
+In a story with the **I write myself** mode you write the prose. Models can draft the scene brief, keep the memory and check consistency with the auditor, but never write or rewrite the text. You choose the mode in the new story form (**Who writes the texts**) or change it at any time in the story settings; texts already written do not change.
+
+![The workspace of a story in the "I write myself" mode: the main button "Write the prose"](../../images/site/en/workspace-author-desktop.png)
+
+- On the **Plan**, **Brief** and **Draft** tabs the main button is **Write the prose**: it opens the **Prose** tab, where you write the scene. If the scene already has a draft (for example, one written before the mode change), the main button on the **Draft** tab is **Use as prose**.
+- There are no buttons that start a draft or an edit by a model: no **Edit current prose**, no runs of the whole scene or the rest of the story, no rewriting the draft from comments.
+- On the **Prose** tab the main button updates the scene memory, as in the other modes. Its tooltip shows what the memory model receives ([what the model receives](memory.md#what-the-model-receives)).
+- Proposals of the editor model made before the mode change cannot be applied; a human editor's edits imported from a file can.
+- Obscura also checks the mode on its side: a run that writes prose is refused with the message: The story is in the "I write myself" mode: models do not write prose. Change the mode in the story settings. If you change the mode while a model is writing a draft, its answer is not saved, and the run stops with this reason.
+- A chat client in such a story can produce the scene brief and memory, but not a draft or an edit ([Chat clients (MCP)](mcp.md#who-writes-the-texts)).
+
+The mode does not prove authorship to third parties: it only keeps Obscura models and the chat from writing the prose of this story. Versions written by models before the mode change stay in the history.
+
 ## Editor
 
 Draft and Prose have a formatting toolbar: **B** (`Ctrl+B`), *I* (`Ctrl+I`), undo (`Ctrl+Z`) and redo (`Ctrl+Y`). **Save** creates a new version and does not erase earlier ones. Pasting brings in plain text only. The browser warns you before you leave with unsaved edits.

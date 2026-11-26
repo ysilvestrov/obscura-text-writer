@@ -124,7 +124,7 @@ export function installMemoryBuild({api,json,notice,document,state}){
     const number=scene?scene.position+1:'—';
     uiText(summary,'textContent',()=>t('memory_build.ui.summary',{p0:plan.count,p1:number,p2:preview.calls})+
       (memory?' · '+t('memory_build.ui.model',{p0:`${memory.provider} / ${memory.model}`}):''));
-    // R-49 (MEMORY-BUILD): what the memory model receives; for a model on this computer, only where Obscura sends it.
+    // R-49 (MANUSCRIPT-IMPORT-S16): what the memory model receives; for a model on this computer, only where Obscura sends it.
     if(preview.sends&&memory){sends.hidden=false;uiText(sends,'textContent',()=>sendsText(preview.sends,`${memory.provider} / ${memory.model}`))}
     if(preview.cost){cost.hidden=false;uiText(cost,'textContent',()=>costText(preview.cost))}
     const list=unfit.querySelector('ul');

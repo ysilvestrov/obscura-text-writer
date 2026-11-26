@@ -33,7 +33,7 @@ Show the whole list — articles with one line each, series title, language, rat
 
 Only after consent:
 
-1. `create_story(title="<Series>: біблія" (or "<Series>: bible"), language, target_words, content_rating, writing_mode)`. Obscura accepts at least 5000 words per story, so `target_words` is the sum of the articles and at least 5000.
+1. `create_story(title="<Series>: біблія" (or "<Series>: bible"), language, target_words, content_rating, writing_mode)`. Obscura accepts at least 5000 words per story, so `target_words` is the sum of the articles and at least 5000. In `author` mode («Пишу сам») the author writes the articles themself; you create the story and the plan only.
 2. `get_templates(language)`. Fill the plan template:
    - start it with the preamble lines «Серія: <назва>» and «Номер: біблія» (or "Series: <title>" and "Number: bible");
    - one scene per agreed article.
