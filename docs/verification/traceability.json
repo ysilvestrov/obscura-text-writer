@@ -6976,7 +6976,7 @@
     {
       "id": "STORE-MCP-S17",
       "requirement": "STORE-MCP-001",
-      "scope": "Плагін Claude у пакеті: лише відстежувані файли USER_FILES, відмова без plugin.json і на посиланні між скілами, всі п'ять скілів репозиторію, перевірка моста вимагає guide: ok.",
+      "scope": "Плагін Claude у пакеті: лише відстежувані файли USER_FILES, відмова без plugin.json і на посиланні між скілами, всі шість скілів репозиторію, перевірка моста вимагає guide: ok.",
       "tests": [
         "tests/test_packaging.py::test_plugin_files_are_tracked_user_files_only",
         "tests/test_packaging.py::test_plugin_files_refuse_a_plugin_without_manifest",
@@ -7009,7 +7009,10 @@
         "tests/mcp/test_bridge_guide.py::test_get_guide_reference",
         "tests/mcp/test_bridge_guide.py::test_get_guide_refuses_unknown",
         "tests/mcp/test_bridge_guide.py::test_get_guide_without_plugin",
-        "tests/mcp/test_bridge_guide.py::test_instructions_name_get_guide"
+        "tests/mcp/test_bridge_guide.py::test_instructions_name_get_guide",
+        "tests/mcp/test_bridge_guide.py::test_get_guide_serves_revise_skill_and_references",
+        "tests/mcp/test_bridge_guide.py::test_get_guide_revise_reference",
+        "tests/mcp/test_bridge_guide.py::test_get_guide_revise_local_edit_points_to_fact_change_through_guide"
       ]
     },
     {
@@ -7066,9 +7069,10 @@
     {
       "id": "CLAUDE-SKILLS-S02",
       "requirement": "CLAUDE-SKILLS",
-      "scope": "Поле frontmatter поза переносним набором і відсутнє посилання на спільні правила. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "scope": "Поле frontmatter поза переносним набором, frontmatter, що не є коректною YAML-мапою (yaml.safe_load), і відсутнє посилання на спільні правила. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
       "tests": [
         "tests/test_claude_plugin.py::test_claude_code_only_field_is_reported",
+        "tests/test_claude_plugin.py::test_invalid_yaml_frontmatter_is_reported",
         "tests/test_claude_plugin.py::test_real_plugin_has_no_problems"
       ]
     },
@@ -7106,6 +7110,7 @@
         "tests/test_skills_stand.py::test_claude_command_is_isolated",
         "tests/test_skills_stand.py::test_tool_errors_name_the_refused_tool",
         "tests/test_skills_stand.py::test_tool_calls_and_cost_from_stream_json",
+        "tests/test_skills_stand.py::test_result_text_equal_to_last_message_is_not_repeated",
         "tests/test_run_scenarios.py::test_patches_scenario_without_edit_is_a_problem_not_a_crash",
         "tests/test_run_scenarios.py::test_memory_after_edit_awaiting_review_is_a_problem",
         "tests/test_run_scenarios.py::test_attempted_saves_without_finished_prose_are_a_problem",
@@ -7206,6 +7211,79 @@
         "tests/test_claude_plugin.py::test_plugin_version_is_project_version",
         "tests/test_claude_plugin.py::test_skills_never_mention_get_guide"
       ]
+    },
+    {
+      "id": "CLAUDE-SKILLS-S12",
+      "requirement": "CLAUDE-SKILLS",
+      "scope": "revise, зміна факту (integrations/claude/obscura/evals/revise.json, S12): до згоди жодного запису моста, start_run, update_characters і import_manuscript — лише з confirm; таблиця називає обидві сцени; без пошуку чат питає, а не вигадує (вручну). Автоматично перевіряються фікстура й правило «до згоди нічого не записано». Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/test_skills_stand.py::test_claude_command_is_isolated",
+        "tests/test_run_scenarios.py::test_revise_fixture_has_old_city_in_plan_and_both_scenes",
+        "tests/test_run_scenarios.py::test_revise_preconsent_any_write_is_a_problem",
+        "tests/test_run_scenarios.py::test_revise_preconsent_flags_any_bridge_write",
+        "tests/test_run_scenarios.py::test_revise_preconsent_card_and_import_writes_count_only_with_confirm"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#claude-skills",
+        "reason": "Поведінка моделі недетермінована: перевіряється прогонами claude -p на ізольованому стенді, а не одним pytest-тестом."
+      }
+    },
+    {
+      "id": "CLAUDE-SKILLS-S13",
+      "requirement": "CLAUDE-SKILLS",
+      "scope": "revise, застосування в режимі chat (evals/revise.json, S13): два ходи однієї сесії через --resume, перший хід без записів; немає старого міста в прозі, плані й вступі плану, інші речення незмінні й не додані; пам'ять збережено заново зі збереженими текстами й цитатами; порядок етапів і сцен; стан prose. Автоматично перевіряються функції перевірки, фікстура й багатоходовий запуск; показ першої сцени — вручну. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/test_run_scenarios.py::test_revise_fixture_has_old_city_in_plan_and_both_scenes",
+        "tests/test_run_scenarios.py::test_revise_fixture_core_follows_the_day_change_rule",
+        "tests/test_run_scenarios.py::test_revise_text_old_stem_in_any_case_is_a_problem",
+        "tests/test_run_scenarios.py::test_revise_text_changed_unrelated_sentence_is_a_problem",
+        "tests/test_run_scenarios.py::test_revise_text_header_line_is_separate",
+        "tests/test_run_scenarios.py::test_revise_text_added_sentence_is_a_problem",
+        "tests/test_run_scenarios.py::test_revise_preamble_is_part_of_the_text_check",
+        "tests/test_run_scenarios.py::test_revise_memory_preserved_with_stem_replaced",
+        "tests/test_run_scenarios.py::test_revise_memory_check_never_passes_on_nothing",
+        "tests/test_run_scenarios.py::test_revise_chain_brief_before_draft_in_second_scene",
+        "tests/test_run_scenarios.py::test_revise_chain_scene_order_is_checked",
+        "tests/test_run_scenarios.py::test_revise_preconsent_flags_any_bridge_write",
+        "tests/test_run_scenarios.py::test_run_turns_keeps_each_turn_calls_apart",
+        "tests/test_run_scenarios.py::test_run_turns_pads_calls_when_first_turn_has_no_session",
+        "tests/test_run_scenarios.py::test_run_turns_sums_usage",
+        "tests/test_skills_stand.py::test_session_id_from_init_event",
+        "tests/test_skills_stand.py::test_claude_command_resume"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#claude-skills",
+        "reason": "Поведінка моделі недетермінована: перевіряється прогонами claude -p на ізольованому стенді, а не одним pytest-тестом."
+      }
+    },
+    {
+      "id": "CLAUDE-SKILLS-S14",
+      "requirement": "CLAUDE-SKILLS",
+      "scope": "revise у творі obscura (evals/revise.json, S14): жодного save_draft, save_stage_result і start_run з confirm=true; таблиця замін із рядком старого й нового міста та назвою кожної сцени. Автоматично перевіряються функції перевірки. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/test_run_scenarios.py::test_obscura_revise_plan_write_is_allowed",
+        "tests/test_run_scenarios.py::test_obscura_revise_paid_run_needs_its_own_consent",
+        "tests/test_run_scenarios.py::test_replacement_table_is_not_an_echo_of_the_request"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#claude-skills",
+        "reason": "Поведінка моделі недетермінована: перевіряється прогонами claude -p на ізольованому стенді, а не одним pytest-тестом."
+      }
+    },
+    {
+      "id": "CLAUDE-SKILLS-S15",
+      "requirement": "CLAUDE-SKILLS",
+      "scope": "revise, локальна правка (evals/revise.json, S15): до вибору автора нічого не записано, чат питає; зміст питання й варіантів (перше місце, 2–3 варіанти й «лишити як є», без зміни фактів) — вручну. Автоматично перевіряються ізоляція стенда й правило «до згоди нічого не записано». Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/test_skills_stand.py::test_claude_command_is_isolated",
+        "tests/test_run_scenarios.py::test_revise_preconsent_any_write_is_a_problem",
+        "tests/test_run_scenarios.py::test_revise_preconsent_flags_any_bridge_write",
+        "tests/test_run_scenarios.py::test_revise_preconsent_card_and_import_writes_count_only_with_confirm"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#claude-skills",
+        "reason": "Поведінка моделі недетермінована: перевіряється прогонами claude -p на ізольованому стенді, а не одним pytest-тестом."
+      }
     },
     {
       "id": "WRITING-MODE-S01",
@@ -7793,7 +7871,7 @@
     {
       "id": "CODEX-SKILLS-S01",
       "requirement": "CODEX-SKILLS",
-      "scope": "Детерміновані переносні тексти, адаптація клієнта й звірка MCP-контракту; не поведінка моделей.",
+      "scope": "Детерміновані переносні тексти, інвентар NAMES ∪ CHAT_ONLY (невідома тека скіла відхиляється), адаптація клієнта й звірка MCP-контракту; не поведінка моделей.",
       "tests": [
         "tests/test_codex_skills.py::test_real_sources_generate_five_self_contained_skills",
         "tests/test_codex_skills.py::test_generation_does_not_change_sources",
@@ -7803,7 +7881,8 @@
         "tests/test_codex_skills.py::test_symlink_source_is_rejected",
         "tests/test_codex_skills.py::test_model_adaptation_preserves_other_sections",
         "tests/test_codex_skills.py::test_entire_frontmatter_is_validated",
-        "tests/test_codex_skills.py::test_markdown_fragment_does_not_hide_missing_reference"
+        "tests/test_codex_skills.py::test_markdown_fragment_does_not_hide_missing_reference",
+        "tests/test_codex_skills.py::test_unknown_extra_skill_folder_changes_inventory"
       ]
     },
     {

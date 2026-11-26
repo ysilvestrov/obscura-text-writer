@@ -38,6 +38,7 @@ class Result:
     text: str = ''
     is_error: bool = False
     errors: list = field(default_factory=list)
+    session_id: str | None = None
 
 
 def write_mcp_config(path, port):
@@ -53,8 +54,8 @@ def write_mcp_config(path, port):
 BLOCKED_TOOLS = ('Bash', 'PowerShell', 'WebFetch', 'WebSearch', 'Write', 'Edit', 'NotebookEdit')
 
 
-def claude_command(prompt, *, mcp_config, plugin_dir, model, budget_usd):
-    return [shutil.which('claude') or 'claude', '-p', prompt, '--plugin-dir', str(plugin_dir),
+def claude_command(prompt, *, mcp_config, plugin_dir, model, budget_usd, resume=None):
+    return [shutil.which('claude') or 'claude', '-p', prompt, *(['--resume', resume] if resume else []), '--plugin-dir', str(plugin_dir),
             '--mcp-config', str(mcp_config), '--strict-mcp-config', '--output-format', 'stream-json', '--verbose',
             '--model', model, '--max-budget-usd', str(budget_usd), '--permission-mode', 'bypassPermissions',
             '--disallowedTools', ','.join(BLOCKED_TOOLS)]
@@ -126,14 +127,17 @@ def parse_result(lines):
     result = Result(tool_calls=tool_calls(lines), errors=tool_errors(lines), is_error=True)
     texts = []
     for event in _events(lines):
-        if event.get('type') == 'assistant':
+        if event.get('type') == 'system' and event.get('subtype') == 'init' and result.session_id is None:
+            result.session_id = event.get('session_id')
+        elif event.get('type') == 'assistant':
             texts += [item['text'] for item in (event.get('message') or {}).get('content') or []
                       if isinstance(item, dict) and item.get('type') == 'text' and item.get('text')]
         elif event.get('type') == 'result':
             result.cost_usd = event.get('total_cost_usd')
             result.usage = event.get('usage') or {}
             result.is_error = bool(event.get('is_error'))
-            if event.get('result'):
+            # The `result` text repeats the last assistant message; keep it only when it says something new.
+            if event.get('result') and (not texts or event['result'].strip() != texts[-1].strip()):
                 texts.append(event['result'])
     result.text = '\n'.join(texts)
     return result

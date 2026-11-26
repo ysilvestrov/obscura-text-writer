@@ -129,13 +129,20 @@ Browser chat clients (claude.ai, chatgpt.com) do not support local servers.
 
 ## Obscura skills
 
-Skills are ready-made instructions for Claude that lead the conversation step by step: one question at a time, with a summary and your consent before every write. The chat works with Obscura without them too, but then you explain every step yourself. The `obscura` set has five skills:
+Skills are ready-made instructions for Claude that lead the conversation step by step: one question at a time, with a summary and your consent before every write. The chat works with Obscura without them too, but then you explain every step yourself. The `obscura` set has six skills:
 
 - `start-story` — from an idea to a story with a plan and character cards;
 - `series-bible` — a world bible for a cycle of books: articles on magic, organisations, geography, chronology;
 - `draft-scene` — a scene stage by stage: brief, draft, edit, memory; in "Obscura writes" mode, runs of its models;
 - `publish` — the publication card, a text cover and export to FB2, EPUB, PDF or a DOCX manuscript;
-- `setup-models` — models for the four roles by genre and budget, checked against the provider's list.
+- `setup-models` — models for the four roles by genre and budget, checked against the provider's list;
+- `revise` — changing a finished story: a fact across the whole book (for example, "move the action from Odesa to Kherson") or a local edit ("make the scene funnier").
+
+**The `revise` skill.** For a fact change, the chat checks the facts on the web when the client has search, and shows the sources. It then shows a table of all the places that will have to change (plan, scenes, character cards, bible) and the first scene as "was → becomes". Nothing is written until you say "ok". The chat changes the minimum set of places; deeper changes it only proposes. For a local edit ("make the scene funnier") the chat asks about specific places one at a time, with two to three variants and a "leave as is" option, shows a summary and waits for your "ok".
+
+Character card edits (for example, a new name or age) are also rows of the table: after your consent the chat writes them first, before the plans (see [Character cards from the chat](#character-cards-from-the-chat)). On a rename the old name stays in the "Other name:" line. If the change affects scenes with a brief, whether to mark them unchecked is also a row of the table.
+
+In a story where Obscura writes ("Obscura writes"), after your consent to the table the chat writes the character cards, the plan preamble and the scene plans. You make the prose replacements yourself in the "Prose" tab. The same applies to a story where the chat writes but the editor works in patches (patches/diff mode). In "Obscura writes" mode, memory and check runs are paid: each has its own cost preview and needs your consent. In a story where the chat writes (including patches/diff mode), the chat saves the memory itself after your "done".
 
 **Claude Code.** The “Connect Claude Code” button in the library installs the skills together with the bridge (see [The button in the library](#the-button-in-the-library)). Obscura copies them into the stories folder, under `claude\marketplace`, so an Obscura update does not break them. Do not put your own files in that folder: a folder without Obscura's marker is left unchanged, and Obscura shows its path.
 
@@ -151,9 +158,9 @@ claude plugin install obscura@obscura
 
 **Claude Desktop.** Click “Skills for Claude Desktop”: Obscura puts one ZIP file per skill into the stories folder, under `claude\skills`, and opens that folder. In Claude, first turn on Settings → Capabilities → Code execution and file creation. Then, for each file: Customize → Skills → “+” → Create skill → Upload a skill. Obscura does not touch other files in the `claude\skills` folder.
 
-**Other chat clients.** Codex and other MCP clients without the skills get the same steps through the guide tool: the chat calls it at the start of a task and then follows the steps it gets.
+**Other chat clients.** Codex and other MCP clients without the skills get the same steps through the guide tool (this is how `revise` reaches Codex: the Codex package contains only five skills): the chat calls it at the start of a task and then follows the steps it gets.
 
-**Using them.** Just ask the chat, for example "I want to write a story about a lighthouse" or "set up models for my story", and Claude picks the right skill itself. You can also name a skill: `/obscura:start-story`, `/obscura:publish` and so on.
+**Using them.** Just ask the chat, for example "I want to write a story about a lighthouse" or "set up models for my story", and Claude picks the right skill itself. You can also name a skill: `/obscura:start-story`, `/obscura:publish`, `/obscura:revise` and so on.
 
 The skills do not accept API keys in the chat. If you send a key to the chat, the skill changes nothing and asks you to enter the key in Obscura's settings; it is better to revoke that key at the provider.
 
