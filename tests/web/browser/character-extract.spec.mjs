@@ -84,6 +84,44 @@ test('a reopened page finds the running search; pause is requested; a paused sea
   await request.post(`/api/runs/${id}/cancel`);
 });
 
+test('a search paused before its first group offers resume; stopping it reads the published proposal at once',async({page,request})=>{
+  const fixture=await seed(request);
+  const preview=await(await request.post(`/api/stories/${fixture.story_id}/character-extract/preview`,{data:{group_words:5000}})).json();
+  const created=await request.post('/api/runs',{data:{request_id:crypto.randomUUID(),request:{story_id:fixture.story_id,mode:'character_extract',
+    group_words:5000,extract_plan_fingerprint:preview.plan_fingerprint}}});
+  const id=(await created.json()).id;
+  // A queued run paused before the worker took it has no checkpoint (as the server reports it).
+  let cancelled=false;
+  const proposal={fingerprint:'f',cards:[],name_updates:[],protagonist:null,casts:[],calls:0,
+    skipped_scenes:[{scene_id:fixture.scene_ids[1],reason:'Пошук скасовано до цієї сцени'}]};
+  await page.route(new RegExp(`/api/runs/${id}(/cancel)?$`),async route=>{
+    if(route.request().method()==='POST'){cancelled=true}
+    const response=await route.fetch(),body=await response.json(),run=body.run||body;
+    const shown={...run,state:cancelled?'cancelled':'paused',checkpoint:cancelled?{phase:'done',proposal}:null};
+    await route.fulfill({json:body.run?{...body,run:shown}:shown});
+  });
+  await page.route(new RegExp(`/api/stories/${fixture.story_id}/runs$`),async route=>{
+    const body=await(await route.fetch()).json();
+    await route.fulfill({json:{...body,runs:body.runs.map(run=>run.id===id?{...run,state:cancelled?'cancelled':'paused',checkpoint:null}:run)}});
+  });
+  await page.route(new RegExp(`/api/stories/${fixture.story_id}/character-proposal$`),async route=>{
+    if(!cancelled)return route.fulfill({status:404,json:{detail:'Немає пропозиції'}});
+    await route.fulfill({json:{run_id:id,state:'cancelled',proposal}});
+  });
+  await page.goto(`/stories/${fixture.story_id}/characters`);
+  await expect(page.locator('#character-extract-run-status')).toHaveText('Пошук зупинено до початку читання');
+  await expect(page.locator('#character-extract-resume')).toBeVisible();
+  await expect(page.locator('#character-extract-stop')).toBeVisible();
+  // The stop ends the run without an active state between: the proposal is read at once, with the unread scenes.
+  await page.locator('#character-extract-stop').click();
+  await expect(page.locator('#character-extract-run')).toBeHidden();
+  await expect(page.locator('#character-proposal-unread')).toContainText('Ці сцени не прочитано:');
+  await expect(page.locator('#character-proposal-unread')).toContainText('2. Шторм');
+  await expect(page.locator('#character-proposal')).toContainText('Пошук нічого не запропонував');
+  await page.unrouteAll({behavior:'ignoreErrors'});
+  await request.post(`/api/runs/${id}/cancel`);
+});
+
 test('the proposal is chosen item by item; the dry run says what goes stale; «Прийняти вибране» writes the choice',async({page,request})=>{
   const fixture=await seed(request,'?proposal=true');
   await page.goto(`/stories/${fixture.story_id}/characters`);
@@ -98,6 +136,12 @@ test('the proposal is chosen item by item; the dry run says what goes stale; «�
   await expect(proposal).toContainText('«Марко махнув їй з човна» — 1. Пірс');
   await expect(page.locator('#character-proposal-stale')).toHaveText('Пам\'ять жодної сцени не застаріє');
   await noHorizontalScroll(page);
+  const none=proposal.getByRole('button',{name:/^Зняти все: Нові імена/});
+  await none.click();
+  await expect(proposal.getByRole('checkbox',{name:'Оленка'})).not.toBeChecked();
+  await expect(proposal.getByRole('button',{name:/^Зняти все: Нові імена/})).toBeFocused();
+  await proposal.getByRole('button',{name:/^Вибрати все: Нові імена/}).click();
+  await expect(proposal.getByRole('checkbox',{name:'Оленка'})).toBeChecked();
   await page.locator('#character-extract').screenshot({path:`docs/images/character-proposal-${test.info().project.name}.png`});
   // Unsaved card edits hold the acceptance back.
   await page.locator('#characters-add').click();

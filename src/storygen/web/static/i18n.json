@@ -2936,7 +2936,19 @@
     "character_extract.ui.accept": "Прийняти вибране",
     "character_extract.ui.unsaved_cards": "Спершу збережіть або скасуйте правки карток",
     "character_extract.ui.accepted": "Прийнято пунктів: {p0}, пропущено: {p1}",
-    "memory_build.ui.find_characters": "Знайти персонажів у прозі…"
+    "memory_build.ui.find_characters": "Знайти персонажів у прозі…",
+    "character_extract.ui.pausing": "Пошук призупиниться після поточного виклику…",
+    "character_extract.ui.cancelling": "Пошук скасовується після поточного виклику…",
+    "character_extract.ui.stopped_before_start": "Пошук зупинено до початку читання",
+    "character_extract.ui.select_all_in": "Вибрати все: {p0}",
+    "character_extract.ui.select_none_in": "Зняти все: {p0}",
+    "character_extract.ui.unread": "Ці сцени не прочитано:",
+    "character_extract.server.finished": "Пошук персонажів завершено; запустіть новий",
+    "character_extract.server.unknown_card": "Невідома або повторена картка пропозиції",
+    "character_extract.server.unknown_update": "Невідоме або повторене оновлення імен",
+    "character_extract.server.no_protagonist": "Пропозиція не має головного героя",
+    "character_extract.server.unknown_scene": "Невідома або повторена сцена пропозиції",
+    "character_extract.server.name_not_offered": "{p0}: ім'я не з пропозиції"
   },
   "en": {
     "ui.save": "Save",
@@ -5875,6 +5887,18 @@
     "character_extract.ui.accept": "Accept selected",
     "character_extract.ui.unsaved_cards": "Save or discard the card edits first",
     "character_extract.ui.accepted": "Items accepted: {p0}, skipped: {p1}",
-    "memory_build.ui.find_characters": "Find characters in the prose…"
+    "memory_build.ui.find_characters": "Find characters in the prose…",
+    "character_extract.ui.pausing": "The search will pause after the current call…",
+    "character_extract.ui.cancelling": "The search is being cancelled after the current call…",
+    "character_extract.ui.stopped_before_start": "The search was stopped before reading began",
+    "character_extract.ui.select_all_in": "Select all: {p0}",
+    "character_extract.ui.select_none_in": "Clear all: {p0}",
+    "character_extract.ui.unread": "These scenes were not read:",
+    "character_extract.server.finished": "The character search is finished; start a new one",
+    "character_extract.server.unknown_card": "Unknown or repeated proposal card",
+    "character_extract.server.unknown_update": "Unknown or repeated name update",
+    "character_extract.server.no_protagonist": "The proposal has no main character",
+    "character_extract.server.unknown_scene": "Unknown or repeated proposal scene",
+    "character_extract.server.name_not_offered": "{p0}: the name is not from the proposal"
   }
 }

@@ -1,4 +1,4 @@
-import {t,uiText,diagnostic} from './i18n.js';
+import {t,uiText,uiAttr,diagnostic,getLocale} from './i18n.js';
 // CHARACTER-EXTRACT (R-51, spec §6): the characters page searches the book's prose for characters. The dialog reads the
 // read-only plan (scenes, groups, calls bound, upper bound on cost, skipped scenes) and nothing runs without «Запустити»;
 // the run is started with the plan fingerprint of the preview shown, and a 409 for a changed plan reads the preview again.
@@ -46,7 +46,7 @@ export function installCharacterExtract({storyId,api,json,notice,onAccepted,isDi
   const element=(tag,className='')=>{const node=document.createElement(tag);if(className)node.className=className;return node};
   const say=(node,render)=>{if(render)uiText(node,'textContent',render);else node.textContent=''};
   let scenes=new Map(),cards=new Map(),plan=null,previewEpoch=0,loading=false,starting=false,run=null,pollTimer=null,runEpoch=0;
-  let proposal=null,selection=null,dryEpoch=0,accepting=false,acceptedSummary=null;
+  let pollFailed=false,proposal=null,selection=null,dryEpoch=0,accepting=false,acceptedSummary=null;
   const sceneLabel=id=>{const scene=scenes.get(id);return scene?`${scene.position+1}. ${scene.title}`:id};  // author text, never localized
   const runActive=()=>!!run&&ACTIVE.has(run.state);
 
@@ -103,7 +103,10 @@ export function installCharacterExtract({storyId,api,json,notice,onAccepted,isDi
     finally{if(ask===previewEpoch){loading=false;syncDialog()}}
   }
   let wordsTimer=null;
-  words.addEventListener('input',()=>{clearTimeout(wordsTimer);wordsTimer=setTimeout(()=>void loadPreview(),300)});
+  words.addEventListener('input',()=>{
+    clearTimeout(wordsTimer);previewEpoch++;plan=null;clearPreview();loading=true;syncDialog();
+    wordsTimer=setTimeout(()=>void loadPreview(),300);
+  });
   async function start(){
     if(!plan||submit.disabled)return;
     const current=plan;starting=true;say(status,null);syncDialog();
@@ -135,20 +138,23 @@ export function installCharacterExtract({storyId,api,json,notice,onAccepted,isDi
   function renderRun(){
     clearTimeout(pollTimer);
     if(!run){runRow.hidden=true;return}
-    const checkpoint=run.checkpoint||{},reading=checkpoint.phase==='reading';
+    const checkpoint=run.checkpoint||{},reading=checkpoint.phase==='reading',resumable=RESUMABLE.has(run.state)&&checkpoint.phase!=='done';
     const calls=(checkpoint.state||checkpoint.proposal||{}).calls??0,left=Array.isArray(checkpoint.pending)?checkpoint.pending.length:null;
     const current=run;
     let render=null;
+    const failed=()=>t('character_extract.ui.failed',{p0:current.error?diagnostic(current.error):t('character_extract.ui.no_reason')});
     if(current.state==='queued')render=()=>t('character_extract.ui.queued');
+    else if(current.state==='pause_requested')render=()=>t('character_extract.ui.pausing');
+    else if(current.state==='cancellation_requested')render=()=>t('character_extract.ui.cancelling');
     else if(ACTIVE.has(current.state))render=()=>left===null?t('character_extract.ui.starting'):t('character_extract.ui.progress',{p0:left,p1:calls});
-    else if(RESUMABLE.has(current.state)&&reading)render=()=>current.state==='paused'?t('character_extract.ui.paused',{p0:left??0,p1:calls}):
-      t('character_extract.ui.failed',{p0:current.error?diagnostic(current.error):t('character_extract.ui.no_reason')});
-    else if(current.state==='failed')render=()=>t('character_extract.ui.failed',{p0:current.error?diagnostic(current.error):t('character_extract.ui.no_reason')});
+    else if(resumable&&current.state!=='paused')render=failed;  // failed or interrupted: the reason, and «Продовжити»
+    else if(resumable)render=()=>reading?t('character_extract.ui.paused',{p0:left??0,p1:calls}):t('character_extract.ui.stopped_before_start');
+    else if(current.state==='failed')render=failed;
     runRow.hidden=!render;
     say(runStatus,render);
     pauseButton.hidden=!['queued','running'].includes(current.state);
-    resumeButton.hidden=!(RESUMABLE.has(current.state)&&reading);
-    stopButton.hidden=!(ACTIVE.has(current.state)&&current.state!=='cancellation_requested'||RESUMABLE.has(current.state)&&reading);
+    resumeButton.hidden=!resumable;
+    stopButton.hidden=!(ACTIVE.has(current.state)&&current.state!=='cancellation_requested'||resumable);
     syncDialog();
     if(ACTIVE.has(current.state))pollTimer=setTimeout(()=>void poll(),POLL_MS);
   }
@@ -158,10 +164,10 @@ export function installCharacterExtract({storyId,api,json,notice,onAccepted,isDi
     try{
       const data=await api(`/api/runs/${encodeURIComponent(id)}`,{fresh:true});
       if(ask!==runEpoch)return;
-      const wasActive=runActive();
+      const wasActive=runActive();pollFailed=false;
       run=data.run;renderRun();
       if(wasActive&&!runActive())await loadProposal();
-    }catch(error){if(ask===runEpoch){notice(error.message,'error');pollTimer=setTimeout(()=>void poll(),POLL_MS*3)}}
+    }catch(error){if(ask===runEpoch){if(!pollFailed)notice(error.message,'error');pollFailed=true;pollTimer=setTimeout(()=>void poll(),POLL_MS*3)}}
   }
   function track(created){runEpoch++;run=created;renderRun();void poll()}
   async function findRun(){
@@ -175,7 +181,10 @@ export function installCharacterExtract({storyId,api,json,notice,onAccepted,isDi
   async function action(path,body){
     if(!run)return;
     for(const button of [pauseButton,resumeButton,stopButton])button.disabled=true;
-    try{run=await api(`/api/runs/${encodeURIComponent(run.id)}/${path}`,json('POST',body||{}));runEpoch++;renderRun();void poll()}
+    try{
+      run=await api(`/api/runs/${encodeURIComponent(run.id)}/${path}`,json('POST',body||{}));runEpoch++;renderRun();
+      if(runActive())void poll();else await loadProposal();
+    }
     catch(error){notice(error.message,'error')}
     finally{for(const button of [pauseButton,resumeButton,stopButton])button.disabled=false}
   }
@@ -195,8 +204,12 @@ export function installCharacterExtract({storyId,api,json,notice,onAccepted,isDi
     const box=element('section','character-proposal-group'),head=element('div','character-proposal-head'),title=element('h3');
     uiText(title,'textContent',()=>t(titleKey,{p0:items.length}));
     const all=element('button','link-button'),none=element('button','link-button');all.type=none.type='button';
+    const name=titleKey.split('.').pop();all.id=`character-proposal-all-${name}`;none.id=`character-proposal-none-${name}`;
     uiText(all,'textContent',()=>t('character_extract.ui.select_all'));uiText(none,'textContent',()=>t('character_extract.ui.select_none'));
-    all.onclick=()=>{setAll(true);renderProposal();void dryRun()};none.onclick=()=>{setAll(false);renderProposal();void dryRun()};
+    uiAttr(all,'aria-label',()=>t('character_extract.ui.select_all_in',{p0:t(titleKey,{p0:items.length})}));
+    uiAttr(none,'aria-label',()=>t('character_extract.ui.select_none_in',{p0:t(titleKey,{p0:items.length})}));
+    const choose=(on,id)=>{setAll(on);renderProposal();document.getElementById(id)?.focus();void dryRun()};
+    all.onclick=()=>choose(true,all.id);none.onclick=()=>choose(false,none.id);
     head.append(title,all,none);box.append(head);
     const list=element('ul');for(const item of items){const row=element('li');row.append(item);list.append(row)}box.append(list);
     return box;
@@ -218,6 +231,13 @@ export function installCharacterExtract({storyId,api,json,notice,onAccepted,isDi
     uiText(heading,'textContent',()=>proposal.partial?t('character_extract.ui.proposal_partial'):t('character_extract.ui.proposal'));
     proposalNode.append(heading);
     const empty=!proposal.cards.length&&!proposal.name_updates.length&&!proposal.protagonist&&!proposal.casts.length;
+    const unread=proposal.skipped_scenes||[];
+    if(unread.length){
+      const box=element('div','character-proposal-unread'),label=element('p'),list=element('ul');box.id='character-proposal-unread';
+      uiText(label,'textContent',()=>t('character_extract.ui.unread'));
+      for(const item of unread){const row=element('li'),why=element('span','muted');row.append(text(sceneLabel(item.scene_id)));uiText(why,'textContent',()=>' — '+diagnostic(item.reason));row.append(why);list.append(row)}
+      box.append(label,list);proposalNode.append(box);
+    }
     if(empty){const line=element('p');uiText(line,'textContent',()=>t('character_extract.ui.nothing_found'));proposalNode.append(line);return}
     if(proposal.cards.length)proposalNode.append(group('character_extract.ui.new_cards',proposal.cards.map(card=>{
       const body=element('div','character-proposal-card'),title=checkbox(selection.cards.has(card.key),text(card.name,'character-proposal-name'),
@@ -225,7 +245,7 @@ export function installCharacterExtract({storyId,api,json,notice,onAccepted,isDi
       body.append(title);
       if(card.other_names.length){const label=element('small','muted');uiText(label,'textContent',()=>t('character_extract.ui.other_names'));body.append(label,namesRow('n',card.key,card.other_names))}
       const quotes=element('ul','character-proposal-quotes');
-      for(const quote of card.quotes){const row=element('li'),where=element('small','muted');row.append(text(`«${quote.quote}»`));where.textContent=' — '+sceneLabel(quote.scene_id);row.append(where);quotes.append(row)}
+      for(const quote of card.quotes){const row=element('li'),where=element('small','muted');const words=element('span');uiText(words,'textContent',()=>getLocale()==='en'?`“${quote.quote}”`:`«${quote.quote}»`);row.append(words);where.textContent=' — '+sceneLabel(quote.scene_id);row.append(where);quotes.append(row)}
       body.append(quotes);
       return body;
     }),on=>{selection.cards=new Set(on?proposal.cards.map(card=>card.key):[])}));
@@ -262,16 +282,19 @@ export function installCharacterExtract({storyId,api,json,notice,onAccepted,isDi
   async function dryRun(){
     if(!proposal)return;
     const ask=++dryEpoch,stale=document.querySelector('#character-proposal-stale');
+    if(!stale)return;
     say(stale,()=>t('character_extract.ui.checking'));
     try{
       const result=await api(`${storyPath}/character-proposal/accept`,json('POST',acceptBody(proposal,selection,proposal.run_id,true)));
-      if(ask!==dryEpoch)return;
+      const line=document.querySelector('#character-proposal-stale');
+      if(ask!==dryEpoch||!line)return;
       const count=result.stale_memory_scenes.length;
-      say(document.querySelector('#character-proposal-stale'),()=>count?t('character_extract.ui.stale_memory',{p0:count}):t('character_extract.ui.no_stale_memory'));
+      say(line,()=>count?t('character_extract.ui.stale_memory',{p0:count}):t('character_extract.ui.no_stale_memory'));
     }catch(error){
-      if(ask!==dryEpoch)return;
+      const line=document.querySelector('#character-proposal-stale');
+      if(ask!==dryEpoch||!line)return;
       if(error.status===409){notice(error.message,'warning');await loadProposal();return}
-      say(document.querySelector('#character-proposal-stale'),()=>diagnostic(error.message));
+      say(line,()=>diagnostic(error.message));
     }
   }
   function itemLabel(item){
@@ -284,7 +307,7 @@ export function installCharacterExtract({storyId,api,json,notice,onAccepted,isDi
   }
   async function acceptSelected(){
     if(!proposal||accepting||isDirty())return;
-    accepting=true;syncAccept();
+    accepting=true;dryEpoch++;syncAccept();
     const current=proposal;
     try{
       const result=await api(`${storyPath}/character-proposal/accept`,json('POST',acceptBody(current,selection,current.run_id,false)));
@@ -309,7 +332,7 @@ export function installCharacterExtract({storyId,api,json,notice,onAccepted,isDi
     try{found=await api(`${storyPath}/character-proposal`,{fresh:true})}
     catch(error){if(error.status!==404)notice(error.message,'error')}
     try{await readContext()}catch{/* names fall back to IDs */}
-    proposal=found?{...found.proposal,run_id:found.run_id}:null;
+    dryEpoch++;proposal=found?{...found.proposal,run_id:found.run_id}:null;
     selection=proposal?defaultSelection(proposal):null;
     renderProposal();
     if(proposal)void dryRun();

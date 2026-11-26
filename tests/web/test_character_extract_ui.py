@@ -61,6 +61,15 @@ def test_ui_keys_exist_and_server_refusals_are_translated():
         for name, value in vars(module).items():
             if name.isupper() and isinstance(value, str) and re.search('[а-яіїєґ]', value, re.I) and f'\n{name} = ' in source:
                 assert value in values, (module.__name__, name)
+    # The acceptance's inline refusals too (a "{what}: …" one by its pattern).
+    from storygen.generation import worker
+    source = Path(extract_accept.__file__).read_text(encoding='utf-8')
+    for message in re.findall(r"raise ValueError\('([^']*[а-яіїєґ][^']*)'\)", source, re.I):
+        assert message in values, message
+    finished = 'Пошук персонажів завершено; запустіть новий'  # the worker's refusal to resume a finished search
+    assert finished in Path(worker.__file__).read_text(encoding='utf-8') and finished in values
+    assert "{p0}: ім'я не з пропозиції" in values
+    assert "raise ValueError(f'{what}: ім\\'я не з пропозиції')" in (Path(extract_accept.__file__)).read_text(encoding='utf-8')
 
 
 @pytest.mark.req('CHARACTER-EXTRACT')
