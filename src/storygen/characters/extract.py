@@ -373,11 +373,12 @@ def _paths(item: str, numbers: Mapping[str, CatalogueLocation]) -> list[tuple[st
                     expanded = []
                     break
                 pieces = [piece.strip() for piece in location.path.split('/') if piece.strip()]
-            else:
-                pieces = [part]
-            for piece in pieces:
-                if all(normalize([piece]) != normalize([known]) for known in expanded):
-                    expanded.append(piece)
+                if normalize(expanded) == normalize(pieces[:len(expanded)]):  # «Полонина / l8»: the card's own path
+                    expanded = pieces
+                else:  # «Карпати / l8»: the card's whole path nests under the parts before it (a known limitation)
+                    expanded += pieces
+            elif all(normalize([part]) != normalize([known]) for known in expanded):
+                expanded.append(part)
         if expanded:
             found.append(tuple(expanded))
     return found

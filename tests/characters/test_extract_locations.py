@@ -124,3 +124,10 @@ def test_a_five_letter_word_matches_its_locative_form():
     st = apply_group(state(), parse_extract('{"scenes":[{"scene":"s1","locations":["Річка","Хатка"]}]}'), prose,
                      scene_numbers=scene_numbers, card_numbers=card_numbers)
     assert places(st, 'sc1') == [('Річка', True), ('Хатка', True)]  # stems of four letters, as probe 3 measured
+
+
+@pytest.mark.req('CHARACTER-EXTRACT')
+def test_a_catalogue_path_keeps_its_repeated_parts():
+    city = CatalogueLocation(ref='loc_ny', path='New York / New York', existing=True)
+    st = run(state(city), '[{"scene":"s1","locations":["l1","New York / l1"]}]')
+    assert [item.ref for item in st.scene_locations['sc1']] == ['loc_ny'] and len(st.locations) == 1

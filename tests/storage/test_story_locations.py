@@ -141,23 +141,29 @@ def set_model_places(repo,scene_id,ids):
     return repo.get_scene(scene_id)
 
 
+def model_scene(repo,story,scene):
+    return set_model_places(repo,scene.id,[lid(story,'Дім')])
+
+
+def plan_scene(repo,story,scene):
+    return repo.update_scene_plan(scene.id,'Локація: Дім',scene.revision)
+
+
 @pytest.mark.req('MEMORY-LOCATIONS')
-@pytest.mark.parametrize('source',['plan','model'])
-@pytest.mark.parametrize('line',[None,'','Ліс'])
-def test_plan_rule_keeps_model_places(tmp_path,source,line):
+@pytest.mark.parametrize('prepare,plan,places,source',[
+    (plan_scene,'Дії: тиша.',(),'plan'),
+    (plan_scene,'Локація:\nДії: тиша.',(),'plan'),
+    (plan_scene,'Локація: Ліс\nДії: тиша.',('Ліс',),'plan'),
+    (model_scene,'Дії: тиша.',('Дім',),'model'),  # no plan place: the model places stay
+    (model_scene,'Локація:\nДії: тиша.',('Дім',),'model'),
+    (model_scene,'Локація: Ліс\nДії: тиша.',('Ліс',),'plan'),  # a non-empty plan line always wins
+])
+def test_plan_rule_keeps_model_places(tmp_path,prepare,plan,places,source):
     repo,story,scene=make(tmp_path)
     with repo.db.connection() as db:store.ensure_locations(db,story.id,[('Дім',)])
-    before=[lid(story,'Дім')]
-    scene=set_model_places(repo,scene.id,before) if source=='model' else repo.update_scene_plan(scene.id,'Локація: Дім',scene.revision)
-    assert scene.location_source==source
-    plan='Дії: тиша.' if line is None else f'Локація: {line}\nДії: тиша.'
+    scene=prepare(repo,story,scene)
     saved=repo.update_scene_plan(scene.id,plan,scene.revision)
-    if line:  # a non-empty plan line always wins
-        assert (saved.location_ids,saved.location_source)==([lid(story,'Ліс')],'plan')
-    elif source=='model':
-        assert (saved.location_ids,saved.location_source)==(before,'model')
-    else:
-        assert (saved.location_ids,saved.location_source)==([],'plan')
+    assert (saved.location_ids,saved.location_source)==([lid(story,place) for place in places],source)
 
 
 @pytest.mark.req('MEMORY-LOCATIONS')
