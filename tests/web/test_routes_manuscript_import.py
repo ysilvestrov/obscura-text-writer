@@ -26,7 +26,7 @@ def test_preview_paragraphs_and_cancel(tmp_path):
         assert response.status_code == 200, response.text
         preview = response.json()
         assert [scene['title'] for scene in preview['scenes']] == ['Глава перша', 'Глава друга']
-        assert preview['edition'] == {'parts_allowed': True, 'series_allowed': True}
+        assert preview['edition'] == {'parts_allowed': True, 'series_allowed': True, 'trial': {'state': 'none', 'kind': None, 'id': None, 'title': None}}
         assert (tmp_path / 'manuscript-import' / f'{preview["import_id"]}.md').is_file()
         rows = client.get(f'/api/manuscript-import/{preview["import_id"]}/paragraphs', params={'start': 0, 'end': 2}).json()
         assert [row['index'] for row in rows] == [0, 1, 2] and rows[1]['heading_level'] == 1

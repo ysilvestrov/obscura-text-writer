@@ -54,7 +54,7 @@ def test_import_manuscript_preview_from_path(tmp_path):
     data = preview(server, file_path=manuscript(tmp_path))
     assert set(data) == {'import_id', 'fingerprint', 'file_name', 'title_suggestion', 'chapter_source', 'scenes', 'parts', 'front_matter',
                          'warnings', 'tracked_changes', 'edition'}
-    assert data['file_name'] == 'book.md' and data['edition'] == {'parts_allowed': True, 'series_allowed': True}
+    assert data['file_name'] == 'book.md' and {k: data['edition'][k] for k in ('parts_allowed', 'series_allowed')} == {'parts_allowed': True, 'series_allowed': True}
     assert [scene['title'] for scene in data['scenes']] == ['Глава перша', 'Глава друга']
     assert set(data['scenes'][0]) == {'start', 'end', 'title', 'words', 'part_index', 'proposed', 'warnings'}
     assert app.state.repo.list_stories() == []
