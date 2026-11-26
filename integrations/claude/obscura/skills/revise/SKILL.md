@@ -34,7 +34,7 @@ Pick the route from the request and say it in one line. The author may pick the 
 ## 4. Summary
 
 At the end:
-- what changed: scenes, plan, preamble, character cards, memory, series bible; and what the author still has to change by hand (replacement tables, deleting a whole card);
+- what changed: scenes, plan, preamble, character cards, memory, series bible; and what the author still has to change by hand (replacement tables, deleting a whole card, merging old location cards left without scenes);
 - your own decisions;
 - scenes that got new memory, the Auditor's findings if it ran, and scenes waiting for «Я перевірив сам»;
 - what the author has to do in Obscura: read and approve the prose, review editor edits. `next_steps(scene_id)` gives the link.
