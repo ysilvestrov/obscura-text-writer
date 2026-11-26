@@ -505,7 +505,7 @@ def test_repository_plugin_files_hold_every_skill():
     prefix = 'integrations/claude/'
     tracked = [item[len(prefix):] for item in listed.stdout.decode('utf-8').split('\0') if item]
     files = packaging.plugin_files(ROOT / 'integrations' / 'claude', tracked)
-    for skill in ('start-story', 'draft-scene', 'publish', 'series-bible', 'setup-models'):
+    for skill in ('start-story', 'draft-scene', 'publish', 'revise', 'series-bible', 'setup-models'):
         assert f'obscura/skills/{skill}/SKILL.md' in files
     assert not [rel for rel in files if rel.startswith('obscura/evals/')]
 
