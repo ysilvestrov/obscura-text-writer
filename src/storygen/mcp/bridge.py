@@ -101,8 +101,8 @@ INSTRUCTIONS = ('Obscura — локальний редактор історій.
                 '(створює нову книгу без моделей і без пам’яті); далі start_run(action=rebuild_memory): перегляд вартості, згода автора, '
                 'запуск із plan_fingerprint (лише у творі «obscura»). '
                 'Після сцени чи твору дайте людині посилання з next_steps, щоб читати й правити твір у вікні Obscura. '
-                'Якщо скіл Obscura (start-story, draft-scene, publish, series-bible, setup-models) у вас не підключено, спершу '
-                'викличте get_guide з назвою задачі й дотримуйтеся отриманих кроків; якщо підключено — не викликайте.')
+                'Якщо скіл Obscura (start-story, draft-scene, publish, revise, series-bible, setup-models) у вас не підключено, спершу '
+                'викличте get_guide з назвою задачі й дотримуйтеся отриманих кроків; якщо підключено — не викликайте. Скіл revise — правка вже написаного твору (зміна факту, локальна правка).')
 START_STORY = ('Допоможіть людині написати історію з Obscura. Задум: {idea}\n'
                '1. Розпитайте про задум коротко й створіть твір: create_story з writing_mode="chat" (тексти пишете ви).\n'
                '2. Візьміть шаблони плану й персонажів (get_templates), заповніть їх разом із людиною.\n'
@@ -334,7 +334,7 @@ def build_server(http: httpx.Client | None, client_name: str | None = None, *, c
     @server.tool()
     def get_guide(task: str, reference: str | None = None) -> dict[str, Any]:
         """Кроки Obscura для задачі, якщо скіл Obscura у клієнті не підключено. task: start-story, draft-scene, publish,
-        series-bible або setup-models. Без reference — текст скіла й перелік його довідок; з reference — текст довідки."""
+        revise (правка вже написаного твору), series-bible або setup-models. Без reference — текст скіла й перелік його довідок; з reference — текст довідки."""
         plugin = skills()
         if plugin is None:
             raise ToolError(NO_GUIDE)
