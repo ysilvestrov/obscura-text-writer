@@ -13,6 +13,31 @@ def require_long_prose() -> None:
         raise ValueError(NO_LONG_PROSE)
 
 
+# R-47: the checks ask about a book or a series. In PR 1 every answer is the build's; PR 2 adds the trial marker to the
+# branch of an edition without long prose. An edition with long prose never reads the database here.
+def long_prose_for(repo, story) -> bool:
+    return build_edition.current().long_prose
+
+
+def story_long_prose(repo, story_id: str) -> bool:
+    """False for an unknown story in an edition without long prose."""
+    return build_edition.current().long_prose
+
+
+def series_long_prose(repo, series_id: str) -> bool:
+    return build_edition.current().long_prose
+
+
+def require_long_prose_for(repo, story_id: str) -> None:
+    if not story_long_prose(repo, story_id):
+        raise ValueError(NO_LONG_PROSE)
+
+
+def require_series_long_prose(repo, series_id: str) -> None:
+    if not series_long_prose(repo, series_id):
+        raise ValueError(NO_LONG_PROSE)
+
+
 def enforce_long_prose(story, scenes) -> None:
     from .structure import structure_kind
     if not build_edition.current().long_prose and structure_kind(story, scenes) == 'structured':
