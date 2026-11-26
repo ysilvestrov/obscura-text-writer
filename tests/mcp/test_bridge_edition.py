@@ -6,10 +6,10 @@ import pytest
 pytest.importorskip('mcp')
 from mcp import Client  # noqa: E402
 
-from storygen.book.guard import NO_LONG_PROSE, READ_ONLY, READ_ONLY_SERIES  # noqa: E402
+from storygen.book.guard import NO_LONG_PROSE, READ_ONLY, READ_ONLY_SERIES, TRIAL_BOOK_ALONE, TRIAL_SERIES_FULL, TRIAL_USED  # noqa: E402
 from storygen.domain import ContentRating  # noqa: E402
 from storygen.mcp.bridge import build_server  # noqa: E402
-from storygen.mcp.edition import edition_refusal  # noqa: E402
+from storygen.mcp.edition import TRIAL_AVAILABLE_TEXT, TRIAL_USED_TEXT, edition_refusal  # noqa: E402
 from storygen.rating.guard import enforce_rating_limit  # noqa: E402
 
 WAITLIST = 'https://example.com/waitlist'
@@ -62,7 +62,7 @@ def test_bridge_tool_error_carries_the_hint(store_edition):
     for result in results:
         text = ''.join(getattr(item, 'text', '') for item in result.content)
         assert result.is_error and WAITLIST in text and 'платної версії' in text
-    assert info == [1]
+    assert info == [1, 1]  # LONG-PROSE-TRIAL: read on every edition refusal, so the trial state is current
 
 
 def structured_obscura(tmp_path, monkeypatch):
@@ -135,3 +135,34 @@ def test_start_run_readiness_edition_limit_is_a_hint(confirm, store_edition):
     result, text = call(server, 'start_run', {'story_id': 'story-1', 'action': 'draft', 'scene_id': 'scene-1', 'confirm': confirm})
     assert result.is_error is confirm
     assert limit in text and 'платної версії' in text and WAITLIST in text
+
+
+@pytest.mark.req('LONG-PROSE-TRIAL')
+@pytest.mark.parametrize('detail', [TRIAL_USED, TRIAL_SERIES_FULL, TRIAL_BOOK_ALONE])
+def test_trial_refusals_are_edition_refusals(detail):
+    hint = edition_refusal(detail, WAITLIST, {'state': 'used'})
+    assert hint is not None and detail in hint and TRIAL_USED_TEXT in hint and WAITLIST in hint
+
+
+@pytest.mark.req('LONG-PROSE-TRIAL')
+def test_hint_names_the_trial_by_its_state():
+    assert TRIAL_AVAILABLE_TEXT in edition_refusal(READ_ONLY, WAITLIST, {'state': 'available'})
+    for state in (None, {'state': 'none'}, {}):
+        hint = edition_refusal(READ_ONLY, WAITLIST, state)
+        assert TRIAL_AVAILABLE_TEXT not in hint and TRIAL_USED_TEXT not in hint
+
+
+@pytest.mark.req('LONG-PROSE-TRIAL')
+def test_bridge_reads_the_trial_state_with_the_refusal():
+    def handler(request):
+        if request.url.path == '/api/app-info':
+            return httpx.Response(200, json={'waitlist_url': WAITLIST, 'long_prose_trial': {'state': 'available'}})
+        return httpx.Response(400, json={'detail': 'x', 'detail_original': 'Некоректні дані: ' + READ_ONLY})
+    http = httpx.Client(base_url='http://127.0.0.1:8765', transport=httpx.MockTransport(handler))
+
+    async def run():
+        async with Client(build_server(http)) as client:
+            return await client.call_tool('get_scene_text', {'scene_id': 'scene-1', 'material': 'draft'})
+    result = anyio.run(run)
+    text = ''.join(getattr(item, 'text', '') for item in result.content)
+    assert result.is_error and TRIAL_AVAILABLE_TEXT in text
