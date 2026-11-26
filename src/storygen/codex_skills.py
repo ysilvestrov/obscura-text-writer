@@ -9,6 +9,8 @@ from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
 NAMES = ('start-story', 'draft-scene', 'publish', 'series-bible', 'setup-models')
+# Plugin skills deliberately not exported to Codex yet; any other extra folder still changes the inventory.
+CHAT_ONLY = ('revise',)
 GENERATOR_VERSION = '1'
 TICK = chr(96)
 PLUGIN_ROOT = chr(36) + '{CLAUDE_PLUGIN_ROOT}'
@@ -132,7 +134,7 @@ def generate_skills(source: Path) -> SkillBundle:
     # Do not traverse a directory link while collecting the input inventory.
     read('shared/rules.md')
     skills = source/'skills'
-    if _reparse(skills) or {p.name for p in skills.iterdir()} != set(NAMES):
+    if _reparse(skills) or {p.name for p in skills.iterdir()} != set(NAMES) | set(CHAT_ONLY):
         raise GenerationError('source_skill_inventory_changed')
     originals: dict[str, str] = {}
     for name in NAMES:

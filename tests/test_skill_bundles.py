@@ -70,7 +70,7 @@ def test_desktop_zip_is_one_folder_named_after_skill(tmp_path):
 
 @pytest.mark.req('CLAUDE-SKILLS')
 def test_every_real_skill_bundles():
-    assert sb.skill_names(PLUGIN) == ['draft-scene', 'publish', 'series-bible', 'setup-models', 'start-story']
+    assert sb.skill_names(PLUGIN) == ['draft-scene', 'publish', 'revise', 'series-bible', 'setup-models', 'start-story']
     for skill in sb.skill_names(PLUGIN):
         files = sb.bundle_files(PLUGIN, skill)
         assert f'{skill}/SKILL.md' in files

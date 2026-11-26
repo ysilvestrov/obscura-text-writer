@@ -12,7 +12,7 @@ from mcp import Client  # noqa: E402
 from storygen.mcp.bridge import INSTRUCTIONS, build_server  # noqa: E402
 
 PLUGIN = Path(__file__).resolve().parents[2]/'integrations/claude/obscura'
-SKILLS = ('start-story', 'draft-scene', 'publish', 'series-bible', 'setup-models')
+SKILLS = ('start-story', 'draft-scene', 'publish', 'revise', 'series-bible', 'setup-models')
 
 
 def server(plugin=PLUGIN):
@@ -67,3 +67,23 @@ def test_get_guide_without_plugin():
 def test_instructions_name_get_guide():
     assert 'get_guide' in INSTRUCTIONS
     assert all(skill in INSTRUCTIONS for skill in SKILLS)
+
+
+@pytest.mark.req('MCP-BRIDGE')
+def test_get_guide_serves_revise_skill_and_references():
+    data = payload(call(server(), {'task': 'revise'}))
+    assert data['text'].startswith('---\nname: revise')
+    assert data['references'] == ['fact-change', 'local-edit', 'rules']
+
+
+@pytest.mark.req('MCP-BRIDGE')
+def test_get_guide_revise_reference():
+    data = payload(call(server(), {'task': 'revise', 'reference': 'fact-change'}))
+    assert data['text'] == (PLUGIN/'skills/revise/references/fact-change.md').read_text(encoding='utf-8')
+
+
+@pytest.mark.req('MCP-BRIDGE')
+def test_get_guide_revise_local_edit_points_to_fact_change_through_guide():
+    data = payload(call(server(), {'task': 'revise', 'reference': 'local-edit'}))
+    assert 'get_guide(task="revise", reference="fact-change")' in data['text']
+    assert '${CLAUDE_PLUGIN_ROOT}' not in data['text']

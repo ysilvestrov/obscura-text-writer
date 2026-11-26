@@ -173,7 +173,7 @@ def test_desktop_skills_route(client, roots, monkeypatch, tmp_path):
     folder = tmp_path / 'data' / 'claude' / 'skills'
     body = answer.json()
     assert answer.status_code == 200 and body['folder'] == str(folder) and opened == [folder]
-    assert len(body['files']) == 5 and all((folder / name).is_file() for name in body['files'])
+    assert len(body['files']) == 6 and all((folder / name).is_file() for name in body['files'])
 
 
 @pytest.mark.req('STORE-MCP-001')

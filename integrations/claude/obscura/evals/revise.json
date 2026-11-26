@@ -1,0 +1,68 @@
+{
+  "skill_name": "revise",
+  "runner": "integrations/claude/tools/run_scenarios.py",
+  "evals": [
+    {
+      "id": 1,
+      "scenario": "S12",
+      "prompt": "Перенеси дію твору «Маяк над затокою» з Одеси в Херсон.",
+      "setup": "chat story «Маяк над затокою» with two written scenes (plan, brief, prose, memory mention Одеса); no web search tools on the stand",
+      "expected_output": "Картка зміни й таблиця правок з обома сценами; без пошуку чат каже про це й питає, а не вигадує деталей; нічого не записано.",
+      "assertions": [
+        "no save_draft, save_stage_result, update_scene, update_plan_preamble or start_run with confirm=true",
+        "the reply names both scene titles",
+        "the reply says there is no web search and asks instead of inventing details (manual)",
+        "one question at a time (manual)"
+      ],
+      "files": []
+    },
+    {
+      "id": 2,
+      "scenario": "S13",
+      "prompt": "Перенеси дію твору «Маяк над затокою» з Одеси в Херсон. Змінюється лише назва міста, нових деталей не шукай і не питай. Покажи таблицю правок і першу сцену.",
+      "turns": [
+        "Перенеси дію твору «Маяк над затокою» з Одеси в Херсон. Змінюється лише назва міста, нових деталей не шукай і не питай. Покажи таблицю правок і першу сцену.",
+        "Ок, застосовуй усю таблицю."
+      ],
+      "setup": "chat story «Маяк над затокою» with two written scenes; two turns of one session (--resume)",
+      "expected_output": "Хід 1: таблиця й перша сцена фрагментами «було → стало», без записів. Хід 2: обидві сцени виправлено ланцюжком plan → brief → draft → edit → memory; у сцени 2 brief збережено знову перед draft.",
+      "assertions": [
+        "turn 1 writes nothing",
+        "no «Одес» left in the prose and plan of both scenes, «Херсон» present",
+        "sentences without the old city are unchanged",
+        "the memory of both scenes is saved again, with «Херсон» and without «Одес»",
+        "per scene the saves go draft → edit → memory; scene 2 saves its brief before its draft",
+        "both scenes end in state prose",
+        "turn 1 shows the first scene as \"was → becomes\" fragments (manual)"
+      ],
+      "files": []
+    },
+    {
+      "id": 3,
+      "scenario": "S14",
+      "prompt": "Перенеси дію твору «Маяк над затокою» з Одеси в Херсон. Я погоджуюсь із таблицею.",
+      "setup": "obscura story «Маяк над затокою» with the same scenes",
+      "expected_output": "Режим obscura: тексту сцен чат не пише, жодного платного запуску; відповідь містить таблицю замін «знайти — замінити на».",
+      "assertions": [
+        "no save_draft or save_stage_result",
+        "no start_run with confirm=true",
+        "the reply contains a replacement table with «Херсон»"
+      ],
+      "files": []
+    },
+    {
+      "id": 4,
+      "scenario": "S15",
+      "prompt": "Зроби першу сцену твору «Маяк над затокою» смішнішою.",
+      "setup": "chat story «Маяк над затокою» with two written scenes",
+      "expected_output": "Чат показує 3–6 місць цитатами й питає про перше місце: 2–3 варіанти й «лишити як є»; нічого не записано.",
+      "assertions": [
+        "nothing is written before the author chooses",
+        "the reply asks the author a question",
+        "the question is about the first place, with 2–3 options plus \"leave as is\" (manual)",
+        "the variants change no facts of the scene (manual)"
+      ],
+      "files": []
+    }
+  ]
+}
