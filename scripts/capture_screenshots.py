@@ -348,18 +348,21 @@ EXTRACT={
     'uk':{'title':'Човен біля маяка','scenes':[('Пірс','Олена стояла на пірсі. Марко махнув їй з човна й гукнув: «Оленко, я повернуся до ночі!»'),
                                               ('Шторм','Уночі Марко запалив маяк, і той світив до ранку. Олена бачила світло з вікна.')],
           'hero':'Олена','new':'Марко','other':[('Марк',True),('рибалка',False)],'alias':'Оленка',
-          'quotes':['Марко махнув їй з човна','Уночі Марко запалив маяк']},
+          'quotes':['Марко махнув їй з човна','Уночі Марко запалив маяк'],
+          'places':[[('Пірс',True)],[('Маяк',True),('Маяк / ліхтарна',False)]]},
     'en':{'title':'A boat by the lighthouse','scenes':[('The pier','Helen stood on the pier. Mark waved to her from the boat and called: "Nell, I will be back by night!"'),
                                                       ('The storm','At night Mark lit the lighthouse, and it shone until morning. Helen saw the light from her window.')],
           'hero':'Helen','new':'Mark','other':[('Marky',True),('fisherman',False)],'alias':'Nell',
-          'quotes':['Mark waved to her from the boat','At night Mark lit the lighthouse']},
+          'quotes':['Mark waved to her from the boat','At night Mark lit the lighthouse'],
+          'places':[[('Pier',True)],[('Lighthouse',True),('Lighthouse / lamp room',False)]]},
 }
 
 
 def seed_character_proposal(data_dir,lang):
     """CHARACTER-EXTRACT (R-51, spec §6): a second neutral book with the author's prose of two scenes, card of the heroine
     and a finished character search whose proposal is waiting: a new card with two quotes and other names (one not
-    suggested), a new name for the heroine, the heroine as the main character and both casts. No model calls."""
+    suggested), a new name for the heroine, the heroine as the main character, both casts and the places of both scenes
+    (spec 2: new cards; the lamp room is not named in the prose, so it is not suggested). No model calls."""
     from storygen.domain import ContentRating, SceneCreate, StoryCreate, new_id
     from storygen.generation.dependencies import save_manual_prose
     from storygen.generation.extract_run import proposal_fingerprint
@@ -383,6 +386,9 @@ def seed_character_proposal(data_dir,lang):
           'name_updates':[{'card_id':hero,'names':[{'name':spec['alias'],'suggested':True}]}],
           'protagonist':{'ref':hero,'scores':[1.0,1.0]},
           'casts':[{'scene_id':scenes[0].id,'mode':'set','participants':[hero,'n1']},{'scene_id':scenes[1].id,'mode':'set','participants':[hero,'n1']}],
+          'locations':[{'scene_id':scene.id,'mode':'set','places':[{'ref':f'l{index}{number}','path':path,'new':True,'suggested':flag}
+                                                                   for number,(path,flag) in enumerate(places,1)]}
+                       for index,(scene,places) in enumerate(zip(scenes,spec['places']),1)],
           'skipped_scenes':[],'calls':2,'partial':False,'cost_usd':'0.0040',
           'source':{'scenes':{s.id:{'version_id':s.heads['prose'],'sha256':repo.get_version(s.heads['prose']).sha256} for s in scenes},
                     'start_cards_version_id':story.characters_version_id,'group_words':5000}}
@@ -393,7 +399,7 @@ def seed_character_proposal(data_dir,lang):
 
 
 def capture_character_proposal(base,story,lang):
-    """CHARACTER-EXTRACT (R-51): the «Пошук персонажів у прозі» section of the characters page with the waiting proposal;
+    """CHARACTER-EXTRACT (R-51): the «Пошук персонажів і місць у прозі» section of the characters page with the waiting proposal;
     nothing is accepted."""
     from playwright.sync_api import sync_playwright
     folder=OUT/lang;folder.mkdir(parents=True,exist_ok=True)

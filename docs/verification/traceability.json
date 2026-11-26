@@ -4192,6 +4192,20 @@
       ]
     },
     {
+      "id": "CHARACTER-EXTRACT-S14",
+      "requirement": "CHARACTER-EXTRACT",
+      "scope": "Група «Місця сцен»: нова назва розділу й кнопки (ключі uk/en), вибір за замовчуванням і тіло прийняття з місцями, стара пропозиція без місць (JS), нейтральна пропозиція знімка сайту з місцями приймається. Поведінка в браузері — ручна процедура (Playwright). Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/web/test_character_extract_ui.py::test_selection_helpers",
+        "tests/web/test_character_extract_ui.py::test_ui_keys_exist_and_server_refusals_are_translated",
+        "tests/test_capture_screenshots.py::test_character_proposal_seed_is_acceptable_and_quotes_are_verbatim"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#character-extract-browser",
+        "reason": "Playwright запускається окремим runner; check_docs.py індексує лише pytest IDs."
+      }
+    },
+    {
       "id": "CHARACTER-NAMES-S01",
       "requirement": "CHARACTER-NAMES",
       "scope": "Позначка інших імен двома мовами; розпізнавання в плані, «Знайомий з:», оповідачі й «Протагоніст:» за будь-яким ім’ям.",
@@ -5927,6 +5941,24 @@
       "manual": {
         "procedure": "docs/verification/manual.md#locations-panel",
         "reason": "Злиття з підтвердженням, конфлікт опису й спільну ревізію панелей у браузері перевіряє Playwright, який verify.py не запускає."
+      }
+    },
+    {
+      "id": "MEMORY-LOCATIONS-S08",
+      "requirement": "MEMORY-LOCATIONS",
+      "scope": "Прибрати місце моделі зі сцени (R-51): джерело місць у переліку, прибирання всіх ID канонічної картки, повернення до plan без поля в payload, відмови 400 і 409 без змін, кнопка лише для місць моделі (node). Playwright locations.spec.mjs запускається вручну (verify.py його не виконує). Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/web/test_locations_remove_place.py::test_the_view_says_where_a_scene_place_comes_from",
+        "tests/web/test_locations_remove_place.py::test_removing_a_model_place_drops_every_id_of_that_card",
+        "tests/web/test_locations_remove_place.py::test_removing_the_last_place_returns_the_scene_to_the_plan_source",
+        "tests/web/test_locations_remove_place.py::test_refusals_change_nothing",
+        "tests/web/test_locations_remove_place.py::test_a_stale_revision_is_a_conflict",
+        "tests/web/test_locations_ui.py::test_panel_rows",
+        "tests/web/test_locations_ui.py::test_server_messages_match_the_catalog"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#locations-panel",
+        "reason": "Підтвердження прибирання й оновлення панелі в браузері перевіряє Playwright, який verify.py не запускає."
       }
     },
     {
