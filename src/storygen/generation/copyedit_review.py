@@ -17,6 +17,8 @@ def copyedit_preview(repo, scene_id, attempt_id):
         ensure_selectable(view, attempt, compare_snapshot(view, DependencySnapshot.model_validate(attempt.context["dependency_snapshot"])))
     except ValueError as exc:
         reason = str(exc)
+    from ..writing_mode import proposal_refusal
+    reason = reason or proposal_refusal(view.story, attempt)
     raw=attempt.context['copyedit_proposal']
     content_format=view.get_version(raw['draft_id']).content_format
     edits=[e.model_dump() for e in proposal.edits]

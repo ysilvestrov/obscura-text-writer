@@ -30,3 +30,9 @@ def writes_prose(request) -> bool:
 
 def is_author(repo,story_id: str) -> bool:
     return repo.get_story(story_id).writing_mode=='author'
+
+
+def proposal_refusal(story, attempt) -> str | None:
+    """R-49 (WRITING-MODE-S08): why a model's copyedit or rewrite proposal cannot be applied in a «Пишу сам» story, so
+    the review shows its controls inactive; a human editor's imported proposal (`editor_import`) can be applied."""
+    return AUTHOR_WRITES if story.writing_mode=='author' and not attempt.context.get('editor_import') else None

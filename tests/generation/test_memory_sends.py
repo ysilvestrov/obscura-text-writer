@@ -73,3 +73,25 @@ def test_places_count_for_any_target_not_only_the_first_request(tmp_path):
     assert 'places' not in request_sections(first_without_places) and scene.location_ids
     keys = [item['key'] for item in memory_sends(repo.context_view(story.id), ProviderSettings(model='m'), [scene], first_without_places)['items']]
     assert 'places' in keys
+
+
+@pytest.mark.req('MANUSCRIPT-IMPORT')
+def test_bible_memory_request_maps_its_sections(tmp_path):
+    """Cross-review: the bible branch of the memory request is covered too, so dropping `bible_facts` from the map fails."""
+    from storygen.domain import SceneCreate, StoryCreate
+    from storygen.storage import series as store
+    from storygen.storage.repository import Repository
+    from tests.series.helpers import prose
+    repo = Repository(tmp_path)
+    item = store.create_series(repo, 'Сага')
+    story = repo.create_story(StoryCreate(title='Біблія', content_rating=ContentRating(sexual=0, violence=0, themes=0)))
+    story = store.set_story_series(repo, story.id, item.id, None, None, story.revision, bible=True)
+    scene = repo.create_scene(story.id, SceneCreate(title='Світ'))
+    prose(repo, scene, 'Магія коштує крові.')
+    approve_links(repo, story.id)
+    scene = repo.get_scene(scene.id)
+    context = build_context(repo, scene.id, 'memory', role())
+    sections = request_sections(context)
+    assert 'bible_facts' in sections and sections <= set(SECTION_CATEGORIES), sections - set(SECTION_CATEGORIES)
+    keys = [item['key'] for item in memory_sends(repo, ProviderSettings(model='m'), [scene], context)['items']]
+    assert keys == ['prose', 'memory_catalog', 'series_facts']

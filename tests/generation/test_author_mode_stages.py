@@ -55,13 +55,11 @@ def test_switch_during_the_response_saves_no_version(tmp_path):
 def test_brief_stage_is_not_refused_in_author_mode(tmp_path):
     repo, (scene,) = setup(tmp_path)
     switch(repo, scene.story_id, 'author')
-    context = build_context(repo, scene.id, 'draft', writer_role())
-    try:
-        execute_stage(repo, scene.id, 'brief', context, FakeGateway(text=BRIEF), threading.Event(), noop)
-    except AuthorWritesBlocked:
-        pytest.fail('brief writes no prose')
-    except Exception:
-        pass  # the borrowed draft context may not suit the brief parser; only the mode refusal matters here
+    context = build_context(repo, scene.id, 'brief', writer_role())
+    attempt = execute_stage(repo, scene.id, 'brief', context, FakeGateway(text=BRIEF), threading.Event(), noop)
+    assert attempt.state == 'completed' and attempt.error is None
+    brief = repo.get_scene(scene.id).heads['brief']
+    assert brief == attempt.result_version_id and '"objective":"Подія"' in repo.read_text(brief).replace(' ', '')
 
 
 @pytest.mark.req('WRITING-MODE')

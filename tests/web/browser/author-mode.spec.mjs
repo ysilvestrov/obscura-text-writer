@@ -40,3 +40,18 @@ test('a mode switch in another window redraws the actions on return',async({page
   await expect(panel.getByRole('button',{name:'Уся сцена',exact:true})).toBeHidden();
   await expect(page.locator('#workspace-primary')).toHaveText('Писати прозу');
 });
+
+test('a mode switch together with deleting the open scene elsewhere still warns about the deletion',async({page,request})=>{
+  // Cross-review: the mode refresh must not skip the scene-revision handling of the same absence.
+  const f=await(await request.post('/test-author-mode?mode=obscura')).json();
+  await page.goto(`/stories/${f.story_id}?scene=${f.scene_id}&material=plan`);
+  await expect(page.locator('#workspace-primary')).toBeVisible();
+  // Unsaved typing: the buffer must be protected and the deletion named, not silently dropped.
+  await page.locator('#editor').focus();await page.keyboard.type(' ще рядок');
+  const story=(await(await request.get(`/api/stories/${f.story_id}`)).json()).story;
+  expect((await request.put(`/api/stories/${f.story_id}/writing-mode`,{data:{writing_mode:'author',expected_revision:story.revision}})).ok()).toBe(true);
+  const scene=(await(await request.get(`/api/stories/${f.story_id}`)).json()).scenes.find(s=>s.id===f.scene_id);
+  expect((await request.post(`/api/scenes/${f.scene_id}/trash`,{data:{story_id:f.story_id,expected_revision:scene.revision}})).ok()).toBe(true);
+  await page.evaluate(()=>window.dispatchEvent(new Event('focus')));
+  await expect(page.locator('#external-change')).toBeVisible();
+});

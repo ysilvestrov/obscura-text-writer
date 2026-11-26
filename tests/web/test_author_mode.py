@@ -144,12 +144,40 @@ def test_author_mode_refuses_applying_model_proposals(tmp_path):
     assert repo.get_scene(scene.id).revision == scene.revision and repo.get_scene(scene.id).heads == scene.heads
 
 
+def real_proposal(tmp_path, editor_import=None):
+    """A valid editor proposal made before the switch to «Пишу сам» (cross-review: the test must apply a real one)."""
+    from fastapi.testclient import TestClient
+    from storygen.application.settings import AppSettings
+    from storygen.web.app import create_app
+    from tests.generation.test_copyedit_review import TEXT, generate
+    repo, scene, draft, attempt = generate(tmp_path)
+    if editor_import:
+        repo.save_attempt(attempt.model_copy(update={'context': {**attempt.context, 'editor_import': editor_import}}))
+    story = repo.get_story(scene.story_id)
+    repo.update_writing_mode(story.id, 'author', story.revision)
+    app = create_app(AppSettings(data_dir=tmp_path))
+    return app.state.repo, scene, attempt, TEXT, TestClient(app, base_url='http://127.0.0.1:8765')
+
+
 @pytest.mark.req('WRITING-MODE')
 def test_author_mode_lets_editor_import_proposals_through(tmp_path):
-    app, repo, story, scene, client = author_scene(tmp_path)
-    model_proposal(repo, story, scene, editor_import={'import_id': 'i', 'export_id': 'e', 'scene_index': 0})
-    body = {'selected_indices': [0], 'expected_revision': scene.revision, 'proposal_fingerprint': 'a' * 64}
-    assert AUTHOR_WRITES not in client.post(f'/api/scenes/{scene.id}/copyedits/p1', json=body).text
+    repo, scene, attempt, text, client = real_proposal(tmp_path, editor_import={'import_id': 'i', 'export_id': 'e', 'scene_index': 0})
+    preview = client.get(f'/api/scenes/{scene.id}/copyedits/{attempt.id}').json()
+    assert preview['can_apply'] is True and preview['source'] == 'editor_import'
+    body = {'selected_indices': [1], 'expected_revision': preview['expected_revision'], 'proposal_fingerprint': preview['proposal_fingerprint']}
+    applied = client.post(f'/api/scenes/{scene.id}/copyedits/{attempt.id}', json=body)
+    assert applied.status_code == 200, applied.text
+    prose = repo.get_scene(scene.id).heads['prose']
+    assert repo.read_text(prose) == text.replace('торкалається', 'торкається')
+
+
+@pytest.mark.req('WRITING-MODE')
+def test_author_mode_model_proposal_preview_cannot_be_applied(tmp_path):
+    """Cross-review: the review controls are inactive for a model proposal, with the mode named as the reason."""
+    repo, scene, attempt, text, client = real_proposal(tmp_path)
+    preview = client.get(f'/api/scenes/{scene.id}/copyedits/{attempt.id}').json()
+    assert 'can_apply' in preview, preview
+    assert preview['can_apply'] is False and preview['reason'] == AUTHOR_WRITES
 
 
 @pytest.mark.req('WRITING-MODE')

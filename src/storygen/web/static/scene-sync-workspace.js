@@ -15,10 +15,11 @@ async function check(){
   if(!state.view||!state.storyId)return;
   const {scenes,writing_mode}=await api(`/api/stories/${encodeURIComponent(state.storyId)}/scene-revisions`,{fresh:true});
   // R-49: a mode switch changes only the story revision; the workspace redraws its actions for the new mode.
-  if(writing_mode&&writing_mode!==state.view.story?.writing_mode){await refresh({fresh:true});return}
+  // Scene changes made in the same absence are still handled below (deletion notice, buffer protection).
+  const modeChanged=!!writing_mode&&writing_mode!==state.view.story?.writing_mode;
   const result=revisionsChanged(state.view.scenes,scenes,state.scene);
   // A view refreshed by the author's own action can be current while the buffer is still behind: notice that once.
-  if(!result.changed&&(state.externalChange||!(result.currentChanged||result.currentGone)))return;
+  if(!modeChanged&&!result.changed&&(state.externalChange||!(result.currentChanged||result.currentGone)))return;
   if(result.currentChanged||result.currentGone)state.externalChange=true;
   if(result.currentGone&&cleanBuffer(state,ghostOpen()))clearSceneBuffer();
   await refresh({fresh:true});

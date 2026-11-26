@@ -91,6 +91,7 @@ def test_cross_review_fixes_for_stale_buffers():
     wiring = _read('scene-sync-workspace.js')
     check = wiring[wiring.index('async function check'):wiring.index('const sync=')]
     # A view refreshed by the author's own action can be current while the buffer is still behind: notice it once.
-    assert 'if(!result.changed&&(state.externalChange||!(result.currentChanged||result.currentGone)))return;' in check
+    # R-49: a mode change elsewhere refreshes too, after the scene revisions of the same absence are handled.
+    assert 'if(!modeChanged&&!result.changed&&(state.externalChange||!(result.currentChanged||result.currentGone)))return;' in check
     # A buffer that became clean (undo) while behind is reloaded, not just relieved of its notice.
     assert "document.addEventListener('editor-state-changed',reloadIfClean)" in wiring

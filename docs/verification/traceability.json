@@ -7472,7 +7472,8 @@
       "scope": "Відмова застосування коректури й переписування моделі без змін сцени; пропозиція editor_import проходить. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
       "tests": [
         "tests/web/test_author_mode.py::test_author_mode_refuses_applying_model_proposals",
-        "tests/web/test_author_mode.py::test_author_mode_lets_editor_import_proposals_through"
+        "tests/web/test_author_mode.py::test_author_mode_lets_editor_import_proposals_through",
+        "tests/web/test_author_mode.py::test_author_mode_model_proposal_preview_cannot_be_applied"
       ]
     },
     {
@@ -9485,6 +9486,7 @@
         "tests/generation/test_memory_sends.py::test_local_endpoint_is_flagged",
         "tests/generation/test_memory_sends.py::test_memory_build_preview_says_what_the_model_receives",
         "tests/generation/test_memory_sends.py::test_places_count_for_any_target_not_only_the_first_request",
+        "tests/generation/test_memory_sends.py::test_bible_memory_request_maps_its_sections",
         "tests/web/test_memory_build_ui.py::test_ui_keys_exist_in_both_languages"
       ],
       "manual": {
