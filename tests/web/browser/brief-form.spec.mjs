@@ -139,7 +139,8 @@ test.describe('brief form',()=>{
     await expect.poll(async()=>Math.max(...await clipped(page))).toBeLessThanOrEqual(1);
     expect(await height(0)).toBeGreaterThan(short*2);
     await beats(page).nth(0).fill('Коротко');
-    await expect.poll(()=>height(0)).toBeLessThanOrEqual(short+1);
+    await expect.poll(async()=>Math.abs(await height(0)-short)).toBeLessThanOrEqual(1);
+    expect(Math.max(...await clipped(page))).toBeLessThanOrEqual(1);
     // A narrower window wraps the text into more lines; the field follows.
     await page.setViewportSize({width:420,height:800});
     await expect.poll(async()=>Math.max(...await clipped(page))).toBeLessThanOrEqual(1);
