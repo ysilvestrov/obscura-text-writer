@@ -286,60 +286,24 @@ def _cast_plan(view, proposal, chosen_casts, refs, outcome):
 
 
 def _apply_places(repo, db, story_id, proposal, chosen, outcome) -> tuple[list[str], list[str]]:
-    """(scenes whose places changed, location cards created) — spec 2, 4.3. Scenes are read from the transaction: a cast
-    written just before has raised their revision. A place whose canonical card the scene already holds is dropped;
-    the rest get their cards from `ensure_locations` (a merged card's path gives that card, which leads to its target)."""
-    from ..domain import Scene, VersionRef
-    from ..locations import canonical, location_id, normalize
-    from ..scene_plan_template import plan_fields
-    from ..storage.locations import ensure_locations, load_locations
-    from ..storage.scene_cast import AUTHOR_PROSE
-    from ..storage.scene_metadata import stale_scene_material
+    """(scenes whose places changed, location cards created) — spec 2, 4.3; the write is the storage's."""
+    from ..storage import locations as store
+    reasons = {store.PLACE_TRASHED: SKIP_SCENE_TRASHED, store.PLACE_PROSE_CHANGED: SKIP_PROSE_CHANGED,
+               store.PLACE_NOT_AUTHOR: SKIP_NOT_AUTHOR_PROSE, store.PLACE_PLANNED: SKIP_PLAN_PLACE,
+               store.PLACE_NOTHING: SKIP_PLACE_NOTHING_TO_ADD}
     source = proposal['source']['scenes']
-    before = set(load_locations(db, story_id))
+    items = [(item['scene_id'], (source.get(item['scene_id']) or {}).get('version_id'),
+              [place['path'] for place in item['places'] if place['path'] in chosen[item['scene_id']]])  # proposal order
+             for item in proposal.get('locations') or [] if item['scene_id'] in chosen]
+    codes, created = store.apply_places_in_transaction(repo, db, story_id, items)
     changed = []
-    for item in proposal.get('locations') or []:
-        scene_id = item['scene_id']
-        if scene_id not in chosen:
-            continue
-        row = db.execute('SELECT payload FROM scenes WHERE id=? AND story_id=?', (scene_id, story_id)).fetchone()
-        scene = Scene.model_validate_json(row[0]) if row is not None else None
-        prose_id = scene.heads.get('prose') if scene is not None else None
-        reason, paths = None, []
-        if scene is None or scene.trashed_at:
-            reason = SKIP_SCENE_TRASHED
-        elif not prose_id or prose_id != (source.get(scene_id) or {}).get('version_id'):
-            reason = SKIP_PROSE_CHANGED
-        elif repo._get(db, 'versions', prose_id, VersionRef).kind != AUTHOR_PROSE:
-            reason = SKIP_NOT_AUTHOR_PROSE
-        elif plan_fields(scene.beats).get('location'):  # the plan line always wins over places from the model
-            reason = SKIP_PLAN_PLACE
+    for scene_id, _version, _paths in items:
+        if codes[scene_id] is None:
+            changed.append(scene_id)
+            outcome.apply(_item('location', scene_id=scene_id))
         else:
-            merged = {card.id: card.merged_into for card in load_locations(db, story_id).values()}
-            held = {canonical(merged, id) for id in scene.location_ids}
-            for place in item['places']:  # in the order of the proposal
-                if place['path'] not in chosen[scene_id]:
-                    continue
-                parts = tuple(part.strip() for part in place['path'].split('/') if part.strip())
-                card = canonical(merged, location_id(story_id, normalize(parts)))
-                if card not in held:
-                    held.add(card)
-                    paths.append(parts)
-            if not paths:
-                reason = SKIP_PLACE_NOTHING_TO_ADD
-        if reason:
-            outcome.skip(_item('location', scene_id=scene_id), reason)
-            continue
-        scene.location_ids = list(dict.fromkeys([*scene.location_ids, *ensure_locations(db, story_id, paths)]))
-        scene.location_source = 'model'
-        stale_scene_material(repo, db, scene)
-        scene.revision += 1
-        repo._save_scene(db, scene)
-        changed.append(scene_id)
-        outcome.apply(_item('location', scene_id=scene_id))
-    if changed:
-        repo._touch_story(db, story_id)
-    return changed, [id for id in load_locations(db, story_id) if id not in before]
+            outcome.skip(_item('location', scene_id=scene_id), reasons[codes[scene_id]])
+    return changed, created
 
 
 def _accept(repo, db, story_id, request, written):

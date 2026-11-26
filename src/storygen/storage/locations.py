@@ -60,6 +60,46 @@ def cards_digest(cards: dict[str,StoryLocation]) -> str:
     return hashlib.sha256(json.dumps(rows,ensure_ascii=False,separators=(',',':')).encode('utf-8')).hexdigest()
 
 
+PLACE_TRASHED, PLACE_PROSE_CHANGED, PLACE_NOT_AUTHOR, PLACE_PLANNED, PLACE_NOTHING = (
+    'trashed', 'prose_changed', 'not_author', 'planned', 'nothing')
+
+
+def apply_places_in_transaction(repo, db, story_id: str, items) -> tuple[dict[str,str|None], list[str]]:
+    """Places accepted from a CHARACTER-EXTRACT proposal (spec 2, 4.3) on the caller's write transaction. `items` are
+    (scene id, prose version read by the run, paths in order). Returns ({scene id: skip code or None when written}, the
+    location cards created). Scenes are read from the transaction, so a cast written just before keeps its revision. A
+    path whose canonical card the scene already holds is dropped; the rest get their cards from `ensure_locations` (a
+    merged card's path gives that card, which `canonical` leads to its target)."""
+    from ..domain import Scene,VersionRef
+    from ..scene_plan_template import plan_fields
+    from .scene_cast import AUTHOR_PROSE
+    from .scene_metadata import stale_scene_material
+    before=set(load_locations(db,story_id));outcome={}
+    for scene_id,version_id,paths in items:
+        row=db.execute('SELECT payload FROM scenes WHERE id=? AND story_id=?',(scene_id,story_id)).fetchone()
+        scene=Scene.model_validate_json(row[0]) if row is not None else None
+        prose_id=scene.heads.get('prose') if scene is not None else None
+        if scene is None or scene.trashed_at:outcome[scene_id]=PLACE_TRASHED;continue
+        if not prose_id or prose_id!=version_id:outcome[scene_id]=PLACE_PROSE_CHANGED;continue
+        if repo._get(db,'versions',prose_id,VersionRef).kind!=AUTHOR_PROSE:outcome[scene_id]=PLACE_NOT_AUTHOR;continue
+        if plan_fields(scene.beats).get('location'):outcome[scene_id]=PLACE_PLANNED;continue  # the plan line always wins
+        merged={card.id:card.merged_into for card in load_locations(db,story_id).values()}
+        held={canonical(merged,id) for id in scene.location_ids};new=[]
+        for path in paths:
+            parts=tuple(part.strip() for part in path.split('/') if part.strip())
+            card=canonical(merged,location_id(story_id,normalize(parts)))
+            if card not in held:held.add(card);new.append(parts)
+        if not new:outcome[scene_id]=PLACE_NOTHING;continue
+        scene.location_ids=list(dict.fromkeys([*scene.location_ids,*ensure_locations(db,story_id,new)]))
+        scene.location_source='model'
+        stale_scene_material(repo,db,scene)
+        scene.revision+=1
+        repo._save_scene(db,scene)
+        outcome[scene_id]=None
+    if any(code is None for code in outcome.values()):repo._touch_story(db,story_id)
+    return outcome,[id for id in load_locations(db,story_id) if id not in before]
+
+
 def plan_location_ids(db, story_id: str, text: str) -> list[str]:
     from ..scene_plan_template import plan_fields
     return ensure_locations(db,story_id,parse_locations(plan_fields(text).get('location','')))
