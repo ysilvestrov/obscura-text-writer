@@ -78,9 +78,9 @@ def _characters(repo,view,story,text,version,item,publication):
 
 
 def _plan(repo,view,story,text,version,item,publication):
-    from .. import build_edition
+    from ..book import guard
     default='Scene' if story.language=='en' else 'Сцена'
-    if build_edition.current().long_prose:
+    if guard.long_prose_for(repo,story):
         # BOOK-STRUCTURE: parts and arcs; an edition without long prose imports the plan exactly as before.
         from ..plan_sections import split_book_plan
         preamble,book,publication.structured=split_book_plan(text,default)
@@ -138,8 +138,8 @@ def _plan(repo,view,story,text,version,item,publication):
 def _enter_series(repo,story_id,prepared):
     """SERIES: the series lines of the first plan of the batch put the book into its series before any file is imported,
     so the start snapshot comes before a card file of the same batch. Returns {file index: warnings}."""
-    from .. import build_edition
-    if not build_edition.current().long_prose:return {}
+    from ..book import guard
+    if not guard.story_long_prose(repo,story_id):return {}
     index=next((i for i,(file,_) in enumerate(prepared) if file.kind=='source_plan'),None)
     if index is None:return {}
     from ..plan_sections import cut_series_lines, split_book_plan

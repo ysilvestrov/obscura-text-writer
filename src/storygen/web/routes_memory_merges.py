@@ -5,7 +5,7 @@ from typing import Literal
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import Field
 
-from ..book.guard import require_long_prose
+from ..book import guard
 from ..domain import DomainModel
 
 router = APIRouter()
@@ -41,7 +41,7 @@ def get_memory_merge(story_id: str, request: Request, scene_id: str | None = Non
 
 @router.put('/api/stories/{story_id}/memory-merges/{merge_key}')
 def put_memory_merge(story_id: str, merge_key: str, change: MergeConfirmation, request: Request):
-    require_long_prose()
+    guard.require_long_prose_for(request.app.state.repo, story_id)
     from ..storage.memory_merges import save_merge
     decisions = {key: value.model_dump(exclude_none=True) for key, value in change.decisions.items()}
     story, version_id = save_merge(request.app.state.repo, story_id, merge_key, decisions, change.expected_revision,
