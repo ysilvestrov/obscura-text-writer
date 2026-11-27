@@ -70,20 +70,32 @@ export function chapterSourceValue(source){
   const level=/^level:([123])$/.exec(source||'');
   return level?level[1]:'auto';
 }
-// The body of POST /api/manuscript-import/{id} (ManuscriptApply, extra fields forbidden). The store edition sends no
-// parts, part indices or series: the server refuses them there.
+// LONG-PROSE-TRIAL-S07: what the preview's `edition` lets this import send. With long prose: parts and a series. Without
+// it: parts with the trial checkbox (then `trial: true`, never with a series) or into the trial series; a series only to
+// the trial series. No `edition` (an older server): a flat book without a series.
+export function importScope(edition,trialChecked,seriesId){
+  const trial=edition?.trial||{state:'used'};
+  const asTrial=trial.state==='available'&&!!trialChecked;
+  const trialSeries=trial.state==='used'&&trial.kind==='series'&&!!seriesId&&seriesId===trial.id;
+  const free=trial.state==='none';
+  return {trial:asTrial,series:!!seriesId&&!!edition?.series_allowed&&!asTrial&&(free||trialSeries),
+    parts:!!edition?.parts_allowed&&(free||asTrial||trialSeries)};
+}
+// The body of POST /api/manuscript-import/{id} (ManuscriptApply, extra fields forbidden).
 export function applyBody(state){
+  const scope=importScope(state.edition,state.trial_checked,state.series?.series_id);
   const scenes=[...state.scenes].sort((a,b)=>a.start-b.start).map(scene=>{
     const item={start:scene.start,title:String(scene.title).trim()};
-    if(state.long_prose&&scene.part_index!==null&&scene.part_index!==undefined)item.part_index=scene.part_index;
+    if(scope.parts&&scene.part_index!==null&&scene.part_index!==undefined)item.part_index=scene.part_index;
     return item;
   });
   if(state.include_front_matter&&state.front_matter?.length&&scenes.length)scenes[0].start=Math.min(scenes[0].start,state.front_matter[0]);
   const used=new Set(scenes.map(scene=>scene.part_index).filter(index=>index!==undefined));
   const body={fingerprint:state.fingerprint,title:String(state.title).trim(),language:state.language,content_rating:state.content_rating??null,
     include_front_matter:!!state.include_front_matter,scenes,
-    parts:state.long_prose&&used.size?(state.parts||[]).map(part=>({index:part.index,title:part.title||''})):[]};
-  if(state.long_prose&&state.series)body.series={series_id:state.series.series_id,number:state.series.number};
+    parts:scope.parts&&used.size?(state.parts||[]).map(part=>({index:part.index,title:part.title||''})):[]};
+  if(scope.series)body.series={series_id:state.series.series_id,number:state.series.number};
+  if(scope.trial)body.trial=true;
   return body;
 }
 
@@ -100,10 +112,11 @@ export function installManuscriptImport({api,json,notice,document,appInfo}){
   const frontRow=get('manuscript-import-front-matter-row'),front=get('manuscript-import-front-matter'),frontText=get('manuscript-import-front-matter-text');
   const partRow=get('manuscript-import-part-markers-row'),seriesWarning=get('manuscript-import-series-warning');
   const seriesRow=get('manuscript-import-series-row'),series=get('manuscript-import-series'),seriesNumber=get('manuscript-import-series-number');
+  const trialRow=get('manuscript-import-trial-row'),trialBox=get('manuscript-import-trial'),trialHint=get('manuscript-import-trial-hint');
   const list=get('manuscript-import-scenes'),warningsList=get('manuscript-import-warnings'),limit=get('manuscript-import-limit');
   const ratings=Object.fromEntries(AXES.map(axis=>[axis,get('manuscript-import-rating-'+axis)]));
   // pending: the import_id the server still keeps; epoch drops answers of an abandoned step; saving: an import reads the file.
-  let preview=null,pending=null,epoch=0,busy=false,saving=false,view='pick',scenes=[],firstProse=0,longProse=true,reset=false;
+  let preview=null,pending=null,epoch=0,busy=false,saving=false,view='pick',scenes=[],firstProse=0,reset=false;
   const paragraphs=new Map(),expanded=new Set();
   const discard=()=>{
     if(!pending||saving)return;  // a running import reads the file; the server deletes it after a successful import
@@ -122,13 +135,15 @@ export function installManuscriptImport({api,json,notice,document,appInfo}){
     submit.disabled=busy||!scenes.length||tooMany||blankTitle();
     uiAttr(submit,'title',()=>tooMany?t('manuscript_import.ui.too_many',{p0:scenes.length,p1:MAX_SCENES}):blankTitle()?t('manuscript_import.ui.blank_title'):'');
     input.disabled=busy;cancel.disabled=saving;
-    for(const field of [bookTitle,language,chapterMarkers,partMarkers,chapterSource,front,series,...Object.values(ratings)])if(field)field.disabled=busy;
+    for(const field of [bookTitle,language,chapterMarkers,partMarkers,chapterSource,front,series,trialBox,...Object.values(ratings)])if(field)field.disabled=busy;
+    if(series&&trialBox?.checked)series.disabled=true;  // the trial book is one book: no series with the checkbox
     if(seriesNumber)seriesNumber.disabled=busy||!series.value;
     dialog.setAttribute('aria-busy',String(busy));
     uiText(cancelLabel,'textContent',()=>view==='result'?t('manuscript_import.ui.close'):t('m_8b4c2025378a'));
   }
   function show(next){view=next;sync()}
   function clearPreview(){
+    if(trialRow){trialRow.hidden=trialHint.hidden=true;trialBox.checked=false}
     preview=null;scenes=[];paragraphs.clear();expanded.clear();reset=false;
     list.replaceChildren();warningsList.replaceChildren();limit.hidden=true;
   }
@@ -140,18 +155,22 @@ export function installManuscriptImport({api,json,notice,document,appInfo}){
     setStatus(()=>'');show('pick');
   }
 
+  // Parts as the preview's edition and the author's choices would send them (the labels follow the request body).
+  const scope=()=>importScope(preview?.edition,trialBox?.checked,seriesRow&&!seriesRow.hidden?series?.value:'');
   async function edition(){
     let info;try{info=await appInfo()}catch{info={}}
-    longProse=info.long_prose!==false;
-    if(seriesRow&&!longProse)seriesRow.hidden=true;
-    if(partRow&&!longProse)partRow.hidden=true;  // no parts in this edition: their markers would only feed warnings
+    const longProse=info.long_prose!==false,trial=info.long_prose_trial||{state:'none'};
+    const trialSeries=!longProse&&trial.state==='used'&&trial.kind==='series'?trial.id:null;
+    // LONG-PROSE-TRIAL-S07: a series only with long prose or into the trial series; part markers also while the trial is free.
+    if(seriesRow&&!longProse&&!trialSeries)seriesRow.hidden=true;
+    if(partRow&&!longProse&&trial.state!=='available'&&!trialSeries)partRow.hidden=true;
     const max=info.max_rating||{sexual:2,violence:2,themes:2};
     for(const axis of AXES)for(const option of ratings[axis].options){if(option.value==='')continue;const off=Number(option.value)>max[axis];option.hidden=off;option.disabled=off}
-    if(series&&longProse){
+    if(series&&(longProse||trialSeries)){
       try{
         const items=await api('/api/series');
         series.replaceChildren(series.options[0]);
-        for(const item of items){const option=document.createElement('option');option.value=item.id;option.textContent=item.title;series.append(option)}
+        for(const item of items.filter(item=>!trialSeries||item.id===trialSeries)){const option=document.createElement('option');option.value=item.id;option.textContent=item.title;series.append(option)}
       }catch{seriesRow.hidden=true}
     }
   }
@@ -196,7 +215,7 @@ export function installManuscriptImport({api,json,notice,document,appInfo}){
       title.oninput=()=>{scene.title=title.value;sync()};
       const meta=document.createElement('p');meta.className='muted manuscript-import-meta';
       meta.append(node('span',()=>t('manuscript_import.ui.words',{p0:counts[position]}),'manuscript-import-words'));
-      if(longProse&&scene.part_index!==null&&scene.part_index!==undefined)meta.append(' · ',node('span',()=>t('manuscript_import.ui.part',{p0:partTitle(scene.part_index)}),'manuscript-import-part'));
+      if(scope().parts&&scene.part_index!==null&&scene.part_index!==undefined)meta.append(' · ',node('span',()=>t('manuscript_import.ui.part',{p0:partTitle(scene.part_index)}),'manuscript-import-part'));
       if(scene.proposed)meta.append(' · ',node('span',()=>t('manuscript_import.ui.proposed'),'manuscript-import-proposed'));
       head.append(title,meta);item.append(head);
       if(scene.warnings?.length){const notes=node('ul',null,'muted');for(const text of scene.warnings)notes.append(node('li',()=>diagnostic(text)));item.append(notes)}
@@ -219,6 +238,8 @@ export function installManuscriptImport({api,json,notice,document,appInfo}){
     fileName.textContent=preview.file_name;
     const source=chapterSourceValue(preview.chapter_source),none=preview.chapter_source==='none';
     uiText(detected,'textContent',()=>t('manuscript_import.ui.detected',{p0:t(none?'manuscript_import.ui.source_none':source==='markers'?'manuscript_import.ui.source_markers':'manuscript_import.ui.source_level_'+source)}));
+    // LONG-PROSE-TRIAL-S07: a free trial and a manuscript with parts offer the checkbox; without it the book is flat.
+    if(trialRow){const offer=preview.edition?.trial?.state==='available'&&(preview.parts||[]).length>0;trialRow.hidden=trialHint.hidden=!offer;if(!offer)trialBox.checked=false}
     const hasFront=(preview.front_matter||[]).length>0;
     frontRow.hidden=!hasFront;frontText.hidden=!hasFront;
     if(!hasFront)front.checked=false;
@@ -330,7 +351,7 @@ export function installManuscriptImport({api,json,notice,document,appInfo}){
     return Object.fromEntries(AXES.map((axis,index)=>[axis,Number(values[index])]));
   }
   function seriesChoice(){
-    if(!series||!longProse||!series.value)return null;
+    if(!series||seriesRow.hidden||trialBox?.checked||!series.value)return null;
     const number=Number(seriesNumber.value);
     if(!Number.isInteger(number)||number<1)throw new Error(t('manuscript_import.ui.series_number_required'));
     return {series_id:series.value,number};
@@ -340,7 +361,7 @@ export function installManuscriptImport({api,json,notice,document,appInfo}){
     let body;
     try{
       body=applyBody({fingerprint:preview.fingerprint,title:bookTitle.value,language:language.value,content_rating:rating(),scenes,parts:preview.parts,
-        include_front_matter:front.checked&&(preview.front_matter||[]).length>0,front_matter:preview.front_matter,series:seriesChoice(),long_prose:longProse});
+        include_front_matter:front.checked&&(preview.front_matter||[]).length>0,front_matter:preview.front_matter,series:seriesChoice(),edition:preview.edition,trial_checked:!!trialBox?.checked});
     }catch(error){setStatus(()=>error.message,'error');return}
     const mine=epoch,shown=preview;
     busy=saving=true;renderScenes();setStatus(()=>t('manuscript_import.ui.saving'),'muted');
@@ -386,8 +407,12 @@ export function installManuscriptImport({api,json,notice,document,appInfo}){
       seriesWarning.append(node('span',()=>t('manuscript_import.ui.series_no_memory')+' '),link);seriesWarning.hidden=false;
     }catch{}  // a missing answer only loses the hint: the import still warns after the book exists
   }
+  if(trialBox)trialBox.onchange=()=>{
+    if(trialBox.checked&&series){series.value='';seriesNumber.value='';readinessAsk++;seriesWarning.hidden=true}
+    renderScenes();
+  };
   if(series){
-    series.onchange=()=>{if(!series.value)seriesNumber.value='';sync();readiness()};
+    series.onchange=()=>{if(!series.value)seriesNumber.value='';sync();renderScenes();readiness()};
     seriesNumber.oninput=()=>readiness();
   }
   button.onclick=()=>{

@@ -291,21 +291,83 @@ test('the client rejects a file over 20 MiB before sending',async({page})=>{
 });
 
 test.describe('store edition',()=>{
-  test.beforeEach(async({request})=>{expect((await(await request.post('/test-build-edition',{data:{edition:'store'}})).json()).edition).toBe('store')});
-  test.afterEach(async({request})=>{expect((await(await request.post('/test-build-edition',{data:{edition:'full'}})).json()).edition).toBe('full')});
+  // LONG-PROSE-TRIAL-S07: every store test starts with a free trial (one per data folder) and leaves it free.
+  test.beforeEach(async({request})=>{
+    await request.post('/test-reset-trial');
+    expect((await(await request.post('/test-build-edition',{data:{edition:'store'}})).json()).edition).toBe('store');
+  });
+  test.afterEach(async({request})=>{
+    expect((await(await request.post('/test-build-edition',{data:{edition:'full'}})).json()).edition).toBe('full');
+    await request.post('/test-reset-trial');
+  });
 
   test('a Markdown manuscript imports without the series field',async({page,request})=>{
     const fixture=await seed(request);
     await page.goto('/');
     const {dialog}=await preview(page,mdFile(fixture));
-    await expect(dialog.locator('#manuscript-import-series')).toHaveCount(0);
-    await expect(dialog.locator('#manuscript-import-series-number')).toHaveCount(0);
-    await expect(dialog.locator('#manuscript-import-part-markers')).toHaveCount(0);  // no parts in the store edition
+    await expect(dialog.locator('#manuscript-import-series')).toBeHidden();  // a series only into the trial series
+    await expect(dialog.locator('#manuscript-import-series-number')).toBeHidden();
+    await expect(dialog.locator('#manuscript-import-trial-row')).toBeHidden();  // no parts in this manuscript
     await dialog.locator('.manuscript-import-structure summary').click();
     await expect(dialog.locator('#manuscript-import-chapter-markers')).toBeVisible();
     await expect(dialog.locator('#manuscript-import-rating-sexual option[value="2"]')).toHaveJSProperty('hidden',true);
     await fitsWindow(page,dialog);
     await dialog.locator('#manuscript-import-submit').click();
     await expect(dialog.locator('#manuscript-import-build-memory')).toHaveText('Побудувати пам’ять (сцен: 4)');
+  });
+
+  const partsFile=async request=>mdFile(await(await request.post('/test-manuscript-import?parts=true')).json());
+  const trialOf=async request=>(await(await request.get('/api/app-info')).json()).long_prose_trial;
+
+  test('free trial imports a manuscript with parts as the trial book',async({page,request})=>{
+    await page.goto('/');
+    const {dialog}=await preview(page,await partsFile(request));
+    const box=dialog.locator('#manuscript-import-trial');
+    await expect(dialog.locator('#manuscript-import-trial-row')).toHaveText('Імпортувати з частинами як пробну книгу');
+    await expect(dialog.locator('#manuscript-import-trial-hint')).toHaveText('Без позначки книга імпортується без частин.');
+    await expect(dialog.locator('.manuscript-import-part')).toHaveCount(0);  // flat until the checkbox
+    await box.check();
+    await expect(dialog.locator('.manuscript-import-part')).toHaveCount(4);
+    const sent=page.waitForRequest(req=>req.method()==='POST'&&/\/api\/manuscript-import\/[0-9a-f]+$/.test(req.url()));
+    await dialog.locator('#manuscript-import-submit').click();
+    const body=(await sent).postDataJSON();
+    expect(body.trial).toBe(true);expect(body.series).toBeUndefined();expect(body.parts).toHaveLength(2);
+    await expect(dialog.locator('#manuscript-import-build-memory')).toBeVisible();
+    const trial=await trialOf(request);
+    expect([trial.state,trial.kind]).toEqual(['used','story']);
+    const book=await(await request.get(`/api/stories/${trial.id}`)).json();
+    expect(book.long_prose).toBe(true);expect(book.book_structure.parts).toHaveLength(2);
+  });
+
+  test('without the checkbox the book is imported flat',async({page,request})=>{
+    await page.goto('/');
+    const {dialog}=await preview(page,await partsFile(request));
+    await expect(dialog.locator('#manuscript-import-trial-row')).toBeVisible();
+    const sent=page.waitForRequest(req=>req.method()==='POST'&&/\/api\/manuscript-import\/[0-9a-f]+$/.test(req.url()));
+    await dialog.locator('#manuscript-import-submit').click();
+    const body=(await sent).postDataJSON();
+    expect(body.trial).toBeUndefined();expect(body.parts).toEqual([]);
+    expect(body.scenes.every(scene=>scene.part_index===undefined)).toBe(true);
+    await expect(dialog.locator('#manuscript-import-build-memory')).toBeVisible();
+    expect((await trialOf(request)).state).toBe('available');
+  });
+
+  test('series trial offers only its series and keeps parts there',async({page,request})=>{
+    const title=`Сага імпорту ${test.info().project.name} ${Math.random().toString(36).slice(2,7)}`;
+    const item=await(await request.post('/api/series',{data:{title,trial:true}})).json();
+    await page.goto('/');
+    const {dialog}=await preview(page,await partsFile(request));
+    await expect(dialog.locator('#manuscript-import-trial-row')).toBeHidden();
+    const select=dialog.locator('#manuscript-import-series');
+    await expect(select).toBeVisible();
+    expect(await select.locator('option').evaluateAll(items=>items.map(item=>item.value))).toEqual(['',item.id]);
+    await select.selectOption(item.id);
+    await dialog.locator('#manuscript-import-series-number').fill('1');
+    await expect(dialog.locator('.manuscript-import-part')).toHaveCount(4);
+    const sent=page.waitForRequest(req=>req.method()==='POST'&&/\/api\/manuscript-import\/[0-9a-f]+$/.test(req.url()));
+    await dialog.locator('#manuscript-import-submit').click();
+    const body=(await sent).postDataJSON();
+    expect(body.series).toEqual({series_id:item.id,number:1});expect(body.trial).toBeUndefined();expect(body.parts).toHaveLength(2);
+    await expect(dialog.locator('#manuscript-import-build-memory')).toBeVisible();
   });
 });
