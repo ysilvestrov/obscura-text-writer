@@ -5,6 +5,7 @@ Story texts go only to the --out directory outside the repository; stdout carrie
 The API key is read from the environment or --env-file and is never printed. Every refusal is checked before the
 Anthropic client is created."""
 import argparse
+import hashlib
 import json
 import os
 import sys
@@ -17,6 +18,7 @@ sys.path.insert(0, str(ROOT / 'scripts'))
 from memory_bench.cloud_spend import BudgetExceeded, LedgerMissing, SpendLedger  # noqa: E402
 from memory_bench.paraphrase import (LEVELS, Query, _inside_repo, _write_atomic, manifest, owner_sample,  # noqa: E402
                                      sample_targets, sampling_frame, snapshot_hash, write_owner_file)
+from memory_bench.paraphrase_gen import generate_one  # noqa: E402
 from memory_bench.paraphrase_gen import HAIKU, PRICE_IN, PRICE_OUT, PROMPT_ID, PROVIDER, PRICES_DATE, generate  # noqa: E402,F401
 from memory_bench.strategies import Params  # noqa: E402
 
@@ -36,6 +38,15 @@ def cloud_allowed(story_id: str, prefixes) -> bool:
     return any(p and story_id.startswith(p) for p in prefixes)
 
 
+DATA_CODES = ('live_data', 'not_a_data_copy')
+
+
+def _data_code(error: Exception) -> str:
+    """Only a known code leaves this function; anything else (a path, a message) becomes data_invalid."""
+    code = str(error).split(':')[0]
+    return code if code in DATA_CODES else 'data_invalid'
+
+
 def load_story(args):
     """Story id and scenes for the chosen story, opened the way annotate_pairs does (copy of the data, never the live one)."""
     from memory_bench.extract import extract_story
@@ -43,7 +54,7 @@ def load_story(args):
     try:
         data = _check_data_dir(args.data, True)
     except ValueError as error:
-        raise BenchError(str(error).split(':')[0])
+        raise BenchError(_data_code(error))
     try:
         from storygen.storage.repository import Repository
         repo = Repository(data)
@@ -82,6 +93,22 @@ def make_client(api_key: str):
     return AnthropicClient(api_key)
 
 
+CACHE_NAME = 'gen-cache.json'
+
+
+def _cache_key(record) -> str:
+    return f"{hashlib.sha256(record.text.encode('utf-8')).hexdigest()}|{PROMPT_ID}|{HAIKU}"
+
+
+def _load_cache(path: Path) -> dict:
+    """Finished records of earlier runs (texts, so it lives in --out outside the repository); unreadable means empty."""
+    try:
+        entries = json.loads(path.read_text(encoding='utf-8'))['entries']
+        return entries if isinstance(entries, dict) else {}
+    except (OSError, ValueError, KeyError, TypeError):
+        return {}
+
+
 def _counts(queries, status):
     return {level: sum(1 for q in queries if q.level == level and q.status == status) for level in LEVELS}
 
@@ -115,18 +142,31 @@ def _run(args) -> int:
     names = sorted({name for s in scenes for name in s.names.values()})
     client = make_client(key)
     before = ledger.spent(PROVIDER)
+    out = Path(args.out)
+    out.mkdir(parents=True, exist_ok=True)
+    cache = _load_cache(out / CACHE_NAME)
+    queries: list[Query] = []
+    done = 0
     try:
-        queries = generate(targets, names, client, ledger)
-    except BudgetExceeded:
-        raise
-    except Exception:
-        return _refuse('anthropic_call_failed')
+        for record in targets:
+            key = _cache_key(record)
+            if key in cache:
+                found = [Query(record.claim_id, q['level'], q['text'], q['status'], key.split('|')[0]) for q in cache[key]['queries']]
+            else:
+                found, used = generate_one(record, names, client, ledger)
+                cache[key] = {'queries': [{'level': q.level, 'text': q.text, 'status': q.status} for q in found], 'attempts': used}
+                _write_atomic(out / CACHE_NAME, {'entries': cache})
+            queries += found
+            done += 1
+    except (BudgetExceeded, LedgerMissing, Exception) as error:
+        code = ('cloud_budget_exceeded' if isinstance(error, BudgetExceeded)
+                else 'spend_ledger_missing' if isinstance(error, LedgerMissing) else 'anthropic_call_failed')
+        _print({'error': code, 'usd_spent': round(ledger.spent(PROVIDER) - before, 6), 'records_done': done})
+        return 2
     meta = {'story': story_id, 'seed': args.seed, 'n': args.n, 'model': HAIKU, 'prompt_id': PROMPT_ID, 'levels': list(LEVELS)}
     queries = sorted(queries, key=lambda q: (q.claim_id, LEVELS.index(q.level)))
     mani = manifest(queries, meta)
     snapshot = snapshot_hash(mani)
-    out = Path(args.out)
-    out.mkdir(parents=True, exist_ok=True)
     _write_atomic(out / 'set.json', {'meta': meta, 'queries': [
         {'claim_id': q.claim_id, 'level': q.level, 'text': q.text, 'status': q.status, 'record_sha256': q.record_sha256}
         for q in queries]})

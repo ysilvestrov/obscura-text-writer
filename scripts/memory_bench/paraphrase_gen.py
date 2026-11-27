@@ -75,35 +75,37 @@ def _estimate_usd(prompt: str) -> float:
     return (len(prompt) / 2 * PRICE_IN + EST_OUT_TOKENS * PRICE_OUT) / 1e6
 
 
+def generate_one(record: Record, names: list[str], client: CompletionClient, ledger: SpendLedger,
+                 attempts: int = 3) -> tuple[list[Query], int]:
+    """Queries of one record and the number of calls it took."""
+    prompt = build_prompt(record, names)
+    sha = hashlib.sha256(record.text.encode('utf-8')).hexdigest()
+    fixed: dict[str, str] = {}
+    last: dict[str, str] = {}
+    used = 0
+    for _ in range(attempts):
+        pending = [level for level in LEVELS if level not in fixed]
+        if not pending:
+            break
+        ledger.check(PROVIDER, _estimate_usd(prompt))
+        text, tokens_in, tokens_out = client.complete(prompt)
+        used += 1
+        ledger.record(PROVIDER, (tokens_in * PRICE_IN + tokens_out * PRICE_OUT) / 1e6, tokens_in, tokens_out)
+        parsed = _parse(text)
+        if parsed is None:
+            continue
+        for level in pending:
+            variant = parsed.get(level)
+            if not isinstance(variant, str) or not variant.strip():
+                continue
+            if level_ok(level, variant, record.text, names):
+                fixed[level] = variant
+            else:
+                last[level] = variant
+    return [Query(record.claim_id, level, fixed[level], 'ok', sha) if level in fixed
+            else Query(record.claim_id, level, last.get(level, ''), 'rejected', sha) for level in LEVELS], used
+
+
 def generate(records: list[Record], names: list[str], client: CompletionClient, ledger: SpendLedger,
              attempts: int = 3) -> list[Query]:
-    queries: list[Query] = []
-    for record in records:
-        prompt = build_prompt(record, names)
-        sha = hashlib.sha256(record.text.encode('utf-8')).hexdigest()
-        fixed: dict[str, str] = {}
-        last: dict[str, str] = {}
-        for _ in range(attempts):
-            pending = [level for level in LEVELS if level not in fixed]
-            if not pending:
-                break
-            ledger.check(PROVIDER, _estimate_usd(prompt))
-            text, tokens_in, tokens_out = client.complete(prompt)
-            ledger.record(PROVIDER, (tokens_in * PRICE_IN + tokens_out * PRICE_OUT) / 1e6, tokens_in, tokens_out)
-            parsed = _parse(text)
-            if parsed is None:
-                continue
-            for level in pending:
-                variant = parsed.get(level)
-                if not isinstance(variant, str) or not variant.strip():
-                    continue
-                if level_ok(level, variant, record.text, names):
-                    fixed[level] = variant
-                else:
-                    last[level] = variant
-        for level in LEVELS:
-            if level in fixed:
-                queries.append(Query(record.claim_id, level, fixed[level], 'ok', sha))
-            else:
-                queries.append(Query(record.claim_id, level, last.get(level, ''), 'rejected', sha))
-    return queries
+    return [q for record in records for q in generate_one(record, names, client, ledger, attempts)[0]]

@@ -287,7 +287,7 @@ def test_cli_exceptions_hide_texts(tmp_path, capsys, monkeypatch, story):
             raise RuntimeError('secret-key ' + prompt)
     monkeypatch.setattr(cli, 'make_client', lambda key: Broken())
     code, res = _run(capsys, _args(tmp_path, **{'--n': '2'}))
-    assert (code, res) == (2, {'error': 'anthropic_call_failed'})
+    assert (code, res) == (2, {'error': 'anthropic_call_failed', 'usd_spent': 0, 'records_done': 0})
     assert not (tmp_path / 'out' / 'set.json').exists()
 
 
@@ -297,3 +297,95 @@ def test_modules_import_without_numpy_and_anthropic():
     env = {**os.environ, 'PYTHONPATH': os.pathsep.join([str(ROOT / 'scripts'), str(ROOT / 'src')])}
     r = subprocess.run([sys.executable, '-c', code], capture_output=True, text=True, cwd=ROOT, env=env)
     assert r.returncode == 0, r.stderr
+
+
+class CountingClient(SmartClient):
+    """SmartClient that remembers which record lines it was asked about and can fail on the k-th distinct record."""
+
+    def __init__(self, fail_on=None):
+        self.records, self.fail_on = [], fail_on
+
+    def complete(self, prompt):
+        line = next(x for x in prompt.splitlines() if x.startswith(RECORD_PREFIX))
+        if line not in self.records:
+            self.records.append(line)
+        if self.fail_on and len(self.records) == self.fail_on:
+            raise RuntimeError('network ' + line)
+        return super().complete(prompt)
+
+
+def test_cli_rerun_after_failure_pays_only_for_unfinished_records(tmp_path, capsys, monkeypatch, story):
+    _env(tmp_path)
+    SpendLedger.open(tmp_path / 'spend.json', {'anthropic': 5.0}, create=True)
+    failing = CountingClient(fail_on=3)
+    monkeypatch.setattr(cli, 'make_client', lambda key: failing)
+    code, res = _run(capsys, _args(tmp_path, **{'--n': '5'}))
+    assert code == 2 and res['error'] == 'anthropic_call_failed' and res['records_done'] == 2
+    assert res['usd_spent'] > 0 and set(res) == {'error', 'usd_spent', 'records_done'}
+    assert not (tmp_path / 'out' / 'set.json').exists() and (tmp_path / 'out' / 'gen-cache.json').is_file()
+    spent_first = SpendLedger.open(tmp_path / 'spend.json', {'anthropic': 5.0}).spent('anthropic')
+    assert res['usd_spent'] == pytest.approx(spent_first)
+    working = CountingClient()
+    monkeypatch.setattr(cli, 'make_client', lambda key: working)
+    code, res = _run(capsys, _args(tmp_path, **{'--n': '5'}))
+    assert code == 0 and res['targets'] == 5
+    assert working.records == failing.records[2:] + [r for r in working.records if r not in failing.records]
+    assert len(working.records) == 3 and not set(working.records[:1]) & set(failing.records[:2])
+    data = json.loads((tmp_path / 'out' / 'set.json').read_text(encoding='utf-8'))
+    assert len(data['queries']) == 15 and all(q['text'] for q in data['queries'])
+    assert res['usd_spent'] == pytest.approx(
+        SpendLedger.open(tmp_path / 'spend.json', {'anthropic': 5.0}).spent('anthropic') - spent_first, abs=1e-6)
+    third = CountingClient()
+    monkeypatch.setattr(cli, 'make_client', lambda key: third)
+    code, res = _run(capsys, _args(tmp_path, **{'--n': '5'}))
+    assert code == 0 and third.records == [] and res['usd_spent'] == 0
+
+
+def test_cli_cache_is_keyed_by_record_prompt_and_model(tmp_path, capsys, monkeypatch, story):
+    _env(tmp_path)
+    SpendLedger.open(tmp_path / 'spend.json', {'anthropic': 5.0}, create=True)
+    monkeypatch.setattr(cli, 'make_client', lambda key: SmartClient())
+    _run(capsys, _args(tmp_path, **{'--n': '2'}))
+    entries = json.loads((tmp_path / 'out' / 'gen-cache.json').read_text(encoding='utf-8'))['entries']
+    assert len(entries) == 2 and all(k.endswith(f'|{PROMPT_ID}|{HAIKU}') for k in entries)
+    assert all(v['attempts'] >= 1 and len(v['queries']) == 3 for v in entries.values())
+    monkeypatch.setattr(cli, 'PROMPT_ID', 'other-prompt')
+    again = CountingClient()
+    monkeypatch.setattr(cli, 'make_client', lambda key: again)
+    _run(capsys, _args(tmp_path, **{'--n': '2'}))
+    assert len(again.records) == 2
+
+
+def test_cli_budget_stop_reports_progress(tmp_path, capsys, monkeypatch, story):
+    _env(tmp_path)
+    SpendLedger.open(tmp_path / 'spend.json', {'anthropic': 5.0}, create=True)
+    monkeypatch.setattr(cli, 'make_client', lambda key: SmartClient())
+    code, res = _run(capsys, _args(tmp_path, **{'--n': '3', '--anthropic-max-usd': '0.0004'}))
+    assert code == 2 and res['error'] == 'cloud_budget_exceeded' and res['records_done'] < 3 and 'usd_spent' in res
+
+
+def test_cli_ledger_corrupted_mid_run_is_spend_ledger_missing(tmp_path, capsys, monkeypatch, story):
+    _env(tmp_path)
+    SpendLedger.open(tmp_path / 'spend.json', {'anthropic': 5.0}, create=True)
+
+    class Corrupting(SmartClient):
+        def complete(self, prompt):
+            reply = super().complete(prompt)
+            (tmp_path / 'spend.json').write_text('{bad', encoding='utf-8')
+            return reply
+    monkeypatch.setattr(cli, 'make_client', lambda key: Corrupting())
+    code, res = _run(capsys, _args(tmp_path, **{'--n': '2'}))
+    assert code == 2 and res['error'] == 'spend_ledger_missing' and res['records_done'] == 0
+
+
+@pytest.mark.parametrize('message,code', [('live_data: refusing', 'live_data'), ('not_a_data_copy: x', 'not_a_data_copy'),
+                                          ('C:/Users/someone/data does not exist', 'data_invalid'), ('', 'data_invalid')])
+def test_data_error_codes_are_allowlisted(tmp_path, monkeypatch, message, code):
+    import storygen.application.workspace_bench as wb
+
+    def refuse(path, require):
+        raise ValueError(message)
+    monkeypatch.setattr(wb, '_check_data_dir', refuse)
+    with pytest.raises(cli.BenchError) as error:
+        cli.load_story(type('A', (), {'data': str(tmp_path), 'story': 'x'})())
+    assert str(error.value) == code
