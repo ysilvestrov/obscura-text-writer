@@ -1,8 +1,6 @@
 """Contextual retrieval columns (Voyage bench #25, task 4): rankers search over `context + record text`, while the budget,
 record_ids and the rendered memory use the original records only."""
 import json
-from dataclasses import replace
-
 import pytest
 
 from memory_bench.context_gen import CONTEXT_PROMPT_ID, HAIKU, context_key, context_snapshot, context_targets
@@ -160,6 +158,13 @@ def test_load_contexts_codes(outside_dir):
     next(iter(data['items'].values())).pop('context')  # an 'ok' item without its context
     (outside_dir / 'contexts.json').write_text(json.dumps(data, ensure_ascii=False), encoding='utf-8')
     assert load(outside_dir, scenes, 'story') == (None, None, 'contexts_stale')
+    data = write_contexts(outside_dir, scenes)
+    for item in data['items'].values():
+        if item['claim_id'] == 'b':
+            item['status'] = 'truncated'  # neither 'ok' nor 'failed': never mixed in silently
+    data['snapshot'] = context_snapshot(data['items'])
+    (outside_dir / 'contexts.json').write_text(json.dumps(data, ensure_ascii=False), encoding='utf-8')
+    assert load(outside_dir, scenes, 'story') == (None, None, 'contexts_stale')
     write_contexts(outside_dir, scenes, failed=('b',))
     search, section, error = load(outside_dir, scenes, 'story')
     assert error is None and section['ok'] == 3 and section['failed'] == 1 and section['no_source'] == 1
@@ -205,8 +210,3 @@ def test_ctx_names_registered():
     from memory_bench.paraphrase_eval import strategy_name
     assert strategy_name('ctx_bm25') == 'structural_ctx_fts' and strategy_name('ctx_vec[m]') == 'structural_ctx_vec[m]'
     assert strategy_name('ctx_hybrid[m]') == 'structural_ctx_hybrid[m]' and strategy_name('bm25') == 'structural_fts'
-
-
-def test_proxy_is_replace_of_record():
-    r = rec('a', 'facts', 'x')
-    assert replace(r, text='y').claim_id == 'a'

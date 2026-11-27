@@ -83,7 +83,7 @@ def _stats(ranks: list[int | None], n: int) -> dict:
 
 def evaluate_paraphrases(scenes: list[SceneInput], queries: list[Query], rankers: Mapping[str, Ranker],
                          strategies: Mapping[str, Callable], params_of: Callable[[int, str], Params],
-                         steps: tuple[float, ...] = STEPS) -> dict:
+                         steps: tuple[float, ...] = STEPS, plan_hits: dict | None = None) -> dict:
     """{level: {column: {n, rejected, rejected_by_category, few_content_words, unreliable, standalone, in_plan,
     sign_vs_bm25, sign_vs_bm25_raw, sign_in_context_vs_bm25}}}.
 
@@ -94,7 +94,9 @@ def evaluate_paraphrases(scenes: list[SceneInput], queries: list[Query], rankers
     can never pass 'same') repeat in every column cell, like rejected. The sign tests pair records (one query per record
     and level): sign_vs_bm25 on ranks capped at CAP_K + 1 (primary), sign_vs_bm25_raw on raw ranks with "not returned"
     worst (secondary), sign_in_context_vs_bm25[step][core] on per-record in-context hits of the in_plan form against
-    structural_fts, the strategy of bm25."""
+    structural_fts, the strategy of bm25. With plan_hits (plan_only_hits) every cell also gets
+    sign_in_context_vs_plan[step][core]: the same records' in-context hits of the in_plan query against their plan-only
+    hits (M6)."""
     frame = frame_by_id(scenes)
     names = story_names(scenes)
     pool_all = [frame[k] for k in sorted(frame)]
@@ -155,6 +157,11 @@ def evaluate_paraphrases(scenes: list[SceneInput], queries: list[Query], rankers
                 'in_plan': {**_stats(in_plan, n), 'no_scene': no_scene,
                             'in_context': {s: {core: (sum(hits[s][core]) / n if n else 0.0) for core in CORES}
                                            for s in hits}}}
+            if plan_hits is not None:  # paired per record against the plan-only hit (M6); the test takes misses
+                plan ={s: [[plan_hits[column][q.claim_id][s][core] for q, _, _ in targets] for core in CORES] for s in hits}
+                out[level][column]['sign_in_context_vs_plan'] = {
+                    s: {core: sign_test([1 - h for h in hits[s][core]], [1 - h for h in plan[s][i]])
+                        for i, core in enumerate(CORES)} for s in hits}
         if 'bm25' in ranks:
             forms = ('standalone', 'in_plan')
             for column in rankers:
@@ -171,28 +178,43 @@ def evaluate_paraphrases(scenes: list[SceneInput], queries: list[Query], rankers
     return out
 
 
-def evaluate_baseline_plan(scenes: list[SceneInput], queries: list[Query], columns, strategies: Mapping[str, Callable],
-                           params_of: Callable[[int, str], Params], steps: tuple[float, ...] = STEPS) -> dict:
-    """M6 baseline of the in_plan in-context hits: {'n', 'columns': {column: {step: {core: share}}}}.
-
-    The query is the plan of the record's in_plan scene alone (no paraphrase sentence), so the selection does not depend
-    on the level: it is computed once per record. n = distinct records with an ok query at any level that are still in
-    the sampling frame; a record without a later scene counts as a miss, like in_context."""
+def plan_only_hits(scenes: list[SceneInput], queries: list[Query], columns, strategies: Mapping[str, Callable],
+                   params_of: Callable[[int, str], Params], steps: tuple[float, ...] = STEPS) -> dict:
+    """{column: {claim_id: {step: {core: 0 | 1}}}}: whether the record lands in the selection of its in_plan scene when
+    the query is that scene's plan alone (no paraphrase sentence). The selection does not depend on the level, so it is
+    computed once per record with an ok query at any level. A record gone from the frame or without a later scene is a
+    miss (0), like in_context."""
     frame = frame_by_id(scenes)
     totals = {s.scene_id: full(s, _UNBOUNDED).tokens_realistic for s in scenes}
-    claims = sorted({q.claim_id for q in queries if q.status == 'ok' and q.claim_id in frame})
-    placed = [(claim, in_plan_scene(frame[claim], scenes, FRAME_PARAMS)) for claim in claims]
-    n = len(placed)
+    claims = sorted({q.claim_id for q in queries if q.status == 'ok'})
+    placed = [(c, in_plan_scene(frame[c], scenes, FRAME_PARAMS) if c in frame else None) for c in claims]
     out = {}
     for column in columns:
         strategy = strategies[strategy_name(column)]
-        hits = {str(step): {core: 0 for core in CORES} for step in steps}
+        out[column] = {}
         for claim, scene in placed:
-            if scene is None:
-                continue
-            for step in steps:
-                for core in CORES:
-                    selected = strategy(scene, params_of(int(step * totals[scene.scene_id]), core))
-                    hits[str(step)][core] += int(claim in selected.record_ids)
-        out[column] = {s: {core: (hits[s][core] / n if n else 0.0) for core in CORES} for s in hits}
-    return {'n': n, 'columns': out}
+            cell = {str(step): {core: 0 for core in CORES} for step in steps}
+            if scene is not None:
+                for step in steps:
+                    for core in CORES:
+                        selected = strategy(scene, params_of(int(step * totals[scene.scene_id]), core))
+                        cell[str(step)][core] = int(claim in selected.record_ids)
+            out[column][claim] = cell
+    return out
+
+
+def evaluate_baseline_plan(scenes: list[SceneInput], queries: list[Query], columns, strategies: Mapping[str, Callable],
+                           params_of: Callable[[int, str], Params], steps: tuple[float, ...] = STEPS,
+                           hits: dict | None = None) -> dict:
+    """M6 baseline of the in_plan in-context hits: {'n': {level: n}, 'levels': {level: {column: {step: {core: share}}}}}.
+
+    Per-record plan-only hits (plan_only_hits, computed once; pass `hits` to reuse them) are aggregated per level over
+    that level's ok queries, so n and the population equal those of the level's in_context."""
+    hits = hits if hits is not None else plan_only_hits(scenes, queries, columns, strategies, params_of, steps)
+    n_of, levels = {}, {}
+    for level in LEVELS:
+        claims = [q.claim_id for q in queries if q.level == level and q.status == 'ok']
+        n = n_of[level] = len(claims)
+        levels[level] = {column: {str(step): {core: (sum(hits[column][c][str(step)][core] for c in claims) / n if n else 0.0)
+                                              for core in CORES} for step in steps} for column in columns}
+    return {'n': n_of, 'levels': levels}

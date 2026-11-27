@@ -232,28 +232,63 @@ def test_rejected_by_category_and_few_content_words():
 
 # ---- M6: in-context hits when the query is the plan alone -----------------------------------------------------------
 
+def _m6_world():
+    filler = [rec(f'f{i}', 'facts', f'Окремий запис номер {i} ' + 'слово ' * 30, scene=1) for i in range(30)]
+    return [scene(records() + filler, id='s1', number=1), scene(records() + filler, id='s2', number=2, plan=PLAN)]
+
+
 def test_paraphrase_baseline_plan():
     from memory_bench.paraphrase_eval import evaluate_baseline_plan
-    filler = [rec(f'f{i}', 'facts', f'Окремий запис номер {i} ' + 'слово ' * 30, scene=1) for i in range(30)]
-    scenes = [scene(records() + filler, id='s1', number=1), scene(records() + filler, id='s2', number=2, plan=PLAN)]
+    scenes = _m6_world()
     qs = [q('same', ''), q('syn', ''), q('desc', 'x', status='rejected')]
     base = evaluate_baseline_plan(scenes, qs, ['bm25'], STRATEGIES, params_of, steps=(1.0, 0.01))
-    assert base['n'] == 1  # one record (t1) with an ok query, counted once whatever the levels
-    assert set(base['columns']) == {'bm25'} and set(base['columns']['bm25']) == {'1.0', '0.01'}
-    assert set(base['columns']['bm25']['1.0']) == {'upper', 'lower'}
+    assert base['n'] == {'same': 1, 'syn': 1, 'desc': 0}  # each level's ok queries: the population of its in_context
+    assert set(base['levels']) == {'same', 'syn', 'desc'} and set(base['levels']['same']) == {'bm25'}
+    assert set(base['levels']['same']['bm25']) == {'1.0', '0.01'} and set(base['levels']['same']['bm25']['1.0']) == {'upper', 'lower'}
     ctx = run(qs[:1], scenes=scenes, steps=(1.0, 0.01))['same']['bm25']['in_plan']['in_context']
-    assert base['columns']['bm25'] == ctx  # an empty paraphrase sentence leaves the plan alone
+    assert base['levels']['same']['bm25'] == ctx  # an empty paraphrase sentence leaves the plan alone
+    assert base['levels']['desc']['bm25']['1.0'] == {'upper': 0.0, 'lower': 0.0}
     seen = []
 
     def spy(sc, params):
         seen.append(sc.plan_text)
         return structural_fts(sc, params)
     evaluate_baseline_plan(scenes, qs, ['bm25'], {'structural_fts': spy}, params_of)
-    assert seen and set(seen) == {PLAN} and len(seen) == 3 * 2  # once per (record, scene): 3 steps x 2 cores
+    assert seen and set(seen) == {PLAN} and len(seen) == 3 * 2  # once per record, not per level: 3 steps x 2 cores
+
+
+def test_baseline_plan_is_aggregated_over_each_level_population():
+    """A record rejected in one level is absent from that level's baseline, like from its in_context."""
+    from memory_bench.paraphrase_eval import evaluate_baseline_plan, plan_only_hits
+    scenes = _m6_world()
+    qs = [q('same', 'ключ'), q('syn', 'ключ'), q('same', 'маяк', claim='o0', source=OTHERS[0]),
+          q('syn', 'маяк', status='rejected', claim='o0', source=OTHERS[0])]
+    hits = {'bm25': {'t1': {'0.5': {'upper': 1, 'lower': 1}}, 'o0': {'0.5': {'upper': 0, 'lower': 1}}}}
+    base = evaluate_baseline_plan(scenes, qs, ['bm25'], STRATEGIES, params_of, steps=(0.5,), hits=hits)
+    assert base['n'] == {'same': 2, 'syn': 1, 'desc': 0}
+    assert base['levels']['same']['bm25']['0.5'] == {'upper': 0.5, 'lower': 1.0}
+    assert base['levels']['syn']['bm25']['0.5'] == {'upper': 1.0, 'lower': 1.0}
+    computed = plan_only_hits(scenes, qs, ['bm25'], STRATEGIES, params_of, steps=(0.5,))
+    assert set(computed['bm25']) == {'t1', 'o0'} and set(computed['bm25']['t1']['0.5']) == {'upper', 'lower'}
 
 
 def test_baseline_plan_without_later_scene_is_a_miss():
     from memory_bench.paraphrase_eval import evaluate_baseline_plan
     base = evaluate_baseline_plan(world(source=5, later=None), [q('same', 'ключ')], ['bm25'], STRATEGIES, params_of)
-    assert base['n'] == 1 and base['columns']['bm25']['0.75'] == {'upper': 0.0, 'lower': 0.0}
-    assert evaluate_baseline_plan(world(), [], ['bm25'], STRATEGIES, params_of)['n'] == 0
+    assert base['n']['same'] == 1 and base['levels']['same']['bm25']['0.75'] == {'upper': 0.0, 'lower': 0.0}
+    assert evaluate_baseline_plan(world(), [], ['bm25'], STRATEGIES, params_of)['n'] == {'same': 0, 'syn': 0, 'desc': 0}
+
+
+def test_sign_in_context_vs_plan_pairs_records_per_level():
+    from types import SimpleNamespace
+    keep_all = lambda sc, params: SimpleNamespace(record_ids=tuple(r.claim_id for r in sc.records))
+    qs = _two_targets()
+    plan_none = {'bm25': {c: {s: {'upper': 0, 'lower': 0} for s in ('0.75', '0.5', '0.35')} for c in ('t1', 'o0')}}
+    out = run(qs, strategies={'structural_fts': keep_all}, plan_hits=plan_none)['same']['bm25']
+    test = out['sign_in_context_vs_plan']
+    assert set(test) == {'0.75', '0.5', '0.35'} and set(test['0.5']) == {'upper', 'lower'}
+    assert test['0.5']['upper'] == {'a_better': 2, 'b_better': 0, 'ties': 0, 'p': 0.5}  # in_plan hits, plan-only misses
+    plan_all = {'bm25': {c: {s: {'upper': 1, 'lower': 1} for s in ('0.75', '0.5', '0.35')} for c in ('t1', 'o0')}}
+    same = run(qs, strategies={'structural_fts': keep_all}, plan_hits=plan_all)['same']['bm25']
+    assert same['sign_in_context_vs_plan']['0.35']['lower'] == {'a_better': 0, 'b_better': 0, 'ties': 2, 'p': 1.0}
+    assert 'sign_in_context_vs_plan' not in run(qs)['same']['bm25']  # only when the caller passes the plan-only hits

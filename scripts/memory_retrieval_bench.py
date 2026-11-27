@@ -20,7 +20,8 @@ from memory_bench.cloud_spend import BudgetExceeded, LedgerMissing, SpendLedger,
 from memory_bench.extract import extract_story  # noqa: E402
 from memory_bench.metrics import aggregate, control_hits, pair_hits, pair_summary, scene_metrics  # noqa: E402
 from memory_bench.model import DEFAULT_TOKENIZER, FERTILITY, realistic_ratio, set_tokenizer  # noqa: E402
-from memory_bench.paraphrase_eval import evaluate_baseline_plan, evaluate_paraphrases, frame_by_id, stale_queries  # noqa: E402
+from memory_bench.paraphrase_eval import (evaluate_baseline_plan, evaluate_paraphrases, frame_by_id,  # noqa: E402
+                                          plan_only_hits, stale_queries)
 from memory_bench.ranking import pair_ranks  # noqa: E402
 from memory_bench.strategies import (STRATEGIES, Params, catalog_full, catalog_full_v4, catalog_narrow,  # noqa: E402
                                      catalog_narrow_v4, fts_rank, full, product, record_layers)
@@ -526,7 +527,8 @@ def load_contexts(path, scenes, story_id):
 
     Codes in order: inside_repo; contexts_missing (unreadable file or not a {meta, items, snapshot} object);
     contexts_stale (another story, model or prompt id; a snapshot that does not match the items; the recomputed
-    context_key of a record with a source scene absent from items; an 'ok' item without a string context)."""
+    context_key of a record with a source scene absent from items; an 'ok' item without a string context; a status
+    other than 'ok' or 'failed')."""
     from memory_bench.context_gen import CONTEXT_PROMPT_ID, HAIKU, context_key, context_snapshot, context_targets
     from memory_bench.paraphrase import _inside_repo
     if _inside_repo(path):
@@ -552,8 +554,10 @@ def load_contexts(path, scenes, story_id):
                 return None, None, 'contexts_stale'
             search[(record.claim_id, record.text)] = f"{item['context']}\n{record.text}"
             ok += 1
-        else:
+        elif item.get('status') == 'failed':
             failed += 1
+        else:  # an unknown status is never mixed in silently
+            return None, None, 'contexts_stale'
     return search, {'snapshot': current, 'ok': ok, 'failed': failed, 'no_source': no_source, 'models': []}, None
 
 
@@ -586,18 +590,21 @@ def vector_rankers(models):
 def paraphrase_section(args, scenes, models, extra, paraphrases, contexts=None):
     """Report section 'paraphrases': ids, codes and aggregates only (no query or record text). baseline_plan[column]
     [step][core] is the in-context hit share when the query is the plan alone (M6), computed once per record, not per
-    level; baseline_plan_n is its denominator."""
+    level; baseline_plan[level][column][step][core] aggregates them over the level's ok queries (the population of that
+    level's in_context), baseline_plan_n[level] is its denominator."""
     rankers = {'bm25': fts_rank, **vector_rankers(models), **(context_rankers(contexts['search'], models) if contexts else {})}
     strategies = {'structural_fts': STRATEGIES['structural_fts'], **extra}
     params_of = lambda budget, core: Params(budget, 'realistic', core, core_recent_scenes=args.core_recent)
     keep = ('seed', 'n', 'model', 'prompt_id', 'levels')
     meta = {**{k: paraphrases['meta'].get(k) for k in keep}, 'owner_k': paraphrases['meta'].get('owner_k', OWNER_K),
             'owner_items': paraphrases['owner_items']}
-    baseline = evaluate_baseline_plan(scenes, paraphrases['queries'], list(rankers), strategies, params_of)
+    queries = paraphrases['queries']
+    hits = plan_only_hits(scenes, queries, list(rankers), strategies, params_of)  # once per record, shared below
+    baseline = evaluate_baseline_plan(scenes, queries, list(rankers), strategies, params_of, hits=hits)
     return {'meta': meta, 'snapshot': paraphrases['snapshot'],
             'owner': paraphrases['owner'],
-            'levels': evaluate_paraphrases(scenes, paraphrases['queries'], rankers, strategies, params_of),
-            'baseline_plan': baseline['columns'], 'baseline_plan_n': baseline['n']}
+            'levels': evaluate_paraphrases(scenes, queries, rankers, strategies, params_of, plan_hits=hits),
+            'baseline_plan': baseline['levels'], 'baseline_plan_n': baseline['n']}
 
 
 def _build_report(args, repo, story, models, paraphrases=None, ctx=None):

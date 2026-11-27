@@ -756,8 +756,11 @@ def test_cli_contexts_round_trip(synthetic_repo,tmp_path,outside_dir,para_dir,mo
     assert sum(layers.values())==2 and not {'fts','vec','hybrid'}&set(layers)
     para=report['paraphrases']
     assert columns<=set(para['levels']['syn']) and set(para['levels']['syn']['ctx_vec[e5-base]']['sign_vs_bm25'])=={'standalone','in_plan'}
-    assert columns|{'bm25','vec[e5-base]','hybrid[e5-base]'}==set(para['baseline_plan'])
-    assert set(para['baseline_plan']['ctx_bm25'])=={'0.75','0.5','0.35'} and para['baseline_plan_n']>0
+    assert set(para['baseline_plan'])=={'same','syn','desc'}==set(para['baseline_plan_n'])
+    assert columns|{'bm25','vec[e5-base]','hybrid[e5-base]'}==set(para['baseline_plan']['syn'])
+    assert set(para['baseline_plan']['syn']['ctx_bm25'])=={'0.75','0.5','0.35'}
+    assert para['baseline_plan_n']['syn']==para['levels']['syn']['bm25']['n']>0
+    assert set(para['levels']['syn']['ctx_vec[e5-base]']['sign_in_context_vs_plan'])=={'0.75','0.5','0.35'}
     section=report['contexts']
     assert set(section)=={'snapshot','ok','failed','no_source','models'}
     assert section['ok']==len(targets) and section['failed']==0 and section['models']==['e5-base']
