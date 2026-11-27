@@ -172,13 +172,17 @@ def _plan_scenes(db, story_id: str, active_only: bool = False):
         if value and scene.location_source=='plan':yield scene,value
 
 
-def _recompute_plan_places(repo, db, story_id: str) -> list[tuple[list[str],list[str]]]:
-    """MEMORY-LOCATIONS-S10: plan places of every plan scene under the story's current glues; a changed scene stales its
-    material and moves its revision, like a plan save. Returns (ids before, ids after) of the changed scenes."""
+def _recompute_plan_places(repo, db, story_id: str, old_glues, new_glues) -> list[tuple[list[str],list[str]]]:
+    """MEMORY-LOCATIONS-S10: plan scenes whose line parses differently under the new glues than under the old ones get
+    the new places; a changed scene stales its material and moves its revision, like a plan save. A scene the glue
+    change does not touch keeps its stored places even when they hold an older parse (no reparse migration). Returns
+    (ids before, ids after) of the changed scenes."""
     from .scene_metadata import stale_scene_material
     changed=[]
-    for scene,_ in list(_plan_scenes(db,story_id)):
-        before=list(scene.location_ids);after=plan_location_ids(db,story_id,scene.beats)
+    for scene,value in list(_plan_scenes(db,story_id)):
+        paths=parse_locations(value,new_glues)
+        if paths==parse_locations(value,old_glues):continue
+        before=list(scene.location_ids);after=ensure_locations(db,story_id,paths)
         if after==before:continue
         scene.location_ids=after
         stale_scene_material(repo,db,scene)
@@ -214,7 +218,7 @@ def glue_location(repo, db, story_id: str, phrase: str):
     if len(glues)>=GLUE_LIMIT:raise ValueError(f'Склеєних назв може бути не більше {GLUE_LIMIT}')
     known=set(load_locations(db,story_id))
     _write_glues(repo,db,story_id,[*glues,phrase])
-    changed=_recompute_plan_places(repo,db,story_id)
+    changed=_recompute_plan_places(repo,db,story_id,glues,[*glues,phrase])
     cards=load_locations(db,story_id);new=set(cards)-known
     old=set()
     for before,after in changed:old|=_with_ancestors(cards,before)-_with_ancestors(cards,after)
@@ -229,18 +233,21 @@ def unglue_location(repo, db, story_id: str, key: str):
     glues=story_glues(db,story_id);kept=[g for g in glues if glue_key(g)!=key]
     if len(kept)==len(glues):raise ValueError('Невідома склеєна назва')
     _write_glues(repo,db,story_id,kept)
-    _recompute_plan_places(repo,db,story_id)
+    _recompute_plan_places(repo,db,story_id,glues,kept)
 
 
 def glue_candidates(db, story_id: str) -> list[dict]:
     """Every cut between neighbouring paths in the «Локація:» lines of active plan scenes, one per phrase key, with the
-    leaf cards on both sides of every occurrence and the scenes, in book order."""
+    existing leaf cards on both sides of every occurrence and the scenes, in book order. A cut whose cards do not exist
+    (a line stored under an older parse) offers nothing: the panel hangs the action on a card."""
     from ..locations import glue_cuts, glue_key
-    glues=story_glues(db,story_id);found={}
+    glues=story_glues(db,story_id);found={};cards=set(load_locations(db,story_id))
     for scene,value in _plan_scenes(db,story_id,active_only=True):
         for phrase,left,right in glue_cuts(value,glues):
+            ids=[id for id in (location_id(story_id,normalize(left)),location_id(story_id,normalize(right))) if id in cards]
+            if not ids:continue
             item=found.setdefault(glue_key(phrase),{'phrase':phrase,'key':glue_key(phrase),'card_ids':[],'scene_ids':[]})
-            for id in (location_id(story_id,normalize(left)),location_id(story_id,normalize(right))):
+            for id in ids:
                 if id not in item['card_ids']:item['card_ids'].append(id)
             if scene.id not in item['scene_ids']:item['scene_ids'].append(scene.id)
     return list(found.values())

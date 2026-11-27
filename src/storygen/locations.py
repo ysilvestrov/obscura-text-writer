@@ -2,6 +2,7 @@
 
 A line lists one or more locations; `/` nests them. Identity is the normalized full path, so «Маєток Джорджа» and
 «Маєток Джорджа біля озера» are two locations until the author merges them."""
+import functools
 import hashlib
 import re
 import unicodedata
@@ -66,22 +67,34 @@ def glue_key(phrase: str) -> str:
     return out
 
 
+@functools.lru_cache(maxsize=8192)
 def _glue_pattern(phrase: str):
-    """A glued phrase in a value: any case, any of ’ ʼ ', spaces between words (at least one) and around punctuation
-    (any), whole words at both ends."""
-    parts=[];prev_word=False
+    """(compiled pattern, needle) of a glued phrase: any case, any of ’ ʼ ', spaces between words (at least one) and
+    around punctuation (any), whole words at both ends. The needle — the longest apostrophe-free word, case-folded —
+    lets a value without it skip the pattern (500 glues × 500 scenes stay within the spec's second)."""
+    parts=[];prev_word=False;words=[]
     for token in _tokens(phrase):
         word=bool(re.match(r"[\w’ʼ']",token))
+        if word:words+=[w for w in re.split(r"[’ʼ']",token) if w]
         if parts:parts.append(r'\s+' if word and prev_word else r'\s*')
         parts.append(''.join(f'[{_APOS}]' if c in _APOS else re.escape(c) for c in token));prev_word=word
     if not parts:return None
-    return re.compile(r"(?<![\w’ʼ'])"+''.join(parts)+r"(?![\w’ʼ'])",re.IGNORECASE)
+    return (re.compile(r"(?<![\w’ʼ'])"+''.join(parts)+r"(?![\w’ʼ'])",re.IGNORECASE),
+            max(words,key=len).casefold() if words else '')
+
+
+def _glued_spans(line: str, glued) -> list[tuple[int,int]]:
+    folded=line.casefold();spans=[]
+    for compiled in filter(None,map(_glue_pattern,glued)):
+        pattern,needle=compiled
+        if needle in folded:spans+=[m.span() for m in pattern.finditer(line)]
+    return spans
 
 
 def _cuts(line: str, glued=()) -> list[tuple[int,int]]:
     """Separator spans of a value outside glued phrases; «та»/«and» also outside quotes and brackets."""
     outside=_outside(line)
-    spans=[m.span() for pattern in filter(None,map(_glue_pattern,glued)) for m in pattern.finditer(line)]
+    spans=_glued_spans(line,glued)
     inside=lambda pos:any(a<pos<b for a,b in spans)
     cuts=sorted([m.span() for m in _SEPARATORS.finditer(line) if not inside(m.start())]+
                 [m.span() for m in _CONJUNCTION.finditer(line) if outside[m.start()] and not inside(m.start())])

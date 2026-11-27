@@ -210,3 +210,64 @@ def test_glue_recompute_500_scenes_within_a_second(tmp_path):
     elapsed = time.perf_counter() - started
     assert repo.get_scene('bulk0499').location_ids[0] == lid(story, 'Бар, в якому пахне кавою')
     assert elapsed < 1.0, elapsed
+
+
+def drift_scene(repo, story, line):
+    """A plan scene whose stored places still hold an older parse of its line (the «та» rule came without a migration)."""
+    scene = repo.create_scene(story.id, SceneCreate(title='Стара', beats=f'Локація: {line}', character_ids=[]))
+    with repo.db.connection() as db:
+        old = store.ensure_locations(db, story.id, [(line,)])
+        row = json.loads(db.execute('SELECT payload FROM scenes WHERE id=?', (scene.id,)).fetchone()[0])
+        for id in row['location_ids']:
+            db.execute('DELETE FROM story_locations WHERE id=?', (id,))
+        row['location_ids'] = old
+        db.execute('UPDATE scenes SET payload=? WHERE id=?', (json.dumps(row, ensure_ascii=False), scene.id))
+    repo.db.bump_generation()
+    return repo.get_scene(scene.id)
+
+
+@pytest.mark.req('MEMORY-LOCATIONS')
+def test_glue_leaves_scenes_with_unrelated_parse_drift_alone(tmp_path):
+    repo, story, (cafe,) = book(tmp_path, 'Бар, в якому пахне кавою')
+    old = drift_scene(repo, story, 'Ніч та день')
+    with repo.db.connection() as db:
+        dismissed = db.execute('SELECT count(*) FROM location_dismissals').fetchone()[0]
+    glue(repo, story)
+    after = repo.get_scene(old.id)
+    assert after.location_ids == old.location_ids and after.revision == old.revision
+    with repo.db.connection() as db:
+        rows = db.execute('SELECT a, b FROM location_dismissals').fetchall()
+    assert len(rows) > dismissed and not [r for r in rows if old.location_ids[0] in (r[0], r[1])]
+
+
+@pytest.mark.req('MEMORY-LOCATIONS')
+def test_candidates_name_only_existing_cards(tmp_path):
+    repo, story, _ = book(tmp_path, 'Ліс')
+    drift_scene(repo, story, 'Ніч та день')
+    view = store.locations_view(repo, story.id)
+    assert not [c for c in view['glue_candidates'] if c['key'] == 'ніч та день']
+    cards = {c['id'] for c in view['locations']}
+    assert all(set(c['card_ids']) <= cards for c in view['glue_candidates'])
+
+
+@pytest.mark.req('MEMORY-LOCATIONS')
+def test_500_glues_on_500_scenes_within_a_second(tmp_path):
+    import time
+    repo, story, (first,) = book(tmp_path, 'Бар, в якому пахне кавою, вулиця, місце 7, двір')
+    set_glues(repo, story.id, [f'місце {n}, двір' for n in range(499)])
+    with repo.db.connection() as db:
+        db.execute('BEGIN IMMEDIATE')
+        template = json.loads(db.execute('SELECT payload FROM scenes WHERE id=?', (first.id,)).fetchone()[0])
+        for n in range(500):
+            row = {**template, 'id': f'bulk{n:04d}', 'position': n + 2}
+            db.execute('INSERT INTO scenes VALUES(?,?,?,?)', (row['id'], story.id, row['position'], json.dumps(row, ensure_ascii=False)))
+    repo.db.bump_generation()
+    started = time.perf_counter()
+    glue(repo, story)
+    changed = time.perf_counter() - started
+    started = time.perf_counter()
+    view = store.locations_view(repo, story.id)
+    shown = time.perf_counter() - started
+    assert len(view['glues']) == 500
+    assert repo.get_scene('bulk0499').location_ids[0] == lid(story, 'Бар, в якому пахне кавою')
+    assert changed < 1.0 and shown < 1.0, (changed, shown)
