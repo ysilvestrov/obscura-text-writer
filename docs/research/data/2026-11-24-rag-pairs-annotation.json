@@ -1,0 +1,55 @@
+{
+  "stories": {
+    "858693d46dd74894aeac548a6ec030e5": {
+      "C01": [
+        "mc_e3aa12d666e36d785519218c"
+      ],
+      "C02": [
+        "mc_162161f3d1db1e7c270c1f41",
+        "mc_c289aedb7da83da7d40447a0",
+        "mc_4948fdbff99c19559332861f",
+        "mc_e1c9fb084d2a86ccb267ca57"
+      ],
+      "C03": [
+        "mc_c74429e1c3c4cf3f7cc6aaad"
+      ],
+      "P01": [
+        "mc_920138559b8bdaa5cc2f5863",
+        "mc_4c31563ef5aa0712a3f4b4c7",
+        "mc_97c251d14a6a8c44d8ddfd00"
+      ],
+      "P02": [
+        "mc_162161f3d1db1e7c270c1f41"
+      ],
+      "P03": [
+        "mc_36b384eda8c238deb887709c",
+        "mc_50eb49b5476fa04eb1b71850"
+      ],
+      "P04": [
+        "mc_8b39da269ed6692cd209b5fe",
+        "mc_55d67ed71c47f8e2626e9019"
+      ],
+      "P05": [
+        "mc_e3aa12d666e36d785519218c"
+      ],
+      "P06": [
+        "mc_75cf5b123b72c801aab44ac1"
+      ],
+      "P07": [
+        "mc_97c251d14a6a8c44d8ddfd00"
+      ],
+      "P08": [
+        "mc_8c4a3be94004e7b0dda68ab7"
+      ],
+      "P09": [
+        "mc_0faf453c3f4f3d685075bb45",
+        "mc_ed6884e558e303db3cfe7b0d",
+        "mc_c2f796c8b6e9446cf979d7c7",
+        "mc_cdbd8bc980f7248a03085c63"
+      ],
+      "P10": [
+        "mc_9657caae0605d9e09770e329"
+      ]
+    }
+  }
+}
