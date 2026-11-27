@@ -76,6 +76,8 @@ class MemoryJournal(DomainModel):
     @model_validator(mode='after')
     def valid_journal(self):
         replay_memory(self)
+        if self.schema_version<4 and any(e.participant_ids for e in self.events):
+            raise ValueError('Учасники пам’яті потребують журналу версії 4')
         return self
 
 

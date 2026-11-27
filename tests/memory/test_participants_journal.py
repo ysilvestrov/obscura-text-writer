@@ -84,16 +84,22 @@ def test_manual_save_keeps_the_participants_of_a_new_record():
 
 
 @pytest.mark.req('MEMORY-ENTITIES')
-def test_thread_resolution_and_merge_keep_participants():
+def test_thread_resolution_keeps_participants():
     from types import SimpleNamespace
     from storygen.memory.core_review import ThreadEdit, _author_events
-    from storygen.memory.merge import Conflict, MergePlan, _author_events as merge_events
     thread = T1.model_copy(update={'participant_ids': ['c1']})
     base = MemoryJournal(schema_version=4, source_prose_ids=['p1'], events=[thread])
     ctx = SimpleNamespace(prose_id='p2', sources={'p2': 'Стукав сусід.'})
     edit = ThreadEdit(kind='thread', claim_id=thread.claim_id, action='close', text='Стукав сусід', quote='Стукав сусід.')
     retire, fact = _author_events(base, [edit], ctx, {'p2'})
     assert retire.participant_ids == ['c1'] and fact.participant_ids == ['c1']
+
+
+@pytest.mark.req('MEMORY-ENTITIES')
+def test_merge_keeps_participants():
+    from storygen.memory.merge import Conflict, MergePlan, _author_events as merge_events
+    thread = T1.model_copy(update={'participant_ids': ['c1']})
+    base = MemoryJournal(schema_version=4, source_prose_ids=['p1'], events=[thread])
     plan = MergePlan(base, [], [], 4)
     conflict = Conflict(key='claim:' + thread.claim_id, values={}, events={'h1': [thread]})
     assert merge_events(plan, conflict, 'Інше питання', 'merge-1', {})[0].participant_ids == ['c1']
@@ -101,3 +107,27 @@ def test_thread_resolution_and_merge_keep_participants():
     blank = MergePlan(MemoryJournal(source_prose_ids=['p1']), [], [], 2)
     conflict = Conflict(key='claim:none', values={}, events={'h1': [new]})
     assert merge_events(blank, conflict, 'Лист', 'merge-1', {})[0].participant_ids == ['c2']
+
+
+@pytest.mark.req('MEMORY-ENTITIES')
+def test_a_journal_below_v4_rejects_participants():
+    event = _add_event('facts', 'Маяк згас', 'p1', 'ц', 0, participant_ids=['c1'])
+    for version in (2, 3):
+        with pytest.raises(ValueError, match='Учасники пам’яті потребують журналу версії 4'):
+            MemoryJournal(schema_version=version, source_prose_ids=['p1'], events=[event])
+    assert MemoryJournal(schema_version=4, source_prose_ids=['p1'], events=[event]).schema_version == 4
+
+
+@pytest.mark.req('MEMORY-ENTITIES')
+def test_merge_result_is_v4_with_participants_and_v4_plan_stays_v4():
+    from storygen.memory.journal import _extend
+    from storygen.memory.merge import build_merged_journal, plan_merge
+    base = _extend(MemoryJournal(), 'p0', [_add_event('facts', 'Місто на річці', 'p0', 'q', 0)])
+    plain = _extend(base, 'p1', [_add_event('facts', 'Лист', 'p1', 'q1', 0)])
+    withp = _extend(base, 'p2', [_add_event('facts', 'Ключ', 'p2', 'q2', 0, participant_ids=['c1'])])
+    sources = ['p0', 'p1', 'p2']
+    merged = build_merged_journal(plan_merge({'h1': plain, 'h2': withp}, ['h1', 'h2']), {}, sources, 'm')
+    assert merged.schema_version == 4
+    v4_plain = MemoryJournal(schema_version=4, source_prose_ids=['p0', 'p1'], events=plain.events)
+    again = build_merged_journal(plan_merge({'h1': v4_plain}, ['h1']), {}, ['p0', 'p1'], 'm')
+    assert again.schema_version == 4
