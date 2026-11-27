@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from memory_bench.paraphrase import (LEVELS, Query, check_owner_file, in_plan_scene, level_ok, manifest, owner_sample,
+from memory_bench.paraphrase import (LEVELS, Query, check_owner_file, content_words, in_plan_scene, level_ok, manifest, owner_sample,
                                      sample_targets, sampling_frame, set_verdict, share_stem, shared_stems,
                                      snapshot_hash, write_owner_file)
 from memory_bench.strategies import Params, record_layers
@@ -174,3 +174,51 @@ def test_module_imports_without_numpy_and_anthropic():
     env = {**os.environ, 'PYTHONPATH': os.pathsep.join([str(root / 'scripts'), str(root / 'src')])}
     r = subprocess.run([sys.executable, '-c', code], capture_output=True, text=True, cwd=root, env=env)
     assert r.returncode == 0, r.stderr
+
+
+def test_name_filter_is_prefix_of_full_stem_only():
+    names = list(NAMES.values())
+    assert shared_stems('Марафон на узбережжі', 'Марафон біля річки', names) == 1
+    assert 'марафон' in content_words('Марафон', names)
+    assert content_words('Марії Марією Остапа Ганні', names) == []
+    assert not level_ok('same', 'Марія й Остап шукають', 'Марії та Остапом щось', names)
+
+
+def _items(path):
+    return json.loads(path.read_text(encoding='utf-8'))
+
+
+def _put(path, data):
+    path.write_text(json.dumps(data, ensure_ascii=False), encoding='utf-8')
+
+
+def test_owner_file_item_without_identity_is_stale(tmp_path):
+    qs, snap, path = _owner(tmp_path)
+    for i in range(20):
+        set_verdict(path, i, 'yes')
+    data = _items(path)
+    del data['items'][0]['sha256']
+    _put(path, data)
+    assert check_owner_file(path, qs, snap)[0] == 'owner_check_stale'
+    data = _items(path)
+    data['items'][0]['sha256'] = 'x'
+    data['items'][0]['claim_id'] = 'unknown'
+    _put(path, data)
+    assert check_owner_file(path, qs, snap)[0] == 'owner_check_stale'
+    _put(path, {'snapshot': snap, 'items': [{'verdict': 'yes'}] * 20})
+    assert check_owner_file(path, qs, snap)[0] == 'owner_check_stale'
+
+
+def test_owner_file_count_and_duplicates(tmp_path):
+    qs, snap, path = _owner(tmp_path)
+    for i in range(20):
+        set_verdict(path, i, 'yes')
+    full = _items(path)
+    _put(path, {**full, 'items': []})
+    assert check_owner_file(path, qs, snap)[0] == 'owner_check_missing'
+    _put(path, {**full, 'items': full['items'][:19]})
+    assert check_owner_file(path, qs, snap)[0] == 'owner_check_missing'
+    _put(path, {**full, 'items': full['items'][:19] + [full['items'][0]]})
+    assert check_owner_file(path, qs, snap)[0] == 'owner_check_missing'
+    _put(path, {**full, 'items': full['items'][:19]})
+    assert check_owner_file(path, qs, snap, expected=19) == (None, {'yes': 19, 'no': 0, 'invalid': 0})

@@ -52,10 +52,12 @@ def share_stem(a: str, b: str) -> bool:
 
 
 def content_words(text: str, names: Iterable[str]) -> list[str]:
+    """A word is a name form only if it starts with the full name stem (Марії, Марією), not by the lenient
+    share_stem rule, which would hide unrelated words such as марафон behind the stem марі."""
     stems = [s for name in names for s in name_stems(name)]
     out = []
     for word in _WORD.findall(_norm(text)):
-        if len(word) < 3 or word in STOPWORDS or any(share_stem(word, s) for s in stems):
+        if len(word) < 3 or word in STOPWORDS or any(word.startswith(s) for s in stems):
             continue
         out.append(word)
     return out
@@ -214,7 +216,8 @@ def set_verdict(path: Path, index: int, verdict: str | None) -> dict:
     return _summary(items)
 
 
-def check_owner_file(path: Path, queries: list[Query], snapshot: str, max_no: int = MAX_NO) -> tuple[str | None, dict]:
+def check_owner_file(path: Path, queries: list[Query], snapshot: str, max_no: int = MAX_NO,
+                     expected: int = 20) -> tuple[str | None, dict]:
     summary = {'yes': 0, 'no': 0, 'invalid': 0}
     try:
         data = json.loads(Path(path).read_text(encoding='utf-8'))
@@ -227,8 +230,11 @@ def check_owner_file(path: Path, queries: list[Query], snapshot: str, max_no: in
     if file_snapshot != snapshot:
         return 'owner_check_stale', summary
     current = {(q.claim_id, q.level): _sha(q.text) for q in queries}
-    if any(current.get((i.get('claim_id'), i.get('level'))) != i.get('sha256') for i in items):
+    keys = [(i.get('claim_id'), i.get('level')) for i in items]
+    if any(k not in current or current[k] != i.get('sha256') for k, i in zip(keys, items)):
         return 'owner_check_stale', summary
+    if len(set(keys)) != len(keys) or len(keys) != expected:  # summary stays {'yes','no','invalid'}
+        return 'owner_check_missing', summary
     verdicts = [_normalize(i.get('verdict')) for i in items]
     summary = {'yes': verdicts.count('yes'), 'no': verdicts.count('no'),
                'invalid': sum(1 for v in verdicts if v not in ('yes', 'no'))}
