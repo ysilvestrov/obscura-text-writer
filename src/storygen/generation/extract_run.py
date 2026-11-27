@@ -101,7 +101,7 @@ def _start(repo, run) -> dict | str:
     order = [scene_id for group in plan['groups'] for scene_id in group]
     state = ExtractState(
         catalogue=[CatalogueCard(ref=card.id, name=card.name, names=card_names(card), existing=True) for card in cards],
-        locations=_book_locations(view), skipped=[(item['scene_id'], item['reason']) for item in plan['skipped']], scene_order=order)
+        locations=_book_locations(view), glued=list(view.get_story(run.story_id).location_glues), skipped=[(item['scene_id'], item['reason']) for item in plan['skipped']], scene_order=order)
     extractor = resolve_extractor(get_role_settings(repo, run.story_id))
     per_call = upper_bound(repo, extractor, 1)['per_call_usd'] if extractor.provider.provider in CLOUD else None
     return {'phase': 'reading', 'state': state.model_dump(mode='json'), 'pending': plan['groups'], 'retried': False,

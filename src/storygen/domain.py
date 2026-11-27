@@ -1,8 +1,8 @@
 from datetime import datetime, timezone
-from typing import Literal
+from typing import Annotated, Literal
 from uuid import uuid4
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 from .dependency_models import DependencySnapshot
 
 
@@ -93,6 +93,10 @@ class Story(StoryCreate):
     series_start_version_id: str | None = None
     # SERIES-BIBLE: the world bible of its series — no number, no start, no snapshot; a source of every book's snapshot.
     series_bible: bool = False
+    # MEMORY-LOCATIONS: phrases the author glued into one place name; the «Локація:» parse never cuts them. Not written
+    # while empty, so a story without them keeps its payload byte for byte.
+    location_glues: list[Annotated[str,StringConstraints(min_length=3,max_length=200)]] = Field(
+        default_factory=list,max_length=500,exclude_if=lambda value: not value)
     created_at: str = Field(default_factory=now)
 
 

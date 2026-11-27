@@ -160,3 +160,12 @@ def test_old_proposal_without_locations_is_accepted(tmp_path):
         accept(repo, story, run, locations=[{'scene_id': s1.id, 'places': ['Двір']}])
     result = accept(repo, story, run, casts=[s1.id])
     assert result['changed_scene_ids'] == [s1.id] and result['changed_location_ids'] == []
+
+
+@pytest.mark.req('MEMORY-LOCATIONS')
+def test_extract_paths_respect_story_glues():
+    """MEMORY-LOCATIONS-S10: a glued name the model echoes from the catalogue stays one place; an old checkpoint has none."""
+    from storygen.characters.extract import ExtractState, _paths
+    assert _paths('бар, в якому пахне кавою', {}, ['бар, в якому пахне кавою']) == [('бар, в якому пахне кавою',)]
+    assert _paths('бар, в якому пахне кавою', {}) == [('бар',), ('в якому пахне кавою',)]
+    assert ExtractState.model_validate({}).glued == []

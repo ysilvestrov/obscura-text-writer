@@ -123,9 +123,15 @@ def remove_scene_place(repo, db, story_id: str, id: str, scene_id: str):
     repo._save_scene(db,scene)
 
 
+def story_glues(db, story_id: str) -> list[str]:
+    """Story.location_glues read on the caller's connection (a write transaction sees its own changes)."""
+    row=db.execute('SELECT payload FROM stories WHERE id=?',(story_id,)).fetchone()
+    return list(json.loads(row[0]).get('location_glues',[])) if row is not None else []
+
+
 def plan_location_ids(db, story_id: str, text: str) -> list[str]:
     from ..scene_plan_template import plan_fields
-    return ensure_locations(db,story_id,parse_locations(plan_fields(text).get('location','')))
+    return ensure_locations(db,story_id,parse_locations(plan_fields(text).get('location',''),story_glues(db,story_id)))
 
 
 def _card(db, story_id, id) -> StoryLocation:
