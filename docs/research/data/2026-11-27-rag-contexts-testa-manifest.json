@@ -1,0 +1,371 @@
+{
+ "meta": {
+  "model": "claude-haiku-5-5",
+  "prompt_id": "4af07cbe8f5c41dd96f1a08bb245c902924c2d6d2f1872823eb262fae483cb9b",
+  "story": "858693d46dd74894aeac548a6ec030e5",
+  "prices_date": "2026-11-27"
+ },
+ "snapshot": "3daeb7f3bf0fb9d5ec863ea8f89107c7b583cf93305ba7bfa77c41a73dadb45a",
+ "items": {
+  "13975253c6927435b4d9f91d4bf65488193a83f164bd56d9aaad761f8b72363f": {
+   "claim_id": "mc_a6eafef7fbca209ab9d25013",
+   "source_scene": 1,
+   "status": "ok"
+  },
+  "a780378437da3f4006038d6ecc19c749d5fe2d75f0f85bbf27c3d2ee81752958": {
+   "claim_id": "mc_0beb1a3b238587a59529f844",
+   "source_scene": 1,
+   "status": "ok"
+  },
+  "44a10ca7acdc3e905eed4f8fab61243223aeea78bee40e729ca4f79e6f3abce4": {
+   "claim_id": "mc_59e7e45d18d35c521116962f",
+   "source_scene": 1,
+   "status": "ok"
+  },
+  "0c30d6839de9e5ab5b327a8a057c8c17c42f59ba530e10ed7d00023ca6f99676": {
+   "claim_id": "mc_e3aa12d666e36d785519218c",
+   "source_scene": 1,
+   "status": "ok"
+  },
+  "2c597b53a7ad4684b8957531d1f06ca3c859f08887f1c82a91c08214d6edbd51": {
+   "claim_id": "mc_920138559b8bdaa5cc2f5863",
+   "source_scene": 1,
+   "status": "ok"
+  },
+  "ae61f08ad20c6b1d46d724158cb6642916a2aad7436c4fdec808089317afbe92": {
+   "claim_id": "mc_e03c2baa095303bc18522905",
+   "source_scene": 1,
+   "status": "ok"
+  },
+  "639746faa6d381e48b98e5f09030a258b1a4273843214c74a94682acaa5928f7": {
+   "claim_id": "mc_dfa62b8d01bc85f75fe2abf6",
+   "source_scene": 1,
+   "status": "ok"
+  },
+  "4f1fe690f95b4dda21703dad7683aa8891f6a26a32eac9020b2a5da6596964bf": {
+   "claim_id": "mc_891adac869b10d51424338bf",
+   "source_scene": 1,
+   "status": "ok"
+  },
+  "43aea71538fdf953515d241c8b50e723eb213fd722b2058f2e85c47c6b89906c": {
+   "claim_id": "mc_4c31563ef5aa0712a3f4b4c7",
+   "source_scene": 1,
+   "status": "ok"
+  },
+  "52f23ccdff59d901b700bdbb64b690ffbb3f0c25c2541720e97f03ae2963bfb3": {
+   "claim_id": "mc_891adac869b10d51424338bf",
+   "source_scene": 2,
+   "status": "ok"
+  },
+  "ddb1ee44e09354adfe3f3830c9572120461a1fdd0dfb20c3b13a5b1ccb990a91": {
+   "claim_id": "mc_3cb9f44a81de9379d91f6934",
+   "source_scene": 2,
+   "status": "ok"
+  },
+  "9e7d818b19354e39a25ab38b6156c25299eafbe860de2e6d3237c31240d29b7d": {
+   "claim_id": "mc_5b2fce70eb48699a591987ba",
+   "source_scene": 2,
+   "status": "ok"
+  },
+  "f58b2b5295324f23b075817aa2e58cd206e1a8e0ec8307235dadb2e4056d7be4": {
+   "claim_id": "mc_0faf453c3f4f3d685075bb45",
+   "source_scene": 2,
+   "status": "ok"
+  },
+  "2cbe1cf235ef5112a4595fcc0386e2aec8b87168ce7fbda8e46242fe8cd4b497": {
+   "claim_id": "mc_f331faa4239bf3fb0d4caabb",
+   "source_scene": 2,
+   "status": "ok"
+  },
+  "519752f70fec6d30b079d235ff987b7e389916cc975abdaa933c328bdca6b2d3": {
+   "claim_id": "mc_0beb1a3b238587a59529f844",
+   "source_scene": 3,
+   "status": "ok"
+  },
+  "09bc4bd1db63e96c5faba7bc34ac954a589878b785481a9891200849d7024d9b": {
+   "claim_id": "mc_e4729a1442c68308ee1a8617",
+   "source_scene": 3,
+   "status": "ok"
+  },
+  "130c8c6e80c36659c65ab247b5907758924fa1f816fb0296b0948fcb030ac81b": {
+   "claim_id": "mc_8c4a3be94004e7b0dda68ab7",
+   "source_scene": 3,
+   "status": "ok"
+  },
+  "896e18601486c342e5fb076823c36b0c9f4d066d26256ca16caea5f9dcb3eadb": {
+   "claim_id": "mc_2bbcb13e2b153791a1553232",
+   "source_scene": 3,
+   "status": "ok"
+  },
+  "9b4d75a2852530530a31301698f14def6e1b21777ea1dbfaa0baa847f3213f92": {
+   "claim_id": "mc_6c4986515cd42abe72230497",
+   "source_scene": 3,
+   "status": "ok"
+  },
+  "8be517f96055634fd92576263bc2318b7843328cc7dcec3e0086176a7322baa4": {
+   "claim_id": "mc_75deba94de8b1d4cea24121c",
+   "source_scene": 3,
+   "status": "ok"
+  },
+  "d56d98f76eb2b5c1756f88f7c187e6c20076a3c22fc1a8c1ef28ae39bb1df502": {
+   "claim_id": "mc_4351c16f0c1e27d4e922f4a8",
+   "source_scene": 3,
+   "status": "ok"
+  },
+  "14dfe5775fe035fdfc3a9fd356dfdac83322fef112b7ece91d73a09489a66f55": {
+   "claim_id": "mc_891adac869b10d51424338bf",
+   "source_scene": 4,
+   "status": "ok"
+  },
+  "3e9504fadeed8d6d8f0b0fd0dd8c355ed1bb34490682d3bc4adcadfebce83d8f": {
+   "claim_id": "mc_0faf453c3f4f3d685075bb45",
+   "source_scene": 4,
+   "status": "ok"
+  },
+  "949127e3cc53d6651320caa98e106b5a82b11a7bf5f2b5585dfd570a13b436a0": {
+   "claim_id": "mc_0bfbada268646a20b2e96d90",
+   "source_scene": 4,
+   "status": "ok"
+  },
+  "fcba5fc850aacff4962ea55b8dc407e967c7689321ae33a75bd1db9b72f3407f": {
+   "claim_id": "mc_162161f3d1db1e7c270c1f41",
+   "source_scene": 4,
+   "status": "ok"
+  },
+  "76dfa097d6b307f2cb9cff4ec1db91c6c78f24a847bb29839e5d0f53df5d0122": {
+   "claim_id": "mc_078a53b294297fa037138202",
+   "source_scene": 4,
+   "status": "ok"
+  },
+  "66cfe4c923c76d431d7535a70afdde68c8be3d4a21c0a844a127e35cff30894f": {
+   "claim_id": "mc_c289aedb7da83da7d40447a0",
+   "source_scene": 4,
+   "status": "ok"
+  },
+  "7c9368cef1a4044b344f268b6356c802aabb8dfbe716ae7079c075ce12bcdc8c": {
+   "claim_id": "mc_4948fdbff99c19559332861f",
+   "source_scene": 4,
+   "status": "ok"
+  },
+  "e693f75763ad869135064e635100fd4c17713eb6f466ce66158ec91439da847a": {
+   "claim_id": "mc_0beb1a3b238587a59529f844",
+   "source_scene": 5,
+   "status": "ok"
+  },
+  "fa89afeebe21205dc1b11b709aee14394817a0656405f86c551ca29d39aadcda": {
+   "claim_id": "mc_e4729a1442c68308ee1a8617",
+   "source_scene": 5,
+   "status": "ok"
+  },
+  "c37b0a0edda0e5849b3434b6d6ee4aa9e1e64316973c6bfe6bf7b6c7fc487ddf": {
+   "claim_id": "mc_6c4986515cd42abe72230497",
+   "source_scene": 5,
+   "status": "ok"
+  },
+  "74a16e725bdcf3adfa214842583e28ad55d19e65934da0c0e7f0b1b8eba62143": {
+   "claim_id": "mc_36b384eda8c238deb887709c",
+   "source_scene": 5,
+   "status": "ok"
+  },
+  "8c9a353f5d3294f23e94569bba25f39f2f8395766c442bb03ce86de1d249a3bc": {
+   "claim_id": "mc_28e07ffcbe3863a614936f5b",
+   "source_scene": 5,
+   "status": "ok"
+  },
+  "7e10c3bd21dfcdc7a57334cb2fe2c8e9673e73d86166d1342ce577d2c87c88df": {
+   "claim_id": "mc_d514fe7768abb6e0e215b71e",
+   "source_scene": 5,
+   "status": "ok"
+  },
+  "9021c33c201e3219424d0774a833e007b7f197855ca54d1fd88ba64fc29a1ade": {
+   "claim_id": "mc_0faf453c3f4f3d685075bb45",
+   "source_scene": 6,
+   "status": "ok"
+  },
+  "9e192c2a5a16353a02ae03731bb23a9914e847315512373ef345d2e9bea122db": {
+   "claim_id": "mc_ed6884e558e303db3cfe7b0d",
+   "source_scene": 6,
+   "status": "ok"
+  },
+  "86b693002112ca3c21373166f0602a59e8aed5c9bb6fe9d137b51cfefdaf16c1": {
+   "claim_id": "mc_ec9bf628f30bea5d3403f2f2",
+   "source_scene": 6,
+   "status": "ok"
+  },
+  "0da2ea0cebb4544a476dedb04f5775d90b8f27ec8998ac3ac0c365785c4601b1": {
+   "claim_id": "mc_09eaf2ae3b7dfec7f645f3a5",
+   "source_scene": 6,
+   "status": "ok"
+  },
+  "9ab6b5b8a25352d8aed24d6ef1f3ae6a431c2b36b88bc5f2ec3c2133ce2f098b": {
+   "claim_id": "mc_5f26933cb88811f5f54cf7d5",
+   "source_scene": 6,
+   "status": "ok"
+  },
+  "bd7d34c2e7a6bbc3ea654f282f5548ea13135cdb884907e6d42cfd0dd0c7a349": {
+   "claim_id": "mc_0beb1a3b238587a59529f844",
+   "source_scene": 7,
+   "status": "ok"
+  },
+  "3eebab2aca79567e4877fa0780bf654c243812350d2c0ad7e6f18e02bab0dafe": {
+   "claim_id": "mc_e4729a1442c68308ee1a8617",
+   "source_scene": 7,
+   "status": "ok"
+  },
+  "d5daa9cbfdf38b1acef292b95307790680dc3929b01cf60a6b8d6cf777da5661": {
+   "claim_id": "mc_6c4986515cd42abe72230497",
+   "source_scene": 7,
+   "status": "ok"
+  },
+  "98b25f72b091f09335f6e4b81762262fac63d7ad6c02a7fba0529a8a5fc0540c": {
+   "claim_id": "mc_5e96c01500cda538babac088",
+   "source_scene": 7,
+   "status": "ok"
+  },
+  "56a7ac69b9a1bab8e7fd2617e7a782ca67a72686721222663f7828aa99cef4ee": {
+   "claim_id": "mc_46640a44d4356cb0676194f4",
+   "source_scene": 7,
+   "status": "ok"
+  },
+  "35a738df1860de1631be77891c48f2bdb424bc6afb4c0423fc66b89fdf8d3987": {
+   "claim_id": "mc_aa628bcdc41bca84056ac30e",
+   "source_scene": 7,
+   "status": "ok"
+  },
+  "1b4492a114037c3f31f3ef84f0f8b67c646323eedfae9827e7715d6c706204da": {
+   "claim_id": "mc_6c35bde6db1df71b3735a1dd",
+   "source_scene": 7,
+   "status": "ok"
+  },
+  "cf28c5fecf761efa89f676432737eef3146b24b54ce711a7528cac4e2e56bff5": {
+   "claim_id": "mc_891adac869b10d51424338bf",
+   "source_scene": 8,
+   "status": "ok"
+  },
+  "c5e7cfb095ca6898e7e1e5b3fc8d58f61ad2a18390367e557f139566120123cb": {
+   "claim_id": "mc_0faf453c3f4f3d685075bb45",
+   "source_scene": 8,
+   "status": "ok"
+  },
+  "3859082cae3a88723ddf7317ed31bba7482e40075299c61ef6270dc9c2964421": {
+   "claim_id": "mc_08fde2421aac59a3c22b2fdf",
+   "source_scene": 8,
+   "status": "ok"
+  },
+  "2bb2aaa774b6556dc980b02612b71645510437d9e36800636777a6316bd5fc0b": {
+   "claim_id": "mc_76d8ebddf7c4c6d7a51bb5f7",
+   "source_scene": 8,
+   "status": "ok"
+  },
+  "aef6c9c299ad3c2048f287525f61ab5a58da6099d73f50e13576a36984e85b2b": {
+   "claim_id": "mc_9f10854b8fa8964576b5b78f",
+   "source_scene": 8,
+   "status": "ok"
+  },
+  "2aebee532102efa7a09a37a0fc72519fe2bcb354936bba602a54da2b480f1d5a": {
+   "claim_id": "mc_0beb1a3b238587a59529f844",
+   "source_scene": 9,
+   "status": "ok"
+  },
+  "cb4d2f2dca09e201e6567018d233659b24a6a158ec71b1673c3f7372e3357a94": {
+   "claim_id": "mc_e4729a1442c68308ee1a8617",
+   "source_scene": 9,
+   "status": "ok"
+  },
+  "f327c1ad4b022c772299caa0b0676ddfafad2b6fc883e948ebfb2b14b244322b": {
+   "claim_id": "mc_6c4986515cd42abe72230497",
+   "source_scene": 9,
+   "status": "ok"
+  },
+  "60bb31b2166232ef2fc494a29f0e34c16efab2ff4eeb1c77913c2a762f7e0e1f": {
+   "claim_id": "mc_01d03fdb206417f60eda13cf",
+   "source_scene": 9,
+   "status": "ok"
+  },
+  "5cdad6ceb60f551122863dcabc8ee3ef36e20d42e23ad49f0c8e1f98735d8dba": {
+   "claim_id": "mc_1e40ba5a6dde71486b6d0f37",
+   "source_scene": 9,
+   "status": "ok"
+  },
+  "1980177ac9525263bfcdc2e0e7109df351a03795262d62644d230741e5b15b19": {
+   "claim_id": "mc_054690d9d9fa9abf8c184e3d",
+   "source_scene": 9,
+   "status": "ok"
+  },
+  "69257b53bf532119a54778068f4055d57d8d6b0afad3dd2baedda4e24faf467e": {
+   "claim_id": "mc_891adac869b10d51424338bf",
+   "source_scene": 10,
+   "status": "ok"
+  },
+  "b547600e4c2320c315514686cee0af0547bed4ea9127d212a25b4a7cd435b2d6": {
+   "claim_id": "mc_0faf453c3f4f3d685075bb45",
+   "source_scene": 10,
+   "status": "ok"
+  },
+  "982dd1d659049f7e15d1cddfa28b2b8ca9bd428fb61b14497f8455923bef09e4": {
+   "claim_id": "mc_08628bc157d3a73f1299126f",
+   "source_scene": 10,
+   "status": "ok"
+  },
+  "bd8f17340ab8c4d289d1686fdd77704d6419f9863d655814eed6a653c0023f63": {
+   "claim_id": "mc_12be8994bbc082751e10f5c8",
+   "source_scene": 10,
+   "status": "ok"
+  },
+  "17cffb1412f2ffa1b08d1aa94359134dd5575bbdc970c5b166d5b66d11c9de1c": {
+   "claim_id": "mc_a6eafef7fbca209ab9d25013",
+   "source_scene": 11,
+   "status": "ok"
+  },
+  "45bae13bf585ae48d9bdf231c90ac0ad88fa723d2e60562ac86b152c03f2e959": {
+   "claim_id": "mc_0beb1a3b238587a59529f844",
+   "source_scene": 11,
+   "status": "ok"
+  },
+  "a1e612f99069bc11c017cc2dd11c0c62fe2d10a6d3d13d64577ba04ee8a4ad1a": {
+   "claim_id": "mc_59e7e45d18d35c521116962f",
+   "source_scene": 11,
+   "status": "ok"
+  },
+  "95f037e4065c5c87432e0e1433a7fa067e88fd9c5d1bd9d9466e7352646f5ca8": {
+   "claim_id": "mc_dfa62b8d01bc85f75fe2abf6",
+   "source_scene": 11,
+   "status": "ok"
+  },
+  "f5b23a6dda345691d4450e00833c490f5cf3dd580e76774bfaab2a8c5ef8e9c3": {
+   "claim_id": "mc_e4729a1442c68308ee1a8617",
+   "source_scene": 11,
+   "status": "ok"
+  },
+  "27d4c9c1331e1ed6de5e910ee5670b853785f33fef721f847c8d41fa11a526e8": {
+   "claim_id": "mc_6c4986515cd42abe72230497",
+   "source_scene": 11,
+   "status": "ok"
+  },
+  "389e4a220ca47ae1dd507781130047cdb85ebf21e9c8cf5c5b84036082258750": {
+   "claim_id": "mc_6bd45ae5e1a63912184940d0",
+   "source_scene": 11,
+   "status": "ok"
+  },
+  "316f4214fbdf23c98f5c1881457015b76d85c460def22efe1383ba391869a706": {
+   "claim_id": "mc_e7d9857d12d9e27be7c37ce4",
+   "source_scene": 11,
+   "status": "ok"
+  },
+  "a3d01156168fc6573af493c7a4fa82cb34ac13a2fbbaffb5a127f53ed11aa0b9": {
+   "claim_id": "mc_07e2e37edba9350d2111192d",
+   "source_scene": 11,
+   "status": "ok"
+  },
+  "16c696c275053af7c70105bbc0c0714ef229e12d7b3a401e5781894dc3680bd1": {
+   "claim_id": "mc_53e7cc0f03eb6acaeed8f1f9",
+   "source_scene": 11,
+   "status": "ok"
+  },
+  "5c569027aa2c676adc1ad7e7dddde6db04f64871af2fa8c9481708c6ce08ffbf": {
+   "claim_id": "mc_320aec6597dbc26a0d95c22f",
+   "source_scene": 11,
+   "status": "ok"
+  }
+ }
+}
