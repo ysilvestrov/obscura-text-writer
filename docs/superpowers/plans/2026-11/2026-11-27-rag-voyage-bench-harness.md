@@ -188,7 +188,7 @@ def test_partial_failure_keeps_paid_batches(outside_dir):
 - Produces: `CONTEXT_PROMPT` (текст нижче), `CONTEXT_PROMPT_ID = sha256(CONTEXT_PROMPT)`, `CONTEXT_MAX_TOKENS = 4096`.
 - Produces: `context_key(record: Record, prose: str) -> str`. Це sha256 рядка `'|'.join((HAIKU, CONTEXT_PROMPT_ID, record.claim_id, str(record.source_scene), sha256(record.text), sha256(prose)))`.
 - Produces: `context_targets(scenes: list[SceneInput]) -> tuple[list[tuple[Record, str]], int]`. Повертає унікальні за `(claim_id, text)` записи пулів ранжування (`category != 'timeline'`) з `source_scene`, чия сцена є в `scenes`, разом із прозою цієї сцени. Другий елемент — кількість записів без `source_scene` або без сцени (`no_source`).
-- Produces: `generate_context(record, prose, client, ledger) -> tuple[str | None, str]`. Друге значення — статус: `ok`, `truncated`, `empty` чи `budget`.
+- Produces: `generate_context(record, prose, client, ledger) -> tuple[str | None, str]`. Друге значення — статус: `ok`, `truncated`, `empty`, `refusal` (`stop_reason` `refusal`), `stop_<причина>` (будь-яка інша причина зупинки, крім `end_turn`) чи `budget`. Спроба з будь-яким статусом, крім `ok`, оплачується, не кешується й повторюється до 3 разів.
   - Відповідь `stop_reason == 'max_tokens'` або порожня після `strip()` дає `None`.
   - Оплачується кожна спроба. До 3 спроб; далі `failed`.
 - Produces: `contexts.json` у `--out` поза репозиторієм:
@@ -242,7 +242,7 @@ def test_refusals_before_client(): # story outside --cloud-stories, --out inside
 - Consumes: `contexts.json` і `context_key` (задача 3), `vector_rankers`, `_structural_retrieval`.
 - Produces: `contextual(ranker: Ranker, search_text: Mapping[str, str]) -> Ranker`.
   - Ранжує проксі-копії `dataclasses.replace(r, text=search_text.get(r.claim_id, r.text))`, а повертає оригінальні об'єкти пулу в отриманому порядку.
-  - Ключ мапи — `claim_id`. Одному `claim_id` відповідає один текст; якщо в даних це не так, `load_contexts` повертає `contexts_stale`.
+  - Ключ мапи — `(claim_id, текст запису)`: оновлені записи ділять `claim_id`, а ключ контексту вже містить текст запису (рішення P5).
 - Produces: `CTX_MODELS = ('nano-2048', 'voyage-4')`.
 - Produces: `context_strategies(search_text, embedders) -> dict` з такими стратегіями:
   - `structural_ctx_fts` (шар `ctx_fts`);
@@ -257,7 +257,7 @@ def test_refusals_before_client(): # story outside --cloud-stories, --out inside
     - `snapshot` не відповідає `items`.
   - Записи зі статусом `failed` шукаються за власним текстом і рахуються.
 - Produces: секція звіту `contexts`: `{'snapshot', 'ok', 'failed', 'no_source', 'models': [...]}`, без текстів.
-- Produces: у `evaluate_paraphrases` для форми `in_plan` — `baseline_plan[step][core]` для кожної колонки: частка попадань цілі в контекст, коли запит — лише план сцени без речення перефразування (M6).
+- Produces: у `evaluate_paraphrases` для форми `in_plan` — `baseline_plan[level][column][step][core]` і `baseline_plan_n[level]`: частка попадань цілі в контекст, коли запит — лише план сцени без речення перефразування (M6); знаковий тест `sign_in_context_vs_plan` рахується для кожної клітинки рівня.
 
 - [ ] **Step 1: Тести:**
 

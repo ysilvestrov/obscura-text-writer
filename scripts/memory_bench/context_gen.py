@@ -10,7 +10,7 @@ import math
 
 from memory_bench.cloud_spend import BudgetExceeded, SpendLedger
 from memory_bench.model import Record, SceneInput
-from memory_bench.paraphrase_gen import (EST_OUT_TOKENS, HAIKU, PRICE_IN, PRICE_OUT, PRICES_DATE, PROVIDER,  # noqa: F401
+from memory_bench.paraphrase_gen import (HAIKU, PRICE_IN, PRICE_OUT, PRICES_DATE, PROVIDER,  # noqa: F401
                                          CompletionClient)
 
 CONTEXT_PROMPT = (
@@ -20,6 +20,7 @@ CONTEXT_PROMPT = (
 CONTEXT_PROMPT_ID = hashlib.sha256(CONTEXT_PROMPT.encode('utf-8')).hexdigest()
 CONTEXT_MAX_TOKENS = 4096
 ATTEMPTS = 3
+EST_OUT_TOKENS = 1000  # measured average of a Haiku context call is ~977 output tokens
 SCENE_PREFIX = 'Сцена:\n'
 RECORD_PREFIX = 'Запис: '
 
@@ -59,14 +60,15 @@ def build_context_prompt(record: Record, prose: str) -> str:
 
 
 def estimate_usd(prompt: str) -> float:
-    """Estimate of one call: ceil(chars / 2) input tokens plus 600 output tokens at the Haiku prices."""
+    """Estimate of one call: ceil(chars / 2) input tokens plus 1000 output tokens at the Haiku prices."""
     return (math.ceil(len(prompt) / 2) * PRICE_IN + EST_OUT_TOKENS * PRICE_OUT) / 1e6
 
 
 def generate_context(record: Record, prose: str, client: CompletionClient, ledger: SpendLedger) -> tuple[str | None, str]:
     """(context, status). 'ok' carries the stripped context. A reply cut off by max_tokens (the client's
-    last_stop_reason) or empty after strip() is paid for but never kept and is retried, up to 3 attempts; then
-    (None, reason of the last attempt), 'truncated' or 'empty' (the caller stores that as failed). 'budget' means the
+    last_stop_reason), a refusal, any other stop_reason except end_turn (None, a fake client without the attribute, passes)
+    or an empty reply after strip() is paid for but never kept and is retried, up to 3 attempts; then
+    (None, reason of the last attempt), 'truncated', 'refusal', 'stop_<reason>' or 'empty' (the caller stores that as failed). 'budget' means the
     ledger refused the next call (None, nothing is called)."""
     prompt = build_context_prompt(record, prose)
     status = 'empty'
@@ -77,8 +79,13 @@ def generate_context(record: Record, prose: str, client: CompletionClient, ledge
             return None, 'budget'
         text, tokens_in, tokens_out = client.complete(prompt)
         ledger.record(PROVIDER, (tokens_in * PRICE_IN + tokens_out * PRICE_OUT) / 1e6, tokens_in, tokens_out)
-        if getattr(client, 'last_stop_reason', None) == 'max_tokens':
+        stop = getattr(client, 'last_stop_reason', None)
+        if stop == 'max_tokens':
             status = 'truncated'
+        elif stop == 'refusal':
+            status = 'refusal'
+        elif stop not in (None, 'end_turn'):
+            status = f'stop_{stop}'
         elif not text.strip():
             status = 'empty'
         else:

@@ -274,6 +274,12 @@ class VoyageEmbedder:
             raise ValueError('cloud_bad_response') from None
         return used, [rows[i] for i in range(count)]
 
+    def _pay(self, used):
+        usd = used * self.PRICE_PER_MTOK / 1e6
+        self._ledger.record(self.PROVIDER, usd, used, 0)
+        self.tokens += used
+        self.usd += usd
+
     def embed(self, texts, kind):
         if kind not in self.INPUT_TYPES:
             raise ValueError('cloud_input_type')
@@ -291,10 +297,13 @@ class VoyageEmbedder:
         for start in range(0, len(texts), self.BATCH):
             batch = texts[start:start + self.BATCH]
             body = self._post({'input': batch, 'model': self.model_id, 'input_type': self.INPUT_TYPES[kind]})
-            used, batch_rows = self._parse(body, len(batch))
-            usd = used * self.PRICE_PER_MTOK / 1e6
-            self._ledger.record(self.PROVIDER, usd, used, 0)
-            self.tokens += used
-            self.usd += usd
+            try:
+                used, batch_rows = self._parse(body, len(batch))
+            except ValueError:
+                paid = body.get('usage', {}).get('total_tokens') if isinstance(body, dict) and isinstance(body.get('usage'), dict) else None
+                if isinstance(paid, int) and not isinstance(paid, bool) and paid >= 0:
+                    self._pay(paid)  # a 200 response is billed even when its vectors are unusable
+                raise
+            self._pay(used)
             rows.extend(batch_rows)
         return _normalized(np.array(rows, dtype=np.float32))

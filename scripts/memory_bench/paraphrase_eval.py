@@ -158,7 +158,7 @@ def evaluate_paraphrases(scenes: list[SceneInput], queries: list[Query], rankers
                             'in_context': {s: {core: (sum(hits[s][core]) / n if n else 0.0) for core in CORES}
                                            for s in hits}}}
             if plan_hits is not None:  # paired per record against the plan-only hit (M6); the test takes misses
-                plan ={s: [[plan_hits[column][q.claim_id][s][core] for q, _, _ in targets] for core in CORES] for s in hits}
+                plan = {s: [[plan_hits[column][q.claim_id][s][core] for q, _, _ in targets] for core in CORES] for s in hits}
                 out[level][column]['sign_in_context_vs_plan'] = {
                     s: {core: sign_test([1 - h for h in hits[s][core]], [1 - h for h in plan[s][i]])
                         for i, core in enumerate(CORES)} for s in hits}

@@ -179,7 +179,9 @@ def test_bad_response_code(ledger, body):
     with pytest.raises(ValueError) as info:
         emb.embed(['секретний текст'], 'query')
     assert str(info.value) == 'cloud_bad_response' and info.value.__cause__ is None
-    assert ledger.usage('voyage')['calls'] == 0
+    # a body with a parseable usage.total_tokens was billed, so those tokens are recorded; otherwise nothing is
+    billed = isinstance(body, dict) and isinstance(body.get('usage'), dict) and 'total_tokens' in body['usage']
+    assert ledger.usage('voyage')['calls'] == (1 if billed else 0)
 
 
 def test_non_json_body_is_bad_response(ledger):
@@ -238,3 +240,14 @@ def test_partial_failure_keeps_paid_batches(outside_dir, ledger):
     assert rerun.hits == 256 and rerun.misses == 44
     assert ledger.usage('voyage')['calls'] == 3
     assert len(list(cache.glob('*.npz'))) == 300
+
+
+def test_tokens_of_unparseable_200_are_recorded(ledger):
+    body = {'data': [{'embedding': [1.0, 0], 'index': 0}], 'usage': {'total_tokens': 7}}
+    emb = make(lambda request: httpx.Response(200, json=body), ledger)
+    with pytest.raises(ValueError) as info:
+        emb.embed(['секретний текст'], 'query')
+    assert str(info.value) == 'cloud_bad_response'
+    usage = ledger.usage('voyage')
+    assert usage['calls'] == 1 and usage['input_tokens'] == 7 and ledger.spent('voyage') == pytest.approx(7 * 0.06 / 1e6)
+    assert emb.tokens == 7

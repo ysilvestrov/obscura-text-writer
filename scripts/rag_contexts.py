@@ -8,6 +8,7 @@ Anthropic client is created. contexts.json in --out is also the cache: a rerun r
 pays only for 'failed' items and new keys."""
 import argparse
 import sys
+from collections import Counter
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -31,15 +32,16 @@ def make_client(api_key: str):
 
 
 class _Counting:
-    """Passes calls to the client, keeps its stop_reason for generate_context and counts replies cut off by max_tokens."""
+    """Passes calls to the client, keeps its stop_reason for generate_context and counts replies cut off by max_tokens and refusals."""
 
     def __init__(self, inner):
-        self.inner, self.truncated, self.last_stop_reason = inner, 0, None
+        self.inner, self.truncated, self.refusal, self.last_stop_reason = inner, 0, 0, None
 
     def complete(self, prompt):
         reply = self.inner.complete(prompt)
         self.last_stop_reason = getattr(self.inner, 'last_stop_reason', None)
         self.truncated += self.last_stop_reason == 'max_tokens'
+        self.refusal += self.last_stop_reason == 'refusal'
         return reply
 
 
@@ -91,6 +93,9 @@ def _run(args) -> int:
         if isinstance(found, dict) and found.get('status') == 'ok' and isinstance(found.get('context'), str):
             items[k] = {'claim_id': record.claim_id, 'source_scene': record.source_scene, 'status': 'ok', 'context': found['context']}
     cached = len(items)
+    est_usd = (len(targets) - cached) * est_usd_per_call
+    print(f'context_forecast calls={len(targets) - cached} est_usd={est_usd:.4f} '
+          f'spent_usd={before:.4f} max_usd={ledger.caps.get(PROVIDER, 0.0)}', file=sys.stderr)
     done = 0
     code = None
     try:
@@ -127,8 +132,11 @@ def _run(args) -> int:
     manifest_path = Path(args.manifest)
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
     _write_atomic(manifest_path, mani)
+    ok_contexts = [v['context'].strip() for v in items.values() if v['status'] == 'ok']
+    seen = Counter(ok_contexts)
+    duplicates = sum(n for n in seen.values() if n > 1)  # aggregate only, texts never printed
     _print({'targets': len(targets), 'ok': sum(1 for v in items.values() if v['status'] == 'ok'),
-            'failed': sum(1 for v in items.values() if v['status'] == 'failed'), 'truncated': client.truncated,
+            'failed': sum(1 for v in items.values() if v['status'] == 'failed'), 'truncated': client.truncated, 'refusal': client.refusal, 'duplicate_contexts': duplicates,
             'no_source': no_source, 'cached': cached, 'usd_spent': round(ledger.spent(PROVIDER) - before, 6),
             'usd_ledger_total': round(ledger.spent(PROVIDER), 6), 'est_usd_per_call': round(est_usd_per_call, 8),
             'prices_date': PRICES_DATE, 'snapshot': snapshot})

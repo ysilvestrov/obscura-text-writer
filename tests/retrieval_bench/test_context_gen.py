@@ -210,11 +210,11 @@ def test_truncated_counter_counts_cut_attempts_only(outside_dir, capsys, monkeyp
 
 def test_budget_stop_saves_paid_work_and_exits(outside_dir, capsys, monkeypatch, story):
     _env(outside_dir)
-    # each call costs 0.00015; the cap fits two calls with their estimate margin but not four
-    SpendLedger.open(outside_dir / 'spend.json', {'anthropic': 0.0004}, create=True)
+    # each call costs 0.00015 and is estimated at ~0.0005; the cap fits one call with its margin but not two
+    SpendLedger.open(outside_dir / 'spend.json', {'anthropic': 0.0006}, create=True)
     client = FakeClient()
     monkeypatch.setattr(cli, 'make_client', lambda key: client)
-    code, res = _run(capsys, _args(outside_dir, **{'--anthropic-max-usd': '0.0004'}))
+    code, res = _run(capsys, _args(outside_dir, **{'--anthropic-max-usd': '0.0006'}))
     assert code == 2 and res == {'error': 'cloud_budget_exceeded'} and client.calls == 1
     data = _contexts(outside_dir)
     assert len(data['items']) == client.calls and data['snapshot'] == context_snapshot(data['items'])
@@ -301,3 +301,67 @@ def test_anthropic_client_max_tokens_param(monkeypatch):
         monkeypatch.setattr(client, '_client', type('C', (), {'messages': type('M', (), {'create': lambda self, **kw: seen.append(kw) or reply})()})())
         client.complete('x')
         assert seen[-1]['max_tokens'] == expected
+
+
+# ---- final review fixes ---------------------------------------------------------------------------------------------
+
+def test_refusal_and_other_stop_reasons_fail_the_attempt(outside_dir):
+    ledger, record = _ledger(outside_dir), rec('a', 'facts', 'Марія в халаті', scene=1)
+    client = FakeClient([('Не можу цього зробити, але ось контекст.', 'refusal'), ('частково', 'pause_turn'), ('Контекст.', 'end_turn')])
+    assert generate_context(record, 'проза', client, ledger) == ('Контекст.', 'ok')
+    assert client.calls == 3 and ledger.usage('anthropic')['calls'] == 3
+    assert generate_context(record, 'проза', FakeClient([('текст відмови', 'refusal')]), ledger) == (None, 'refusal')
+    assert generate_context(record, 'проза', FakeClient([('текст', 'stop_sequence')]), ledger) == (None, 'stop_stop_sequence')
+    assert generate_context(record, 'проза', FakeClient([('текст', None)]), ledger) == ('текст', 'ok')  # fake clients without the attribute
+
+
+def test_refusal_and_duplicate_counters_without_text(outside_dir, capsys, monkeypatch, story):
+    _env(outside_dir)
+    _ledger(outside_dir)
+
+    class Refusing(FakeClient):
+        def complete(self, prompt):
+            self.calls += 1
+            if 'номер 1 ' in prompt:
+                self.last_stop_reason = 'refusal'
+                return 'ВІДМОВА-ТЕКСТ', 10, 10
+            self.last_stop_reason = 'end_turn'
+            return 'Однаковий контекст.', 10, 10
+    client = Refusing()
+    monkeypatch.setattr(cli, 'make_client', lambda key: client)
+    code, res = _run(capsys, _args(outside_dir))
+    assert code == 0 and (res['ok'], res['failed'], res['refusal'], res['truncated'], client.calls) == (3, 1, 3, 0, 6)
+    assert res['duplicate_contexts'] == 3
+    assert 'ВІДМОВА-ТЕКСТ' not in json.dumps(_contexts(outside_dir)) and 'Однаковий' not in json.dumps(res)
+
+
+def test_duplicate_counter_zero_for_distinct_contexts(outside_dir, capsys, monkeypatch, story):
+    _env(outside_dir)
+    _ledger(outside_dir)
+
+    class Distinct(FakeClient):
+        def complete(self, prompt):
+            self.calls += 1
+            self.last_stop_reason = 'end_turn'
+            return f'Контекст {self.calls}.', 10, 10
+    monkeypatch.setattr(cli, 'make_client', lambda key: Distinct())
+    code, res = _run(capsys, _args(outside_dir))
+    assert code == 0 and res['duplicate_contexts'] == 0 and res['refusal'] == 0
+
+
+def test_forecast_line_on_stderr_before_first_call(outside_dir, capsys, monkeypatch, story):
+    _env(outside_dir)
+    _ledger(outside_dir)
+    order = []
+
+    class Spy(FakeClient):
+        def complete(self, prompt):
+            order.append(capsys.readouterr().err)
+            return super().complete(prompt)
+    monkeypatch.setattr(cli, 'make_client', lambda key: Spy())
+    code = cli.main(_args(outside_dir))
+    err = order[0]
+    assert code == 0
+    line = [x for x in err.splitlines() if x.startswith('context_forecast')]
+    assert len(line) == 1 and line[0].startswith('context_forecast calls=4 est_usd=')
+    assert 'spent_usd=0.0000' in line[0] and 'max_usd=5.0' in line[0] and SENTINEL not in err
