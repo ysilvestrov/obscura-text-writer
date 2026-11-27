@@ -27,9 +27,33 @@ def _read(path: Path) -> dict:
             raise TypeError
         if not isinstance(data.get('prices_date', ''), str):
             raise TypeError
+        caps = data.get('caps', {})
+        if not isinstance(caps, dict) or not all(
+                isinstance(v, (int, float)) and not isinstance(v, bool) for v in caps.values()):
+            raise TypeError
     except (OSError, ValueError, KeyError, TypeError):
         raise LedgerMissing from None
     return data
+
+
+def read_env_key(name: str, env_file) -> str:
+    """The value of `name` from the environment, else from KEY=VALUE lines of the env file; '' when absent.
+    Never prints or raises with the value."""
+    value = os.environ.get(name, '').strip()
+    if value:
+        return value
+    try:
+        lines = Path(env_file).read_text(encoding='utf-8').splitlines()
+    except OSError:
+        return ''
+    for line in lines:
+        line = line.strip()
+        if line.startswith('export '):
+            line = line[len('export '):].lstrip()
+        key, sep, raw = line.partition('=')
+        if sep and not line.startswith('#') and key.strip() == name:
+            return raw.strip().strip('"\'').strip()
+    return ''
 
 
 def _write(path: Path, data: dict) -> None:
@@ -47,11 +71,21 @@ class SpendLedger:
 
     @classmethod
     def open(cls, path: Path, caps: dict[str, float], create: bool = False) -> 'SpendLedger':
+        """The cap of each provider is written into the file when it is first opened (a file without the field gets
+        it, a provider new to the field is added); the effective cap is the lower of the file's and the argument's."""
         path = Path(path)
         if create and not path.exists():
             path.parent.mkdir(parents=True, exist_ok=True)
             _write(path, {'providers': {}, 'prices_date': PRICES_DATE})
-        return cls(path, caps, _read(path))
+        data = _read(path)
+        stored = dict(data.get('caps', {}))
+        added = {p: c for p, c in caps.items() if p not in stored}
+        if 'caps' not in data or added:  # the cap of a provider is written once: the first opening fixes it
+            data = _read(path)  # take what is on disk now, so a concurrent record() is not overwritten
+            data['caps'] = {**{p: c for p, c in caps.items()}, **data.get('caps', {})}
+            _write(path, data)
+            stored = data['caps']
+        return cls(path, {p: min(stored[p], c) for p, c in caps.items()}, data)
 
     def usage(self, provider: str) -> dict:
         found = self.data['providers'].get(provider, {})

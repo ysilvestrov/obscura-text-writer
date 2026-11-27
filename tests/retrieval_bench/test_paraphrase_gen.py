@@ -251,7 +251,7 @@ def test_cli_happy_path_writes_outputs(outside_dir, capsys, monkeypatch, story):
     SpendLedger.open(outside_dir / 'spend.json', {'anthropic': 5.0}, create=True)
     keys = []
     monkeypatch.setattr(cli, 'make_client', lambda key: keys.append(key) or SmartClient())
-    code, res = _run(capsys, _args(outside_dir, **{'--n': '4', '--owner-k': '3'}))
+    code, res = _run(capsys, _args(outside_dir, **{'--n': '4'}))
     assert code == 0 and keys == ['k-not-real']
     assert res['targets'] == 4 and res['queries_ok']['syn'] == res['queries_ok']['desc'] == 4
     # a record with a single content word can never give two shared words: its "same" is rejected after 3 attempts
@@ -263,18 +263,19 @@ def test_cli_happy_path_writes_outputs(outside_dir, capsys, monkeypatch, story):
     data = json.loads((outside_dir / 'out' / 'set.json').read_text(encoding='utf-8'))
     meta = data['meta']
     assert meta['story'] == 'abc-story-id' and meta['model'] == HAIKU and meta['prompt_id'] == PROMPT_ID
-    assert {'seed', 'n', 'levels'} <= set(meta) and meta['levels'] == list(LEVELS) and meta['owner_k'] == 3
+    assert {'seed', 'n', 'levels'} <= set(meta) and meta['levels'] == list(LEVELS) and meta['owner_k'] == 20
     queries = [Query(**q) for q in data['queries']]
     assert len(queries) == 12 and all(q.text and q.record_sha256 for q in queries)
     snapshot = snapshot_hash(manifest(queries, meta))
     assert res['snapshot'] == snapshot
     mani = json.loads((outside_dir / 'manifest.json').read_text(encoding='utf-8'))
-    assert mani == {**manifest(queries, meta), 'snapshot': snapshot}
+    assert mani == {**manifest(queries, meta), 'snapshot': snapshot,
+                    'owner': {'yes': 0, 'no': 0, 'invalid': sum(res['queries_ok'].values()), 'status': 'owner_check_missing'}}
     assert not any(q.text in json.dumps(mani, ensure_ascii=False) for q in queries)
     owner_path = outside_dir / 'out' / 'owner-check.json'
     owner = json.loads(owner_path.read_text(encoding='utf-8'))
-    assert owner['snapshot'] == snapshot and len(owner['items']) == 3
-    assert check_owner_file(owner_path, queries, snapshot, expected=3)[0] == 'owner_check_missing'  # verdicts pending
+    assert owner['snapshot'] == snapshot and len(owner['items']) == sum(res['queries_ok'].values())
+    assert check_owner_file(owner_path, queries, snapshot, expected=sum(res['queries_ok'].values()))[0] == 'owner_check_missing'  # verdicts pending
     assert SpendLedger.open(outside_dir / 'spend.json', {'anthropic': 5.0}).usage('anthropic')['calls'] == 4 + 2 * rejected_same
 
 
@@ -527,3 +528,81 @@ def test_round_trip_generator_owner_eval(synthetic_repo, outside_dir, capsys, mo
     assert code == 0 and again['usd_spent'] == 0 and again['owner_file'] == 'kept'
     assert (out / 'set.json').read_bytes() == set_bytes and owner.read_bytes() == owner_bytes
     assert set(_verdicts(owner)) == {'yes'}
+
+
+# ---- Task 1 of the harness plan: verdict archive, owner_k, M8 error codes, owner summary in the manifest -------------
+
+def test_owner_archive_never_overwrites(outside_dir):
+    out = outside_dir / 'out'
+    out.mkdir()
+    sample = [Query('r1', 'same', 'текст', 'ok', 'x')]
+    old8 = 'abcdef12'
+    owner = out / 'owner-check.json'
+    cli.write_owner_file(owner, sample, old8 + '0' * 56, {})
+    for n in range(3):  # three rotations whose old snapshots share the first 8 characters
+        data = json.loads(owner.read_text(encoding='utf-8'))
+        data['items'][0]['verdict'] = f'v{n}'
+        owner.write_text(json.dumps(data), encoding='utf-8')
+        assert cli._save_owner_file(out, sample, old8 + str(n + 1) * 56, {}) == 'rotated'
+    names = sorted(p.name for p in out.glob('owner-check.*.json'))
+    assert names == [f'owner-check.{old8}-2.json', f'owner-check.{old8}-3.json', f'owner-check.{old8}.json']
+    verdicts = [json.loads((out / f'owner-check.{old8}{suffix}.json').read_text(encoding='utf-8'))['items'][0]['verdict']
+                for suffix in ('', '-2', '-3')]
+    assert verdicts == ['v0', 'v1', 'v2']
+
+
+def test_owner_k_other_than_20_refused_before_client(outside_dir, capsys, forbid_client, story):
+    _env(outside_dir)
+    SpendLedger.open(outside_dir / 'spend.json', {'anthropic': 5.0}, create=True)
+    code, res = _run(capsys, _args(outside_dir, **{'--owner-k': '10'}))
+    assert (code, res) == (2, {'error': 'owner_k_invalid'})
+    assert not (outside_dir / 'out').exists()
+
+
+def test_cache_write_failure_has_its_own_code(outside_dir, capsys, monkeypatch, story):
+    _env(outside_dir)
+    SpendLedger.open(outside_dir / 'spend.json', {'anthropic': 5.0}, create=True)
+    monkeypatch.setattr(cli, 'make_client', lambda key: SmartClient())
+
+    def broken(path, data):
+        raise OSError('disk')
+    monkeypatch.setattr(cli, '_write_atomic', broken)
+    code, res = _run(capsys, _args(outside_dir, **{'--n': '2'}))
+    assert code == 2 and res['error'] == 'cache_write_failed' and res['records_done'] == 0
+
+
+def test_manifest_carries_owner_summary_when_owner_file_matches(outside_dir, capsys, monkeypatch, story):
+    from memory_bench.paraphrase import set_verdict
+    _env(outside_dir)
+    SpendLedger.open(outside_dir / 'spend.json', {'anthropic': 5.0}, create=True)
+    monkeypatch.setattr(cli, 'make_client', lambda key: SmartClient())
+    argv = _args(outside_dir, **{'--n': '12'})
+    assert _run(capsys, argv)[0] == 0
+    manifest_path = outside_dir / 'manifest.json'
+    first = json.loads(manifest_path.read_text(encoding='utf-8'))['owner']
+    assert first['status'] == 'owner_check_missing'  # verdicts pending
+    owner = outside_dir / 'out' / 'owner-check.json'
+    assert len(_verdicts(owner)) == 20
+    for i in range(20):
+        set_verdict(owner, i, 'yes')
+    assert _run(capsys, argv)[0] == 0  # cached rerun, same snapshot: the file is kept
+    assert json.loads(manifest_path.read_text(encoding='utf-8'))['owner'] == {'yes': 20, 'no': 0, 'invalid': 0, 'status': 'ok'}
+    for i in range(6):
+        set_verdict(owner, i, 'no')
+    assert _run(capsys, argv)[0] == 0
+    assert json.loads(manifest_path.read_text(encoding='utf-8'))['owner'] == {
+        'yes': 14, 'no': 6, 'invalid': 0, 'status': 'owner_check_failed'}
+    # another seed: a new snapshot, the old file is rotated aside, the new one has pending verdicts
+    assert _run(capsys, _args(outside_dir, **{'--n': '12', '--seed': '7'}))[0] == 0
+    assert json.loads(manifest_path.read_text(encoding='utf-8'))['owner']['status'] == 'owner_check_missing'
+
+
+def test_manifest_owner_status_stale_when_file_belongs_to_another_snapshot(outside_dir):
+    import memory_bench.paraphrase as para
+    queries = [Query('r1', lv, f't{lv}', 'ok', 'x') for lv in LEVELS]
+    meta = {'story': 's', 'owner_k': 20}
+    snapshot = snapshot_hash(manifest(queries, meta))
+    para.write_owner_file(outside_dir / 'o.json', queries, 'f' * 64, {})
+    summary = cli._owner_summary(outside_dir / 'o.json', queries, snapshot, queries)
+    assert summary['status'] == 'owner_check_stale' and set(summary) == {'yes', 'no', 'invalid', 'status'}
+    assert cli._owner_summary(outside_dir / 'absent.json', queries, snapshot, queries)['status'] == 'owner_check_missing'

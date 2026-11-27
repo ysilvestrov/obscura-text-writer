@@ -15,9 +15,9 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'src'))
 sys.path.insert(0, str(ROOT / 'scripts'))
 
-from memory_bench.cloud_spend import BudgetExceeded, LedgerMissing, SpendLedger  # noqa: E402
-from memory_bench.paraphrase import (FRAME_PARAMS, LEVELS, Query, _inside_repo, _write_atomic, manifest,  # noqa: E402
-                                     owner_sample, sample_targets, sampling_frame, snapshot_hash, story_names,
+from memory_bench.cloud_spend import BudgetExceeded, LedgerMissing, SpendLedger, read_env_key  # noqa: E402
+from memory_bench.paraphrase import (FRAME_PARAMS, LEVELS, OWNER_K, Query, _inside_repo, _write_atomic,  # noqa: E402
+                                     check_owner_file, manifest, owner_sample, sample_targets, sampling_frame, snapshot_hash, story_names,
                                      write_owner_file)
 from memory_bench.paraphrase_gen import _estimate_usd, build_prompt, generate_one  # noqa: E402
 from memory_bench.paraphrase_gen import HAIKU, MAX_TOKENS, PRICE_IN, PRICE_OUT, PROMPT_ID, PROVIDER, PRICES_DATE, generate  # noqa: E402,F401
@@ -68,22 +68,8 @@ def load_story(args):
 
 
 def read_key(env_file) -> str:
-    """The key from the environment, else from KEY=VALUE lines of the env file; '' when absent."""
-    value = os.environ.get(KEY_NAME, '').strip()
-    if value:
-        return value
-    try:
-        lines = Path(env_file).read_text(encoding='utf-8').splitlines()
-    except OSError:
-        return ''
-    for line in lines:
-        line = line.strip()
-        if line.startswith('export '):
-            line = line[len('export '):].lstrip()
-        name, sep, raw = line.partition('=')
-        if sep and not line.startswith('#') and name.strip() == KEY_NAME:
-            return raw.strip().strip('"\'').strip()
-    return ''
+    """The Anthropic key from the environment, else from the env file; '' when absent."""
+    return read_env_key(KEY_NAME, env_file)
 
 
 def make_client(api_key: str):
@@ -134,18 +120,41 @@ def _owner_snapshot(path: Path) -> str | None:
     return snapshot
 
 
+def _free_archive_name(out: Path, old: str) -> Path:
+    """First free name of owner-check.<old8>.json, owner-check.<old8>-2.json, ...: an archived verdict file is never
+    overwritten."""
+    candidate = out / f'owner-check.{old[:8]}.json'
+    n = 1
+    while candidate.exists():
+        n += 1
+        candidate = out / f'owner-check.{old[:8]}-{n}.json'
+    return candidate
+
+
 def _save_owner_file(out: Path, sample, snapshot: str, record_texts: dict) -> str:
     """Keeps an owner file of the same snapshot untouched (the owner's verdicts survive a rerun); moves one of another
-    snapshot aside to owner-check.<first 8 of its snapshot>.json before writing; a missing or unreadable one is
+    snapshot aside to owner-check.<first 8 of its snapshot>[-N].json before writing; a missing or unreadable one is
     simply written. Returns 'kept', 'rotated' or 'written'."""
     path = out / OWNER_NAME
     old = _owner_snapshot(path)
     if old == snapshot:
         return 'kept'
     if old is not None:
-        os.replace(path, out / f'owner-check.{old[:8]}.json')
+        os.replace(path, _free_archive_name(out, old))
     write_owner_file(path, sample, snapshot, record_texts)
     return 'rotated' if old is not None else 'written'
+
+
+def _owner_summary(path: Path, queries, snapshot: str, sample) -> dict:
+    """The owner's verdicts as the eval recomputes them: yes/no/invalid and status 'ok' or the check's code."""
+    expected = min(OWNER_K, sum(1 for q in queries if q.status == 'ok'))
+    code, counts = check_owner_file(path, queries, snapshot, expected=expected,
+                                    sample_keys={(q.claim_id, q.level) for q in sample})
+    return {**counts, 'status': code or 'ok'}
+
+
+class _CacheWriteFailed(Exception):
+    """The cache file could not be written; carries nothing."""
 
 
 def _counts(queries, status):
@@ -166,6 +175,8 @@ def _run(args) -> int:
     if args.init_spend_ledger:
         _print({'usd_spent': SpendLedger.open(Path(args.spend_ledger), caps, create=True).spent(PROVIDER)})
         return 0
+    if args.owner_k != OWNER_K:  # the spec fixes 20 owner items; the eval refuses any other count
+        return _refuse('owner_k_invalid')
     if _inside_repo(args.out):
         return _refuse('inside_repo')
     story_id, scenes = load_story(args)
@@ -189,18 +200,22 @@ def _run(args) -> int:
     done = 0
     try:
         for record in targets:
-            key = _cache_key(record)
-            if key in cache:
-                found = [Query(record.claim_id, q['level'], q['text'], q['status'], key.split('|')[0]) for q in cache[key]['queries']]
+            cache_key = _cache_key(record)
+            if cache_key in cache:
+                found = [Query(record.claim_id, q['level'], q['text'], q['status'], cache_key.split('|')[0]) for q in cache[cache_key]['queries']]
             else:
                 found, used = generate_one(record, names, client, ledger)
-                cache[key] = {'queries': [{'level': q.level, 'text': q.text, 'status': q.status} for q in found], 'attempts': used}
-                _write_atomic(out / CACHE_NAME, {'entries': cache})
+                cache[cache_key] = {'queries': [{'level': q.level, 'text': q.text, 'status': q.status} for q in found], 'attempts': used}
+                try:
+                    _write_atomic(out / CACHE_NAME, {'entries': cache})
+                except (OSError, ValueError, TypeError):
+                    raise _CacheWriteFailed from None
             queries += found
             done += 1
     except (BudgetExceeded, LedgerMissing, Exception) as error:
         code = ('cloud_budget_exceeded' if isinstance(error, BudgetExceeded)
-                else 'spend_ledger_missing' if isinstance(error, LedgerMissing) else 'anthropic_call_failed')
+                else 'spend_ledger_missing' if isinstance(error, LedgerMissing)
+                else 'cache_write_failed' if isinstance(error, _CacheWriteFailed) else 'anthropic_call_failed')
         _print({'error': code, 'usd_spent': round(ledger.spent(PROVIDER) - before, 6), 'records_done': done})
         return 2
     meta = {'story': story_id, 'protagonist': scenes[0].protagonist if scenes else None, 'seed': args.seed, 'n': args.n, 'model': HAIKU, 'prompt_id': PROMPT_ID, 'levels': list(LEVELS),
@@ -211,11 +226,12 @@ def _run(args) -> int:
     _write_atomic(out / 'set.json', {'meta': meta, 'queries': [
         {'claim_id': q.claim_id, 'level': q.level, 'text': q.text, 'status': q.status, 'record_sha256': q.record_sha256}
         for q in queries]})
-    owner_file = _save_owner_file(out, owner_sample(queries, args.owner_k, args.seed, {r.claim_id: r.category for r in targets}),
-                                  snapshot, {r.claim_id: r.text for r in targets})
+    sample = owner_sample(queries, args.owner_k, args.seed, {r.claim_id: r.category for r in targets})
+    owner_file = _save_owner_file(out, sample, snapshot, {r.claim_id: r.text for r in targets})
+    owner = _owner_summary(out / OWNER_NAME, queries, snapshot, sample)
     manifest_path = Path(args.manifest)
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
-    _write_atomic(manifest_path, {**mani, 'snapshot': snapshot})
+    _write_atomic(manifest_path, {**mani, 'snapshot': snapshot, 'owner': owner})
     _print({'targets': len(targets), 'queries_ok': _counts(queries, 'ok'), 'rejected': _counts(queries, 'rejected'),
             'usd_spent': round(ledger.spent(PROVIDER) - before, 6), 'usd_ledger_total': round(ledger.spent(PROVIDER), 6),
             'snapshot': snapshot, 'owner_file': owner_file, 'truncated': client.truncated,

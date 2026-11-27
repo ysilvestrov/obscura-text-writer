@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 
 from .extract import extract_story
+from .paraphrase import _inside_repo
 
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_ANNOTATION = ROOT / 'docs' / 'research' / 'data' / '2026-11-24-rag-pairs-annotation.json'
@@ -40,10 +41,6 @@ def candidates(scenes, pair: dict) -> list:
     if repeat is None or not wanted:
         return []
     return [r for r in repeat.records if any(stem in _normalize(r.text) for stem in wanted)]
-
-
-def _inside_repo(path) -> bool:
-    return Path(path).resolve().is_relative_to(ROOT.resolve())
 
 
 def _repeat_records(args):

@@ -115,3 +115,17 @@ def test_propose_refuses_live_data(env, capsys):
         assert code == 2 and capsys.readouterr().err.strip() == 'live_data'
     finally:
         holder.cleanup()
+
+
+def test_propose_refuses_out_in_main_checkout_of_a_worktree(env, capsys, monkeypatch):
+    import memory_bench.paraphrase as para
+    data, story, pairs, base = env
+    main, checkout = base / 'mainrepo', base / 'wt'
+    (main / '.git' / 'worktrees' / 'w').mkdir(parents=True)
+    checkout.mkdir()
+    (checkout / '.git').write_text(f"gitdir: {main / '.git' / 'worktrees' / 'w'}\n", encoding='utf-8')
+    monkeypatch.setattr(para, 'ROOT', checkout)
+    assert ap._inside_repo is para._inside_repo  # one shared copy, not a private one
+    out = main / 'data' / 'candidates.json'
+    code = ap.main(['propose', '--data', str(data), '--story', story, '--pairs', str(pairs), '--out', str(out)])
+    assert code == 2 and 'inside_repo' in capsys.readouterr().err and not out.exists()
