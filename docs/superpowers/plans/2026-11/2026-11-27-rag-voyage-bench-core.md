@@ -4,7 +4,7 @@
 
 **Goal:** Додати до бенчмарку #25 колонку `voyage-4-nano` і вимірювання рангу цілі на перефразованих запитах (набір генерує Claude, перевіряє власник).
 
-**Architecture:** Ядро за правилом «спершу ядро» (detent pr-slicing): нано як ще одна локальна модель; чисті функції набору (рамка, вибірка, перевірка спільних основ, знімок, перевірка власником); сукупний журнал витрат і генератор через Anthropic API; метрики рангу й попадання в контекст у CLI бенчмарку. Обв'язка — клієнт Voyage замість Azure, контекстний варіант, прогони й розділ дослідження — окремий план після наскрізної рецензії ядра.
+**Architecture:** Ядро за правилом «спершу ядро» (detent pr-slicing): нано як ще одна локальна модель; чисті функції набору (рамка, вибірка, перевірка спільних основ, знімок, перевірка власником); сукупний журнал витрат і генератор через Anthropic API; метрики рангу й попадання в контекст у CLI бенчмарку; локальна сторінка, де власник ставить вердикти кліком. Обв'язка — клієнт Voyage замість Azure, контекстний варіант, прогони й розділ дослідження — окремий план після наскрізної рецензії ядра.
 
 **Tech Stack:** Python 3.12, numpy, sentence-transformers 6.3.0 (дослідницьке venv `C:/tmp/rag-bench/venv`), SDK `anthropic`, pytest.
 
@@ -95,7 +95,8 @@ def test_nano_specs():
   - `manifest(queries: list[Query], meta: dict) -> dict` — `{'meta': meta, 'queries': [{'claim_id', 'level', 'status', 'sha256', 'record_sha256'}]}` (sha256 тексту запиту, без тексту; `meta` генератора містить `model`, `prompt_id`, `seed`, `n`), сортування за (`claim_id`, рівень за порядком `LEVELS`).
   - `snapshot_hash(manifest: dict) -> str` — sha256 від `json.dumps(manifest, ensure_ascii=False, sort_keys=True, separators=(',', ':'))`.
   - `owner_sample(queries: list[Query], k: int, seed: int) -> list[Query]` — лише `ok`; по колу за рівнями `LEVELS`, усередині рівня — перемішування `random.Random(f'{seed}:{level}')` списку, відсортованого за `claim_id`.
-  - `write_owner_file(path: Path, sample: list[Query], snapshot: str) -> None` — JSON `{'snapshot': ..., 'items': [{'claim_id', 'level', 'sha256', 'text', 'verdict': None}]}`; шлях у репозиторії → `ValueError('inside_repo')`.
+  - `write_owner_file(path: Path, sample: list[Query], snapshot: str, record_texts: dict[str, str]) -> None` — JSON `{'snapshot': ..., 'items': [{'claim_id', 'level', 'sha256', 'text', 'record_text', 'verdict': None}]}` (текст запису — щоб власник бачив, із чим порівнювати); шлях у репозиторії → `ValueError('inside_repo')`.
+  - `set_verdict(path: Path, index: int, verdict: str | None) -> dict` — атомарно (`<path>.<pid>.tmp` + `os.replace`) записує `verdict` (`'yes'`, `'no'` або `None` — скасувати) для елемента `index`; повертає `{'yes', 'no', 'pending', 'failed': no > 4}`; інше значення чи індекс поза межами → `ValueError('bad_verdict')`.
   - `check_owner_file(path: Path, queries: list[Query], snapshot: str, max_no: int = 4) -> tuple[str | None, dict]` — код або `None` і `{'yes': int, 'no': int, 'invalid': int}`.
 
 `STOPWORDS` (точно): `який яка яке які там тут щоб але або для від при про над під без між через після перед цей ця це ці той та те ті вже ще лише теж так його її їх він вона воно вони був була було були має мав мала собі себе свій своя своє свої весь вся все всі коли якщо ніж навіть саме дуже знову`.
@@ -230,8 +231,48 @@ def test_report_has_no_texts(): ...                        # json.dumps(report['
 
 ---
 
+### Task 5: Сторінка перевірки для власника (клік замість правки файла)
+
+Вимога власника 27.11.2026: вердикт обирається кліком, а не вписується у файл. Сторінка показує тексти твору, тому лише локально: не публікується, не йде в репозиторій, сервер слухає тільки `127.0.0.1`.
+
+**Files:**
+- Create: `scripts/rag_owner_review.py` (сервер на `http.server` зі стандартної бібліотеки, HTML і JS вбудовані в модуль)
+- Test: `tests/retrieval_bench/test_owner_review.py`
+
+**Interfaces:**
+- Consumes: `set_verdict`, `check_owner_file` (задача 2); файл `owner-check.json` (задача 3 пише його в `--out`).
+- Produces: CLI `python scripts/rag_owner_review.py --dir <тека з owner-check.json> [--port 8765] [--no-browser]` — тека в репозиторії → `{"error": "inside_repo"}`, немає файла → `{"error": "owner_check_missing"}`; друкує лише адресу `http://127.0.0.1:<port>/` і відкриває її в браузері за замовчуванням (`webbrowser.open`), якщо нема `--no-browser`.
+- Produces: `make_server(path: Path, port: int) -> http.server.ThreadingHTTPServer`, прив'язаний до `('127.0.0.1', port)`; маршрути:
+  - `GET /` — сторінка;
+  - `GET /items` — JSON `{'items': [{'index', 'level', 'record_text', 'text', 'verdict'}], 'summary': {...}}`;
+  - `POST /verdict` з JSON `{'index': int, 'verdict': 'yes' | 'no' | null}` → `set_verdict`, відповідь — новий `summary`; помилка → 400 `{'error': 'bad_verdict'}`; інші маршрути — 404; запит із заголовком `Origin`, що не є `http://127.0.0.1:<port>`, — 403 (захист від запитів зі сторонніх сторінок).
+
+**Сторінка** (українською, без зовнішніх ресурсів, працює в світлій і темній темі):
+- угорі — лічильник «перевірено N з 20 · годиться X · ні Y» і стан порогу: «набір проходить» / «понад 4 «ні» — набір буде згенеровано заново»;
+- коротка підказка до рівнів: `same` — «мають бути спільні слова із записом»; `syn` — «та сама деталь іншими словами, без слів запису»; `desc` — «деталь описано через ознаку чи наслідок»; питання до власника — «Чи це справді та сама деталь і чи дотримано правило рівня?»;
+- картка на кожен запит: запис (джерело), рівень із підказкою, запит; дві кнопки «Годиться» / «Ні» (обрана підсвічена, повторний клік скасовує); вибір зберігається одразу (POST), без кнопки «Зберегти»; помилка збереження показується на картці;
+- клавіатура: `1` / `2` для поточної картки, `Tab` між картками; видимий фокус.
+
+- [ ] **Step 1: Тести** — сервер на вільному порту в потоці, запити через `http.client`:
+
+```python
+def test_server_binds_localhost_only(tmp_path): ...        # server.server_address[0] == '127.0.0.1'
+def test_get_items_and_post_verdict_updates_file(tmp_path): ...   # POST yes → файл має 'yes'; summary.yes == 1; POST null → знову None
+def test_bad_verdict_and_unknown_route(tmp_path): ...      # 'Так' → 400 bad_verdict; /etc → 404
+def test_foreign_origin_rejected(tmp_path): ...            # Origin: https://example.com → 403, файл без змін
+def test_cli_refuses_repo_dir_and_missing_file(tmp_path): ...
+```
+
+- [ ] **Step 2: Запустити — падають.**
+- [ ] **Step 3: Реалізувати.**
+- [ ] **Step 4: Тести проходять** в обох середовищах (лише стандартна бібліотека).
+- [ ] **Step 5: Ручна перевірка сторінки** на фейковому `owner-check.json` з нейтральними текстами (20 вигаданих записів), у вбудованому браузері: кліки зберігаються у файл, лічильник і поріг оновлюються, темна тема читається. Записати в звіт задачі, що перевірено.
+- [ ] **Step 6: Commit** `feat(bench): локальна сторінка перевірки перефразувань`.
+
+---
+
 ## Після ядра (не в цьому плані)
 
 1. Наскрізна рецензія ядра (фінальна рецензія гілки за subagent-driven-development); знахідки — у журнал.
-2. Генерація набору на основному творі (`rag_paraphrases.py`), перевірка власником 20 запитів.
+2. Генерація набору на основному творі (`rag_paraphrases.py`), перевірка власником 20 запитів на локальній сторінці (`rag_owner_review.py`).
 3. Окремий план обв'язки: клієнт Voyage замість `AzureEmbedder` (`--cloud`, `cloud_allowed`, журнал витрат провайдера `voyage`, межа $1), контекстний варіант (кеш контекстів із хешем прози сцени), прогони, розділ дослідження #25 і оновлення опису PR #309.
