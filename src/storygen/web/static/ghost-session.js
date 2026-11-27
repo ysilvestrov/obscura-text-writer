@@ -78,7 +78,7 @@ export const skippedCount=session=>textBlocks(session).filter(block=>block.state
 export const writtenCount=session=>textBlocks(session).filter(block=>['writing','peek'].includes(block.state)&&block.text.trim()).length;
 export const doneBlock=block=>block.kind!=='text'||block.state==='skipped'||(block.state==='writing'&&!!block.text.trim());
 export const canSave=session=>textBlocks(session).length>0&&textBlocks(session).every(doneBlock)&&writtenCount(session)>0;
-export const hasWork=session=>textBlocks(session).some(block=>block.touched||block.state==='skipped');
+export const hasWork=session=>textBlocks(session).some(block=>block.touched||block.state==='skipped')||removedSeparators(session)>0;
 
 export function resultText(session){
   return session.blocks.filter(block=>block.state==='separator'||block.state==='writing').map(block=>block.kind==='separator'?block.source:block.text.trim()).filter(Boolean).join('\n\n');

@@ -68,6 +68,12 @@ assert.equal(plain.blocks[2].format,'markdown');
 s.skip(plain);
 assert.equal(s.resultFormat(plain),'plain','a skipped Markdown block does not change the format');
 
+// Removing a separator alone is work: cancel asks first and a reload warns.
+const sepOnly=s.createSession({sceneId:'s1',draftId:'d3',format:'markdown',text});
+assert.equal(s.hasWork(sepOnly),false);
+sepOnly.index=1;s.removeSeparator(sepOnly);
+assert.equal(s.hasWork(sepOnly),true);
+
 // All blocks skipped is not a rewrite.
 const empty=s.createSession({sceneId:'s1',draftId:'d2',format:'plain',text:'Один короткий абзац.'});
 s.skip(empty);
@@ -89,7 +95,7 @@ assert.equal(s.loadSession(storage,'s1','bad'),null);
 // Structurally broken sessions are ignored, not resumed.
 const valid=JSON.parse(memory.get(s.sessionKey('s1','d1')));
 for(const broken of [{...valid,index:99},{...valid,index:-1},{...valid,blocks:[]},{...valid,format:'html'},{...valid,peeks:-1},
-  {...valid,blocks:[{...valid.blocks[0],state:'peek'}]},{...valid,blocks:[{...valid.blocks[0],text:5}]},{...valid,blocks:[{...valid.blocks[0],state:'removed'}]},{...valid,blocks:[{kind:'separator',source:'***',text:'',touched:false,state:'reading'}],index:0}]){
+  {...valid,blocks:[{...valid.blocks[0],state:'peek'}]},{...valid,blocks:[{...valid.blocks[0],text:5}]},{...valid,blocks:[{...valid.blocks[0],state:'removed'}],index:0},{...valid,blocks:[{kind:'separator',source:'***',text:'',touched:false,state:'reading'}],index:0}]){
   memory.set(s.sessionKey('s1','d1'),JSON.stringify(broken));
   assert.equal(s.loadSession(storage,'s1','d1'),null,JSON.stringify(broken).slice(0,80));
 }
