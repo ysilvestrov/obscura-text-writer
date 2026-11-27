@@ -1,0 +1,133 @@
+"""Rank of the target record and in-context hits on paraphrased queries (Voyage retrieval bench, #25).
+
+A paraphrase of a record is the query; the record it was generated from is the target. Per level (same / syn / desc),
+per column (bm25, vec[model], hybrid[model]) and per form (standalone, in_plan) the module reports where the target
+lands in the ranker's order and whether a later scene's structural + retrieval selection keeps it in memory.
+
+Output holds counts, shares and ranks only: no query texts, no record texts. Importable without numpy."""
+import math
+import statistics
+from dataclasses import replace
+from typing import Callable, Mapping
+
+from .model import Record, SceneInput
+from .paraphrase import LEVELS, Query, _eligible, _sha, in_plan_scene, sampling_frame
+from .ranking import Ranker
+from .strategies import Params, full, record_layers
+
+STEPS = (0.75, 0.5, 0.35)
+CORES = ('upper', 'lower')
+UNRELIABLE_SHARE = 0.10
+# Layers do not depend on the budget: the frame excludes only records a structural layer always holds.
+FRAME_PARAMS = Params(memory_budget_tokens=100000, measure='conservative', core_mode='upper')
+_UNBOUNDED = Params(10 ** 12, 'realistic', 'upper')
+
+
+def rank_of(target: str, ordered: list[Record]) -> int | None:
+    """1-based place of the target in the ranker's order; None when the ranker did not return it."""
+    for place, record in enumerate(ordered, 1):
+        if record.claim_id == target:
+            return place
+    return None
+
+
+def sign_test(a: list[int | None], b: list[int | None]) -> dict:
+    """Paired two-sided exact sign test (same arithmetic as adhoc_2026_11_25/offline_checks.sign_test). Smaller rank
+    wins; None is worse than any number and two None are a tie."""
+    worst = float('inf')
+    pairs = [(worst if x is None else x, worst if y is None else y) for x, y in zip(a, b)]
+    a_better = sum(x < y for x, y in pairs)
+    b_better = sum(x > y for x, y in pairs)
+    n = a_better + b_better
+    if n == 0:
+        return {'a_better': a_better, 'b_better': b_better, 'ties': len(pairs), 'p': 1.0}
+    k = min(a_better, b_better)
+    p = min(1.0, 2 * sum(math.comb(n, i) for i in range(k + 1)) / 2 ** n)
+    return {'a_better': a_better, 'b_better': b_better, 'ties': len(pairs) - n, 'p': round(p, 4)}
+
+
+def strategy_name(column: str) -> str:
+    """Strategy of a column: bm25 -> structural_fts, vec[m] -> structural_vec[m], hybrid[m] -> structural_hybrid[m]."""
+    return 'structural_fts' if column == 'bm25' else f'structural_{column}'
+
+
+def frame_by_id(scenes: list[SceneInput]) -> dict[str, Record]:
+    return {r.claim_id: r for r in sampling_frame(scenes, FRAME_PARAMS)}
+
+
+def stale_queries(queries: list[Query], scenes: list[SceneInput]) -> bool:
+    """True when any query's record is gone from the sampling frame of the current extraction or its text changed
+    (sha256 of the record text differs from the one stored when the query was generated)."""
+    frame = frame_by_id(scenes)
+    return any(q.claim_id not in frame or _sha(frame[q.claim_id].text) != q.record_sha256 for q in queries)
+
+
+def _in_plan_pool(scene: SceneInput) -> list[Record]:
+    layers = record_layers(scene, FRAME_PARAMS)
+    return [r for r in scene.records if _eligible(r, layers)]
+
+
+def _stats(ranks: list[int | None], n: int) -> dict:
+    found = [r for r in ranks if r is not None]
+    share = lambda k: (sum(1 for r in found if r <= k) / n) if n else 0.0
+    return {'median_rank': float(statistics.median(found)) if found else None,
+            'found': (len(found) / n) if n else 0.0, 'top5': share(5), 'top10': share(10)}
+
+
+def evaluate_paraphrases(scenes: list[SceneInput], queries: list[Query], rankers: Mapping[str, Ranker],
+                         strategies: Mapping[str, Callable], params_of: Callable[[int, str], Params],
+                         steps: tuple[float, ...] = STEPS) -> dict:
+    """{level: {column: {n, rejected, unreliable, standalone, in_plan, sign_vs_bm25}}}.
+
+    params_of(budget_tokens, core_mode) builds the strategy Params. Rejected queries never enter n. Shares are of n:
+    a query without a later scene (in_plan) or a target the ranker did not return counts as not found."""
+    frame = frame_by_id(scenes)
+    pool_all = [frame[k] for k in sorted(frame)]
+    by_scene = {s.scene_id: s for s in scenes}
+    totals = {s.scene_id: full(s, _UNBOUNDED).tokens_realistic for s in scenes}
+    pools: dict[str, list[Record]] = {}
+    out: dict = {}
+    for level in LEVELS:
+        mine = [q for q in queries if q.level == level]
+        ok = sorted((q for q in mine if q.status == 'ok'), key=lambda q: q.claim_id)
+        rejected = sum(1 for q in mine if q.status == 'rejected')
+        unreliable = bool(rejected + len(ok)) and rejected / (len(ok) + rejected) > UNRELIABLE_SHARE
+        targets = []  # per ok query: (query, frame record or None, scene or None)
+        for q in ok:
+            record = frame.get(q.claim_id)
+            scene = in_plan_scene(record, scenes, FRAME_PARAMS) if record is not None else None
+            if scene is not None:
+                pools.setdefault(scene.scene_id, _in_plan_pool(scene))
+            targets.append((q, record, scene))
+        out[level] = {}
+        ranks: dict[str, dict[str, list[int | None]]] = {}
+        for column, ranker in rankers.items():
+            standalone = [rank_of(q.claim_id, ranker(pool_all, q.text)) for q, _, _ in targets]
+            in_plan, hits = [], {str(step): {core: 0 for core in CORES} for step in steps}
+            no_scene = 0
+            for q, record, scene in targets:
+                if scene is None:
+                    no_scene += 1
+                    in_plan.append(None)
+                    continue
+                query = f'{scene.plan_text} {q.text}'
+                in_plan.append(rank_of(q.claim_id, ranker(pools[scene.scene_id], query)))
+                asked = replace(by_scene[scene.scene_id], plan_text=query)
+                for step in steps:
+                    budget = int(step * totals[scene.scene_id])
+                    for core in CORES:
+                        selected = strategies[strategy_name(column)](asked, params_of(budget, core))
+                        hits[str(step)][core] += q.claim_id in selected.record_ids
+            n = len(ok)
+            ranks[column] = {'standalone': standalone, 'in_plan': in_plan}
+            out[level][column] = {
+                'n': n, 'rejected': rejected, 'unreliable': unreliable,
+                'standalone': _stats(standalone, n),
+                'in_plan': {**_stats(in_plan, n), 'no_scene': no_scene,
+                            'in_context': {s: {core: (hits[s][core] / n if n else 0.0) for core in CORES} for s in hits}}}
+        if 'bm25' in ranks:
+            for column in rankers:
+                if column != 'bm25':
+                    out[level][column]['sign_vs_bm25'] = {
+                        form: sign_test(ranks[column][form], ranks['bm25'][form]) for form in ('standalone', 'in_plan')}
+    return out

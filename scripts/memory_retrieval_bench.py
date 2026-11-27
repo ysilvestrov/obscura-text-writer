@@ -19,6 +19,7 @@ sys.path.insert(0, str(ROOT / 'scripts'))
 from memory_bench.extract import extract_story  # noqa: E402
 from memory_bench.metrics import aggregate, control_hits, pair_hits, pair_summary, scene_metrics  # noqa: E402
 from memory_bench.model import DEFAULT_TOKENIZER, FERTILITY, realistic_ratio, set_tokenizer  # noqa: E402
+from memory_bench.paraphrase_eval import evaluate_paraphrases, stale_queries  # noqa: E402
 from memory_bench.ranking import pair_ranks  # noqa: E402
 from memory_bench.strategies import (STRATEGIES, Params, catalog_full, catalog_full_v4, catalog_narrow,  # noqa: E402
                                      catalog_narrow_v4, fts_rank, full, product, record_layers)
@@ -32,6 +33,7 @@ CLOUD_ENV = ('AZURE_OPENAI_ENDPOINT', 'AZURE_OPENAI_API_KEY', 'AZURE_OPENAI_EMBE
 DEFAULT_CACHE_DIR = r'C:\tmp\rag-bench\cache'
 CLOUD_PRICE_PER_MTOK = 0.13  # USD list price for text-embedding-3-large, per million tokens
 SAMPLES_PER_SYNTHETIC = 60
+OWNER_K = 20  # owner-check.json holds min(OWNER_K, ok queries) items, as rag_paraphrases samples it by default
 
 
 def variants(extra=None):
@@ -395,6 +397,10 @@ def repro_share(model, scenes, others, args, biggest):
 
 
 def run(args):
+    if args.paraphrases:
+        from memory_bench.paraphrase import _inside_repo
+        if _inside_repo(args.paraphrases):
+            return None, 'inside_repo'
     from storygen.application.workspace_bench import _check_data_dir
     try:
         data = _check_data_dir(args.data, True)
@@ -410,18 +416,69 @@ def run(args):
     if not chosen:
         return None, 'story_not_found'
     story = max(chosen, key=lambda s: (len(repo.list_scenes(s.id)), s.id))
+    paraphrases = None
+    if args.paraphrases:
+        paraphrases, error = load_paraphrases(args, repo, story)
+        if error:
+            return None, error
     models = None
     if args.vector_models:
         models, error = setup_vectors(args, story.id)
         if error:
             return None, error
     try:
-        return _build_report(args, repo, story, models), None
+        return _build_report(args, repo, story, models, paraphrases), None
     finally:
         close_vectors(models or [])
 
 
-def _build_report(args, repo, story, models):
+def load_paraphrases(args, repo, story):
+    """(set dict, None) or (None, code). The owner's check and the freshness of the set are settled here, before any
+    embedder is built: a set that fails either never reaches a model."""
+    from memory_bench.paraphrase import Query, check_owner_file, manifest, snapshot_hash
+    folder = Path(args.paraphrases)
+    try:
+        data = json.loads((folder / 'set.json').read_text(encoding='utf-8'))
+        meta = data['meta']
+        queries = [Query(q['claim_id'], q['level'], q['text'], q['status'], q.get('record_sha256', ''))
+                   for q in data['queries']]
+        if not isinstance(meta, dict):
+            raise TypeError
+    except (OSError, ValueError, KeyError, TypeError):
+        return None, 'paraphrase_set_invalid'
+    snapshot = snapshot_hash(manifest(queries, meta))
+    expected = min(OWNER_K, sum(1 for q in queries if q.status == 'ok'))
+    code, owner = check_owner_file(folder / 'owner-check.json', queries, snapshot, expected=expected)
+    if code:
+        return None, code
+    scenes, _ = extract_story(repo, story.id, args.protagonist)
+    if stale_queries(queries, scenes):
+        return None, 'paraphrase_set_stale'
+    return {'queries': queries, 'meta': meta, 'snapshot': snapshot, 'owner': owner}, None
+
+
+def vector_rankers(models):
+    from memory_bench.ranking import rrf_rank, vec_rank
+    rankers = {}
+    for model in models or []:
+        embedder, key = model['cached'], model['key']
+        rankers[f'vec[{key}]'] = lambda pool, query, e=embedder: vec_rank(pool, query, e)
+        rankers[f'hybrid[{key}]'] = lambda pool, query, e=embedder: rrf_rank(pool, query, e)
+    return rankers
+
+
+def paraphrase_section(args, scenes, models, extra, paraphrases):
+    """Report section 'paraphrases': ids, codes and aggregates only (no query or record text)."""
+    rankers = {'bm25': fts_rank, **vector_rankers(models)}
+    strategies = {'structural_fts': STRATEGIES['structural_fts'], **extra}
+    params_of = lambda budget, core: Params(budget, 'realistic', core, core_recent_scenes=args.core_recent)
+    keep = ('seed', 'n', 'model', 'prompt_id', 'levels')
+    return {'meta': {k: paraphrases['meta'].get(k) for k in keep}, 'snapshot': paraphrases['snapshot'],
+            'owner': paraphrases['owner'],
+            'levels': evaluate_paraphrases(scenes, paraphrases['queries'], rankers, strategies, params_of)}
+
+
+def _build_report(args, repo, story, models, paraphrases=None):
     from memory_bench.strategies import vector_strategies
     extra = {}
     for model in models or []:
@@ -474,13 +531,9 @@ def _build_report(args, repo, story, models):
                    'tokenizer': args.tokenizer, 'chars_per_token': round(realistic_ratio(), 3), 'synthetic': _ints(args.synthetic)},
     }
     if pair_data:
-        from memory_bench.ranking import rrf_rank, vec_rank
-        rankers = {}
-        for model in models or []:
-            embedder, key = model['cached'], model['key']
-            rankers[f'vec[{key}]'] = lambda pool, query, e=embedder: vec_rank(pool, query, e)
-            rankers[f'hybrid[{key}]'] = lambda pool, query, e=embedder: rrf_rank(pool, query, e)
-        report['pairs'], report['ranking'] = evaluate_pairs(scenes, others, args, contexts, pair_data, rankers, extra)
+        report['pairs'], report['ranking'] = evaluate_pairs(scenes, others, args, contexts, pair_data, vector_rankers(models), extra)
+    if paraphrases:
+        report['paraphrases'] = paraphrase_section(args, scenes, models, extra, paraphrases)
     if args.budget_steps:
         report['budget_steps'] = evaluate_budget_steps(scenes, args, pair_data, extra)
     if models:
@@ -507,6 +560,8 @@ def build_parser():
     parser.add_argument('--control-cases')
     parser.add_argument('--pairs', help='planted pairs JSON {pairs, controls}; used together with --pairs-annotation')
     parser.add_argument('--pairs-annotation', help='annotation JSON {stories: {story_id: {pair_id: [claim_id]}}}')
+    parser.add_argument('--paraphrases', help='folder with set.json and owner-check.json of scripts/rag_paraphrases.py; '
+                        'must lie outside the repository; works without --vector-models (BM25 only)')
     parser.add_argument('--budget-steps', help='comma-separated shares of the full memory as budget, e.g. 1.0,0.75,0.5,0.35,0.25')
     parser.add_argument('--seed', type=int, default=0)
     parser.add_argument('--tokenizer', choices=sorted(FERTILITY), default=DEFAULT_TOKENIZER,

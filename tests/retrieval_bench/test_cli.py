@@ -406,3 +406,135 @@ def test_truncate_shares_base_model_and_cache(synthetic_repo,tmp_path,monkeypatc
         assert vec['nano-512']['load_seconds']==0 and vec['nano-512']['model_id']==vec['nano-2048']['model_id']
         assert vec['nano-512']['weights_bytes']==vec['nano-2048']['weights_bytes']
     assert built==['nano-2048','nano-2048']
+
+
+# ---- --paraphrases (Task 4): set.json and owner-check.json written the way scripts/rag_paraphrases.py writes them ----
+
+@pytest.fixture
+def para_dir():
+    """Outside the repository (pytest's tmp_path may be inside it)."""
+    import tempfile
+    with tempfile.TemporaryDirectory(prefix='rb-para-') as tmp:
+        yield Path(tmp)
+
+
+def _write_set(folder,repo,story_id,owner=True,tweak=None):
+    """A set over the story's sampling frame: three queries (same, syn, desc) per record, as the generator would write
+    it; tweak(queries) may change the queries before the snapshot and the owner file are computed."""
+    import dataclasses
+    from memory_bench.extract import extract_story
+    from memory_bench.paraphrase import (LEVELS,Query,_sha,manifest,owner_sample,sampling_frame,snapshot_hash,write_owner_file)
+    from memory_bench.paraphrase_eval import FRAME_PARAMS
+    scenes,_=extract_story(repo,story_id,None)
+    frame=sampling_frame(scenes,FRAME_PARAMS)
+    assert frame,'the synthetic story must give the frame at least one record'
+    queries=[Query(r.claim_id,level,f'Запит {level} {r.text}','ok',_sha(r.text)) for r in frame for level in LEVELS]
+    if tweak:
+        queries=tweak(queries)
+    meta={'story':story_id,'seed':0,'n':len(frame),'model':'m','prompt_id':'p','levels':list(LEVELS)}
+    (folder/'set.json').write_text(json.dumps({'meta':meta,'queries':[
+        {'claim_id':q.claim_id,'level':q.level,'text':q.text,'status':q.status,'record_sha256':q.record_sha256} for q in queries]},
+        ensure_ascii=False),encoding='utf-8')
+    if owner:
+        write_owner_file(folder/'owner-check.json',owner_sample(queries,20,0),snapshot_hash(manifest(queries,meta)),{})
+        data=json.loads((folder/'owner-check.json').read_text(encoding='utf-8'))
+        for item in data['items']:
+            item['verdict']='yes'
+        (folder/'owner-check.json').write_text(json.dumps(data,ensure_ascii=False),encoding='utf-8')
+    return scenes,frame,queries
+
+
+def _para_args(repo,folder,*extra):
+    return ['--data',str(repo.root),'--synthetic','','--paraphrases',str(folder),*extra]
+
+
+def test_paraphrases_bm25_only_section(synthetic_repo,para_dir):
+    repo,story_id,_=synthetic_repo
+    _,frame,_=_write_set(para_dir,repo,story_id)
+    report,error=_report(_para_args(repo,para_dir))
+    assert error is None and 'vector' not in report
+    section=report['paraphrases']
+    assert set(section['levels'])=={'same','syn','desc'} and section['owner']['no']==0 and section['snapshot']
+    cell=section['levels']['same']['bm25']
+    assert cell['n']==len(frame) and cell['rejected']==0 and set(cell['in_plan']['in_context'])=={'0.75','0.5','0.35'}
+    assert 'sign_vs_bm25' not in cell
+
+
+def test_report_without_paraphrases_has_no_section(synthetic_repo):
+    repo,_,_=synthetic_repo
+    report,error=_report(['--data',str(repo.root),'--synthetic',''])
+    assert error is None and 'paraphrases' not in report
+
+
+def test_cli_refuses_without_owner_check(synthetic_repo,para_dir,monkeypatch):
+    repo,story_id,_=synthetic_repo;built=[]
+    _patch_factory(monkeypatch,built)
+    _write_set(para_dir,repo,story_id,owner=False)
+    assert _report(_para_args(repo,para_dir,'--vector-models','e5-base'))==(None,'owner_check_missing') and built==[]
+    _write_set(para_dir,repo,story_id)
+    path=para_dir/'set.json'  # the set changes after the owner looked at it
+    path.write_text(path.read_text(encoding='utf-8').replace('Запит same','Запит інший same',1),encoding='utf-8')
+    assert _report(_para_args(repo,para_dir,'--vector-models','e5-base'))==(None,'owner_check_stale') and built==[]
+
+
+def test_cli_exit_code_is_the_refusal_code(synthetic_repo,para_dir):
+    repo,story_id,_=synthetic_repo
+    _write_set(para_dir,repo,story_id,owner=False)
+    out=run_cli(_para_args(repo,para_dir))
+    assert out.returncode==2 and out.stderr.strip()=='owner_check_missing' and out.stdout==''
+
+
+def test_cli_refuses_set_of_changed_story(synthetic_repo,para_dir,monkeypatch):
+    import dataclasses
+    from memory_bench.paraphrase import _sha
+    repo,story_id,_=synthetic_repo;built=[]
+    _patch_factory(monkeypatch,built)
+    # the set claims it was generated from another text of the first record; the owner file is valid for this set
+    _write_set(para_dir,repo,story_id,tweak=lambda qs:[dataclasses.replace(qs[0],record_sha256=_sha('Інший текст запису')),*qs[1:]])
+    assert _report(_para_args(repo,para_dir,'--vector-models','e5-base'))==(None,'paraphrase_set_stale') and built==[]
+    _write_set(para_dir,repo,story_id)  # a fresh set for the same story passes
+    report,error=_report(_para_args(repo,para_dir))
+    assert error is None and 'paraphrases' in report
+
+
+def test_cli_refuses_set_with_missing_claim(synthetic_repo,para_dir,monkeypatch):
+    import dataclasses
+    repo,story_id,_=synthetic_repo;built=[]
+    _patch_factory(monkeypatch,built)
+    _write_set(para_dir,repo,story_id,tweak=lambda qs:[dataclasses.replace(qs[0],claim_id='gone'),*qs[1:]])
+    assert _report(_para_args(repo,para_dir,'--vector-models','e5-base'))==(None,'paraphrase_set_stale') and built==[]
+
+
+def test_cli_paraphrases_inside_repo_and_invalid_set(synthetic_repo,para_dir):
+    repo,_,_=synthetic_repo
+    assert _report(_para_args(repo,ROOT/'docs'))==(None,'inside_repo')
+    assert _report(_para_args(repo,para_dir))==(None,'paraphrase_set_invalid')  # no set.json
+    (para_dir/'set.json').write_text('{"meta": 1}',encoding='utf-8')
+    assert _report(_para_args(repo,para_dir))==(None,'paraphrase_set_invalid')
+
+
+def test_paraphrases_report_has_no_texts(synthetic_repo,para_dir):
+    repo,story_id,_=synthetic_repo
+    scenes,frame,queries=_write_set(para_dir,repo,story_id)
+    report,error=_report(_para_args(repo,para_dir))
+    assert error is None
+    dumped=json.dumps(report['paraphrases'],ensure_ascii=False)
+    secrets={q.text for q in queries}|{r.text for s in scenes for r in s.records}|{s.plan_text for s in scenes}|set(SECRETS)
+    assert len(secrets)>10
+    for text in secrets:
+        assert text and text not in dumped
+    for r in frame:
+        assert r.claim_id not in dumped
+    assert story_id not in dumped
+
+
+def test_paraphrases_with_vector_models(synthetic_repo,para_dir,monkeypatch,cache_dir):
+    pytest.importorskip('numpy')
+    repo,story_id,_=synthetic_repo;built=[]
+    _patch_factory(monkeypatch,built)
+    _write_set(para_dir,repo,story_id)
+    report,error=_report(_vec_args(repo,cache_dir,'--vector-models','e5-base','--paraphrases',str(para_dir)))
+    assert error is None and built==['e5-base']
+    cell=report['paraphrases']['levels']['syn']
+    assert set(cell)=={'bm25','vec[e5-base]','hybrid[e5-base]'}
+    assert set(cell['vec[e5-base]']['sign_vs_bm25'])=={'standalone','in_plan'}
