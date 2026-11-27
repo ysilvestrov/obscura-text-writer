@@ -80,14 +80,24 @@ def _glue_pattern(phrase: str):
         parts.append(''.join(f'[{_APOS}]' if c in _APOS else re.escape(c) for c in token));prev_word=word
     if not parts:return None
     return (re.compile(r"(?<![\w’ʼ'])"+''.join(parts)+r"(?![\w’ʼ'])",re.IGNORECASE),
-            max(words,key=len).casefold() if words else '')
+            _fold(max(words,key=len)) if words else '')
+
+
+def _fold(text: str) -> str:
+    """Case-folded text without combining marks: a superset test for what re.IGNORECASE matches («İ» folds to «i̇»)."""
+    return ''.join(c for c in unicodedata.normalize('NFKD',text.casefold()) if not unicodedata.combining(c))
 
 
 def _glued_spans(line: str, glued) -> list[tuple[int,int]]:
-    folded=line.casefold();spans=[]
+    """Every occurrence of every glued phrase, overlapping ones too (a search restarts one character after a match)."""
+    folded=None;spans=[]
     for compiled in filter(None,map(_glue_pattern,glued)):
         pattern,needle=compiled
-        if needle in folded:spans+=[m.span() for m in pattern.finditer(line)]
+        if folded is None:folded=_fold(line)
+        if needle not in folded:continue
+        found=pattern.search(line)
+        while found:
+            spans.append(found.span());found=pattern.search(line,found.start()+1)
     return spans
 
 

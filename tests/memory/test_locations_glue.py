@@ -40,8 +40,20 @@ def test_overlapping_and_chained_glues():
 
 @pytest.mark.req('MEMORY-LOCATIONS')
 def test_without_glues_the_parse_is_unchanged():
-    for line in ['Дім, двір; сад → озеро потім ліс', 'Бар «Ніч та день» та вулиця', 'Хата (кухня, сіни та комора) та двір']:
-        assert parse_locations(line, ()) == parse_locations(line)
+    assert parse_locations('Дім, двір; сад → озеро потім ліс', ()) == [('Дім',), ('двір',), ('сад',), ('озеро',), ('ліс',)]
+    assert parse_locations('Бар «Ніч та день» та вулиця', ()) == [('Бар «Ніч та день',), ('вулиця',)]
+    assert parse_locations('Хата (кухня, сіни та комора) та двір', ()) == [('Хата (кухня',), ('сіни та комора)',), ('двір',)]
+
+
+@pytest.mark.req('MEMORY-LOCATIONS')
+def test_overlapping_occurrences_of_one_glue_are_all_protected():
+    assert parse_locations('bar, cafe, bar, cafe, bar', ['bar, cafe, bar']) == [('bar, cafe, bar, cafe, bar',)]
+
+
+@pytest.mark.req('MEMORY-LOCATIONS')
+def test_glue_matches_case_whatever_casefold_does():
+    assert parse_locations('İstanbul, pier', ['istanbul, pier']) == [('İstanbul, pier',)]
+    assert parse_locations('STRASSE, Hof', ['straße, hof']) == parse_locations('STRASSE, Hof', [])  # regex: ß ≠ SS
 
 
 @pytest.mark.req('MEMORY-LOCATIONS')

@@ -109,14 +109,21 @@ def test_glue_reaches_trashed_plan_scenes_but_not_candidates(tmp_path):
 
 
 @pytest.mark.req('MEMORY-LOCATIONS')
-def test_glue_stales_material_of_changed_scenes_only(tmp_path, monkeypatch):
-    from storygen.storage import scene_metadata
+def test_glue_stales_material_of_changed_scenes_only(tmp_path):
     repo, story, (changed, same) = book(tmp_path, 'Бар, в якому пахне кавою', 'Ліс')
-    seen = []
-    real = scene_metadata.stale_scene_material
-    monkeypatch.setattr(scene_metadata, 'stale_scene_material', lambda r, db, scene: (seen.append(scene.id), real(r, db, scene)))
+    drafts = {}
+    for scene in (changed, same):
+        draft = repo.save_version(story.id, scene.id, 'draft', 'чернетка', [])
+        with repo.db.connection() as db:
+            row = json.loads(db.execute('SELECT payload FROM scenes WHERE id=?', (scene.id,)).fetchone()[0])
+            row['heads']['draft'] = draft.id
+            db.execute('UPDATE scenes SET payload=? WHERE id=?', (json.dumps(row, ensure_ascii=False), scene.id))
+        drafts[scene.id] = draft.id
+    repo.db.bump_generation()
+    assert not repo.get_version(drafts[changed.id]).stale
     glue(repo, story)
-    assert seen == [changed.id]
+    assert repo.get_version(drafts[changed.id]).stale
+    assert not repo.get_version(drafts[same.id]).stale
 
 
 @pytest.mark.req('MEMORY-LOCATIONS')
