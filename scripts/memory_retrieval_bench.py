@@ -246,7 +246,7 @@ def make_inner_embedder(key, spec, args):
                              revision=spec['revision'])
     return LocalEmbedder(key, spec['model_id'], spec['revision'], spec['query_prefix'], spec['passage_prefix'],
                          spec['max_tokens'], threads=1,
-                         trust_remote_code=spec.get('trust_remote_code', False))
+                         trust_remote_code=spec.get('trust_remote_code', False), dtype=spec.get('dtype'))
 
 
 def _wrap(key, inner, cache_dir, load_seconds):

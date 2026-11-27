@@ -127,5 +127,6 @@ def test_truncated_embedder_slices_and_renormalizes():
 
 def test_nano_specs():
     assert MODELS['nano-2048']['trust_remote_code'] is True
+    assert MODELS['nano-2048']['dtype'] == 'float32'
     assert MODELS['nano-2048']['revision'] == '587d8d6dcaec029a9779c2098d6af020e4a07c01'
     assert MODELS['nano-512'] == {'kind': 'truncate', 'base': 'nano-2048', 'dim': 512}

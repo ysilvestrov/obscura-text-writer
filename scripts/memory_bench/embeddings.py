@@ -23,7 +23,8 @@ MODELS: dict[str, dict] = {
     # first 512 coordinates of nano-2048, re-normalized, over the same loaded model and the same cache.
     'nano-2048': {'kind': 'local', 'model_id': 'MongoDB/voyage-4-nano', 'revision': '587d8d6dcaec029a9779c2098d6af020e4a07c01',
                   'query_prefix': 'Represent the query for retrieving supporting documents: ',
-                  'passage_prefix': 'Represent the document for retrieval: ', 'max_tokens': 8192, 'trust_remote_code': True},
+                  'passage_prefix': 'Represent the document for retrieval: ', 'max_tokens': 8192, 'trust_remote_code': True,
+                  'dtype': 'float32'},  # the checkpoint is bf16, which is very slow on CPU
     'nano-512': {'kind': 'truncate', 'base': 'nano-2048', 'dim': 512},
     # Azure deployment name comes from the cloud config, not from here; the client is AzureEmbedder.
     'azure-3-large': {'kind': 'cloud', 'model_id': 'text-embedding-3-large', 'revision': 'azure'},
@@ -78,7 +79,7 @@ class LocalEmbedder:
     """sentence-transformers on CPU; the import lives in the constructor so the module loads without it."""
 
     def __init__(self, key, model_id, revision, query_prefix, passage_prefix, max_tokens, threads=1,
-                 trust_remote_code=False):
+                 trust_remote_code=False, dtype: str | None = None):
         import torch
         from sentence_transformers import SentenceTransformer
         torch.set_num_threads(threads)
@@ -87,7 +88,8 @@ class LocalEmbedder:
         self.max_tokens = max_tokens
         self.truncated = 0
         self._model = SentenceTransformer(model_id, revision=revision, device='cpu',
-                                          trust_remote_code=trust_remote_code)
+                                          trust_remote_code=trust_remote_code,
+                                          model_kwargs={'dtype': getattr(torch, dtype)} if dtype else None)
         self._model.max_seq_length = max_tokens
         self.dim = int(self._model.get_sentence_embedding_dimension())
 
