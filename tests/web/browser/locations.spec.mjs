@@ -178,6 +178,69 @@ test('a workspace restored from the page cache notices a story change made elsew
   await expect(page.locator('#notice')).toContainText('Тип запису збережено');
 });
 
+test('a story change noticed on return leaves unsaved scene text alone',async({page,request})=>{
+  const fixture=await(await request.post('/test-locations')).json();
+  await page.goto(`/stories/${fixture.story_id}?scene=${fixture.scene_id}&material=plan`);
+  const editor=page.locator('#editor');
+  await expect(editor).toBeVisible();
+  await editor.focus();await page.keyboard.press('Control+End');await page.keyboard.type(' Незбережена правка плану.');
+  await expect(page.locator('#save-text')).toBeEnabled();
+  const data=await(await request.get(`/api/stories/${fixture.story_id}/locations`)).json();
+  const yard=data.locations.find(card=>card.path==='двір');
+  expect((await request.put(`/api/stories/${fixture.story_id}/locations/${yard.id}`,
+    {data:{description:'Змінено деінде.',expected_revision:data.story_revision}})).ok()).toBeTruthy();
+  const reloaded=page.waitForResponse(response=>new URL(response.url()).pathname===`/api/stories/${fixture.story_id}`);
+  await page.evaluate(()=>window.dispatchEvent(new PageTransitionEvent('pageshow',{persisted:true})));
+  await reloaded;
+  await page.waitForTimeout(300);
+  await expect(editor).toHaveValue(/Незбережена правка плану\.$/);
+  await expect(page.locator('#save-text')).toBeEnabled();
+});
+
+test('a slow reload after a return does not undo a save made meanwhile',async({page,request})=>{
+  const {panel}=await openPanel(page,request);
+  // The restoration GET reads the list before the save, but its answer arrives after it.
+  let release;const held=new Promise(resolve=>{release=resolve});
+  let holding=true;
+  await page.route(url=>url.pathname.endsWith('/locations'),async route=>{
+    if(!holding||route.request().method()!=='GET')return route.continue();
+    holding=false;const response=await route.fetch();await held;await route.fulfill({response});
+  });
+  await page.evaluate(()=>window.dispatchEvent(new PageTransitionEvent('pageshow',{persisted:true})));
+  const yard=row(panel,'двір');
+  await yard.locator('summary').click();
+  await yard.locator('textarea').fill('Збережено під час перечитування.');
+  await yard.getByRole('button',{name:'Зберегти опис'}).click();
+  await expect(page.locator('#notice')).toContainText('Опис збережено.');
+  release();
+  await page.waitForTimeout(500);
+  await expect(row(panel,'двір').locator('summary')).toContainText('Збережено під час перечитування.');
+  await row(panel,'двір').locator('summary').click();
+  await row(panel,'двір').locator('textarea').fill('Друга правка.');
+  await row(panel,'двір').getByRole('button',{name:'Зберегти опис'}).click();
+  await expect(page.locator('#notice')).toContainText('Опис збережено.');
+  await expect(row(panel,'двір').locator('summary')).toContainText('Друга правка.');
+});
+
+test('a draft of a card merged elsewhere is dropped when the refused save reloads the list',async({page,request})=>{
+  const {fixture,panel}=await openPanel(page,request);
+  const yard=row(panel,'двір');
+  await yard.locator('summary').click();
+  await yard.locator('textarea').fill('Набрано до злиття.');
+  const data=await(await request.get(`/api/stories/${fixture.story_id}/locations`)).json();
+  const card=path=>data.locations.find(item=>item.path===path);
+  expect((await request.post(`/api/stories/${fixture.story_id}/locations/${card('двір').id}/merge`,
+    {data:{into:card('Квартира Джорджа').id,expected_revision:data.story_revision}})).ok()).toBeTruthy();
+  await yard.getByRole('button',{name:'Зберегти опис'}).click();
+  await expect(page.locator('#notice')).toContainText('Твір уже змінено');
+  await expect(row(panel,'двір')).toContainText('Злито в «Квартира Джорджа»');
+  let asked=null;
+  page.once('dialog',dialog=>{asked=dialog.type();void dialog.dismiss();});
+  await page.locator('#locations-return').click();
+  await expect(page.locator('#workspace')).toBeVisible();
+  expect(asked).toBeNull();
+});
+
 test('a place a prose search gave a scene is removed from it; a plan place has no such button',async({page,request})=>{
   // MEMORY-LOCATIONS-S08: «двір» is named by the plan of «Вечір» and was given to «Ніч» by a search.
   const fixture=await(await request.post('/test-locations?model=true')).json();

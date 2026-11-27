@@ -13,6 +13,7 @@ import {glueOptions,glueRows,hasDrafts,liveDrafts,locationRows,mergeTargets,sugg
 const page=document.querySelector('#locations-page');
 const storyId=page?.dataset.storyId||null;
 let data=null,choosing=null,gluing=null,busy=false;
+let epoch=0;  // bumped by every change: a list read before it is stale and dropped
 const drafts=new Map();  // card id -> typed description not saved yet
 
 const node=(tag,render,className)=>{const n=document.createElement(tag);if(className)n.className=className;if(render)uiText(n,'textContent',render);return n};
@@ -114,9 +115,15 @@ function draw(){
   if(glueRows(data).length)section.append(glues());
 }
 
+function keepLiveDrafts(){const keep=liveDrafts(drafts,data);drafts.clear();for(const [id,text] of keep)drafts.set(id,text)}
+
 async function load(){
   if(!storyId)return;
-  try{data=await api(`/api/stories/${storyId}/locations`)}catch(e){data=null;notice(diagnostic(e.message),'error')}
+  const at=epoch;
+  let fresh;
+  try{fresh=await api(`/api/stories/${storyId}/locations`)}catch(e){if(at===epoch){data=null;notice(diagnostic(e.message),'error');draw()}return}
+  if(at!==epoch)return;  // a change answered meanwhile holds a newer list
+  data=fresh;keepLiveDrafts();  // a card merged elsewhere takes its draft away
   draw();
 }
 
@@ -124,12 +131,12 @@ async function load(){
 // on the dependent scenes.
 async function change(path,method,body,done,subject=null){
   if(busy||!data)return false;
-  const before=data.story_revision,story=storyId;busy=true;draw();
+  const before=data.story_revision,story=storyId;busy=true;epoch++;draw();
   let dependent=[];
   try{
     data=await api(`/api/stories/${story}/locations${path}`,json(method,{...body,expected_revision:before}));
     dependent=data.dependent_scene_ids||[];
-    const keep=liveDrafts(drafts,data);drafts.clear();for(const [id,text] of keep)drafts.set(id,text);
+    keepLiveDrafts();
     notice(msg(done));
   }catch(e){notice(diagnostic(e.message),'error');await load();return false}  // drafts survive the reload
   finally{busy=false;draw()}
