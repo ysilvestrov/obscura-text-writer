@@ -102,6 +102,40 @@ test('leaving with a typed description asks first',async({page,request})=>{
   await expect(row(panel,'двір').locator('textarea')).toHaveValue('Ще не збережено.');
 });
 
+test('a draft of a card merged away does not keep the page asking',async({page,request})=>{
+  const {panel}=await openPanel(page,request);
+  const yard=row(panel,'двір');
+  await yard.locator('summary').click();
+  await yard.locator('textarea').fill('Не встиг зберегти.');
+  await yard.getByRole('button',{name:'Злити в…'}).click();
+  await yard.locator('select').selectOption({label:'Квартира Джорджа'});
+  await yard.getByRole('button',{name:'Злити'}).click();
+  await page.locator('.app-dialog').getByRole('button',{name:'Злити'}).click();
+  await expect(page.locator('#notice')).toContainText('Локації злито.');
+  let asked=null;
+  page.once('dialog',dialog=>{asked=dialog.type();void dialog.dismiss();});
+  await page.locator('#locations-return').click();
+  await expect(page.locator('#workspace')).toBeVisible();
+  expect(asked).toBeNull();
+});
+
+test('the page restored from the browser cache reloads the list before the next change',async({page,request})=>{
+  const {fixture,panel}=await openPanel(page,request);
+  // The workspace (or another tab) moved the story revision while this page waited in the cache.
+  const data=await(await request.get(`/api/stories/${fixture.story_id}/locations`)).json();
+  const room=data.locations.find(card=>card.path==='Квартира Джорджа / вітальня');
+  expect((await request.put(`/api/stories/${fixture.story_id}/locations/${room.id}`,
+    {data:{description:'Змінено деінде.',expected_revision:data.story_revision}})).ok()).toBeTruthy();
+  const reloaded=page.waitForResponse(response=>new URL(response.url()).pathname===`/api/stories/${fixture.story_id}/locations`);
+  await page.evaluate(()=>window.dispatchEvent(new PageTransitionEvent('pageshow',{persisted:true})));
+  await reloaded;
+  const yard=row(panel,'двір');
+  await yard.locator('summary').click();
+  await yard.locator('textarea').fill('Після повернення.');
+  await yard.getByRole('button',{name:'Зберегти опис'}).click();
+  await expect(page.locator('#notice')).toContainText('Опис збережено.');
+});
+
 test('a location change does not turn the next memory-kind change into a conflict after the return',async({page,request})=>{
   const fixture=await(await request.post('/test-locations')).json();
   await page.goto(`/stories/${fixture.story_id}?scene=${fixture.scene_id}&material=memory`);

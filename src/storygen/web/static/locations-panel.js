@@ -8,7 +8,7 @@ import {api,json,notice} from './api.js';
 import {confirmDialog} from './dialogs.js';
 import {offerInvalidation} from './link-invalidation.js';
 import {returnLink} from './workspace-links.js';
-import {glueOptions,glueRows,hasDrafts,locationRows,mergeTargets,suggestionRows} from './locations.js';
+import {glueOptions,glueRows,hasDrafts,liveDrafts,locationRows,mergeTargets,suggestionRows} from './locations.js';
 
 const page=document.querySelector('#locations-page');
 const storyId=page?.dataset.storyId||null;
@@ -129,6 +129,7 @@ async function change(path,method,body,done,subject=null){
   try{
     data=await api(`/api/stories/${story}/locations${path}`,json(method,{...body,expected_revision:before}));
     dependent=data.dependent_scene_ids||[];
+    const keep=liveDrafts(drafts,data);drafts.clear();for(const [id,text] of keep)drafts.set(id,text);
     notice(msg(done));
   }catch(e){notice(diagnostic(e.message),'error');await load();return false}  // drafts survive the reload
   finally{busy=false;draw()}
@@ -173,5 +174,7 @@ if(page){
   const back=document.querySelector('#locations-return');
   if(back)back.href=returnLink(storyId,location.search);
   globalThis.addEventListener('beforeunload',event=>{if(hasDrafts(drafts)){event.preventDefault();event.returnValue=''}});
+  // «Back» can restore this page from the browser cache with an old story revision: reload the list (drafts stay).
+  globalThis.addEventListener('pageshow',event=>{if(event.persisted&&!busy)void load()});
   void load();
 }

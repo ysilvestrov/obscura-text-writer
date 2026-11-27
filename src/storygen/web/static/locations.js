@@ -58,3 +58,11 @@ export function memoryLinkHref(storyId,sceneId,mode){
   const base=`/stories/${encodeURIComponent(storyId)}/locations`;
   return sceneId&&mode?base+'?'+new URLSearchParams({scene:sceneId,material:mode}):base;
 }
+
+// Typed descriptions still worth keeping after a change: of an unmerged card that exists and differs from the saved
+// text (a merge or glue can take the card away, and a stale draft would keep the page asking before leaving).
+export function liveDrafts(drafts,data){
+  if(!data?.locations)return new Map(drafts);
+  const cards=new Map(data.locations.map(card=>[card.id,card]));
+  return new Map([...drafts].filter(([id,text])=>{const card=cards.get(id);return card&&!card.merged_into&&text!==card.description}));
+}

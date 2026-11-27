@@ -54,7 +54,7 @@ def test_panel_lives_on_its_page():
     panel = (STATIC / 'locations-panel.js').read_text(encoding='utf-8')
     for gone in ("'./editor.js'", '#memory-view', 'scene-selected', 'story-refreshed', 'refresh('):
         assert gone not in panel, gone
-    for here in ('#locations-page', 'dataset.storyId', 'beforeunload', 'returnLink'):
+    for here in ('#locations-page', 'dataset.storyId', 'beforeunload', 'returnLink', "'pageshow'", 'liveDrafts('):
         assert here in panel, here
     page = (ROOT / 'src/storygen/web/templates/story.html').read_text(encoding='utf-8')
     assert '/static/locations-link.js' in page

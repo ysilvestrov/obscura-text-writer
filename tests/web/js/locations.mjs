@@ -69,3 +69,12 @@ assert.equal(m.memoryLinkHref('s1',null,null),'/stories/s1/locations');
 assert.equal(m.memoryLinkHref('s1','sc1',null),'/stories/s1/locations');
 assert.equal(m.memoryLinkHref('s1','sc1','memory'),'/stories/s1/locations?scene=sc1&material=memory');
 console.log('page ok');
+
+// Final review: a draft of a card that was merged away, or whose text the server now holds, no longer keeps the page.
+{
+  const fresh={locations:[card('a','А'),card('b','Б',{description:'Збережено.'}),card('c','В',{merged_into:'a',target_path:'А'})]};
+  const drafts=new Map([['a','нове'],['b','Збережено.'],['c','злита'],['gone','зникла']]);
+  assert.deepEqual([...m.liveDrafts(drafts,fresh)],[['a','нове']]);
+  assert.deepEqual([...m.liveDrafts(drafts,null)],[...drafts]);
+  console.log('drafts ok');
+}
