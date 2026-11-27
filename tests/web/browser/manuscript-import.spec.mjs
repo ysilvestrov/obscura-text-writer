@@ -358,12 +358,16 @@ test.describe('store edition',()=>{
     await page.goto('/');
     const {dialog}=await preview(page,await partsFile(request));
     await expect(dialog.locator('#manuscript-import-trial-row')).toBeHidden();
+    // Final review I1: outside the trial series the part headings would vanish, so the dialog says so.
+    const hint=dialog.locator('#manuscript-import-trial-hint');
+    await expect(hint).toHaveText('Частини зберігаються лише в книзі серії проби: поза нею книга імпортується без частин.');
     const select=dialog.locator('#manuscript-import-series');
     await expect(select).toBeVisible();
     expect(await select.locator('option').evaluateAll(items=>items.map(item=>item.value))).toEqual(['',item.id]);
     await select.selectOption(item.id);
     await dialog.locator('#manuscript-import-series-number').fill('1');
     await expect(dialog.locator('.manuscript-import-part')).toHaveCount(4);
+    await expect(hint).toBeHidden();
     const sent=page.waitForRequest(req=>req.method()==='POST'&&/\/api\/manuscript-import\/[0-9a-f]+$/.test(req.url()));
     await dialog.locator('#manuscript-import-submit').click();
     const body=(await sent).postDataJSON();

@@ -204,7 +204,18 @@ export function installManuscriptImport({api,json,notice,document,appInfo}){
     }
     box.append(items);
   }
+  // Final review I1: with parts parsed but not sent (no checkbox, or outside the trial series) the headings would vanish
+  // without a word, so the dialog says where parts are kept.
+  function partsHint(){
+    if(!trialHint)return;
+    const trial=preview?.edition?.trial?.state;
+    const lost=!!preview?.edition?.parts_allowed&&trial!=='none'&&(preview.parts||[]).length>0&&!scope().parts;
+    trialHint.hidden=!lost;if(!lost)return;
+    const key=trial==='available'?'trial.import_hint':'trial.parts_series_only';
+    trialHint.dataset.i18n=key;uiText(trialHint,'textContent',()=>t(key));
+  }
   function renderScenes(){
+    partsHint();
     list.replaceChildren();
     const counts=sceneWords(scenes,paragraphs);
     scenes.forEach((scene,position)=>{
@@ -239,7 +250,7 @@ export function installManuscriptImport({api,json,notice,document,appInfo}){
     const source=chapterSourceValue(preview.chapter_source),none=preview.chapter_source==='none';
     uiText(detected,'textContent',()=>t('manuscript_import.ui.detected',{p0:t(none?'manuscript_import.ui.source_none':source==='markers'?'manuscript_import.ui.source_markers':'manuscript_import.ui.source_level_'+source)}));
     // LONG-PROSE-TRIAL-S07: a free trial and a manuscript with parts offer the checkbox; without it the book is flat.
-    if(trialRow){const offer=preview.edition?.trial?.state==='available'&&(preview.parts||[]).length>0;trialRow.hidden=trialHint.hidden=!offer;if(!offer)trialBox.checked=false}
+    if(trialRow){const offer=preview.edition?.trial?.state==='available'&&(preview.parts||[]).length>0;trialRow.hidden=!offer;if(!offer)trialBox.checked=false}
     const hasFront=(preview.front_matter||[]).length>0;
     frontRow.hidden=!hasFront;frontText.hidden=!hasFront;
     if(!hasFront)front.checked=false;

@@ -152,3 +152,10 @@ def test_skills_never_mention_get_guide():
     offenders = [str(p.relative_to(PLUGIN)) for p in PLUGIN.rglob('*.md')
                  if 'evals' not in p.parts and 'get_guide' in p.read_text(encoding='utf-8')]
     assert offenders == []
+
+
+def test_start_story_sends_a_series_trial_to_the_series_page():
+    """R-47 final review: the import checkbox makes only a trial book; a series trial starts on the Series page."""
+    text = (Path(__file__).resolve().parents[1] / 'integrations/claude/obscura/skills/start-story/SKILL.md').read_text(encoding='utf-8')
+    assert 'one series of two books, can be tried for free by importing' not in text
+    assert '«Серії»' in text
