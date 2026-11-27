@@ -215,10 +215,39 @@ def test_budget_stop_saves_paid_work_and_exits(outside_dir, capsys, monkeypatch,
     client = FakeClient()
     monkeypatch.setattr(cli, 'make_client', lambda key: client)
     code, res = _run(capsys, _args(outside_dir, **{'--anthropic-max-usd': '0.0004'}))
-    assert code == 2 and res == {'error': 'cloud_budget_exceeded'} and 0 < client.calls < 4
+    assert code == 2 and res == {'error': 'cloud_budget_exceeded'} and client.calls == 1
     data = _contexts(outside_dir)
     assert len(data['items']) == client.calls and data['snapshot'] == context_snapshot(data['items'])
     assert not (outside_dir / 'manifest.json').exists()
+
+
+def test_stop_before_cached_ok_records_keeps_them(outside_dir, capsys, monkeypatch, story):
+    _env(outside_dir)
+    _ledger(outside_dir)
+
+    class FailFirst(FakeClient):
+        def complete(self, prompt):
+            self.calls += 1
+            self.last_stop_reason = 'max_tokens' if 'номер 0 ' in prompt else 'end_turn'
+            return 'Контекст ' + str(len(self.prompts)), 10, 10
+    monkeypatch.setattr(cli, 'make_client', lambda key: FailFirst())
+    assert _run(capsys, _args(outside_dir))[1]['failed'] == 1  # r0 failed; r1..r3 ok and come after it
+    before = _contexts(outside_dir)['items']
+    ok_before = {k: v for k, v in before.items() if v['status'] == 'ok'}
+    assert len(ok_before) == 3 and before[next(k for k, v in before.items() if v['claim_id'] == 'r0')]['status'] == 'failed'
+
+    class Boom(FakeClient):
+        def complete(self, prompt):
+            raise RuntimeError(SENTINEL)
+    monkeypatch.setattr(cli, 'make_client', lambda key: Boom())
+    code, res = _run(capsys, _args(outside_dir))
+    assert code == 2 and res['error'] == 'anthropic_call_failed'
+    after = _contexts(outside_dir)['items']
+    assert {k: v for k, v in after.items() if v['status'] == 'ok'} == ok_before  # unreached ok contexts survive
+    good = FakeClient()
+    monkeypatch.setattr(cli, 'make_client', lambda key: good)
+    code, res = _run(capsys, _args(outside_dir))
+    assert code == 0 and good.calls == 1 and (res['ok'], res['failed'], res['cached']) == (4, 0, 3)
 
 
 def test_output_and_manifest_carry_no_text(outside_dir, capsys, monkeypatch, story):

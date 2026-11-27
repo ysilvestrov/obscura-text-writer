@@ -85,15 +85,18 @@ def _run(args) -> int:
     old = _load_items(path)
     meta = {'model': HAIKU, 'prompt_id': CONTEXT_PROMPT_ID, 'story': story_id, 'prices_date': PRICES_DATE}
     items: dict = {}
-    cached = done = 0
+    for record, prose in targets:  # finished contexts are in `items` from the start, so no save ever drops them
+        k = context_key(record, prose)
+        found = old.get(k)
+        if isinstance(found, dict) and found.get('status') == 'ok' and isinstance(found.get('context'), str):
+            items[k] = {'claim_id': record.claim_id, 'source_scene': record.source_scene, 'status': 'ok', 'context': found['context']}
+    cached = len(items)
+    done = 0
     code = None
     try:
         for record, prose in targets:
             k = context_key(record, prose)
-            found = old.get(k)
-            if isinstance(found, dict) and found.get('status') == 'ok' and isinstance(found.get('context'), str):
-                items[k] = {'claim_id': record.claim_id, 'source_scene': record.source_scene, 'status': 'ok', 'context': found['context']}
-                cached += 1
+            if k in items:
                 continue
             text, status = generate_context(record, prose, client, ledger)
             if status == 'budget':
@@ -105,7 +108,7 @@ def _run(args) -> int:
             items[k] = item
             done += 1
             _save(path, meta, items)
-    except (LedgerMissing, Exception) as error:
+    except Exception as error:
         code = ('spend_ledger_missing' if isinstance(error, LedgerMissing)
                 else 'cache_write_failed' if isinstance(error, _CacheWriteFailed) else 'anthropic_call_failed')
     if code is not None:
