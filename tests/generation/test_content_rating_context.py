@@ -112,7 +112,8 @@ def test_adult_cast_builds_with_rating_block(tmp_path):
         'Межа не вимагає досягати рівня: пиши так, як потребує сцена.') in context.system_text
     assert BLOCK not in context.user_text
     with_heads(repo,scenes[0],'prose')
-    memory=build_context(repo,scenes[0].id,'memory',settings())
+    # The memory request also lists the cards (MEMORY-ENTITIES), so it needs more than the default context window.
+    memory=build_context(repo,scenes[0].id,'memory',settings(context_tokens=262144))
     assert BLOCK not in memory.system_text and BLOCK not in memory.user_text
     prepare=make_context(repo,repo.get_story(story.id),None,'prepare',settings(),['Джерело'],[])
     assert BLOCK not in prepare.system_text

@@ -6168,7 +6168,7 @@
     {
       "id": "MEMORY-ENTITIES-S01",
       "requirement": "MEMORY-ENTITIES",
-      "scope": "participant_ids у журналі: серіалізація, незмінність claim_id, відхилення стану, повтору й порожнього ID, зміна з іншими учасниками, версія v4 без повернення, ручне збереження, закриття лінії, злиття арок, версія журналу після злиття, журнал нижче v4 з учасниками відхиляється. wire v4, відбір і таблиця пам’яті — наступні задачі. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "scope": "participant_ids у журналі: серіалізація, незмінність claim_id, відхилення стану, повтору й порожнього ID, зміна з іншими учасниками, версія v4 без повернення, ручне збереження, закриття лінії, злиття арок, версія журналу після злиття, журнал нижче v4 з учасниками відхиляється. wire v4: межі, схема, `participant_unknown`, учасники похідних записів і розділ запиту етапу memory. Відбір і таблиця пам’яті — наступні задачі. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
       "tests": [
         "tests/memory/test_participants_journal.py::test_empty_participants_are_not_serialized",
         "tests/memory/test_participants_journal.py::test_participants_do_not_change_claim_id",
@@ -6181,7 +6181,17 @@
         "tests/memory/test_participants_journal.py::test_thread_resolution_keeps_participants",
         "tests/memory/test_participants_journal.py::test_merge_keeps_participants",
         "tests/memory/test_participants_journal.py::test_a_journal_below_v4_rejects_participants",
-        "tests/memory/test_participants_journal.py::test_merge_result_is_v4_with_participants_and_v4_plan_stays_v4"
+        "tests/memory/test_participants_journal.py::test_merge_result_is_v4_with_participants_and_v4_plan_stays_v4",
+        "tests/memory/test_wire_v4_participants.py::test_bounds_without_cards_are_byte_for_byte_the_same",
+        "tests/memory/test_wire_v4_participants.py::test_schema_requires_participants_in_facts_threads_and_timeline_adds_only",
+        "tests/memory/test_wire_v4_participants.py::test_unknown_or_repeated_participant_is_refused",
+        "tests/memory/test_wire_v4_participants.py::test_old_answer_without_participants_is_valid",
+        "tests/memory/test_wire_v4_participants.py::test_translated_journal_keeps_participants_and_is_v4",
+        "tests/memory/test_wire_v4_participants.py::test_closing_a_thread_gives_the_resolution_fact_the_participants_of_the_thread",
+        "tests/memory/test_wire_v4_participants.py::test_states_never_get_participants",
+        "tests/generation/test_memory_participants_context.py::test_memory_request_lists_every_card_as_allowed_participants",
+        "tests/generation/test_memory_participants_context.py::test_memory_request_without_cards_is_unchanged",
+        "tests/generation/test_memory_participants_context.py::test_sends_cover_participants_section"
       ]
     },
     {

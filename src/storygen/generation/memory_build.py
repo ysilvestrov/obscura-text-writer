@@ -215,7 +215,7 @@ def series_refresh(repo, story) -> bool:
 SECTION_CATEGORIES = {
     'current_prose': 'prose', 'prose_fragments': 'prose',
     'memory_core': 'memory_catalog', 'memory_threads': 'memory_catalog', 'memory_claims': 'memory_catalog',
-    'day_changed': 'memory_catalog', 'allowed_ids': 'memory_catalog',
+    'day_changed': 'memory_catalog', 'allowed_ids': 'memory_catalog', 'allowed_participant_ids': 'memory_catalog',
     'allowed_location_ids': 'places', 'bible_facts': 'series_facts',
 }
 _SEND_ORDER = ('memory_catalog', 'places', 'series_facts')
