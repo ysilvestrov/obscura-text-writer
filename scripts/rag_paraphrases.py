@@ -19,7 +19,7 @@ from memory_bench.cloud_spend import BudgetExceeded, LedgerMissing, SpendLedger 
 from memory_bench.paraphrase import (FRAME_PARAMS, LEVELS, Query, _inside_repo, _write_atomic, manifest,  # noqa: E402
                                      owner_sample, sample_targets, sampling_frame, snapshot_hash, story_names,
                                      write_owner_file)
-from memory_bench.paraphrase_gen import generate_one  # noqa: E402
+from memory_bench.paraphrase_gen import _estimate_usd, build_prompt, generate_one  # noqa: E402
 from memory_bench.paraphrase_gen import HAIKU, PRICE_IN, PRICE_OUT, PROMPT_ID, PROVIDER, PRICES_DATE, generate  # noqa: E402,F401
 
 DEFAULT_LEDGER = r'C:\tmp\rag-bench\spend.json'
@@ -107,6 +107,47 @@ def _load_cache(path: Path) -> dict:
         return {}
 
 
+class _TruncationCounter:
+    """Passes calls to the client and counts replies whose stop_reason was 'max_tokens' (clients without
+    last_stop_reason count none)."""
+
+    def __init__(self, inner):
+        self.inner, self.truncated = inner, 0
+
+    def complete(self, prompt):
+        reply = self.inner.complete(prompt)
+        self.truncated += getattr(self.inner, 'last_stop_reason', None) == 'max_tokens'
+        return reply
+
+
+OWNER_NAME = 'owner-check.json'
+
+
+def _owner_snapshot(path: Path) -> str | None:
+    """Snapshot of an existing owner file; None when it is missing or unreadable (or the snapshot is not hex)."""
+    try:
+        snapshot = json.loads(path.read_text(encoding='utf-8'))['snapshot']
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
+    if not isinstance(snapshot, str) or len(snapshot) < 8 or any(c not in '0123456789abcdef' for c in snapshot):
+        return None
+    return snapshot
+
+
+def _save_owner_file(out: Path, sample, snapshot: str, record_texts: dict) -> str:
+    """Keeps an owner file of the same snapshot untouched (the owner's verdicts survive a rerun); moves one of another
+    snapshot aside to owner-check.<first 8 of its snapshot>.json before writing; a missing or unreadable one is
+    simply written. Returns 'kept', 'rotated' or 'written'."""
+    path = out / OWNER_NAME
+    old = _owner_snapshot(path)
+    if old == snapshot:
+        return 'kept'
+    if old is not None:
+        os.replace(path, out / f'owner-check.{old[:8]}.json')
+    write_owner_file(path, sample, snapshot, record_texts)
+    return 'rotated' if old is not None else 'written'
+
+
 def _counts(queries, status):
     return {level: sum(1 for q in queries if q.level == level and q.status == status) for level in LEVELS}
 
@@ -138,7 +179,8 @@ def _run(args) -> int:
     frame = sampling_frame(scenes, FRAME_PARAMS)
     targets = sample_targets(frame, max((s.number for s in scenes), default=0), args.n, args.seed)
     names = story_names(scenes)
-    client = make_client(key)
+    client = _TruncationCounter(make_client(key))
+    est_usd_per_call = (sum(_estimate_usd(build_prompt(r, names)) for r in targets) / len(targets)) if targets else 0.0
     before = ledger.spent(PROVIDER)
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
@@ -169,14 +211,15 @@ def _run(args) -> int:
     _write_atomic(out / 'set.json', {'meta': meta, 'queries': [
         {'claim_id': q.claim_id, 'level': q.level, 'text': q.text, 'status': q.status, 'record_sha256': q.record_sha256}
         for q in queries]})
-    write_owner_file(out / 'owner-check.json', owner_sample(queries, args.owner_k, args.seed, {r.claim_id: r.category for r in targets}), snapshot,
-                     {r.claim_id: r.text for r in targets})
+    owner_file = _save_owner_file(out, owner_sample(queries, args.owner_k, args.seed, {r.claim_id: r.category for r in targets}),
+                                  snapshot, {r.claim_id: r.text for r in targets})
     manifest_path = Path(args.manifest)
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
     _write_atomic(manifest_path, {**mani, 'snapshot': snapshot})
     _print({'targets': len(targets), 'queries_ok': _counts(queries, 'ok'), 'rejected': _counts(queries, 'rejected'),
             'usd_spent': round(ledger.spent(PROVIDER) - before, 6), 'usd_ledger_total': round(ledger.spent(PROVIDER), 6),
-            'snapshot': snapshot})
+            'snapshot': snapshot, 'owner_file': owner_file, 'truncated': client.truncated,
+            'est_usd_per_call': round(est_usd_per_call, 8), 'prices_date': PRICES_DATE})
     return 0
 
 

@@ -389,3 +389,105 @@ def test_data_error_codes_are_allowlisted(outside_dir, monkeypatch, message, cod
     with pytest.raises(cli.BenchError) as error:
         cli.load_story(type('A', (), {'data': str(outside_dir), 'story': 'x'})())
     assert str(error.value) == code
+
+
+# ---- F9: a name form in syn / desc fails the attempt ----------------------------------------------------------------
+
+def test_generate_name_in_syn_or_desc_fails_the_attempt(outside_dir):
+    client = FakeClient([{'same': OK_SAME, 'syn': 'Остапові відмикають замок', 'desc': 'Металева коробка Остапа'},
+                         {'same': 'x', 'syn': OK_SYN, 'desc': OK_DESC}])
+    out = _by_level(generate([RECORD], ['Остап Гнатюк'], client, _ledger(outside_dir)))
+    assert len(client.prompts) == 2
+    assert (out['syn'].text, out['desc'].text) == (OK_SYN, OK_DESC) and out['same'].text == OK_SAME
+    client = FakeClient([{'same': OK_SAME, 'syn': 'Гнатюк відмикає замок', 'desc': OK_DESC}] * 3)
+    out = _by_level(generate([RECORD], ['Остап Гнатюк'], client, _ledger(outside_dir)))
+    assert out['syn'].status == 'rejected' and out['syn'].text == 'Гнатюк відмикає замок' and len(client.prompts) == 3
+
+
+# ---- F10: truncated replies -----------------------------------------------------------------------------------------
+
+def test_anthropic_client_exposes_stop_reason(monkeypatch):
+    pytest.importorskip('anthropic')
+    from memory_bench.paraphrase_gen import AnthropicClient
+    client = AnthropicClient('test-key-not-real')
+
+    class Usage:
+        input_tokens, output_tokens = 3, 4
+
+    def reply(**extra):
+        return type('Reply', (), {'content': [], 'usage': Usage(), **extra})()
+    replies = [reply(stop_reason='max_tokens'), reply()]
+    monkeypatch.setattr(client, '_client', type('C', (), {'messages': type('M', (), {'create': lambda self, **kw: replies.pop(0)})()})())
+    assert client.last_stop_reason is None
+    client.complete('a')
+    assert client.last_stop_reason == 'max_tokens'
+    client.complete('b')  # a reply without the attribute
+    assert client.last_stop_reason is None
+
+
+class TruncatingClient(SmartClient):
+    """Every second call stops on max_tokens."""
+
+    def __init__(self):
+        self.calls = 0
+        self.last_stop_reason = None
+
+    def complete(self, prompt):
+        self.calls += 1
+        self.last_stop_reason = 'max_tokens' if self.calls % 2 == 0 else 'end_turn'
+        return super().complete(prompt)
+
+
+def test_cli_counts_truncated_replies(outside_dir, capsys, monkeypatch, story):
+    _env(outside_dir)
+    SpendLedger.open(outside_dir / 'spend.json', {'anthropic': 5.0}, create=True)
+    client = TruncatingClient()
+    monkeypatch.setattr(cli, 'make_client', lambda key: client)
+    code, res = _run(capsys, _args(outside_dir, **{'--n': '4'}))
+    assert code == 0 and res['truncated'] == client.calls // 2 and client.calls >= 4
+
+
+# ---- F11: estimate per call -----------------------------------------------------------------------------------------
+
+def test_cli_reports_estimate_per_call_and_prices_date(outside_dir, capsys, monkeypatch, story):
+    from memory_bench.paraphrase import FRAME_PARAMS, sample_targets, sampling_frame, story_names
+    from memory_bench.paraphrase_gen import PRICES_DATE, _estimate_usd, build_prompt
+    _env(outside_dir)
+    SpendLedger.open(outside_dir / 'spend.json', {'anthropic': 5.0}, create=True)
+    monkeypatch.setattr(cli, 'make_client', lambda key: SmartClient())
+    code, res = _run(capsys, _args(outside_dir, **{'--n': '4'}))
+    targets = sample_targets(sampling_frame([story], FRAME_PARAMS), story.number, 4, 0)
+    prompts = [build_prompt(r, story_names([story])) for r in targets]
+    assert code == 0 and res['prices_date'] == PRICES_DATE and res['truncated'] == 0
+    assert res['est_usd_per_call'] == pytest.approx(sum(_estimate_usd(p) for p in prompts) / len(prompts), abs=1e-8)  # rounded to 8 decimals
+
+
+# ---- F1: a rerun keeps the owner's verdicts -------------------------------------------------------------------------
+
+def _verdicts(path):
+    return [i['verdict'] for i in json.loads(path.read_text(encoding='utf-8'))['items']]
+
+
+def test_cli_rerun_keeps_owner_verdicts(outside_dir, capsys, monkeypatch, story):
+    from memory_bench.paraphrase import set_verdict
+    _env(outside_dir)
+    SpendLedger.open(outside_dir / 'spend.json', {'anthropic': 5.0}, create=True)
+    monkeypatch.setattr(cli, 'make_client', lambda key: SmartClient())
+    code, first = _run(capsys, _args(outside_dir, **{'--n': '4'}))
+    owner = outside_dir / 'out' / 'owner-check.json'
+    assert code == 0 and first['owner_file'] == 'written'
+    count = len(_verdicts(owner))
+    for i in range(count):
+        set_verdict(owner, i, 'yes' if i else 'no')
+    before = owner.read_bytes()
+    code, again = _run(capsys, _args(outside_dir, **{'--n': '4'}))  # from the cache: same snapshot
+    assert code == 0 and again['snapshot'] == first['snapshot'] and again['owner_file'] == 'kept'
+    assert owner.read_bytes() == before
+    # another snapshot (another seed): the old file is moved aside with its verdicts, a new one is written
+    code, other = _run(capsys, _args(outside_dir, **{'--n': '4', '--seed': '7'}))
+    assert code == 0 and other['snapshot'] != first['snapshot'] and other['owner_file'] == 'rotated'
+    moved = outside_dir / 'out' / f"owner-check.{first['snapshot'][:8]}.json"
+    assert moved.read_bytes() == before and set(_verdicts(owner)) == {None}
+    owner.write_text('{bad', encoding='utf-8')  # unreadable: simply written anew
+    code, last = _run(capsys, _args(outside_dir, **{'--n': '4', '--seed': '7'}))
+    assert code == 0 and last['owner_file'] == 'written' and set(_verdicts(owner)) == {None}

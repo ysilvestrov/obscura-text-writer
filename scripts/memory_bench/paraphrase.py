@@ -86,6 +86,12 @@ def content_words(text: str, names: Iterable[str]) -> list[str]:
     return out
 
 
+def mentions_name(text: str, names: Iterable[str]) -> bool:
+    """A word of the text starts with a full name stem (the rule of content_words): Остапові, Гнатюка."""
+    stems = [s for name in names for s in name_stems(name)]
+    return any(word.startswith(s) for word in _WORD.findall(_norm(text)) for s in stems)
+
+
 def shared_stems(query: str, record_text: str, names) -> int:
     names = list(names)
     q_words = set(content_words(query, names))

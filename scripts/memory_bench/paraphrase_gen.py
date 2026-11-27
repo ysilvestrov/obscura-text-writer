@@ -9,7 +9,7 @@ from typing import Protocol
 
 from memory_bench.cloud_spend import PRICES_DATE, SpendLedger  # noqa: F401  (PRICES_DATE is re-exported)
 from memory_bench.model import Record
-from memory_bench.paraphrase import LEVELS, Query, level_ok
+from memory_bench.paraphrase import LEVELS, Query, level_ok, mentions_name
 
 HAIKU = 'claude-haiku-5-5'
 PRICE_IN = 0.10   # USD per million input tokens
@@ -40,16 +40,19 @@ class CompletionClient(Protocol):
 
 
 class AnthropicClient:
-    """One non-streaming Messages API call. Haiku 5.5 thinks adaptively by default; effort is set to low."""
+    """One non-streaming Messages API call. Haiku 5.5 thinks adaptively by default; effort is set to low.
+    last_stop_reason holds the stop_reason of the latest reply ('max_tokens' means the reply was cut off)."""
 
     def __init__(self, api_key: str, model: str = HAIKU):
         import anthropic
         self.model = model
+        self.last_stop_reason: str | None = None
         self._client = anthropic.Anthropic(api_key=api_key)
 
     def complete(self, prompt: str) -> tuple[str, int, int]:
         reply = self._client.messages.create(model=self.model, max_tokens=MAX_TOKENS, output_config={'effort': 'low'},
                                              messages=[{'role': 'user', 'content': prompt}])
+        self.last_stop_reason = getattr(reply, 'stop_reason', None)
         text = ''.join(block.text for block in reply.content if block.type == 'text')
         return text, reply.usage.input_tokens, reply.usage.output_tokens
 
@@ -98,7 +101,9 @@ def generate_one(record: Record, names: list[str], client: CompletionClient, led
             variant = parsed.get(level)
             if not isinstance(variant, str) or not variant.strip():
                 continue
-            if level_ok(level, variant, record.text, names):
+            if level in ('syn', 'desc') and mentions_name(variant, names):
+                last[level] = variant  # a name form in syn / desc fails this attempt for the level
+            elif level_ok(level, variant, record.text, names):
                 fixed[level] = variant
             else:
                 last[level] = variant
