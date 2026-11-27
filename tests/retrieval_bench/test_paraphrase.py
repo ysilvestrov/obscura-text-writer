@@ -16,7 +16,7 @@ P = Params(memory_budget_tokens=100000, measure='conservative', core_mode='upper
 
 
 @pytest.mark.parametrize('a,b,expected', [('дах', 'даху', True), ('тече', 'течу', True),
-    ('кросівки', 'кросівок', True), ('кросівки', 'кров', False), ('маяк', 'мак', False)])
+    ('кросівки', 'кросівок', True), ('кросівки', 'кров', True), ('маяк', 'мак', False)])
 def test_share_stem(a, b, expected): assert share_stem(a, b) is expected
 
 
@@ -32,7 +32,7 @@ def test_level_ok():
 
 
 def test_sampling_frame_excludes_layers_and_timeline():
-    recs = rich_records() + [rec('tl1', 'facts', 'Подія з хронології', scene=3, kind='timeline')]
+    recs = rich_records() + [rec('tl1', 'timeline', 'Подія з хронології', scene=3)]
     s1 = scene(recs)
     s2 = scene(recs, id='s11', number=11)
     layers = record_layers(s1, P)
@@ -74,6 +74,8 @@ def test_in_plan_scene_first_later_scene_or_none():
     s4 = scene([r], id='s4', number=4)
     assert in_plan_scene(r, [s7, s3, s4, s5], P).scene_id == 's5'
     assert in_plan_scene(r, [s3, s4], P) is None
+    tl = rec('tl2', 'timeline', 'Подія', scene=1)
+    assert in_plan_scene(tl, [scene([tl], id='s2', number=2)], P) is None
     s6 = scene([other], id='s6', number=6)
     assert in_plan_scene(r, [s6], P) is None
 

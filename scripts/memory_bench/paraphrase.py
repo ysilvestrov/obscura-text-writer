@@ -41,17 +41,14 @@ def _sha(text: str) -> str:
 
 
 def share_stem(a: str, b: str) -> bool:
-    """A common start of at least 3 letters when the shorter word has 3-4 letters (the longer word then differs
-    from it by an ending of at most 3 letters), otherwise at least 4."""
+    """A common start of at least 3 letters when the shorter word has 3-4 letters, otherwise at least 4.
+    Deliberately lenient: a false "shared" only triggers a regeneration, a false "not shared" leaks a word."""
     prefix = 0
     for x, y in zip(a, b):
         if x != y:
             break
         prefix += 1
-    short, long_ = sorted((len(a), len(b)))
-    if short <= 4:
-        return prefix >= 3 and long_ - prefix <= 3
-    return prefix >= 4
+    return prefix >= (3 if min(len(a), len(b)) <= 4 else 4)
 
 
 def content_words(text: str, names: Iterable[str]) -> list[str]:
@@ -76,7 +73,7 @@ def level_ok(level: str, query: str, record_text: str, names) -> bool:
 
 
 def _eligible(record: Record, layers: dict[str, str]) -> bool:
-    return record.claim_id not in layers and record.timeline_kind != 'timeline'
+    return record.claim_id not in layers and record.category != 'timeline'
 
 
 def sampling_frame(scenes: list[SceneInput], params: Params) -> list[Record]:
