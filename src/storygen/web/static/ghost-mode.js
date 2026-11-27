@@ -45,6 +45,7 @@ if(entry&&root){
   const aiLabel=el('h3',null,()=>t('ghost.ai_block'));
   const separatorNote=el('p','ghost-separator',()=>t('ghost.separator'));
   const skippedNote=el('p','ghost-skipped',()=>t('ghost.skipped_note'));
+  const removedNote=el('p','ghost-removed',()=>t('ghost.separator_removed_note'));
   const authorBox=el('section','ghost-author');
   const authorLabel=el('h3',null,()=>t('ghost.your_text'));
   const aiHosts=el('div','ghost-ai-hosts'),authorHosts=el('div','ghost-author-hosts');
@@ -53,12 +54,13 @@ if(entry&&root){
   const back=btn(()=>t('ghost.back'),()=>move(-1));
   const next=btn(()=>t('ghost.next'),()=>move(1));
   const skipButton=btn(()=>t('ghost.skip'),()=>toggleSkip());
+  const separatorButton=btn(()=>t('ghost.remove_separator'),()=>toggleSeparator(),'secondary ghost-separator-toggle');
   const save=btn(()=>t('ghost.save'),()=>void submit(),'ghost-save');
   const cancel=btn(()=>t('ghost.cancel'),()=>void close(true));
-  const nav=el('div','actions ghost-nav');nav.append(back,peekButton,skipButton,next);
+  const nav=el('div','actions ghost-nav');nav.append(back,peekButton,skipButton,separatorButton,next);
   const finish=el('div','actions ghost-finish');finish.append(save,cancel);
   const header=el('header','ghost-header');header.append(title,progress);
-  root.append(header,changed,hint,aiBox,separatorNote,skippedNote,authorBox,nav,finish);
+  root.append(header,changed,hint,aiBox,separatorNote,removedNote,skippedNote,authorBox,nav,finish);
 
   let session=null,busy=false,peekSince=0;
   const aiEditors=new Map(),authorEditors=new Map();
@@ -90,7 +92,8 @@ if(entry&&root){
     const text=current.kind==='text',peeking=current.state==='peek',reading=current.state==='reading',skipped=current.state==='skipped';
     for(const [i,{wrap}] of aiEditors)wrap.hidden=i!==index;
     for(const [i,{wrap}] of authorEditors)wrap.hidden=i!==index;
-    separatorNote.hidden=text;skippedNote.hidden=!skipped;
+    const removed=current.state==='removed';
+    separatorNote.hidden=text||removed;removedNote.hidden=!removed;skippedNote.hidden=!skipped;
     // The AI block is visible before typing and during a peek; the author's text never at the same time.
     aiBox.hidden=!text||!(reading||peeking);aiBox.setAttribute('aria-hidden',String(aiBox.hidden));
     authorBox.hidden=!text||skipped||peeking;
@@ -105,13 +108,21 @@ if(entry&&root){
     back.disabled=peeking||index===0;next.disabled=peeking||index===count-1;
     skipButton.hidden=!text;skipButton.disabled=peeking;
     uiText(skipButton,'textContent',()=>t(skipped?'ghost.unskip':'ghost.skip'));
+    separatorButton.hidden=text;
+    uiText(separatorButton,'textContent',()=>t(removed?'ghost.restore_separator':'ghost.remove_separator'));
     save.disabled=busy||peeking||!model.canSave(session);
     cancel.disabled=busy;
   }
 
-  function focusAuthor(){const current=block();if(current?.kind==='text'&&current.state==='writing'||current?.state==='reading')authorEditors.get(session.index)?.editor.focus();}
+  // A block without an author field (separator, skipped) keeps focus on the mode, so Ctrl+Enter and the other keys still reach it.
+  function focusAuthor(){
+    const current=block();
+    if(current?.kind==='text'&&['writing','reading'].includes(current.state))authorEditors.get(session.index)?.editor.focus();
+    else if(!root.contains(document.activeElement)||document.activeElement.disabled||document.activeElement.closest('[hidden]'))root.focus({preventScroll:true});
+  }
 
   function move(delta){if(!session||!model.go(session,delta))return;persist();render();focusAuthor();}
+  function toggleSeparator(){if(!session)return;if(!model.removeSeparator(session))model.restoreSeparator(session);persist();render();}
   function toggleSkip(){if(!session)return;const current=block();if(current.state==='skipped')model.unskip(session);else model.skip(session);persist();render();if(current.state!=='skipped')focusAuthor();}
 
   function peekOn(){
@@ -135,7 +146,13 @@ if(entry&&root){
       if(!event.repeat&&!event.isComposing)peekOn();
       return;
     }
-    if(event.key==='Enter'&&(event.ctrlKey||event.metaKey)){event.preventDefault();event.stopPropagation();move(1);return;}
+    // Ctrl+Enter: the next block; on the last one it saves, like «Зберегти як чернетку» (nothing happens while saving is unavailable).
+    if(event.key==='Enter'&&(event.ctrlKey||event.metaKey)){
+      event.preventDefault();event.stopPropagation();
+      if(event.repeat)return;
+      if(session.index===session.blocks.length-1)void submit();else move(1);
+      return;
+    }
     if(event.key==='Escape'&&authorHosts.contains(event.target)){event.preventDefault();event.stopPropagation();root.focus({preventScroll:true});}
   },true);
   // Peek ends on releasing the key that started it: Tab in the field, or Space/Enter held on the Peek button (focus moves to the mode).

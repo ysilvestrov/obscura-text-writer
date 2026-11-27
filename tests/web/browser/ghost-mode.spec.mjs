@@ -44,14 +44,18 @@ test('reading, writing and Tab peek; save creates an author draft',async({page,r
   await expect(author(page)).toBeFocused();
   await page.keyboard.press('Control+Enter');
   await expect(mode(page).locator('.ghost-separator')).toBeVisible();
-  await mode(page).getByRole('button',{name:'Далі'}).click();
-  await author(page).click();
+  // The separator block has no author field: Ctrl+Enter still moves on.
+  await page.keyboard.press('Control+Enter');
+  await expect(mode(page).locator('.ghost-progress')).toContainText('Блок 3 з 3');
+  await expect(author(page)).toBeFocused();
   await page.keyboard.type('Вона піднялася нагору й подивилася на затоку.');
   await mode(page).evaluate(node=>node.scrollTo(0,0));
   await page.keyboard.down('Tab');
   await mode(page).screenshot({path:`../docs/images/ghost-mode-${test.info().project.name}.png`});
   await page.keyboard.up('Tab');
-  await mode(page).getByRole('button',{name:'Зберегти як чернетку'}).click();
+  // Ctrl+Enter on the last block saves, like the button.
+  await expect(author(page)).toBeFocused();
+  await page.keyboard.press('Control+Enter');
   await expect(mode(page)).toBeHidden();
   await expect(page.locator('#notice')).toContainText('блоків 2 з 2');
   const saved=await head(request,f.scene_id);
@@ -87,9 +91,23 @@ test('peek button, blocked paste and copy, explicit skip',async({page,request})=
   await page.mouse.up();
   await expect(ai(page)).toBeHidden();
   await mode(page).getByRole('button',{name:'Далі'}).click();
+  // The separator can be removed and restored; a removed one is not in the result and is not a skipped block.
+  await mode(page).getByRole('button',{name:'Видалити розділювач'}).click();
+  await expect(mode(page).locator('.ghost-removed')).toBeVisible();
+  await expect(mode(page).locator('.ghost-separator')).toBeHidden();
+  await mode(page).getByRole('button',{name:'Повернути розділювач'}).click();
+  await expect(mode(page).locator('.ghost-separator')).toBeVisible();
+  await mode(page).getByRole('button',{name:'Видалити розділювач'}).click();
+  await expect(mode(page).locator('.ghost-progress')).toContainText('пропущено 0');
   await mode(page).getByRole('button',{name:'Далі'}).click();
+  await expect(mode(page).getByRole('button',{name:'Видалити розділювач'})).toBeHidden();
   const save=mode(page).getByRole('button',{name:'Зберегти як чернетку'});
   await expect(save).toBeDisabled();
+  // Ctrl+Enter on the last block does nothing while saving is unavailable.
+  await author(page).click();
+  await page.keyboard.press('Control+Enter');
+  await expect(mode(page)).toBeVisible();
+  await expect(page.locator('.app-dialog')).toHaveCount(0);
   await mode(page).getByRole('button',{name:'Пропустити блок'}).click();
   await expect(mode(page).locator('.ghost-skipped')).toBeVisible();
   await expect(save).toBeEnabled();
@@ -100,7 +118,7 @@ test('peek button, blocked paste and copy, explicit skip',async({page,request})=
   await expect(mode(page)).toBeHidden();
   const saved=await head(request,f.scene_id);
   expect(saved.ghost_rewrite).toMatchObject({blocks:2,blocks_written:1,blocks_skipped:1,peeks:1,pastes_blocked:1});
-  expect((await(await request.get(`/api/versions/${saved.id}`)).json()).text).toBe('Вечір.\n\n***');
+  expect((await(await request.get(`/api/versions/${saved.id}`)).json()).text).toBe('Вечір.');
 });
 
 test('an unsaved rewrite survives a reload and cancel discards it',async({page,request})=>{

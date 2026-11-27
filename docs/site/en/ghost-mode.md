@@ -9,14 +9,15 @@ This mode helps you rewrite a scene's AI draft in your own words instead of edit
 
 You can also open the mode with a link from a [chat client](mcp.md). The link opens in a new tab and starts the mode for the scene's current draft, the same as the button. If the draft was changed after the chat gave the link, or the scene has an unfinished rewrite of an older draft, the mode does not open and the page explains why: continue or cancel the old rewrite with the button.
 
-The draft is split into blocks of about two lines: a paragraph, with short paragraphs such as dialogue lines joined to the following ones. Scene separators (`***`) are carried into the result as they are.
+The draft is split into blocks of about two lines: a paragraph, with short paragraphs such as dialogue lines joined to the following ones. Scene separators (`***`) are carried into the result as they are, unless you remove them.
 
 ## Writing
 
 - You see the current draft block. As soon as you start typing, it disappears and only your text remains.
 - **Peek:** while you hold `Tab`, your text is hidden, the draft block is shown and typing is locked. For mouse and touch there is a **Peek (hold)** button.
-- `Ctrl+Enter` or **Next** moves to the next block, **Back** to the previous one.
+- `Ctrl+Enter` or **Next** moves to the next block, **Back** to the previous one. On the last block `Ctrl+Enter` saves, like **Save as draft**.
 - **Skip block** deliberately leaves a fragment out of the new draft; **Restore block** undoes that.
+- On a scene separator, **Remove separator** leaves it out of the new draft and **Restore separator** undoes that.
 - `Esc` moves the cursor out of the field, because `Tab` in the field is taken by the peek.
 - Pasting is disabled, and the draft text cannot be selected or copied.
 
