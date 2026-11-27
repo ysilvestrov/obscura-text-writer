@@ -87,6 +87,12 @@ def characters_page(id: str,request: Request):
     return request.app.state.templates.TemplateResponse(request=request,name="characters.html",context={"story":request.app.state.repo.get_story(id)})
 
 
+@router.get("/stories/{id}/locations")
+def locations_page(id: str,request: Request):
+    """MEMORY-LOCATIONS-S12: the story's locations on their own page, like the characters."""
+    return request.app.state.templates.TemplateResponse(request=request,name="locations.html",context={"story":request.app.state.repo.get_story(id)})
+
+
 @router.get("/api/stories")
 def stories_list(request: Request):
     """MCP-BRIDGE: active stories for an external client; the HTML library stays at `/`."""
@@ -148,8 +154,10 @@ def story_view(id: str,request: Request):
 
 @router.get("/api/stories/{id}/scene-revisions")
 def scene_revisions(id: str,request: Request):
-    # R-49: the mode rides along, so an open workspace notices a mode switch made in another window.
-    return {"scenes":request.app.state.repo.scene_revisions(id),"writing_mode":request.app.state.repo.get_story(id).writing_mode}
+    # R-49: the mode rides along, so an open workspace notices a mode switch made in another window; the story revision
+    # (MEMORY-LOCATIONS-S12) lets it notice any story-level change made elsewhere, such as on the locations page.
+    story=request.app.state.repo.get_story(id)
+    return {"scenes":request.app.state.repo.scene_revisions(id),"writing_mode":story.writing_mode,"story_revision":story.revision}
 
 
 @router.patch('/api/stories/{id}')

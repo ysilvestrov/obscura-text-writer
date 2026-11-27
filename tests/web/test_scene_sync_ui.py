@@ -60,7 +60,7 @@ def test_workspace_loads_the_sync_and_its_notice():
     template = (ROOT / 'src/storygen/web/templates/story.html').read_text(encoding='utf-8')
     assert 'id="external-change"' in template and '/static/scene-sync-workspace.js' in template
     wiring = _read('scene-sync-workspace.js')
-    for needle in ("'visibilitychange'", "'focus'", '/scene-revisions', "invokeWorkspaceCommand('show',MATERIALS.includes(state.mode)?state.mode:'plan')", 'clearSceneBuffer()'):
+    for needle in ("'visibilitychange'", "'focus'", "'pageshow'", 'storyChanged(', '/scene-revisions', "invokeWorkspaceCommand('show',MATERIALS.includes(state.mode)?state.mode:'plan')", 'clearSceneBuffer()'):
         assert needle in wiring
     import json
     catalog = json.loads(_read('i18n.json'))
@@ -91,7 +91,8 @@ def test_cross_review_fixes_for_stale_buffers():
     wiring = _read('scene-sync-workspace.js')
     check = wiring[wiring.index('async function check'):wiring.index('const sync=')]
     # A view refreshed by the author's own action can be current while the buffer is still behind: notice it once.
-    # R-49: a mode change elsewhere refreshes too, after the scene revisions of the same absence are handled.
-    assert 'if(!modeChanged&&!result.changed&&(state.externalChange||!(result.currentChanged||result.currentGone)))return;' in check
+    # R-49: a mode change elsewhere refreshes too, after the scene revisions of the same absence are handled;
+    # MEMORY-LOCATIONS-S12: so does a story revision moved elsewhere (the locations page).
+    assert 'if(!modeChanged&&!storyMoved&&!result.changed&&(state.externalChange||!(result.currentChanged||result.currentGone)))return;' in check
     # A buffer that became clean (undo) while behind is reloaded, not just relieved of its notice.
     assert "document.addEventListener('editor-state-changed',reloadIfClean)" in wiring

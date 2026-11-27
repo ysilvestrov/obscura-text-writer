@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {pathToFileURL} from 'node:url';
 const root=process.argv[2];
-const {revisionsChanged,newerScene,externalNotice,cleanBuffer,createSceneSync}=await import(pathToFileURL(root+'/src/storygen/web/static/scene-sync.js'));
+const {revisionsChanged,newerScene,externalNotice,cleanBuffer,createSceneSync,storyChanged}=await import(pathToFileURL(root+'/src/storygen/web/static/scene-sync.js'));
 
 // revisionsChanged: the set of scenes and each revision against the loaded view; the current scene against the buffer.
 const view=[{id:'a',revision:2},{id:'b',revision:1}];
@@ -69,3 +69,11 @@ assert.equal(liveScene(inBuffer,[inView]),inBuffer);
 assert.equal(liveScene(inView,[inBuffer]),inBuffer);
 assert.equal(liveScene(inBuffer,[]),inBuffer);
 console.log('ok3');
+
+// MEMORY-LOCATIONS-S12: a story revision moved elsewhere (the locations page) reloads the workspace; an old server
+// without the field changes nothing.
+assert.equal(storyChanged({story:{revision:3}},{story_revision:3}),false);
+assert.equal(storyChanged({story:{revision:3}},{story_revision:4}),true);
+assert.equal(storyChanged({story:{revision:3}},{}),false);
+assert.equal(storyChanged(null,{story_revision:4}),false);
+console.log('story ok');

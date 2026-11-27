@@ -2132,7 +2132,8 @@
       "manual": {
         "procedure": "docs/verification/manual.md#plan-numbering",
         "reason": "check_docs.py індексує лише pytest; Playwright cases tests/web/browser/plan-numbering.spec.mjs перелічено в процедурі й виконуються окремим runner, цей зв’язок не є доказом виконання."
-      }
+      },
+      "tests": []
     },
     {
       "id": "SCENE-CAST-DISPLAY-S01",
@@ -6060,7 +6061,7 @@
         "tests/web/test_locations_api.py::test_writes_through_the_api_make_shown_versions_stale",
         "tests/web/test_locations_api.py::test_no_suggestion_between_a_card_and_its_ancestor_through_a_merge",
         "tests/web/test_locations_ui.py::test_panel_rows",
-        "tests/web/test_locations_ui.py::test_story_page_has_the_section_and_both_languages_have_the_texts",
+        "tests/web/test_locations_ui.py::test_both_languages_have_the_texts",
         "tests/web/test_locations_ui.py::test_server_messages_match_the_catalog",
         "tests/generation/test_location_context.py::test_memory_view_rows_name_their_locations_as_the_merge_target",
         "tests/web/test_memory_table_ui.py::test_memory_table_selection_conflict_and_async_save"
@@ -6140,11 +6141,28 @@
       "tests": [
         "tests/web/test_locations_ui.py::test_panel_rows",
         "tests/web/test_locations_ui.py::test_server_messages_match_the_catalog",
-        "tests/web/test_locations_ui.py::test_story_page_has_the_section_and_both_languages_have_the_texts"
+        "tests/web/test_locations_ui.py::test_both_languages_have_the_texts"
       ],
       "manual": {
         "procedure": "docs/verification/manual.md#locations-panel",
         "reason": "Склеювання й розклеювання з підтвердженнями в браузері перевіряє Playwright, який verify.py не запускає."
+      }
+    },
+    {
+      "id": "MEMORY-LOCATIONS-S12",
+      "requirement": "MEMORY-LOCATIONS",
+      "scope": "Сторінка «Локації»: маршрут, шаблон і кнопка в шапці, посилання з «Пам’яті», панель без робочого простору з beforeunload, story_revision у scene-revisions і звірка при поверненні (pytest і node). Перехід туди й назад, порожній стан, перепитування, відновлення з кешу й mobile — Playwright locations.spec.mjs, який verify.py не запускає. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/web/test_locations_ui.py::test_locations_page_and_header_button",
+        "tests/web/test_locations_ui.py::test_panel_lives_on_its_page",
+        "tests/web/test_locations_ui.py::test_panel_rows",
+        "tests/web/test_scene_revisions_api.py::test_scene_revisions_carry_the_story_revision",
+        "tests/web/test_scene_sync_ui.py::test_scene_sync_rules",
+        "tests/web/test_scene_sync_ui.py::test_workspace_loads_the_sync_and_its_notice"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#locations-panel",
+        "reason": "Перехід між сторінками, діалог beforeunload і відновлення з кешу браузера перевіряє Playwright, який verify.py не запускає."
       }
     },
     {
@@ -6629,7 +6647,8 @@
         "tests/web/test_scene_sync_ui.py::test_workspace_loads_the_sync_and_its_notice",
         "tests/web/test_scene_sync_ui.py::test_review_fixes_for_clean_buffers_and_saves",
         "tests/web/test_scene_revisions_api.py::test_scene_revisions_read_old_payloads_without_revision_as_zero",
-        "tests/web/test_scene_sync_ui.py::test_cross_review_fixes_for_stale_buffers"
+        "tests/web/test_scene_sync_ui.py::test_cross_review_fixes_for_stale_buffers",
+        "tests/web/test_scene_revisions_api.py::test_scene_revisions_carry_the_story_revision"
       ]
     },
     {
@@ -8327,7 +8346,8 @@
       "manual": {
         "procedure": "docs/verification/codex-checkout-acceptance.md#codex-b1-checkout",
         "reason": "Потрібен окремий локальний Windows-акаунт і ручний вхід/GUI власника. Процедура та попередній сумісний CODEX_HOME/skills не є виконанням B1."
-      }
+      },
+      "tests": []
     },
     {
       "id": "PLAN-PREAMBLE-S01",

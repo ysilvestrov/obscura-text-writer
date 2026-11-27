@@ -623,6 +623,7 @@ body.ghost-open #notice { z-index: 70; }
 .icon-button { display: inline-flex; align-items: center; gap: 0.4rem; position: relative; }
 .icon { display: inline-block; width: 1.25rem; height: 1.25rem; background-color: currentColor; -webkit-mask: var(--icon) center / contain no-repeat; mask: var(--icon) center / contain no-repeat; flex: none; }
 .icon-users { --icon: url(/static/icons/users.svg); }
+.icon-map-pin { --icon: url(/static/icons/map-pin.svg); }
 .icon-settings { --icon: url(/static/icons/settings.svg); }
 .icon-plus { --icon: url(/static/icons/plus.svg); }
 .icon-menu { --icon: url(/static/icons/menu.svg); }
@@ -711,6 +712,9 @@ body.ghost-open #notice { z-index: 70; }
 .timeline-summary-editor{width:100%;box-sizing:border-box}
 /* MEMORY-LOCATIONS-S07: the «Locations» section of the memory panel. */
 .story-locations{margin-top:1.5rem;border-top:1px solid var(--border,#ccc);padding-top:1rem}
+.locations-page .story-locations{margin-top:0;border-top:0;padding-top:0}
+.locations-page .story-locations h2{font-size:1.1rem}
+.memory-locations-link{margin-top:1.5rem;border-top:1px solid var(--border,#ccc);padding-top:1rem}
 .location-row{margin:.75rem 0}
 .location-row>p{margin:.25rem 0}
 .location-description textarea{width:100%;box-sizing:border-box;min-height:4.5rem;height:auto}

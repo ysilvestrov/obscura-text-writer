@@ -10,6 +10,12 @@ export function revisionsChanged(viewScenes,revisions,bufferScene){
 }
 
 // One source of truth for the scene a material is loaded from: the newer of the view's copy and the buffer's.
+// MEMORY-LOCATIONS-S12: the story revision moved since the view was loaded (a change on another page or window).
+export function storyChanged(view,payload){
+  const fresh=payload?.story_revision,loaded=view?.story?.revision;
+  return Number.isInteger(fresh)&&Number.isInteger(loaded)&&fresh!==loaded;
+}
+
 export function newerScene(a,b){
   if(!a)return b||null;
   if(!b)return a;

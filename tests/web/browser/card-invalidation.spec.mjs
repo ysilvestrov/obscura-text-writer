@@ -42,12 +42,16 @@ test('a location description asks too, and «Так» unchecks the scene',async(
   const fixture=await(await request.post('/test-card-invalidation')).json();
   await page.goto(`/stories/${fixture.story_id}?scene=${fixture.scene_id}&material=memory`);
   await expect(page.locator('#workspace-scene-status')).toContainText('Валідна');
-  const hill=page.locator('#memory-view #story-locations .location-row').filter({has:page.locator('strong',{hasText:/^Пагорб$/})});
+  // MEMORY-LOCATIONS-S12: the locations live on their own page; the workspace shows the outcome on return.
+  await page.locator('#workspace-locations').click();
+  const hill=page.locator('#locations-page #story-locations .location-row').filter({has:page.locator('strong',{hasText:/^Пагорб$/})});
   await hill.locator('summary').click();
   await hill.locator('textarea').fill('Вітряний пагорб над морем.');
   await hill.getByRole('button',{name:'Зберегти опис'}).click();
   const dialog=page.locator('.app-dialog');
   await expect(dialog).toContainText('Змінено локації: Пагорб. Позначити залежні сцени як неперевірені? Сцен: 1.');
   await dialog.getByRole('button',{name:'Так'}).click();
+  await expect(dialog).toBeHidden();
+  await page.locator('#locations-return').click();
   await expect(page.locator('#workspace-scene-status')).toContainText('Не перевірено');
 });
