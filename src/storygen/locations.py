@@ -45,17 +45,22 @@ def _outside(text: str) -> list[bool]:
     return flags
 
 
-def _split_conjunctions(chunk: str) -> list[str]:
-    outside=_outside(chunk);pieces=[];start=0
-    for match in _CONJUNCTION.finditer(chunk):
-        if outside[match.start()]:pieces.append(chunk[start:match.start()]);start=match.end()
-    return [*pieces,chunk[start:]]
+def _chunks(line: str) -> list[str]:
+    """The value cut at every separator and at «та»/«and» outside quotes and brackets, judged on the whole value."""
+    outside=_outside(line)
+    cuts=sorted([m.span() for m in _SEPARATORS.finditer(line)]+
+                [m.span() for m in _CONJUNCTION.finditer(line) if outside[m.start()]])
+    pieces=[];start=0
+    for begin,end in cuts:
+        if begin<start:continue  # overlapping matches cannot happen today; skip defensively
+        pieces.append(line[start:begin]);start=end
+    return [*pieces,line[start:]]
 
 
 def parse_locations(line: str) -> list[tuple[str,...]]:
     """Paths of a «Локація:» value in order; empty parts are dropped and repeats (by key) kept once."""
     found=[];keys=set()
-    for chunk in (piece for part in _SEPARATORS.split(line or '') for piece in _split_conjunctions(part)):
+    for chunk in _chunks(line or ''):
         parts=tuple(p for p in (_clean(x) for x in chunk.split('/')) if p)
         if not parts:continue
         key=normalize(parts)

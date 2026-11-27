@@ -30,6 +30,10 @@ def test_ta_and_and_inside_quotes_or_brackets_stay_in_the_name():
     assert parse_locations('Готель "Bed and Breakfast" and pier') == [('Готель "Bed and Breakfast',),('pier',)]
     assert parse_locations('Кафе “Кава та книжки” біля моря') == [('Кафе “Кава та книжки” біля моря',)]
     assert parse_locations('Хата (кухня та комора) та двір') == [('Хата (кухня та комора)',),('двір',)]
+    # Quotes are judged on the whole value: a comma inside still separates, as before, but does not reset them.
+    assert parse_locations('Hotel "Rooms, Bed and Breakfast" and pier') == [
+        ('Hotel "Rooms',),('Bed and Breakfast',),('pier',)]
+    assert parse_locations('Хата (кухня, сіни та комора) та двір') == [('Хата (кухня',),('сіни та комора)',),('двір',)]
     # An unclosed quote or bracket protects the rest of the value instead of cutting a name in half.
     assert parse_locations('Бар «Ніч та день') == [('Бар «Ніч та день',)]
     assert parse_locations('Хата (кухня та комора') == [('Хата (кухня та комора',)]
