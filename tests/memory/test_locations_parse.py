@@ -15,9 +15,35 @@ def test_commas_semicolons_arrows_and_sequence_words_separate_locations():
 
 
 @pytest.mark.req('MEMORY-LOCATIONS')
-def test_and_words_stay_inside_a_name():
-    assert parse_locations('Сад і город, двір та хлів') == [('Сад і город',),('двір та хлів',)]
-    assert parse_locations('Bed and breakfast') == [('Bed and breakfast',)]
+def test_i_stays_inside_a_name_while_ta_and_and_separate():
+    assert parse_locations('Сад і город, двір та хлів') == [('Сад і город',),('двір',),('хлів',)]
+    assert parse_locations('Pier and lighthouse') == [('Pier',),('lighthouse',)]
+    assert parse_locations('Квартира Бориса (темна кімната з монітором) та техвідсік космічної станції') == [
+        ('Квартира Бориса (темна кімната з монітором)',),('техвідсік космічної станції',)]
+    assert parse_locations('Дім ТА двір / комора') == [('Дім',),('двір','комора')]
+
+
+@pytest.mark.req('MEMORY-LOCATIONS')
+def test_ta_and_and_inside_quotes_or_brackets_stay_in_the_name():
+    # Quotes at the edge of a part are trimmed as before (normalize), so the closing one goes.
+    assert parse_locations('Бар «Ніч та день» та вулиця') == [('Бар «Ніч та день',),('вулиця',)]
+    assert parse_locations('Готель "Bed and Breakfast" and pier') == [('Готель "Bed and Breakfast',),('pier',)]
+    assert parse_locations('Кафе “Кава та книжки” біля моря') == [('Кафе “Кава та книжки” біля моря',)]
+    assert parse_locations('Хата (кухня та комора) та двір') == [('Хата (кухня та комора)',),('двір',)]
+    # Quotes are judged on the whole value: a comma inside still separates, as before, but does not reset them.
+    assert parse_locations('Hotel "Rooms, Bed and Breakfast" and pier') == [
+        ('Hotel "Rooms',),('Bed and Breakfast',),('pier',)]
+    assert parse_locations('Хата (кухня, сіни та комора) та двір') == [('Хата (кухня',),('сіни та комора)',),('двір',)]
+    # An unclosed quote or bracket protects the rest of the value instead of cutting a name in half.
+    assert parse_locations('Бар «Ніч та день') == [('Бар «Ніч та день',)]
+    assert parse_locations('Хата (кухня та комора') == [('Хата (кухня та комора',)]
+
+
+@pytest.mark.req('MEMORY-LOCATIONS')
+def test_ta_and_and_inside_a_word_are_not_separators():
+    assert parse_locations('Таверна та станція') == [('Таверна',),('станція',)]
+    assert parse_locations('Island and Sandbank') == [('Island',),('Sandbank',)]
+    assert parse_locations('Стара хата, Мата') == [('Стара хата',),('Мата',)]
 
 
 @pytest.mark.req('MEMORY-LOCATIONS')
