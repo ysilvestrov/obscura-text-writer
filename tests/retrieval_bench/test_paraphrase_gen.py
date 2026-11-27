@@ -10,7 +10,7 @@ import pytest
 import rag_paraphrases as cli
 from memory_bench.cloud_spend import BudgetExceeded, SpendLedger
 from memory_bench.paraphrase import LEVELS, ROOT, Query, check_owner_file, manifest, snapshot_hash
-from memory_bench.paraphrase_gen import (HAIKU, PRICE_IN, PRICE_OUT, PROMPT, PROMPT_ID, RECORD_PREFIX, generate)
+from memory_bench.paraphrase_gen import (HAIKU, MAX_TOKENS, PRICE_IN, PRICE_OUT, PROMPT, PROMPT_ID, RECORD_PREFIX, generate)
 from tests.retrieval_bench.helpers import rec, rich_records, scene
 
 RECORD = rec('r1', 'facts', 'Ключ від ліхтарної кімнати лежить у бляшанці')
@@ -152,7 +152,7 @@ def test_anthropic_client_call_shape(monkeypatch):
             return Reply()
     monkeypatch.setattr(client, '_client', type('C', (), {'messages': Messages()})())
     assert client.complete('привіт') == ('{"a": 1}', 12, 7)
-    assert seen['model'] == HAIKU and seen['max_tokens'] == 1024
+    assert seen['model'] == HAIKU and seen['max_tokens'] == MAX_TOKENS == 4096
     assert seen['output_config'] == {'effort': 'low'} and 'stream' not in seen
     assert seen['messages'] == [{'role': 'user', 'content': 'привіт'}]
 
@@ -347,13 +347,18 @@ def test_cli_cache_is_keyed_by_record_prompt_and_model(outside_dir, capsys, monk
     monkeypatch.setattr(cli, 'make_client', lambda key: SmartClient())
     _run(capsys, _args(outside_dir, **{'--n': '2'}))
     entries = json.loads((outside_dir / 'out' / 'gen-cache.json').read_text(encoding='utf-8'))['entries']
-    assert len(entries) == 2 and all(k.endswith(f'|{PROMPT_ID}|{HAIKU}') for k in entries)
+    assert len(entries) == 2 and all(k.endswith(f'|{PROMPT_ID}|{HAIKU}|{MAX_TOKENS}') for k in entries)
     assert all(v['attempts'] >= 1 and len(v['queries']) == 3 for v in entries.values())
     monkeypatch.setattr(cli, 'PROMPT_ID', 'other-prompt')
     again = CountingClient()
     monkeypatch.setattr(cli, 'make_client', lambda key: again)
     _run(capsys, _args(outside_dir, **{'--n': '2'}))
     assert len(again.records) == 2
+    monkeypatch.setattr(cli, 'MAX_TOKENS', 1)  # entries generated under another output limit are not reused
+    third = CountingClient()
+    monkeypatch.setattr(cli, 'make_client', lambda key: third)
+    _run(capsys, _args(outside_dir, **{'--n': '2'}))
+    assert len(third.records) == 2
 
 
 def test_cli_budget_stop_reports_progress(outside_dir, capsys, monkeypatch, story):

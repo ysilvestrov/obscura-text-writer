@@ -20,7 +20,7 @@ from memory_bench.paraphrase import (FRAME_PARAMS, LEVELS, Query, _inside_repo, 
                                      owner_sample, sample_targets, sampling_frame, snapshot_hash, story_names,
                                      write_owner_file)
 from memory_bench.paraphrase_gen import _estimate_usd, build_prompt, generate_one  # noqa: E402
-from memory_bench.paraphrase_gen import HAIKU, PRICE_IN, PRICE_OUT, PROMPT_ID, PROVIDER, PRICES_DATE, generate  # noqa: E402,F401
+from memory_bench.paraphrase_gen import HAIKU, MAX_TOKENS, PRICE_IN, PRICE_OUT, PROMPT_ID, PROVIDER, PRICES_DATE, generate  # noqa: E402,F401
 
 DEFAULT_LEDGER = r'C:\tmp\rag-bench\spend.json'
 DEFAULT_ENV = r'C:\Projects\text-generator\.env'
@@ -95,7 +95,7 @@ CACHE_NAME = 'gen-cache.json'
 
 
 def _cache_key(record) -> str:
-    return f"{hashlib.sha256(record.text.encode('utf-8')).hexdigest()}|{PROMPT_ID}|{HAIKU}"
+    return f"{hashlib.sha256(record.text.encode('utf-8')).hexdigest()}|{PROMPT_ID}|{HAIKU}|{MAX_TOKENS}"
 
 
 def _load_cache(path: Path) -> dict:

@@ -15,7 +15,7 @@ HAIKU = 'claude-haiku-5-5'
 PRICE_IN = 0.10   # USD per million input tokens
 PRICE_OUT = 0.50  # USD per million output tokens
 PROVIDER = 'anthropic'
-MAX_TOKENS = 1024
+MAX_TOKENS = 4096  # adaptive thinking counts toward max_tokens; 1024 truncated 42 of ~120 replies on the main work
 EST_OUT_TOKENS = 600
 
 PROMPT = (
