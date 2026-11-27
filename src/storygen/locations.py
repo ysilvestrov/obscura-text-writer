@@ -45,23 +45,90 @@ def _outside(text: str) -> list[bool]:
     return flags
 
 
-def _chunks(line: str) -> list[str]:
-    """The value cut at every separator and at «та»/«and» outside quotes and brackets, judged on the whole value."""
+_APOS="’ʼ'"
+_TOKEN=re.compile(r"[\w’ʼ']+|[^\w\s’ʼ']")
+_AFTER_SPACE=',;:.!?…'
+
+
+def _tokens(phrase: str) -> list[str]:
+    return _TOKEN.findall(unicodedata.normalize('NFC',phrase))
+
+
+def glue_key(phrase: str) -> str:
+    """The identity of a glued phrase: NFC, lower case, one apostrophe, single spaces between words and after
+    punctuation, none before punctuation or after an opening mark."""
+    out=''
+    tokens=[t.lower().translate({ord(c):"'" for c in _APOS}) for t in _tokens(phrase)]
+    for prev,token in zip(['']+tokens,tokens):
+        word=token[0].isalnum() or token[0]=="'" or token[0]=='_'
+        if prev and word and (prev[-1].isalnum() or prev[-1] in "'_" or prev in _AFTER_SPACE):out+=' '
+        out+=token
+    return out
+
+
+def _glue_pattern(phrase: str):
+    """A glued phrase in a value: any case, any of ’ ʼ ', spaces between words (at least one) and around punctuation
+    (any), whole words at both ends."""
+    parts=[];prev_word=False
+    for token in _tokens(phrase):
+        word=bool(re.match(r"[\w’ʼ']",token))
+        if parts:parts.append(r'\s+' if word and prev_word else r'\s*')
+        parts.append(''.join(f'[{_APOS}]' if c in _APOS else re.escape(c) for c in token));prev_word=word
+    if not parts:return None
+    return re.compile(r"(?<![\w’ʼ'])"+''.join(parts)+r"(?![\w’ʼ'])",re.IGNORECASE)
+
+
+def _cuts(line: str, glued=()) -> list[tuple[int,int]]:
+    """Separator spans of a value outside glued phrases; «та»/«and» also outside quotes and brackets."""
     outside=_outside(line)
-    cuts=sorted([m.span() for m in _SEPARATORS.finditer(line)]+
-                [m.span() for m in _CONJUNCTION.finditer(line) if outside[m.start()]])
-    pieces=[];start=0
+    spans=[m.span() for pattern in filter(None,map(_glue_pattern,glued)) for m in pattern.finditer(line)]
+    inside=lambda pos:any(a<pos<b for a,b in spans)
+    cuts=sorted([m.span() for m in _SEPARATORS.finditer(line) if not inside(m.start())]+
+                [m.span() for m in _CONJUNCTION.finditer(line) if outside[m.start()] and not inside(m.start())])
+    kept=[];start=0
     for begin,end in cuts:
         if begin<start:continue  # overlapping matches cannot happen today; skip defensively
-        pieces.append(line[start:begin]);start=end
-    return [*pieces,line[start:]]
+        kept.append((begin,end));start=end
+    return kept
 
 
-def parse_locations(line: str) -> list[tuple[str,...]]:
-    """Paths of a «Локація:» value in order; empty parts are dropped and repeats (by key) kept once."""
+def _pieces(line: str, cuts) -> list[tuple[int,int]]:
+    bounds=[];start=0
+    for begin,end in cuts:
+        bounds.append((start,begin));start=end
+    return [*bounds,(start,len(line))]
+
+
+def _chunks(line: str, glued=()) -> list[str]:
+    """The value cut at every separator and at «та»/«and» outside quotes and brackets, judged on the whole value; a
+    glued phrase is never cut."""
+    return [line[a:b] for a,b in _pieces(line,_cuts(line,glued))]
+
+
+def _path(chunk: str) -> tuple[str,...]:
+    return tuple(p for p in (_clean(x) for x in chunk.split('/')) if p)
+
+
+def glue_cuts(line: str, glued=()) -> list[tuple[str,tuple[str,...],tuple[str,...]]]:
+    """(phrase, left path, right path) for every cut between two pieces whose facing parts are not empty: the phrase is
+    the raw text from the start of the left piece's last part to the end of the right piece's first part."""
+    line=unicodedata.normalize('NFC',line or '')
+    pieces=_pieces(line,_cuts(line,glued));found=[]
+    for (la,lb),(ra,rb) in zip(pieces,pieces[1:]):
+        left=line[la:lb];right=line[ra:rb]
+        tail=left.rsplit('/',1)[-1];head=right.split('/',1)[0]
+        if not tail.strip() or not head.strip() or not _path(left) or not _path(right):continue
+        start=lb-len(tail)+(len(tail)-len(tail.lstrip()));end=ra+len(head.rstrip())
+        found.append((' '.join(line[start:end].split()),_path(left),_path(right)))
+    return found
+
+
+def parse_locations(line: str, glued=()) -> list[tuple[str,...]]:
+    """Paths of a «Локація:» value in order; glued phrases of the story stay whole, empty parts are dropped and repeats
+    (by key) kept once."""
     found=[];keys=set()
-    for chunk in _chunks(line or ''):
-        parts=tuple(p for p in (_clean(x) for x in chunk.split('/')) if p)
+    for chunk in _chunks(unicodedata.normalize('NFC',line or ''),glued):
+        parts=_path(chunk)
         if not parts:continue
         key=normalize(parts)
         if key in keys:continue
