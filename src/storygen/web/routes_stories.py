@@ -87,6 +87,12 @@ def characters_page(id: str,request: Request):
     return request.app.state.templates.TemplateResponse(request=request,name="characters.html",context={"story":request.app.state.repo.get_story(id)})
 
 
+@router.get("/stories/{id}/locations")
+def locations_page(id: str,request: Request):
+    """MEMORY-LOCATIONS-S12: the story's locations on their own page, like the characters."""
+    return request.app.state.templates.TemplateResponse(request=request,name="locations.html",context={"story":request.app.state.repo.get_story(id)})
+
+
 @router.get("/api/stories")
 def stories_list(request: Request):
     """MCP-BRIDGE: active stories for an external client; the HTML library stays at `/`."""
