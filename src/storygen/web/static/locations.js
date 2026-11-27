@@ -38,3 +38,14 @@ export function mergeTargets(data,id){
 export function suggestionRows(data){
   return (data?.suggestions||[]).map(s=>({a:s.a,b:s.b,aPath:s.a_path,bPath:s.b_path}));
 }
+
+// MEMORY-LOCATIONS-S11: phrases a card can be glued into (candidates whose cards include it; 3–200 characters, the
+// server's bounds) and the glues of the story.
+export function glueOptions(data,id){
+  return (data?.glue_candidates||[]).filter(c=>(c.card_ids||[]).includes(id)&&c.phrase.length>=3&&c.phrase.length<=200)
+    .map(c=>({key:c.key,phrase:c.phrase,cardIds:c.card_ids,scenes:(c.scene_ids||[]).length}));
+}
+
+export function glueRows(data){
+  return (data?.glues||[]).map(g=>({key:g.key,phrase:g.phrase}));
+}
