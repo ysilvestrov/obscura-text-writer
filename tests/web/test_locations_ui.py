@@ -50,6 +50,17 @@ def test_both_languages_have_the_texts():
 
 
 @pytest.mark.req('MEMORY-LOCATIONS')
+def test_panel_lives_on_its_page():
+    panel = (STATIC / 'locations-panel.js').read_text(encoding='utf-8')
+    for gone in ("'./editor.js'", '#memory-view', 'scene-selected', 'story-refreshed', 'refresh('):
+        assert gone not in panel, gone
+    for here in ('#locations-page', 'dataset.storyId', 'beforeunload', 'returnLink'):
+        assert here in panel, here
+    page = (ROOT / 'src/storygen/web/templates/story.html').read_text(encoding='utf-8')
+    assert '/static/locations-link.js' in page
+
+
+@pytest.mark.req('MEMORY-LOCATIONS')
 def test_server_messages_match_the_catalog():
     from storygen.web.localization import translate
     source = (ROOT / 'src/storygen/storage/locations.py').read_text(encoding='utf-8')

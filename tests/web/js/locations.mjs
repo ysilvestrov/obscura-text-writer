@@ -61,3 +61,11 @@ assert.deepEqual(m.glueOptions(undefined,'bar'),[]);
 assert.deepEqual(m.glueRows(glueData),[{key:'місто, двір',phrase:'Місто, двір'}]);
 assert.deepEqual(m.glueRows(undefined),[]);
 console.log('glue ok');
+
+// MEMORY-LOCATIONS-S12: the page asks before leaving with typed descriptions; the memory tab links to the page.
+assert.equal(m.hasDrafts(new Map()),false);
+assert.equal(m.hasDrafts(new Map([['loc_1','текст']])),true);
+assert.equal(m.memoryLinkHref('s1',null,null),'/stories/s1/locations');
+assert.equal(m.memoryLinkHref('s1','sc1',null),'/stories/s1/locations');
+assert.equal(m.memoryLinkHref('s1','sc1','memory'),'/stories/s1/locations?scene=sc1&material=memory');
+console.log('page ok');

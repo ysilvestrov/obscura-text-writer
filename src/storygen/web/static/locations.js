@@ -49,3 +49,12 @@ export function glueOptions(data,id){
 export function glueRows(data){
   return (data?.glues||[]).map(g=>({key:g.key,phrase:g.phrase}));
 }
+
+// MEMORY-LOCATIONS-S12: typed descriptions not saved yet keep the author on the page («beforeunload»).
+export function hasDrafts(drafts){return !!drafts&&drafts.size>0}
+
+// The «Story locations →» link of a scene's memory tab: the page returns to the same scene and material.
+export function memoryLinkHref(storyId,sceneId,mode){
+  const base=`/stories/${encodeURIComponent(storyId)}/locations`;
+  return sceneId&&mode?base+'?'+new URLSearchParams({scene:sceneId,material:mode}):base;
+}
