@@ -7,8 +7,11 @@ import re
 import unicodedata
 from typing import Mapping, NamedTuple
 
-# Separators between locations: punctuation and whole sequence words. «і», «та», «and» live inside names.
+# Separators between locations: punctuation and whole sequence words. «і» lives inside names.
 _SEPARATORS=re.compile(r'[,;→]|(?<![\w’ʼ\'])(?:потім|далі|згодом|then|later)(?![\w’ʼ\'])',re.IGNORECASE)
+# «та» and «and» separate too, but not inside quotes or brackets: «Ніч та день», "Bed and Breakfast", (кухня та комора).
+_CONJUNCTION=re.compile(r'(?<![\w’ʼ\'])(?:та|and)(?![\w’ʼ\'])',re.IGNORECASE)
+_PAIRS={'«':'»','“':'”','„':'“','(':')','[':']'}
 _QUOTES='"«»“”„\'‘’'
 _FINAL='.!?…:'
 DESCRIPTION_LIMIT=2000
@@ -30,10 +33,29 @@ def normalize(parts) -> str:
     return ' / '.join(_clean(p).lower() for p in parts)
 
 
+def _outside(text: str) -> list[bool]:
+    """For every character: whether it stands outside quotes and brackets. An unclosed one runs to the end."""
+    flags=[];closers=[];straight=False
+    for char in text:
+        if straight:straight=char!='"';flags.append(False);continue
+        if closers and char==closers[-1]:closers.pop();flags.append(False);continue
+        if char in _PAIRS:closers.append(_PAIRS[char]);flags.append(False);continue
+        if char=='"' and not closers:straight=True;flags.append(False);continue
+        flags.append(not closers)
+    return flags
+
+
+def _split_conjunctions(chunk: str) -> list[str]:
+    outside=_outside(chunk);pieces=[];start=0
+    for match in _CONJUNCTION.finditer(chunk):
+        if outside[match.start()]:pieces.append(chunk[start:match.start()]);start=match.end()
+    return [*pieces,chunk[start:]]
+
+
 def parse_locations(line: str) -> list[tuple[str,...]]:
     """Paths of a «Локація:» value in order; empty parts are dropped and repeats (by key) kept once."""
     found=[];keys=set()
-    for chunk in _SEPARATORS.split(line or ''):
+    for chunk in (piece for part in _SEPARATORS.split(line or '') for piece in _split_conjunctions(part)):
         parts=tuple(p for p in (_clean(x) for x in chunk.split('/')) if p)
         if not parts:continue
         key=normalize(parts)

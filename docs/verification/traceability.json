@@ -5935,10 +5935,12 @@
     {
       "id": "MEMORY-LOCATIONS-S01",
       "requirement": "MEMORY-LOCATIONS",
-      "scope": "Роздільники, «і/та/and», вкладеність, нормалізація, ID, схожість, canonical і околиця.",
+      "scope": "Роздільники, «та/and» поза лапками й дужками, «і» в назві, вкладеність, нормалізація, ID, схожість, canonical і околиця.",
       "tests": [
         "tests/memory/test_locations_parse.py::test_commas_semicolons_arrows_and_sequence_words_separate_locations",
-        "tests/memory/test_locations_parse.py::test_and_words_stay_inside_a_name",
+        "tests/memory/test_locations_parse.py::test_i_stays_inside_a_name_while_ta_and_and_separate",
+        "tests/memory/test_locations_parse.py::test_ta_and_and_inside_quotes_or_brackets_stay_in_the_name",
+        "tests/memory/test_locations_parse.py::test_ta_and_and_inside_a_word_are_not_separators",
         "tests/memory/test_locations_parse.py::test_sequence_word_inside_a_word_is_not_a_separator",
         "tests/memory/test_locations_parse.py::test_slash_nests_a_location",
         "tests/memory/test_locations_parse.py::test_empty_values_give_no_locations",
