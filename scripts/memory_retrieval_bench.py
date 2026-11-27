@@ -16,6 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'src'))
 sys.path.insert(0, str(ROOT / 'scripts'))
 
+from memory_bench.cloud_spend import BudgetExceeded, LedgerMissing, SpendLedger, read_env_key  # noqa: E402
 from memory_bench.extract import extract_story  # noqa: E402
 from memory_bench.metrics import aggregate, control_hits, pair_hits, pair_summary, scene_metrics  # noqa: E402
 from memory_bench.model import DEFAULT_TOKENIZER, FERTILITY, realistic_ratio, set_tokenizer  # noqa: E402
@@ -28,10 +29,11 @@ from memory_bench.synthetic import fit_linear, generate, measure_rates  # noqa: 
 MEASURES = ('conservative', 'realistic')
 CORE_AWARE = ('structural', 'structural_fts')
 VECTOR_PREFIXES = ('structural_vec[', 'structural_hybrid[')
-CLOUD_KEYS = ('azure-3-large',)  # models that go to the network; checked before embeddings.py (numpy) is imported
-CLOUD_ENV = ('AZURE_OPENAI_ENDPOINT', 'AZURE_OPENAI_API_KEY', 'AZURE_OPENAI_EMBEDDING_DEPLOYMENT', 'AZURE_OPENAI_API_VERSION')
+CLOUD_KEYS = ('voyage-4',)  # models that go to the network; checked before embeddings.py (numpy) is imported
+CLOUD_KEY_ENV = 'ATLAS_EMBEDDING_API_KEY'
 DEFAULT_CACHE_DIR = r'C:\tmp\rag-bench\cache'
-CLOUD_PRICE_PER_MTOK = 0.13  # USD list price for text-embedding-3-large, per million tokens
+DEFAULT_SPEND_LEDGER = r'C:\tmp\rag-bench\spend.json'  # cumulative, shared with the paraphrase/context generators
+DEFAULT_ENV_FILE = r'C:\Projects\text-generator\.env'
 SAMPLES_PER_SYNTHETIC = 60
 from memory_bench.paraphrase import OWNER_K  # noqa: E402  (meta['owner_k'] must equal it; absent means it)
 
@@ -239,16 +241,18 @@ class TimedEmbedder:
 
 def make_inner_embedder(key, spec, args):
     """The only place a real model or the cloud client is built; tests replace it. Missing libraries raise ImportError."""
-    from memory_bench.embeddings import AzureEmbedder, LocalEmbedder
+    from memory_bench.embeddings import LocalEmbedder, VoyageEmbedder
     if spec['kind'] == 'cloud':
-        env = os.environ
-        return AzureEmbedder(key, env['AZURE_OPENAI_ENDPOINT'], env['AZURE_OPENAI_API_KEY'],
-                             env['AZURE_OPENAI_EMBEDDING_DEPLOYMENT'], env['AZURE_OPENAI_API_VERSION'],
-                             args.cloud_price_per_mtok, args.cloud_max_usd, model_id=spec['model_id'],
-                             revision=spec['revision'])
+        ledger = SpendLedger.open(Path(args.spend_ledger), _cloud_caps(args))  # never created here
+        return VoyageEmbedder(key, read_env_key(CLOUD_KEY_ENV, args.env_file), ledger, model_id=spec['model_id'],
+                              revision=spec['revision'], dim=spec['dim'])
     return LocalEmbedder(key, spec['model_id'], spec['revision'], spec['query_prefix'], spec['passage_prefix'],
                          spec['max_tokens'], threads=1,
                          trust_remote_code=spec.get('trust_remote_code', False), dtype=spec.get('dtype'))
+
+
+def _cloud_caps(args):
+    return {'voyage': args.voyage_max_usd}
 
 
 def _wrap(key, inner, cache_dir, load_seconds):
@@ -271,8 +275,12 @@ def setup_vectors(args, story_id):
     if any(MODELS[k]['kind'] == 'cloud' for k in keys):
         if not cloud_allowed(story_id, args.cloud_stories.split(',')):
             return None, 'cloud_not_allowed'
-        if not all(os.environ.get(name) for name in CLOUD_ENV):
+        if not read_env_key(CLOUD_KEY_ENV, args.env_file):
             return None, 'cloud_config_missing'
+        try:  # the bench never creates the ledger: an unreadable one refuses the run before any embedder exists
+            SpendLedger.open(Path(args.spend_ledger), _cloud_caps(args))
+        except LedgerMissing:
+            return None, 'spend_ledger_missing'
     if any(MODELS[k]['kind'] == 'truncate' and MODELS[k]['base'] not in keys for k in keys):
         return None, 'truncate_base_missing'
     if _inside_repo(args.cache_dir):
@@ -377,12 +385,13 @@ def vector_report(models, args, repro):
 
 def repro_share(model, scenes, others, args, biggest):
     """Share of (scene, vector variant) pairs with identical record_ids after a re-run on an empty cache in a temporary
-    directory and a new inner embedder, at the largest context (realistic measure). Local models only."""
+    directory and a new inner embedder, at the largest context (realistic measure). Local models always; the cloud
+    model only with --repro-cloud, as one paid re-run through the spend ledger."""
     from memory_bench.strategies import vector_strategies
     main = vector_strategies(model['cached'])
     began = time.perf_counter()
     inner = make_inner_embedder(model['key'], model['spec'], args)
-    with tempfile.TemporaryDirectory(prefix='rag-bench-repro-') as tmp:
+    with tempfile.TemporaryDirectory(prefix='rag-bench-repro-') as tmp, _closing(inner):
         _, fresh_cached = _wrap(model['key'], inner, tmp, time.perf_counter() - began)
         fresh = vector_strategies(fresh_cached)
         same = total = 0
@@ -396,7 +405,22 @@ def repro_share(model, scenes, others, args, biggest):
     return same / total if total else None
 
 
+class _closing:
+    def __init__(self, inner):
+        self.inner = inner
+
+    def __enter__(self):
+        return self.inner
+
+    def __exit__(self, *exc):
+        close = getattr(self.inner, 'close', None)
+        if close:
+            close()
+
+
 def run(args):
+    if args.repro_cloud and not args.repro:
+        return None, 'repro_cloud_without_repro'
     if args.paraphrases:
         from memory_bench.paraphrase import _inside_repo
         if _inside_repo(args.paraphrases):
@@ -564,7 +588,7 @@ def _build_report(args, repo, story, models, paraphrases=None):
         report['vector'] = vector_report(models, args, {})
         if args.repro:
             for m in models:
-                if m['spec']['kind'] == 'local':
+                if m['spec']['kind'] == 'local' or (m['spec']['kind'] == 'cloud' and args.repro_cloud):
                     report['vector'][m['key']]['repro_identical_share'] = repro_share(m, scenes, others, args, biggest)
     return report
 
@@ -589,13 +613,19 @@ def build_parser():
     parser.add_argument('--seed', type=int, default=0)
     parser.add_argument('--tokenizer', choices=sorted(FERTILITY), default=DEFAULT_TOKENIZER,
                         help='realistic measure: Ukrainian fertility of this tokenizer family (ukrqualbench)')
-    parser.add_argument('--vector-models', help='comma-separated keys of embedding models, e.g. e5-base,bge-m3,azure-3-large')
+    parser.add_argument('--vector-models', help='comma-separated keys of embedding models, e.g. e5-base,nano-2048,voyage-4')
     parser.add_argument('--cache-dir', default=DEFAULT_CACHE_DIR, help='vector cache; must be outside the repository')
-    parser.add_argument('--cloud', action='store_true', help='allow the cloud model (azure-3-large) for stories of --cloud-stories')
+    parser.add_argument('--cloud', action='store_true', help='allow the cloud model (voyage-4) for stories of --cloud-stories')
     parser.add_argument('--cloud-stories', default='', help='comma-separated story ID prefixes that may be sent to the cloud')
-    parser.add_argument('--cloud-max-usd', type=float, default=2.0, help='estimate above this stops the run')
-    parser.add_argument('--cloud-price-per-mtok', type=float, default=CLOUD_PRICE_PER_MTOK)
+    parser.add_argument('--spend-ledger', default=DEFAULT_SPEND_LEDGER,
+                        help='cumulative spend ledger (JSON); must exist, the bench never creates it')
+    parser.add_argument('--voyage-max-usd', type=float, default=1.0,
+                        help='cumulative voyage cap; a higher value than the one stored in the ledger has no effect')
+    parser.add_argument('--env-file', default=DEFAULT_ENV_FILE,
+                        help=f'KEY=VALUE file read for {CLOUD_KEY_ENV} when the environment lacks it')
     parser.add_argument('--repro', action='store_true', help='re-run the local vector variants on an empty cache in a temporary directory')
+    parser.add_argument('--repro-cloud', action='store_true',
+                        help='with --repro: also re-run the cloud model once on an empty cache (paid, through the ledger)')
     return parser
 
 
@@ -604,7 +634,9 @@ def main(argv=None):
     set_tokenizer(args.tokenizer)
     try:
         report, error = run(args)
-    except ValueError as exc:  # cloud_budget, cloud_http_<status>, cloud_error, cloud_bad_response: codes only
+    except (BudgetExceeded, LedgerMissing) as exc:  # cloud_budget_exceeded, spend_ledger_missing
+        report, error = None, str(exc)
+    except ValueError as exc:  # cloud_http_<status>, cloud_error, cloud_bad_response, cloud_input_type: codes only
         if not str(exc).startswith('cloud_'):
             raise
         report, error = None, str(exc)

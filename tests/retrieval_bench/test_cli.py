@@ -156,7 +156,7 @@ def test_pairs_without_annotated_story_is_empty(synthetic_repo,tmp_path):
 
 # ---- vector models in the CLI (Task 7): in-process, FakeEmbedder through the embedder factory ----
 
-CLOUD_ENV=('AZURE_OPENAI_ENDPOINT','AZURE_OPENAI_API_KEY','AZURE_OPENAI_EMBEDDING_DEPLOYMENT','AZURE_OPENAI_API_VERSION')
+CLOUD_KEY_ENV='ATLAS_EMBEDDING_API_KEY'
 
 
 def _bench():
@@ -170,6 +170,8 @@ def _patch_factory(monkeypatch,built,cls=None):
     def make(key,spec,args):
         from memory_bench.embeddings import FakeEmbedder
         embedder=(cls or FakeEmbedder)();embedder.key=key;built.append(key)
+        if spec['kind']=='cloud' and not hasattr(embedder,'tokens'):  # the cost fields of the cloud client
+            embedder.tokens,embedder.usd,embedder.latencies=0,0.0,[]
         return embedder
     monkeypatch.setattr(bench,'make_inner_embedder',make)
 
@@ -193,8 +195,16 @@ def _report(args):
 
 
 def _set_cloud_env(monkeypatch,value='x'):
-    for name in CLOUD_ENV:
-        monkeypatch.setenv(name,value)
+    monkeypatch.setenv(CLOUD_KEY_ENV,value)
+
+
+def _cloud_files(cache_dir,ledger=True):
+    """--env-file that does not exist (the real .env is never read) and a spend ledger outside the repository."""
+    path=cache_dir/'spend.json'
+    if ledger:
+        from memory_bench.cloud_spend import SpendLedger
+        SpendLedger.open(path,{'voyage':1.0},create=True)
+    return ['--env-file',str(cache_dir/'absent.env'),'--spend-ledger',str(path)]
 
 
 def test_vector_variants_in_real_and_steps(synthetic_repo,tmp_path,monkeypatch,cache_dir):
@@ -247,7 +257,7 @@ def test_cloud_model_without_flag_refused(synthetic_repo,tmp_path,monkeypatch,ca
     repo,_,_=synthetic_repo;built=[]
     _patch_factory(monkeypatch,built)
     for extra in ([],['--cloud-stories','']):
-        assert _bench().main(_vec_args(repo,cache_dir,'--vector-models','e5-base,azure-3-large',*extra))==2
+        assert _bench().main(_vec_args(repo,cache_dir,'--vector-models','e5-base,voyage-4',*extra))==2
         out=capsys.readouterr()
         assert out.err.strip()=='cloud_not_allowed' and out.out=='' and built==[]
 
@@ -255,8 +265,8 @@ def test_cloud_model_without_flag_refused(synthetic_repo,tmp_path,monkeypatch,ca
 def test_cloud_story_outside_allowlist_refused(synthetic_repo,tmp_path,monkeypatch,capsys,cache_dir):
     pytest.importorskip('numpy')
     repo,story_id,_=synthetic_repo;built=[]
-    _patch_factory(monkeypatch,built)
-    assert _bench().main(_vec_args(repo,cache_dir,'--vector-models','azure-3-large','--cloud','--cloud-stories','zzz-,'))==2
+    _patch_factory(monkeypatch,built);_set_cloud_env(monkeypatch)
+    assert _bench().main(_vec_args(repo,cache_dir,'--vector-models','voyage-4','--cloud','--cloud-stories','zzz-,',*_cloud_files(cache_dir)))==2
     assert capsys.readouterr().err.strip()=='cloud_not_allowed' and built==[]
 
 
@@ -264,42 +274,85 @@ def test_cloud_config_missing(synthetic_repo,tmp_path,monkeypatch,capsys,cache_d
     pytest.importorskip('numpy')
     repo,story_id,_=synthetic_repo;built=[]
     _patch_factory(monkeypatch,built)
-    _set_cloud_env(monkeypatch)
-    monkeypatch.delenv('AZURE_OPENAI_API_KEY')
-    assert _bench().main(_vec_args(repo,cache_dir,'--vector-models','azure-3-large','--cloud','--cloud-stories',story_id))==2
+    monkeypatch.delenv(CLOUD_KEY_ENV,raising=False)
+    assert _bench().main(_vec_args(repo,cache_dir,'--vector-models','voyage-4','--cloud','--cloud-stories',story_id,*_cloud_files(cache_dir)))==2
     assert capsys.readouterr().err.strip()=='cloud_config_missing' and built==[]
+
+
+def test_cloud_key_read_from_env_file(synthetic_repo,tmp_path,monkeypatch,capsys,cache_dir):
+    pytest.importorskip('numpy')
+    repo,story_id,_=synthetic_repo;built=[]
+    _patch_factory(monkeypatch,built)
+    monkeypatch.delenv(CLOUD_KEY_ENV,raising=False)
+    files=_cloud_files(cache_dir)
+    env=cache_dir/'absent.env';env.write_text(f'{CLOUD_KEY_ENV}=SECRET-VALUE'+chr(10),encoding='utf-8')
+    report,error=_report(_vec_args(repo,cache_dir,'--vector-models','voyage-4','--cloud','--cloud-stories',story_id,'--context','32768',*files))
+    assert error is None and built==['voyage-4']
+
+
+def test_spend_ledger_missing(synthetic_repo,tmp_path,monkeypatch,capsys,cache_dir):
+    pytest.importorskip('numpy')
+    repo,story_id,_=synthetic_repo;built=[]
+    _patch_factory(monkeypatch,built);_set_cloud_env(monkeypatch)
+    files=_cloud_files(cache_dir,ledger=False)
+    assert _bench().main(_vec_args(repo,cache_dir,'--vector-models','e5-base,voyage-4','--cloud','--cloud-stories',story_id,*files))==2
+    out=capsys.readouterr()
+    assert out.err.strip()=='spend_ledger_missing' and out.out=='' and built==[]
+    assert not (cache_dir/'spend.json').exists()  # the bench never creates the ledger
 
 
 def test_cloud_section_and_repro_none(synthetic_repo,tmp_path,monkeypatch,cache_dir):
     pytest.importorskip('numpy')
     from memory_bench.embeddings import FakeEmbedder
-    repo,story_id,_=synthetic_repo
+    repo,story_id,_=synthetic_repo;built=[]
 
     class FakeCloud(FakeEmbedder):
-        tokens,usd,latencies=120,0.0000156,[0.1,0.2,0.3,0.4]
-    _patch_factory(monkeypatch,[],FakeCloud)
+        tokens,usd,latencies=120,0.0000072,[0.1,0.2,0.3,0.4]
+    _patch_factory(monkeypatch,built,FakeCloud)
     _set_cloud_env(monkeypatch)
-    report,error=_report(_vec_args(repo,cache_dir,'--vector-models','azure-3-large','--cloud','--cloud-stories',story_id,'--repro','--context','32768'))
+    report,error=_report(_vec_args(repo,cache_dir,'--vector-models','e5-base,voyage-4','--cloud','--cloud-stories',story_id,'--repro','--context','32768',*_cloud_files(cache_dir)))
     assert error is None
-    section=report['vector']['azure-3-large']
-    assert section['tokens']==120 and section['usd']==pytest.approx(0.0000156) and section['threads'] is None
+    assert built==['e5-base','voyage-4','e5-base']  # --repro without --repro-cloud never rebuilds the cloud model
+    section=report['vector']['voyage-4']
+    assert section['tokens']==120 and section['usd']==pytest.approx(0.0000072) and section['threads'] is None
     assert section['latency_ms']=={'p50':200.0,'p90':400.0} and section['repro_identical_share'] is None
     assert section['weights_bytes'] is None
+    assert report['vector']['e5-base']['repro_identical_share']==1.0
 
 
-def test_cloud_budget_maps_to_exit_2(synthetic_repo,tmp_path,monkeypatch,capsys,cache_dir):
+def test_repro_cloud_reruns_cloud_once(synthetic_repo,tmp_path,monkeypatch,cache_dir):
     pytest.importorskip('numpy')
+    repo,story_id,_=synthetic_repo;built=[]
+    _patch_factory(monkeypatch,built)
+    _set_cloud_env(monkeypatch)
+    report,error=_report(_vec_args(repo,cache_dir,'--vector-models','voyage-4','--cloud','--cloud-stories',story_id,'--repro','--repro-cloud','--context','32768',*_cloud_files(cache_dir)))
+    assert error is None and built==['voyage-4','voyage-4']
+    assert report['vector']['voyage-4']['repro_identical_share']==1.0
+
+
+def test_repro_cloud_requires_repro(synthetic_repo,capsys,cache_dir):
+    repo,_,_=synthetic_repo
+    assert _bench().main(_vec_args(repo,cache_dir,'--repro-cloud'))==2
+    assert capsys.readouterr().err.strip()=='repro_cloud_without_repro'
+
+
+@pytest.mark.parametrize('error',['budget','missing','http'])
+def test_cloud_errors_map_to_exit_2(synthetic_repo,tmp_path,monkeypatch,capsys,cache_dir,error):
+    pytest.importorskip('numpy')
+    from memory_bench.cloud_spend import BudgetExceeded, LedgerMissing
     from memory_bench.embeddings import FakeEmbedder
     repo,story_id,_=synthetic_repo
+    raised={'budget':BudgetExceeded,'missing':LedgerMissing,'http':lambda:ValueError('cloud_http_500')}[error]
+    code={'budget':'cloud_budget_exceeded','missing':'spend_ledger_missing','http':'cloud_http_500'}[error]
 
     class Over(FakeEmbedder):
         def embed(self,texts,kind):
-            raise ValueError('cloud_budget')
+            raise raised()
     _patch_factory(monkeypatch,[],Over)
     _set_cloud_env(monkeypatch,'SECRET-VALUE')
-    assert _bench().main(_vec_args(repo,cache_dir,'--vector-models','azure-3-large','--cloud','--cloud-stories',story_id))==2
+    assert _bench().main(_vec_args(repo,cache_dir,'--vector-models','voyage-4','--cloud','--cloud-stories',story_id,*_cloud_files(cache_dir)))==2
     out=capsys.readouterr()
-    assert out.err.strip()=='cloud_budget' and 'SECRET-VALUE' not in out.err+out.out
+    assert out.out=='' and out.err.strip()==code and 'SECRET-VALUE' not in out.err+out.out
 
 
 def test_vector_deps_missing_inside_repo_unknown_model(synthetic_repo,tmp_path,monkeypatch,capsys,cache_dir):

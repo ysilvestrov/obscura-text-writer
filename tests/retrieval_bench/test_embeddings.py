@@ -75,7 +75,7 @@ def test_models_registry():
     assert MODELS['e5-base']['model_id'] == 'intfloat/multilingual-e5-base'
     assert MODELS['e5-base']['query_prefix'] == 'query: '
     assert MODELS['bge-m3']['max_tokens'] == 8192
-    assert MODELS['azure-3-large']['kind'] == 'cloud'
+    assert MODELS['voyage-4']['kind'] == 'cloud'
 
 
 class TruncatingEmbedder(FakeEmbedder):
@@ -130,3 +130,61 @@ def test_nano_specs():
     assert MODELS['nano-2048']['dtype'] == 'float32'
     assert MODELS['nano-2048']['revision'] == '587d8d6dcaec029a9779c2098d6af020e4a07c01'
     assert MODELS['nano-512'] == {'kind': 'truncate', 'base': 'nano-2048', 'dim': 512}
+
+
+def _stub_local(monkeypatch, dtype=None):
+    """A LocalEmbedder for e5-base over stubbed torch / sentence_transformers: nothing is loaded."""
+    import sys
+    import types
+    from memory_bench.embeddings import LocalEmbedder
+
+    class Model:
+        def __init__(self, *args, **kwargs):
+            self.tokenizer = None
+
+        def get_sentence_embedding_dimension(self):
+            return 16
+    torch = types.SimpleNamespace(set_num_threads=lambda n: None, float32='float32')
+    monkeypatch.setitem(sys.modules, 'torch', torch)
+    monkeypatch.setitem(sys.modules, 'sentence_transformers', types.SimpleNamespace(SentenceTransformer=Model))
+    spec = MODELS['e5-base']
+    return LocalEmbedder('e5-base', spec['model_id'], spec['revision'], spec['query_prefix'], spec['passage_prefix'],
+                         spec['max_tokens'], dtype=dtype)
+
+
+# sha256 of 'intfloat/multilingual-e5-base|<revision>|passage|passage: |alpha', taken from the code before dtype
+# entered the key: e5 and bge-m3 caches built earlier stay valid.
+E5_ALPHA_PASSAGE = '07f21e775d8849713d784ebf96268aeac5f81c6e1ced8f1161458d3120c339ed'
+
+
+def test_cache_path_includes_dtype_and_keeps_e5_unchanged(monkeypatch, outside_dir):
+    plain = CachedEmbedder(_stub_local(monkeypatch), outside_dir)
+    typed = CachedEmbedder(_stub_local(monkeypatch, dtype='float32'), outside_dir)
+    assert plain._path('passage', 'alpha').name == E5_ALPHA_PASSAGE + '.npz'
+    assert typed._path('passage', 'alpha') != plain._path('passage', 'alpha')
+
+
+class BatchedEmbedder(FakeEmbedder):
+    BATCH = 3
+
+    def __init__(self, fail_on_call=None):
+        super().__init__()
+        self.calls = []
+        self.fail_on_call = fail_on_call
+
+    def embed(self, texts, kind):
+        self.calls.append(len(texts))
+        if len(self.calls) == self.fail_on_call:
+            raise ValueError('cloud_http_500')
+        return super().embed(texts, kind)
+
+
+def test_cache_writes_each_chunk_before_the_next(outside_dir):
+    texts = [f't{i}' for i in range(8)]
+    inner = BatchedEmbedder(fail_on_call=3)
+    with pytest.raises(ValueError, match='cloud_http_500'):
+        CachedEmbedder(inner, outside_dir).embed(texts, 'passage')
+    assert inner.calls == [3, 3, 2] and len(list(outside_dir.glob('*.npz'))) == 6
+    again = BatchedEmbedder()
+    out = CachedEmbedder(again, outside_dir).embed(texts, 'passage')
+    assert again.calls == [2] and np.array_equal(out, FakeEmbedder().embed(texts, 'passage'))

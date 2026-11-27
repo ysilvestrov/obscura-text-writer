@@ -28,8 +28,9 @@ MODELS: dict[str, dict] = {
                   'passage_prefix': 'Represent the document for retrieval: ', 'max_tokens': 8192, 'trust_remote_code': True,
                   'dtype': 'float32'},  # the checkpoint is bf16, which is very slow on CPU
     'nano-512': {'kind': 'truncate', 'base': 'nano-2048', 'dim': 512},
-    # Azure deployment name comes from the cloud config, not from here; the client is AzureEmbedder.
-    'azure-3-large': {'kind': 'cloud', 'model_id': 'text-embedding-3-large', 'revision': 'azure'},
+    # Atlas Embedding API (VoyageEmbedder); the model has no revision, 'atlas-1024' names the API and the default
+    # 1024 dimensions (output_dimension is never sent).
+    'voyage-4': {'kind': 'cloud', 'model_id': 'voyage-4', 'revision': 'atlas-1024', 'dim': 1024, 'max_tokens': 32000},
 }
 
 
@@ -88,6 +89,7 @@ class LocalEmbedder:
         self.key, self.model_id, self.revision = key, model_id, revision
         self.query_prefix, self.passage_prefix = query_prefix, passage_prefix
         self.max_tokens = max_tokens
+        self.dtype = dtype  # part of the cache key when set: float32 vectors of a bf16 checkpoint differ
         self.truncated = 0
         self._model = SentenceTransformer(model_id, revision=revision, device='cpu',
                                           trust_remote_code=trust_remote_code,
@@ -156,6 +158,9 @@ class CachedEmbedder:
     def _path(self, kind, text) -> Path:
         prefix = getattr(self.inner, 'query_prefix' if kind == 'query' else 'passage_prefix', '')
         raw = '|'.join((self.inner.model_id, self.inner.revision, kind, prefix, text))
+        dtype = getattr(self.inner, 'dtype', None)
+        if dtype:  # absent for e5 and bge-m3, so their keys stay as before
+            raw += '|dtype=' + dtype
         return self.cache_dir / (hashlib.sha256(raw.encode('utf-8')).hexdigest() + '.npz')
 
     def embed(self, texts, kind):
@@ -168,10 +173,14 @@ class CachedEmbedder:
         missing = list(dict.fromkeys((p, t) for p, t in zip(paths, texts) if p not in found))
         self.hits += sum(p in found for p in paths)
         self.misses += sum(p not in found for p in paths)
-        if missing:
-            vectors = self.inner.embed([t for _, t in missing], kind)
-            flags = getattr(self.inner, 'last_truncated', None) or [False] * len(missing)
-            for (p, _), vec, flag in zip(missing, vectors, flags):
+        # In chunks of the inner batch: a chunk is on disk before the next one is asked for, so a paid cloud batch
+        # survives a later failure and a re-run asks only for the rest.
+        step = getattr(self.inner, 'BATCH', None) or len(missing) or 1
+        for start in range(0, len(missing), step):
+            chunk = missing[start:start + step]
+            vectors = self.inner.embed([t for _, t in chunk], kind)
+            flags = getattr(self.inner, 'last_truncated', None) or [False] * len(chunk)
+            for (p, _), vec, flag in zip(chunk, vectors, flags):
                 tmp = p.with_suffix(f'.{os.getpid()}.tmp')
                 with open(tmp, 'wb') as f:
                     np.savez(f, vec=vec, truncated=np.array(flag))
@@ -190,64 +199,102 @@ def cloud_allowed(story_id: str, prefixes: Sequence[str]) -> bool:
     return any(p and story_id.startswith(p) for p in prefixes)
 
 
-class AzureEmbedder:
-    """Azure OpenAI embeddings over httpx, in batches, with a hard budget check before any request.
+class VoyageEmbedder:
+    """voyage-4 over the Atlas Embedding API (httpx), in batches; every call is checked against and recorded in the
+    cumulative spend ledger.
 
-    Texts go only into the request body; neither texts nor the api key appear in exceptions. No prefix is added for
-    either kind. Truncation is not measured for the cloud model: last_truncated is all False and truncated stays 0."""
-    BATCH = 64
+    Texts go only into the request body; neither texts, the api key nor error bodies appear in exceptions or output.
+    No prefix is added: the kind travels as input_type. Truncation is not measured for the cloud model: last_truncated
+    is all False and truncated stays 0."""
+    URL = 'https://ai.mongodb.com/v1/embeddings'
+    BATCH = 128
+    PROVIDER = 'voyage'
+    PRICE_PER_MTOK = 0.06
+    RETRY_SLEEPS = (1, 2, 4)  # pauses before the 2nd, 3rd and 4th attempt on HTTP 429
+    INPUT_TYPES = {'query': 'query', 'passage': 'document'}
 
-    def __init__(self, key, endpoint, api_key, deployment, api_version, price_per_mtok: float, max_usd: float,
-                 transport=None, model_id='text-embedding-3-large', revision='azure', dim=0):
+    def __init__(self, key, api_key, ledger, transport=None, sleep=time.sleep, model_id='voyage-4',
+                 revision='atlas-1024', dim=1024):
         import httpx
         self.key, self.model_id, self.revision, self.dim = key, model_id, revision, dim
-        self.max_tokens = 8191
+        self.max_tokens = 32000
         self.truncated = 0
         self.last_truncated: list[bool] = []
         self.query_prefix = self.passage_prefix = ''
-        self.price_per_mtok, self.max_usd = price_per_mtok, max_usd
-        self.tokens, self.usd = 0, 0.0
+        self.tokens, self.usd = 0, 0.0  # this embedder only; the ledger holds the cumulative total
         self.latencies: list[float] = []
-        self._url = f"{endpoint.rstrip('/')}/openai/deployments/{deployment}/embeddings"
-        self._api_version = api_version
-        self._headers = {'api-key': api_key}
+        self._ledger, self._sleep = ledger, sleep
+        self._headers = {'Authorization': f'Bearer {api_key}'}
         self._client = httpx.Client(transport=transport, timeout=60.0)
 
     def close(self):
         self._client.close()
 
+    def _post(self, body):
+        """The parsed JSON of a 200 response; ValueError with a code otherwise. Retries HTTP 429 only."""
+        import httpx
+        for attempt in range(len(self.RETRY_SLEEPS) + 1):
+            if attempt:
+                self._sleep(self.RETRY_SLEEPS[attempt - 1])
+            began = time.perf_counter()
+            try:
+                response = self._client.post(self.URL, headers=self._headers, json=body)
+            except httpx.HTTPError:  # the message may carry the url or headers: never echoed
+                raise ValueError('cloud_error') from None
+            if response.status_code == 429:
+                continue
+            if response.status_code != 200:  # the body ({"detail": ...}) is never read
+                raise ValueError(f'cloud_http_{response.status_code}')
+            self.latencies.append(time.perf_counter() - began)
+            try:
+                return response.json()
+            except ValueError:
+                raise ValueError('cloud_bad_response') from None
+        raise ValueError('cloud_http_429')
+
+    def _parse(self, body, count):
+        """(usage.total_tokens, rows in input order) or cloud_bad_response."""
+        try:
+            used = body['usage']['total_tokens']
+            items = body['data']
+            if not isinstance(used, int) or isinstance(used, bool) or used < 0 or not isinstance(items, list):
+                raise TypeError
+            rows = {}
+            for item in items:
+                index, vector = item['index'], item['embedding']
+                if not isinstance(index, int) or isinstance(index, bool) or not 0 <= index < count or index in rows:
+                    raise TypeError
+                if not isinstance(vector, list) or len(vector) != self.dim or not all(
+                        isinstance(x, (int, float)) and not isinstance(x, bool) for x in vector):
+                    raise TypeError
+                rows[index] = vector
+            if len(rows) != count:
+                raise TypeError
+        except (KeyError, TypeError, IndexError):  # malformed body: never echo it
+            raise ValueError('cloud_bad_response') from None
+        return used, [rows[i] for i in range(count)]
+
     def embed(self, texts, kind):
+        if kind not in self.INPUT_TYPES:
+            raise ValueError('cloud_input_type')
         texts = list(texts)
         self.last_truncated = [False] * len(texts)
         if not texts:
             return np.zeros((0, self.dim), dtype=np.float32)
         estimate = sum(math.ceil(len(t) / 2) for t in texts)
-        est_usd = estimate * self.price_per_mtok / 1e6
-        print(f'cloud_estimate tokens={estimate} usd={est_usd:.4f} spent_usd={self.usd:.4f} max_usd={self.max_usd}',
+        est_usd = estimate * self.PRICE_PER_MTOK / 1e6
+        print(f'cloud_estimate provider={self.PROVIDER} tokens={estimate} usd={est_usd:.4f} '
+              f'spent_usd={self._ledger.spent(self.PROVIDER):.4f} max_usd={self._ledger.caps.get(self.PROVIDER, 0.0)}',
               file=sys.stderr)
-        if self.usd + est_usd > self.max_usd:
-            raise ValueError('cloud_budget')
+        self._ledger.check(self.PROVIDER, est_usd)
         rows = []
         for start in range(0, len(texts), self.BATCH):
             batch = texts[start:start + self.BATCH]
-            began = time.perf_counter()
-            try:
-                response = self._client.post(self._url, params={'api-version': self._api_version},
-                                             headers=self._headers, json={'input': batch})
-                response.raise_for_status()
-                body = response.json()
-            except Exception as error:  # message never echoes the body, texts or the key
-                status = getattr(getattr(error, 'response', None), 'status_code', None)
-                raise ValueError(f'cloud_http_{status}' if status else 'cloud_error') from None
-            self.latencies.append(time.perf_counter() - began)
-            try:
-                used = int(body['usage']['prompt_tokens'])
-                batch_rows = [item['embedding'] for item in sorted(body['data'], key=lambda item: item['index'])]
-            except (KeyError, TypeError):  # malformed body: never echo it
-                raise ValueError('cloud_bad_response') from None
+            body = self._post({'input': batch, 'model': self.model_id, 'input_type': self.INPUT_TYPES[kind]})
+            used, batch_rows = self._parse(body, len(batch))
+            usd = used * self.PRICE_PER_MTOK / 1e6
+            self._ledger.record(self.PROVIDER, usd, used, 0)
             self.tokens += used
-            self.usd += used * self.price_per_mtok / 1e6
+            self.usd += usd
             rows.extend(batch_rows)
-        matrix = _normalized(np.array(rows, dtype=np.float32))
-        self.dim = int(matrix.shape[1])
-        return matrix
+        return _normalized(np.array(rows, dtype=np.float32))
