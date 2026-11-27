@@ -444,6 +444,11 @@ IMPORT-NUMBER-S03. Автоматична частина — Playwright `tests/w
 
 DATA-010-S02. Автоматична частина — Playwright `tests/web/browser/prose-acceptance.spec.mjs` (один case на desktop і mobile: дві сцени з ручною прозою під завданням автора, тож зв'язок завдання → проза неперевірений і проза чекає (VALID-LINKS); у меню твору пункт «Прийняти всю прозу як авторську» видимий, підтвердження називає «Ранок», «Вечір», після прийняття `GET /prose-acceptance` повертає порожній перелік, а пункт зникає; відкрита проза сцени «Ранок» після прийняття редагується й зберігається без 409). Запуск: `cd frontend; ./node_modules/.bin/playwright test -c playwright.config.mjs ../tests/web/browser/prose-acceptance.spec.mjs`. Цей зв’язок не є доказом виконання; фактичний запуск фіксується окремо.
 
+<a id="long-prose-trial-browser"></a>
+## Інтерфейс проби довгої прози в Store
+
+LONG-PROSE-TRIAL-S07. Автоматична частина — Playwright `tests/web/browser/long-prose-trial.spec.mjs` (книга: кнопка в налаштуваннях і поруч із банером, підтвердження, перезавантаження, «Пробу використано на «X»» зі списком очікування, меню збирання пам'яті; серії: створення пробної серії, серія іншого видання без посилання й кнопка «Зробити пробною серією», вимкнена «Нова книга», попередження про вихід, лише серія проби у формі книги) і store-тести `tests/web/browser/manuscript-import.spec.mjs` (позначка пробної книги, плаский імпорт без неї, імпорт у серію проби) на desktop і mobile; кожен тест починає з вільною пробою (`/test-reset-trial`). Запуск: `cd frontend; npx playwright test long-prose-trial.spec.mjs manuscript-import.spec.mjs`. Цей зв’язок не є доказом виконання; фактичний запуск фіксується окремо.
+
 <a id="claude-skills"></a>
 ## Скіли Obscura для Claude: сценарії поведінки
 
