@@ -2,7 +2,7 @@
 
 A long book can be divided into parts, and a part into arcs. An arc is a line of scenes with its own protagonist; a part holds one or several. An ordinary short story is one part with one arc, and there is nothing to set up.
 
-Parts and arcs are available in the paid build of Obscura and when running from source. The Microsoft Store build does not have them: see [below](#in-a-build-without-parts-and-arcs).
+Parts and arcs are available in the paid build of Obscura and when running from source. The Microsoft Store build has them only in the [trial](paid.md#trial-in-the-microsoft-store-build): see [below](#in-a-build-without-parts-and-arcs).
 
 ## Parts and arcs in the outline
 
@@ -97,4 +97,4 @@ In book files parts become higher-level sections: in Markdown a `##` heading wit
 
 The Microsoft Store build has no panel and no “Arc” field, and an outline is imported as usual: part headings and `Arc:` and `Arcs:` lines stay in the text.
 
-A book with several parts or arcs made in another build can be read and exported here, but not changed: the workspace shows a message about it.
+A book with several parts or arcs made in another build can be read and exported here, but not changed: the workspace shows a message about it. While the trial is free, a **Try parts and arcs on this book** button stands next to it, and the settings of a flat book have the same button in place of the Book structure panel. Once the trial is on, the trial book gets the panel and the “Arc” field, as in the paid build.

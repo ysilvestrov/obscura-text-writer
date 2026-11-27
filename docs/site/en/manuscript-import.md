@@ -46,7 +46,7 @@ Changing the markers or the chapter source parses the file again, and your scene
 
 ## Parts and series
 
-- **Free edition:** one standalone book, chapters are scenes on one level. Part headings ("Part One") are skipped with a warning, and their text is not lost. There are no part marker and series fields.
+- **Free edition:** one standalone book, chapters are scenes on one level. Part headings ("Part One") are skipped with a warning, and their text is not lost. While the [trial](paid.md#trial-in-the-microsoft-store-build) is free, the preview of a manuscript with parts shows the **Import with parts as the trial book** checkbox: with it the book is imported with parts and becomes the trial book, without it the book has no parts. If the trial went to a series, a book with parts can be imported into it, and the series list holds only that series.
 - **Paid edition:** lines "Part", "Book", "Частина" or "Книга" with a number become [parts of the book](book-structure.md); the **Part markers (comma-separated)** field sets the list. You can add the book to a [series](series.md) with a number right away. If the memory of the previous book in the series is not built yet, the preview warns that the new book starts without a series start snapshot; this does not block the import, and the snapshot can be refreshed later.
 
 ## After the import

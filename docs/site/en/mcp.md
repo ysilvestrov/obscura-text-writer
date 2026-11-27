@@ -332,7 +332,7 @@ The chat client sees the “Start a story” prompt (`start_story`). It leads th
 
 The Microsoft Store version includes the MCP bridge and the [Obscura skills](#obscura-skills): there is nothing to install separately, and the “Connect to Claude” button in the library is expanded right away. “Connect Claude Code” installs the skills together with the bridge, and “Skills for Claude Desktop” prepares the ZIP files just as in the source version. A new story created in the library form uses the **Obscura writes** mode by default here too; a story created by the chat uses **The chat writes**. If Obscura is not running, Claude quietly starts it in the tray when it is needed; you can quit it from the tray icon.
 
-The free version does not write long prose (books, parts, arcs), series or scenes above the rating limit. When the chat meets such a limit, it explains that this is a feature of the paid version and gives the waitlist link.
+The free version does not write long prose (books, parts, arcs), series or scenes above the rating limit. When the chat meets such a limit, it explains that this is a feature of the paid version and gives the waitlist link. The hint also says whether the [trial](paid.md#trial-in-the-microsoft-store-build) is still free. The chat does not turn the trial on: the author does it in the Obscura window, and the chat explains where.
 
 ## Limitations
 
