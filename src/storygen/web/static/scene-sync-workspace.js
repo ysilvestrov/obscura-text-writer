@@ -4,7 +4,7 @@ import {t,uiText} from './i18n.js';
 import {api,notice} from './api.js';
 import {state,refresh,clearSceneBuffer} from './editor.js';
 import {invokeWorkspaceCommand} from './workspace-commands.js';
-import {revisionsChanged,externalNotice,cleanBuffer,createSceneSync,ghostOpen} from './scene-sync.js';
+import {revisionsChanged,externalNotice,cleanBuffer,createSceneSync,ghostOpen,storyChanged} from './scene-sync.js';
 
 const box=document.querySelector('#external-change'),text=box?.querySelector('span'),button=box?.querySelector('button');
 const saveButton=document.querySelector('#save-text');
@@ -13,13 +13,17 @@ let lastKind=null;
 
 async function check(){
   if(!state.view||!state.storyId)return;
-  const {scenes,writing_mode}=await api(`/api/stories/${encodeURIComponent(state.storyId)}/scene-revisions`,{fresh:true});
+  const payload=await api(`/api/stories/${encodeURIComponent(state.storyId)}/scene-revisions`,{fresh:true});
+  const {scenes,writing_mode}=payload;
+  // MEMORY-LOCATIONS-S12: a story-level change made elsewhere (the locations page) reloads the view too; a dirty buffer
+  // is never overwritten by refresh.
+  const storyMoved=storyChanged(state.view,payload);
   // R-49: a mode switch changes only the story revision; the workspace redraws its actions for the new mode.
   // Scene changes made in the same absence are still handled below (deletion notice, buffer protection).
   const modeChanged=!!writing_mode&&writing_mode!==state.view.story?.writing_mode;
   const result=revisionsChanged(state.view.scenes,scenes,state.scene);
   // A view refreshed by the author's own action can be current while the buffer is still behind: notice that once.
-  if(!modeChanged&&!result.changed&&(state.externalChange||!(result.currentChanged||result.currentGone)))return;
+  if(!modeChanged&&!storyMoved&&!result.changed&&(state.externalChange||!(result.currentChanged||result.currentGone)))return;
   if(result.currentChanged||result.currentGone)state.externalChange=true;
   if(result.currentGone&&cleanBuffer(state,ghostOpen()))clearSceneBuffer();
   await refresh({fresh:true});
@@ -30,6 +34,8 @@ const trigger=()=>{void sync.trigger()};
 const settle=()=>{void sync.settle()};
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)trigger()});
 globalThis.addEventListener?.('focus',trigger);
+// A page restored from the back/forward cache shows its old state: check it as on any return.
+globalThis.addEventListener?.('pageshow',event=>{if(event.persisted)trigger()});
 document.addEventListener('workspace-sync-settle',settle);
 document.addEventListener('editor-state-changed',settle);
 

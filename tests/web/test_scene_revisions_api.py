@@ -16,7 +16,7 @@ def test_scene_revisions_follow_the_story_view(tmp_path):
     with TestClient(app, base_url='http://127.0.0.1:8765') as client:
         story = client.post('/api/stories', json={'title': 'Твір'}).json()
         url = f'/api/stories/{story["id"]}/scene-revisions'
-        assert client.get(url).json() == {'scenes': {}, 'writing_mode': 'chat'}
+        assert client.get(url).json() == {'scenes': {}, 'writing_mode': 'chat', 'story_revision': story['revision']}
         first = client.post(f'/api/stories/{story["id"]}/scenes', json={'title': 'Перша'}).json()
         second = client.post(f'/api/stories/{story["id"]}/scenes', json={'title': 'Друга'}).json()
         assert client.get(url).json()['scenes'] == _view_revisions(client, story['id'])
@@ -59,3 +59,15 @@ def test_scene_revisions_carry_the_writing_mode(tmp_path):
         story = client.post('/api/stories', json={'title': 'Твір'}).json()
         client.put(f'/api/stories/{story["id"]}/writing-mode', json={'writing_mode': 'author', 'expected_revision': story['revision']})
         assert client.get(f'/api/stories/{story["id"]}/scene-revisions').json()['writing_mode'] == 'author'
+
+
+@pytest.mark.req('MCP-BRIDGE')
+def test_scene_revisions_carry_the_story_revision(tmp_path):
+    """MEMORY-LOCATIONS-S12: a story-level change elsewhere (the locations page) moves the revision the workspace compares."""
+    app = create_app(AppSettings(data_dir=tmp_path))
+    with TestClient(app, base_url='http://127.0.0.1:8765') as client:
+        story = client.post('/api/stories', json={'title': 'Твір'}).json()
+        client.put(f'/api/stories/{story["id"]}/writing-mode', json={'writing_mode': 'author', 'expected_revision': story['revision']})
+        fresh = client.get(f'/api/stories/{story["id"]}').json()['story']['revision']
+        assert fresh > story['revision']
+        assert client.get(f'/api/stories/{story["id"]}/scene-revisions').json()['story_revision'] == fresh
