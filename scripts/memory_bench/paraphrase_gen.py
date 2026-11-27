@@ -43,14 +43,15 @@ class AnthropicClient:
     """One non-streaming Messages API call. Haiku 5.5 thinks adaptively by default; effort is set to low.
     last_stop_reason holds the stop_reason of the latest reply ('max_tokens' means the reply was cut off)."""
 
-    def __init__(self, api_key: str, model: str = HAIKU):
+    def __init__(self, api_key: str, model: str = HAIKU, max_tokens: int = MAX_TOKENS):
         import anthropic
         self.model = model
+        self.max_tokens = max_tokens
         self.last_stop_reason: str | None = None
         self._client = anthropic.Anthropic(api_key=api_key)
 
     def complete(self, prompt: str) -> tuple[str, int, int]:
-        reply = self._client.messages.create(model=self.model, max_tokens=MAX_TOKENS, output_config={'effort': 'low'},
+        reply = self._client.messages.create(model=self.model, max_tokens=self.max_tokens, output_config={'effort': 'low'},
                                              messages=[{'role': 'user', 'content': prompt}])
         self.last_stop_reason = getattr(reply, 'stop_reason', None)
         text = ''.join(block.text for block in reply.content if block.type == 'text')
