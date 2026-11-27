@@ -5,24 +5,45 @@ import {api,json,notice} from './api.js';
 import {state,refresh} from './editor.js';
 import {appInfo} from './app-info.js';
 import {arcOptions,meetingOptions} from './book-structure.js';
+import {confirmDialog} from './dialogs.js';
+import {claimTrial,trialState,usedNotice} from './long-prose-trial.js';
 
-let longProse=null;
+let info=null;
+// LONG-PROSE-TRIAL-S07: the book answers for itself (GET /api/stories/{id}), its trial included.
+const longProse=()=>state.view?.long_prose!==false;
 const label=(key,n)=>t(key,{p0:n});
 
 function banner(){
   const workspace=document.querySelector('#workspace');if(!workspace)return;
   let box=document.querySelector('#book-readonly');
-  const show=longProse===false&&state.view?.book_structure?.kind==='structured';
-  if(!show){box?.remove();return}
+  const show=!!state.view&&!longProse()&&state.view.book_structure?.kind==='structured';
+  if(!show){box?.remove();document.querySelector('#book-readonly-trial')?.remove();return}
   if(!box){box=document.createElement('p');box.id='book-readonly';box.className='notice warning';box.setAttribute('role','status');workspace.prepend(box)}
   uiText(box,'textContent',()=>t('book.readonly'));
   const save=document.querySelector('#save-text');if(save)save.disabled=true;
+  trialOffer(box);
+}
+
+// Beside the banner, never inside it: the banner keeps its exact text. A series book is offered its series instead.
+function trialOffer(box){
+  let node=document.querySelector('#book-readonly-trial');
+  const trial=trialState(info),story=state.view.story;
+  const kind=trial.state==='available'&&!story.series_id?'offer':trial.state==='used'?'used':null;
+  if(!kind){node?.remove();return}
+  if(node?.dataset.kind===kind)return;
+  if(!node){node=document.createElement('div');node.id='book-readonly-trial';node.className='trial-offer'}
+  box.after(node);node.dataset.kind=kind;
+  if(kind==='used'){node.replaceChildren(usedNotice(document,trial,info));return}
+  const offer=document.createElement('button');offer.type='button';
+  uiText(offer,'textContent',()=>t('trial.offer_book'));
+  offer.onclick=()=>claimTrial({api,json,confirmDialog,notice,location},{story_id:state.storyId},story.title);
+  node.replaceChildren(offer);
 }
 
 function arcField(){
   document.querySelector('#scene-arc')?.remove();
   const book=state.view?.book_structure,settings=document.querySelector('#scene-settings');
-  if(!longProse||!book?.explicit||!state.scene||!settings)return;
+  if(!longProse()||!book?.explicit||!state.scene||!settings)return;
   const current=state.view.scenes.find(scene=>scene.id===state.scene.id);
   const form=document.createElement('form');form.id='scene-arc';form.className='panel';
   const field=document.createElement('label'),caption=document.createElement('span'),select=document.createElement('select');
@@ -61,4 +82,4 @@ function arcField(){
 
 function draw(){banner();arcField()}
 document.addEventListener('scene-selected',draw);document.addEventListener('story-refreshed',draw);
-appInfo().then(info=>{longProse=info.long_prose!==false;draw()});
+appInfo().then(value=>{info=value;draw()});

@@ -398,7 +398,7 @@ def main():
             original=getattr(build_edition,'_fixture_original',None) or build_edition.current
             build_edition._fixture_original=original
             if body.get('edition')=='store':
-                edition=build_edition.BuildEdition(edition='store',report_url='https://example.test/report',support_url='https://example.test/thanks')
+                edition=build_edition.BuildEdition(edition='store',report_url='https://example.test/report',support_url='https://example.test/thanks',waitlist_url=body.get('waitlist_url',''))
                 build_edition.current=lambda:edition
             else:
                 build_edition.current=original
