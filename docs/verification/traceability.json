@@ -6078,6 +6078,45 @@
       }
     },
     {
+      "id": "MEMORY-LOCATIONS-S09",
+      "requirement": "MEMORY-LOCATIONS",
+      "scope": "Розбір зі склеєними фразами: вкладені шляхи, роздільник фрази, межі слів, NFD, апострофи, пробіли біля коми, перетин правил, незмінність без правил, glue_key і glue_cuts. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/memory/test_locations_glue.py::test_glued_phrase_is_not_cut",
+        "tests/memory/test_locations_glue.py::test_glue_keeps_its_separator_and_word_bounds",
+        "tests/memory/test_locations_glue.py::test_glue_matches_case_nfd_apostrophes_and_punctuation_spacing",
+        "tests/memory/test_locations_glue.py::test_overlapping_and_chained_glues",
+        "tests/memory/test_locations_glue.py::test_without_glues_the_parse_is_unchanged",
+        "tests/memory/test_locations_glue.py::test_glue_key",
+        "tests/memory/test_locations_glue.py::test_glue_cuts_give_the_phrase_across_each_cut"
+      ]
+    },
+    {
+      "id": "MEMORY-LOCATIONS-S10",
+      "requirement": "MEMORY-LOCATIONS",
+      "scope": "Склеювання й розклеювання в сховищі й API: поле твору, збереження плану, перерахунок сцен плану й кошика, сцени моделі, застарілість, валідація, межа 500, приховані пари з префіксами, кандидати, 500 сцен ≤ 1 с, 400/409/422 без змін, пошук у прозі. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/storage/test_location_glue.py::test_story_payload_without_glues_has_no_field",
+        "tests/storage/test_location_glue.py::test_plan_save_uses_story_glues",
+        "tests/storage/test_location_glue.py::test_glue_recomputes_plan_scenes_now",
+        "tests/storage/test_location_glue.py::test_glue_skips_model_scenes",
+        "tests/storage/test_location_glue.py::test_glue_reaches_trashed_plan_scenes_but_not_candidates",
+        "tests/storage/test_location_glue.py::test_glue_stales_material_of_changed_scenes_only",
+        "tests/storage/test_location_glue.py::test_unglue_restores_fragments",
+        "tests/storage/test_location_glue.py::test_unglue_after_merging_a_fragment",
+        "tests/storage/test_location_glue.py::test_glue_validation",
+        "tests/storage/test_location_glue.py::test_glue_refuses_a_repeat_the_501st_and_an_unknown_unglue",
+        "tests/storage/test_location_glue.py::test_glue_dismisses_new_cards_against_fragments_with_prefixes",
+        "tests/storage/test_location_glue.py::test_candidates_join_every_occurrence",
+        "tests/storage/test_location_glue.py::test_glue_recompute_500_scenes_within_a_second",
+        "tests/web/test_locations_glue_api.py::test_glue_api_returns_view_and_dependent_scenes",
+        "tests/web/test_locations_glue_api.py::test_glue_api_conflict_changes_nothing",
+        "tests/web/test_locations_glue_api.py::test_glue_api_validation",
+        "tests/web/test_locations_glue_api.py::test_unglue_api",
+        "tests/characters/test_extract_accept_locations.py::test_extract_paths_respect_story_glues"
+      ]
+    },
+    {
       "id": "MEMORY-SUMMARY-S01",
       "requirement": "MEMORY-SUMMARY",
       "scope": "Блоки пласкої книги й книги з частинами, кошик, пороги рекомендації й заміни, старий payload.",

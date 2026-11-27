@@ -1,5 +1,5 @@
 """MEMORY-LOCATIONS API (#67): location cards of a story, merge, split, dismissed suggestions, the author's description
-and removing a model's place from a scene (R-51)."""
+and removing a model's place from a scene (R-51), glued place names."""
 from fastapi import APIRouter, Request
 from pydantic import Field
 
@@ -28,6 +28,14 @@ class SceneChange(Change):
     scene_id: str = Field(**ID)
 
 
+class Glue(Change):
+    phrase: str = Field(min_length=1, max_length=400)  # the exact 3–200 after collapsing spaces is the store's check
+
+
+class Unglue(Change):
+    key: str = Field(min_length=1, max_length=400)
+
+
 class Description(Change):
     description: str = Field(max_length=DESCRIPTION_LIMIT)
 
@@ -49,6 +57,18 @@ def dismiss(story_id: str, body: Dismiss, request: Request):
             raise ValueError('Невідома локація')
         store.dismiss_pair(db, story_id, body.a, body.b)
     return change(request, story_id, body, action)
+
+
+@router.post('/api/stories/{story_id}/locations/glue')
+def glue(story_id: str, body: Glue, request: Request):
+    repo = request.app.state.repo
+    return change(request, story_id, body, lambda db: store.glue_location(repo, db, story_id, body.phrase))
+
+
+@router.post('/api/stories/{story_id}/locations/unglue')
+def unglue(story_id: str, body: Unglue, request: Request):
+    repo = request.app.state.repo
+    return change(request, story_id, body, lambda db: store.unglue_location(repo, db, story_id, body.key))
 
 
 @router.post('/api/stories/{story_id}/locations/{location_id}/merge')
