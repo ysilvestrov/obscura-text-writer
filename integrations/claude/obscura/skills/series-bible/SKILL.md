@@ -41,7 +41,7 @@ Only after consent:
    Fill the characters template with the cycle's recurring characters, if any.
 3. `import_plan_and_characters(story_id, plan_markdown, characters_markdown)`. Check the import result and fix only the missing part.
 4. `get_story(story_id)`. Confirm the number of articles and that `series.bible` is true.
-   - `series` is null: this Obscura edition keeps no series. Tell the author: the bible exists as an ordinary story, and the series lines stayed in its plan.
+   - `series` is null: this Obscura edition keeps no series. Tell the author: the bible exists as an ordinary story, and the series lines stayed in its plan. If the refusal or `app-info` says the long prose trial is still free, add that the author can create the one trial series on the «Серії» page in the Obscura window; the chat does not create it.
    - a warning about series lines: show it and fix the preamble.
 
 ## 4. After creating

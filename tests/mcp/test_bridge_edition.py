@@ -166,3 +166,27 @@ def test_bridge_reads_the_trial_state_with_the_refusal():
     result = anyio.run(run)
     text = ''.join(getattr(item, 'text', '') for item in result.content)
     assert result.is_error and TRIAL_AVAILABLE_TEXT in text
+
+
+@pytest.mark.req('LONG-PROSE-TRIAL')
+def test_import_confirm_never_sends_trial(tmp_path, store_edition, monkeypatch):
+    """LONG-PROSE-TRIAL-S07: the chat never turns the trial on; the author does it in the Obscura window."""
+    from tests.mcp.test_bridge import call
+    from tests.mcp.test_bridge_manuscript import bridge, manuscript
+    from tests.mcp.test_bridge_settings import ok
+    from storygen.storage.long_prose_trial import trial_state
+    app, http, server = bridge(tmp_path)
+    book = '\n\n'.join(['# Книга', 'Частина 1. Берег', '## Глава перша', 'Текст першої глави. ' * 5,
+                        'Частина 2. Море', '## Глава друга', 'Текст другої глави. ' * 5])
+    preview = ok(call(server, 'import_manuscript', {'file_path': manuscript(tmp_path, content=book)}))
+    assert preview['edition']['trial']['state'] == 'available' and preview['parts']
+    sent, original = [], http.request
+    def record(method, url, **kwargs):
+        if method == 'POST' and url.startswith('/api/manuscript-import/') and not url.endswith('/preview'):
+            sent.append(kwargs.get('json'))
+        return original(method, url, **kwargs)
+    monkeypatch.setattr(http, 'request', record)
+    call(server, 'import_manuscript', {'confirm': True, 'import_id': preview['import_id'], 'fingerprint': preview['fingerprint'],
+                                       'title': 'Книга'})
+    assert sent and all('trial' not in body for body in sent)
+    assert trial_state(app.state.repo)['state'] == 'available'
