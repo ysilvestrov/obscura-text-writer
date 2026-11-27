@@ -32,8 +32,27 @@ class Query:
     record_sha256: str = ''  # sha256 of the record text the query was generated from
 
 
+def _protected_roots() -> list[Path]:
+    """The current checkout root and, from a git worktree, the main checkout: the .git file of a worktree reads
+    `gitdir: <main>/.git/worktrees/<name>` (same derivation as storygen.application.workspace_bench._live_data_dirs)."""
+    root = ROOT.resolve()
+    roots = [root]
+    marker = root / '.git'
+    if marker.is_file():
+        text = marker.read_text(encoding='utf-8', errors='replace').strip()
+        if text.startswith('gitdir:'):
+            gitdir = Path(text[len('gitdir:'):].strip())
+            gitdir = gitdir if gitdir.is_absolute() else root / gitdir
+            if gitdir.parent.name == 'worktrees':
+                roots.append(gitdir.parent.parent.parent.resolve())
+    return roots
+
+
 def _inside_repo(path) -> bool:
-    return Path(path).resolve().is_relative_to(ROOT.resolve())
+    """True for a path under the current checkout or, from a worktree, under the main checkout. The single copy:
+    memory_bench.embeddings imports it from here (this module needs no numpy)."""
+    resolved = Path(path).resolve()
+    return any(resolved.is_relative_to(root) for root in _protected_roots())
 
 
 def _sha(text: str) -> str:

@@ -222,3 +222,35 @@ def test_owner_file_count_and_duplicates(outside_dir):
     assert check_owner_file(path, qs, snap)[0] == 'owner_check_missing'
     _put(path, {**full, 'items': full['items'][:19]})
     assert check_owner_file(path, qs, snap, expected=19) == (None, {'yes': 19, 'no': 0, 'invalid': 0})
+
+
+def _fake_worktree(base):
+    """A fake main repository and a fake worktree checkout whose .git file points at <main>/.git/worktrees/w."""
+    main, checkout = base / 'mainrepo', base / 'wt'
+    (main / '.git' / 'worktrees' / 'w').mkdir(parents=True)
+    checkout.mkdir()
+    (checkout / '.git').write_text(f"gitdir: {main / '.git' / 'worktrees' / 'w'}\n", encoding='utf-8')
+    return main, checkout
+
+
+def test_inside_repo_covers_main_checkout_of_a_worktree(tmp_path, monkeypatch):
+    import memory_bench.paraphrase as para
+    main, checkout = _fake_worktree(tmp_path)
+    monkeypatch.setattr(para, 'ROOT', checkout)
+    assert para._inside_repo(checkout / 'x.json')
+    assert para._inside_repo(main / 'data' / 'owner.json')  # the main checkout is protected from a worktree too
+    assert not para._inside_repo(tmp_path / 'elsewhere')
+    (checkout / '.git').unlink()
+    (checkout / '.git').mkdir()  # an ordinary checkout: only its own root
+    assert not para._inside_repo(main / 'data')
+
+
+def test_embeddings_uses_the_same_inside_repo(tmp_path, monkeypatch):
+    pytest.importorskip('numpy')
+    import memory_bench.embeddings as emb
+    import memory_bench.paraphrase as para
+    assert emb._inside_repo is para._inside_repo
+    main, checkout = _fake_worktree(tmp_path)
+    monkeypatch.setattr(para, 'ROOT', checkout)
+    with pytest.raises(ValueError, match='inside_repo'):
+        emb.CachedEmbedder(emb.FakeEmbedder(), main / 'cache')

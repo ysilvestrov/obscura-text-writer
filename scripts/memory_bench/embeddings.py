@@ -12,6 +12,8 @@ from typing import Literal, Protocol, Sequence
 
 import numpy as np
 
+from memory_bench.paraphrase import _inside_repo  # noqa: F401  (single copy; re-exported for the CLI)
+
 ROOT = Path(__file__).resolve().parents[2]
 
 MODELS: dict[str, dict] = {
@@ -121,10 +123,6 @@ class TruncatedEmbedder:
 
     def embed(self, texts, kind):
         return _normalized(self.base.embed(texts, kind)[:, :self.dim])
-
-
-def _inside_repo(path) -> bool:
-    return Path(path).resolve().is_relative_to(ROOT.resolve())
 
 
 class CachedEmbedder:
