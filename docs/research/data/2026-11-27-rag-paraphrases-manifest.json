@@ -855,5 +855,11 @@
    "record_sha256": "399dbd619cd9de01af83ff33116672cbc50c5c284441c6dd2f7106a0560a320e"
   }
  ],
- "snapshot": "aaf76ab91897e5440cd91d1848c9012ddd9a1aaabd1286b178c113d51035df9a"
+ "snapshot": "aaf76ab91897e5440cd91d1848c9012ddd9a1aaabd1286b178c113d51035df9a",
+ "owner": {
+  "yes": 20,
+  "no": 0,
+  "invalid": 0,
+  "status": "ok"
+ }
 }
