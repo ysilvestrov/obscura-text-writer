@@ -97,3 +97,31 @@ test('a place a prose search gave a scene is removed from it; a plan place has n
   await expect(row(panel,'двір')).not.toContainText('Ніч');
   await expect(panel.getByRole('button',{name:/^Прибрати з/})).toHaveCount(0);
 });
+
+test('a name the parse cut is glued into one card and unglued back',async({page,request})=>{
+  // MEMORY-LOCATIONS-S11: «Кава» names «Бар, в якому пахне кавою»; the comma cut it into «Бар» and «в якому пахне кавою».
+  const fixture=await(await request.post('/test-locations?glue=true')).json();
+  await page.goto(`/stories/${fixture.story_id}?scene=${fixture.scene_id}&material=memory`);
+  const panel=page.locator('#memory-view #story-locations');
+  await expect(row(panel,'Бар')).toContainText('Сцени: 3. Кава');
+  await row(panel,'Бар').getByRole('button',{name:'Склеїти з…'}).click();
+  const select=row(panel,'Бар').getByRole('combobox',{name:'Яку назву склеїти з «Бар»'});
+  await expect(select.locator('option')).toHaveText(['Бар, в якому пахне кавою']);
+  await row(panel,'Бар').getByRole('button',{name:'Склеїти',exact:true}).click();
+  const dialog=page.locator('.app-dialog');
+  await expect(dialog).toContainText('Склеїти «Бар, в якому пахне кавою» в одну назву? Сцен: 1. План не зміниться');
+  await dialog.getByRole('button',{name:'Склеїти'}).click();
+  await expect(page.locator('#notice')).toContainText('Назву склеєно.');
+  await expect(row(panel,'Бар, в якому пахне кавою')).toContainText('Сцени: 3. Кава');
+  await expect(row(panel,'Бар')).toContainText('Жодна сцена не називає її прямо');
+  const glued=panel.locator('.location-glues');
+  await expect(glued).toContainText('Склеєні назви');
+  await expect(glued).toContainText('Бар, в якому пахне кавою');
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth)).toBe(true);
+  await glued.getByRole('button',{name:'Розклеїти'}).click();
+  await expect(dialog).toContainText('Ваші злиття лишаться');
+  await dialog.getByRole('button',{name:'Розклеїти'}).click();
+  await expect(page.locator('#notice')).toContainText('Назву розклеєно.');
+  await expect(row(panel,'Бар')).toContainText('Сцени: 3. Кава');
+  await expect(panel.locator('.location-glues')).toHaveCount(0);
+});

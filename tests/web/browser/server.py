@@ -331,7 +331,7 @@ def main():
             return {'story_id': story.id, 'scene_id': scenes[21].id}
 
         @app.post('/test-locations')
-        def locations_fixture(model: bool = False):
+        def locations_fixture(model: bool = False, glue: bool = False):
             # MEMORY-LOCATIONS-S07: two scenes with a typo look-alike («Квартира Джорджа» / «Квартира Джоржа») and a nested
             # room; scene 1 has prose and a memory fact, so the memory table can change an entry type (neutral text).
             # `model` (MEMORY-LOCATIONS-S08): a third scene «Ніч» without a plan place holds «двір», a place a prose
@@ -357,6 +357,9 @@ def main():
                     row.update(location_ids=[location_id(story.id, normalize(('двір',)))], location_source='model')
                     db.execute('UPDATE scenes SET payload=? WHERE id=?', (_json.dumps(row, ensure_ascii=False), night.id))
                 repo.db.bump_generation()
+            if glue:
+                # MEMORY-LOCATIONS-S11: scene «Кава» names one place with a comma inside, which the parse cuts in two.
+                repo.create_scene(story.id, SceneCreate(title='Кава', beats='Локація: Бар, в якому пахне кавою, вулиця', character_ids=[]))
             return {'story_id': story.id, 'scene_id': first.id}
 
         @app.post('/test-memory-merge')
