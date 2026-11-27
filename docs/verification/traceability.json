@@ -6088,7 +6088,9 @@
         "tests/memory/test_locations_glue.py::test_overlapping_and_chained_glues",
         "tests/memory/test_locations_glue.py::test_without_glues_the_parse_is_unchanged",
         "tests/memory/test_locations_glue.py::test_glue_key",
-        "tests/memory/test_locations_glue.py::test_glue_cuts_give_the_phrase_across_each_cut"
+        "tests/memory/test_locations_glue.py::test_glue_cuts_give_the_phrase_across_each_cut",
+        "tests/memory/test_locations_glue.py::test_overlapping_occurrences_of_one_glue_are_all_protected",
+        "tests/memory/test_locations_glue.py::test_glue_matches_case_whatever_casefold_does"
       ]
     },
     {
