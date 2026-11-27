@@ -33,7 +33,7 @@ CLOUD_ENV = ('AZURE_OPENAI_ENDPOINT', 'AZURE_OPENAI_API_KEY', 'AZURE_OPENAI_EMBE
 DEFAULT_CACHE_DIR = r'C:\tmp\rag-bench\cache'
 CLOUD_PRICE_PER_MTOK = 0.13  # USD list price for text-embedding-3-large, per million tokens
 SAMPLES_PER_SYNTHETIC = 60
-OWNER_K = 20  # owner-check.json holds min(OWNER_K, ok queries) items, as rag_paraphrases samples it by default
+OWNER_K = 20  # default of meta['owner_k']: owner-check.json holds min(owner_k, ok queries) items
 
 
 def variants(extra=None):
@@ -447,7 +447,10 @@ def load_paraphrases(args, repo, story):
     except (OSError, ValueError, KeyError, TypeError):
         return None, 'paraphrase_set_invalid'
     snapshot = snapshot_hash(manifest(queries, meta))
-    expected = min(OWNER_K, sum(1 for q in queries if q.status == 'ok'))
+    owner_k = meta.get('owner_k', OWNER_K)  # sets of the first generator version carry no owner_k: the default 20
+    if not isinstance(owner_k, int) or isinstance(owner_k, bool) or owner_k < 0:
+        return None, 'paraphrase_set_invalid'
+    expected = min(owner_k, sum(1 for q in queries if q.status == 'ok'))
     code, owner = check_owner_file(folder / 'owner-check.json', queries, snapshot, expected=expected)
     if code:
         return None, code

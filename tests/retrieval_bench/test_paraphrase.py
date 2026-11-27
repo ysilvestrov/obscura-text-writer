@@ -101,18 +101,18 @@ def test_owner_sample_ok_only_round_robin_deterministic():
     assert s == owner_sample(qs, 9, 1)
 
 
-def _owner(tmp_path, k=20):
+def _owner(outside_dir, k=20):
     qs = [Query(f'r{i:02d}', LEVELS[i % 3], f'запит {i}', 'ok', 'h') for i in range(30)]
     snap = snapshot_hash(manifest(qs, {'seed': 0}))
     sample = owner_sample(qs, k, 0)
-    path = tmp_path / 'owner.json'
+    path = outside_dir / 'owner.json'
     write_owner_file(path, sample, snap, {q.claim_id: f'запис {q.claim_id}' for q in sample})
     return qs, snap, path
 
 
-def test_owner_file_codes(tmp_path):
-    qs, snap, path = _owner(tmp_path)
-    assert check_owner_file(tmp_path / 'none.json', qs, snap)[0] == 'owner_check_missing'
+def test_owner_file_codes(outside_dir):
+    qs, snap, path = _owner(outside_dir)
+    assert check_owner_file(outside_dir / 'none.json', qs, snap)[0] == 'owner_check_missing'
     assert check_owner_file(path, qs, snap) == ('owner_check_missing', {'yes': 0, 'no': 0, 'invalid': 20})
     for i in range(20):
         set_verdict(path, i, 'yes')
@@ -129,8 +129,8 @@ def test_owner_file_codes(tmp_path):
     assert check_owner_file(path, qs, snap) == ('owner_check_failed', {'yes': 15, 'no': 5, 'invalid': 0})
 
 
-def test_owner_file_invalid_verdict_text(tmp_path):
-    qs, snap, path = _owner(tmp_path)
+def test_owner_file_invalid_verdict_text(outside_dir):
+    qs, snap, path = _owner(outside_dir)
     data = json.loads(path.read_text(encoding='utf-8'))
     for it in data['items']:
         it['verdict'] = ' YES '
@@ -139,8 +139,8 @@ def test_owner_file_invalid_verdict_text(tmp_path):
     assert check_owner_file(path, qs, snap) == ('owner_check_missing', {'yes': 19, 'no': 0, 'invalid': 1})
 
 
-def test_set_verdict_values_and_summary(tmp_path):
-    qs, snap, path = _owner(tmp_path)
+def test_set_verdict_values_and_summary(outside_dir):
+    qs, snap, path = _owner(outside_dir)
     assert set_verdict(path, 0, ' Yes ') == {'yes': 1, 'no': 0, 'pending': 19, 'failed': False}
     assert json.loads(path.read_text(encoding='utf-8'))['items'][0]['verdict'] == 'yes'
     assert set_verdict(path, 0, None)['pending'] == 20
@@ -192,8 +192,8 @@ def _put(path, data):
     path.write_text(json.dumps(data, ensure_ascii=False), encoding='utf-8')
 
 
-def test_owner_file_item_without_identity_is_stale(tmp_path):
-    qs, snap, path = _owner(tmp_path)
+def test_owner_file_item_without_identity_is_stale(outside_dir):
+    qs, snap, path = _owner(outside_dir)
     for i in range(20):
         set_verdict(path, i, 'yes')
     data = _items(path)
@@ -209,8 +209,8 @@ def test_owner_file_item_without_identity_is_stale(tmp_path):
     assert check_owner_file(path, qs, snap)[0] == 'owner_check_stale'
 
 
-def test_owner_file_count_and_duplicates(tmp_path):
-    qs, snap, path = _owner(tmp_path)
+def test_owner_file_count_and_duplicates(outside_dir):
+    qs, snap, path = _owner(outside_dir)
     for i in range(20):
         set_verdict(path, i, 'yes')
     full = _items(path)

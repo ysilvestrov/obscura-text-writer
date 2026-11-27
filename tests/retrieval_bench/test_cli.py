@@ -418,7 +418,7 @@ def para_dir():
         yield Path(tmp)
 
 
-def _write_set(folder,repo,story_id,owner=True,tweak=None):
+def _write_set(folder,repo,story_id,owner=True,tweak=None,owner_k=20,meta_k=True):
     """A set over the story's sampling frame: three queries (same, syn, desc) per record, as the generator would write
     it; tweak(queries) may change the queries before the snapshot and the owner file are computed."""
     import dataclasses
@@ -431,12 +431,12 @@ def _write_set(folder,repo,story_id,owner=True,tweak=None):
     queries=[Query(r.claim_id,level,f'Запит {level} {r.text}','ok',_sha(r.text)) for r in frame for level in LEVELS]
     if tweak:
         queries=tweak(queries)
-    meta={'story':story_id,'seed':0,'n':len(frame),'model':'m','prompt_id':'p','levels':list(LEVELS)}
+    meta={'story':story_id,'seed':0,'n':len(frame),'model':'m','prompt_id':'p','levels':list(LEVELS),**({'owner_k':owner_k} if meta_k else {})}
     (folder/'set.json').write_text(json.dumps({'meta':meta,'queries':[
         {'claim_id':q.claim_id,'level':q.level,'text':q.text,'status':q.status,'record_sha256':q.record_sha256} for q in queries]},
         ensure_ascii=False),encoding='utf-8')
     if owner:
-        write_owner_file(folder/'owner-check.json',owner_sample(queries,20,0),snapshot_hash(manifest(queries,meta)),{})
+        write_owner_file(folder/'owner-check.json',owner_sample(queries,owner_k,0),snapshot_hash(manifest(queries,meta)),{})
         data=json.loads((folder/'owner-check.json').read_text(encoding='utf-8'))
         for item in data['items']:
             item['verdict']='yes'
@@ -538,3 +538,39 @@ def test_paraphrases_with_vector_models(synthetic_repo,para_dir,monkeypatch,cach
     cell=report['paraphrases']['levels']['syn']
     assert set(cell)=={'bm25','vec[e5-base]','hybrid[e5-base]'}
     assert set(cell['vec[e5-base]']['sign_vs_bm25'])=={'standalone','in_plan'}
+
+
+def test_paraphrases_owner_k_from_meta(para_dir,monkeypatch):
+    """A set generated with owner_k=10 passes the check with 10 verdicts (12 records give 36 ok queries)."""
+    from memory_bench.paraphrase import (LEVELS,Query,_sha,manifest,owner_sample,sampling_frame,snapshot_hash,write_owner_file)
+    from memory_bench.paraphrase_eval import FRAME_PARAMS
+    from tests.retrieval_bench.helpers import rec,scene
+    story_id='story'
+    scenes=[scene([rec(f'r{i:02d}','facts',f'Окремий запис {i} про маяк') for i in range(12)])]
+    monkeypatch.setattr(_bench(),'extract_story',lambda *a,**k:(scenes,{}))
+    frame=sampling_frame(scenes,FRAME_PARAMS)
+    queries=[Query(r.claim_id,level,f'Запит {level} {r.claim_id}','ok',_sha(r.text)) for r in frame for level in LEVELS]
+    assert len(queries)==36
+
+    def write(owner_k,meta_k=True,count=10):
+        meta={'story':story_id,'seed':0,'n':12,'model':'m','prompt_id':'p','levels':list(LEVELS),**({'owner_k':owner_k} if meta_k else {})}
+        (para_dir/'set.json').write_text(json.dumps({'meta':meta,'queries':[
+            {'claim_id':q.claim_id,'level':q.level,'text':q.text,'status':q.status,'record_sha256':q.record_sha256} for q in queries]},
+            ensure_ascii=False),encoding='utf-8')
+        write_owner_file(para_dir/'owner-check.json',owner_sample(queries,count,0),snapshot_hash(manifest(queries,meta)),{})
+        data=json.loads((para_dir/'owner-check.json').read_text(encoding='utf-8'))
+        for item in data['items']:
+            item['verdict']='yes'
+        (para_dir/'owner-check.json').write_text(json.dumps(data,ensure_ascii=False),encoding='utf-8')
+    import types
+    args=types.SimpleNamespace(paraphrases=str(para_dir),protagonist=None);story=types.SimpleNamespace(id=story_id)
+    load=lambda:_bench().load_paraphrases(args,None,story)
+    write(10)
+    loaded,error=load()
+    assert error is None and loaded['owner']=={'yes':10,'no':0,'invalid':0}
+    write(10,meta_k=False)  # no owner_k in meta: the default 20 expects 20 items
+    assert load()==(None,'owner_check_missing')
+    write(20,meta_k=True,count=10)  # meta says 20, the file holds 10
+    assert load()==(None,'owner_check_missing')
+    write(True)
+    assert load()==(None,'paraphrase_set_invalid')

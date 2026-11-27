@@ -60,6 +60,23 @@ def claim_by_text(repo,scene,text):
 
 
 @pytest.fixture
+def outside_dir(tmp_path):
+    """A directory outside the repository: tmp_path itself, unless it lies inside the repo root (scripts/verify.py puts
+    --basetemp under <root>/artifacts); then a fresh directory in the system temp, removed at teardown."""
+    import shutil
+    import tempfile
+    from memory_bench.paraphrase import _inside_repo
+    if not _inside_repo(tmp_path):
+        yield tmp_path
+        return
+    folder=Path(tempfile.mkdtemp(prefix='rvb'))
+    try:
+        yield folder
+    finally:
+        shutil.rmtree(folder,ignore_errors=True)
+
+
+@pytest.fixture
 def synthetic_repo(tmp_path):
     """4 scenes, cards for Марія and Остап. Returns (repo, story_id, info) with claim IDs and character IDs."""
     from storygen.authoring.imports import SourceFile, import_sources

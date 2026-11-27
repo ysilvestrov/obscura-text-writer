@@ -163,7 +163,8 @@ def _run(args) -> int:
                 else 'spend_ledger_missing' if isinstance(error, LedgerMissing) else 'anthropic_call_failed')
         _print({'error': code, 'usd_spent': round(ledger.spent(PROVIDER) - before, 6), 'records_done': done})
         return 2
-    meta = {'story': story_id, 'seed': args.seed, 'n': args.n, 'model': HAIKU, 'prompt_id': PROMPT_ID, 'levels': list(LEVELS)}
+    meta = {'story': story_id, 'seed': args.seed, 'n': args.n, 'model': HAIKU, 'prompt_id': PROMPT_ID, 'levels': list(LEVELS),
+            'owner_k': args.owner_k}
     queries = sorted(queries, key=lambda q: (q.claim_id, LEVELS.index(q.level)))
     mani = manifest(queries, meta)
     snapshot = snapshot_hash(mani)

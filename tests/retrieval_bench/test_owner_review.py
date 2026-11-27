@@ -11,17 +11,17 @@ from memory_bench.paraphrase import ROOT
 pytestmark = pytest.mark.loopback
 
 
-def make_file(tmp_path, n=6):
+def make_file(outside_dir, n=6):
     items = [{'claim_id': f'c{i}', 'level': ('same', 'syn', 'desc')[i % 3], 'sha256': 'x', 'text': f'Запит {i} <b>',
               'record_text': f'Запис {i}', 'verdict': None} for i in range(n)]
-    path = tmp_path / 'owner-check.json'
+    path = outside_dir / 'owner-check.json'
     path.write_text(json.dumps({'snapshot': 's', 'items': items}, ensure_ascii=False), encoding='utf-8')
     return path
 
 
 @pytest.fixture
-def served(tmp_path):
-    path = make_file(tmp_path)
+def served(outside_dir):
+    path = make_file(outside_dir)
     server = review.make_server(path, 0)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
@@ -98,10 +98,10 @@ def test_get_items_unreadable_file_is_500_without_path(served):
     assert str(path) not in raw.decode('utf-8')
 
 
-def test_cli_refuses_repo_dir_and_missing_file(tmp_path, capsys):
+def test_cli_refuses_repo_dir_and_missing_file(outside_dir, capsys):
     assert review.main(['--dir', str(ROOT / 'docs'), '--no-browser']) == 1
     assert json.loads(capsys.readouterr().out) == {'error': 'inside_repo'}
-    assert review.main(['--dir', str(tmp_path), '--no-browser']) == 1
+    assert review.main(['--dir', str(outside_dir), '--no-browser']) == 1
     assert json.loads(capsys.readouterr().out) == {'error': 'owner_check_missing'}
 
 
