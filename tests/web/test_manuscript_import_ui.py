@@ -49,19 +49,30 @@ def test_library_has_the_import_entry_and_dialog(tmp_path):
     assert 'import {installManuscriptImport} from "/static/manuscript-import.js"' in html
 
 
-def test_series_fields_only_with_long_prose(tmp_path, store_edition):
-    html = library(tmp_path)
-    dialog = dialog_of(html)
-    assert 'id="manuscript-import-open"' in html  # the import itself is in every edition
+def test_series_fields_follow_the_trial_in_store(tmp_path, store_edition):
+    """LONG-PROSE-TRIAL-S07: rows render while the trial is free (the dialog hides them by state); a trial on a book
+    removes them. The import itself is in every edition."""
+    from storygen.domain import StoryCreate
+    from storygen.storage.long_prose_trial import claim_target
+    from datetime import datetime, timezone
+    with TestClient(create_app(AppSettings(data_dir=tmp_path)), base_url='http://127.0.0.1:8765') as client:
+        free = client.get('/').text
+        repo = client.app.state.repo
+        story = repo.create_story(StoryCreate(title='Книга'))
+        claim_target(repo, story_id=story.id, series_id=None, now=datetime(2026, 11, 27, tzinfo=timezone.utc))
+        used = client.get('/').text
+    assert 'id="manuscript-import-open"' in free and 'id="manuscript-import-open"' in used
+    assert 'id="manuscript-import-series"' in dialog_of(free) and 'id="manuscript-import-part-markers"' in dialog_of(free)
+    dialog = dialog_of(used)
     assert 'id="manuscript-import-series"' not in dialog and 'id="manuscript-import-series-number"' not in dialog
-    assert 'id="manuscript-import-part-markers"' not in dialog  # no parts in this edition
+    assert 'id="manuscript-import-part-markers"' not in dialog
 
 
-def test_template_wraps_the_series_row_in_long_prose():
+def test_template_wraps_the_series_row_in_the_series_screen_gate():
     template = (Path(__file__).resolve().parents[2]/'src/storygen/web/templates/library.html').read_text(encoding='utf-8')
     for id in ('manuscript-import-series-row', 'manuscript-import-series-warning', 'manuscript-import-part-markers-row'):
         row = template.index(f'id="{id}"')
-        opened = template.rfind('{% if long_prose() %}', 0, row)
+        opened = template.rfind('{% if series_screen() %}', 0, row)
         assert opened != -1 and template.find('{% endif %}', opened) > row, id
 
 

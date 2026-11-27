@@ -384,6 +384,13 @@ def main():
             repo.save_version(story_id, scene.id, 'brief', '{}', [], 'browser-run')
             return {'story_id': story_id, 'scene_id': scene.id}
 
+        @app.post('/test-reset-trial')
+        def reset_trial():
+            # LONG-PROSE-TRIAL-S07: the trial is one per data folder; each Store spec starts with it free.
+            with app.state.repo.db.connection() as db:
+                db.execute("DELETE FROM app_settings WHERE key='long_prose_trial'")
+            return {'state': 'available'}
+
         @app.post('/test-build-edition')
         def switch_build_edition(body: dict):
             # BUILD-EDITION-001: the fixture server runs as the full edition; a spec switches it and must switch back.

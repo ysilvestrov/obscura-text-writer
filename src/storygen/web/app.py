@@ -69,6 +69,17 @@ def create_app(settings: AppSettings, *, gateway_factory=None,evaluator_factory=
         # SERIES-S07: the series screen and its link exist only in an edition with long prose.
         from .. import build_edition
         return build_edition.current().long_prose
+    def series_screen():
+        # LONG-PROSE-TRIAL-S07: without long prose the series screen stays while the trial is free or used on a series.
+        from .. import build_edition
+        if build_edition.current().long_prose:
+            return True
+        from ..storage.long_prose_trial import trial_state
+        state=trial_state(app.state.repo)
+        return state['state']=='available' or state['kind']=='series'
+    def series_open(series_id):
+        from ..book.guard import series_long_prose
+        return series_long_prose(app.state.repo,series_id)
     def edition():
         # STORE-MCP-001 S07: the Store form preselects «the chat writes».
         from .. import build_edition
@@ -76,7 +87,7 @@ def create_app(settings: AppSettings, *, gateway_factory=None,evaluator_factory=
     def app_window():
         # DESKTOP-001-S08: only the desktop window sends external links to the browser.
         return getattr(app.state,'app_window',None) is not None
-    app.state.templates.env.globals.update(t=ui_translate,ui_locale=request_locale,app_links=app_links,long_prose=long_prose,edition=edition,app_window=app_window,roles=ROLES,role_label_keys=ROLE_LABEL_KEYS)
+    app.state.templates.env.globals.update(t=ui_translate,ui_locale=request_locale,app_links=app_links,long_prose=long_prose,series_screen=series_screen,series_open=series_open,edition=edition,app_window=app_window,roles=ROLES,role_label_keys=ROLE_LABEL_KEYS)
     app.mount("/static",StaticFiles(directory=str(root.joinpath("static"))),name="static")
 
     def error_response(request,detail,status_code):

@@ -141,7 +141,9 @@ def story_view(id: str,request: Request):
     # SERIES: the block is present only for a book in a series.
     series=series_block(request.app.state.repo,story)
     extra={"series":series} if series else {}
-    return {**extra,"material_status":material_status(view),"language_locked":request.app.state.repo.story_language_locked(id),"story":story,"book_structure":book,"scenes":scenes,"scene_ratings":ratings,"sources":[view.get_version(v.id) for v in view.versions.values() if v.kind in {"source_plan","source_characters"}],"character_names":names,"source_files":view.source_files,"active_sources":view.sources}
+    # LONG-PROSE-TRIAL-S07: the book modules ask the book, not the build (no database read with long prose).
+    from ..book.guard import long_prose_for
+    return {**extra,"long_prose":long_prose_for(request.app.state.repo,story),"material_status":material_status(view),"language_locked":request.app.state.repo.story_language_locked(id),"story":story,"book_structure":book,"scenes":scenes,"scene_ratings":ratings,"sources":[view.get_version(v.id) for v in view.versions.values() if v.kind in {"source_plan","source_characters"}],"character_names":names,"source_files":view.source_files,"active_sources":view.sources}
 
 
 @router.get("/api/stories/{id}/scene-revisions")

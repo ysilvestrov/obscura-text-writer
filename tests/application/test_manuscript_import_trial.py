@@ -103,3 +103,17 @@ def test_series_trial_keeps_parts_for_its_books(tmp_path, store_edition):
     result = service.apply_import(repo, preview.import_id,
                                   body(preview, parted(preview), parts=PARTS, series={'series_id': item.id, 'number': 1}))
     assert repo.get_story(result['story_id']).book_structure is not None
+
+
+@pytest.mark.req('LONG-PROSE-TRIAL')
+def test_refused_third_import_leaves_no_files(tmp_path, store_edition):
+    repo = repo_for(tmp_path)
+    item = store.create_series(repo, 'Сага', trial=True)
+    store.create_book(repo, item.id, 'Перша')
+    store.create_book(repo, item.id, 'Друга')
+    preview = service.preview(repo, BOOK, 'book.md', SETTINGS)
+    kept, files = temp_files(tmp_path), sorted(map(str, story_files(tmp_path)))
+    with pytest.raises(ValueError, match=TRIAL_SERIES_FULL):
+        service.apply_import(repo, preview.import_id, body(preview, series={'series_id': item.id, 'number': 3}))
+    assert temp_files(tmp_path) == kept and not any(name.endswith('.applying') for name in temp_files(tmp_path))
+    assert sorted(map(str, story_files(tmp_path))) == files

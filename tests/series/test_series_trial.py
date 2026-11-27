@@ -212,3 +212,15 @@ def test_book_refused_inside_the_transaction_leaves_no_story(tmp_path, store_edi
     refused = new_book(client, series_id, 'Третя')
     assert refused.status_code == 400 and TRIAL_SERIES_FULL in detail(refused)
     assert len(repo.list_stories(include_trashed=True)) == count
+
+
+@pytest.mark.req('LONG-PROSE-TRIAL')
+def test_restored_trial_book_is_editable_again(tmp_path, store_edition):
+    client, app, repo, story, scene = setup(tmp_path)
+    assert client.post('/api/long-prose-trial', json={'story_id': story.id, 'confirm': True}).status_code == 200
+    trashed = client.post(f'/api/stories/{story.id}/trash', json={'expected_revision': repo.get_story(story.id).revision})
+    assert trashed.status_code == 200, trashed.text
+    current = repo.get_story(story.id, include_trashed=True)
+    restored = client.post(f'/api/stories/{story.id}/restore', json={'expected_revision': current.revision})
+    assert restored.status_code == 200, restored.text
+    assert structure_put(client, repo.get_story(story.id)).status_code == 200
