@@ -30,6 +30,8 @@ class MemoryEvent(DomainModel):
     resolves_claim_id: str | None = None
     # MEMORY-LOCATIONS: cards of the story the record belongs to; a field of the claim, kept by every change of it.
     location_ids: list[str] = Field(default_factory=list)
+    # MEMORY-ENTITIES: character cards taking part in a fact, thread or timeline record; a field of the claim, like location_ids.
+    participant_ids: list[str] = Field(default_factory=list)
 
     @model_validator(mode='before')
     @classmethod
@@ -59,6 +61,7 @@ class MemoryEvent(DomainModel):
         data=handler(self)
         if not data.get('supporting_quotes'):data.pop('supporting_quotes',None)
         if not data.get('location_ids'):data.pop('location_ids',None)
+        if not data.get('participant_ids'):data.pop('participant_ids',None)
         for key in ('slot','evidence_version_id','resolves_claim_id','quote'):
             if data.get(key) is None:data.pop(key,None)
         if data.get('source_kind')=='prose':data.pop('source_kind',None)
@@ -66,7 +69,7 @@ class MemoryEvent(DomainModel):
 
 
 class MemoryJournal(DomainModel):
-    schema_version: Literal[2, 3] = 2
+    schema_version: Literal[2, 3, 4] = 2
     source_prose_ids: list[str] = Field(default_factory=list)
     events: list[MemoryEvent] = Field(default_factory=list)
 
@@ -131,6 +134,10 @@ def replay_memory(journal: MemoryJournal) -> dict[str,MemoryEvent]:
             raise ValueError('Некоректний scope пам’яті')
         if len(event.location_ids)!=len(set(event.location_ids)) or any(not id.strip() for id in event.location_ids):
             raise ValueError('Некоректні локації пам’яті')
+        if len(event.participant_ids)!=len(set(event.participant_ids)) or any(not id.strip() for id in event.participant_ids):
+            raise ValueError('Некоректні учасники пам’яті')
+        if event.category=='character_states' and event.participant_ids:
+            raise ValueError('Учасники дозволені лише для ліній, фактів і хронології')
         if event.category!='character_states' and event.character_ids:
             raise ValueError('Scope дозволено лише для станів')
         if event.operation=='add':
@@ -151,6 +158,8 @@ def replay_memory(journal: MemoryJournal) -> dict[str,MemoryEvent]:
                 raise ValueError('Не можна змінювати слот claim')
             if previous.location_ids!=event.location_ids:
                 raise ValueError('Не можна змінювати локації claim')
+            if previous.participant_ids!=event.participant_ids:
+                raise ValueError('Не можна змінювати учасників claim')
             if event.operation=='retire':
                 if event.slot:slots.discard((event.character_ids[0],event.slot))
                 del active[event.claim_id]
@@ -224,7 +233,7 @@ def claim_owner(prose_id,scene_id=None):
     return prose_id if scene_id is None else 'scene:'+scene_id
 
 
-def _add_event(category,text,prose_id,quote,occurrence,characters=(),supporting=(),*,slot=None,source_kind='prose',evidence_version_id=None,resolves_claim_id=None,location_ids=(),scene_id=None):
+def _add_event(category,text,prose_id,quote,occurrence,characters=(),supporting=(),*,slot=None,source_kind='prose',evidence_version_id=None,resolves_claim_id=None,location_ids=(),participant_ids=(),scene_id=None):
     value=[category,text,claim_owner(prose_id,scene_id),quote,occurrence]
     if supporting:value.append(list(supporting))
     extras=_extras(quote,slot,source_kind,evidence_version_id,resolves_claim_id)
@@ -233,7 +242,7 @@ def _add_event(category,text,prose_id,quote,occurrence,characters=(),supporting=
     return MemoryEvent(event_id=stable_id('me_',['add',claim]),claim_id=claim,
         operation='add',category=category,text=text,character_ids=list(characters),
         source_version_id=prose_id,quote=quote,supporting_quotes=list(supporting),slot=slot,
-        source_kind=source_kind,evidence_version_id=evidence_version_id,resolves_claim_id=resolves_claim_id,location_ids=list(location_ids))
+        source_kind=source_kind,evidence_version_id=evidence_version_id,resolves_claim_id=resolves_claim_id,location_ids=list(location_ids),participant_ids=list(participant_ids))
 
 
 def change_event_id(action,claim_id,text,prose_id,quote,supporting=(),*,slot=None,source_kind='prose',evidence_version_id=None,resolves_claim_id=None,occurrence=0):
@@ -246,24 +255,25 @@ def change_event_id(action,claim_id,text,prose_id,quote,supporting=(),*,slot=Non
     return stable_id('me_',value)
 
 
-def _change_event(action,claim_id,text,category,character_ids,prose_id,quote,supporting=(),*,slot=None,source_kind='prose',evidence_version_id=None,resolves_claim_id=None,occurrence=0,location_ids=()):
+def _change_event(action,claim_id,text,category,character_ids,prose_id,quote,supporting=(),*,slot=None,source_kind='prose',evidence_version_id=None,resolves_claim_id=None,occurrence=0,location_ids=(),participant_ids=()):
     return MemoryEvent(event_id=change_event_id(action,claim_id,text,prose_id,quote,supporting,slot=slot,
             source_kind=source_kind,evidence_version_id=evidence_version_id,resolves_claim_id=resolves_claim_id,occurrence=occurrence),
         claim_id=claim_id,operation=action,category=category,text=text,character_ids=list(character_ids),
         source_version_id=prose_id,quote=quote,supporting_quotes=list(supporting),slot=slot,
-        source_kind=source_kind,evidence_version_id=evidence_version_id,resolves_claim_id=resolves_claim_id,location_ids=list(location_ids))
+        source_kind=source_kind,evidence_version_id=evidence_version_id,resolves_claim_id=resolves_claim_id,location_ids=list(location_ids),participant_ids=list(participant_ids))
 
 
 def _nonstandard(event):
     return bool(event.slot or event.source_kind!='prose' or event.evidence_version_id or event.resolves_claim_id or event.quote is None
-        or event.location_ids)
+        or event.location_ids or event.participant_ids)
 
 
 def _extend(previous,prose_id,events,schema_version=None):
     if prose_id in previous.source_prose_ids:
         raise ValueError('Джерело пам’яті вже враховане')
-    if schema_version is None:
-        schema_version=3 if any(_nonstandard(e) for e in events) else previous.schema_version
+    # MEMORY-ENTITIES: schema_version is a lower bound; participant_ids make the journal v4, and a journal never goes back.
+    schema_version=max(previous.schema_version,schema_version or 2,3 if any(_nonstandard(e) for e in events) else 2,
+        4 if any(e.participant_ids for e in events) else 2)
     return MemoryJournal(schema_version=schema_version,source_prose_ids=previous.source_prose_ids+[prose_id],
         events=[e.model_copy(deep=True) for e in previous.events]+events)
 
@@ -283,7 +293,8 @@ def apply_operations(previous,delta,prose_id,prose,allowed_character_ids,*,scene
             events.append(_add_event(op.category,op.text,prose_id,quote,occurrence,op.character_ids,scene_id=scene_id))
         else:
             events.append(_change_event(op.action,op.claim_id,op.text,op.category,op.character_ids,prose_id,quote,
-                slot=getattr(active.get(op.claim_id),'slot',None),location_ids=getattr(active.get(op.claim_id),'location_ids',())))
+                slot=getattr(active.get(op.claim_id),'slot',None),location_ids=getattr(active.get(op.claim_id),'location_ids',()),
+                participant_ids=getattr(active.get(op.claim_id),'participant_ids',())))
     return _extend(previous,prose_id,events)
 
 
@@ -385,16 +396,18 @@ def validate_memory_journal(journal,source_versions,previous=None):
     return journal
 
 
-def _inherit_places(data,raw):
-    """MEMORY-LOCATIONS: a change written by hand without location_ids takes those of its claim."""
+def _inherit_claim_fields(data,raw):
+    """MEMORY-LOCATIONS, MEMORY-ENTITIES: a change written by hand without location_ids or participant_ids takes those of its claim."""
     events=data.get('events')
     if not isinstance(events,list):return raw
-    places={};filled=False
+    claims={};filled=False
     for event in events:
         if not isinstance(event,dict) or not isinstance(event.get('claim_id'),str):continue
-        if event.get('operation')=='add':places[event['claim_id']]=event.get('location_ids',[])
-        elif 'location_ids' not in event and places.get(event['claim_id']):
-            event['location_ids']=list(places[event['claim_id']]);filled=True
+        if event.get('operation')=='add':claims[event['claim_id']]=event
+        else:
+            for key in ('location_ids','participant_ids'):
+                if key not in event and claims.get(event['claim_id'],{}).get(key):
+                    event[key]=list(claims[event['claim_id']][key]);filled=True
     return json.dumps(data,ensure_ascii=False) if filled else raw
 
 
@@ -403,7 +416,7 @@ def normalize_manual_memory(raw,previous,prose_id,prose,allowed_character_ids,*,
     if not isinstance(data,dict):raise ValueError('Потрібен JSON об’єкт пам’яті')
     if 'schema_version' not in data:
         return merge_legacy_snapshot(previous,MemorySnapshot.model_validate(data),prose_id,prose,scene_id=scene_id)
-    raw=_inherit_places(data,raw)
+    raw=_inherit_claim_fields(data,raw)
     journal=load_memory(raw)
     if journal.events[:len(previous.events)]!=previous.events:
         raise ValueError('Нова пам’ять змінила журнал попередніх сцен')
@@ -429,7 +442,7 @@ def normalize_manual_memory(raw,previous,prose_id,prose,allowed_character_ids,*,
                 evidence_version_id=event.evidence_version_id,resolves_claim_id=link)
             occurrence=duplicates.get(key,0);duplicates[key]=occurrence+1
             fields=dict(slot=event.slot,source_kind=event.source_kind,evidence_version_id=event.evidence_version_id,resolves_claim_id=link,
-                location_ids=event.location_ids)
+                location_ids=event.location_ids,participant_ids=event.participant_ids)
             canonical=_add_event(event.category,event.text,prose_id,event.quote,occurrence,event.character_ids,event.supporting_quotes,
                 scene_id=scene_id,**fields)
             # A claim saved before scene-bound IDs keeps its v2-form ID on a re-save, so later scenes still find it.

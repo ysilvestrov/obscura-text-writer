@@ -6166,6 +6166,22 @@
       }
     },
     {
+      "id": "MEMORY-ENTITIES-S01",
+      "requirement": "MEMORY-ENTITIES",
+      "scope": "participant_ids у журналі: серіалізація, незмінність claim_id, відхилення стану, повтору й порожнього ID, зміна з іншими учасниками, версія v4 без повернення, ручне збереження, закриття лінії й злиття арок. wire v4, відбір і таблиця пам’яті — наступні задачі. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/memory/test_participants_journal.py::test_empty_participants_are_not_serialized",
+        "tests/memory/test_participants_journal.py::test_participants_do_not_change_claim_id",
+        "tests/memory/test_participants_journal.py::test_participants_on_a_state_are_rejected",
+        "tests/memory/test_participants_journal.py::test_duplicate_or_blank_participants_are_rejected",
+        "tests/memory/test_participants_journal.py::test_a_change_must_keep_the_participants_of_its_claim",
+        "tests/memory/test_participants_journal.py::test_journal_with_participants_is_v4_and_never_goes_back",
+        "tests/memory/test_participants_journal.py::test_manual_change_without_participants_inherits_them",
+        "tests/memory/test_participants_journal.py::test_manual_save_keeps_the_participants_of_a_new_record",
+        "tests/memory/test_participants_journal.py::test_thread_resolution_and_merge_keep_participants"
+      ]
+    },
+    {
       "id": "MEMORY-SUMMARY-S01",
       "requirement": "MEMORY-SUMMARY",
       "scope": "Блоки пласкої книги й книги з частинами, кошик, пороги рекомендації й заміни, старий payload.",

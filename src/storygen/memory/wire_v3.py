@@ -145,7 +145,7 @@ def wire_v3_events(wire: MemoryWireV3,previous,prose_id,prose,*,scene_id=None) -
             else:
                 claim=active[item.claim_id]
                 events.append(_change_event(action,item.claim_id,item.text,category,claim.character_ids,prose_id,quote,supporting,slot=claim.slot,
-                    location_ids=claim.location_ids))
+                    location_ids=claim.location_ids,participant_ids=claim.participant_ids))
     return _extend(previous,prose_id,events)
 
 
