@@ -18,7 +18,6 @@ def section(context):
 
 @pytest.mark.req('MEMORY-ENTITIES')
 def test_memory_request_lists_every_card_as_allowed_participants(tmp_path):
-    from storygen.domain import SceneCreate
     repo, scenes = setup(tmp_path)
     # the scene cast is the second card only; the first card stays outside it but remains allowed
     repo.update_scene_metadata(scenes[0].id, {'character_ids': ['h']}, scenes[0].revision)
@@ -32,7 +31,7 @@ def test_memory_request_lists_every_card_as_allowed_participants(tmp_path):
 
 
 @pytest.mark.req('MEMORY-ENTITIES')
-def test_memory_request_without_cards_is_unchanged(tmp_path):
+def test_memory_request_without_cards_has_no_participants_section(tmp_path):
     repo, story, scene = memory_scene(tmp_path, 'Вдома')
     context = build_context(repo, scene.id, 'memory', plain_role())
     assert 'PARTICIPANT_IDS' not in context.user_text

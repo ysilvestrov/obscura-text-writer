@@ -6189,8 +6189,9 @@
         "tests/memory/test_wire_v4_participants.py::test_translated_journal_keeps_participants_and_is_v4",
         "tests/memory/test_wire_v4_participants.py::test_closing_a_thread_gives_the_resolution_fact_the_participants_of_the_thread",
         "tests/memory/test_wire_v4_participants.py::test_states_never_get_participants",
+        "tests/memory/test_wire_v4_participants.py::test_state_update_and_retire_keep_empty_participants_and_replay",
         "tests/generation/test_memory_participants_context.py::test_memory_request_lists_every_card_as_allowed_participants",
-        "tests/generation/test_memory_participants_context.py::test_memory_request_without_cards_is_unchanged",
+        "tests/generation/test_memory_participants_context.py::test_memory_request_without_cards_has_no_participants_section",
         "tests/generation/test_memory_participants_context.py::test_sends_cover_participants_section"
       ]
     },

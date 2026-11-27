@@ -4,9 +4,8 @@ import json
 import pytest
 
 from storygen.memory.journal import MemoryJournal, _add_event, replay_memory
-from storygen.memory.wire_v4 import MemoryWireV4, check_v4, memory_wire_v4_schema, schema_bounds_v4, wire_v4_events
-from tests.memory.test_wire_v4 import (BOUNDS, PREV, PROSE, MOOD, T1, T2, answer, bad, chg, new, padd, run, sadd, tdec,
-    threads)
+from storygen.memory.wire_v4 import check_v4, memory_wire_v4_schema, schema_bounds_v4
+from tests.memory.test_wire_v4 import BOUNDS, PREV, PROSE, MOOD, T1, answer, bad, chg, new, padd, run, sadd, tdec, threads
 
 PBOUNDS = schema_bounds_v4(PREV, PROSE, ['h'], ['h'], {'h': False}, participant_ids=['c1', 'c2'])
 
@@ -75,10 +74,18 @@ def test_closing_a_thread_gives_the_resolution_fact_the_participants_of_the_thre
 
 @pytest.mark.req('MEMORY-ENTITIES')
 def test_states_never_get_participants():
-    from storygen.memory.core import SLOTS
-    from tests.memory.test_wire_v4 import CLOTH, core, dec
+    from tests.memory.test_wire_v4 import core, dec
     data = answer(core(clothing=dec('unknown', reason='Новий день')),
                   character_states_add=[sadd('Змерзла', ['f000004'], ['h'])])
     journal = run(data, bounds=PBOUNDS)
     assert all(e.participant_ids == [] for e in new(journal) if e.category == 'character_states')
-    assert SLOTS
+
+
+@pytest.mark.req('MEMORY-ENTITIES')
+def test_state_update_and_retire_keep_empty_participants_and_replay():
+    # Only states change through the wire (facts, threads and timeline are add-only; threads close via decisions).
+    for group in ('character_states_update', 'character_states_retire'):
+        journal = run(answer(**{group: [chg(MOOD.claim_id, 'Ніч', ['f000004'])]}), bounds=PBOUNDS)
+        (event,) = new(journal)
+        assert event.participant_ids == []
+        assert (MOOD.claim_id in replay_memory(journal)) == (group == 'character_states_update')
