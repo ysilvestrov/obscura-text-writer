@@ -19,6 +19,12 @@ MODELS: dict[str, dict] = {
                 'query_prefix': 'query: ', 'passage_prefix': 'passage: ', 'max_tokens': 512},
     'bge-m3': {'kind': 'local', 'model_id': 'BAAI/bge-m3', 'revision': '5617a9f61b028005a4858fdac845db406aefb181',
                'query_prefix': '', 'passage_prefix': '', 'max_tokens': 8192},  # dense only
+    # Voyage 4 nano (Matryoshka): the modeling code comes from the pinned revision (trust_remote_code); nano-512 is the
+    # first 512 coordinates of nano-2048, re-normalized, over the same loaded model and the same cache.
+    'nano-2048': {'kind': 'local', 'model_id': 'MongoDB/voyage-4-nano', 'revision': '587d8d6dcaec029a9779c2098d6af020e4a07c01',
+                  'query_prefix': 'Represent the query for retrieving supporting documents: ',
+                  'passage_prefix': 'Represent the document for retrieval: ', 'max_tokens': 8192, 'trust_remote_code': True},
+    'nano-512': {'kind': 'truncate', 'base': 'nano-2048', 'dim': 512},
     # Azure deployment name comes from the cloud config, not from here; the client is AzureEmbedder.
     'azure-3-large': {'kind': 'cloud', 'model_id': 'text-embedding-3-large', 'revision': 'azure'},
 }
@@ -71,7 +77,8 @@ class FakeEmbedder:
 class LocalEmbedder:
     """sentence-transformers on CPU; the import lives in the constructor so the module loads without it."""
 
-    def __init__(self, key, model_id, revision, query_prefix, passage_prefix, max_tokens, threads=1):
+    def __init__(self, key, model_id, revision, query_prefix, passage_prefix, max_tokens, threads=1,
+                 trust_remote_code=False):
         import torch
         from sentence_transformers import SentenceTransformer
         torch.set_num_threads(threads)
@@ -79,7 +86,8 @@ class LocalEmbedder:
         self.query_prefix, self.passage_prefix = query_prefix, passage_prefix
         self.max_tokens = max_tokens
         self.truncated = 0
-        self._model = SentenceTransformer(model_id, revision=revision, device='cpu')
+        self._model = SentenceTransformer(model_id, revision=revision, device='cpu',
+                                          trust_remote_code=trust_remote_code)
         self._model.max_seq_length = max_tokens
         self.dim = int(self._model.get_sentence_embedding_dimension())
 
@@ -92,6 +100,25 @@ class LocalEmbedder:
         out = self._model.encode(prepared, batch_size=8, normalize_embeddings=True, convert_to_numpy=True,
                                  show_progress_bar=False)
         return _normalized(out)
+
+
+class TruncatedEmbedder:
+    """First `dim` coordinates of the base embedder's vectors, re-normalized (Matryoshka). Everything but key and dim
+    (and the vectors) comes from the base; the base is usually the CachedEmbedder of the full model, so its cache and
+    counters are shared and the model is loaded once."""
+    _DELEGATED = frozenset({'model_id', 'revision', 'max_tokens', 'truncated', 'last_truncated', 'query_prefix',
+                            'passage_prefix', 'truncated_requests', 'cache_dir', 'hits', 'misses'})
+
+    def __init__(self, base, key: str, dim: int):
+        self.base, self.key, self.dim = base, key, dim
+
+    def __getattr__(self, name):
+        if name in self._DELEGATED:
+            return getattr(self.base, name)
+        raise AttributeError(name)
+
+    def embed(self, texts, kind):
+        return _normalized(self.base.embed(texts, kind)[:, :self.dim])
 
 
 def _inside_repo(path) -> bool:

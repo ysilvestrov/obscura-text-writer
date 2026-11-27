@@ -245,7 +245,8 @@ def make_inner_embedder(key, spec, args):
                              args.cloud_price_per_mtok, args.cloud_max_usd, model_id=spec['model_id'],
                              revision=spec['revision'])
     return LocalEmbedder(key, spec['model_id'], spec['revision'], spec['query_prefix'], spec['passage_prefix'],
-                         spec['max_tokens'], threads=1)
+                         spec['max_tokens'], threads=1,
+                         trust_remote_code=spec.get('trust_remote_code', False))
 
 
 def _wrap(key, inner, cache_dir, load_seconds):
@@ -270,15 +271,24 @@ def setup_vectors(args, story_id):
             return None, 'cloud_not_allowed'
         if not all(os.environ.get(name) for name in CLOUD_ENV):
             return None, 'cloud_config_missing'
+    if any(MODELS[k]['kind'] == 'truncate' and MODELS[k]['base'] not in keys for k in keys):
+        return None, 'truncate_base_missing'
     if _inside_repo(args.cache_dir):
         return None, 'inside_repo'
     models = []
     try:
-        for key in keys:
+        for key in sorted(keys, key=lambda k: MODELS[k]['kind'] == 'truncate'):  # bases before their truncations
+            if MODELS[key]['kind'] == 'truncate':
+                from memory_bench.embeddings import TruncatedEmbedder
+                base = next(m for m in models if m['key'] == MODELS[key]['base'])
+                view = TruncatedEmbedder(base['cached'], key, MODELS[key]['dim'])
+                models.append({'key': key, 'spec': MODELS[key], 'inner': view, 'timed': TimedEmbedder(view), 'cached': view})
+                continue
             began = time.perf_counter()
             inner = make_inner_embedder(key, MODELS[key], args)
             timed, cached = _wrap(key, inner, args.cache_dir, time.perf_counter() - began)
             models.append({'key': key, 'spec': MODELS[key], 'inner': inner, 'timed': timed, 'cached': cached})
+        models.sort(key=lambda m: keys.index(m['key']))
     except ImportError:
         close_vectors(models)
         return None, 'vector_deps_missing'
@@ -318,6 +328,9 @@ def _dir_bytes(path):
 
 
 def _weights_bytes(spec):
+    if spec['kind'] == 'truncate':  # same files as the base model
+        from memory_bench.embeddings import MODELS
+        spec = MODELS[spec['base']]
     if spec['kind'] != 'local':
         return None
     try:
@@ -340,7 +353,7 @@ def vector_report(models, args, repro):
     out = {}
     for model in models:
         inner, timed, cached, spec = model['inner'], model['timed'], model['cached'], model['spec']
-        local = spec['kind'] == 'local'
+        local = spec['kind'] != 'cloud'
         entry = {'model_id': inner.model_id, 'revision': inner.revision, 'dim': int(cached.dim),
                  'max_tokens': inner.max_tokens, 'query_prefix': getattr(inner, 'query_prefix', ''),
                  'passage_prefix': getattr(inner, 'passage_prefix', ''), 'truncated': cached.truncated,

@@ -5,7 +5,7 @@ import pytest
 
 np = pytest.importorskip('numpy')
 
-from memory_bench.embeddings import ROOT, CachedEmbedder, FakeEmbedder, MODELS  # noqa: E402
+from memory_bench.embeddings import ROOT, CachedEmbedder, FakeEmbedder, MODELS, TruncatedEmbedder  # noqa: E402
 
 
 class CountingEmbedder(FakeEmbedder):
@@ -110,3 +110,22 @@ def test_cached_truncated_counts_unique_texts_across_calls():
         emb.embed(['long plan', 'short'], 'passage')
         emb.embed(['long plan'], 'passage')
         assert emb.truncated == 1 and emb.truncated_requests == 2
+
+
+def test_truncated_embedder_slices_and_renormalizes():
+    base = FakeEmbedder(dim=16)
+    t = TruncatedEmbedder(base, 'fake-4', 4)
+    full = base.embed(['a', 'b'], 'passage')
+    out = t.embed(['a', 'b'], 'passage')
+    assert out.shape == (2, 4)
+    assert np.allclose(np.linalg.norm(out, axis=1), 1.0)
+    assert np.allclose(out, full[:, :4] / np.linalg.norm(full[:, :4], axis=1, keepdims=True))
+    assert t.key == 'fake-4' and t.model_id == base.model_id and t.dim == 4
+    assert t.revision == base.revision and t.max_tokens == base.max_tokens and t.truncated == base.truncated
+    assert t.last_truncated == base.last_truncated
+
+
+def test_nano_specs():
+    assert MODELS['nano-2048']['trust_remote_code'] is True
+    assert MODELS['nano-2048']['revision'] == '587d8d6dcaec029a9779c2098d6af020e4a07c01'
+    assert MODELS['nano-512'] == {'kind': 'truncate', 'base': 'nano-2048', 'dim': 512}

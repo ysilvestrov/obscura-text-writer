@@ -385,3 +385,24 @@ def test_cloud_keys_match_models():
     pytest.importorskip('numpy')
     from memory_bench.embeddings import MODELS
     assert set(_bench().CLOUD_KEYS)=={k for k,m in MODELS.items() if m['kind']=='cloud'}
+
+
+def test_truncate_base_missing(synthetic_repo,monkeypatch,capsys,cache_dir):
+    pytest.importorskip('numpy')
+    repo,_,_=synthetic_repo;built=[];_patch_factory(monkeypatch,built)
+    assert _bench().main(_vec_args(repo,cache_dir,'--vector-models','nano-512'))==2
+    out=capsys.readouterr()
+    assert out.err.strip()=='truncate_base_missing' and out.out=='' and built==[]
+
+
+def test_truncate_shares_base_model_and_cache(synthetic_repo,tmp_path,monkeypatch,cache_dir):
+    pytest.importorskip('numpy')
+    repo,story_id,info=synthetic_repo;built=[];_patch_factory(monkeypatch,built)
+    for order in ('nano-2048,nano-512','nano-512,nano-2048'):
+        report,error=_report(_vec_args(repo,cache_dir,'--vector-models',order,'--context','32768'))
+        assert error is None
+        vec=report['vector']
+        assert set(vec)=={'nano-2048','nano-512'} and vec['nano-512']['dim']==512
+        assert vec['nano-512']['load_seconds']==0 and vec['nano-512']['model_id']==vec['nano-2048']['model_id']
+        assert vec['nano-512']['weights_bytes']==vec['nano-2048']['weights_bytes']
+    assert built==['nano-2048','nano-2048']
