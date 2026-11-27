@@ -4,19 +4,23 @@ import {t,msg,uiText} from './i18n.js';
 import {api,json,notice} from './api.js';
 import {appInfo} from './app-info.js';
 import {statusText,refreshBook} from './series-status.js';
+import {confirmDialog} from './dialogs.js';
+import {trialState} from './long-prose-trial.js';
 
 const NEW='__new__';
 const form=document.querySelector('#story-series-form');
 const storyId=document.querySelector('.settings-page')?.dataset.storyId;
+// LONG-PROSE-TRIAL-S07: without long prose the form keeps to the trial series: «Без серії» and that series only.
+let trialSeries=null,currentSeries=null;
 
 async function load(){
   const [view,items]=await Promise.all([api(`/api/stories/${storyId}`),api('/api/series')]);
   const select=form.elements.series_id;
   select.replaceChildren();
   const none=document.createElement('option');none.value='';uiText(none,'textContent',()=>t('series.none'));select.append(none);
-  for(const item of items){const option=document.createElement('option');option.value=item.id;option.textContent=item.title;select.append(option)}
-  const fresh=document.createElement('option');fresh.value=NEW;uiText(fresh,'textContent',()=>t('series.new_series'));select.append(fresh);
-  const series=view.series;
+  for(const item of items.filter(item=>!trialSeries||item.id===trialSeries)){const option=document.createElement('option');option.value=item.id;option.textContent=item.title;select.append(option)}
+  if(!trialSeries){const fresh=document.createElement('option');fresh.value=NEW;uiText(fresh,'textContent',()=>t('series.new_series'));select.append(fresh)}
+  const series=view.series;currentSeries=series?.id||null;
   select.value=series?series.id:'';form.elements.number.value=series?series.number:'';
   form.elements.start.value=series?.start?`${series.start.offset}, ${series.start.anchor}`:'';
   form.elements.bible.checked=Boolean(series?.bible);showBible();
@@ -45,6 +49,8 @@ function install(){
     event.preventDefault();
     try{
       let seriesId=form.elements.series_id.value||null;
+      // Leaving the trial series keeps the book's parts but never frees its place.
+      if(trialSeries&&currentSeries===trialSeries&&seriesId!==trialSeries&&!await confirmDialog(t('trial.leave_warning')))return;
       if(seriesId===NEW)seriesId=(await api('/api/series',json('POST',{title:form.elements.new_title.value}))).id;
       const bible=Boolean(seriesId)&&form.elements.bible.checked;
       const number=form.elements.number.value&&!bible?Number(form.elements.number.value):null;
@@ -59,4 +65,14 @@ function install(){
   load().catch(error=>notice(error.message,'error'));
 }
 
-if(form&&storyId)appInfo().then(info=>{if(info.long_prose!==false)install()});
+// A book outside any series or inside the trial series gets the form; the trial book (one book) never joins a series.
+async function start(){
+  const [info,view]=await Promise.all([appInfo(),api(`/api/stories/${storyId}`)]);
+  if(info.long_prose!==false){install();return}
+  const trial=trialState(info);
+  if(trial.state!=='used'||trial.kind!=='series')return;
+  const own=view.story.series_id;
+  if(own&&own!==trial.id)return;
+  trialSeries=trial.id;install();
+}
+if(form&&storyId)start().catch(()=>{});

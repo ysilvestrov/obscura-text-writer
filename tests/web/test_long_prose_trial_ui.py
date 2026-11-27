@@ -106,3 +106,19 @@ def test_trial_module_helpers():
 def test_fixture_server_resets_the_trial():
     text = (ROOT / 'tests/web/browser/server.py').read_text(encoding='utf-8')
     assert "@app.post('/test-reset-trial')" in text
+
+
+@pytest.mark.req('LONG-PROSE-TRIAL')
+def test_series_index_store_states(tmp_path, store_edition):
+    client, app, repo, story, scene = setup(tmp_path, structured=False)
+    page = client.get('/series')
+    assert page.status_code == 200 and 'id="series-create"' in page.text and '/static/series-page.js' in page.text
+    saga = client.post('/api/series', json={'title': 'Сага', 'trial': True}).json()
+    assert client.get('/series').status_code == 200 and client.get(f"/series/{saga['id']}").status_code == 200
+
+
+@pytest.mark.req('LONG-PROSE-TRIAL')
+def test_series_index_is_gone_with_a_book_trial(tmp_path, store_edition):
+    client, app, repo, story, scene = setup(tmp_path, structured=False)
+    assert client.post('/api/long-prose-trial', json={'story_id': story.id, 'confirm': True}).status_code == 200
+    assert client.get('/series').status_code == 404

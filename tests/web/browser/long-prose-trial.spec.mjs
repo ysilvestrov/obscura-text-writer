@@ -106,3 +106,91 @@ test('trial book keeps the memory-build menu',async({page,request})=>{
   await expect(page.locator('#story-menu-build-memory')).toBeVisible();
   await expect(page.locator('#story-menu-build-memory')).toHaveText('Побудувати пам’ять (сцен: 2)');
 });
+
+// Series: both projects share one fixture server, so titles carry the project name and a random tail.
+const unique=title=>`${title} ${test.info().project.name} ${Math.random().toString(36).slice(2,7)}`;
+const SERIES_FULL='Проба серії дозволяє дві книги; третя — у платній версії';
+const LEAVE='Книга вийде із серії проби й збереже частини й арки, але місце в серії проби не звільниться.';
+
+test('free trial creates the trial series from the series page',async({page,request})=>{
+  await store(request);
+  const title=unique('Пробна сага');
+  await page.goto('/');
+  await page.getByRole('link',{name:'Серії'}).click();
+  await expect(page).toHaveURL(/\/series$/);
+  await expect(page.locator('.series-trial-hint')).toHaveText('Пробною може стати серія, у якій не більше двох книг.');
+  await page.getByLabel('Назва серії').fill(title);
+  const reloaded=page.waitForEvent('load');
+  await page.getByRole('button',{name:'Створити пробну серію'}).click();
+  await accept(page,title);
+  await reloaded;
+  await expect(page.locator('#series-list .card')).toHaveCount(1);
+  await expect(page.locator('#series-list .card a')).toHaveText(title);
+  await expect(page.locator('#series-create')).toBeHidden();
+});
+
+test('a series from another edition can become the trial series but is not a link',async({page,request})=>{
+  const title=unique('Чужа сага');
+  const item=await(await request.post('/api/series',{data:{title}})).json();
+  for(const book of ['Перша','Друга'])expect((await request.post(`/api/series/${item.id}/books`,{data:{title:book}})).ok()).toBeTruthy();
+  await store(request);
+  await page.goto('/series');
+  const card=page.locator('#series-list .card',{hasText:title});
+  await expect(card).toBeVisible();
+  await expect(card.locator('a[href]')).toHaveCount(0);
+  const reloaded=page.waitForEvent('load');
+  await card.getByRole('button',{name:'Зробити пробною серією'}).click();
+  await accept(page,title);
+  await reloaded;
+  await expect(page.locator(`#series-list a[href="/series/${item.id}"]`)).toHaveText(title);
+});
+
+test('third book of the trial series is disabled with the paid hint',async({page,request})=>{
+  await store(request);
+  const item=await(await request.post('/api/series',{data:{title:unique('Повна сага'),trial:true}})).json();
+  for(const book of ['Перша','Друга'])expect((await request.post(`/api/series/${item.id}/books`,{data:{title:book}})).ok()).toBeTruthy();
+  await page.goto(`/series/${item.id}`);
+  await expect(page.locator('#series-books .series-book')).toHaveCount(2);
+  await expect(page.locator('#series-new-book')).toBeDisabled();
+  await expect(page.locator('#series-new-book')).toHaveAttribute('title',SERIES_FULL);
+});
+
+test('leaving the trial series warns that the place stays taken',async({page,request})=>{
+  await store(request);
+  const item=await(await request.post('/api/series',{data:{title:unique('Сага виходу'),trial:true}})).json();
+  const book=await(await request.post(`/api/series/${item.id}/books`,{data:{title:'Перша'}})).json();
+  await page.goto(`/stories/${book.id}/settings`);
+  await openWriting(page);
+  const form=page.locator('#story-series-form');
+  await expect(form.locator('select[name="series_id"]')).toHaveValue(item.id);
+  await form.locator('select[name="series_id"]').selectOption('');
+  await form.getByRole('button',{name:'Зберегти'}).click();
+  const dialog=page.locator('.app-dialog');
+  await expect(dialog).toContainText(LEAVE);
+  await dialog.getByRole('button',{name:'Скасувати'}).click();
+  await expect(dialog).toHaveCount(0);
+  expect((await view(request,book.id)).series.id).toBe(item.id);
+});
+
+test('book settings offer only the trial series',async({page,request})=>{
+  const other=await(await request.post('/api/series',{data:{title:unique('Інша сага')}})).json();
+  const {story_id}=await(await request.post('/test-fixture')).json();
+  await store(request);
+  const item=await(await request.post('/api/series',{data:{title:unique('Сага вибору'),trial:true}})).json();
+  await page.goto(`/stories/${story_id}/settings`);
+  await openWriting(page);
+  const select=page.locator('#story-series-form select[name="series_id"]');
+  await expect(select).toBeVisible();
+  expect(await select.locator('option').evaluateAll(items=>items.map(item=>item.value))).toEqual(['',item.id]);
+  expect(other.id).not.toBe(item.id);
+});
+
+test('the trial book has no series form',async({page,request})=>{
+  const {story_id}=await(await request.post('/test-fixture')).json();
+  await store(request);
+  expect((await request.post('/api/long-prose-trial',{data:{story_id,confirm:true}})).ok()).toBeTruthy();
+  await page.goto(`/stories/${story_id}/settings`);
+  await openWriting(page);
+  await expect(page.locator('#book-structure')).toBeVisible();
+  await expect(page.locator('#story-series-form')).toBeHidden();
+});
