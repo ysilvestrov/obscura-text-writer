@@ -604,7 +604,7 @@ body.ghost-open #notice { z-index: 70; }
 .ghost-header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 16px; }
 .ghost-header h2 { margin: 0; font-size: 1.2rem; }
 .ghost-progress { margin: 0; color: var(--text-secondary); }
-.ghost-hint, .ghost-separator, .ghost-skipped { margin-block: 4px; }
+.ghost-hint, .ghost-separator, .ghost-skipped, .ghost-removed { margin-block: 4px; }
 .ghost-warning { color: var(--warning); margin-block: 4px; }
 .ghost-ai, .ghost-author { min-width: 0; }
 .ghost-ai h3, .ghost-author h3 { margin-block: 8px 4px; font-size: 0.95rem; }

@@ -41,6 +41,20 @@ assert.equal(s.unskip(session),true);
 assert.equal(session.blocks[2].state,'reading','an untouched skipped block returns to reading');
 s.input(session,'Другий.');
 assert.equal(s.resultText(session),'Мій текст.\n\n***\n\nДругий.');
+// A separator can be removed explicitly and restored; text blocks have no such action and the skip counter ignores it.
+assert.equal(s.removeSeparator(session),false,'the current block is text');
+session.index=1;
+assert.equal(s.skip(session),false,'a separator is removed, not skipped');
+assert.equal(s.removeSeparator(session),true);
+assert.equal(session.blocks[1].state,'removed');
+assert.equal(s.removeSeparator(session),false);
+assert.deepEqual([s.removedSeparators(session),s.skippedCount(session),s.canSave(session)],[1,0,true]);
+assert.equal(s.resultText(session),'Мій текст.\n\nДругий.');
+assert.equal(s.restoreSeparator(session),true);
+assert.equal(s.restoreSeparator(session),false);
+assert.equal(s.resultText(session),'Мій текст.\n\n***\n\nДругий.');
+s.removeSeparator(session);
+session.index=2;
 s.blockPasted(session);
 assert.deepEqual(s.clientStats(session),{peeks:1,peek_ms:1234,pastes_blocked:1,blocks_skipped:0});
 
@@ -67,6 +81,7 @@ assert.equal(s.saveSession(storage,session),true);
 const restored=s.loadSession(storage,'s1','d1');
 assert.equal(restored.blocks[2].state,'writing');
 assert.equal(restored.blocks[0].text,'Мій текст.');
+assert.equal(restored.blocks[1].state,'removed','a removed separator survives a reload');
 assert.equal(s.findSession(storage,'s1'),'d1');
 assert.equal(s.loadSession(storage,'s1','other'),null);
 memory.set(s.sessionKey('s1','bad'),'{');
@@ -74,7 +89,7 @@ assert.equal(s.loadSession(storage,'s1','bad'),null);
 // Structurally broken sessions are ignored, not resumed.
 const valid=JSON.parse(memory.get(s.sessionKey('s1','d1')));
 for(const broken of [{...valid,index:99},{...valid,index:-1},{...valid,blocks:[]},{...valid,format:'html'},{...valid,peeks:-1},
-  {...valid,blocks:[{...valid.blocks[0],state:'peek'}]},{...valid,blocks:[{...valid.blocks[0],text:5}]},{...valid,blocks:[{kind:'separator',source:'***',text:'',touched:false,state:'reading'}],index:0}]){
+  {...valid,blocks:[{...valid.blocks[0],state:'peek'}]},{...valid,blocks:[{...valid.blocks[0],text:5}]},{...valid,blocks:[{...valid.blocks[0],state:'removed'}]},{...valid,blocks:[{kind:'separator',source:'***',text:'',touched:false,state:'reading'}],index:0}]){
   memory.set(s.sessionKey('s1','d1'),JSON.stringify(broken));
   assert.equal(s.loadSession(storage,'s1','d1'),null,JSON.stringify(broken).slice(0,80));
 }

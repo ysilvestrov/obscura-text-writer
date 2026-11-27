@@ -1,6 +1,7 @@
 // Ghost Mode (#55): the rewrite session as plain data. No DOM; the mode UI drives it and the node test checks it.
 // Block states: reading (AI text visible, nothing typed yet) -> writing (after the first change, even if erased again)
 // <-> peek (only from writing: author text hidden, editing locked); skipped (explicit) -> back to reading/writing.
+// Separators: separator (carried over as is) <-> removed (explicit; not in the result).
 import {ghostBlocks,normalizeText,codePointSlice} from './ghost-blocks.js';
 
 export const sessionKey=(sceneId,draftId)=>`ghost:${sceneId}:${draftId}`;
@@ -43,6 +44,18 @@ export function skip(session){
   block.state='skipped';return true;
 }
 
+export function removeSeparator(session){
+  const block=current(session);
+  if(block?.state!=='separator')return false;
+  block.state='removed';return true;
+}
+
+export function restoreSeparator(session){
+  const block=current(session);
+  if(block?.state!=='removed')return false;
+  block.state='separator';return true;
+}
+
 export function unskip(session){
   const block=current(session);
   if(block?.state!=='skipped')return false;
@@ -60,6 +73,7 @@ export function go(session,delta){
 export function blockPasted(session){session.pastesBlocked+=1;}
 
 const textBlocks=session=>session.blocks.filter(block=>block.kind==='text');
+export const removedSeparators=session=>session.blocks.filter(block=>block.state==='removed').length;
 export const skippedCount=session=>textBlocks(session).filter(block=>block.state==='skipped').length;
 export const writtenCount=session=>textBlocks(session).filter(block=>['writing','peek'].includes(block.state)&&block.text.trim()).length;
 export const doneBlock=block=>block.kind!=='text'||block.state==='skipped'||(block.state==='writing'&&!!block.text.trim());
@@ -67,7 +81,7 @@ export const canSave=session=>textBlocks(session).length>0&&textBlocks(session).
 export const hasWork=session=>textBlocks(session).some(block=>block.touched||block.state==='skipped');
 
 export function resultText(session){
-  return session.blocks.filter(block=>block.kind==='separator'||block.state==='writing').map(block=>block.kind==='separator'?block.source:block.text.trim()).filter(Boolean).join('\n\n');
+  return session.blocks.filter(block=>block.state==='separator'||block.state==='writing').map(block=>block.kind==='separator'?block.source:block.text.trim()).filter(Boolean).join('\n\n');
 }
 
 // The result is Markdown as soon as one written block is; otherwise it keeps the draft's format.
@@ -95,14 +109,14 @@ export function loadSession(storage,sceneId,draftId){
   }catch{return null;}
 }
 
-const FORMATS=['plain','markdown'],TEXT_STATES=['reading','writing','skipped'];
+const FORMATS=['plain','markdown'],TEXT_STATES=['reading','writing','skipped'],SEPARATOR_STATES=['separator','removed'];
 const count=value=>Number.isInteger(value)&&value>=0;
 function validSession(data,sceneId,draftId){
   if(data?.version!==1||data.sceneId!==sceneId||data.draftId!==draftId||!FORMATS.includes(data.format))return false;
   if(!Array.isArray(data.blocks)||!data.blocks.length||!Number.isInteger(data.index)||data.index<0||data.index>=data.blocks.length)return false;
   if(![data.peeks,data.peekMs,data.pastesBlocked].every(count))return false;
   return data.blocks.every(block=>block&&typeof block.source==='string'&&typeof block.text==='string'&&typeof block.touched==='boolean'&&(
-    block.kind==='separator'?block.state==='separator':block.kind==='text'&&TEXT_STATES.includes(block.state)&&FORMATS.includes(block.format)));
+    block.kind==='separator'?SEPARATOR_STATES.includes(block.state):block.kind==='text'&&TEXT_STATES.includes(block.state)&&FORMATS.includes(block.format)));
 }
 
 export function findSession(storage,sceneId){
