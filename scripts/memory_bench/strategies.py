@@ -14,7 +14,8 @@ from storygen.token_budget.core import canonical
 
 from .model import Record, realistic_ratio, SceneInput, Selection, render, tokens_conservative, tokens_realistic
 
-LAYERS = ('core', 'present', 'general', 'threads', 'facts', 'timeline', 'atmosphere', 'fts', 'vec', 'hybrid')
+LAYERS = ('core', 'present', 'general', 'threads', 'facts', 'timeline', 'atmosphere', 'fts', 'vec', 'hybrid', 'ctx_fts',
+          'ctx_vec', 'ctx_hybrid')
 
 
 @dataclass(frozen=True)
@@ -238,6 +239,23 @@ def vector_strategies(embedder) -> dict[str, Callable[[SceneInput, Params], Sele
         vec_name: _structural_retrieval(vec_name, 'vec', lambda pool, query: vec_rank(pool, query, embedder)),
         hybrid_name: _structural_retrieval(hybrid_name, 'hybrid', lambda pool, query: rrf_rank(pool, query, embedder)),
     }
+
+
+def context_strategies(search_text, embedders) -> dict[str, Callable[[SceneInput, Params], Selection]]:
+    """Contextual columns (#25): the rankers of structural_fts / _vec / _hybrid search over `context + record text`, the
+    budget and the rendered memory take the original records. search_text maps (claim_id, record text) to the search
+    text (see ranking.contextual_versions); a record without an entry is searched by its own text. structural_ctx_fts
+    always; structural_ctx_vec[key] / structural_ctx_hybrid[key] for each given embedder (the caller passes only the
+    models of CTX_MODELS). The whole hybrid ranker is wrapped, so its BM25 and vector parts both see the search text."""
+    from .ranking import contextual_versions, rrf_rank, vec_rank
+    out = {'structural_ctx_fts': _structural_retrieval('structural_ctx_fts', 'ctx_fts', contextual_versions(fts_rank, search_text))}
+    for embedder in embedders:
+        vec_name, hybrid_name = f'structural_ctx_vec[{embedder.key}]', f'structural_ctx_hybrid[{embedder.key}]'
+        vec = contextual_versions(lambda pool, query, e=embedder: vec_rank(pool, query, e), search_text)
+        hybrid = contextual_versions(lambda pool, query, e=embedder: rrf_rank(pool, query, e), search_text)
+        out[vec_name] = _structural_retrieval(vec_name, 'ctx_vec', vec)
+        out[hybrid_name] = _structural_retrieval(hybrid_name, 'ctx_hybrid', hybrid)
+    return out
 
 
 PRODUCT_STEPS = 12

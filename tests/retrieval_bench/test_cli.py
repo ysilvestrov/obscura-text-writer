@@ -711,3 +711,85 @@ def test_paraphrases_owner_file_must_hold_the_recomputed_sample(para_dir,monkeyp
     assert _load(para_dir)==(None,'owner_check_stale')
     write_para(para_dir,scenes,'story',queries,meta_over={'seed':'0'})
     assert _load(para_dir)==(None,'paraphrase_set_invalid')
+
+
+# ---- --contexts (harness task 4): contextual columns over contexts.json of scripts/rag_contexts.py ----
+
+CTX_SENTINEL='Квазиморфія'
+
+
+def _write_contexts(folder,repo,story_id,drop_first=False):
+    """contexts.json as scripts/rag_contexts.py writes it, every target 'ok' with a context carrying CTX_SENTINEL."""
+    from memory_bench.context_gen import CONTEXT_PROMPT_ID,HAIKU,context_key,context_snapshot,context_targets
+    from memory_bench.extract import extract_story
+    scenes,_=extract_story(repo,story_id,None)
+    targets,_=context_targets(scenes)
+    items={context_key(r,p):{'claim_id':r.claim_id,'source_scene':r.source_scene,'status':'ok','context':f'{CTX_SENTINEL} {r.source_scene}'}
+           for r,p in targets[1 if drop_first else 0:]}
+    meta={'model':HAIKU,'prompt_id':CONTEXT_PROMPT_ID,'story':story_id,'prices_date':'2026-11-27'}
+    (folder/'contexts.json').write_text(json.dumps({'meta':meta,'items':items,'snapshot':context_snapshot(items)},ensure_ascii=False),encoding='utf-8')
+    return targets
+
+
+def test_cli_contexts_round_trip(synthetic_repo,tmp_path,outside_dir,para_dir,monkeypatch,cache_dir,capsys):
+    pytest.importorskip('numpy')
+    repo,story_id,info=synthetic_repo;built=[]
+    _patch_factory(monkeypatch,built)
+    monkeypatch.setattr(_bench(),'CTX_MODELS',('e5-base',))  # a fake key stands in for nano-2048
+    targets=_write_contexts(outside_dir,repo,story_id)
+    from collections import Counter
+    assert any(n>1 for n in Counter(r.claim_id for r,_ in targets).values())  # an updated claim: two text versions
+    _write_set(para_dir,repo,story_id)
+    args=_vec_args(repo,cache_dir,'--vector-models','e5-base','--context','32768','--budget-steps','0.5',
+                   '--paraphrases',str(para_dir),'--contexts',str(outside_dir),*_pair_files(tmp_path,story_id,info))
+    assert _bench().main(args)==0
+    out=capsys.readouterr()
+    assert CTX_SENTINEL not in out.out and CTX_SENTINEL not in out.err
+    report=json.loads(out.out)
+    ctx={f'{n}[core={m}]' for n in ('structural_ctx_fts','structural_ctx_vec[e5-base]','structural_ctx_hybrid[e5-base]')
+         for m in ('upper','lower')}
+    assert ctx<=set(report['real']['32768']['realistic']) and ctx<=set(report['budget_steps']['0.5']) and ctx<=set(report['pairs'])
+    columns={'ctx_bm25','ctx_vec[e5-base]','ctx_hybrid[e5-base]'}
+    assert columns<=set(report['ranking']) and report['ranking']['ctx_bm25']['pair']['total']==2
+    assert ctx<=set(report['ranking']['layers'])
+    layers=report['ranking']['layers']['structural_ctx_vec[e5-base][core=upper]']
+    assert sum(layers.values())==2 and not {'fts','vec','hybrid'}&set(layers)
+    para=report['paraphrases']
+    assert columns<=set(para['levels']['syn']) and set(para['levels']['syn']['ctx_vec[e5-base]']['sign_vs_bm25'])=={'standalone','in_plan'}
+    assert columns|{'bm25','vec[e5-base]','hybrid[e5-base]'}==set(para['baseline_plan'])
+    assert set(para['baseline_plan']['ctx_bm25'])=={'0.75','0.5','0.35'} and para['baseline_plan_n']>0
+    section=report['contexts']
+    assert set(section)=={'snapshot','ok','failed','no_source','models'}
+    assert section['ok']==len(targets) and section['failed']==0 and section['models']==['e5-base']
+
+
+def test_cli_without_contexts_has_no_ctx_columns(synthetic_repo,tmp_path,monkeypatch,cache_dir):
+    pytest.importorskip('numpy')
+    repo,story_id,info=synthetic_repo
+    _patch_factory(monkeypatch,[])
+    monkeypatch.setattr(_bench(),'CTX_MODELS',('e5-base',))
+    report,error=_report(_vec_args(repo,cache_dir,'--vector-models','e5-base','--context','32768',*_pair_files(tmp_path,story_id,info)))
+    assert error is None and 'contexts' not in report
+    assert not any('ctx' in k for k in report['real']['32768']['realistic']) and not any('ctx' in k for k in report['ranking'])
+
+
+def test_cli_contexts_bm25_only_and_models_outside_ctx(synthetic_repo,tmp_path,outside_dir,monkeypatch,cache_dir):
+    """ctx_bm25 always comes with --contexts; a vector model outside CTX_MODELS gets no ctx column."""
+    pytest.importorskip('numpy')
+    repo,story_id,info=synthetic_repo
+    _patch_factory(monkeypatch,[])
+    _write_contexts(outside_dir,repo,story_id)
+    report,error=_report(_vec_args(repo,cache_dir,'--vector-models','e5-base','--context','32768','--contexts',str(outside_dir),
+                                   *_pair_files(tmp_path,story_id,info)))
+    assert error is None and report['contexts']['models']==[]
+    assert {'ctx_bm25','bm25','vec[e5-base]','hybrid[e5-base]'}==set(report['ranking'])-{'layers','layers_control'}
+
+
+def test_cli_contexts_refusals_before_any_embedder(synthetic_repo,outside_dir,monkeypatch,cache_dir):
+    repo,story_id,_=synthetic_repo;built=[]
+    _patch_factory(monkeypatch,built)
+    args=lambda folder:_vec_args(repo,cache_dir,'--vector-models','e5-base','--contexts',str(folder))
+    assert _report(args(ROOT/'docs'))==(None,'inside_repo')
+    assert _report(args(outside_dir))==(None,'contexts_missing')
+    _write_contexts(outside_dir,repo,story_id,drop_first=True)
+    assert _report(args(outside_dir))==(None,'contexts_stale') and built==[]

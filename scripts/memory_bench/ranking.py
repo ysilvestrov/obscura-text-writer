@@ -1,5 +1,6 @@
 """Ranking diagnostic without layers: where annotated records land in a bare ranker's order.
 Output holds pair counts and ranks only: no texts, no claim IDs. Stays importable without numpy."""
+from dataclasses import replace
 from statistics import median
 from typing import Callable, Mapping
 
@@ -68,3 +69,23 @@ def rrf_rank(candidates: list[Record], query_text: str, embedder, k: int = 60) -
     for i, r in enumerate(fts_rank(candidates, query_text), 1):
         score[r.claim_id] += 1 / (k + i)
     return sorted(vec, key=lambda r: (-score[r.claim_id], r.claim_id))
+
+
+def contextual(ranker: Ranker, search_text: Mapping[str, str]) -> Ranker:
+    """A ranker over proxy copies whose text is search_text[claim_id] (own text when absent); returns the original pool
+    objects in the proxies' order, so the budget, record_ids and rendered memory never see the search text."""
+    def ranked(candidates: list[Record], query_text: str) -> list[Record]:
+        proxies = [replace(r, text=search_text.get(r.claim_id, r.text)) for r in candidates]
+        original = {id(p): r for p, r in zip(proxies, candidates)}
+        return [original[id(p)] for p in ranker(proxies, query_text)]
+    return ranked
+
+
+def contextual_versions(ranker: Ranker, versions: Mapping[tuple[str, str], str]) -> Ranker:
+    """contextual() for a story where one claim has several texts over time (an updated record has another text and
+    another source scene, so another context): versions maps (claim_id, record text) to the search text, and each call
+    picks the version its pool holds (a pool holds one version per claim)."""
+    def ranked(candidates: list[Record], query_text: str) -> list[Record]:
+        search = {r.claim_id: versions[(r.claim_id, r.text)] for r in candidates if (r.claim_id, r.text) in versions}
+        return contextual(ranker, search)(candidates, query_text)
+    return ranked

@@ -52,8 +52,10 @@ def capped(ranks: list[int | None], k: int = CAP_K) -> list[int]:
 
 
 def strategy_name(column: str) -> str:
-    """Strategy of a column: bm25 -> structural_fts, vec[m] -> structural_vec[m], hybrid[m] -> structural_hybrid[m]."""
-    return 'structural_fts' if column == 'bm25' else f'structural_{column}'
+    """Strategy of a column: bm25 -> structural_fts, vec[m] -> structural_vec[m], hybrid[m] -> structural_hybrid[m];
+    the contextual columns alike: ctx_bm25 -> structural_ctx_fts, ctx_vec[m] -> structural_ctx_vec[m]."""
+    special = {'bm25': 'structural_fts', 'ctx_bm25': 'structural_ctx_fts'}
+    return special.get(column) or f'structural_{column}'
 
 
 def frame_by_id(scenes: list[SceneInput]) -> dict[str, Record]:
@@ -167,3 +169,30 @@ def evaluate_paraphrases(scenes: list[SceneInput], queries: list[Query], rankers
                                             [1 - h for h in hit_lists['bm25'][s][core]]) for core in CORES}
                         for s in hit_lists[column]}
     return out
+
+
+def evaluate_baseline_plan(scenes: list[SceneInput], queries: list[Query], columns, strategies: Mapping[str, Callable],
+                           params_of: Callable[[int, str], Params], steps: tuple[float, ...] = STEPS) -> dict:
+    """M6 baseline of the in_plan in-context hits: {'n', 'columns': {column: {step: {core: share}}}}.
+
+    The query is the plan of the record's in_plan scene alone (no paraphrase sentence), so the selection does not depend
+    on the level: it is computed once per record. n = distinct records with an ok query at any level that are still in
+    the sampling frame; a record without a later scene counts as a miss, like in_context."""
+    frame = frame_by_id(scenes)
+    totals = {s.scene_id: full(s, _UNBOUNDED).tokens_realistic for s in scenes}
+    claims = sorted({q.claim_id for q in queries if q.status == 'ok' and q.claim_id in frame})
+    placed = [(claim, in_plan_scene(frame[claim], scenes, FRAME_PARAMS)) for claim in claims]
+    n = len(placed)
+    out = {}
+    for column in columns:
+        strategy = strategies[strategy_name(column)]
+        hits = {str(step): {core: 0 for core in CORES} for step in steps}
+        for claim, scene in placed:
+            if scene is None:
+                continue
+            for step in steps:
+                for core in CORES:
+                    selected = strategy(scene, params_of(int(step * totals[scene.scene_id]), core))
+                    hits[str(step)][core] += int(claim in selected.record_ids)
+        out[column] = {s: {core: (hits[s][core] / n if n else 0.0) for core in CORES} for s in hits}
+    return {'n': n, 'columns': out}

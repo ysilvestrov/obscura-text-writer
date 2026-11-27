@@ -228,3 +228,32 @@ def test_rejected_by_category_and_few_content_words():
     # 'Годинник' has one content word and can never pass 'same'; 'Острів у тумані' has two
     assert syn['few_content_words'] == 1
     assert out['same']['bm25']['rejected_by_category'] == {} and out['same']['bm25']['few_content_words'] == 0
+
+
+# ---- M6: in-context hits when the query is the plan alone -----------------------------------------------------------
+
+def test_paraphrase_baseline_plan():
+    from memory_bench.paraphrase_eval import evaluate_baseline_plan
+    filler = [rec(f'f{i}', 'facts', f'Окремий запис номер {i} ' + 'слово ' * 30, scene=1) for i in range(30)]
+    scenes = [scene(records() + filler, id='s1', number=1), scene(records() + filler, id='s2', number=2, plan=PLAN)]
+    qs = [q('same', ''), q('syn', ''), q('desc', 'x', status='rejected')]
+    base = evaluate_baseline_plan(scenes, qs, ['bm25'], STRATEGIES, params_of, steps=(1.0, 0.01))
+    assert base['n'] == 1  # one record (t1) with an ok query, counted once whatever the levels
+    assert set(base['columns']) == {'bm25'} and set(base['columns']['bm25']) == {'1.0', '0.01'}
+    assert set(base['columns']['bm25']['1.0']) == {'upper', 'lower'}
+    ctx = run(qs[:1], scenes=scenes, steps=(1.0, 0.01))['same']['bm25']['in_plan']['in_context']
+    assert base['columns']['bm25'] == ctx  # an empty paraphrase sentence leaves the plan alone
+    seen = []
+
+    def spy(sc, params):
+        seen.append(sc.plan_text)
+        return structural_fts(sc, params)
+    evaluate_baseline_plan(scenes, qs, ['bm25'], {'structural_fts': spy}, params_of)
+    assert seen and set(seen) == {PLAN} and len(seen) == 3 * 2  # once per (record, scene): 3 steps x 2 cores
+
+
+def test_baseline_plan_without_later_scene_is_a_miss():
+    from memory_bench.paraphrase_eval import evaluate_baseline_plan
+    base = evaluate_baseline_plan(world(source=5, later=None), [q('same', 'ключ')], ['bm25'], STRATEGIES, params_of)
+    assert base['n'] == 1 and base['columns']['bm25']['0.75'] == {'upper': 0.0, 'lower': 0.0}
+    assert evaluate_baseline_plan(world(), [], ['bm25'], STRATEGIES, params_of)['n'] == 0

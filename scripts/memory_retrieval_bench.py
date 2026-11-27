@@ -20,15 +20,17 @@ from memory_bench.cloud_spend import BudgetExceeded, LedgerMissing, SpendLedger,
 from memory_bench.extract import extract_story  # noqa: E402
 from memory_bench.metrics import aggregate, control_hits, pair_hits, pair_summary, scene_metrics  # noqa: E402
 from memory_bench.model import DEFAULT_TOKENIZER, FERTILITY, realistic_ratio, set_tokenizer  # noqa: E402
-from memory_bench.paraphrase_eval import evaluate_paraphrases, frame_by_id, stale_queries  # noqa: E402
+from memory_bench.paraphrase_eval import evaluate_baseline_plan, evaluate_paraphrases, frame_by_id, stale_queries  # noqa: E402
 from memory_bench.ranking import pair_ranks  # noqa: E402
 from memory_bench.strategies import (STRATEGIES, Params, catalog_full, catalog_full_v4, catalog_narrow,  # noqa: E402
                                      catalog_narrow_v4, fts_rank, full, product, record_layers)
 from memory_bench.synthetic import fit_linear, generate, measure_rates  # noqa: E402
 
 MEASURES = ('conservative', 'realistic')
-CORE_AWARE = ('structural', 'structural_fts')
-VECTOR_PREFIXES = ('structural_vec[', 'structural_hybrid[')
+CORE_AWARE = ('structural', 'structural_fts', 'structural_ctx_fts')
+VECTOR_PREFIXES = ('structural_vec[', 'structural_hybrid[', 'structural_ctx_vec[', 'structural_ctx_hybrid[')
+CTX_MODELS = ('nano-2048', 'voyage-4')  # vector models that get contextual columns (e5 / bge-m3 stay context-free)
+CONTEXTS_NAME = 'contexts.json'
 CLOUD_KEYS = ('voyage-4',)  # models that go to the network; checked before embeddings.py (numpy) is imported
 CLOUD_KEY_ENV = 'ATLAS_EMBEDDING_API_KEY'
 DEFAULT_CACHE_DIR = r'C:\tmp\rag-bench\cache'
@@ -163,12 +165,19 @@ def evaluate_budget_steps(scenes, args, pair_data, extra=None):
 
 
 def retrieval_layer(name):
-    """Layer label of a strategy's retrieval_ids: 'fts', 'vec' or 'hybrid'; None for strategies without retrieval."""
-    if name == 'structural_fts':
-        return 'fts'
-    if name.startswith('structural_vec['):
-        return 'vec'
-    return 'hybrid' if name.startswith('structural_hybrid[') else None
+    """Layer label of a strategy's retrieval_ids: 'fts', 'vec', 'hybrid' or their contextual 'ctx_*'; None for
+    strategies without retrieval."""
+    ctx = name.startswith('structural_ctx_')
+    base = 'structural_' + name[len('structural_ctx_'):] if ctx else name
+    if base == 'structural_fts':
+        label = 'fts'
+    elif base.startswith('structural_vec['):
+        label = 'vec'
+    elif base.startswith('structural_hybrid['):
+        label = 'hybrid'
+    else:
+        return None
+    return f'ctx_{label}' if ctx else label
 
 
 def layer_counts(annotation, entries, scenes_by_number, selections, params, retrieval='fts'):
@@ -421,10 +430,9 @@ class _closing:
 def run(args):
     if args.repro_cloud and not args.repro:
         return None, 'repro_cloud_without_repro'
-    if args.paraphrases:
-        from memory_bench.paraphrase import _inside_repo
-        if _inside_repo(args.paraphrases):
-            return None, 'inside_repo'
+    from memory_bench.paraphrase import _inside_repo
+    if any(path and _inside_repo(path) for path in (args.paraphrases, args.contexts)):
+        return None, 'inside_repo'
     from storygen.application.workspace_bench import _check_data_dir
     try:
         data = _check_data_dir(args.data, True)
@@ -445,13 +453,19 @@ def run(args):
         paraphrases, error = load_paraphrases(args, repo, story)
         if error:
             return None, error
+    contexts = None
+    if args.contexts:  # settled before any embedder is built: a stale file never loads a model or pays the cloud
+        search, section, error = load_contexts(args.contexts, extract_story(repo, story.id, args.protagonist)[0], story.id)
+        if error:
+            return None, error
+        contexts = {'search': search, 'section': section}
     models = None
     if args.vector_models:
         models, error = setup_vectors(args, story.id)
         if error:
             return None, error
     try:
-        return _build_report(args, repo, story, models, paraphrases), None
+        return _build_report(args, repo, story, models, paraphrases, contexts), None
     finally:
         close_vectors(models or [])
 
@@ -502,6 +516,63 @@ def load_paraphrases(args, repo, story):
     return {'queries': queries, 'meta': meta, 'snapshot': snapshot, 'owner': owner, 'owner_items': expected}, None
 
 
+def load_contexts(path, scenes, story_id):
+    """(search text, report section, None) or (None, None, code); contexts.json of scripts/rag_contexts.py.
+
+    The search text maps (claim_id, record text) to f'{context}\n{record text}' for every 'ok' item. It is keyed by the
+    text version, not by claim_id alone: an updated record has another text and another source scene, so its own
+    context, and one claim_id may carry several versions across the scenes (ranking.contextual_versions picks the one a
+    pool holds). Failed items and records without a source scene are absent (searched by their own text) and counted.
+
+    Codes in order: inside_repo; contexts_missing (unreadable file or not a {meta, items, snapshot} object);
+    contexts_stale (another story, model or prompt id; a snapshot that does not match the items; the recomputed
+    context_key of a record with a source scene absent from items; an 'ok' item without a string context)."""
+    from memory_bench.context_gen import CONTEXT_PROMPT_ID, HAIKU, context_key, context_snapshot, context_targets
+    from memory_bench.paraphrase import _inside_repo
+    if _inside_repo(path):
+        return None, None, 'inside_repo'
+    try:
+        data = json.loads((Path(path) / CONTEXTS_NAME).read_text(encoding='utf-8'))
+        meta, items, snapshot = data['meta'], data['items'], data['snapshot']
+        if not isinstance(meta, dict) or not isinstance(items, dict) or not all(isinstance(v, dict) for v in items.values()):
+            raise TypeError
+        current = context_snapshot(items)
+    except (OSError, ValueError, KeyError, TypeError):
+        return None, None, 'contexts_missing'
+    if (meta.get('story'), meta.get('model'), meta.get('prompt_id')) != (story_id, HAIKU, CONTEXT_PROMPT_ID) or snapshot != current:
+        return None, None, 'contexts_stale'
+    targets, no_source = context_targets(scenes)
+    search, ok, failed = {}, 0, 0
+    for record, prose in targets:
+        item = items.get(context_key(record, prose))
+        if item is None:
+            return None, None, 'contexts_stale'
+        if item.get('status') == 'ok':
+            if not isinstance(item.get('context'), str):
+                return None, None, 'contexts_stale'
+            search[(record.claim_id, record.text)] = f"{item['context']}\n{record.text}"
+            ok += 1
+        else:
+            failed += 1
+    return search, {'snapshot': current, 'ok': ok, 'failed': failed, 'no_source': no_source, 'models': []}, None
+
+
+def context_models(models):
+    """The vector models of --vector-models that get contextual columns, in their order."""
+    return [m for m in models or [] if m['key'] in CTX_MODELS]
+
+
+def context_rankers(search, models):
+    """Bare rankers of the contextual columns: ctx_bm25 and, per model of CTX_MODELS, ctx_vec[key] / ctx_hybrid[key]."""
+    from memory_bench.ranking import contextual_versions, rrf_rank, vec_rank
+    rankers = {'ctx_bm25': contextual_versions(fts_rank, search)}
+    for model in context_models(models):
+        embedder, key = model['cached'], model['key']
+        rankers[f'ctx_vec[{key}]'] = contextual_versions(lambda pool, query, e=embedder: vec_rank(pool, query, e), search)
+        rankers[f'ctx_hybrid[{key}]'] = contextual_versions(lambda pool, query, e=embedder: rrf_rank(pool, query, e), search)
+    return rankers
+
+
 def vector_rankers(models):
     from memory_bench.ranking import rrf_rank, vec_rank
     rankers = {}
@@ -512,24 +583,32 @@ def vector_rankers(models):
     return rankers
 
 
-def paraphrase_section(args, scenes, models, extra, paraphrases):
-    """Report section 'paraphrases': ids, codes and aggregates only (no query or record text)."""
-    rankers = {'bm25': fts_rank, **vector_rankers(models)}
+def paraphrase_section(args, scenes, models, extra, paraphrases, contexts=None):
+    """Report section 'paraphrases': ids, codes and aggregates only (no query or record text). baseline_plan[column]
+    [step][core] is the in-context hit share when the query is the plan alone (M6), computed once per record, not per
+    level; baseline_plan_n is its denominator."""
+    rankers = {'bm25': fts_rank, **vector_rankers(models), **(context_rankers(contexts['search'], models) if contexts else {})}
     strategies = {'structural_fts': STRATEGIES['structural_fts'], **extra}
     params_of = lambda budget, core: Params(budget, 'realistic', core, core_recent_scenes=args.core_recent)
     keep = ('seed', 'n', 'model', 'prompt_id', 'levels')
     meta = {**{k: paraphrases['meta'].get(k) for k in keep}, 'owner_k': paraphrases['meta'].get('owner_k', OWNER_K),
             'owner_items': paraphrases['owner_items']}
+    baseline = evaluate_baseline_plan(scenes, paraphrases['queries'], list(rankers), strategies, params_of)
     return {'meta': meta, 'snapshot': paraphrases['snapshot'],
             'owner': paraphrases['owner'],
-            'levels': evaluate_paraphrases(scenes, paraphrases['queries'], rankers, strategies, params_of)}
+            'levels': evaluate_paraphrases(scenes, paraphrases['queries'], rankers, strategies, params_of),
+            'baseline_plan': baseline['columns'], 'baseline_plan_n': baseline['n']}
 
 
-def _build_report(args, repo, story, models, paraphrases=None):
-    from memory_bench.strategies import vector_strategies
+def _build_report(args, repo, story, models, paraphrases=None, ctx=None):
+    from memory_bench.strategies import context_strategies, vector_strategies
     extra = {}
     for model in models or []:
         extra.update(vector_strategies(model['cached']))
+    rankers = vector_rankers(models)
+    if ctx:
+        extra.update(context_strategies(ctx['search'], [m['cached'] for m in context_models(models)]))
+        rankers.update(context_rankers(ctx['search'], models))
     scenes, skipped = extract_story(repo, story.id, args.protagonist)
     others = {s.scene_id: other_context(repo, story.id, s.scene_id) for s in scenes}
     contexts = _ints(args.context)
@@ -578,9 +657,11 @@ def _build_report(args, repo, story, models, paraphrases=None):
                    'tokenizer': args.tokenizer, 'chars_per_token': round(realistic_ratio(), 3), 'synthetic': _ints(args.synthetic)},
     }
     if pair_data:
-        report['pairs'], report['ranking'] = evaluate_pairs(scenes, others, args, contexts, pair_data, vector_rankers(models), extra)
+        report['pairs'], report['ranking'] = evaluate_pairs(scenes, others, args, contexts, pair_data, rankers, extra)
     if paraphrases:
-        report['paraphrases'] = paraphrase_section(args, scenes, models, extra, paraphrases)
+        report['paraphrases'] = paraphrase_section(args, scenes, models, extra, paraphrases, ctx)
+    if ctx:
+        report['contexts'] = {**ctx['section'], 'models': [m['key'] for m in context_models(models)]}
     if args.budget_steps:
         report['budget_steps'] = evaluate_budget_steps(scenes, args, pair_data, extra)
     if models:
@@ -609,6 +690,8 @@ def build_parser():
     parser.add_argument('--pairs-annotation', help='annotation JSON {stories: {story_id: {pair_id: [claim_id]}}}')
     parser.add_argument('--paraphrases', help='folder with set.json and owner-check.json of scripts/rag_paraphrases.py; '
                         'must lie outside the repository; works without --vector-models (BM25 only)')
+    parser.add_argument('--contexts', help='folder with contexts.json of scripts/rag_contexts.py; must lie outside the '
+                        'repository; adds the contextual columns ctx_bm25 and ctx_vec / ctx_hybrid of CTX_MODELS')
     parser.add_argument('--budget-steps', help='comma-separated shares of the full memory as budget, e.g. 1.0,0.75,0.5,0.35,0.25')
     parser.add_argument('--seed', type=int, default=0)
     parser.add_argument('--tokenizer', choices=sorted(FERTILITY), default=DEFAULT_TOKENIZER,
