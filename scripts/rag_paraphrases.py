@@ -16,17 +16,15 @@ sys.path.insert(0, str(ROOT / 'src'))
 sys.path.insert(0, str(ROOT / 'scripts'))
 
 from memory_bench.cloud_spend import BudgetExceeded, LedgerMissing, SpendLedger  # noqa: E402
-from memory_bench.paraphrase import (LEVELS, Query, _inside_repo, _write_atomic, manifest, owner_sample,  # noqa: E402
-                                     sample_targets, sampling_frame, snapshot_hash, write_owner_file)
+from memory_bench.paraphrase import (FRAME_PARAMS, LEVELS, Query, _inside_repo, _write_atomic, manifest,  # noqa: E402
+                                     owner_sample, sample_targets, sampling_frame, snapshot_hash, story_names,
+                                     write_owner_file)
 from memory_bench.paraphrase_gen import generate_one  # noqa: E402
 from memory_bench.paraphrase_gen import HAIKU, PRICE_IN, PRICE_OUT, PROMPT_ID, PROVIDER, PRICES_DATE, generate  # noqa: E402,F401
-from memory_bench.strategies import Params  # noqa: E402
 
 DEFAULT_LEDGER = r'C:\tmp\rag-bench\spend.json'
 DEFAULT_ENV = r'C:\Projects\text-generator\.env'
 KEY_NAME = 'ANTHROPIC_API_KEY'
-# Layers do not depend on the budget: the frame excludes only records a structural layer always holds.
-FRAME_PARAMS = Params(memory_budget_tokens=100000, measure='conservative', core_mode='upper')
 
 
 class BenchError(Exception):
@@ -139,7 +137,7 @@ def _run(args) -> int:
         return _refuse('anthropic_key_missing')
     frame = sampling_frame(scenes, FRAME_PARAMS)
     targets = sample_targets(frame, max((s.number for s in scenes), default=0), args.n, args.seed)
-    names = sorted({name for s in scenes for name in s.names.values()})
+    names = story_names(scenes)
     client = make_client(key)
     before = ledger.spent(PROVIDER)
     out = Path(args.out)
@@ -163,7 +161,7 @@ def _run(args) -> int:
                 else 'spend_ledger_missing' if isinstance(error, LedgerMissing) else 'anthropic_call_failed')
         _print({'error': code, 'usd_spent': round(ledger.spent(PROVIDER) - before, 6), 'records_done': done})
         return 2
-    meta = {'story': story_id, 'seed': args.seed, 'n': args.n, 'model': HAIKU, 'prompt_id': PROMPT_ID, 'levels': list(LEVELS),
+    meta = {'story': story_id, 'protagonist': scenes[0].protagonist if scenes else None, 'seed': args.seed, 'n': args.n, 'model': HAIKU, 'prompt_id': PROMPT_ID, 'levels': list(LEVELS),
             'owner_k': args.owner_k}
     queries = sorted(queries, key=lambda q: (q.claim_id, LEVELS.index(q.level)))
     mani = manifest(queries, meta)
@@ -171,7 +169,7 @@ def _run(args) -> int:
     _write_atomic(out / 'set.json', {'meta': meta, 'queries': [
         {'claim_id': q.claim_id, 'level': q.level, 'text': q.text, 'status': q.status, 'record_sha256': q.record_sha256}
         for q in queries]})
-    write_owner_file(out / 'owner-check.json', owner_sample(queries, args.owner_k, args.seed), snapshot,
+    write_owner_file(out / 'owner-check.json', owner_sample(queries, args.owner_k, args.seed, {r.claim_id: r.category for r in targets}), snapshot,
                      {r.claim_id: r.text for r in targets})
     manifest_path = Path(args.manifest)
     manifest_path.parent.mkdir(parents=True, exist_ok=True)

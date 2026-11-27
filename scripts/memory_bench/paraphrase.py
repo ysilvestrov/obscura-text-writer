@@ -17,6 +17,10 @@ from memory_bench.strategies import _WORD, Params, _norm, record_layers
 ROOT = Path(__file__).resolve().parents[2]
 LEVELS = ('same', 'syn', 'desc')
 MAX_NO = 4
+OWNER_K = 20  # fixed by the spec: the owner checks 20 queries (fewer only when the set has fewer ok queries)
+# Layers do not depend on the budget: the frame excludes only records a structural layer always holds. The single
+# definition for the generator (scripts/rag_paraphrases.py) and the eval (paraphrase_eval).
+FRAME_PARAMS = Params(memory_budget_tokens=100000, measure='conservative', core_mode='upper')
 STOPWORDS = frozenset(
     'який яка яке які там тут щоб але або для від при про над під без між через після перед цей ця це ці той та те ті '
     'вже ще лише теж так його її їх він вона воно вони був була було були має мав мала собі себе свій своя своє свої '
@@ -176,20 +180,28 @@ def snapshot_hash(manifest: dict) -> str:
     return _sha(json.dumps(manifest, ensure_ascii=False, sort_keys=True, separators=(',', ':')))
 
 
-def owner_sample(queries: list[Query], k: int, seed: int) -> list[Query]:
-    pools = {}
-    for level in LEVELS:
-        pool = sorted((q for q in queries if q.status == 'ok' and q.level == level), key=lambda q: q.claim_id)
-        random.Random(f'{seed}:{level}').shuffle(pool)
-        pools[level] = pool
+def owner_sample(queries: list[Query], k: int, seed: int, categories: dict[str, str]) -> list[Query]:
+    """k ok queries stratified by (level, category): cells in sorted order (category, then level), one from every
+    non-empty cell first, then round-robin over the cells until k. Within a cell the order is a seeded shuffle.
+    categories maps claim_id to record.category; the generator and the eval call this identically."""
+    cells: dict[tuple[str, int, str], list[Query]] = {}
+    for q in sorted(queries, key=lambda q: q.claim_id):
+        if q.status == 'ok':
+            cells.setdefault((categories.get(q.claim_id, ''), _level_rank(q.level), q.level), []).append(q)
+    order = sorted(cells)
+    for cell in order:
+        random.Random(f'{seed}:{cell[0]}:{cell[2]}').shuffle(cells[cell])
     out: list[Query] = []
-    position = 0
-    while len(out) < k and any(pools[level] for level in LEVELS):
-        pool = pools[LEVELS[position % len(LEVELS)]]
-        position += 1
-        if pool:
-            out.append(pool.pop(0))
+    while len(out) < k and any(cells[cell] for cell in order):
+        for cell in order:
+            if len(out) < k and cells[cell]:
+                out.append(cells[cell].pop(0))
     return out
+
+
+def story_names(scenes: list[SceneInput]) -> list[str]:
+    """All character names of the story (every scene's names), as the generator and the eval's level check use them."""
+    return sorted({name for scene in scenes for name in scene.names.values()})
 
 
 def _write_atomic(path: Path, data: dict) -> None:
@@ -236,7 +248,9 @@ def set_verdict(path: Path, index: int, verdict: str | None) -> dict:
 
 
 def check_owner_file(path: Path, queries: list[Query], snapshot: str, max_no: int = MAX_NO,
-                     expected: int = 20) -> tuple[str | None, dict]:
+                     expected: int = 20, sample_keys=None) -> tuple[str | None, dict]:
+    """sample_keys, when given, is the set of (claim_id, level) of owner_sample recomputed by the caller: an item
+    outside it means the file was not written for this sample (owner_check_stale)."""
     summary = {'yes': 0, 'no': 0, 'invalid': 0}
     try:
         data = json.loads(Path(path).read_text(encoding='utf-8'))
@@ -251,6 +265,8 @@ def check_owner_file(path: Path, queries: list[Query], snapshot: str, max_no: in
     current = {(q.claim_id, q.level): _sha(q.text) for q in queries}
     keys = [(i.get('claim_id'), i.get('level')) for i in items]
     if any(k not in current or current[k] != i.get('sha256') for k, i in zip(keys, items)):
+        return 'owner_check_stale', summary
+    if sample_keys is not None and any(k not in sample_keys for k in keys):
         return 'owner_check_stale', summary
     if len(set(keys)) != len(keys) or len(keys) != expected:  # summary stays {'yes','no','invalid'}
         return 'owner_check_missing', summary

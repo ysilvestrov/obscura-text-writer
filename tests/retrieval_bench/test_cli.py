@@ -418,30 +418,59 @@ def para_dir():
         yield Path(tmp)
 
 
-def _write_set(folder,repo,story_id,owner=True,tweak=None,owner_k=20,meta_k=True):
-    """A set over the story's sampling frame: three queries (same, syn, desc) per record, as the generator would write
-    it; tweak(queries) may change the queries before the snapshot and the owner file are computed."""
-    import dataclasses
-    from memory_bench.extract import extract_story
-    from memory_bench.paraphrase import (LEVELS,Query,_sha,manifest,owner_sample,sampling_frame,snapshot_hash,write_owner_file)
-    from memory_bench.paraphrase_eval import FRAME_PARAMS
-    scenes,_=extract_story(repo,story_id,None)
+NEUTRAL={'syn':'Жовтий човник пливе','desc':'Тиша огортає подвір’я'}  # share no stem with any record of the fixtures
+
+
+def level_queries(frame,names):
+    """Queries the way the generator keeps them: same = a mention with the record's words, syn/desc = a neutral sentence;
+    the status comes from level_ok over all story names (a record with < 2 content words fails 'same')."""
+    from memory_bench.paraphrase import LEVELS,Query,_sha,level_ok
+    out=[]
+    for r in frame:
+        for level in LEVELS:
+            text=f'Згадка: {r.text}' if level=='same' else NEUTRAL[level]
+            out.append(Query(r.claim_id,level,text,'ok' if level_ok(level,text,r.text,names) else 'rejected',_sha(r.text)))
+    return out
+
+
+def write_para(folder,scenes,story_id,queries,owner=True,owner_k=20,meta_over=None,owner_seed=0,owner_count=None):
+    """set.json and owner-check.json (all verdicts yes) as scripts/rag_paraphrases.py writes them; a meta_over value
+    of ... drops that meta key."""
+    from memory_bench.paraphrase import FRAME_PARAMS,LEVELS,manifest,owner_sample,sampling_frame,snapshot_hash,write_owner_file
     frame=sampling_frame(scenes,FRAME_PARAMS)
-    assert frame,'the synthetic story must give the frame at least one record'
-    queries=[Query(r.claim_id,level,f'Запит {level} {r.text}','ok',_sha(r.text)) for r in frame for level in LEVELS]
-    if tweak:
-        queries=tweak(queries)
-    meta={'story':story_id,'seed':0,'n':len(frame),'model':'m','prompt_id':'p','levels':list(LEVELS),**({'owner_k':owner_k} if meta_k else {})}
+    meta={'story':story_id,'protagonist':scenes[0].protagonist,'seed':0,'n':len(frame),'model':'m','prompt_id':'p',
+          'levels':list(LEVELS),'owner_k':owner_k,**(meta_over or {})}
+    meta={k:v for k,v in meta.items() if v is not ...}
     (folder/'set.json').write_text(json.dumps({'meta':meta,'queries':[
         {'claim_id':q.claim_id,'level':q.level,'text':q.text,'status':q.status,'record_sha256':q.record_sha256} for q in queries]},
         ensure_ascii=False),encoding='utf-8')
     if owner:
-        write_owner_file(folder/'owner-check.json',owner_sample(queries,owner_k,0),snapshot_hash(manifest(queries,meta)),{})
+        sample=owner_sample(queries,owner_k if owner_count is None else owner_count,owner_seed,{r.claim_id:r.category for r in frame})
+        write_owner_file(folder/'owner-check.json',sample,snapshot_hash(manifest(queries,meta)),{})
         data=json.loads((folder/'owner-check.json').read_text(encoding='utf-8'))
         for item in data['items']:
             item['verdict']='yes'
         (folder/'owner-check.json').write_text(json.dumps(data,ensure_ascii=False),encoding='utf-8')
+    return meta
+
+
+def _write_set(folder,repo,story_id,owner=True,tweak=None,**kw):
+    """A set over the story's sampling frame: three queries (same, syn, desc) per record, as the generator would write
+    it; tweak(queries) may change the queries before the snapshot and the owner file are computed."""
+    from memory_bench.extract import extract_story
+    from memory_bench.paraphrase import FRAME_PARAMS,sampling_frame,story_names
+    scenes,_=extract_story(repo,story_id,None)
+    frame=sampling_frame(scenes,FRAME_PARAMS)
+    assert frame,'the synthetic story must give the frame at least one record'
+    queries=level_queries(frame,story_names(scenes))
+    if tweak:
+        queries=tweak(queries)
+    write_para(folder,scenes,story_id,queries,owner=owner,**kw)
     return scenes,frame,queries
+
+
+def _ok(queries,level):
+    return sum(1 for q in queries if q.level==level and q.status=='ok')
 
 
 def _para_args(repo,folder,*extra):
@@ -450,13 +479,16 @@ def _para_args(repo,folder,*extra):
 
 def test_paraphrases_bm25_only_section(synthetic_repo,para_dir):
     repo,story_id,_=synthetic_repo
-    _,frame,_=_write_set(para_dir,repo,story_id)
+    _,frame,queries=_write_set(para_dir,repo,story_id)
     report,error=_report(_para_args(repo,para_dir))
     assert error is None and 'vector' not in report
     section=report['paraphrases']
     assert set(section['levels'])=={'same','syn','desc'} and section['owner']['no']==0 and section['snapshot']
+    ok=sum(1 for q in queries if q.status=='ok')
+    assert section['meta']['owner_k']==20 and section['meta']['owner_items']==min(20,ok)==section['owner']['yes']
     cell=section['levels']['same']['bm25']
-    assert cell['n']==len(frame) and cell['rejected']==0 and set(cell['in_plan']['in_context'])=={'0.75','0.5','0.35'}
+    assert cell['n']==_ok(queries,'same') and cell['n']+cell['rejected']==len(frame)
+    assert section['levels']['syn']['bm25']['n']==len(frame) and set(cell['in_plan']['in_context'])=={'0.75','0.5','0.35'}
     assert 'sign_vs_bm25' not in cell
 
 
@@ -473,7 +505,7 @@ def test_cli_refuses_without_owner_check(synthetic_repo,para_dir,monkeypatch):
     assert _report(_para_args(repo,para_dir,'--vector-models','e5-base'))==(None,'owner_check_missing') and built==[]
     _write_set(para_dir,repo,story_id)
     path=para_dir/'set.json'  # the set changes after the owner looked at it
-    path.write_text(path.read_text(encoding='utf-8').replace('Запит same','Запит інший same',1),encoding='utf-8')
+    path.write_text(path.read_text(encoding='utf-8').replace('Згадка:','Згадка інша:',1),encoding='utf-8')
     assert _report(_para_args(repo,para_dir,'--vector-models','e5-base'))==(None,'owner_check_stale') and built==[]
 
 
@@ -540,37 +572,87 @@ def test_paraphrases_with_vector_models(synthetic_repo,para_dir,monkeypatch,cach
     assert set(cell['vec[e5-base]']['sign_vs_bm25'])=={'standalone','in_plan'}
 
 
-def test_paraphrases_owner_k_from_meta(para_dir,monkeypatch):
-    """A set generated with owner_k=10 passes the check with 10 verdicts (12 records give 36 ok queries)."""
-    from memory_bench.paraphrase import (LEVELS,Query,_sha,manifest,owner_sample,sampling_frame,snapshot_hash,write_owner_file)
-    from memory_bench.paraphrase_eval import FRAME_PARAMS
+def _memory_story(monkeypatch,n=12):
+    """An in-memory story of n records, facts and threads (unscoped states go to a layer and leave the frame); no
+    database: extract_story of the bench is replaced."""
+    from memory_bench.paraphrase import FRAME_PARAMS,sampling_frame,story_names
     from tests.retrieval_bench.helpers import rec,scene
-    story_id='story'
-    scenes=[scene([rec(f'r{i:02d}','facts',f'Окремий запис {i} про маяк') for i in range(12)])]
+    scenes=[scene([rec(f'r{i:02d}',('facts','open_threads')[i%2],f'Окремий запис {i} про маяк')
+                   for i in range(n)])]
     monkeypatch.setattr(_bench(),'extract_story',lambda *a,**k:(scenes,{}))
     frame=sampling_frame(scenes,FRAME_PARAMS)
-    queries=[Query(r.claim_id,level,f'Запит {level} {r.claim_id}','ok',_sha(r.text)) for r in frame for level in LEVELS]
-    assert len(queries)==36
+    return scenes,frame,level_queries(frame,story_names(scenes))
 
-    def write(owner_k,meta_k=True,count=10):
-        meta={'story':story_id,'seed':0,'n':12,'model':'m','prompt_id':'p','levels':list(LEVELS),**({'owner_k':owner_k} if meta_k else {})}
-        (para_dir/'set.json').write_text(json.dumps({'meta':meta,'queries':[
-            {'claim_id':q.claim_id,'level':q.level,'text':q.text,'status':q.status,'record_sha256':q.record_sha256} for q in queries]},
-            ensure_ascii=False),encoding='utf-8')
-        write_owner_file(para_dir/'owner-check.json',owner_sample(queries,count,0),snapshot_hash(manifest(queries,meta)),{})
-        data=json.loads((para_dir/'owner-check.json').read_text(encoding='utf-8'))
-        for item in data['items']:
-            item['verdict']='yes'
-        (para_dir/'owner-check.json').write_text(json.dumps(data,ensure_ascii=False),encoding='utf-8')
+
+def _load(para_dir,story_id='story',protagonist=None):
     import types
-    args=types.SimpleNamespace(paraphrases=str(para_dir),protagonist=None);story=types.SimpleNamespace(id=story_id)
-    load=lambda:_bench().load_paraphrases(args,None,story)
-    write(10)
-    loaded,error=load()
-    assert error is None and loaded['owner']=={'yes':10,'no':0,'invalid':0}
-    write(10,meta_k=False)  # no owner_k in meta: the default 20 expects 20 items
-    assert load()==(None,'owner_check_missing')
-    write(20,meta_k=True,count=10)  # meta says 20, the file holds 10
-    assert load()==(None,'owner_check_missing')
-    write(True)
-    assert load()==(None,'paraphrase_set_invalid')
+    args=types.SimpleNamespace(paraphrases=str(para_dir),protagonist=protagonist)
+    return _bench().load_paraphrases(args,None,types.SimpleNamespace(id=story_id))
+
+
+def test_paraphrases_owner_k_must_be_20(para_dir,monkeypatch):
+    """The spec fixes 20 owner items: a set generated with another owner_k is refused (12 records give 36 ok queries)."""
+    scenes,frame,queries=_memory_story(monkeypatch)
+    assert sum(q.status=='ok' for q in queries)==36
+    write_para(para_dir,scenes,'story',queries,owner_k=10)
+    assert _load(para_dir)==(None,'paraphrase_set_invalid')
+    write_para(para_dir,scenes,'story',queries,owner_k=0)
+    assert _load(para_dir)==(None,'paraphrase_set_invalid')
+    write_para(para_dir,scenes,'story',queries,meta_over={'owner_k':...},owner_count=20)  # no owner_k: the default 20
+    loaded,error=_load(para_dir)
+    assert error is None and loaded['owner']=={'yes':20,'no':0,'invalid':0} and loaded['owner_items']==20
+    write_para(para_dir,scenes,'story',queries,owner_count=10)  # meta says 20, the file holds 10
+    assert _load(para_dir)==(None,'owner_check_missing')
+    write_para(para_dir,scenes,'story',queries,owner_k=True,owner_count=20)
+    assert _load(para_dir)==(None,'paraphrase_set_invalid')
+
+
+def test_paraphrases_small_set_expects_all_ok_queries(para_dir,monkeypatch):
+    scenes,frame,queries=_memory_story(monkeypatch,n=4)
+    write_para(para_dir,scenes,'story',queries)
+    loaded,error=_load(para_dir)
+    assert error is None and loaded['owner_items']==12 and loaded['owner']['yes']==12
+
+
+@pytest.mark.parametrize('field,value',[('level','para'),('status','maybe'),('status',None)])
+def test_paraphrases_unknown_level_or_status_is_invalid(para_dir,monkeypatch,field,value):
+    import dataclasses
+    scenes,frame,queries=_memory_story(monkeypatch)
+    write_para(para_dir,scenes,'story',[dataclasses.replace(queries[0],**{field:value}),*queries[1:]])
+    assert _load(para_dir)==(None,'paraphrase_set_invalid')
+
+
+def test_paraphrases_level_is_recomputed_at_eval(para_dir,monkeypatch):
+    """An ok 'syn' query that shares stems with its record (or an ok 'same' that does not) makes the set stale."""
+    import dataclasses
+    scenes,frame,queries=_memory_story(monkeypatch)
+    syn=next(i for i,q in enumerate(queries) if q.level=='syn')
+    write_para(para_dir,scenes,'story',[*queries[:syn],dataclasses.replace(queries[syn],text=frame[0].text),*queries[syn+1:]])
+    assert _load(para_dir)==(None,'paraphrase_set_stale')
+    same=next(i for i,q in enumerate(queries) if q.level=='same')
+    write_para(para_dir,scenes,'story',[*queries[:same],dataclasses.replace(queries[same],text='Жовтий човник'),*queries[same+1:]])
+    assert _load(para_dir)==(None,'paraphrase_set_stale')
+    rejected=[dataclasses.replace(q,text=frame[0].text,status='rejected') if q.level=='syn' and q.claim_id=='r00' else q
+              for q in queries]  # a rejected query is not rechecked
+    write_para(para_dir,scenes,'story',rejected)
+    assert _load(para_dir)[1] is None
+
+
+def test_paraphrases_story_and_protagonist_are_compared(para_dir,monkeypatch):
+    scenes,frame,queries=_memory_story(monkeypatch)
+    write_para(para_dir,scenes,'story',queries)
+    assert _load(para_dir)[1] is None
+    assert _load(para_dir,story_id='other')==(None,'paraphrase_set_stale')
+    write_para(para_dir,scenes,'story',queries,meta_over={'protagonist':'c2'})
+    assert _load(para_dir)==(None,'paraphrase_set_stale')
+    write_para(para_dir,scenes,'story',queries,meta_over={'protagonist':...})
+    assert _load(para_dir)==(None,'paraphrase_set_stale')
+
+
+def test_paraphrases_owner_file_must_hold_the_recomputed_sample(para_dir,monkeypatch):
+    """The eval recomputes owner_sample(queries, 20, meta.seed, categories) and compares it with the owner file."""
+    scenes,frame,queries=_memory_story(monkeypatch)
+    write_para(para_dir,scenes,'story',queries,owner_seed=1)  # 20 valid items, but not the sample of seed 0
+    assert _load(para_dir)==(None,'owner_check_stale')
+    write_para(para_dir,scenes,'story',queries,meta_over={'seed':'0'})
+    assert _load(para_dir)==(None,'paraphrase_set_invalid')

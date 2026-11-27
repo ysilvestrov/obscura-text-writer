@@ -19,7 +19,7 @@ sys.path.insert(0, str(ROOT / 'scripts'))
 from memory_bench.extract import extract_story  # noqa: E402
 from memory_bench.metrics import aggregate, control_hits, pair_hits, pair_summary, scene_metrics  # noqa: E402
 from memory_bench.model import DEFAULT_TOKENIZER, FERTILITY, realistic_ratio, set_tokenizer  # noqa: E402
-from memory_bench.paraphrase_eval import evaluate_paraphrases, stale_queries  # noqa: E402
+from memory_bench.paraphrase_eval import evaluate_paraphrases, frame_by_id, stale_queries  # noqa: E402
 from memory_bench.ranking import pair_ranks  # noqa: E402
 from memory_bench.strategies import (STRATEGIES, Params, catalog_full, catalog_full_v4, catalog_narrow,  # noqa: E402
                                      catalog_narrow_v4, fts_rank, full, product, record_layers)
@@ -33,7 +33,7 @@ CLOUD_ENV = ('AZURE_OPENAI_ENDPOINT', 'AZURE_OPENAI_API_KEY', 'AZURE_OPENAI_EMBE
 DEFAULT_CACHE_DIR = r'C:\tmp\rag-bench\cache'
 CLOUD_PRICE_PER_MTOK = 0.13  # USD list price for text-embedding-3-large, per million tokens
 SAMPLES_PER_SYNTHETIC = 60
-OWNER_K = 20  # default of meta['owner_k']: owner-check.json holds min(owner_k, ok queries) items
+from memory_bench.paraphrase import OWNER_K  # noqa: E402  (meta['owner_k'] must equal it; absent means it)
 
 
 def variants(extra=None):
@@ -432,10 +432,19 @@ def run(args):
         close_vectors(models or [])
 
 
+def _is_int(value) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool)
+
+
 def load_paraphrases(args, repo, story):
     """(set dict, None) or (None, code). The owner's check and the freshness of the set are settled here, before any
-    embedder is built: a set that fails either never reaches a model."""
-    from memory_bench.paraphrase import Query, check_owner_file, manifest, snapshot_hash
+    embedder is built: a set that fails either never reaches a model.
+
+    Order: paraphrase_set_invalid (unreadable set, unknown level or status, owner_k other than 20, non-integer seed),
+    then the owner file against owner_sample recomputed exactly as the generator calls it (owner_check_*), then
+    paraphrase_set_stale (another story or protagonist, a record gone or changed, a level check that no longer holds)."""
+    from memory_bench.paraphrase import (LEVELS, Query, check_owner_file, level_ok, manifest, owner_sample,
+                                         snapshot_hash, story_names)
     folder = Path(args.paraphrases)
     try:
         data = json.loads((folder / 'set.json').read_text(encoding='utf-8'))
@@ -446,18 +455,27 @@ def load_paraphrases(args, repo, story):
             raise TypeError
     except (OSError, ValueError, KeyError, TypeError):
         return None, 'paraphrase_set_invalid'
-    snapshot = snapshot_hash(manifest(queries, meta))
-    owner_k = meta.get('owner_k', OWNER_K)  # sets of the first generator version carry no owner_k: the default 20
-    if not isinstance(owner_k, int) or isinstance(owner_k, bool) or owner_k < 0:
+    if any(q.level not in LEVELS or q.status not in ('ok', 'rejected') for q in queries):
         return None, 'paraphrase_set_invalid'
-    expected = min(owner_k, sum(1 for q in queries if q.status == 'ok'))
-    code, owner = check_owner_file(folder / 'owner-check.json', queries, snapshot, expected=expected)
+    owner_k = meta.get('owner_k', OWNER_K)  # sets of the first generator version carry no owner_k: the default 20
+    if not _is_int(owner_k) or owner_k != OWNER_K or not _is_int(meta.get('seed')):
+        return None, 'paraphrase_set_invalid'
+    snapshot = snapshot_hash(manifest(queries, meta))
+    scenes, _ = extract_story(repo, story.id, args.protagonist)
+    frame = frame_by_id(scenes)
+    sample = owner_sample(queries, OWNER_K, meta['seed'], {k: r.category for k, r in frame.items()})
+    expected = min(OWNER_K, sum(1 for q in queries if q.status == 'ok'))
+    code, owner = check_owner_file(folder / 'owner-check.json', queries, snapshot, expected=expected,
+                                   sample_keys={(q.claim_id, q.level) for q in sample})
     if code:
         return None, code
-    scenes, _ = extract_story(repo, story.id, args.protagonist)
-    if stale_queries(queries, scenes):
+    protagonist = scenes[0].protagonist if scenes else None
+    if meta.get('story') != story.id or meta.get('protagonist') != protagonist or stale_queries(queries, scenes):
         return None, 'paraphrase_set_stale'
-    return {'queries': queries, 'meta': meta, 'snapshot': snapshot, 'owner': owner}, None
+    names = story_names(scenes)
+    if any(not level_ok(q.level, q.text, frame[q.claim_id].text, names) for q in queries if q.status == 'ok'):
+        return None, 'paraphrase_set_stale'
+    return {'queries': queries, 'meta': meta, 'snapshot': snapshot, 'owner': owner, 'owner_items': expected}, None
 
 
 def vector_rankers(models):
@@ -476,7 +494,9 @@ def paraphrase_section(args, scenes, models, extra, paraphrases):
     strategies = {'structural_fts': STRATEGIES['structural_fts'], **extra}
     params_of = lambda budget, core: Params(budget, 'realistic', core, core_recent_scenes=args.core_recent)
     keep = ('seed', 'n', 'model', 'prompt_id', 'levels')
-    return {'meta': {k: paraphrases['meta'].get(k) for k in keep}, 'snapshot': paraphrases['snapshot'],
+    meta = {**{k: paraphrases['meta'].get(k) for k in keep}, 'owner_k': paraphrases['meta'].get('owner_k', OWNER_K),
+            'owner_items': paraphrases['owner_items']}
+    return {'meta': meta, 'snapshot': paraphrases['snapshot'],
             'owner': paraphrases['owner'],
             'levels': evaluate_paraphrases(scenes, paraphrases['queries'], rankers, strategies, params_of)}
 

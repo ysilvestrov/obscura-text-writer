@@ -93,18 +93,42 @@ def test_manifest_sorted_by_claim_then_level():
     assert [(x['claim_id'], x['level']) for x in m['queries']] == [('a', 'same'), ('a', 'desc'), ('b', 'same')]
 
 
+CATS = ('character_states', 'facts', 'open_threads')
+
+
+def _cells_queries(n=12, status=lambda i: 'ok'):
+    """n records (categories rotate), three levels each."""
+    cats = {f'r{i:02d}': CATS[i % 3] for i in range(n)}
+    qs = [Query(c, level, f'запит {c} {level}', status(i), 'h') for i, c in enumerate(cats) for level in LEVELS]
+    return qs, cats
+
+
 def test_owner_sample_ok_only_round_robin_deterministic():
-    qs = [Query(f'r{i:02d}', LEVELS[i % 3], f'запит {i}', 'ok' if i % 7 else 'rejected', 'h') for i in range(30)]
-    s = owner_sample(qs, 9, 1)
+    qs, cats = _cells_queries(status=lambda i: 'ok' if i % 5 else 'rejected')
+    s = owner_sample(qs, 9, 1, cats)
     assert all(q.status == 'ok' for q in s) and len(s) == 9
-    assert [q.level for q in s] == list(LEVELS) * 3
-    assert s == owner_sample(qs, 9, 1)
+    assert s == owner_sample(qs, 9, 1, cats)
+    assert s != owner_sample(qs, 9, 2, cats)  # the seed decides which record of a cell is taken
+
+
+def test_owner_sample_covers_every_level_category_cell():
+    qs, cats = _cells_queries()
+    s = owner_sample(qs, 20, 0, cats)
+    cells = {(q.level, cats[q.claim_id]) for q in s}
+    assert len(s) == 20 and cells == {(lv, c) for lv in LEVELS for c in CATS}  # 9 cells, all present
+    counts = [sum(1 for q in s if (q.level, cats[q.claim_id]) == cell) for cell in cells]
+    assert max(counts) - min(counts) <= 1  # one from each cell first, then round-robin
+    assert len({(q.claim_id, q.level) for q in s}) == 20
+    # an empty cell is skipped; a level with a single category still gets its share
+    only = [q for q in qs if not (q.level == 'desc' and cats[q.claim_id] != 'facts')]
+    s = owner_sample(only, 9, 0, cats)
+    assert {(q.level, cats[q.claim_id]) for q in s} == {(lv, c) for lv in ('same', 'syn') for c in CATS} | {('desc', 'facts')}
 
 
 def _owner(outside_dir, k=20):
     qs = [Query(f'r{i:02d}', LEVELS[i % 3], f'запит {i}', 'ok', 'h') for i in range(30)]
     snap = snapshot_hash(manifest(qs, {'seed': 0}))
-    sample = owner_sample(qs, k, 0)
+    sample = owner_sample(qs, k, 0, {q.claim_id: CATS[int(q.claim_id[1:]) % 2] for q in qs})
     path = outside_dir / 'owner.json'
     write_owner_file(path, sample, snap, {q.claim_id: f'запис {q.claim_id}' for q in sample})
     return qs, snap, path
@@ -254,3 +278,13 @@ def test_embeddings_uses_the_same_inside_repo(tmp_path, monkeypatch):
     monkeypatch.setattr(para, 'ROOT', checkout)
     with pytest.raises(ValueError, match='inside_repo'):
         emb.CachedEmbedder(emb.FakeEmbedder(), main / 'cache')
+
+
+def test_owner_file_items_outside_the_expected_sample_are_stale(outside_dir):
+    qs, snap, path = _owner(outside_dir)
+    for i in range(20):
+        set_verdict(path, i, 'yes')
+    sample = {(i['claim_id'], i['level']) for i in _items(path)['items']}
+    assert check_owner_file(path, qs, snap, sample_keys=sample) == (None, {'yes': 20, 'no': 0, 'invalid': 0})
+    other = set(list(sample)[1:]) | {next((q.claim_id, q.level) for q in qs if (q.claim_id, q.level) not in sample)}
+    assert check_owner_file(path, qs, snap, sample_keys=other)[0] == 'owner_check_stale'

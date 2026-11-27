@@ -11,15 +11,13 @@ from dataclasses import replace
 from typing import Callable, Mapping
 
 from .model import Record, SceneInput
-from .paraphrase import LEVELS, Query, _eligible, _sha, in_plan_scene, sampling_frame
+from .paraphrase import FRAME_PARAMS, LEVELS, Query, _eligible, _sha, in_plan_scene, sampling_frame
 from .ranking import Ranker
 from .strategies import Params, full, record_layers
 
 STEPS = (0.75, 0.5, 0.35)
 CORES = ('upper', 'lower')
 UNRELIABLE_SHARE = 0.10
-# Layers do not depend on the budget: the frame excludes only records a structural layer always holds.
-FRAME_PARAMS = Params(memory_budget_tokens=100000, measure='conservative', core_mode='upper')
 _UNBOUNDED = Params(10 ** 12, 'realistic', 'upper')
 
 
