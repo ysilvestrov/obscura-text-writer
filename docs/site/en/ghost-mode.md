@@ -15,7 +15,7 @@ The draft is split into blocks of about two lines: a paragraph, with short parag
 
 - You see the current draft block. As soon as you start typing, it disappears and only your text remains.
 - **Peek:** while you hold `Tab`, your text is hidden, the draft block is shown and typing is locked. For mouse and touch there is a **Peek (hold)** button.
-- `Ctrl+Enter` or **Next** moves to the next block, **Back** to the previous one.
+- `Ctrl+Enter` or **Next** moves to the next block, **Back** to the previous one. On the last block `Ctrl+Enter` saves, like **Save as draft**.
 - **Skip block** deliberately leaves a fragment out of the new draft; **Restore block** undoes that.
 - On a scene separator, **Remove separator** leaves it out of the new draft and **Restore separator** undoes that.
 - `Esc` moves the cursor out of the field, because `Tab` in the field is taken by the peek.

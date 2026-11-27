@@ -2379,7 +2379,7 @@
     {
       "id": "GHOST-REWRITE-S09",
       "requirement": "GHOST-REWRITE",
-      "scope": "Видалення й повернення розділювача в моделі сеансу: результат без нього, blocks_skipped без змін, відновлення зі сховища. Ctrl+Enter на розділювачі й кнопки — Playwright.",
+      "scope": "Видалення й повернення розділювача в моделі сеансу: результат без нього, blocks_skipped без змін, відновлення зі сховища. Ctrl+Enter на розділювачі й на останньому блоці (збереження) та кнопки — Playwright.",
       "tests": [
         "tests/web/test_ghost_mode_ui.py::test_ghost_session_states_storage_and_stats"
       ],

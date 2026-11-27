@@ -146,7 +146,13 @@ if(entry&&root){
       if(!event.repeat&&!event.isComposing)peekOn();
       return;
     }
-    if(event.key==='Enter'&&(event.ctrlKey||event.metaKey)){event.preventDefault();event.stopPropagation();move(1);return;}
+    // Ctrl+Enter: the next block; on the last one it saves, like «Зберегти як чернетку» (nothing happens while saving is unavailable).
+    if(event.key==='Enter'&&(event.ctrlKey||event.metaKey)){
+      event.preventDefault();event.stopPropagation();
+      if(event.repeat)return;
+      if(session.index===session.blocks.length-1)void submit();else move(1);
+      return;
+    }
     if(event.key==='Escape'&&authorHosts.contains(event.target)){event.preventDefault();event.stopPropagation();root.focus({preventScroll:true});}
   },true);
   // Peek ends on releasing the key that started it: Tab in the field, or Space/Enter held on the Peek button (focus moves to the mode).

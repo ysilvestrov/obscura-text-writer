@@ -53,7 +53,9 @@ test('reading, writing and Tab peek; save creates an author draft',async({page,r
   await page.keyboard.down('Tab');
   await mode(page).screenshot({path:`../docs/images/ghost-mode-${test.info().project.name}.png`});
   await page.keyboard.up('Tab');
-  await mode(page).getByRole('button',{name:'Зберегти як чернетку'}).click();
+  // Ctrl+Enter on the last block saves, like the button.
+  await expect(author(page)).toBeFocused();
+  await page.keyboard.press('Control+Enter');
   await expect(mode(page)).toBeHidden();
   await expect(page.locator('#notice')).toContainText('блоків 2 з 2');
   const saved=await head(request,f.scene_id);
@@ -101,6 +103,11 @@ test('peek button, blocked paste and copy, explicit skip',async({page,request})=
   await expect(mode(page).getByRole('button',{name:'Видалити розділювач'})).toBeHidden();
   const save=mode(page).getByRole('button',{name:'Зберегти як чернетку'});
   await expect(save).toBeDisabled();
+  // Ctrl+Enter on the last block does nothing while saving is unavailable.
+  await author(page).click();
+  await page.keyboard.press('Control+Enter');
+  await expect(mode(page)).toBeVisible();
+  await expect(page.locator('.app-dialog')).toHaveCount(0);
   await mode(page).getByRole('button',{name:'Пропустити блок'}).click();
   await expect(mode(page).locator('.ghost-skipped')).toBeVisible();
   await expect(save).toBeEnabled();
