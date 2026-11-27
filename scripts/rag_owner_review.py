@@ -87,20 +87,28 @@ function paint(card, item) {
   card.querySelector('button.no').setAttribute('aria-pressed', item.verdict === 'no');
 }
 
-async function choose(index, value) {
-  const item = items[index], card = cardsEl.children[index];
-  const next = item.verdict === value ? null : value;
+const requested = [], queues = [];
+
+function choose(index, value) {
+  // Per-card queue: the next value comes from the last requested one, POSTs go out one at a time in order.
+  const card = cardsEl.children[index];
+  const next = requested[index] === value ? null : value;
+  requested[index] = next;
   const old = card.querySelector('.error');
   if (old) old.remove();
-  try {
-    const r = await fetch('/verdict', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({index:index, verdict:next})});
-    if (!r.ok) throw new Error('status ' + r.status);
-    item.verdict = next;
-    paint(card, item);
+  queues[index] = (queues[index] || Promise.resolve()).then(async () => {
+    try {
+      const r = await fetch('/verdict', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({index:index, verdict:next})});
+      if (!r.ok) throw new Error('status ' + r.status);
+      items[index].verdict = next;
+    } catch (e) {
+      requested[index] = items[index].verdict;
+      if (!card.querySelector('.error')) card.appendChild(el('div', 'error', 'Не вдалося зберегти вибір. Спробуйте ще раз.'));
+    }
+    paint(card, items[index]);
     renderSummary();
-  } catch (e) {
-    card.appendChild(el('div', 'error', 'Не вдалося зберегти вибір. Спробуйте ще раз.'));
-  }
+  });
+  return queues[index];
 }
 
 function setCurrent(index) {
@@ -136,18 +144,19 @@ function build() {
 }
 
 document.addEventListener('keydown', async e => {
-  if (e.ctrlKey || e.metaKey || e.altKey || (e.key !== '1' && e.key !== '2')) return;
+  if (!items.length || e.repeat || e.ctrlKey || e.metaKey || e.altKey || (e.key !== '1' && e.key !== '2')) return;
   e.preventDefault();
   const index = current, value = e.key === '1' ? 'yes' : 'no';
-  if (items[index].verdict !== value && index + 1 < items.length) {
+  if (requested[index] !== value && index + 1 < items.length) {
     setCurrent(index + 1);
     cardsEl.children[index + 1].focus();
   }
-  await choose(index, value);
+  choose(index, value);
 });
 
 fetch('/items').then(r => r.ok ? r.json() : Promise.reject(new Error('status ' + r.status))).then(data => {
   items = data.items;
+  items.forEach((i, n) => { requested[n] = i.verdict; });
   build();
 }).catch(() => {
   cardsEl.replaceChildren(el('div', 'error', 'Не вдалося прочитати файл перевірки.'));
@@ -180,7 +189,7 @@ def make_server(path: Path, port: int) -> ThreadingHTTPServer:
             origin = self.headers.get('Origin')
             if origin is not None and origin != f'http://127.0.0.1:{actual}':
                 return False
-            return self.headers.get('Host') in (None, f'127.0.0.1:{actual}', f'localhost:{actual}')
+            return self.headers.get('Host') in (None, f'127.0.0.1:{actual}')  # localhost Host is refused to match Origin
 
         def do_GET(self):
             if not self._allowed():

@@ -118,3 +118,9 @@ def test_concurrent_posts_lose_no_updates(served):
     [t.start() for t in threads]
     [t.join() for t in threads]
     assert verdicts(path) == ['yes'] * 6
+
+
+def test_localhost_host_header_rejected(served):
+    port = served[1].server_address[1]
+    assert call(served[1], 'GET', '/items', headers={'Host': f'localhost:{port}'})[0] == 403
+    assert call(served[1], 'GET', '/items', headers={'Host': f'127.0.0.1:{port}'})[0] == 200
