@@ -3,7 +3,6 @@
 // Saving sends only the changed marks with the revision the author saw and asks first: it stales the first scenes.
 import {t,msg,uiText} from './i18n.js';
 import {api,json,notice} from './api.js';
-import {appInfo} from './app-info.js';
 import {confirmDialog} from './dialogs.js';
 
 const CATEGORIES=['facts','character_states','open_threads','timeline'];
@@ -85,4 +84,5 @@ function install(){
   dialog.querySelector('[data-facts-save]').onclick=()=>save();
 }
 
-if(form&&dialog&&storyId)appInfo().then(info=>{if(info.long_prose!==false)install()});
+// LONG-PROSE-TRIAL-S07: the book answers for itself: a book of the trial series has its facts.
+if(form&&dialog&&storyId)api('/api/stories/'+storyId).then(view=>{if(view.long_prose!==false)install()}).catch(()=>{});

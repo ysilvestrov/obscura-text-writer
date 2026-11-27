@@ -2,7 +2,6 @@ import {t,uiText,diagnostic} from './i18n.js';
 import {operationReason} from './run-readiness.js';
 import {refreshBook} from './series-status.js';
 import {refresh,displaySceneTitle} from './editor.js';
-import {appInfo} from './app-info.js';
 import {sendsText} from './memory-sends.js';
 // R-48 «Побудувати пам'ять» (spec §5, §5.1): the story-menu item counts the scenes from the first one without valid memory
 // to the end of the book (GET /memory-build). Its dialog reads the rebuild_memory preview of that scene — calls, the upper
@@ -36,9 +35,9 @@ export function installMemoryBuild({api,json,notice,document,state}){
     reasonNode=part('reason'),seriesWarning=part('series-warning'),status=part('status'),submit=part('submit'),cancel=part('cancel');
   const storyPath=()=>`/api/stories/${encodeURIComponent(state.storyId)}`;
   let target={scene_id:null,count:0,buildable:false},plan=null,failure='',loading=false,busy=false,epoch=0,keepFocus=false,pending=null;
-  let longProse=true;
-  appInfo().then(info=>{longProse=info.long_prose!==false;renderMenu()});
-  const readOnly=()=>!longProse&&(state.view?.book_structure?.kind==='structured'||!!state.view?.story?.series_id);
+  // LONG-PROSE-TRIAL-S07: the book answers for itself (its trial included), not the build.
+  const longProse=()=>state.view?.long_prose!==false;
+  const readOnly=()=>!longProse()&&(state.view?.book_structure?.kind==='structured'||!!state.view?.story?.series_id);
   // The previous memory awaits the author's confirmation in the scene: this dialog cannot give it, so the build is blocked
   // with the reason and a link to the scene (review M-1), whether the preview says so with `can_confirm` or as its reason.
   const needsApproval=preview=>!!preview&&(preview.can_confirm||!!preview.reason&&diagnostic(preview.reason)===t('memory.needs_approval'));
@@ -138,7 +137,7 @@ export function installMemoryBuild({api,json,notice,document,state}){
     renderCast(preview.cast);
     // §5: a series book without a start snapshot first offers the refresh from the previous book; the build stays secondary.
     // An offer, never a gate (a failed refresh must not block the author): the build then warns what its memory lacks.
-    const offer=!!preview.series_refresh&&longProse;  // no series in an edition without long prose
+    const offer=!!preview.series_refresh&&longProse();  // no series in an edition without long prose
     series.hidden=seriesWarning.hidden=!offer;
     submit.classList.toggle('secondary',offer);
   }

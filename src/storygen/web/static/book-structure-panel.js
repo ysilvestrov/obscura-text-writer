@@ -4,6 +4,7 @@ import {t,msg,uiText} from './i18n.js';
 import {api,json,notice} from './api.js';
 import {appInfo} from './app-info.js';
 import {confirmDialog} from './dialogs.js';
+import {claimTrial,trialState,usedNotice} from './long-prose-trial.js';
 import {addArc,addPart,arcTitle,createBuffer,move,partTitle,payload,remove,rename,setProtagonist} from './book-structure.js';
 
 const page=document.querySelector('.settings-page');
@@ -101,5 +102,28 @@ function mount(){
   load().catch(e=>notice(e.message,'error'));
 }
 
-// An edition without long prose shows no panel at all.
-appInfo().then(info=>{if(info.long_prose!==false)mount()});
+// LONG-PROSE-TRIAL-S07: the panel follows the book. A flat book without long prose outside a series offers the trial in
+// its place while the trial is free and says where it went once used; a series book gets nothing here.
+function trialCard(data,info){
+  const host=document.querySelector('[data-settings-section="writing"]');
+  const trial=trialState(info);
+  if(!host||data.story.series_id||(trial.state!=='available'&&trial.state!=='used'))return;
+  const card=document.createElement('section');card.id='book-structure-trial';card.className='panel';
+  const title=document.createElement('h2');uiText(title,'textContent',()=>t('book.panel.title'));
+  card.append(title);
+  if(trial.state==='used')card.append(usedNotice(document,trial,info));
+  else{
+    const hint=document.createElement('p');hint.className='muted';uiText(hint,'textContent',()=>t('trial.panel_hint'));
+    const offer=button('trial.offer_book',()=>claimTrial({api,json,confirmDialog,notice,location},{story_id:storyId},data.story.title),false);
+    card.append(hint,offer);
+  }
+  host.append(card);
+}
+
+async function start(){
+  if(!storyId||!document.querySelector('[data-settings-section="writing"]'))return;
+  const [data,info]=await Promise.all([api('/api/stories/'+storyId),appInfo()]);
+  if(data.long_prose!==false)mount();
+  else trialCard(data,info);
+}
+start().catch(e=>notice(e.message,'error'));

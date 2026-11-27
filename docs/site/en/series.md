@@ -2,7 +2,7 @@
 
 A series joins several books. The next book starts where the previous one ended: the heroes’ memory and the character cards pass into it as a **snapshot**. It is a copy taken at one moment, not a live link: after that the book lives its own life.
 
-Series are available in the paid build of Obscura and when running from source, like [parts and arcs](book-structure.md). The Microsoft Store build does not have them: see [below](#in-a-build-without-series).
+Series are available in the paid build of Obscura and when running from source, like [parts and arcs](book-structure.md). The Microsoft Store build has only one [trial series](paid.md#trial-in-the-microsoft-store-build): see [below](#in-a-build-without-series).
 
 ## Adding a book to a series
 
@@ -107,4 +107,8 @@ Through [MCP](mcp.md) a chat sees the series, the number, whether the work is th
 
 ## In a build without series
 
-The Microsoft Store build has no series screen, and series changes are unavailable. A series book created in another build can be opened for reading and export.
+In the Microsoft Store build series changes are available only in the trial series. A series book created in another build can be opened for reading and export.
+
+While the trial is free, the Series page lists every series, but only the trial series opens. **Create the trial series** creates a new one, and every series with at most two books has **Make this the trial series**. After the choice the list shows only the trial series. If the trial went to a standalone book, there is no Series page.
+
+The trial series holds two books and one world bible. Once it has two books, the **New book** button is disabled. In the book settings the series list holds only “No series” and the trial series. If a book leaves the trial series, the application warns: the book keeps its parts and arcs, but its place in the trial series is not freed.

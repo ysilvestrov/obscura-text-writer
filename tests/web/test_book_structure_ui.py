@@ -30,3 +30,13 @@ def test_server_refusals_are_translated():
     assert translate('book.readonly', 'uk') == READ_ONLY
     assert translate('book.no_long_prose', 'uk') == NO_LONG_PROSE
     assert translate('book.readonly', 'en').startswith('This book has parts or arcs')
+
+
+def test_book_modules_ask_the_book_not_the_build():
+    """LONG-PROSE-TRIAL-S07: a trial book is a book with long prose; no book module reads the build's long_prose."""
+    for name in ('book-structure-ui.js', 'book-structure-panel.js', 'memory-build.js', 'series-facts.js'):
+        text = (STATIC / name).read_text(encoding='utf-8')
+        assert 'info.long_prose' not in text, name
+        assert 'long_prose' in text, name
+    for name in ('book-structure-ui.js', 'book-structure-panel.js'):
+        assert "from './long-prose-trial.js'" in (STATIC / name).read_text(encoding='utf-8'), name

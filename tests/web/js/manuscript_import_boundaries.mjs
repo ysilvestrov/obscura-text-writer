@@ -58,21 +58,37 @@ assert.deepEqual(inner.map(s=>s.start),[1,3,6,8]);
 assert.deepEqual(setFrontMatter(inner,[1],false,3).map(s=>[s.start,s.title]),[[3,'Пірс (1)'],[6,'Пірс (2)'],[8,'Шторм']]);
 assert.deepEqual(setFrontMatter(scenes,[],true,3),scenes);
 
-// The request body: only the fields the server accepts, scenes in ascending order.
+// The request body: only the fields the server accepts, scenes in ascending order. `edition` is the preview's field.
+const FULL={parts_allowed:true,series_allowed:true,trial:{state:'none',kind:null,id:null,title:null}};
 const body=applyBody({fingerprint:'f',title:'Маяк',language:'uk',content_rating:null,scenes:[split[3],split[0],split[2],split[1]],
-  parts:[{index:0,paragraph:2,title:'Перша'}],include_front_matter:false,series:null,long_prose:true});
+  parts:[{index:0,paragraph:2,title:'Перша'}],include_front_matter:false,series:null,edition:FULL});
 assert.deepEqual(body,{fingerprint:'f',title:'Маяк',language:'uk',content_rating:null,include_front_matter:false,
   scenes:[{start:3,title:'Пірс (1)'},{start:6,title:'Пірс (2)'},{start:8,title:'Шторм'},{start:10,title:'Шторм (2)'}],parts:[]});
 const structured=applyBody({fingerprint:'f',title:' Маяк ',language:'en',content_rating:{sexual:0,violence:1,themes:0},
   scenes:[{...scenes[0],part_index:0},{...scenes[1],part_index:1}],parts:[{index:0,paragraph:2,title:'Перша'},{index:1,paragraph:7,title:''}],
-  include_front_matter:true,front_matter:[1],series:{series_id:'s1',number:2},long_prose:true});
+  include_front_matter:true,front_matter:[1],series:{series_id:'s1',number:2},edition:FULL});
 assert.deepEqual(structured,{fingerprint:'f',title:'Маяк',language:'en',content_rating:{sexual:0,violence:1,themes:0},include_front_matter:true,
   scenes:[{start:1,title:'Пірс (1)',part_index:0},{start:6,title:'Пірс (2)',part_index:1}],  // the front matter opens scene 1
   parts:[{index:0,title:'Перша'},{index:1,title:''}],series:{series_id:'s1',number:2}});
-// The store edition sends no parts, part indices or series (the server refuses them there).
-const store=applyBody({fingerprint:'f',title:'Маяк',language:'uk',content_rating:null,scenes:[{...scenes[0],part_index:0}],
-  parts:[{index:0,paragraph:2,title:'Перша'}],include_front_matter:false,series:{series_id:'s1',number:2},long_prose:false});
-assert.deepEqual(store,{fingerprint:'f',title:'Маяк',language:'uk',content_rating:null,include_front_matter:false,scenes:[{start:3,title:'Пірс (1)'}],parts:[]});
+// LONG-PROSE-TRIAL-S07: without long prose parts go only with the trial checkbox (and trial: true) or into the trial
+// series; a series only to the trial series; trial and series never together.
+const PLAIN={start:3,title:'Пірс (1)'},PARTED={start:3,title:'Пірс (1)',part_index:0},PARTS=[{index:0,title:'Перша'}];
+const storeBody=(edition,extra={})=>applyBody({fingerprint:'f',title:'Маяк',language:'uk',content_rating:null,scenes:[{...scenes[0],part_index:0}],
+  parts:[{index:0,paragraph:2,title:'Перша'}],include_front_matter:false,series:null,edition,...extra});
+const base={fingerprint:'f',title:'Маяк',language:'uk',content_rating:null,include_front_matter:false};
+const available={parts_allowed:true,series_allowed:false,trial:{state:'available',kind:null,id:null,title:null}};
+const onSeries={parts_allowed:true,series_allowed:true,trial:{state:'used',kind:'series',id:'s1',title:'Сага'}};
+const onStory={parts_allowed:false,series_allowed:false,trial:{state:'used',kind:'story',id:'b1',title:'Маяк'}};
+assert.deepEqual(storeBody(available),{...base,scenes:[PLAIN],parts:[]});
+assert.deepEqual(storeBody(available,{series:{series_id:'s9',number:1}}),{...base,scenes:[PLAIN],parts:[]});
+assert.deepEqual(storeBody(available,{trial_checked:true}),{...base,scenes:[PARTED],parts:PARTS,trial:true});
+assert.deepEqual(storeBody(available,{trial_checked:true,series:{series_id:'s9',number:1}}),{...base,scenes:[PARTED],parts:PARTS,trial:true});
+assert.deepEqual(storeBody(onSeries,{series:{series_id:'s1',number:3}}),{...base,scenes:[PARTED],parts:PARTS,series:{series_id:'s1',number:3}});
+assert.deepEqual(storeBody(onSeries,{trial_checked:true}),{...base,scenes:[PLAIN],parts:[]});
+assert.deepEqual(storeBody(onSeries),{...base,scenes:[PLAIN],parts:[]});
+assert.deepEqual(storeBody(onStory,{series:{series_id:'s1',number:2},trial_checked:true}),{...base,scenes:[PLAIN],parts:[]});
+// Without the preview's field (an older server) nothing beyond a flat book is sent.
+assert.deepEqual(storeBody(undefined),{...base,scenes:[PLAIN],parts:[]});
 
 // The author changed something only when a boundary or a title differs; the front matter moving the first start does not count.
 const {authorEdits}=await import('../../../src/storygen/web/static/manuscript-import.js');

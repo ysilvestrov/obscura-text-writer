@@ -384,6 +384,13 @@ def main():
             repo.save_version(story_id, scene.id, 'brief', '{}', [], 'browser-run')
             return {'story_id': story_id, 'scene_id': scene.id}
 
+        @app.post('/test-reset-trial')
+        def reset_trial():
+            # LONG-PROSE-TRIAL-S07: the trial is one per data folder; each Store spec starts with it free.
+            with app.state.repo.db.connection() as db:
+                db.execute("DELETE FROM app_settings WHERE key='long_prose_trial'")
+            return {'state': 'available'}
+
         @app.post('/test-build-edition')
         def switch_build_edition(body: dict):
             # BUILD-EDITION-001: the fixture server runs as the full edition; a spec switches it and must switch back.
@@ -391,7 +398,7 @@ def main():
             original=getattr(build_edition,'_fixture_original',None) or build_edition.current
             build_edition._fixture_original=original
             if body.get('edition')=='store':
-                edition=build_edition.BuildEdition(edition='store',report_url='https://example.test/report',support_url='https://example.test/thanks')
+                edition=build_edition.BuildEdition(edition='store',report_url='https://example.test/report',support_url='https://example.test/thanks',waitlist_url=body.get('waitlist_url',''))
                 build_edition.current=lambda:edition
             else:
                 build_edition.current=original
@@ -633,10 +640,11 @@ def main():
             return {'story_id':story.id,'docx_base64':base64.b64encode(docx).decode('ascii'),'scene_ids':ids}
 
         @app.post('/test-manuscript-import')
-        def manuscript_import_fixture():
+        def manuscript_import_fixture(parts: bool = False):
             """MANUSCRIPT-IMPORT UI: the same small manuscript as DOCX and Markdown (neutral text about a pier lighthouse):
             a book title, a short dedication (front matter), chapter 1 split by a separator, and a long chapter 2 with one
-            proposed boundary — four scenes: «Пірс (1)», «Пірс (2)», «Шторм (1)», «Шторм (2)» (proposed)."""
+            proposed boundary — four scenes: «Пірс (1)», «Пірс (2)», «Шторм (1)», «Шторм (2)» (proposed). `parts`: the
+            Markdown also opens each chapter with a part heading («Частина 1. Берег», «Частина 2. Море»; LONG-PROSE-TRIAL)."""
             import base64
             from tests.publication.manuscript_fixtures import docx, para, style
             prose=lambda n,seed:' '.join(f'Хвиля {seed}{i} била об старий пірс' for i in range(n//6))+'.'
@@ -644,8 +652,9 @@ def main():
             chapter2=[prose(120,f'г{k}-') for k in range(26)]
             body=para('Маяк на пірсі','Title')+para('Присвячую доглядачам маяків.')+para('Глава 1. Пірс')
             body+=''.join(para(text) for text in chapter1)+para('Глава 2. Шторм')+''.join(para(text) for text in chapter2)
-            md='# Маяк на пірсі\n\nПрисвячую доглядачам маяків.\n\nГлава 1. Пірс\n\n'+'\n\n'.join(chapter1)
-            md+='\n\nГлава 2. Шторм\n\n'+'\n\n'.join(chapter2)+'\n'
+            first,second=('Частина 1. Берег\n\n','Частина 2. Море\n\n') if parts else ('','')
+            md='# Маяк на пірсі\n\nПрисвячую доглядачам маяків.\n\n'+first+'Глава 1. Пірс\n\n'+'\n\n'.join(chapter1)
+            md+='\n\n'+second+'Глава 2. Шторм\n\n'+'\n\n'.join(chapter2)+'\n'
             return {'docx_base64':base64.b64encode(docx(body,[style('Title','title')])).decode('ascii'),
                     'md_base64':base64.b64encode(md.encode('utf-8')).decode('ascii')}
 

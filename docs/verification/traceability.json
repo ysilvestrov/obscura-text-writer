@@ -5395,7 +5395,8 @@
         "tests/storage/test_long_prose_trial.py::test_concurrent_claims_leave_one",
         "tests/storage/test_long_prose_trial.py::test_trial_state_available_then_used",
         "tests/storage/test_long_prose_trial.py::test_trashed_trial_story_is_still_used",
-        "tests/book/test_long_prose_for.py::test_trial_story_has_long_prose_and_others_do_not"
+        "tests/book/test_long_prose_for.py::test_trial_story_has_long_prose_and_others_do_not",
+        "tests/series/test_series_trial.py::test_restored_trial_book_is_editable_again"
       ]
     },
     {
@@ -5429,7 +5430,8 @@
         "tests/application/test_manuscript_import_trial.py::test_parts_need_the_trial_flag",
         "tests/application/test_manuscript_import_trial.py::test_used_trial_refuses_before_any_write",
         "tests/application/test_manuscript_import_trial.py::test_import_into_the_trial_series_takes_a_place",
-        "tests/application/test_manuscript_import_trial.py::test_trial_with_a_series_is_invalid"
+        "tests/application/test_manuscript_import_trial.py::test_trial_with_a_series_is_invalid",
+        "tests/application/test_manuscript_import_trial.py::test_refused_third_import_leaves_no_files"
       ]
     },
     {
@@ -5454,6 +5456,29 @@
         "tests/web/test_app_info.py::test_app_info_full_edition",
         "tests/web/test_app_info.py::test_app_info_store_edition"
       ]
+    },
+    {
+      "id": "LONG-PROSE-TRIAL-S07",
+      "requirement": "LONG-PROSE-TRIAL",
+      "scope": "Інтерфейс проби: поле long_prose твору, глобали шаблонів, переклади відмов, модуль проби, тіло імпорту, міст без trial. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/web/test_long_prose_trial_ui.py::test_story_view_long_prose_full_reads_no_trial",
+        "tests/web/test_long_prose_trial_ui.py::test_story_view_long_prose_store",
+        "tests/web/test_long_prose_trial_ui.py::test_library_template_store_states",
+        "tests/web/test_long_prose_trial_ui.py::test_library_template_store_trial_on_a_book",
+        "tests/web/test_long_prose_trial_ui.py::test_trial_refusals_are_translated",
+        "tests/web/test_long_prose_trial_ui.py::test_trial_ui_texts_exist_in_both_languages",
+        "tests/web/test_long_prose_trial_ui.py::test_trial_module_helpers",
+        "tests/web/test_long_prose_trial_ui.py::test_series_index_store_states",
+        "tests/web/test_long_prose_trial_ui.py::test_series_index_is_gone_with_a_book_trial",
+        "tests/web/test_book_structure_ui.py::test_book_modules_ask_the_book_not_the_build",
+        "tests/web/test_manuscript_import_ui.py::test_series_fields_follow_the_trial_in_store",
+        "tests/mcp/test_bridge_edition.py::test_import_confirm_never_sends_trial"
+      ],
+      "manual": {
+        "procedure": "docs/verification/manual.md#long-prose-trial-browser",
+        "reason": "check_docs.py індексує лише pytest; Playwright cases tests/web/browser/long-prose-trial.spec.mjs і store-тести manuscript-import.spec.mjs виконуються окремим runner, цей зв’язок не є доказом виконання."
+      }
     },
     {
       "id": "STORE-FOOTER-S01",
@@ -9412,8 +9437,8 @@
       "scope": "Діалог імпорту в бібліотеці: розмітка й поля, серія лише з довгою прозою, ліміти й рядки uk/en, логіка меж і назв нових сцен (JS), готовність серії без пам'яті попередньої книги, нейтральний рукопис знімка сайту. Діалог у браузері — ручна процедура (Playwright). Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
       "tests": [
         "tests/web/test_manuscript_import_ui.py::test_library_has_the_import_entry_and_dialog",
-        "tests/web/test_manuscript_import_ui.py::test_series_fields_only_with_long_prose",
-        "tests/web/test_manuscript_import_ui.py::test_template_wraps_the_series_row_in_long_prose",
+        "tests/web/test_manuscript_import_ui.py::test_series_fields_follow_the_trial_in_store",
+        "tests/web/test_manuscript_import_ui.py::test_template_wraps_the_series_row_in_the_series_screen_gate",
         "tests/web/test_manuscript_import_ui.py::test_strings_and_limits",
         "tests/web/test_manuscript_import_ui.py::test_js_boundary_logic",
         "tests/series/test_series_start_readiness.py::test_readiness_names_the_previous_book_without_memory",
