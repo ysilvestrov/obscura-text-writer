@@ -1,16 +1,16 @@
 // MEMORY-LOCATIONS-S07: the «Locations» section of the memory panel (story-level, like timeline summaries; the right
 // side panel holds only scene sections, WORKSPACE-TOOLS). Cards come from «Локація:» lines of scene plans;
 // the author merges look-alikes, splits them back, hides a suggestion, writes a description for the planner and the
-// writer and removes a place a model gave a scene (R-51). Every change is CAS on the story revision; a refused save
+// writer, removes a place a model gave a scene (R-51) and glues a name the parse cut into one (MEMORY-LOCATIONS-S11). Every change is CAS on the story revision; a refused save
 // keeps the typed description.
 import {t,msg,uiText,uiAttr,diagnostic} from './i18n.js';
 import {api,json,notice} from './api.js';
 import {state,refresh} from './editor.js';
 import {confirmDialog} from './dialogs.js';
 import {offerInvalidation} from './link-invalidation.js';
-import {locationRows,mergeTargets,suggestionRows} from './locations.js';
+import {glueOptions,glueRows,locationRows,mergeTargets,suggestionRows} from './locations.js';
 
-let data=null,storyId=null,choosing=null,busy=false;
+let data=null,storyId=null,choosing=null,gluing=null,busy=false;
 const drafts=new Map();  // card id -> typed description not saved yet
 
 const node=(tag,render,className)=>{const n=document.createElement(tag);if(className)n.className=className;if(render)uiText(n,'textContent',render);return n};
@@ -46,6 +46,26 @@ function chooser(row){
   return wrap;
 }
 
+function glueChooser(row){
+  const wrap=node('div',null,'actions location-glue');
+  const select=document.createElement('select');uiAttr(select,'aria-label',()=>t('locations.glue_target',{p0:row.path}));
+  const options=glueOptions(data,row.id);
+  for(const option of options){const o=node('option',()=>option.phrase);o.value=option.key;select.append(o)}
+  wrap.append(select,button(()=>t('locations.glue_do'),()=>glue(options.find(o=>o.key===select.value)),true),
+    button(()=>t('locations.cancel'),()=>{gluing=null;draw()}));
+  return wrap;
+}
+
+function glues(){
+  const list=node('div',null,'location-glues');list.append(node('h4',()=>t('locations.glues')));
+  for(const item of glueRows(data)){
+    const entry=node('div',null,'location-glued');entry.dataset.key=item.key;
+    const actions=node('div',null,'actions');actions.append(button(()=>t('locations.unglue'),()=>unglue(item)));
+    entry.append(node('p',()=>item.phrase),actions);list.append(entry);
+  }
+  return list;
+}
+
 function draw(){
   const section=box();if(!section)return;
   section.replaceChildren(node('h3',()=>t('locations.title')),node('p',()=>t('locations.hint'),'hint'));
@@ -77,24 +97,28 @@ function draw(){
     }
     if(row.editable)item.append(description(row));
     if(choosing===row.id)item.append(chooser(row));
+    else if(gluing===row.id)item.append(glueChooser(row));
     else{
       const actions=node('div',null,'actions');
       if(row.canMerge&&mergeTargets(data,row.id).length)actions.append(button(()=>t('locations.merge'),()=>{choosing=row.id;draw()}));
+      if(!row.merged&&glueOptions(data,row.id).length)actions.append(button(()=>t('locations.glue'),()=>{gluing=row.id;draw()}));
       if(row.canSplit)actions.append(button(()=>t('locations.split'),()=>change(`/${row.id}/split`,'POST',{},'locations.split_notice',{ids:[row.id],names:[row.path]})));
       if(actions.children.length)item.append(actions);
     }
     section.append(item);
   }
+  if(glueRows(data).length)section.append(glues());
 }
 
 async function load(){
   if(!state.storyId||!document.querySelector('#memory-view'))return;
-  if(storyId!==state.storyId){drafts.clear();choosing=null;storyId=state.storyId}
+  if(storyId!==state.storyId){drafts.clear();choosing=null;gluing=null;storyId=state.storyId}
   try{data=await api(`/api/stories/${state.storyId}/locations`)}catch(e){data=null}
   draw();
 }
 
-// subject {ids, names}: the cards a description, merge or split changes; the author then decides on the dependent scenes.
+// subject {ids, names} (or a function of the new data giving it): the cards a change touches; the author then decides
+// on the dependent scenes.
 async function change(path,method,body,done,subject=null){
   if(busy||!data)return false;
   const before=data.story_revision,story=state.storyId;busy=true;draw();
@@ -107,6 +131,7 @@ async function change(path,method,body,done,subject=null){
     void refresh();
   }catch(e){notice(diagnostic(e.message),'error');await load();return false}  // drafts survive the reload
   finally{busy=false;draw()}
+  if(typeof subject==='function')subject=subject(data);
   if(subject&&await offerInvalidation(story,'location',subject.ids,subject.names,dependent))void refresh();
   return true;
 }
@@ -122,6 +147,19 @@ async function merge(id,path,into,intoPath){
 async function removeFromScene(row,scene){
   if(!await confirmDialog(t('locations.remove_confirm',{p0:row.path,p1:scene.label}),{accept:t('locations.remove_do')}))return;
   await change(`/${row.id}/remove-from-scene`,'POST',{scene_id:scene.id},'locations.removed',{ids:[row.id],names:[row.path]});
+}
+
+// MEMORY-LOCATIONS-S11: the phrase becomes a glue of the story; plan scenes get the glued card at once.
+async function glue(option){
+  if(!option||!await confirmDialog(t('locations.glue_confirm',{p0:option.phrase,p1:option.scenes}),{accept:t('locations.glue_do')}))return;
+  gluing=null;
+  await change('/glue','POST',{phrase:option.phrase},'locations.glued',{ids:option.cardIds,names:[option.phrase]});
+}
+
+async function unglue(item){
+  if(!await confirmDialog(t('locations.unglue_confirm',{p0:item.phrase}),{accept:t('locations.unglue')}))return;
+  await change('/unglue','POST',{key:item.key},'locations.unglued',
+    fresh=>({ids:(fresh?.glue_candidates||[]).find(c=>c.key===item.key)?.card_ids||['glue:'+item.key],names:[item.phrase]}));
 }
 
 async function save(row,text){

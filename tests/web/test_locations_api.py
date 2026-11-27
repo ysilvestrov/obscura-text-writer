@@ -47,7 +47,7 @@ def test_list_has_cards_with_their_scenes_and_suggestions(tmp_path):
 def test_story_without_locations_has_an_empty_list(tmp_path):
     client, repo, story, *_ = setup(tmp_path)
     other = repo.create_story(StoryCreate(title='Без місць'))
-    assert client.get(base(other)).json() == {'story_revision': other.revision, 'locations': [], 'suggestions': []}
+    assert client.get(base(other)).json() == {'story_revision': other.revision, 'glues': [], 'glue_candidates': [], 'locations': [], 'suggestions': []}
 
 
 @pytest.mark.req('MEMORY-LOCATIONS')

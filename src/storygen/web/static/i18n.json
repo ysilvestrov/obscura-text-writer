@@ -2993,7 +2993,22 @@
     "locations.removed": "Місце прибрано зі сцени.",
     "locations.error.unknown_scene": "Невідома сцена",
     "locations.error.plan_place": "Місце сцени з плану: змініть рядок «Локація:»",
-    "locations.error.not_in_scene": "Сцена не має цього місця"
+    "locations.error.not_in_scene": "Сцена не має цього місця",
+    "locations.glue": "Склеїти з…",
+    "locations.glue_target": "Яку назву склеїти з «{p0}»",
+    "locations.glue_do": "Склеїти",
+    "locations.glue_confirm": "Склеїти «{p0}» в одну назву? Сцен: {p1}. План не зміниться: розбір рядка «Локація:» більше не різатиме цю фразу в жодній сцені. Версії зачеплених сцен стануть застарілими.",
+    "locations.glued": "Назву склеєно.",
+    "locations.glues": "Склеєні назви",
+    "locations.unglue": "Розклеїти",
+    "locations.unglue_confirm": "Розклеїти «{p0}»? Сцени знову ділитимуть цю фразу на кілька місць. Ваші злиття лишаться: щоб уламок знову став окремим, натисніть «Розділити».",
+    "locations.unglued": "Назву розклеєно.",
+    "locations.error.glue_slash": "Склеїти можна лише фразу без «/»",
+    "locations.error.glue_length": "Фраза має бути від {p0} до {p1} знаків",
+    "locations.error.glue_repeat": "Цю назву вже склеєно",
+    "locations.error.glue_no_cut": "Фраза не охоплює жодного розрізу",
+    "locations.error.glue_limit": "Склеєних назв може бути не більше {p0}",
+    "locations.error.glue_unknown": "Невідома склеєна назва"
   },
   "en": {
     "ui.save": "Save",
@@ -5989,6 +6004,21 @@
     "locations.removed": "Place removed from the scene.",
     "locations.error.unknown_scene": "Unknown scene",
     "locations.error.plan_place": "The scene place comes from its plan: change the «Location:» line",
-    "locations.error.not_in_scene": "The scene does not have this place"
+    "locations.error.not_in_scene": "The scene does not have this place",
+    "locations.glue": "Glue with…",
+    "locations.glue_target": "Which name to glue «{p0}» into",
+    "locations.glue_do": "Glue",
+    "locations.glue_confirm": "Glue «{p0}» into one name? Scenes: {p1}. The plan stays as it is: the «Location:» parse will no longer cut this phrase in any scene. Versions of the affected scenes become outdated.",
+    "locations.glued": "Name glued.",
+    "locations.glues": "Glued names",
+    "locations.unglue": "Unglue",
+    "locations.unglue_confirm": "Unglue «{p0}»? Scenes will split this phrase into several places again. Your merges stay: to make a fragment separate again, press «Split».",
+    "locations.unglued": "Name unglued.",
+    "locations.error.glue_slash": "Only a phrase without «/» can be glued",
+    "locations.error.glue_length": "The phrase must be {p0} to {p1} characters long",
+    "locations.error.glue_repeat": "This name is already glued",
+    "locations.error.glue_no_cut": "The phrase spans no cut",
+    "locations.error.glue_limit": "A story can have at most {p0} glued names",
+    "locations.error.glue_unknown": "Unknown glued name"
   }
 }

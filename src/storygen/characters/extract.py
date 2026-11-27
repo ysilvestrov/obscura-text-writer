@@ -284,6 +284,7 @@ class ExtractState(BaseModel):
     groups_done: int = 0
     calls: int = 0
     scene_order: list[str] = Field(default_factory=list)  # every scene to read, in reading order: `s<N>` numbers
+    glued: list[str] = Field(default_factory=list)  # Story.location_glues at the start: glued names stay one place
 
 
 @dataclass(frozen=True)
@@ -358,12 +359,12 @@ def _key(path: str) -> str:
     return normalize(path.split('/'))
 
 
-def _paths(item: str, numbers: Mapping[str, CatalogueLocation]) -> list[tuple[str, ...]]:
+def _paths(item: str, numbers: Mapping[str, CatalogueLocation], glued=()) -> list[tuple[str, ...]]:
     """The places one answer element names (spec 2, 3.3, amendment 1): a part that is a catalogue id becomes that card's
     path, a part repeating any part before it is dropped («l8 / Полонина» with l8 «Полонина / Стая» is l8), and a path
     with an unknown id is dropped whole."""
     found = []
-    for parts in parse_locations(item):
+    for parts in parse_locations(item, glued):
         expanded: list[str] = []
         for part in parts:
             match = _CATALOGUE_ID.fullmatch(part)
@@ -415,7 +416,7 @@ def _apply_locations(state: ExtractState, response: ExtractResponse, group: list
             state.scene_locations[scene_id] = []
         chosen = state.scene_locations[scene_id]
         for element in item.locations:
-            for parts in _paths(element, numbers):
+            for parts in _paths(element, numbers, state.glued):
                 if len(chosen) >= SCENE_PLACES:
                     break
                 key = normalize(parts)

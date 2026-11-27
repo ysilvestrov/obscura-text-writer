@@ -38,3 +38,9 @@ def test_server_messages_match_the_catalog():
                 'locations.error.plan_place', 'locations.error.not_in_scene'):
         assert translate(key, 'uk') in source, key
     assert translate('locations.error.long', 'uk').replace('{p0}', '{DESCRIPTION_LIMIT}') in source
+    # MEMORY-LOCATIONS-S11: glue refusals.
+    for key in ('locations.error.glue_slash', 'locations.error.glue_repeat', 'locations.error.glue_no_cut',
+                'locations.error.glue_unknown'):
+        assert translate(key, 'uk') in source, key
+    assert translate('locations.error.glue_length', 'uk').replace('{p0}', '{GLUE_MIN}').replace('{p1}', '{GLUE_MAX}') in source
+    assert translate('locations.error.glue_limit', 'uk').replace('{p0}', '{GLUE_LIMIT}') in source

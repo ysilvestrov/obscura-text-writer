@@ -123,9 +123,15 @@ def remove_scene_place(repo, db, story_id: str, id: str, scene_id: str):
     repo._save_scene(db,scene)
 
 
+def story_glues(db, story_id: str) -> list[str]:
+    """Story.location_glues read on the caller's connection (a write transaction sees its own changes)."""
+    row=db.execute('SELECT payload FROM stories WHERE id=?',(story_id,)).fetchone()
+    return list(json.loads(row[0]).get('location_glues',[])) if row is not None else []
+
+
 def plan_location_ids(db, story_id: str, text: str) -> list[str]:
     from ..scene_plan_template import plan_fields
-    return ensure_locations(db,story_id,parse_locations(plan_fields(text).get('location','')))
+    return ensure_locations(db,story_id,parse_locations(plan_fields(text).get('location',''),story_glues(db,story_id)))
 
 
 def _card(db, story_id, id) -> StoryLocation:
@@ -150,6 +156,101 @@ def set_description(db, story_id: str, id: str, text: str):
     text=text.strip()
     if len(text)>DESCRIPTION_LIMIT:raise ValueError(f'Опис локації довший за {DESCRIPTION_LIMIT} знаків')
     _write(db,_card(db,story_id,id).model_copy(update={'description':text}))
+
+
+GLUE_LIMIT, GLUE_MIN, GLUE_MAX = 500, 3, 200
+
+
+def _plan_scenes(db, story_id: str, active_only: bool = False):
+    """Scenes whose places come from a non-empty «Локація:» line, in book order (trashed ones too unless active_only)."""
+    from ..domain import Scene
+    from ..scene_plan_template import plan_fields
+    for row in db.execute('SELECT payload FROM scenes WHERE story_id=? ORDER BY position,id',(story_id,)).fetchall():
+        scene=Scene.model_validate_json(row[0])
+        if active_only and scene.trashed_at:continue
+        value=plan_fields(scene.beats).get('location','')
+        if value and scene.location_source=='plan':yield scene,value
+
+
+def _recompute_plan_places(repo, db, story_id: str, old_glues, new_glues) -> list[tuple[list[str],list[str]]]:
+    """MEMORY-LOCATIONS-S10: plan scenes whose line parses differently under the new glues than under the old ones get
+    the new places; a changed scene stales its material and moves its revision, like a plan save. A scene the glue
+    change does not touch keeps its stored places even when they hold an older parse (no reparse migration). Returns
+    (ids before, ids after) of the changed scenes."""
+    from .scene_metadata import stale_scene_material
+    changed=[]
+    for scene,value in list(_plan_scenes(db,story_id)):
+        paths=parse_locations(value,new_glues)
+        if paths==parse_locations(value,old_glues):continue
+        before=list(scene.location_ids);after=ensure_locations(db,story_id,paths)
+        if after==before:continue
+        scene.location_ids=after
+        stale_scene_material(repo,db,scene)
+        scene.revision+=1
+        repo._save_scene(db,scene)
+        changed.append((before,after))
+    return changed
+
+
+def _with_ancestors(cards: dict[str,StoryLocation], ids) -> set[str]:
+    out=set()
+    for id in ids:
+        while id and id in cards and id not in out:
+            out.add(id);id=cards[id].parent_id
+    return out
+
+
+def _write_glues(repo, db, story_id: str, glues: list[str]):
+    story=repo._active_story(db,story_id)
+    repo._save_story(db,story.model_copy(update={'location_glues':glues}))
+
+
+def glue_location(repo, db, story_id: str, phrase: str):
+    """«Склеїти»: the phrase becomes a story glue, plan scenes are recomputed and the suggestions between the new cards
+    and the cards the changed scenes held before (with their ancestors) are dismissed."""
+    from ..locations import glue_key
+    phrase=' '.join((phrase or '').split())
+    glues=story_glues(db,story_id)
+    if '/' in phrase:raise ValueError('Склеїти можна лише фразу без «/»')
+    if not GLUE_MIN<=len(phrase)<=GLUE_MAX:raise ValueError(f'Фраза має бути від {GLUE_MIN} до {GLUE_MAX} знаків')
+    if glue_key(phrase) in {glue_key(g) for g in glues}:raise ValueError('Цю назву вже склеєно')
+    if len(parse_locations(phrase,glues))<2:raise ValueError('Фраза не охоплює жодного розрізу')
+    if len(glues)>=GLUE_LIMIT:raise ValueError(f'Склеєних назв може бути не більше {GLUE_LIMIT}')
+    known=set(load_locations(db,story_id))
+    _write_glues(repo,db,story_id,[*glues,phrase])
+    changed=_recompute_plan_places(repo,db,story_id,glues,[*glues,phrase])
+    cards=load_locations(db,story_id);new=set(cards)-known
+    old=set()
+    for before,after in changed:old|=_with_ancestors(cards,before)-_with_ancestors(cards,after)
+    for a in new:
+        for b in old:
+            if a!=b:dismiss_pair(db,story_id,a,b)
+
+
+def unglue_location(repo, db, story_id: str, key: str):
+    """«Розклеїти»: the glue goes and plan scenes are recomputed; cards and merges stay."""
+    from ..locations import glue_key
+    glues=story_glues(db,story_id);kept=[g for g in glues if glue_key(g)!=key]
+    if len(kept)==len(glues):raise ValueError('Невідома склеєна назва')
+    _write_glues(repo,db,story_id,kept)
+    _recompute_plan_places(repo,db,story_id,glues,kept)
+
+
+def glue_candidates(db, story_id: str) -> list[dict]:
+    """Every cut between neighbouring paths in the «Локація:» lines of active plan scenes, one per phrase key, with the
+    existing leaf cards on both sides of every occurrence and the scenes, in book order. A cut whose cards do not exist
+    (a line stored under an older parse) offers nothing: the panel hangs the action on a card."""
+    from ..locations import glue_cuts, glue_key
+    glues=story_glues(db,story_id);found={};cards=set(load_locations(db,story_id))
+    for scene,value in _plan_scenes(db,story_id,active_only=True):
+        for phrase,left,right in glue_cuts(value,glues):
+            ids=[id for id in (location_id(story_id,normalize(left)),location_id(story_id,normalize(right))) if id in cards]
+            if not ids:continue
+            item=found.setdefault(glue_key(phrase),{'phrase':phrase,'key':glue_key(phrase),'card_ids':[],'scene_ids':[]})
+            for id in ids:
+                if id not in item['card_ids']:item['card_ids'].append(id)
+            if scene.id not in item['scene_ids']:item['scene_ids'].append(scene.id)
+    return list(found.values())
 
 
 def dismiss_pair(db, story_id: str, a: str, b: str):
@@ -229,9 +330,12 @@ def locations_view(repo, story_id: str) -> dict:
         for id in dict.fromkeys(canonical(merged,id) for id in scene.location_ids):
             if id in scenes:scenes[id].append({'id':scene.id,'position':scene.position,'title':scene.title,
                                                'source':scene.location_source})
+    from ..locations import glue_key
     with repo.db.connection() as db:
-        pairs=suggestions(db,story_id)
+        pairs=suggestions(db,story_id);candidates=glue_candidates(db,story_id)
     return {'story_revision':story.revision,
+            'glues':[{'key':glue_key(phrase),'phrase':phrase} for phrase in story.location_glues],
+            'glue_candidates':candidates,
             'locations':[{'id':c.id,'path':c.path,'parent_id':c.parent_id,'merged_into':c.merged_into,
                           'target_path':cards[canonical(merged,c.id)].path if c.merged_into else None,
                           'description':c.description,'scenes':scenes[c.id]} for c in cards.values()],
@@ -249,7 +353,8 @@ def change_locations(repo, story_id: str, expected_revision: int, action) -> dic
         before=_shown_by_scene(db,story_id)
         action(db)
         after=_shown_by_scene(db,story_id)
-        repo._save_story(db,story.model_copy(update={'revision':story.revision+1}))
+        story=repo._active_story(db,story_id)  # re-read: an action may write the story (glues)
+        repo._save_story(db,story.model_copy(update={'revision':expected_revision+1}))
     # VALID-LINKS rule (г): the panel asks the author whether to uncheck these scenes; the change alone moves no link.
     return {**locations_view(repo,story_id),'dependent_scene_ids':[id for id in after if after[id]!=before.get(id)]}
 

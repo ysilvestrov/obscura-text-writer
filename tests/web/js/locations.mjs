@@ -46,3 +46,18 @@ const model=m.locationRows({locations:[
 assert.deepEqual(model.map(r=>[r.id,r.modelScenes]),[['pier',[{id:'s3',label:'3. Ніч'}]],['typo',[]]]);
 assert.equal(model[0].scenes,'1. Ранок, 3. Ніч');
 console.log('model places ok');
+
+// MEMORY-LOCATIONS-S11: «Склеїти з…» offers the phrases of glue candidates that name the card; «Склеєні назви» lists glues.
+const glueData={locations:[card('bar','Бар'),card('cafe','в якому пахне кавою'),card('glued','Бар, в якому пахне кавою')],
+  glues:[{key:'місто, двір',phrase:'Місто, двір'}],
+  glue_candidates:[{phrase:'Бар, в якому пахне кавою',key:'бар, в якому пахне кавою',card_ids:['bar','cafe'],scene_ids:['s1','s2']},
+    {phrase:'Бар, в якому пахне кавою, вулиця',key:'бар, в якому пахне кавою, вулиця',card_ids:['glued','street'],scene_ids:['s3']},
+    {phrase:'Бар, '+'х'.repeat(196),key:'long',card_ids:['bar'],scene_ids:['s4']}]};
+assert.deepEqual(m.glueOptions(glueData,'bar'),[{key:'бар, в якому пахне кавою',phrase:'Бар, в якому пахне кавою',cardIds:['bar','cafe'],scenes:2}],
+  'only candidates naming the card, phrases of 3–200 characters');
+assert.deepEqual(m.glueOptions(glueData,'glued').map(o=>o.key),['бар, в якому пахне кавою, вулиця']);
+assert.deepEqual(m.glueOptions(glueData,'nobody'),[]);
+assert.deepEqual(m.glueOptions(undefined,'bar'),[]);
+assert.deepEqual(m.glueRows(glueData),[{key:'місто, двір',phrase:'Місто, двір'}]);
+assert.deepEqual(m.glueRows(undefined),[]);
+console.log('glue ok');
