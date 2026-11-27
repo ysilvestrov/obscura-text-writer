@@ -328,11 +328,24 @@ test.describe('store edition',()=>{
     await expect(dialog.locator('.manuscript-import-part')).toHaveCount(0);  // flat until the checkbox
     await box.check();
     await expect(dialog.locator('.manuscript-import-part')).toHaveCount(4);
+    // Cross-review 1: the import asks first, like every other way to turn the trial on; «Скасувати» sends nothing.
+    await dialog.locator('#manuscript-import-book-title').fill('Пробний маяк');
+    await dialog.locator('#manuscript-import-submit').click();
+    const ask=page.locator('.app-dialog');
+    await expect(ask).toContainText('Увімкнути пробу на «Пробний маяк»?');
+    await ask.getByRole('button',{name:'Скасувати'}).click();
+    expect((await trialOf(request)).state).toBe('available');
     const sent=page.waitForRequest(req=>req.method()==='POST'&&/\/api\/manuscript-import\/[0-9a-f]+$/.test(req.url()));
     await dialog.locator('#manuscript-import-submit').click();
+    await page.locator('.app-dialog').getByRole('button',{name:'Підтвердити'}).click();
     const body=(await sent).postDataJSON();
     expect(body.trial).toBe(true);expect(body.series).toBeUndefined();expect(body.parts).toHaveLength(2);
     await expect(dialog.locator('#manuscript-import-build-memory')).toBeVisible();
+    // Cross-review 2: closing the summary reloads the library, so it no longer offers what the trial took.
+    const reloaded=page.waitForEvent('load');
+    await dialog.locator('#manuscript-import-cancel').click();
+    await reloaded;
+    await expect(page.locator('a[href="/series"]')).toHaveCount(0);
     const trial=await trialOf(request);
     expect([trial.state,trial.kind]).toEqual(['used','story']);
     const book=await(await request.get(`/api/stories/${trial.id}`)).json();

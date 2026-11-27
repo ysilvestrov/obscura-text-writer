@@ -1,3 +1,4 @@
+import {confirmDialog} from './dialogs.js';
 import {t,uiText,uiAttr,diagnostic,getLocale} from './i18n.js';
 // MANUSCRIPT-IMPORT (R-48 PR 2, spec §4.4): the library dialog that turns an author's manuscript into a new book.
 // Steps: file choice → preview (scenes, boundaries, book fields) → summary. The preview creates nothing; until the import or a
@@ -116,7 +117,7 @@ export function installManuscriptImport({api,json,notice,document,appInfo}){
   const list=get('manuscript-import-scenes'),warningsList=get('manuscript-import-warnings'),limit=get('manuscript-import-limit');
   const ratings=Object.fromEntries(AXES.map(axis=>[axis,get('manuscript-import-rating-'+axis)]));
   // pending: the import_id the server still keeps; epoch drops answers of an abandoned step; saving: an import reads the file.
-  let preview=null,pending=null,epoch=0,busy=false,saving=false,view='pick',scenes=[],firstProse=0,reset=false;
+  let preview=null,pending=null,epoch=0,busy=false,saving=false,view='pick',scenes=[],firstProse=0,reset=false,claimed=false;
   const paragraphs=new Map(),expanded=new Set();
   const discard=()=>{
     if(!pending||saving)return;  // a running import reads the file; the server deletes it after a successful import
@@ -374,12 +375,15 @@ export function installManuscriptImport({api,json,notice,document,appInfo}){
       body=applyBody({fingerprint:preview.fingerprint,title:bookTitle.value,language:language.value,content_rating:rating(),scenes,parts:preview.parts,
         include_front_matter:front.checked&&(preview.front_matter||[]).length>0,front_matter:preview.front_matter,series:seriesChoice(),edition:preview.edition,trial_checked:!!trialBox?.checked});
     }catch(error){setStatus(()=>error.message,'error');return}
+    // LONG-PROSE-TRIAL-S07 (cross-review): the import that turns the trial on asks first, like every other way.
+    if(body.trial&&!await confirmDialog(t('trial.confirm',{p0:body.title})))return;
     const mine=epoch,shown=preview;
     busy=saving=true;renderScenes();setStatus(()=>t('manuscript_import.ui.saving'),'muted');
     try{
       const result=await api(`/api/manuscript-import/${shown.import_id}`,json('POST',body));
       if(pending===shown.import_id)pending=null;  // imported: the server already removed the file
       if(mine!==epoch)return;
+      if(body.trial)claimed=true;
       busy=saving=false;renderResult(result,body.title);setStatus(()=>'');show('result');
       resultBox.querySelector('a')?.focus();
     }catch(error){
@@ -432,7 +436,8 @@ export function installManuscriptImport({api,json,notice,document,appInfo}){
   // Every way out (Cancel, Escape, the summary links) resets the dialog; a preview that was not imported is deleted.
   // While an import runs the dialog stays open: closing would delete the file the import is reading.
   dialog.addEventListener('cancel',event=>{if(saving)event.preventDefault()});
-  dialog.addEventListener('close',()=>{restart();button.setAttribute('aria-expanded','false');button.focus()});
+  // After the trial import the page reloads on close: appInfo() keeps one answer per page (LONG-PROSE-TRIAL-S07).
+  dialog.addEventListener('close',()=>{if(claimed){location.reload();return}restart();button.setAttribute('aria-expanded','false');button.focus()});
   cancel.onclick=()=>dialog.close();
   submit.onclick=()=>apply();
   edition().catch(error=>notice(error.message,'error'));
