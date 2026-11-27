@@ -157,3 +157,74 @@ def test_vector_columns_and_sign_vs_bm25():
         assert set(out[column]['sign_vs_bm25']) == {'standalone', 'in_plan'}
         assert set(out[column]['sign_vs_bm25']['standalone']) == {'a_better', 'b_better', 'ties', 'p'}
         assert out[column]['n'] == 2 and out[column]['standalone']['found'] == 1.0  # vectors return every record
+
+
+# ---- F2: capped-rank sign test, paired in-context test, raw rank secondary ------------------------------------------
+
+def _dummies(n):
+    return [rec(f'd{i}', 'facts', f'заповнювач {i}') for i in range(n)]
+
+
+def _at(place):
+    """A ranker that puts the target of the query at `place` (None: never returns it)."""
+    def ranker(pool, text):
+        target = [r for r in pool if r.claim_id in text.split()]
+        return _dummies(80) if place is None else _dummies(place - 1) + target
+    return ranker
+
+
+def _two_targets():
+    return [q('same', 't1 ключ бляшанці'), q('same', 'o0 маяк скеля', claim='o0', source=OTHERS[0])]
+
+
+def test_sign_vs_bm25_caps_ranks_at_k_plus_one():
+    from memory_bench.paraphrase_eval import CAP_K
+    assert CAP_K == 10
+    out = run(_two_targets(), rankers={'bm25': _at(None), 'vec[d]': _at(80)},
+              strategies={'structural_fts': structural_fts, 'structural_vec[d]': structural_fts})['same']['vec[d]']
+    # rank 80 against "not returned" is a tie once both are capped at K + 1 = 11; the raw test still calls it a win
+    assert out['sign_vs_bm25']['standalone'] == {'a_better': 0, 'b_better': 0, 'ties': 2, 'p': 1.0}
+    assert out['sign_vs_bm25_raw']['standalone']['a_better'] == 2
+    near = run(_two_targets(), rankers={'bm25': _at(None), 'vec[d]': _at(10)},
+               strategies={'structural_fts': structural_fts, 'structural_vec[d]': structural_fts})['same']['vec[d]']
+    assert near['sign_vs_bm25']['standalone']['a_better'] == 2 and near['sign_vs_bm25']['in_plan']['a_better'] == 2
+
+
+def test_sign_in_context_vs_bm25_pairs_hits_per_record():
+    from types import SimpleNamespace
+    keep_all = lambda sc, params: SimpleNamespace(record_ids=tuple(r.claim_id for r in sc.records))
+    keep_none = lambda sc, params: SimpleNamespace(record_ids=())
+    out = run(_two_targets(), rankers={'bm25': fts_rank, 'vec[d]': fts_rank},
+              strategies={'structural_fts': keep_none, 'structural_vec[d]': keep_all})['same']
+    test = out['vec[d]']['sign_in_context_vs_bm25']
+    assert set(test) == {'0.75', '0.5', '0.35'} and set(test['0.5']) == {'upper', 'lower'}
+    assert test['0.5']['upper'] == {'a_better': 2, 'b_better': 0, 'ties': 0, 'p': 0.5}  # more hits wins
+    flipped = run(_two_targets(), rankers={'bm25': fts_rank, 'vec[d]': fts_rank},
+                  strategies={'structural_fts': keep_all, 'structural_vec[d]': keep_none})['same']['vec[d]']
+    assert flipped['sign_in_context_vs_bm25']['0.35']['lower']['b_better'] == 2
+    assert 'sign_in_context_vs_bm25' not in out['bm25']
+
+
+def test_sign_in_context_without_later_scene_is_a_tie():
+    from types import SimpleNamespace
+    keep_all = lambda sc, params: SimpleNamespace(record_ids=tuple(r.claim_id for r in sc.records))
+    out = run(_two_targets(), scenes=world(source=5, later=None), rankers={'bm25': fts_rank, 'vec[d]': fts_rank},
+              strategies={'structural_fts': structural_fts, 'structural_vec[d]': keep_all})['same']['vec[d]']
+    assert out['sign_in_context_vs_bm25']['0.75']['upper']['ties'] == 2
+
+
+# ---- F7: rejected by category, targets with fewer than two content words -------------------------------------------
+
+def test_rejected_by_category_and_few_content_words():
+    recs = records() + [rec('th', 'open_threads', 'Хто розбив вікно', scene=1), rec('one', 'facts', 'Острів у тумані', scene=1),
+                        rec('two', 'open_threads', 'Годинник', scene=1)]
+    scenes = [scene(recs, id='s1', number=1), scene(recs, id='s2', number=2, plan=PLAN)]
+    qs = [q('syn', 'x', status='rejected'), q('syn', 'y', status='rejected', claim='th', source='Хто розбив вікно'),
+          q('syn', 'z', status='rejected', claim='two', source='Годинник'), q('syn', 'Жовтий човник', claim='one', source='Острів у тумані'),
+          q('same', 'ключ бляшанці')]
+    out = run(qs, scenes=scenes)
+    syn = out['syn']['bm25']
+    assert syn['rejected_by_category'] == {'facts': 1, 'open_threads': 2} and syn['rejected'] == 3
+    # 'Годинник' has one content word and can never pass 'same'; 'Острів у тумані' has two
+    assert syn['few_content_words'] == 1
+    assert out['same']['bm25']['rejected_by_category'] == {} and out['same']['bm25']['few_content_words'] == 0

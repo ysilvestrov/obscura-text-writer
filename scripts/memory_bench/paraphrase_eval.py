@@ -11,13 +11,15 @@ from dataclasses import replace
 from typing import Callable, Mapping
 
 from .model import Record, SceneInput
-from .paraphrase import FRAME_PARAMS, LEVELS, Query, _eligible, _sha, in_plan_scene, sampling_frame
+from .paraphrase import (FRAME_PARAMS, LEVELS, Query, _eligible, _sha, content_words, in_plan_scene, sampling_frame,
+                         story_names)
 from .ranking import Ranker
 from .strategies import Params, full, record_layers
 
 STEPS = (0.75, 0.5, 0.35)
 CORES = ('upper', 'lower')
 UNRELIABLE_SHARE = 0.10
+CAP_K = 10  # primary sign test: ranks capped at CAP_K + 1, "not returned" counts as CAP_K + 1
 _UNBOUNDED = Params(10 ** 12, 'realistic', 'upper')
 
 
@@ -42,6 +44,11 @@ def sign_test(a: list[int | None], b: list[int | None]) -> dict:
     k = min(a_better, b_better)
     p = min(1.0, 2 * sum(math.comb(n, i) for i in range(k + 1)) / 2 ** n)
     return {'a_better': a_better, 'b_better': b_better, 'ties': len(pairs) - n, 'p': round(p, 4)}
+
+
+def capped(ranks: list[int | None], k: int = CAP_K) -> list[int]:
+    """min(rank, k + 1), None as k + 1: past the top k a place carries no difference (rank 80 ties "not returned")."""
+    return [k + 1 if r is None else min(r, k + 1) for r in ranks]
 
 
 def strategy_name(column: str) -> str:
@@ -75,11 +82,19 @@ def _stats(ranks: list[int | None], n: int) -> dict:
 def evaluate_paraphrases(scenes: list[SceneInput], queries: list[Query], rankers: Mapping[str, Ranker],
                          strategies: Mapping[str, Callable], params_of: Callable[[int, str], Params],
                          steps: tuple[float, ...] = STEPS) -> dict:
-    """{level: {column: {n, rejected, unreliable, standalone, in_plan, sign_vs_bm25}}}.
+    """{level: {column: {n, rejected, rejected_by_category, few_content_words, unreliable, standalone, in_plan,
+    sign_vs_bm25, sign_vs_bm25_raw, sign_in_context_vs_bm25}}}.
 
     params_of(budget_tokens, core_mode) builds the strategy Params. Rejected queries never enter n. Shares are of n:
-    a query without a later scene (in_plan) or a target the ranker did not return counts as not found."""
+    a query without a later scene (in_plan) or a target the ranker did not return counts as not found.
+
+    The per-level counters rejected_by_category and few_content_words (targets with fewer than 2 content words, which
+    can never pass 'same') repeat in every column cell, like rejected. The sign tests pair records (one query per record
+    and level): sign_vs_bm25 on ranks capped at CAP_K + 1 (primary), sign_vs_bm25_raw on raw ranks with "not returned"
+    worst (secondary), sign_in_context_vs_bm25[step][core] on per-record in-context hits of the in_plan form against
+    structural_fts, the strategy of bm25."""
     frame = frame_by_id(scenes)
+    names = story_names(scenes)
     pool_all = [frame[k] for k in sorted(frame)]
     by_scene = {s.scene_id: s for s in scenes}
     totals = {s.scene_id: full(s, _UNBOUNDED).tokens_realistic for s in scenes}
@@ -90,6 +105,14 @@ def evaluate_paraphrases(scenes: list[SceneInput], queries: list[Query], rankers
         ok = sorted((q for q in mine if q.status == 'ok'), key=lambda q: q.claim_id)
         rejected = sum(1 for q in mine if q.status == 'rejected')
         unreliable = bool(rejected + len(ok)) and rejected / (len(ok) + rejected) > UNRELIABLE_SHARE
+        by_category: dict[str, int] = {}
+        for item in mine:
+            if item.status == 'rejected':
+                category = frame[item.claim_id].category if item.claim_id in frame else 'unknown'
+                by_category[category] = by_category.get(category, 0) + 1
+        by_category = dict(sorted(by_category.items()))
+        few = sum(1 for claim in {item.claim_id for item in mine}
+                  if claim in frame and len(content_words(frame[claim].text, names)) < 2)
         targets = []  # per ok query: (query, frame record or None, scene or None)
         for q in ok:
             record = frame.get(q.claim_id)
@@ -99,14 +122,18 @@ def evaluate_paraphrases(scenes: list[SceneInput], queries: list[Query], rankers
             targets.append((q, record, scene))
         out[level] = {}
         ranks: dict[str, dict[str, list[int | None]]] = {}
+        hit_lists: dict[str, dict[str, dict[str, list[int]]]] = {}
         for column, ranker in rankers.items():
             standalone = [rank_of(q.claim_id, ranker(pool_all, q.text)) for q, _, _ in targets]
-            in_plan, hits = [], {str(step): {core: 0 for core in CORES} for step in steps}
+            in_plan, hits = [], {str(step): {core: [] for core in CORES} for step in steps}
             no_scene = 0
             for q, record, scene in targets:
                 if scene is None:
                     no_scene += 1
                     in_plan.append(None)
+                    for step in steps:
+                        for core in CORES:
+                            hits[str(step)][core].append(0)
                     continue
                 query = f'{scene.plan_text} {q.text}'
                 in_plan.append(rank_of(q.claim_id, ranker(pools[scene.scene_id], query)))
@@ -115,17 +142,28 @@ def evaluate_paraphrases(scenes: list[SceneInput], queries: list[Query], rankers
                     budget = int(step * totals[scene.scene_id])
                     for core in CORES:
                         selected = strategies[strategy_name(column)](asked, params_of(budget, core))
-                        hits[str(step)][core] += q.claim_id in selected.record_ids
+                        hits[str(step)][core].append(int(q.claim_id in selected.record_ids))
             n = len(ok)
             ranks[column] = {'standalone': standalone, 'in_plan': in_plan}
+            hit_lists[column] = hits
             out[level][column] = {
-                'n': n, 'rejected': rejected, 'unreliable': unreliable,
+                'n': n, 'rejected': rejected, 'rejected_by_category': by_category, 'few_content_words': few,
+                'unreliable': unreliable,
                 'standalone': _stats(standalone, n),
                 'in_plan': {**_stats(in_plan, n), 'no_scene': no_scene,
-                            'in_context': {s: {core: (hits[s][core] / n if n else 0.0) for core in CORES} for s in hits}}}
+                            'in_context': {s: {core: (sum(hits[s][core]) / n if n else 0.0) for core in CORES}
+                                           for s in hits}}}
         if 'bm25' in ranks:
+            forms = ('standalone', 'in_plan')
             for column in rankers:
                 if column != 'bm25':
-                    out[level][column]['sign_vs_bm25'] = {
-                        form: sign_test(ranks[column][form], ranks['bm25'][form]) for form in ('standalone', 'in_plan')}
+                    mine_r, base_r = ranks[column], ranks['bm25']
+                    cell = out[level][column]
+                    cell['sign_vs_bm25'] = {f: sign_test(capped(mine_r[f]), capped(base_r[f])) for f in forms}
+                    cell['sign_vs_bm25_raw'] = {f: sign_test(mine_r[f], base_r[f]) for f in forms}
+                    # a hit is better: the test takes misses (1 - hit), where smaller wins
+                    cell['sign_in_context_vs_bm25'] = {
+                        s: {core: sign_test([1 - h for h in hit_lists[column][s][core]],
+                                            [1 - h for h in hit_lists['bm25'][s][core]]) for core in CORES}
+                        for s in hit_lists[column]}
     return out

@@ -570,6 +570,8 @@ def test_paraphrases_with_vector_models(synthetic_repo,para_dir,monkeypatch,cach
     cell=report['paraphrases']['levels']['syn']
     assert set(cell)=={'bm25','vec[e5-base]','hybrid[e5-base]'}
     assert set(cell['vec[e5-base]']['sign_vs_bm25'])=={'standalone','in_plan'}
+    assert set(cell['vec[e5-base]']['sign_vs_bm25_raw'])=={'standalone','in_plan'}
+    assert set(cell['hybrid[e5-base]']['sign_in_context_vs_bm25'])=={'0.75','0.5','0.35'}
 
 
 def _memory_story(monkeypatch,n=12):
