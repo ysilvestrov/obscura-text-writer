@@ -491,3 +491,34 @@ def test_cli_rerun_keeps_owner_verdicts(outside_dir, capsys, monkeypatch, story)
     owner.write_text('{bad', encoding='utf-8')  # unreadable: simply written anew
     code, last = _run(capsys, _args(outside_dir, **{'--n': '4', '--seed': '7'}))
     assert code == 0 and last['owner_file'] == 'written' and set(_verdicts(owner)) == {None}
+
+
+# ---- F8: generator -> owner -> eval round trip on the synthetic story ------------------------------------------------
+
+def test_round_trip_generator_owner_eval(synthetic_repo, outside_dir, capsys, monkeypatch):
+    import memory_retrieval_bench as bench
+    from memory_bench.paraphrase import set_verdict
+    repo, story_id, _ = synthetic_repo
+    _env(outside_dir)
+    SpendLedger.open(outside_dir / 'spend.json', {'anthropic': 5.0}, create=True)
+    monkeypatch.setattr(cli, 'make_client', lambda key: SmartClient())
+    argv = _args(outside_dir, **{'--data': str(repo.root), '--story': story_id, '--cloud-stories': story_id})
+    code, first = _run(capsys, argv)
+    assert code == 0 and first['targets'] >= 1 and first['owner_file'] == 'written'
+    out = outside_dir / 'out'
+    owner = out / 'owner-check.json'
+    count = len(_verdicts(owner))
+    assert count == min(20, sum(first['queries_ok'].values())) and count >= 1
+    for i in range(count):
+        set_verdict(owner, i, 'yes')
+    parsed = bench.build_parser().parse_args(['--data', str(repo.root), '--synthetic', '', '--paraphrases', str(out)])
+    bench.set_tokenizer(parsed.tokenizer)
+    report, error = bench.run(parsed)
+    assert error is None and set(report['paraphrases']['levels']) == set(LEVELS)
+    assert report['paraphrases']['owner'] == {'yes': count, 'no': 0, 'invalid': 0}
+    assert report['paraphrases']['meta']['owner_items'] == count and report['paraphrases']['snapshot'] == first['snapshot']
+    set_bytes, owner_bytes = (out / 'set.json').read_bytes(), owner.read_bytes()
+    code, again = _run(capsys, argv)  # from the cache
+    assert code == 0 and again['usd_spent'] == 0 and again['owner_file'] == 'kept'
+    assert (out / 'set.json').read_bytes() == set_bytes and owner.read_bytes() == owner_bytes
+    assert set(_verdicts(owner)) == {'yes'}
