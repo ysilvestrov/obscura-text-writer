@@ -93,8 +93,8 @@ def test_timeline_note_counts_untaken_past_and_skips_taken():
     assert 'p8' in result.selected_claim_ids and result.timeline_note == 'Не показано записів: 2 (сцени 3, 5).'
     assert 'Сцена 8:' in result.text
     # The smallest section counts every old timeline entry, past included.
-    assert 'Не показано записів: 3 (сцени 3, 5, 8).' in select_memory(inp((old('p3', 3, 'a'), old('p8', 8, 'a'), old('t5', 5)), number=40),
-        minimal_chars(inp((old('p3', 3, 'a'), old('p8', 8, 'a'), old('t5', 5)), number=40))).text
+    smallest = inp((old('p3', 3, 'a'), old('p8', 8, 'a'), old('t5', 5)), number=40)
+    assert 'Не показано записів: 3 (сцени 3, 5, 8).' in select_memory(smallest, minimal_chars(smallest)).text
 
 
 @pytest.mark.req('MEMORY-ENTITIES')
@@ -143,8 +143,15 @@ def test_every_past_entry_is_taken_covered_or_counted_under_any_budget():
     entries = (old('p3', 3, 'a'), old('p8', 8, 'a')) + tuple(item(f't{n}', 'timeline', f'Подія номер {n} у місті', scene=n) for n in range(25, 40))
     summary = SummaryCandidate('range:1-10', 'v1', 1, 10, '— Підсумок сцен 1–10: ' + 'довгий опис ' * 20)
     selection = dataclasses.replace(inp(entries, number=40), summaries=(summary,))
+    popped = 0
     for budget in range(minimal_chars(selection), 2500, 5):
         result = select_memory(selection, budget)
         covered = 2 if result.summaries else 0
         assert len(result.text) <= budget
+        # `- 1`: the one summary candidate is counted in layers or dropped 'summary' but is not an entry.
         assert sum(result.layers.values()) + sum(result.dropped.values()) - 1 + covered == len(entries)
+        if not result.summaries:
+            # MEMORY-SELECT І6: a summary that did not fit or was trimmed returns each entry of its block to its own layer.
+            assert result.layers['past'] + result.dropped['past'] == 2 and result.layers['timeline'] + result.dropped['timeline'] == 15
+            popped += result.dropped['summary'] == 1 and result.layers['past'] == 0
+    assert popped  # the sweep reaches budgets where the summary is trimmed and its past entries are not taken

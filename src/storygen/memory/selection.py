@@ -254,7 +254,8 @@ def select_memory(inp: SelectionInput, char_budget: int) -> MemorySelection:
             # Its block's entries were neither taken nor counted: beyond the window they join the note, inside it they
             # are dropped by the budget.
             del summaries[item.block_key]
-            dropped['timeline']+=sum(1 for entry in entries if entry.source_scene is not None and item.first_number<=entry.source_scene<=item.last_number)
+            for name in ('timeline','past'):  # MEMORY-SELECT І6: each entry in `dropped` of its own layer
+                dropped[name]+=sum(1 for entry in layers[name] if entry.source_scene is not None and item.first_number<=entry.source_scene<=item.last_number)
         else:chosen.discard(item.claim_id)
         text=_render(inp,chosen,note(),summaries.values())
     warnings=tuple(SUMMARY_STALE_WARNING.format(first=s.first_number,last=s.last_number) for s in inp.stale_summaries
