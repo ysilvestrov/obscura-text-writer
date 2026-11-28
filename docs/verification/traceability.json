@@ -6299,7 +6299,8 @@
         "tests/generation/test_memory_entities_staleness.py::test_author_mark_equal_to_the_event_does_not_stale",
         "tests/generation/test_memory_entities_staleness.py::test_author_override_and_clearing_stale_the_version",
         "tests/generation/test_memory_entities_staleness.py::test_mark_of_a_claim_absent_before_the_scene_does_not_stale",
-        "tests/generation/test_memory_entities_staleness.py::test_old_snapshot_without_the_selector_is_not_compared"
+        "tests/generation/test_memory_entities_staleness.py::test_old_snapshot_without_the_selector_is_not_compared",
+        "tests/generation/test_memory_entities_staleness.py::test_current_head_stays_fresh_while_its_snapshot_reports_the_change"
       ]
     },
     {

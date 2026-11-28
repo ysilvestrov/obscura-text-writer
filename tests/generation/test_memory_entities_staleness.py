@@ -76,27 +76,24 @@ def test_shadowed_model_mark_does_not_stale(tmp_path):
     with_event(repo,scene,journal,prose,event)
     selected=build_context(repo,scene.id,'brief',tight(repo,scene)).dependency_snapshot
     mark(repo,scene.story_id,{event.claim_id:(['B'],[])})
-    assert entities.entity_resolver(repo.context_view(scene.story_id),repo.get_story(scene.story_id)).marks
-    from storygen.storage.memory_entities import entities_value
-    assert entities_value(repo.context_view(scene.story_id),scene.id)=={}
+    assert repo.get_story(scene.story_id).memory_entities
+    assert entities.entities_value(repo.context_view(scene.story_id),scene.id)=={}
     assert changed(repo,scene.story_id,selected)==[]
 
 
 @pytest.mark.req('MEMORY-ENTITIES')
 def test_author_mark_equal_to_the_event_does_not_stale(tmp_path):
-    from storygen.storage.memory_entities import entities_value
     repo,scene,journal,prose,_=prepared(tmp_path)
     event=_add_event('facts','Факт з учасником від події',prose.id,'вдома',901,participant_ids=['A'])
     with_event(repo,scene,journal,prose,event)
     selected=build_context(repo,scene.id,'brief',tight(repo,scene)).dependency_snapshot
     repo.update_memory_entities(scene.story_id,event.claim_id,['A'],[],revision(repo,scene.story_id))
-    assert entities_value(repo.context_view(scene.story_id),scene.id)=={}
+    assert entities.entities_value(repo.context_view(scene.story_id),scene.id)=={}
     assert changed(repo,scene.story_id,selected)==[]
 
 
 @pytest.mark.req('MEMORY-ENTITIES')
 def test_author_override_and_clearing_stale_the_version(tmp_path):
-    from storygen.storage.memory_entities import entities_value
     repo,scene,journal,prose,_=prepared(tmp_path)
     event=_add_event('facts','Факт з учасником від події',prose.id,'вдома',901,participant_ids=['A'])
     with_event(repo,scene,journal,prose,event)
@@ -108,23 +105,22 @@ def test_author_override_and_clearing_stale_the_version(tmp_path):
     # a model mark is cleared, an author one is not; a model mark over a participant-less record goes and comes back to {}
     target=claim(journal,COAST)
     repo.apply_entity_marks(sid,{target:(['A'],[])},revision(repo,sid))
-    assert entities_value(repo.context_view(sid),scene.id)[target]=='p=A;l='
+    assert entities.entities_value(repo.context_view(sid),scene.id)[target]=='p=A;l='
     repo.clear_entity_marks(sid,revision(repo,sid))
-    assert target not in entities_value(repo.context_view(sid),scene.id)
+    assert target not in entities.entities_value(repo.context_view(sid),scene.id)
     repo.update_memory_entities(sid,event.claim_id,[],None,revision(repo,sid))
-    assert entities_value(repo.context_view(sid),scene.id)=={}
+    assert entities.entities_value(repo.context_view(sid),scene.id)=={}
     assert changed(repo,sid,selected)==[]
 
 
 @pytest.mark.req('MEMORY-ENTITIES')
 def test_mark_of_a_claim_absent_before_the_scene_does_not_stale(tmp_path):
-    from storygen.storage.memory_entities import entities_value
     repo,scene,journal,prose,_=prepared(tmp_path)
     first=repo.list_scenes(scene.story_id)[0]
     claim_id=claim(journal,COAST)
     entities.apply_entity_marks(repo,scene.story_id,{claim_id:(['B'],[])},revision(repo,scene.story_id))
-    assert entities_value(repo.context_view(scene.story_id),first.id)=={}
-    assert entities_value(repo.context_view(scene.story_id),scene.id)[claim_id]=='p=B;l='
+    assert entities.entities_value(repo.context_view(scene.story_id),first.id)=={}
+    assert entities.entities_value(repo.context_view(scene.story_id),scene.id)[claim_id]=='p=B;l='
 
 
 @pytest.mark.req('MEMORY-ENTITIES')
@@ -135,3 +131,16 @@ def test_old_snapshot_without_the_selector_is_not_compared(tmp_path):
     assert not any(s.field==FIELD for s in old.selectors)
     mark(repo,scene.story_id,{claim(journal,COAST):(['B'],[])})
     assert changed(repo,scene.story_id,old)==[]
+
+
+@pytest.mark.req('MEMORY-ENTITIES')
+def test_current_head_stays_fresh_while_its_snapshot_reports_the_change(tmp_path):
+    # VALID-LINKS: a current head is judged by link fingerprints, which do not include the overlay.
+    repo,scene,journal,_,_=prepared(tmp_path)
+    context=build_context(repo,scene.id,'brief',tight(repo,scene))
+    brief=repo.save_version(scene.story_id,scene.id,'brief','Бриф.',context.input_refs,dependency_snapshot=context.dependency_snapshot)
+    repo.set_head(scene.id,'brief',brief.id,repo.get_scene(scene.id).revision)
+    assert repo.get_version(brief.id).stale is False
+    entities.apply_entity_marks(repo,scene.story_id,{claim(journal,COAST):(['B'],[])},revision(repo,scene.story_id))
+    assert repo.get_version(brief.id).stale is False
+    assert len(changed(repo,scene.story_id,context.dependency_snapshot))==1
