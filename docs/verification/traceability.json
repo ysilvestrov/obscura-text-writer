@@ -6254,6 +6254,27 @@
       ]
     },
     {
+      "id": "MEMORY-ENTITIES-S06",
+      "requirement": "MEMORY-ENTITIES",
+      "scope": "Правка накладки: CAS на ревізію, запис автора, пакет моделі не перезаписує автора, скасування лише моделі, відмови (запис, картка, локація, учасники стану, ліміт), book_claims, resolver, HTTP. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/storage/test_memory_entities_store.py::test_author_edit_is_stored_with_cas_and_without_journal_changes",
+        "tests/storage/test_memory_entities_store.py::test_author_edit_replaces_both_fields",
+        "tests/storage/test_memory_entities_store.py::test_location_none_removes_the_mark",
+        "tests/storage/test_memory_entities_store.py::test_stale_revision_is_a_conflict",
+        "tests/storage/test_memory_entities_store.py::test_unknown_claim_card_or_location_is_refused",
+        "tests/storage/test_memory_entities_store.py::test_author_participants_on_a_state_are_refused",
+        "tests/storage/test_memory_entities_store.py::test_model_batch_never_overwrites_the_author",
+        "tests/storage/test_memory_entities_store.py::test_model_batch_stores_no_participants_for_a_state",
+        "tests/storage/test_memory_entities_store.py::test_model_batch_with_an_unknown_claim_is_refused_whole",
+        "tests/storage/test_memory_entities_store.py::test_clear_removes_only_model_marks",
+        "tests/storage/test_memory_entities_store.py::test_too_many_marks_are_refused",
+        "tests/storage/test_memory_entities_store.py::test_book_claims_take_timeline_and_records_of_every_head",
+        "tests/storage/test_memory_entities_store.py::test_entity_resolver_uses_cards_and_merges",
+        "tests/storage/test_memory_entities_store.py::test_memory_entities_http"
+      ]
+    },
+    {
       "id": "MEMORY-SUMMARY-S01",
       "requirement": "MEMORY-SUMMARY",
       "scope": "Блоки пласкої книги й книги з частинами, кошик, пороги рекомендації й заміни, старий payload.",

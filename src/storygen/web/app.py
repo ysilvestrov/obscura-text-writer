@@ -179,6 +179,8 @@ def create_app(settings: AppSettings, *, gateway_factory=None,evaluator_factory=
     app.include_router(settings_router)
     from .routes_rating import router as rating_router
     app.include_router(rating_router)
+    from .routes_memory_entities import router as memory_entities_router
+    app.include_router(memory_entities_router)
     from .routes_app_info import router as app_info_router
     app.include_router(app_info_router)
     from .routes_app_window import router as app_window_router
