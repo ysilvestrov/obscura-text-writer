@@ -6237,6 +6237,23 @@
       ]
     },
     {
+      "id": "MEMORY-ENTITIES-S05",
+      "requirement": "MEMORY-ENTITIES",
+      "scope": "Накладка сутностей: пріоритет автор/подія/модель для кожного поля, відкидання невідомих ID, канонізація локацій, стан лише з локаціями, найслабше джерело, resolver, незмінний payload без накладки, межі розмітки, candidate_events. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/memory/test_entities_effective.py::test_author_mark_wins_over_the_event_even_when_empty",
+        "tests/memory/test_entities_effective.py::test_event_wins_over_a_model_mark_and_model_fills_the_gap",
+        "tests/memory/test_entities_effective.py::test_unknown_participant_is_dropped_before_the_non_empty_check",
+        "tests/memory/test_entities_effective.py::test_state_takes_only_locations_from_the_mark",
+        "tests/memory/test_entities_effective.py::test_locations_follow_merges",
+        "tests/memory/test_entities_effective.py::test_source_is_the_weakest_contributor",
+        "tests/memory/test_entities_effective.py::test_resolver_replaces_item_entities_and_bare_ignores_marks",
+        "tests/memory/test_entities_effective.py::test_story_without_marks_keeps_its_payload_byte_for_byte",
+        "tests/memory/test_entities_effective.py::test_mark_rejects_duplicates_and_too_many_marks",
+        "tests/memory/test_entities_effective.py::test_candidate_events_cover_candidate_claim_ids"
+      ]
+    },
+    {
       "id": "MEMORY-SUMMARY-S01",
       "requirement": "MEMORY-SUMMARY",
       "scope": "Блоки пласкої книги й книги з частинами, кошик, пороги рекомендації й заміни, старий payload.",

@@ -32,6 +32,20 @@ class ContentRating(DomainModel):
     themes: Literal[0,1,2]
 
 
+class MemoryEntityMark(DomainModel):
+    """MEMORY-ENTITIES overlay of one memory record: participants and locations set by the model or the author."""
+    participant_ids: list[str] = Field(default_factory=list, max_length=200)
+    location_ids: list[str] = Field(default_factory=list, max_length=200)
+    source: Literal['model','author']
+
+    @model_validator(mode='after')
+    def _check_ids(self):
+        for ids in (self.participant_ids, self.location_ids):
+            if len(ids)!=len(set(ids)) or any(not i.strip() for i in ids):
+                raise ValueError('Некоректна розмітка сутностей')
+        return self
+
+
 class StoryCreate(DomainModel):
     title: str = Field(min_length=1,max_length=300)
     target_words: int = Field(default=7000,ge=5000)
@@ -78,6 +92,8 @@ class Story(StoryCreate):
     characters_version_id: str | None = None
     # Author marks for memory selection (#60, MEMORY-SELECT-S08); act only when selection runs.
     memory_kind_overrides: dict[str,Literal['core','atmosphere']] = Field(default_factory=dict,max_length=10000)
+    # MEMORY-ENTITIES: overlay of participants and locations by claim_id; empty is not serialised (old payloads unchanged).
+    memory_entities: dict[str,MemoryEntityMark] = Field(default_factory=dict,max_length=20000,exclude_if=lambda value: not value)
     # BOOK-STRUCTURE: parts and arcs, and the arc of each scene; None is one implicit part and arc.
     book_structure: BookStructure | None = None
     # A string is one arc; a list of two or more arcs of one part is a meeting scene (read via book.structure.scene_arc_list).
