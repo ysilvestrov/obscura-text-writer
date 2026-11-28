@@ -11,14 +11,14 @@ class DependencySelector(DependencyModel):
     kind: Literal['story', 'scene', 'head', 'source', 'order']
     owner_id: str
     field: str
-    expected: str | int | bool | list[str] | dict[str,str] | None  # dict: scene/memory_kind_overrides, scene/character_names, story/timeline_summary_heads, story/memory_merge_heads
+    expected: str | int | bool | list[str] | dict[str,str] | None  # dict: scene/memory_kind_overrides, scene/memory_entities, scene/character_names, story/timeline_summary_heads, story/memory_merge_heads
     future_count: int | None = Field(default=None,ge=0,le=1000)
 
     @model_validator(mode='after')
     def finite_selector(self):
         allowed={
             'story': {'style_version_id','canon_version_id','characters_version_id','scene_count','tracked_characters','timeline_summary_heads','memory_merge_heads'},
-            'scene': {'title','target_words','character_ids','beats','memory_projection_policy','content_rating','memory_day_key','memory_kind_overrides','prose_language','narrator','character_names','tracked_characters','flashback','flashback_facts','series_start','series_future','series_bible','location_ids','location_neighbourhood','location_context'},
+            'scene': {'title','target_words','character_ids','beats','memory_projection_policy','content_rating','memory_day_key','memory_kind_overrides','memory_entities','prose_language','narrator','character_names','tracked_characters','flashback','flashback_facts','series_start','series_future','series_bible','location_ids','location_neighbourhood','location_context'},
             'head': {'plan','brief','draft','prose','memory'},
             'source': {'source_plan','source_characters','source_preamble'},
             'order': {'all','prefix','narrative_window'},

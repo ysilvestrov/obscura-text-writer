@@ -276,16 +276,19 @@ class NarrowCatalog:
 
 
 def narrow_catalog(journal, cast, tracked, names, prose: str, scene_number: int, source_numbers: Mapping[str,int], lineage_numbers: Mapping[int,int] | None = None,
-        place=()) -> NarrowCatalog:
+        place=(), entities=None) -> NarrowCatalog:
     """Claims the memory stage still sees when its full catalog overflows (MEMORY-SELECT-S07): the core and every thread,
     states of the cast and general states, up to NARROW_FTS_STATES other states ranked by the scene prose, facts that
-    mention a participant and the timeline of the last TIMELINE_WINDOW scenes."""
+    mention a participant and the timeline of the last TIMELINE_WINDOW scenes. entities: the MEMORY-ENTITIES resolver whose
+    effective participants and locations replace the event's own; without it the event fields are used as they are."""
     from .journal import replay_memory
     active=list(replay_memory(journal).values())
     every,cast=set(tracked),set(cast)
     stems=tuple(s for cid in sorted(cast) for s in name_stems(names.get(cid,'')))
     keep=set();pool=[];mutable=immutable=absent=0;place=frozenset(place)
     for event in active:
+        if entities:e=entities.of(event.claim_id,event.category,event.participant_ids,event.location_ids);people,places=e.participant_ids,e.location_ids
+        else:people,places=event.participant_ids,event.location_ids
         if event.slot and event.character_ids[0] in every:
             # Core slots: a participant's is always shown; an absent tracked character's is in neither catalog (nor in
             # the bounds), so narrowing does not hide it.
@@ -293,12 +296,12 @@ def narrow_catalog(journal, cast, tracked, names, prose: str, scene_number: int,
             else:absent+=1
         elif event.category=='open_threads':keep.add(event.claim_id)
         elif event.category=='character_states':
-            if not event.character_ids or cast&set(event.character_ids) or place.intersection(event.location_ids):keep.add(event.claim_id);mutable+=1
+            if not event.character_ids or cast&set(event.character_ids) or place.intersection(places):keep.add(event.claim_id);mutable+=1
             else:pool.append(event)
         elif event.category=='facts':
             # MEMORY-ENTITIES: a participant of the scene, or a mention when the fact has no participants.
-            ours=bool(cast&set(event.participant_ids)) if event.participant_ids else mentions(event.text,stems)
-            if ours or place.intersection(event.location_ids):keep.add(event.claim_id);immutable+=1
+            ours=bool(cast&set(people)) if people else mentions(event.text,stems)
+            if ours or place.intersection(places):keep.add(event.claim_id);immutable+=1
         elif event.category=='timeline':
             number=source_numbers.get(event.source_version_id)
             if number is None or scenes_back(scene_number,number,lineage_numbers)<=TIMELINE_WINDOW:keep.add(event.claim_id);immutable+=1
