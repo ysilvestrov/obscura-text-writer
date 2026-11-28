@@ -51,7 +51,7 @@ def test_selected_version_records_the_selector_and_goes_stale_on_a_mark(tmp_path
     assert changed(repo,scene.story_id,selected)==[]
     entities.apply_entity_marks(repo,scene.story_id,{claim(journal,COAST):(['B'],[])},revision(repo,scene.story_id))
     (change,)=changed(repo,scene.story_id,selected)
-    assert change.current=={claim(journal,COAST):'p=B;l='}
+    assert change.current=={claim(journal,COAST):'[["B"],[]]'}
 
 
 @pytest.mark.req('MEMORY-ENTITIES')
@@ -66,7 +66,7 @@ def test_narrowed_memory_stage_records_the_selector(tmp_path):
     fact=claim(journal,'Скеля стоїть біля бухти')
     mark(repo,scene.story_id,{fact:(['A'],[])})
     (change,)=changed(repo,scene.story_id,narrowed.dependency_snapshot)
-    assert change.current=={fact:'p=A;l='}
+    assert change.current=={fact:'[["A"],[]]'}
 
 
 @pytest.mark.req('MEMORY-ENTITIES')
@@ -101,11 +101,11 @@ def test_author_override_and_clearing_stale_the_version(tmp_path):
     selected=build_context(repo,scene.id,'brief',tight(repo,scene)).dependency_snapshot
     repo.update_memory_entities(sid,event.claim_id,['B'],[],revision(repo,sid))
     (change,)=changed(repo,sid,selected)
-    assert change.current=={event.claim_id:'p=B;l='}
+    assert change.current=={event.claim_id:'[["B"],[]]'}
     # a model mark is cleared, an author one is not; a model mark over a participant-less record goes and comes back to {}
     target=claim(journal,COAST)
     repo.apply_entity_marks(sid,{target:(['A'],[])},revision(repo,sid))
-    assert entities.entities_value(repo.context_view(sid),scene.id)[target]=='p=A;l='
+    assert entities.entities_value(repo.context_view(sid),scene.id)[target]=='[["A"],[]]'
     repo.clear_entity_marks(sid,revision(repo,sid))
     assert target not in entities.entities_value(repo.context_view(sid),scene.id)
     repo.update_memory_entities(sid,event.claim_id,[],None,revision(repo,sid))
@@ -120,7 +120,7 @@ def test_mark_of_a_claim_absent_before_the_scene_does_not_stale(tmp_path):
     claim_id=claim(journal,COAST)
     entities.apply_entity_marks(repo,scene.story_id,{claim_id:(['B'],[])},revision(repo,scene.story_id))
     assert entities.entities_value(repo.context_view(scene.story_id),first.id)=={}
-    assert entities.entities_value(repo.context_view(scene.story_id),scene.id)[claim_id]=='p=B;l='
+    assert entities.entities_value(repo.context_view(scene.story_id),scene.id)[claim_id]=='[["B"],[]]'
 
 
 @pytest.mark.req('MEMORY-ENTITIES')

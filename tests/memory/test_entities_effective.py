@@ -96,4 +96,4 @@ def test_candidate_events_cover_candidate_claim_ids():
     journal = MemoryJournal(schema_version=3, source_prose_ids=['p1'], events=[fact, stamp, thread, close])
     found = candidate_events(journal)
     assert set(found) == candidate_claim_ids(journal)
-    assert {fact.claim_id, stamp.claim_id, thread.claim_id} <= set(found)
+    assert found == {fact.claim_id: fact, stamp.claim_id: stamp, thread.claim_id: close}

@@ -6277,7 +6277,10 @@
         "tests/storage/test_memory_entities_store.py::test_entity_resolver_uses_cards_and_merges",
         "tests/storage/test_memory_entities_store.py::test_empty_model_mark_removes_an_existing_model_mark",
         "tests/storage/test_memory_entities_store.py::test_empty_model_mark_without_an_existing_mark_is_a_no_op",
-        "tests/storage/test_memory_entities_store.py::test_memory_entities_http"
+        "tests/storage/test_memory_entities_store.py::test_memory_entities_http",
+        "tests/storage/test_memory_entities_store.py::test_mark_limit_counts_the_finished_batch_not_the_iteration_order",
+        "tests/storage/test_memory_entities_store.py::test_selector_text_is_unambiguous_for_ids_with_commas",
+        "tests/storage/test_memory_entities_store.py::test_entities_value_never_evaluates_freshness"
       ]
     },
     {

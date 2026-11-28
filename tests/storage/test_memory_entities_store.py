@@ -251,3 +251,37 @@ def test_memory_entities_http(tmp_path):
         cleared=client.post(url+'/clear',json={'expected_revision':now})
         assert cleared.status_code==200 and cleared.json()['revision']==now
         assert client.post(url+'/clear',json={'expected_revision':rev}).status_code==409
+
+
+@pytest.mark.req('MEMORY-ENTITIES')
+@pytest.mark.parametrize('order',['new_first','removal_first'])
+def test_mark_limit_counts_the_finished_batch_not_the_iteration_order(tmp_path,monkeypatch,order):
+    repo,scene,journal,_,l1=prepared(tmp_path)
+    sid=scene.story_id;f1=claim(journal,LIGHTHOUSE);f2=claim(journal,COAST)
+    monkeypatch.setattr(entities,'MAX_ENTITY_MARKS',1)
+    repo.apply_entity_marks(sid,{f1:(['A'],[])},revision(repo,sid))
+    batch={f2:(['B'],[]),f1:([],[])} if order=='new_first' else {f1:([],[]),f2:(['B'],[])}
+    story,applied=repo.apply_entity_marks(sid,batch,revision(repo,sid))
+    assert set(story.memory_entities)=={f2} and set(applied)=={f1,f2}
+    with pytest.raises(ValueError,match='Забагато записів розмітки сутностей'):
+        repo.apply_entity_marks(sid,{f1:(['A'],[])},revision(repo,sid))
+    assert set(repo.get_story(sid).memory_entities)=={f2}
+
+
+@pytest.mark.req('MEMORY-ENTITIES')
+def test_selector_text_is_unambiguous_for_ids_with_commas():
+    assert entities.selector_text(['A,B'],[])!=entities.selector_text(['A','B'],[])
+    assert entities.selector_text([],['x;l=y'])!=entities.selector_text([],['x'])
+    assert entities.selector_text(['A'],[])!=entities.selector_text([],['A'])
+
+
+@pytest.mark.req('MEMORY-ENTITIES')
+def test_entities_value_never_evaluates_freshness(tmp_path,monkeypatch):
+    repo,scene,journal,_,_=prepared(tmp_path)
+    sid=scene.story_id
+    repo.apply_entity_marks(sid,{claim(journal,COAST):(['B'],[])},revision(repo,sid))
+    view=repo.context_view(sid)
+    def boom(*a,**k):raise AssertionError('freshness evaluated by a selector read')
+    monkeypatch.setattr(type(view),'is_stale',boom)
+    monkeypatch.setattr(type(view),'peek_version_stale',boom)
+    assert entities.entities_value(view,scene.id)=={claim(journal,COAST):entities.selector_text(['B'],[])}

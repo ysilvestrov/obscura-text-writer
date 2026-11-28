@@ -1,4 +1,5 @@
 """CAS for the memory-entities overlay (MEMORY-ENTITIES-S06): author edits and model batches; no journal, prose or scene writes."""
+import json
 from typing import Literal, Mapping
 
 from ..domain import MemoryEntityMark, RevisionConflict, Story
@@ -24,17 +25,26 @@ def book_claims(view,story_id: str) -> dict:
     return found
 
 
-def _known_cards(view,story) -> frozenset[str]:
+def _known_cards(view,story,peek=False) -> frozenset[str]:
+    """Card IDs of the current characters version; peek=True reads the blob without evaluating freshness (selector reads)."""
     from ..characters.models import load_characters
     if not story.characters_version_id:return frozenset()
+    if peek:
+        ref=view.peek_version(story.characters_version_id)
+        return frozenset(c.id for c in load_characters(view.read_blob(ref.relative_path,ref.sha256).decode('utf-8')))
     return frozenset(c.id for c in load_characters(view.read_text(story.characters_version_id)))
 
 
-def entity_resolver(view,story):
+def entity_resolver(view,story,peek=False):
     """The resolver of the story's overlay: cards of the current characters version, merges of the location cards."""
     from ..memory.entities import EntityResolver
     merged={c.id:c.merged_into for c in view.locations.values()}
-    return EntityResolver(story.memory_entities,_known_cards(view,story),merged)
+    return EntityResolver(story.memory_entities,_known_cards(view,story,peek),merged)
+
+
+def selector_text(participant_ids,location_ids) -> str:
+    """Selector value of one record: a JSON pair of lists, so IDs containing separators stay unambiguous."""
+    return json.dumps([list(participant_ids),list(location_ids)],ensure_ascii=False,separators=(',',':'))
 
 
 def entities_value(view,scene_id) -> dict[str,str]:
@@ -51,13 +61,13 @@ def entities_value(view,scene_id) -> dict[str,str]:
     if journal is None:return {}
     try:events=candidate_events(journal)
     except ValueError:return {}
-    resolver=entity_resolver(view,story);bare=resolver.bare();found={}
+    resolver=entity_resolver(view,story,peek=True);bare=resolver.bare();found={}
     for claim_id in sorted(events):
         if claim_id not in story.memory_entities:continue
         e=events[claim_id];args=(claim_id,e.category,e.participant_ids,e.location_ids)
         now,plain=resolver.of(*args),bare.of(*args)
         if (now.participant_ids,now.location_ids)!=(plain.participant_ids,plain.location_ids):
-            found[claim_id]=f"p={','.join(now.participant_ids)};l={','.join(now.location_ids)}"
+            found[claim_id]=selector_text(now.participant_ids,now.location_ids)
     return found
 
 
@@ -113,8 +123,8 @@ def apply_entity_marks(repo,story_id: str,marks: Mapping[str,tuple[list[str],lis
                 continue
             mark=MemoryEntityMark(participant_ids=people,location_ids=list(places),source='model')
             if current==mark:continue
-            if current is None and len(stored)>=MAX_ENTITY_MARKS:raise ValueError('Забагато записів розмітки сутностей')
             stored[claim_id]=mark;applied.append(claim_id)
+        if len(stored)>MAX_ENTITY_MARKS:raise ValueError('Забагато записів розмітки сутностей')
         return applied
     return _transaction(repo,story_id,expected_revision,change)
 
