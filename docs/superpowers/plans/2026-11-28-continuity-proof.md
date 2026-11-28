@@ -6,14 +6,16 @@
 
 **Architecture:** пакет `scripts/continuity_bench/` за зразком `scripts/editor_bench/` і `scripts/memory_bench/`. Продуктовий код (розбір рукопису, побудова пам'яті, витяг карток, відбір пам'яті, знімок серії, провайдер) імпортується зі `storygen` без сховища й вебзастосунку. Нові частини — лише в стенді: промпт перевірки, план сцени з прози, суддя, метрики. Тексти, кеш відповідей і облік витрат лежать у `C:\tmp\continuity-bench\` і ніколи не потрапляють у репозиторій.
 
-**Tech Stack:** Python 3.12, `storygen` (src), OpenAI SDK через продуктовий `build_openai_client` (OpenRouter), pytest.
+**Tech Stack:** Python 3.12, `storygen` (src), продуктовий провайдер `anthropic` з R-53 ([#357](https://github.com/ysilvestrov/obscura-text-writer/issues/357)), pytest.
+
+**Передумова:** R-53 (провайдери Anthropic та OpenAI напряму) змерджено в `main`. Задача 3 бере інтерфейс виклику, який визначить специфікація R-53; до її злиття план не виконується.
 
 **Spec:** [docs/superpowers/specs/2026-11/2026-11-28-continuity-proof-design.md](../specs/2026-11/2026-11-28-continuity-proof-design.md)
 
 ## Global Constraints
 
 - Тексти книжок не комітяться. У репозиторії лежать маніфест (URL + SHA-256), латки, касти й звіт (бріф 4.1).
-- Модель за замовчуванням — `anthropic/claude-sonnet-5.5` через OpenRouter (рішення виконавця плану; див. «Рішення плану»). Ключ — `OPENROUTER_API_KEY` з `C:\Projects\text-generator\.env`.
+- Модель за замовчуванням — `claude-sonnet-5-5` через продуктовий провайдер `anthropic` (R-53). Ключ — `ANTHROPIC_API_KEY` з `C:\Projects\text-generator\.env`.
 - Загальний ліміт етапу 1 — **$50** за обліком `C:\tmp\continuity-bench\spend.json`. Перед кожною платною серією — `--plan` з оцінкою і згода власника в чаті. Якщо прогноз перевищує залишок, запуск відмовляє (бріф, рішення 5).
 - Відкладений набір: латки лежать лише в `C:\tmp\continuity-bench\heldout\`, доки не відбулися ворота; запуск `--gate` можливий один раз (маркер-файл) і лише після того, як власник затвердив пороги (вже затверджено 28.11.2026).
 - Пороги — дослівно з бріфу 6.3: повнота ≥ 0,80; між книжками ≥ 0,70; за кожним типом ≥ 0,60; точність ≥ 0,70; хибні тривоги на контролі ≤ 1 на 10 тис. слів; дискусійні ≤ 1 на 10 тис. слів; чесність цитат 1,00; перевага над K0: повнота +0,15 або та сама за меншої вартості.
@@ -24,8 +26,8 @@
 
 ## Рішення плану (виконавець плану, на перевірку власнику)
 
-- **Провайдер — OpenRouter, а не прямий Anthropic API.** У продукті немає провайдера Anthropic (`ProviderSettings.provider ∈ {local, openrouter, venice}`), тому прогін A однаково піде через OpenRouter. B на тому самому шляху не потребує нового коду провайдера, і результат B переноситься в A. Мінус: немає Batch API (−50%) і явного кешування промптів; економію дає дисковий кеш відповідей.
-- **Модель — Sonnet 5.5** ($2 / $10 за 1 млн токенів у Anthropic; ціну OpenRouter `--plan` бере з його API моделей). Opus 5.5 удвічі дорожчий ($4 / $20) і з'їв би ліміт на воротах. Якщо власник хоче Opus для воріт, потрібно ~ +$15.
+- **Провайдер — прямий Anthropic через продукт (рішення власника 28.11.2026).** Стенд і прогін A йдуть тим самим продуктовим провайдером `anthropic`, який додає R-53. Якщо специфікація R-53 дасть кешування промптів чи Batch API, задача 3 їх використовує; кошторис нижче рахує без них, з дисковим кешем відповідей.
+- **Модель — Sonnet 5.5** ($2 / $10 за 1 млн токенів; `--plan` бере тариф із каталогу моделей продукту, MODEL-METADATA). Opus 5.5 удвічі дорожчий ($4 / $20) і з'їв би ліміт на воротах. Якщо власник хоче Opus для воріт, потрібно ~ +$15.
 - **K4 без повної ручної розмітки.** K4 = пам'ять K1 плюс «факти-місця» з латок, додані як записи пам'яті з дослівною цитатою. Цього досить, щоб відокремити помилки Ревізора від помилок побудови, і не треба розмічати всі факти книжки.
 - **K3: план сцени з прози — промпт стенду.** Продуктової ролі «план з прози» немає. Промпт пише коротко: хто, де, коли (момент історії), що змінилося.
 
@@ -141,10 +143,10 @@ def test_locate_after_resplit():
   - `class BudgetExceeded(RuntimeError)`
   - `class Ledger: __init__(self, path: Path, cap: Decimal = CAP_USD)`; `spent() -> Decimal`; `ensure(estimate: Decimal) -> None` (кидає `BudgetExceeded`, якщо `spent + estimate > cap`); `record(label: str, model: str, prompt_tokens: int, completion_tokens: int, usd: Decimal) -> None`
   - `@dataclass(frozen=True) class Price: input_per_m: Decimal; output_per_m: Decimal`
-  - `prices(models: list[str]) -> dict[str, Price]` — з `https://openrouter.ai/api/v1/models` (поле `pricing`)
+  - `prices(models: list[str]) -> dict[str, Price]` — з каталогу моделей продукту для провайдера `anthropic` (MODEL-METADATA, R-53)
   - `class Transport: __init__(self, model: str, ledger: Ledger, cache_dir: Path, client=None, price: Price | None = None)`; `calls: int` (лічильник реальних викликів); `call(stage: str, system: str, user: str, schema: dict | None, label: str) -> str`
     - ключ кешу — SHA-256 від `json.dumps({model, stage, system, user, schema}, sort_keys=True)`; влучання в кеш нічого не записує в облік
-    - промах: `generation_request(stage, settings, system, user, fragments=())` → `sdk_arguments(...)` → `client.chat.completions.create(**args)`; клієнт — `build_openai_client(settings)` для `ProviderSettings(provider='openrouter', model=model)`; використання — `normalize_usage`
+    - промах: `generation_request(stage, settings, system, user, fragments=())` і продуктовий виклик провайдера `anthropic` для `ProviderSettings(provider='anthropic', model=model)` (точна функція — зі специфікації R-53); використання — `normalize_usage`
 
 - [ ] **Step 1: Write the failing tests** (фейковий клієнт повертає фіксований `usage`).
 
@@ -161,7 +163,7 @@ def test_ensure_refuses_over_cap(tmp_path):
         led.ensure(Decimal('0.2'))
 ```
 
-- [ ] **Step 2:** FAIL. **Step 3:** реалізувати; `Transport` приймає необов'язковий `price` для тестів, інакше бере з `prices()`. Облік — JSON-файл, запис атомарний (тимчасовий файл + `replace`). **Step 4:** PASS. **Step 5:** commit `feat(continuity-bench): транспорт OpenRouter, кеш відповідей, облік витрат`.
+- [ ] **Step 2:** FAIL. **Step 3:** реалізувати; `Transport` приймає необов'язковий `price` для тестів, інакше бере з `prices()`. Облік — JSON-файл, запис атомарний (тимчасовий файл + `replace`). **Step 4:** PASS. **Step 5:** commit `feat(continuity-bench): транспорт через провайдер anthropic, кеш відповідей, облік витрат`.
 
 ### Task 4: Вхід K1–K4 — пам'ять, картки, план, еталонні факти
 
