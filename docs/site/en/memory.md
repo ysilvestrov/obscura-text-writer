@@ -22,7 +22,7 @@ An author entry without a quotation is a truth of the world the reader has not s
 
 ## When memory does not fit
 
-While the request fits the role limits, memory is passed in full. Otherwise the application selects the most important part and warns you: the protagonist core always in full, then recent protagonist states, open lines involving the scene participants, other participants' states, facts, records about the scene's place, the timeline of the last 20 scenes and "atmosphere". If even the core does not fit, the request is not sent.
+While the request fits the role limits, memory is passed in full. Otherwise the application selects the most important part and warns you: the protagonist core always in full, then recent protagonist states, open lines involving the scene participants, other participants' states, facts, records about the scene's place, old timeline events involving a scene participant (other than the protagonist) or taking place at the scene's place, the timeline of the last 20 scenes and "atmosphere". If even the core does not fit, the request is not sent.
 
 The **Type** column guides the selection: **Auto**, **Core** (always shown) or **Atmosphere** (only within a small share). In the table the type is a compact icon button, and the “Entry type:” line above the table explains the icons. Click the button or press the down arrow to open the menu and pick a type. The choice is saved at once and applies to the whole story.
 
@@ -48,7 +48,7 @@ Nothing is merged without your decision. If the story was changed in another tab
 
 ## Timeline summaries
 
-A selected request leaves out the timeline older than 20 scenes. To keep the model aware of what happened earlier, create a summary in the **Timeline summaries** section of the memory panel. A block is a part of the book, or, in a book without parts, every 10 scenes (1–10, 11–20…). The **Create summary** button is highlighted once the first scene of the block leaves the timeline window. The summary is written by the Memory role model: you see the model and the token estimate before the run, and the call is paid. You can correct the finished text with **Edit**.
+A selected request includes timeline older than 20 scenes only through the scene participants (other than the protagonist) or the scene's place; the rest is left out. To keep the model aware of the rest of what happened earlier, create a summary in the **Timeline summaries** section of the memory panel. A block is a part of the book, or, in a book without parts, every 10 scenes (1–10, 11–20…). The **Create summary** button is highlighted once the first scene of the block leaves the timeline window. The summary is written by the Memory role model: you see the model and the token estimate before the run, and the call is paid. You can correct the finished text with **Edit**.
 
 A summary is used only when memory does not fit: it replaces all timeline entries of its block with one line. If the prose or memory of a scene in the block changes, or the block's scenes change, the summary is marked "stale" and is not sent until you rebuild it.
 
