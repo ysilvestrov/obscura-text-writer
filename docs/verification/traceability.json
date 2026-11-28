@@ -6241,6 +6241,10 @@
       "requirement": "MEMORY-ENTITIES",
       "scope": "Накладка сутностей: пріоритет автор/подія/модель для кожного поля, відкидання невідомих ID, канонізація локацій, стан лише з локаціями, найслабше джерело, resolver, незмінний payload без накладки, межі розмітки, candidate_events. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
       "tests": [
+        "tests/memory/test_memory_view_entities.py::test_row_shows_overlay_participants_and_locations",
+        "tests/memory/test_memory_view_entities.py::test_author_mark_is_shown_as_author",
+        "tests/memory/test_memory_view_entities.py::test_event_entities_are_shown_as_event_and_unmarked_as_none",
+        "tests/memory/test_memory_view_entities.py::test_row_drops_a_deleted_participant_id",
         "tests/memory/test_entities_effective.py::test_author_mark_wins_over_the_event_even_when_empty",
         "tests/memory/test_entities_effective.py::test_event_wins_over_a_model_mark_and_model_fills_the_gap",
         "tests/memory/test_entities_effective.py::test_unknown_participant_is_dropped_before_the_non_empty_check",

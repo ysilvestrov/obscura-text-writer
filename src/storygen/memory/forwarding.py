@@ -96,7 +96,11 @@ def memory_view_from_view(view,scene_id):
     from ..characters.names import scene_names
     cards_text=view.read_text(story.characters_version_id) if story.characters_version_id else None
     names=scene_names(load_characters(cards_text),scenes,scene) if cards_text else {}
+    # MEMORY-ENTITIES-S05: the row shows the effective entities (event, else the overlay) and their source.
+    from ..storage.memory_entities import entity_resolver
+    resolver=entity_resolver(view,story)
     for event in entries.values():
+        e=resolver.of(event.claim_id,event.category,event.participant_ids,event.location_ids)
         # The title and scene follow the version the quote was taken from.
         quoted=event.evidence_version_id or event.source_version_id
         source=sources.get(quoted);previous_book=False
@@ -110,8 +114,9 @@ def memory_view_from_view(view,scene_id):
             'source_title':'Попередня книга серії' if previous_book else source.title if source else 'Попереднє джерело','quote':event.quote,'supporting_quotes':list(event.supporting_quotes),
             'forward':event.claim_id not in hidden,'closed':event.operation=='retire',
             # MEMORY-SELECT-S08: the author's selection mark; a core slot is always shown and takes none.
-            'kind':marks.get(event.claim_id),'slot':is_core_slot(event,tracked),'locations':places(event.location_ids),
-            'participants':[names[id] for id in event.participant_ids if id in names]})
+            'kind':marks.get(event.claim_id),'slot':is_core_slot(event,tracked),'locations':places(e.location_ids),
+            'participants':[names[id] for id in e.participant_ids if id in names],
+            'participant_ids':list(e.participant_ids),'location_ids':list(e.location_ids),'entities_source':e.source})
     stale=view.get_version(memory_id).stale
     result.update(can_save=not stale,reason='Пам’ять застаріла: спершу оновіть її' if stale else None)
     return result
