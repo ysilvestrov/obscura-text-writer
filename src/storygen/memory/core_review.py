@@ -263,7 +263,7 @@ def _author_events(base,edits,ctx,allowed,scene_id=None):
                 occurrence=0
                 while True:
                     event=_change_event('update',claim.claim_id,edit.text,claim.category,claim.character_ids,prose_id,quote,
-                        slot=claim.slot,source_kind='author',evidence_version_id=evidence,occurrence=occurrence,location_ids=claim.location_ids)
+                        slot=claim.slot,source_kind='author',evidence_version_id=evidence,occurrence=occurrence,location_ids=claim.location_ids,participant_ids=claim.participant_ids)
                     if event.event_id not in event_ids:break
                     occurrence+=1
                 events.append(event)
@@ -272,8 +272,9 @@ def _author_events(base,edits,ctx,allowed,scene_id=None):
             if claim is None or claim.category!='open_threads':raise ValueError(UNKNOWN_TARGET)
             # The retire carries the resolution text; with a quote the resolution is also a fact (I3), linked for I5.
             events.append(_change_event('retire',claim.claim_id,edit.text,claim.category,[],prose_id,quote,
-                source_kind='author',evidence_version_id=evidence,location_ids=claim.location_ids))
-            if quote is not None:add('facts',edit.text,quote,evidence_version_id=evidence,resolves_claim_id=claim.claim_id,location_ids=claim.location_ids)
+                source_kind='author',evidence_version_id=evidence,location_ids=claim.location_ids,participant_ids=claim.participant_ids))
+            if quote is not None:add('facts',edit.text,quote,evidence_version_id=evidence,resolves_claim_id=claim.claim_id,location_ids=claim.location_ids,
+                participant_ids=claim.participant_ids)
     return events
 
 
@@ -307,7 +308,7 @@ def apply_core_review(repo, scene_id: str, body: CoreReviewBody, locale: str = '
     # A quote may come only from the selected prose of this scene or an earlier one that the journal is built on.
     allowed={s.heads['prose'] for s in _prefix(ctx.view,scene_id)}&set(ctx.sources)
     events=_author_events(base,body.edits,ctx,allowed,scene_id)
-    journal=MemoryJournal(schema_version=3,source_prose_ids=base.source_prose_ids,events=[*base.events,*events])
+    journal=MemoryJournal(schema_version=max(3,base.schema_version,4 if any(e.participant_ids for e in events) else 3),source_prose_ids=base.source_prose_ids,events=[*base.events,*events])
     version,published=publish_memory_journal(repo,scene_id,journal,body.expected_revision,ctx)
     # Publishing bumps the scene revision; the confirmation CAS uses the revision set_head returned.
     repo.confirm_memory(scene_id,version.id,published.revision)

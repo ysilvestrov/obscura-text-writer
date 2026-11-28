@@ -17,6 +17,8 @@ from pydantic import Field
 class WireAddV4(WireAdd):
     # MEMORY-LOCATIONS: optional, so answers of the schema without locations stay valid.
     location_ids: list[str] = Field(default_factory=list)
+    # MEMORY-ENTITIES: characters of a fact, thread or timeline record; optional, so older answers stay valid.
+    participant_ids: list[str] = Field(default_factory=list)
 
 
 class WireStateAddV4(WireStateAdd):
@@ -74,10 +76,12 @@ FLASHBACK_FACT_LIMIT=6
 BIBLE_FACT_LIMIT=10
 
 
-def schema_bounds_v4(previous,prose,allowed_character_ids,tracked,day_change,*,keep=None,flashback=False,fact_limit=None,location_ids=()) -> dict:
+def schema_bounds_v4(previous,prose,allowed_character_ids,tracked,day_change,*,keep=None,flashback=False,fact_limit=None,location_ids=(),participant_ids=()) -> dict:
     bounds=_bounds_v4(previous,prose,allowed_character_ids,tracked,day_change,keep=keep,flashback=flashback,fact_limit=fact_limit)
     # MEMORY-LOCATIONS: written only for a scene with locations, so other bounds and schemas stay byte for byte the same.
     if location_ids:bounds['location_ids']=list(location_ids)
+    # MEMORY-ENTITIES: likewise only for a story with character cards.
+    if participant_ids:bounds['participant_ids']=list(participant_ids)
     return bounds
 
 
@@ -198,7 +202,7 @@ def check_v4(data,previous,bounds) -> list[Violation]:
     envelope=_envelope(data,4,GROUP_ACTIONS,SECTIONS)
     if envelope:return envelope
     fragment_ids=set(bounds['fragment_ids']);active=replay_memory(previous);allowed=set(bounds['character_ids'])
-    places=set(bounds.get('location_ids',()))
+    places=set(bounds.get('location_ids',()));cast=set(bounds.get('participant_ids',()))
     flashback=bool(bounds.get('flashback'))
     # A flashback catalog has no core or threads: any decision, like any action besides facts.add, is one refusal.
     result=[] if flashback else _check_decisions(data,active,bounds,fragment_ids);adds=0;targets=Counter()
@@ -220,6 +224,8 @@ def check_v4(data,previous,bounds) -> list[Violation]:
                     if category=='character_states' and scope_unknown(item.character_ids,allowed):
                         result.append(Violation(label,'scope_unknown'))
                     if scope_unknown(item.location_ids,places):result.append(Violation(label,'location_unknown'))
+                    if category!='character_states' and scope_unknown(item.participant_ids,cast):
+                        result.append(Violation(label,'participant_unknown'))
                     continue
                 # Slotted claims of tracked characters change only through core decisions; the captured mutable list
                 # admits former protagonist slots (old bounds never listed slot claims there). Every state must be in the
@@ -241,13 +247,13 @@ def wire_v4_events(wire: MemoryWireV4,previous,prose_id,prose,bounds,*,scene_id=
     active=replay_memory(previous);events=[];duplicates={}
     slots={(c.character_ids[0],c.slot):c for c in active.values() if c.slot}
     def evidence(ids):return frag[ids[0]],[frag[i] for i in ids[1:]]
-    def add(category,text,quote,supporting=(),chars=(),places=(),**extra):
+    def add(category,text,quote,supporting=(),chars=(),places=(),members=(),**extra):
         key=duplicate_key(category,text,quote,supporting,**extra)
         occurrence=duplicates.get(key,0);duplicates[key]=occurrence+1
-        events.append(_add_event(category,text,prose_id,quote,occurrence,chars,supporting,location_ids=places,scene_id=scene_id,**extra))
+        events.append(_add_event(category,text,prose_id,quote,occurrence,chars,supporting,location_ids=places,participant_ids=members,scene_id=scene_id,**extra))
     def change(action,claim,text,quote,supporting=(),**extra):
         events.append(_change_event(action,claim.claim_id,text,claim.category,claim.character_ids,prose_id,quote,supporting,slot=claim.slot,
-            location_ids=claim.location_ids,**extra))
+            location_ids=claim.location_ids,participant_ids=claim.participant_ids,**extra))
     for cid,names in bounds['tracked'].items():
         for name in names:
             decision=wire.core[cid][name];claim=slots.get((cid,name))
@@ -269,13 +275,13 @@ def wire_v4_events(wire: MemoryWireV4,previous,prose_id,prose,bounds,*,scene_id=
         if decision.status=='closed':
             quote,supporting=evidence(decision.evidence_ids)
             change('retire',active[claim_id],decision.resolution,quote,supporting)
-            add('facts',decision.resolution,quote,supporting,places=active[claim_id].location_ids,resolves_claim_id=claim_id)
+            add('facts',decision.resolution,quote,supporting,places=active[claim_id].location_ids,members=active[claim_id].participant_ids,resolves_claim_id=claim_id)
     for category in CATEGORIES:
         group=getattr(wire,category)
         for action in GROUP_ACTIONS[category]:
             for item in getattr(group,action):
                 quote,supporting=evidence(item.evidence_ids)
-                if action=='add':add(category,item.text,quote,supporting,getattr(item,'character_ids',[]),item.location_ids)
+                if action=='add':add(category,item.text,quote,supporting,getattr(item,'character_ids',[]),item.location_ids,getattr(item,'participant_ids',[]))
                 else:change(action,active[item.claim_id],item.text,quote,supporting)
     return _extend(previous,prose_id,events,3)
 
@@ -298,12 +304,13 @@ def memory_wire_v4_schema(bounds) -> dict:
         for claim_id in bounds['threads']})
     states=bounds['mutable']['character_states']
     places={'location_ids':_scope(bounds['location_ids'])} if bounds.get('location_ids') else {}
+    members={'participant_ids':_scope(bounds['participant_ids'])} if bounds.get('participant_ids') else {}
     schema=_object({'schema_version':{'type':'integer','enum':[4]},'core':core,'threads':threads,
-        'facts':_object({'add':_adds(fragments,places)}),
+        'facts':_object({'add':_adds(fragments,{**places,**members})}),
         'character_states':_object({'add':_adds(fragments,{'character_ids':_scope(bounds['character_ids']),**places}),
             'update':_changes(states,fragments),'retire':_changes(states,fragments)}),
-        'open_threads':_object({'add':_adds(fragments,places)}),
-        'timeline':_object({'add':_adds(fragments,places)})})
+        'open_threads':_object({'add':_adds(fragments,{**places,**members})}),
+        'timeline':_object({'add':_adds(fragments,{**places,**members})})})
     if bounds.get('flashback'):
         properties=schema['properties']
         properties['facts']['properties']['add']['maxItems']=bounds.get('fact_limit',FLASHBACK_FACT_LIMIT) if fragments else 0

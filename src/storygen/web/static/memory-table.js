@@ -97,7 +97,7 @@ export function installMemoryTable({state,api,json,notice,refresh,loadBuffer}){
   }
   function draw(){
     body.replaceChildren();if(!data){controls();return;}
-    const rows=data.rows.filter(row=>(!filter.value||row.category===filter.value)&&(!sceneFilter.value||row.source_scene_id===sceneFilter.value)&&`${row.text} ${row.source_title} ${(row.locations||[]).join(' ')}`.toLocaleLowerCase('uk').includes(search.value.toLocaleLowerCase('uk')));
+    const rows=data.rows.filter(row=>(!filter.value||row.category===filter.value)&&(!sceneFilter.value||row.source_scene_id===sceneFilter.value)&&`${row.text} ${row.source_title} ${(row.locations||[]).join(' ')} ${(row.participants||[]).join(' ')}`.toLocaleLowerCase('uk').includes(search.value.toLocaleLowerCase('uk')));
     counts(rows.length);
     if(!rows.length&&data.rows.length){const tr=node('tr'),td=node('td',msg("m_2d74a1418749"));td.colSpan=5;tr.append(td);body.append(tr);}
     for(const row of rows){
@@ -113,6 +113,8 @@ export function installMemoryTable({state,api,json,notice,refresh,loadBuffer}){
       };
       choice.append(check);content.append(node('p',live(()=>(row.text))));
       const proof=node('details');proof.append(node('summary',msg("m_a09205d5a71e")),node('p',live(()=>(row.quote||t("m_d657ca4e0613")))));for(const extra of Array.isArray(row.supporting_quotes)?row.supporting_quotes:[])proof.append(node('p',live(()=>(extra))));content.append(proof);
+      // MEMORY-ENTITIES-S04: the record's participants, shown only.
+      if(row.participants?.length){const who=node('p',live(()=>t('memory.participants',{p0:row.participants.join('; ')})));who.className='hint memory-participants';content.append(who);}
       // MEMORY-LOCATIONS-S07: the record's locations, shown only.
       if(row.locations?.length){const where=node('p',live(()=>t('memory.locations',{p0:row.locations.join('; ')})));where.className='hint memory-locations';content.append(where);}
       const kindCell=kindControl(row);

@@ -94,9 +94,10 @@ def _author_events(plan: MergePlan, conflict: Conflict, text: str, source_id: st
         slot = None
         sample = next(e for events in conflict.events.values() for e in events)
         category, characters = (record.category, record.character_ids) if record else (sample.category, sample.character_ids)
-        if record is None:kwargs['location_ids'] = sample.location_ids
+        if record is None:kwargs['location_ids'] = sample.location_ids;kwargs['participant_ids'] = sample.participant_ids
     if record is not None:
         kwargs['location_ids'] = record.location_ids  # MEMORY-LOCATIONS: a change keeps the place of its claim
+        kwargs['participant_ids'] = record.participant_ids  # MEMORY-ENTITIES: and its participants
         if text:
             return [_change_event('update', record.claim_id, text, record.category, record.character_ids, source_id, None, slot=slot, **kwargs)]
         return [_change_event('retire', record.claim_id, record.text, record.category, record.character_ids, source_id, None, slot=slot, **kwargs)]
@@ -138,7 +139,7 @@ def build_merged_journal(plan: MergePlan, decisions: dict[str, dict], source_pro
     except KeyError as exc:
         raise ValueError(f'Подія злиття посилається на джерело поза злиттям: {exc.args[0]}') from None
     events = [e.model_copy(deep=True) for e in plan.base.events] + [e for _, _, e in ordered] + authored
-    schema = 3 if plan.schema_version == 3 or any(_nonstandard(e) for e in events) else 2
+    schema = max(plan.schema_version, 3 if any(_nonstandard(e) for e in events) else 2, 4 if any(e.participant_ids for e in events) else 2)
     args = dict(schema_version=schema, source_prose_ids=list(source_prose_ids))
     try:
         return MemoryJournal(**args, events=events)

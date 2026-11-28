@@ -6166,6 +6166,77 @@
       }
     },
     {
+      "id": "MEMORY-ENTITIES-S01",
+      "requirement": "MEMORY-ENTITIES",
+      "scope": "participant_ids у журналі: серіалізація, незмінність claim_id, відхилення стану, повтору й порожнього ID, зміна з іншими учасниками, версія v4 без повернення, ручне збереження, закриття лінії, злиття арок, версія журналу після злиття, журнал нижче v4 з учасниками відхиляється. wire v4: межі, схема, `participant_unknown`, учасники похідних записів і розділ запиту етапу memory. Відбір — MEMORY-ENTITIES-S02, S03; таблиця пам’яті — наступна задача. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/memory/test_participants_journal.py::test_empty_participants_are_not_serialized",
+        "tests/memory/test_participants_journal.py::test_participants_do_not_change_claim_id",
+        "tests/memory/test_participants_journal.py::test_participants_on_a_state_are_rejected",
+        "tests/memory/test_participants_journal.py::test_duplicate_or_blank_participants_are_rejected",
+        "tests/memory/test_participants_journal.py::test_a_change_must_keep_the_participants_of_its_claim",
+        "tests/memory/test_participants_journal.py::test_journal_with_participants_is_v4_and_never_goes_back",
+        "tests/memory/test_participants_journal.py::test_manual_change_without_participants_inherits_them",
+        "tests/memory/test_participants_journal.py::test_manual_save_keeps_the_participants_of_a_new_record",
+        "tests/memory/test_participants_journal.py::test_thread_resolution_keeps_participants",
+        "tests/memory/test_participants_journal.py::test_merge_keeps_participants",
+        "tests/memory/test_participants_journal.py::test_a_journal_below_v4_rejects_participants",
+        "tests/memory/test_participants_journal.py::test_merge_result_is_v4_with_participants_and_v4_plan_stays_v4",
+        "tests/memory/test_wire_v4_participants.py::test_bounds_without_cards_are_byte_for_byte_the_same",
+        "tests/memory/test_wire_v4_participants.py::test_schema_requires_participants_in_facts_threads_and_timeline_adds_only",
+        "tests/memory/test_wire_v4_participants.py::test_unknown_or_repeated_participant_is_refused",
+        "tests/memory/test_wire_v4_participants.py::test_old_answer_without_participants_is_valid",
+        "tests/memory/test_wire_v4_participants.py::test_translated_journal_keeps_participants_and_is_v4",
+        "tests/memory/test_wire_v4_participants.py::test_closing_a_thread_gives_the_resolution_fact_the_participants_of_the_thread",
+        "tests/memory/test_wire_v4_participants.py::test_states_never_get_participants",
+        "tests/memory/test_wire_v4_participants.py::test_state_update_and_retire_keep_empty_participants_and_replay",
+        "tests/generation/test_memory_participants_context.py::test_memory_request_lists_every_card_as_allowed_participants",
+        "tests/generation/test_memory_participants_context.py::test_memory_request_without_cards_has_no_participants_section",
+        "tests/generation/test_memory_participants_context.py::test_sends_cover_participants_section"
+      ]
+    },
+    {
+      "id": "MEMORY-ENTITIES-S02",
+      "requirement": "MEMORY-ENTITIES",
+      "scope": "Відбір за учасниками: лінія з учасником сцени в непрямому відмінку йде в threads, учасники поза складом не повертають до згадки за іменем, факт лише про героя за ID, запис без учасників — як раніше, narrow_catalog за учасниками, MemoryItem.participant_ids, projection_version v4. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/memory/test_selection_participants.py::test_thread_with_a_participant_of_the_scene_goes_to_threads_even_with_an_inflected_name",
+        "tests/memory/test_selection_participants.py::test_thread_with_participants_outside_the_scene_does_not_fall_back_to_names",
+        "tests/memory/test_selection_participants.py::test_record_without_participants_is_classified_by_names_as_before",
+        "tests/memory/test_selection_participants.py::test_fact_only_about_the_hero_goes_to_atmosphere_by_ids",
+        "tests/memory/test_selection_participants.py::test_narrow_catalog_keeps_facts_by_participants_and_names_without_them",
+        "tests/memory/test_selection_participants.py::test_memory_items_carry_participants",
+        "tests/memory/test_selection_participants.py::test_selected_projection_version_is_v4"
+      ]
+    },
+    {
+      "id": "MEMORY-ENTITIES-S03",
+      "requirement": "MEMORY-ENTITIES",
+      "scope": "Шар past: стара хронологія з учасником-не-героєм або в околиці, герой сам не веде в past, порядок новіші першими, пропуск блоку з узятим підсумком, позначка «Не показано записів» без узятих записів past. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/memory/test_selection_participants.py::test_old_timeline_with_a_non_hero_participant_goes_to_past",
+        "tests/memory/test_selection_participants.py::test_old_timeline_in_the_neighbourhood_goes_to_past",
+        "tests/memory/test_selection_participants.py::test_past_is_taken_newest_first_and_not_when_its_block_summary_is_taken",
+        "tests/memory/test_selection_participants.py::test_timeline_note_counts_untaken_past_and_skips_taken",
+        "tests/memory/test_selection_participants.py::test_hero_in_every_scene_does_not_fill_past",
+        "tests/memory/test_selection_participants.py::test_stale_summary_warns_about_an_untaken_past_entry_only",
+        "tests/memory/test_selection_participants.py::test_every_past_entry_is_taken_covered_or_counted_under_any_budget",
+        "tests/memory/test_selection_participants.py::test_summary_trimmed_after_the_greedy_pass_returns_entries_to_their_own_layers"
+      ]
+    },
+    {
+      "id": "MEMORY-ENTITIES-S04",
+      "requirement": "MEMORY-ENTITIES",
+      "scope": "Таблиця пам'яті: participants рядка memory-view за поточними іменами сцени, пропуск невідомого ID, порожній список без учасників; рядок «Учасники» й пошук у інтерфейсі. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/memory/test_memory_view_participants.py::test_memory_view_row_has_participant_names",
+        "tests/memory/test_memory_view_participants.py::test_memory_view_row_shows_the_name_current_in_the_scene",
+        "tests/memory/test_memory_view_participants.py::test_unknown_participant_is_skipped",
+        "tests/memory/test_memory_view_participants.py::test_record_without_participants_has_an_empty_list",
+        "tests/web/test_memory_table_ui.py::test_memory_table_selection_conflict_and_async_save"
+      ]
+    },
+    {
       "id": "MEMORY-SUMMARY-S01",
       "requirement": "MEMORY-SUMMARY",
       "scope": "Блоки пласкої книги й книги з частинами, кошик, пороги рекомендації й заміни, старий payload.",

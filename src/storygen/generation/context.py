@@ -88,8 +88,8 @@ class MemorySelector:
 
 
 SELECTION_STEPS=12
-SELECTED_PROJECTION='memory-uk-v3-selected'
-SUMMARY_PROJECTION='memory-uk-v3-selected-summary'
+SELECTED_PROJECTION='memory-uk-v4-selected'
+SUMMARY_PROJECTION='memory-uk-v4-selected-summary'
 
 
 def _select_memory_section(selector,sections,measured,measure,fits,settings):
@@ -418,18 +418,21 @@ def build_context(repo,scene_id: str,stage: str,settings: RoleSettings,*,editor_
         # MEMORY-LOCATIONS-S04: the scene's places and their ancestors; nothing at all for a scene without locations.
         location_cards=view_locations(repo);places=scene_cards(location_cards,scene.location_ids)
         place_section=[label('allowed_location_ids',language)+'\n'+dump({id:location_cards[id].path for id in places})] if places else []
+        # MEMORY-ENTITIES: every card of the story may take part in a record; nothing at all for a story without cards.
+        participants={card.id:names.get(card.id,card.name) for card in cards}
+        participant_section=[label('allowed_participant_ids',language)+'\n'+dump(participants)] if participants else []
         def catalog_sections(keep=None):
             catalog=memory_catalog_v4(past,tracked,names,all_tracked=everyone,keep=keep)
             parts=json.loads(catalog)
             from ..memory.wire_v4 import BIBLE_FACT_LIMIT
             bounds=schema_bounds_v4(past,prose_text,scene.character_ids,everyone,changed,keep=keep,flashback=flashback,
-                                    fact_limit=BIBLE_FACT_LIMIT if bible else None,location_ids=places)
+                                    fact_limit=BIBLE_FACT_LIMIT if bible else None,location_ids=places,participant_ids=list(participants))
             return catalog,parts,bounds,stage_sections(parts)
         def stage_sections(parts):
             if bible:
                 return [label('bible_facts',language),
                     label('memory_claims',language)+'\n'+dump({'mutable':parts['mutable'],'immutable':parts['immutable']}),
-                    label('allowed_ids',language)+'\n'+json.dumps(scene.character_ids,ensure_ascii=False),*place_section,
+                    label('allowed_ids',language)+'\n'+json.dumps(scene.character_ids,ensure_ascii=False),*place_section,*participant_section,
                     label('prose_fragments',language,id=prose_id)+'\n'+render_fragments(prose_text)]
             sections=[] if simple else [label('memory_core',language)+'\n'+dump({'names':parts['names'],'core':parts['core']}),
                 label('memory_threads',language)+'\n'+dump(parts['threads']),
@@ -438,7 +441,7 @@ def build_context(repo,scene_id: str,stage: str,settings: RoleSettings,*,editor_
                 if changed[cid]:
                     sections.append(label('day_changed',language,before=day_label(day_key(comparison_scene(scenes,scene,cid,story)),language),
                         after=day_label(day_key(scene),language),name=parts['names'][cid]))
-            sections+=[label('allowed_ids',language)+'\n'+json.dumps(scene.character_ids,ensure_ascii=False),*place_section,
+            sections+=[label('allowed_ids',language)+'\n'+json.dumps(scene.character_ids,ensure_ascii=False),*place_section,*participant_section,
                 label('prose_fragments',language,id=prose_id)+'\n'+render_fragments(prose_text)]
             return sections
         catalog,parts,bounds,sections=catalog_sections()

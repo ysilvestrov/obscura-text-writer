@@ -75,6 +75,7 @@ class MemoryItem:
     slot: str | None
     source_scene: int | None     # scene of the event that produced this line
     location_ids: tuple[str,...] = ()  # MEMORY-LOCATIONS: cards of the record
+    participant_ids: tuple[str,...] = ()  # MEMORY-ENTITIES: characters of a fact, thread or timeline event
 
 
 def _timeline_events(journal):
@@ -128,7 +129,7 @@ def memory_items(journal: MemoryJournal, character_ids: list[str], source_scene_
     hidden=effective_hidden(journal,hidden_claim_ids,forwarded=forwarded_claim_ids)
     items=[];omitted=0;core_lines=0
     item=lambda event,section,line,owner=None:MemoryItem(event.claim_id,section,owner,line,event.text,tuple(event.character_ids),
-        event.slot,source_scene_numbers.get(event.source_version_id),tuple(event.location_ids))
+        event.slot,source_scene_numbers.get(event.source_version_id),tuple(event.location_ids),tuple(event.participant_ids))
     place=frozenset(place)
     # The core is a mandatory layer: first, never filtered by the scene cast, only by MEMORY-FORWARD.
     slots={(e.character_ids[0],e.slot):e for e in active.values() if e.slot and e.character_ids[0] in tracked}

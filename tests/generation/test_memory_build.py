@@ -39,7 +39,7 @@ def written_book(tmp_path, texts, memory_role=None):
     for scene, text in zip(scenes, texts):
         if text:
             save_manual_prose(repo, scene.id, text, repo.get_scene(scene.id).revision)
-    save_role_settings(repo, story.id, 'memory', memory_role or RoleSettings(provider=ProviderSettings(model='memory')),
+    save_role_settings(repo, story.id, 'memory', memory_role or RoleSettings(provider=ProviderSettings(model='memory'), context_tokens=32768),
                        repo.get_story(story.id).revision)
     return repo, repo.get_story(story.id), [repo.get_scene(s.id) for s in scenes]
 

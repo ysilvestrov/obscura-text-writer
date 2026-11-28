@@ -27,6 +27,8 @@ LABELS: dict[str, dict[str, str]] = {
     'scene_locations': {'uk': 'ЛОКАЦІЇ СЦЕНИ', 'en': 'SCENE LOCATIONS'},
     'allowed_location_ids': {'uk': 'ДОЗВОЛЕНІ LOCATION_IDS: додайте до нового запису location_ids місць цієї сцени, яких він стосується (порожній список — запис не про місце)',
                              'en': 'ALLOWED LOCATION_IDS: give a new record the location_ids of the places of this scene it is about (an empty list — not about a place)'},
+    'allowed_participant_ids': {'uk': 'ДОЗВОЛЕНІ PARTICIPANT_IDS: додайте до нового факту, лінії чи події хронології participant_ids усіх персонажів, які діють у записі чи про яких у ньому йдеться (порожній список — якщо таких немає). Словник ID → ім’я:',
+                                'en': 'ALLOWED PARTICIPANT_IDS: give a new fact, thread or timeline event the participant_ids of every character who acts in it or whom it is about (an empty list if there are none). ID → name:'},
     'allowed_ids': {'uk': 'ДОЗВОЛЕНІ CHARACTER_IDS ДЛЯ НОВИХ СТАНІВ', 'en': 'ALLOWED CHARACTER_IDS FOR NEW STATES'},
     'prose_fragments': {'uk': 'ПОТОЧНА ПРОЗА [version_id={id}] — НУМЕРОВАНІ ФРАГМЕНТИ',
                         'en': 'CURRENT PROSE [version_id={id}] — NUMBERED FRAGMENTS'},

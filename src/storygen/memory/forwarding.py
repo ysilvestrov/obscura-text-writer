@@ -91,6 +91,11 @@ def memory_view_from_view(view,scene_id):
     cards=view_locations(view);merged={c.id:c.merged_into for c in cards.values()}
     def places(ids):  # MEMORY-LOCATIONS-S07: paths of the record's cards, merged cards as their target
         return [cards[id].path for id in dict.fromkeys(canonical(merged,id) for id in ids) if id in cards]
+    # MEMORY-ENTITIES-S04: participants by the name current in the scene; a card that is gone is skipped.
+    from ..characters.models import load_characters
+    from ..characters.names import scene_names
+    cards_text=view.read_text(story.characters_version_id) if story.characters_version_id else None
+    names=scene_names(load_characters(cards_text),scenes,scene) if cards_text else {}
     for event in entries.values():
         # The title and scene follow the version the quote was taken from.
         quoted=event.evidence_version_id or event.source_version_id
@@ -105,7 +110,8 @@ def memory_view_from_view(view,scene_id):
             'source_title':'Попередня книга серії' if previous_book else source.title if source else 'Попереднє джерело','quote':event.quote,'supporting_quotes':list(event.supporting_quotes),
             'forward':event.claim_id not in hidden,'closed':event.operation=='retire',
             # MEMORY-SELECT-S08: the author's selection mark; a core slot is always shown and takes none.
-            'kind':marks.get(event.claim_id),'slot':is_core_slot(event,tracked),'locations':places(event.location_ids)})
+            'kind':marks.get(event.claim_id),'slot':is_core_slot(event,tracked),'locations':places(event.location_ids),
+            'participants':[names[id] for id in event.participant_ids if id in names]})
     stale=view.get_version(memory_id).stale
     result.update(can_save=not stale,reason='Пам’ять застаріла: спершу оновіть її' if stale else None)
     return result
