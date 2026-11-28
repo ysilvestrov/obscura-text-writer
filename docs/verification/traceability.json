@@ -6287,6 +6287,7 @@
         "tests/memory/test_selection_entities.py::test_record_without_any_entities_is_classified_as_before",
         "tests/memory/test_selection_entities.py::test_narrow_catalog_keeps_facts_and_states_by_the_overlay",
         "tests/generation/test_context_entities.py::test_fitting_request_with_marks_is_byte_identical",
+        "tests/generation/test_context_entities.py::test_fitting_memory_stage_with_marks_is_byte_identical",
         "tests/generation/test_context_entities.py::test_overflowing_request_selects_by_the_overlay",
         "tests/generation/test_context_entities.py::test_overlay_location_does_not_return_an_absent_state_to_the_projection",
         "tests/generation/test_context_entities.py::test_narrowed_memory_stage_uses_the_overlay",

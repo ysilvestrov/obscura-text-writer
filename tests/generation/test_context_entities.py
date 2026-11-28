@@ -36,6 +36,17 @@ def test_fitting_request_with_marks_is_byte_identical(tmp_path):
 
 
 @pytest.mark.req('MEMORY-ENTITIES')
+def test_fitting_memory_stage_with_marks_is_byte_identical(tmp_path):
+    from tests.generation.test_memory_stage_narrow import role
+    repo,scene,journal=narrow_story(tmp_path)
+    before=build_context(repo,scene.id,'memory',role())
+    mark(repo,scene.story_id,{claim(journal,'Скеля стоїть біля бухти'):(['A'],[])})
+    after=build_context(repo,scene.id,'memory',role())
+    assert after.user_text==before.user_text
+    assert after.fragments['memory_schema_bounds']==before.fragments['memory_schema_bounds']
+
+
+@pytest.mark.req('MEMORY-ENTITIES')
 def test_overflowing_request_selects_by_the_overlay(tmp_path):
     repo,scene,journal,_,l1=prepared(tmp_path)
     limit=tight(repo,scene)
@@ -100,5 +111,4 @@ def test_narrowed_memory_stage_uses_the_overlay(tmp_path):
 
 @pytest.mark.req('MEMORY-ENTITIES')
 def test_memory_request_without_cards_matches_the_golden(tmp_path):
-    from tests.generation.cardless_memory import cardless_memory_request
     assert cardless_memory_request(tmp_path)==json.loads(GOLDEN.read_text(encoding='utf-8'))
