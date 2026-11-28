@@ -10,7 +10,7 @@ from typing import Mapping
 from .projection import MemoryItem, render_memory
 from ..generation.context_labels import label
 
-LAYERS=('core','hero_recent','threads','present','place','general','facts','summary','timeline','atmosphere','fts')
+LAYERS=('core','hero_recent','threads','present','place','past','general','facts','summary','timeline','atmosphere','fts')
 TIMELINE_WINDOW=20
 RECENT_SCENES=3
 ATMOSPHERE_SHARE=0.10
@@ -128,9 +128,14 @@ def classify(inp: SelectionInput) -> dict[str,list[MemoryItem]]:
     for item in inp.items:
         kind=inp.kinds.get(item.claim_id)
         here=bool(inp.place.intersection(item.location_ids))
+        # MEMORY-ENTITIES: a record with participants is matched by them; only a record without them by name stems.
+        p=set(item.participant_ids)
+        in_scene=lambda:bool(p&cast) if p else mentions(item.text,cast_stems)
         if item.section=='core' or kind=='core':layer='core'
         elif kind=='atmosphere':layer='atmosphere'
-        elif item.section=='timeline':layer='timeline'
+        elif item.section=='timeline':
+            old=item.source_scene is not None and scenes_back(inp.scene_number,item.source_scene,inp.lineage_numbers)>TIMELINE_WINDOW
+            layer='past' if old and (p&(cast-set(inp.tracked)) or here) else 'timeline'
         elif item.section=='character_states':
             ids=set(item.character_ids)
             if ids&heroes and _recent(inp,item):layer='hero_recent'
@@ -140,10 +145,10 @@ def classify(inp: SelectionInput) -> dict[str,list[MemoryItem]]:
             elif not ids:layer='general'
             else:layer='fts'
         elif item.section=='open_threads':
-            layer='threads' if mentions(item.text,cast_stems) else 'place' if here else 'fts'
+            layer='threads' if in_scene() else 'place' if here else 'fts'
         elif here:layer='place'
-        elif item.section=='facts' and mentions(item.text,cast_stems):
-            hero_only=mentions(item.text,hero_stems) and not mentions(item.text,other_stems)
+        elif item.section=='facts' and in_scene():
+            hero_only=bool(p&heroes) and not p&(cast-heroes) if p else mentions(item.text,hero_stems) and not mentions(item.text,other_stems)
             layer='atmosphere' if hero_only else 'facts'
         else:layer='fts'
         layers[layer].append(item)
@@ -187,15 +192,16 @@ def _render(inp: SelectionInput, chosen: set[str], note: str | None, summaries=(
 
 
 def minimal_chars(inp: SelectionInput) -> int:
-    """The smallest valid section: the whole core plus a note for every timeline line."""
+    """The smallest valid section: the whole core plus a note for every timeline line (`past` included)."""
     layers=classify(inp)
-    return len(_render(inp,{item.claim_id for item in layers['core']},timeline_note(layers['timeline'],inp.language)))
+    return len(_render(inp,{item.claim_id for item in layers['core']},timeline_note(layers['timeline']+layers['past'],inp.language)))
 
 
 def select_memory(inp: SelectionInput, char_budget: int) -> MemorySelection:
     layers=classify(inp)
+    entries=layers['timeline']+layers['past']  # every timeline line, old ones of `past` included
     core={item.claim_id for item in layers['core']}
-    needed=len(_render(inp,core,timeline_note(layers['timeline'],inp.language)))
+    needed=len(_render(inp,core,timeline_note(entries,inp.language)))
     if needed>char_budget:raise CoreOverflow(needed,char_budget)
     chosen=set(core)
     taken={name:0 for name in LAYERS};taken['core']=len(core)
@@ -223,6 +229,9 @@ def select_memory(inp: SelectionInput, char_budget: int) -> MemorySelection:
         else:dropped['summary']+=1
     def covered(item):
         return item.source_scene is not None and any(c.first_number<=item.source_scene<=c.last_number for c in summaries.values())
+    # MEMORY-ENTITIES-S03: old timeline of the scene's people or places, newest first, unless its block summary is taken.
+    for item in sorted(layers['past'],key=lambda item:-item.source_scene):
+        if not covered(item):take('past',item)
     for item in layers['timeline']:
         if covered(item):continue
         if item.source_scene is not None and scenes_back(inp.scene_number,item.source_scene,inp.lineage_numbers)>TIMELINE_WINDOW:dropped['timeline']+=1
@@ -236,7 +245,7 @@ def select_memory(inp: SelectionInput, char_budget: int) -> MemorySelection:
     # Exact render: the greedy pass is approximate ('Немає.' lines, the timeline note), so the last additions go back
     # until the section fits. Every removed line is counted as dropped in its layer.
     def note():
-        return timeline_note([item for item in layers['timeline'] if item.claim_id not in chosen and not covered(item)],inp.language)
+        return timeline_note([item for item in entries if item.claim_id not in chosen and not covered(item)],inp.language)
     text=_render(inp,chosen,note(),summaries.values())
     while len(text)>char_budget:
         layer,item=added.pop()
@@ -245,11 +254,11 @@ def select_memory(inp: SelectionInput, char_budget: int) -> MemorySelection:
             # Its block's entries were neither taken nor counted: beyond the window they join the note, inside it they
             # are dropped by the budget.
             del summaries[item.block_key]
-            dropped['timeline']+=sum(1 for entry in layers['timeline'] if entry.source_scene is not None and item.first_number<=entry.source_scene<=item.last_number)
+            dropped['timeline']+=sum(1 for entry in entries if entry.source_scene is not None and item.first_number<=entry.source_scene<=item.last_number)
         else:chosen.discard(item.claim_id)
         text=_render(inp,chosen,note(),summaries.values())
     warnings=tuple(SUMMARY_STALE_WARNING.format(first=s.first_number,last=s.last_number) for s in inp.stale_summaries
-        if any(e.claim_id not in chosen and e.source_scene is not None and s.first_number<=e.source_scene<=s.last_number for e in layers['timeline']))
+        if any(e.claim_id not in chosen and e.source_scene is not None and s.first_number<=e.source_scene<=s.last_number for e in entries))
     used=tuple((c.block_key,c.version_id) for c in sorted(summaries.values(),key=lambda c:c.first_number))
     return MemorySelection(text,tuple(item.claim_id for item in inp.items if item.claim_id in chosen),taken,dropped,note(),char_budget,used,warnings)
 
@@ -286,7 +295,9 @@ def narrow_catalog(journal, cast, tracked, names, prose: str, scene_number: int,
             if not event.character_ids or cast&set(event.character_ids) or place.intersection(event.location_ids):keep.add(event.claim_id);mutable+=1
             else:pool.append(event)
         elif event.category=='facts':
-            if mentions(event.text,stems) or place.intersection(event.location_ids):keep.add(event.claim_id);immutable+=1
+            # MEMORY-ENTITIES: a participant of the scene, or a mention when the fact has no participants.
+            ours=bool(cast&set(event.participant_ids)) if event.participant_ids else mentions(event.text,stems)
+            if ours or place.intersection(event.location_ids):keep.add(event.claim_id);immutable+=1
         elif event.category=='timeline':
             number=source_numbers.get(event.source_version_id)
             if number is None or scenes_back(scene_number,number,lineage_numbers)<=TIMELINE_WINDOW:keep.add(event.claim_id);immutable+=1

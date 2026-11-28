@@ -88,8 +88,8 @@ class MemorySelector:
 
 
 SELECTION_STEPS=12
-SELECTED_PROJECTION='memory-uk-v3-selected'
-SUMMARY_PROJECTION='memory-uk-v3-selected-summary'
+SELECTED_PROJECTION='memory-uk-v4-selected'
+SUMMARY_PROJECTION='memory-uk-v4-selected-summary'
 
 
 def _select_memory_section(selector,sections,measured,measure,fits,settings):
