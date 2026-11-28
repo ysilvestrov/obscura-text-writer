@@ -246,6 +246,13 @@ def _finish_context(repo,story,scene,stage,settings,sections,refs,fragments,syst
             # MEMORY-SUMMARY: a new head of a used block makes this text stale even when the old version is not.
             snapshot.selectors.append(DependencySelector(kind='story',owner_id=story.id,field='timeline_summary_heads',
                 expected={item['block_key']:item['version_id'] for item in used}))
+    if scene and ('selection' in memory_metrics or 'narrow' in memory_metrics):
+        # MEMORY-ENTITIES-S07 (Р8): the overlay stales only versions built with selection or a narrowed catalog; computed here
+        # for the same reason as memory_kind_overrides (a rewrite re-enters make_context with the base metrics).
+        from ..dependency_models import DependencySelector
+        from ..storage.memory_entities import entities_value
+        snapshot.selectors.append(DependencySelector(kind='scene',owner_id=scene.id,field='memory_entities',
+            expected=entities_value(repo if hasattr(repo,'peek_scene') else repo.context_view(story.id),scene.id)))
     if memory_provenance:
         fingerprint=hashlib.sha256((fingerprint+snapshot.model_dump_json()).encode()).hexdigest()
     head={'brief':'brief','draft':'draft','edit':'prose','memory':'memory','rewrite':'draft'}.get(stage)

@@ -37,6 +37,30 @@ def entity_resolver(view,story):
     return EntityResolver(story.memory_entities,_known_cards(view,story),merged)
 
 
+def entities_value(view,scene_id) -> dict[str,str]:
+    """Selector value scene/memory_entities (Р8): candidates of the memory before the scene whose effective entities differ
+    from the ones without the overlay; peek only, an unreadable memory gives {}."""
+    from ..memory.previous import previous_memory, read_previous_journal
+    from ..memory.projection import candidate_events
+    scene=view.peek_scene(scene_id)
+    story=view.peek_story(scene.story_id)
+    if not story.memory_entities:return {}
+    before=previous_memory(view,scene,peek=True,require=False)
+    try:journal=read_previous_journal(view,before,peek=True) if before.memory_id else None
+    except (ValueError,KeyError,OSError):journal=None
+    if journal is None:return {}
+    try:events=candidate_events(journal)
+    except ValueError:return {}
+    resolver=entity_resolver(view,story);bare=resolver.bare();found={}
+    for claim_id in sorted(events):
+        if claim_id not in story.memory_entities:continue
+        e=events[claim_id];args=(claim_id,e.category,e.participant_ids,e.location_ids)
+        now,plain=resolver.of(*args),bare.of(*args)
+        if (now.participant_ids,now.location_ids)!=(plain.participant_ids,plain.location_ids):
+            found[claim_id]=f"p={','.join(now.participant_ids)};l={','.join(now.location_ids)}"
+    return found
+
+
 def _check_ids(view,story,participant_ids,location_ids):
     cards=_known_cards(view,story)
     if any(i not in cards for i in participant_ids):raise ValueError('Невідомий персонаж у розмітці сутностей')

@@ -311,6 +311,9 @@ def selector_value(view, selector: DependencySelector):
     if kind=='scene' and field=='memory_kind_overrides':
         from ..memory.kinds import kind_overrides
         return kind_overrides(view,owner)
+    if kind=='scene' and field=='memory_entities':
+        from .memory_entities import entities_value
+        return entities_value(view,owner)
     if kind=='scene' and field=='flashback':
         from ..memory.story_time import is_flashback
         return is_flashback(view.peek_scene(owner))
