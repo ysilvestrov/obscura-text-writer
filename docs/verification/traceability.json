@@ -6220,7 +6220,8 @@
         "tests/memory/test_selection_participants.py::test_timeline_note_counts_untaken_past_and_skips_taken",
         "tests/memory/test_selection_participants.py::test_hero_in_every_scene_does_not_fill_past",
         "tests/memory/test_selection_participants.py::test_stale_summary_warns_about_an_untaken_past_entry_only",
-        "tests/memory/test_selection_participants.py::test_every_past_entry_is_taken_covered_or_counted_under_any_budget"
+        "tests/memory/test_selection_participants.py::test_every_past_entry_is_taken_covered_or_counted_under_any_budget",
+        "tests/memory/test_selection_participants.py::test_summary_trimmed_after_the_greedy_pass_returns_entries_to_their_own_layers"
       ]
     },
     {

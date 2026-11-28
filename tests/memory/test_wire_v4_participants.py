@@ -78,7 +78,10 @@ def test_states_never_get_participants():
     data = answer(core(clothing=dec('unknown', reason='Новий день')),
                   character_states_add=[sadd('Змерзла', ['f000004'], ['h'])])
     journal = run(data, bounds=PBOUNDS)
-    assert all(e.participant_ids == [] for e in new(journal) if e.category == 'character_states')
+    states = [(e.category, e.operation, e.slot, e.text, e.participant_ids) for e in new(journal)]
+    # The unknown decision retires the slot and keeps its value as an atmosphere state; the requested state is added.
+    assert states == [('character_states', 'retire', 'clothing', 'Халат', []), ('character_states', 'add', None, 'Халат', []),
+                      ('character_states', 'add', None, 'Змерзла', [])]
 
 
 @pytest.mark.req('MEMORY-ENTITIES')

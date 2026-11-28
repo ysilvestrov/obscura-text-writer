@@ -8,7 +8,7 @@ from storygen.memory.journal import MemoryJournal, _add_event
 from storygen.memory.projection import memory_items
 from storygen.memory.selection import LAYERS, classify, minimal_chars, narrow_catalog, select_memory
 from storygen.memory.summaries import SummaryCandidate
-from tests.memory.test_selection import inp, item, layer_of, scene_items
+from tests.memory.test_selection import NAMES, inp, item, layer_of, scene_items
 
 
 def who(entry, *ids):
@@ -155,3 +155,19 @@ def test_every_past_entry_is_taken_covered_or_counted_under_any_budget():
             assert result.layers['past'] + result.dropped['past'] == 2 and result.layers['timeline'] + result.dropped['timeline'] == 15
             popped += result.dropped['summary'] == 1 and result.layers['past'] == 0
     assert popped  # the sweep reaches budgets where the summary is trimmed and its past entries are not taken
+
+
+@pytest.mark.req('MEMORY-ENTITIES')
+def test_summary_trimmed_after_the_greedy_pass_returns_entries_to_their_own_layers():
+    from storygen.memory.projection import render_memory
+    entries = (old('p3', 3, 'a'), old('p8', 8, 'a')) + tuple(item(f't{n}', 'timeline', f'Подія номер {n} у місті', scene=n) for n in range(25, 40))
+    summary = SummaryCandidate('range:1-10', 'v1', 1, 10, '— Підсумок сцен 1–10: ' + 'довгий опис ' * 20)
+    selection = dataclasses.replace(inp(entries, number=40), summaries=(summary,))
+    # The greedy pass starts with budget minus the empty section and admits the summary at exactly its cost; the exact
+    # render then adds the note for the 15 recent entries that no longer fit, so the trim removes the summary.
+    budget = len(render_memory([], ['h'], NAMES)) + len(summary.line) + 1
+    result = select_memory(selection, budget)
+    assert result.summaries == () and (result.layers['summary'], result.dropped['summary']) == (0, 1)
+    assert (result.layers['timeline'], result.dropped['timeline']) == (0, 15)
+    assert (result.layers['past'], result.dropped['past']) == (0, 2)
+    assert result.timeline_note == 'Не показано записів: 17 (сцени 3, 8, 25–39).'
