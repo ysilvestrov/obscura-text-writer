@@ -127,3 +127,24 @@ def test_memory_items_carry_participants():
 @pytest.mark.req('MEMORY-ENTITIES')
 def test_selected_projection_version_is_v4():
     assert SELECTED_PROJECTION == 'memory-uk-v4-selected' and SUMMARY_PROJECTION == 'memory-uk-v4-selected-summary'
+
+
+@pytest.mark.req('MEMORY-ENTITIES')
+def test_stale_summary_warns_about_an_untaken_past_entry_only():
+    from storygen.memory.summaries import StaleSummary
+    selection = dataclasses.replace(inp((old('p3', 3, 'a'), old('p8', 8, 'a')), number=40),
+        stale_summaries=(StaleSummary('range:1-10', 1, 10, 'stale'),))
+    assert select_memory(selection, minimal_chars(selection)).warnings == ('Підсумок сцен 1–10 застарів: перебудуйте його в панелі пам’яті.',)
+    assert select_memory(selection, 5000).warnings == ()
+
+
+@pytest.mark.req('MEMORY-ENTITIES')
+def test_every_past_entry_is_taken_covered_or_counted_under_any_budget():
+    entries = (old('p3', 3, 'a'), old('p8', 8, 'a')) + tuple(item(f't{n}', 'timeline', f'Подія номер {n} у місті', scene=n) for n in range(25, 40))
+    summary = SummaryCandidate('range:1-10', 'v1', 1, 10, '— Підсумок сцен 1–10: ' + 'довгий опис ' * 20)
+    selection = dataclasses.replace(inp(entries, number=40), summaries=(summary,))
+    for budget in range(minimal_chars(selection), 2500, 5):
+        result = select_memory(selection, budget)
+        covered = 2 if result.summaries else 0
+        assert len(result.text) <= budget
+        assert sum(result.layers.values()) + sum(result.dropped.values()) - 1 + covered == len(entries)
