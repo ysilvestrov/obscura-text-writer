@@ -4,6 +4,7 @@ from pathlib import Path
 import pytest
 
 
+@pytest.mark.req('MEMORY-ENTITIES')
 def test_memory_table_selection_conflict_and_async_save():
     node=shutil.which('node')
     if not node:pytest.skip('Node потрібен для перевірки ES module')

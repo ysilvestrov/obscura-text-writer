@@ -6224,6 +6224,18 @@
       ]
     },
     {
+      "id": "MEMORY-ENTITIES-S04",
+      "requirement": "MEMORY-ENTITIES",
+      "scope": "Таблиця пам'яті: participants рядка memory-view за поточними іменами сцени, пропуск невідомого ID, порожній список без учасників; рядок «Учасники» й пошук у інтерфейсі. Перевірка зазначеного сценарію; не є доказом усієї вимоги.",
+      "tests": [
+        "tests/memory/test_memory_view_participants.py::test_memory_view_row_has_participant_names",
+        "tests/memory/test_memory_view_participants.py::test_memory_view_row_shows_the_name_current_in_the_scene",
+        "tests/memory/test_memory_view_participants.py::test_unknown_participant_is_skipped",
+        "tests/memory/test_memory_view_participants.py::test_record_without_participants_has_an_empty_list",
+        "tests/web/test_memory_table_ui.py::test_memory_table_selection_conflict_and_async_save"
+      ]
+    },
+    {
       "id": "MEMORY-SUMMARY-S01",
       "requirement": "MEMORY-SUMMARY",
       "scope": "Блоки пласкої книги й книги з частинами, кошик, пороги рекомендації й заміни, старий payload.",

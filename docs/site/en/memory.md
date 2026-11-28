@@ -44,7 +44,7 @@ The cards are on the **Locations** page: open it with the map-pin button in the 
 
 After you save a description, merge, split, glue, unglue or remove a place, Obscura asks: “Locations changed: … Mark the dependent scenes as unchecked? Scenes: N.” Dependent scenes are the scenes with a brief whose shown places or memory of nearby places changed. **Yes** makes the brief and prose of these scenes “Unchecked” until you approve or regenerate them; **No** changes nothing.
 
-Nothing is merged without your decision. If the story was changed in another tab, saving is refused and the typed description stays in the field. The memory table shows each record's places as "Locations: …", and search finds a record by a place name too.
+Nothing is merged without your decision. If the story was changed in another tab, saving is refused and the typed description stays in the field. The memory table shows each record's places as "Locations: …" and the participants of a fact, thread or timeline event as "Participants: …" (the character names current in that scene). Search finds a record by a place name and by a participant's name. Only records added to memory after this update have participants; older records show no "Participants" line.
 
 ## Timeline summaries
 
