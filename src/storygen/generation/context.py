@@ -246,6 +246,13 @@ def _finish_context(repo,story,scene,stage,settings,sections,refs,fragments,syst
             # MEMORY-SUMMARY: a new head of a used block makes this text stale even when the old version is not.
             snapshot.selectors.append(DependencySelector(kind='story',owner_id=story.id,field='timeline_summary_heads',
                 expected={item['block_key']:item['version_id'] for item in used}))
+    if scene and ('selection' in memory_metrics or 'narrow' in memory_metrics):
+        # MEMORY-ENTITIES-S07 (Р8): the overlay stales only versions built with selection or a narrowed catalog; computed here
+        # for the same reason as memory_kind_overrides (a rewrite re-enters make_context with the base metrics).
+        from ..dependency_models import DependencySelector
+        from ..storage.memory_entities import entities_value
+        snapshot.selectors.append(DependencySelector(kind='scene',owner_id=scene.id,field='memory_entities',
+            expected=entities_value(repo if hasattr(repo,'peek_scene') else repo.context_view(story.id),scene.id)))
     if memory_provenance:
         fingerprint=hashlib.sha256((fingerprint+snapshot.model_dump_json()).encode()).hexdigest()
     head={'brief':'brief','draft':'draft','edit':'prose','memory':'memory','rewrite':'draft'}.get(stage)
@@ -447,12 +454,13 @@ def build_context(repo,scene_id: str,stage: str,settings: RoleSettings,*,editor_
         catalog,parts,bounds,sections=catalog_sections()
         def narrower():
             from ..memory.selection import narrow_catalog
+            from ..storage.memory_entities import entity_resolver
             from ..memory.series_start import source_number
             numbers={s.id:s.position+1 for s in scenes}
             from ..book.lineage import lineage_numbers
             narrow=narrow_catalog(past,scene.character_ids,everyone,match_names,prose_text,scene.position+1,
                 {id:source_number(repo.get_version(id),numbers) for id in past.source_prose_ids},lineage_numbers(story,scenes,scene),
-                place=scene_place(repo,scene))
+                place=scene_place(repo,scene),entities=entity_resolver(repo if hasattr(repo,'peek_scene') else repo.context_view(story.id),story))
             small,_,small_bounds,small_sections=catalog_sections(set(narrow.keep))
             return (small_sections,{'memory_schema_bounds':json.dumps(small_bounds,ensure_ascii=False)},
                 {'projection_version':f'memory-catalog-v{wire}-narrow','catalog_chars':len(small),
@@ -556,6 +564,9 @@ def build_context(repo,scene_id: str,stage: str,settings: RoleSettings,*,editor_
         from ..memory.story_time import day_key
         items,_=memory_items(past,scene.character_ids,source_numbers,hidden_claim_ids=hidden,forwarded_claim_ids=forwarded,tracked=tracked,names=names,language=language,
             scene_day=day_key(scene),source_days=source_days(story,scenes,scene),place=scene_place(repo,scene))
+        # MEMORY-ENTITIES: the overlay only on overflow (this closure runs only then); the projection filter above stays as it is.
+        from ..storage.memory_entities import entity_resolver
+        items=entity_resolver(repo if hasattr(repo,'peek_scene') else repo.context_view(story.id),story).items(items)
         # FTS query: the scene's own plan (already in refs) and, where it is a required input, its brief.
         query=[repo.read_text(scene.heads['plan']) if scene.heads.get('plan') else scene.beats]
         if stage in {'draft','edit'} and scene.heads.get('brief'):query.append(repo.read_text(scene.heads['brief']))

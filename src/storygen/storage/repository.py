@@ -83,6 +83,18 @@ class Repository:
         from .memory_kinds import update_memory_kind
         return update_memory_kind(self, story_id, claim_id, kind, expected_revision, scene_id)
 
+    def update_memory_entities(self, story_id, claim_id, participant_ids, location_ids, expected_revision):
+        from .memory_entities import update_memory_entities
+        return update_memory_entities(self, story_id, claim_id, participant_ids, location_ids, expected_revision)
+
+    def apply_entity_marks(self, story_id, marks, expected_revision):
+        from .memory_entities import apply_entity_marks
+        return apply_entity_marks(self, story_id, marks, expected_revision)
+
+    def clear_entity_marks(self, story_id, expected_revision, source='model'):
+        from .memory_entities import clear_entity_marks
+        return clear_entity_marks(self, story_id, expected_revision, source)
+
     def update_scene_rating(self, scene_id, rating, expected_revision):
         from .authoring import update_scene_rating
         return update_scene_rating(self, scene_id, rating, expected_revision)

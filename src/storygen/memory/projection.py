@@ -85,10 +85,15 @@ def _timeline_events(journal):
         or e.category=='open_threads' and e.operation=='retire' and e.claim_id not in resolved]
 
 
+def candidate_events(journal) -> dict:
+    """Records memory_items can render (before the scene filter): active ones and timeline entries, by claim_id."""
+    return {**{e.claim_id:e for e in _timeline_events(journal)}, **replay_memory(journal)}
+
+
 def candidate_claim_ids(journal) -> set[str]:
     """Claims memory_items can render (before the scene filter): active ones and timeline entries, including legacy thread
     closures without a resolution fact (#60, MEMORY-SELECT-S08)."""
-    return set(replay_memory(journal))|{e.claim_id for e in _timeline_events(journal)}
+    return set(candidate_events(journal))
 
 
 def earlier_today(journal: MemoryJournal, current, source_scene_numbers: dict[str,int], scene_day: str | None,

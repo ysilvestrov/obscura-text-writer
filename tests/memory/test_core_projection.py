@@ -102,7 +102,7 @@ class View:
     peek_scenes=list_scenes
     def read_text(self,id):return self.j.model_dump_json()
     def get_version(self,id):return self.versions[id]
-    def get_story(self,id):return SimpleNamespace(id=id,revision=0,memory_kind_overrides={},characters_version_id=None)
+    def get_story(self,id):return SimpleNamespace(id=id,revision=0,memory_kind_overrides={},memory_entities={},characters_version_id=None)
 
 
 def version(scene_id,stale=False):
