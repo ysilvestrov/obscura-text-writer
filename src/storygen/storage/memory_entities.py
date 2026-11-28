@@ -61,8 +61,7 @@ def entities_value(view,scene_id) -> dict[str,str]:
     return found
 
 
-def _check_ids(view,story,participant_ids,location_ids):
-    cards=_known_cards(view,story)
+def _check_ids(view,cards,participant_ids,location_ids):
     if any(i not in cards for i in participant_ids):raise ValueError('Невідомий персонаж у розмітці сутностей')
     if any(i not in view.locations for i in location_ids):raise ValueError('Невідома локація в розмітці сутностей')
 
@@ -88,7 +87,7 @@ def update_memory_entities(repo,story_id: str,claim_id: str,participant_ids: lis
             marks.pop(claim_id,None);return
         event=book_claims(view,story_id).get(claim_id)
         if event is None:raise ValueError('Запису немає в пам’яті твору')
-        _check_ids(view,story,participant_ids,location_ids)
+        _check_ids(view,_known_cards(view,story),participant_ids,location_ids)
         if participant_ids and event.category=='character_states':
             raise ValueError('Учасники дозволені лише для ліній, фактів і хронології')
         mark=MemoryEntityMark(participant_ids=list(participant_ids),location_ids=list(location_ids),source='author')
@@ -101,10 +100,10 @@ def update_memory_entities(repo,story_id: str,claim_id: str,participant_ids: lis
 def apply_entity_marks(repo,story_id: str,marks: Mapping[str,tuple[list[str],list[str]]],expected_revision: int) -> tuple[Story,list[str]]:
     """A model batch (Р10: refused whole on an unknown record, card or location); never overwrites an author mark (І4)."""
     def change(view,story,stored):
-        claims=book_claims(view,story_id);applied=[]
+        claims=book_claims(view,story_id);applied=[];cards=_known_cards(view,story)
         for claim_id,(people,places) in marks.items():
             if claim_id not in claims:raise ValueError('Запису немає в пам’яті твору')
-            _check_ids(view,story,people,places)
+            _check_ids(view,cards,people,places)
         for claim_id,(people,places) in marks.items():
             current=stored.get(claim_id)
             if current is not None and current.source=='author':continue

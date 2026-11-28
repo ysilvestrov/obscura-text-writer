@@ -10,7 +10,7 @@ router=APIRouter()
 class MemoryEntitiesChange(DomainModel):
     claim_id: str = Field(min_length=1,max_length=200)
     participant_ids: list[str] = Field(default_factory=list,max_length=200)
-    location_ids: list[str] | None = Field(default=None,max_length=200)
+    location_ids: list[str] | None = Field(...,max_length=200)  # required: an explicit null deletes the mark (Р6)
     expected_revision: int
 
 

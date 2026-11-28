@@ -6275,6 +6275,8 @@
         "tests/storage/test_memory_entities_store.py::test_too_many_marks_are_refused",
         "tests/storage/test_memory_entities_store.py::test_book_claims_take_timeline_and_records_of_every_head",
         "tests/storage/test_memory_entities_store.py::test_entity_resolver_uses_cards_and_merges",
+        "tests/storage/test_memory_entities_store.py::test_empty_model_mark_removes_an_existing_model_mark",
+        "tests/storage/test_memory_entities_store.py::test_empty_model_mark_without_an_existing_mark_is_a_no_op",
         "tests/storage/test_memory_entities_store.py::test_memory_entities_http"
       ]
     },

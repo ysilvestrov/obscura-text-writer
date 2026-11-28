@@ -200,9 +200,31 @@ def test_entity_resolver_uses_cards_and_merges(tmp_path):
     sid=scene.story_id
     repo.update_memory_entities(sid,claim(journal,LIGHTHOUSE),['A'],[l1],revision(repo,sid))
     with repo.db.connection() as db:
+        db.execute('BEGIN IMMEDIATE')
+        (l2,)=store.ensure_locations(db,sid,[('Бухта',)])
+        store.merge_location(db,sid,l2,l1)
+    with repo.db.connection() as db:
         view=ContextView(repo,db,sid)
         resolver=entities.entity_resolver(view,view.story)
     assert resolver.known_cards=={'A','B'} and set(resolver.marks)=={claim(journal,LIGHTHOUSE)}
+    assert resolver.merged[l2]==l1 and resolver.merged[l1] is None
+
+
+@pytest.mark.req('MEMORY-ENTITIES')
+def test_empty_model_mark_removes_an_existing_model_mark(tmp_path):
+    repo,scene,journal,_,l1=prepared(tmp_path)
+    sid=scene.story_id;cid=claim(journal,COAST)
+    repo.apply_entity_marks(sid,{cid:(['A'],[])},revision(repo,sid))
+    story,applied=repo.apply_entity_marks(sid,{cid:([],[])},revision(repo,sid))
+    assert story.memory_entities=={} and applied==[cid]
+
+
+@pytest.mark.req('MEMORY-ENTITIES')
+def test_empty_model_mark_without_an_existing_mark_is_a_no_op(tmp_path):
+    repo,scene,journal,_,l1=prepared(tmp_path)
+    sid=scene.story_id;rev=revision(repo,sid)
+    story,applied=repo.apply_entity_marks(sid,{claim(journal,COAST):([],[])},rev)
+    assert applied==[] and story.revision==rev==revision(repo,sid)
 
 
 @pytest.mark.req('MEMORY-ENTITIES')
@@ -218,6 +240,14 @@ def test_memory_entities_http(tmp_path):
         assert client.put(url,json=body).status_code==409
         assert client.put(url,json={**body,'claim_id':'nope','expected_revision':rev+1}).status_code==400
         assert client.put(url,json={**body,'participant_ids':['A']*201,'expected_revision':rev+1}).status_code==422
-        cleared=client.post(url+'/clear',json={'expected_revision':rev+1})
-        assert cleared.status_code==200 and cleared.json()['revision']==rev+1
+        assert client.put(url,json={**body,'participant_ids':['A','A'],'expected_revision':rev+1}).status_code==400
+        omitted={k:v for k,v in body.items() if k!='location_ids'}
+        assert client.put(url,json={**omitted,'expected_revision':rev+1}).status_code==422
+        assert revision(repo,sid)==rev+1
+        deleted=client.put(url,json={**body,'location_ids':None,'expected_revision':rev+1})
+        assert deleted.status_code==200 and 'memory_entities' not in deleted.json()
+        assert client.put(url,json={**body,'expected_revision':deleted.json()['revision']}).status_code==200
+        now=revision(repo,sid)
+        cleared=client.post(url+'/clear',json={'expected_revision':now})
+        assert cleared.status_code==200 and cleared.json()['revision']==now
         assert client.post(url+'/clear',json={'expected_revision':rev}).status_code==409
